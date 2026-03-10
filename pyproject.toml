@@ -1,0 +1,19 @@
+[project]
+name = "snekql"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+ "pydantic>=1.10.22",
+ "snektest",
+]
+
+[tool.uv.sources]
+snektest = { path = "../snektest" }
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.402",
+    "ruff>=0.11.13",
+]
