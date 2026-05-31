@@ -5,6 +5,15 @@ It gives applications explicit SQL-shaped operations, typed
 model declarations, runtime validation, startup schema checks, and transaction-
 based execution without becoming an ORM.
 
+## Install
+
+```sh
+uv add snekql
+```
+
+snekql requires Python 3.14 or newer. V1 targets SQLite and generated tables are
+`STRICT`.
+
 ## Quick start
 
 ```python
@@ -181,7 +190,25 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 
 `ExecutionError` preserves `sql` and `params` for debugging.
 
+## Further reading
+
+- [Adoption and release confidence](docs/adoption.md)
+- [Why snekql is not an ORM](docs/why-not-orm.md)
+- [Typing guide](docs/typing.md)
+- [Schema startup and drift](docs/schema-drift.md)
+- [Error handling guide](docs/error-handling.md)
+
+Runnable examples live in `examples/`:
+
+```sh
+uv run python -m examples.basic_app
+uv run pyright examples/typed_queries.py
+```
+
 ## Public API
+
+The package root is the public import surface. Prefer `from snekql import ...`
+over importing from internal modules.
 
 Agent navigation map:
 
