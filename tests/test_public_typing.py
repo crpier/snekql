@@ -10,6 +10,7 @@ from snekql import (
     CurrentTimestamp,
     DateTime,
     Fetched,
+    Index,
     InsertQuery,
     Integer,
     Missing,
@@ -82,6 +83,8 @@ if TYPE_CHECKING:
         User.email.eq("alice@example.com") & User.status.eq("active"),
         Predicate[User[Pending]],
     )
+    _ = assert_type(Index(User.email), Index[User[Pending]])
+    _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])
     _ = assert_type(
         update(User).set(User.email.to("new@example.com")),

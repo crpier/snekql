@@ -37,6 +37,7 @@ class _AttrConfig:
     nullable: bool | None = None
     primary_key: bool = False
     server_default: object | None = None
+    unique: bool = False
 
 
 WriteOwnerT = TypeVar("WriteOwnerT")
@@ -92,12 +93,13 @@ class Integer:
     ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         auto_increment: bool = False,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -108,6 +110,7 @@ class Integer:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
             ),
@@ -126,6 +129,7 @@ class Real:
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -135,6 +139,7 @@ class Real:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                unique=unique,
                 sqlite_storage_class="REAL",
                 storage_type_name="Real",
             ),
@@ -153,6 +158,7 @@ class Text:
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -162,6 +168,7 @@ class Text:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
             ),
@@ -180,6 +187,7 @@ class Blob:
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -189,6 +197,7 @@ class Blob:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                unique=unique,
                 sqlite_storage_class="BLOB",
                 storage_type_name="Blob",
             ),
@@ -209,6 +218,7 @@ class Json:
         cls,
         *,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -217,6 +227,7 @@ class Json:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Json",
             ),
@@ -234,6 +245,7 @@ class Boolean:
         cls,
         *,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -242,6 +254,7 @@ class Boolean:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Boolean",
             ),
@@ -263,6 +276,7 @@ class DateTime:
         *,
         server_default: object | None = None,
         nullable: bool | None = None,
+        unique: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -272,6 +286,7 @@ class DateTime:
                 default_factory=default_factory,
                 nullable=nullable,
                 server_default=server_default,
+                unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="DateTime",
             ),
@@ -307,6 +322,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         self.server_default: object | None = config.server_default
         self.sqlite_storage_class: SQLiteStorageClass = config.sqlite_storage_class
         self.storage_type_name: str = config.storage_type_name
+        self.unique: bool = config.unique
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name

@@ -3,8 +3,8 @@
 snekql v1 has startup schema management, not migrations.
 
 When `Database.initialize(..., models=[...])` runs, snekql creates missing tables
-and verifies existing tables against deterministic SQLite `STRICT` DDL generated
-from the table models.
+and verifies existing tables and indexes against deterministic SQLite DDL
+generated from the table models.
 
 ## What happens at startup
 
@@ -19,23 +19,24 @@ db = await Database.initialize(
 snekql will:
 
 1. Preserve the order of the `models` sequence.
-2. Reject duplicate resolved table names.
-3. Create missing tables.
-4. Verify existing tables.
-5. Skip verification for tables created during the same initialization pass.
+2. Reject duplicate resolved table and index names.
+3. Create missing tables and indexes.
+4. Verify existing tables and exact index sets.
+5. Skip verification for objects created during the same initialization pass.
 
 ## Drift detection strategy
 
 V1 keeps drift detection deliberately simple:
 
-1. Generate expected `CREATE TABLE` SQL for the model.
-2. Read existing table SQL from SQLite metadata.
-3. Normalize only formatting controlled by snekql.
-4. Compare the generated SQL with the stored SQL.
+1. Generate expected `CREATE TABLE` and `CREATE INDEX` SQL for the model.
+2. Read existing table and index SQL from SQLite metadata.
+3. Normalize only table formatting controlled by snekql.
+4. Compare generated SQL with stored SQL.
 5. Treat mismatch as schema drift.
 
-Because generated DDL always includes `STRICT`, existing non-`STRICT` tables are
-schema drift.
+Because generated table DDL always includes `STRICT`, existing non-`STRICT`
+tables are schema drift. Extra, missing, renamed, reordered, or uniqueness-
+changed indexes on managed tables are also schema drift.
 
 ## Policies
 
