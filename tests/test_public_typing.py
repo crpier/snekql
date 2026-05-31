@@ -15,6 +15,7 @@ from snekql import (
     Missing,
     Model,
     Pending,
+    Predicate,
     SelectModelQuery,
     SelectValueQuery,
     Text,
@@ -59,6 +60,21 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User.email).where(User.email.eq("alice@example.com")).all(),
         SelectValueQuery[User[Pending], str],
+    )
+    _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
+    _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])
+    _ = assert_type(User.email.is_null(), Predicate[User[Pending]])
+    _ = assert_type(User.email.is_not_null(), Predicate[User[Pending]])
+    _ = assert_type(User.email.in_("a@example.com"), Predicate[User[Pending]])
+    _ = assert_type(
+        User.email.not_in("a@example.com", "b@example.com"),
+        Predicate[User[Pending]],
+    )
+    _ = assert_type(User.email.like("%@example.com"), Predicate[User[Pending]])
+    _ = assert_type(User.email.not_like("%@example.com"), Predicate[User[Pending]])
+    _ = assert_type(
+        User.email.eq("alice@example.com") & User.status.eq("active"),
+        Predicate[User[Pending]],
     )
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])
     _ = assert_type(
