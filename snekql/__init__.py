@@ -23,6 +23,7 @@ from snekql.errors import (
     TransactionClosedError,
 )
 from snekql.expressions import Assignment, OrderBy, Predicate
+from snekql.indexes import Index
 from snekql.model import (
     Col,
     Fetched,
@@ -79,6 +80,7 @@ __all__ = [
     "Fetched",
     "FrozenModelError",
     "GenCol",
+    "Index",
     "InsertQuery",
     "Integer",
     "Json",

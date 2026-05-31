@@ -11,6 +11,7 @@ from snekql import (
     CurrentTimestamp,
     DateTime,
     Fetched,
+    Index,
     InsertQuery,
     Integer,
     Missing,
@@ -60,6 +61,8 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
 if TYPE_CHECKING:
     sqlite_config = sqlite.Config(database=Path("app.db"))
     _ = assert_type(sqlite_config, sqlite.Config)
+    sqlite_index = sqlite.Index(SqliteUser.email)
+    _ = assert_type(sqlite_index, Index[SqliteUser[Pending]])
     sqlite_user = SqliteUser(email="alice@example.com")
     _ = assert_type(sqlite_user, SqliteUser[Pending])
     _ = assert_type(
@@ -103,6 +106,8 @@ if TYPE_CHECKING:
         User.email.eq("alice@example.com") & User.status.eq("active"),
         Predicate[User[Pending]],
     )
+    _ = assert_type(Index(User.email), Index[User[Pending]])
+    _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])
     _ = assert_type(
         update(User).set(User.email.to("new@example.com")),

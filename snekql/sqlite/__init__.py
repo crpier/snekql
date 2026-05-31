@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from snekql.indexes import Index
 from snekql.model import Col, Fetched, GenCol, Model, ModelMeta, Pending, Table
 from snekql.sqlite.config import Config
 from snekql.storage import (
@@ -30,6 +31,7 @@ __all__ = [
     "DateTime",
     "Fetched",
     "GenCol",
+    "Index",
     "Integer",
     "Json",
     "Missing",

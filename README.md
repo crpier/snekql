@@ -43,7 +43,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    email: User.Col[str] = Text(nullable=False)
+    email: User.Col[str] = Text(nullable=False, unique=True)
     status: User.Col[str] = Text(nullable=False, default="active")
     created_at: User.GenCol[datetime] = DateTime(
         server_default=CurrentTimestamp(),
@@ -111,8 +111,35 @@ Rules to remember:
 - `Boolean` stores `0` / `1` in an `INTEGER` column.
 - `DateTime` stores UTC text as `YYYY-MM-DDTHH:MM:SS.SSSZ`.
 
+All storage declarations accept `unique=True` for column-level unique indexes.
+SQLite allows multiple `NULL` values in a unique index, so use `nullable=False`
+when uniqueness should also require a value. Primary-key columns reject
+`unique=True` because it is redundant.
+
 `CurrentTimestamp()` is the only v1 server default and is valid only on
 `DateTime` `GenCol` fields.
+
+## Indexes
+
+Use `Index(...)` in `__indexes__` for table-level indexes:
+
+```python
+from snekql import Index
+
+class User[S = Pending](Model[S, "User[Fetched]"]):
+    email: User.Col[str] = Text(nullable=False, unique=True)
+    status: User.Col[str] = Text(nullable=False)
+    tenant_id: User.Col[int] = Integer(nullable=False)
+
+    __indexes__ = [
+        Index(status),
+        Index(tenant_id, email, unique=True),
+        Index(tenant_id, name="ix_user_tenant_custom"),
+    ]
+```
+
+Index declarations accept column descriptors only. Names are inferred as
+`ix_<table>_<columns>` or `ux_<table>_<columns>` unless `name=` is supplied.
 
 ## Queries
 
@@ -175,10 +202,10 @@ Runtime methods:
 When initialized with `models=[...]`, snekql:
 
 1. Preserves model order.
-2. Rejects duplicate resolved table names.
-3. Creates missing `STRICT` tables.
-4. Verifies existing tables by comparing deterministic generated DDL with
-   SQLite metadata.
+2. Rejects duplicate resolved table and index names.
+3. Creates missing `STRICT` tables and their indexes.
+4. Verifies existing tables and indexes by comparing deterministic generated
+   DDL with SQLite metadata.
 5. Treats drift according to `schema_policy`: `"strict"` raises,
    `"warn"` logs and continues.
 

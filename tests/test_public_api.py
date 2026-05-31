@@ -54,6 +54,7 @@ def public_contract_exports_canonical_names() -> None:
         "Fetched",
         "FrozenModelError",
         "GenCol",
+        "Index",
         "InsertQuery",
         "Integer",
         "Json",
@@ -131,6 +132,7 @@ def sqlite_namespace_exports_backend_specific_names() -> None:
     """The SQLite namespace exposes the future backend-specific model shape."""
 
     assert_is(snekql.sqlite.Model, snekql.Model)
+    assert_is(snekql.sqlite.Index, snekql.Index)
     assert_is(snekql.sqlite.Integer, snekql.Integer)
     assert_is(snekql.sqlite.Text, snekql.Text)
     assert_in("Config", snekql.sqlite.__all__)
@@ -216,6 +218,7 @@ def public_classes_have_specific_docstrings() -> None:
         snekql.ExecutionError,
         snekql.Fetched,
         snekql.FrozenModelError,
+        snekql.Index,
         snekql.InsertQuery,
         snekql.Integer,
         snekql.Json,

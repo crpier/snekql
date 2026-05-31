@@ -11,6 +11,7 @@ from typing import Any
 from aiosqlite import Connection, Error
 
 from snekql.errors import SchemaError, SchemaVerificationError
+from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
@@ -47,6 +48,63 @@ def _compile_create_table_sql(model: type[Table[Any]]) -> str:
     return f"CREATE TABLE {quote_sqlite_identifier(table_name)} ({column_sql}) STRICT"
 
 
+def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
+    unique_sql = "UNIQUE " if index.unique else ""
+    column_sql = ", ".join(
+        quote_sqlite_identifier(column_name) for column_name in index.column_names
+    )
+    return (
+        f"CREATE {unique_sql}INDEX {quote_sqlite_identifier(index.name)} "
+        f"ON {quote_sqlite_identifier(table_name)} ({column_sql})"
+    )
+
+
+def _compile_column_unique_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
+    table_name = require_model_table_name(model)
+    columns = require_model_columns(model)
+    return [
+        NormalizedIndex(
+            column_names=(column_name,),
+            name=f"ux_{table_name}_{column_name}",
+            unique=True,
+        )
+        for column_name, column in columns.items()
+        if column.unique
+    ]
+
+
+def _compile_model_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
+    table_indexes = getattr(model, "__snekql_indexes__", ())
+    return [*_compile_column_unique_indexes(model), *table_indexes]
+
+
+def _compile_model_index_sql(model: type[Table[Any]]) -> list[str]:
+    table_name = require_model_table_name(model)
+    return [
+        _compile_create_index_sql(table_name, index)
+        for index in _compile_model_indexes(model)
+    ]
+
+
+async def _fetch_existing_create_index_sql(
+    connection: Connection,
+    table_name: str,
+) -> list[str | None]:
+    cursor = await connection.execute(
+        """
+        SELECT sql FROM sqlite_master
+        WHERE type = 'index' AND tbl_name = ?
+        ORDER BY rowid
+        """,
+        (table_name,),
+    )
+    try:
+        rows = await cursor.fetchall()
+    finally:
+        await cursor.close()
+    return [row[0] if isinstance(row[0], str) else None for row in rows]
+
+
 async def _fetch_existing_create_table_sql(
     connection: Connection,
     table_name: str,
@@ -76,6 +134,32 @@ def _normalize_snekql_create_table_sql(sql: str) -> str:
     return normalized_sql.replace("( ", "(").replace(" )", ")").replace(" ,", ",")
 
 
+async def _report_schema_drift(
+    schema_policy: SchemaPolicy,
+    table_name: str,
+) -> None:
+    message = f"schema drift detected for table {table_name!r}"
+    if schema_policy == "strict":
+        raise SchemaVerificationError(message)
+    _LOGGER.warning(
+        "schema drift detected",
+        extra={"table_name": table_name},
+    )
+
+
+async def _verify_model_indexes(
+    connection: Connection,
+    model: type[Table[Any]],
+    schema_policy: SchemaPolicy,
+) -> None:
+    table_name = require_model_table_name(model)
+    expected_sql = _compile_model_index_sql(model)
+    existing_sql = await _fetch_existing_create_index_sql(connection, table_name)
+    if existing_sql == expected_sql:
+        return
+    await _report_schema_drift(schema_policy, table_name)
+
+
 async def _verify_or_create_model_table(
     connection: Connection,
     model: type[Table[Any]],
@@ -86,28 +170,31 @@ async def _verify_or_create_model_table(
     existing_sql = await _fetch_existing_create_table_sql(connection, table_name)
     if existing_sql is None:
         _ = await connection.execute(expected_sql)
+        for index_sql in _compile_model_index_sql(model):
+            _ = await connection.execute(index_sql)
         return
     if _normalize_snekql_create_table_sql(
         existing_sql,
-    ) == _normalize_snekql_create_table_sql(expected_sql):
+    ) != _normalize_snekql_create_table_sql(expected_sql):
+        await _report_schema_drift(schema_policy, table_name)
         return
-    message = f"schema drift detected for table {table_name!r}"
-    if schema_policy == "strict":
-        raise SchemaVerificationError(message)
-    _LOGGER.warning(
-        "schema drift detected",
-        extra={"table_name": table_name},
-    )
+    await _verify_model_indexes(connection, model, schema_policy)
 
 
 def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
     table_names: set[str] = set()
+    index_names: set[str] = set()
     for model in models:
         table_name = require_model_table_name(model)
         if table_name in table_names:
             msg = f"duplicate table name: {table_name!r}"
             raise SchemaError(msg)
         table_names.add(table_name)
+        for index in _compile_model_indexes(model):
+            if index.name in index_names:
+                msg = f"duplicate index name: {index.name!r}"
+                raise SchemaError(msg)
+            index_names.add(index.name)
 
 
 async def _rollback_schema_setup(connection: Connection) -> None:
