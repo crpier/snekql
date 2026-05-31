@@ -12,6 +12,7 @@ from snekql import (
     MISSING,
     FrozenModelError,
     Integer,
+    Json,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -66,7 +67,7 @@ def model_construction_calls_default_factories_per_instance() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with a default factory."""
 
-        tags: Event.Col[list[str]] = Text(default_factory=list)
+        tags: Event.Col[list[str]] = Json(default_factory=list)
 
     first = Event()
     second = Event()
