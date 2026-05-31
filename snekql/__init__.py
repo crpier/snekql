@@ -38,34 +38,6 @@ T3 = TypeVar("T3")
 Ts = TypeVarTuple("Ts")
 
 
-def _infer_table_name(class_name: str) -> str:
-    characters: list[str] = []
-    previous_was_lower_or_digit = False
-    for character in class_name:
-        if character.isupper() and previous_was_lower_or_digit:
-            characters.append("_")
-        characters.append(character.lower())
-        previous_was_lower_or_digit = character.islower() or character.isdigit()
-    return "".join(characters)
-
-
-def _is_sql_identifier(value: str) -> bool:
-    if value == "":
-        return False
-    first_character = value[0]
-    if not (first_character.isalpha() or first_character == "_"):
-        return False
-    return all(character.isalnum() or character == "_" for character in value)
-
-
-def _is_classvar_annotation(annotation: object) -> bool:
-    if isinstance(annotation, str):
-        return annotation.startswith("ClassVar[") or annotation.startswith(
-            "typing.ClassVar[",
-        )
-    return get_origin(annotation) is ClassVar
-
-
 class Pending:
     """Marker state for application-constructed table models.
 
@@ -646,7 +618,7 @@ class ModelMeta(type):
                         continue
                     if annotated_name == "__tablename__":
                         continue
-                    if _is_classvar_annotation(annotations[annotated_name]):
+                    if ModelMeta._is_classvar_annotation(annotations[annotated_name]):
                         continue
                     raise ModelDeclarationError(
                         f"unsupported model annotation: {annotated_name!r}",
@@ -663,18 +635,51 @@ class ModelMeta(type):
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
         for attribute_name, attribute_value in model_class.__dict__.items():
             if isinstance(attribute_value, Attr):
-                if not _is_sql_identifier(attribute_name):
+                if not ModelMeta._is_sql_identifier(attribute_name):
                     raise ModelDeclarationError(
                         f"invalid column identifier: {attribute_name!r}",
                     )
                 columns[attribute_name] = attribute_value
         if name != "Model":
-            table_name = namespace.get("__tablename__", _infer_table_name(name))
-            if not isinstance(table_name, str) or not _is_sql_identifier(table_name):
+            table_name = namespace.get(
+                "__tablename__",
+                ModelMeta._infer_table_name(name),
+            )
+            if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
+                table_name,
+            ):
                 raise ModelDeclarationError(f"invalid table identifier: {table_name!r}")
             setattr(model_class, "__tablename__", table_name)
         setattr(model_class, "__snekql_columns__", columns)
         return model_class
+
+    @staticmethod
+    def _infer_table_name(class_name: str) -> str:
+        characters: list[str] = []
+        previous_was_lower_or_digit = False
+        for character in class_name:
+            if character.isupper() and previous_was_lower_or_digit:
+                characters.append("_")
+            characters.append(character.lower())
+            previous_was_lower_or_digit = character.islower() or character.isdigit()
+        return "".join(characters)
+
+    @staticmethod
+    def _is_classvar_annotation(annotation: object) -> bool:
+        if isinstance(annotation, str):
+            return annotation.startswith("ClassVar[") or annotation.startswith(
+                "typing.ClassVar[",
+            )
+        return get_origin(annotation) is ClassVar
+
+    @staticmethod
+    def _is_sql_identifier(value: str) -> bool:
+        if value == "":
+            return False
+        first_character = value[0]
+        if not (first_character.isalpha() or first_character == "_"):
+            return False
+        return all(character.isalnum() or character == "_" for character in value)
 
 
 class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
