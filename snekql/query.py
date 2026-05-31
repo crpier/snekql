@@ -6,7 +6,8 @@ from typing import Any, Generic, Protocol, Self, TypeVar, TypeVarTuple, overload
 
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Assignment, OrderBy, Predicate
-from snekql.model import Table
+from snekql.model import Table, encode_model_row, require_model_table_name
+from snekql.schema import quote_sqlite_identifier
 from snekql.storage import Attr
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -153,6 +154,22 @@ class DeleteQuery(Generic[ModelT]):
         *predicates: Predicate[ModelT],
     ) -> Self:
         return self
+
+
+def compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
+    """Compile a pending model insert into SQLite SQL and parameters."""
+
+    model_class, row_values = encode_model_row(query.row)
+    table_name = require_model_table_name(model_class)
+    quoted_table = quote_sqlite_identifier(table_name)
+    if not row_values:
+        return f"INSERT INTO {quoted_table} DEFAULT VALUES", ()
+    names = tuple(row_values)
+    quoted_columns = ", ".join(quote_sqlite_identifier(name) for name in names)
+    placeholders = ", ".join("?" for _ in names)
+    sql = f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({placeholders})"
+    params = tuple(row_values[name] for name in names)
+    return sql, params
 
 
 @overload

@@ -21,7 +21,7 @@ from snekql.errors import (
     QueryCompilationError,
     TransactionClosedError,
 )
-from snekql.model import Table, encode_model_row, require_model_table_name
+from snekql.model import Table
 from snekql.query import (
     DeleteQuery,
     InsertQuery,
@@ -29,8 +29,9 @@ from snekql.query import (
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    compile_insert_sql,
 )
-from snekql.schema import initialize_sqlite_schema, quote_sqlite_identifier
+from snekql.schema import initialize_sqlite_schema
 from snekql.schema import validate_schema_models, validate_schema_policy
 from snekql.storage import SchemaPolicy
 
@@ -144,7 +145,7 @@ class Transaction:
         connection = self.require_connection()
         if not isinstance(query, InsertQuery):
             raise QueryCompilationError("only insert execution is implemented yet")
-        sql, params = self.compile_insert(query)
+        sql, params = compile_insert_sql(query)
         try:
             await self.execute_sqlite(connection, sql, params)
         except Error as error:
@@ -157,22 +158,6 @@ class Transaction:
         if self.closed or connection is None:
             raise TransactionClosedError("transaction is closed")
         return connection
-
-    @staticmethod
-    def compile_insert(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
-        """Compile a pending model insert into SQLite SQL and parameters."""
-
-        model_class, row_values = encode_model_row(query.row)
-        table_name = require_model_table_name(model_class)
-        quoted_table = quote_sqlite_identifier(table_name)
-        if not row_values:
-            return f"INSERT INTO {quoted_table} DEFAULT VALUES", ()
-        names = tuple(row_values)
-        quoted_columns = ", ".join(quote_sqlite_identifier(name) for name in names)
-        placeholders = ", ".join("?" for _ in names)
-        sql = f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({placeholders})"
-        params = tuple(row_values[name] for name in names)
-        return sql, params
 
     @staticmethod
     async def execute_sqlite(
