@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from snektest import assert_eq, assert_false, assert_is, assert_raises, test
 
 from snekql import (
     MISSING,
-    Fetched,
     FrozenModelError,
     Integer,
     Model,
@@ -19,6 +18,9 @@ from snekql import (
     Pending,
     Text,
 )
+
+if TYPE_CHECKING:
+    from snekql import Fetched  # noqa: F401
 
 
 @test()
@@ -133,6 +135,7 @@ def table_names_are_inferred_or_overridden_and_validated() -> None:
     assert_eq(User.__tablename__, "users")
 
     with assert_raises(ModelDeclarationError):
+
         class InvalidName[S = Pending](Model[S, "InvalidName[Fetched]"]):
             """Table model with invalid table name."""
 
@@ -148,6 +151,7 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
     """V1 model bodies reject non-column annotations and computed properties."""
 
     with assert_raises(ModelDeclarationError):
+
         class PlainAnnotation[S = Pending](Model[S, "PlainAnnotation[Fetched]"]):
             """Invalid table model with a plain instance annotation."""
 
@@ -162,6 +166,7 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
     assert_eq(WithClassVar.category, "users")
 
     with assert_raises(ModelDeclarationError):
+
         class ComputedProperty[S = Pending](Model[S, "ComputedProperty[Fetched]"]):
             """Invalid table model with a computed property."""
 
@@ -172,6 +177,7 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
                 return "computed"
 
     with assert_raises(ModelDeclarationError):
+
         class AbstractModel[S = Pending](Model[S, "AbstractModel[Fetched]"]):
             """Invalid abstract table model."""
 

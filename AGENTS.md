@@ -16,4 +16,6 @@
   ```bash
   uv run snektest
   uv run pyright .
+  uv run ruff check .
+  uv run ruff format --check .
   ```
