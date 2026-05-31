@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import cast
 
 import snekql
 from snektest import test
-from snektest.assertions import assert_eq, assert_in, assert_is, assert_ne
+from snektest.assertions import (
+    assert_eq,
+    assert_in,
+    assert_is,
+    assert_isinstance,
+    assert_ne,
+)
 
 
 def _assert_has_specific_docstring(value: object) -> None:
@@ -28,18 +35,96 @@ def public_contract_exports_canonical_names() -> None:
     """The package root explicitly curates canonical PRD names."""
 
     expected_names = (
-        "MISSING",
+        "Blob",
+        "Boolean",
+        "Col",
+        "CurrentTimestamp",
+        "Database",
+        "DateTime",
         "Fetched",
+        "GenCol",
+        "Integer",
+        "Json",
+        "MISSING",
         "Missing",
         "Model",
         "Pending",
+        "Real",
+        "SchemaPolicy",
         "SnekqlError",
+        "Text",
+        "delete",
+        "insert",
         "select",
+        "update",
     )
 
     for name in expected_names:
         assert_in(name, snekql.__all__)
         assert_eq(getattr(snekql, name), getattr(snekql, name))
+
+
+@test()
+def query_factory_functions_reject_empty_selects() -> None:
+    """Selecting no model or fields is package-originated query misuse."""
+
+    select_fn = cast(Callable[..., object], snekql.select)
+
+    try:
+        _ = select_fn()
+    except snekql.QueryConstructionError:
+        return
+
+    raise AssertionError("select() should reject empty selection")
+
+
+@test()
+def mutation_query_chain_methods_return_query_objects() -> None:
+    """Public update/delete chain methods keep returning mutation query objects."""
+
+    class MutationUser(snekql.Model[snekql.Pending, "MutationUser[snekql.Fetched]"]):
+        """Table model for mutation chain smoke checks."""
+
+    assignment = snekql.Assignment[MutationUser]()
+    predicate = snekql.Predicate[MutationUser]()
+
+    update_query = snekql.update(MutationUser)
+    delete_query = snekql.delete(MutationUser)
+
+    assert_isinstance(update_query.set(assignment), snekql.UpdateQuery)
+    assert_isinstance(update_query.where(predicate), snekql.UpdateQuery)
+    assert_isinstance(update_query.all(), snekql.UpdateQuery)
+    assert_isinstance(delete_query.where(predicate), snekql.DeleteQuery)
+    assert_isinstance(delete_query.all(), snekql.DeleteQuery)
+
+
+@test()
+def select_query_chain_methods_return_query_objects() -> None:
+    """Public select chain methods keep returning select query objects."""
+
+    class ChainUser(snekql.Model[snekql.Pending, "ChainUser[snekql.Fetched]"]):
+        """Table model for select chain smoke checks."""
+
+    query = snekql.select(ChainUser)
+
+    assert_isinstance(query.all(), snekql.SelectModelQuery)
+    assert_isinstance(query.limit(10), snekql.SelectModelQuery)
+    assert_isinstance(query.offset(5), snekql.SelectModelQuery)
+
+
+@test()
+def query_factory_functions_return_public_query_objects() -> None:
+    """Query builder entry points return stable public query classes."""
+
+    class QueryUser(snekql.Model[snekql.Pending, "QueryUser[snekql.Fetched]"]):
+        """Table model for query factory smoke checks."""
+
+    row = object.__new__(QueryUser)
+
+    assert_isinstance(snekql.select(QueryUser), snekql.SelectModelQuery)
+    assert_isinstance(snekql.insert(row), snekql.InsertQuery)
+    assert_isinstance(snekql.update(QueryUser), snekql.UpdateQuery)
+    assert_isinstance(snekql.delete(QueryUser), snekql.DeleteQuery)
 
 
 @test()

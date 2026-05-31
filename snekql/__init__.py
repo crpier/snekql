@@ -512,46 +512,73 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
 class SelectModelQuery(Generic[SelectOwnerT, ReadModelT]):
     """Immutable select query that returns fetched table model instances."""
 
-    def all(self) -> Self: ...
+    def all(self) -> Self:
+        return self
+
     def where(
         self,
         predicate: Predicate[SelectOwnerT],
         /,
         *predicates: Predicate[SelectOwnerT],
-    ) -> Self: ...
-    def order_by(self, *ordering: OrderBy[SelectOwnerT]) -> Self: ...
-    def limit(self, value: int) -> Self: ...
-    def offset(self, value: int) -> Self: ...
+    ) -> Self:
+        return self
+
+    def order_by(self, *ordering: OrderBy[SelectOwnerT]) -> Self:
+        return self
+
+    def limit(self, value: int) -> Self:
+        return self
+
+    def offset(self, value: int) -> Self:
+        return self
 
 
 class SelectValueQuery(Generic[OwnerT, T]):
     """Immutable select query that returns one scalar column value per row."""
 
-    def all(self) -> Self: ...
+    def all(self) -> Self:
+        return self
+
     def where(
         self,
         predicate: Predicate[OwnerT],
         /,
         *predicates: Predicate[OwnerT],
-    ) -> Self: ...
-    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self: ...
-    def limit(self, value: int) -> Self: ...
-    def offset(self, value: int) -> Self: ...
+    ) -> Self:
+        return self
+
+    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
+        return self
+
+    def limit(self, value: int) -> Self:
+        return self
+
+    def offset(self, value: int) -> Self:
+        return self
 
 
 class SelectTupleQuery(Generic[OwnerT, *Ts]):
     """Immutable select query that returns selected column tuples per row."""
 
-    def all(self) -> Self: ...
+    def all(self) -> Self:
+        return self
+
     def where(
         self,
         predicate: Predicate[OwnerT],
         /,
         *predicates: Predicate[OwnerT],
-    ) -> Self: ...
-    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self: ...
-    def limit(self, value: int) -> Self: ...
-    def offset(self, value: int) -> Self: ...
+    ) -> Self:
+        return self
+
+    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
+        return self
+
+    def limit(self, value: int) -> Self:
+        return self
+
+    def offset(self, value: int) -> Self:
+        return self
 
 
 class InsertQuery(Generic[ModelT]):
@@ -563,31 +590,39 @@ class InsertQuery(Generic[ModelT]):
 class UpdateQuery(Generic[ModelT]):
     """Immutable update statement for one table model."""
 
-    def all(self) -> Self: ...
+    def all(self) -> Self:
+        return self
+
     def set(
         self,
         assignment: Assignment[ModelT],
         /,
         *assignments: Assignment[ModelT],
-    ) -> Self: ...
+    ) -> Self:
+        return self
+
     def where(
         self,
         predicate: Predicate[ModelT],
         /,
         *predicates: Predicate[ModelT],
-    ) -> Self: ...
+    ) -> Self:
+        return self
 
 
 class DeleteQuery(Generic[ModelT]):
     """Immutable delete statement for one table model."""
 
-    def all(self) -> Self: ...
+    def all(self) -> Self:
+        return self
+
     def where(
         self,
         predicate: Predicate[ModelT],
         /,
         *predicates: Predicate[ModelT],
-    ) -> Self: ...
+    ) -> Self:
+        return self
 
 
 class Transaction:
@@ -690,16 +725,26 @@ def select(
 ) -> SelectTupleQuery[OwnerT, T1, T2, T3]: ...
 
 
-def select(*args: object) -> object: ...
+def select(*args: object) -> object:
+    if len(args) == 0:
+        raise QueryConstructionError("select requires a model or field")
+    if len(args) == 1 and isinstance(args[0], type):
+        return SelectModelQuery[Any, Any]()
+    if len(args) == 1:
+        return SelectValueQuery[Any, Any]()
+    return SelectTupleQuery[Any]()
 
 
-def insert(row: ModelT, /) -> InsertQuery[ModelT]: ...
+def insert(row: ModelT, /) -> InsertQuery[ModelT]:
+    return InsertQuery()
 
 
-def update(model: type[ModelT], /) -> UpdateQuery[ModelT]: ...
+def update(model: type[ModelT], /) -> UpdateQuery[ModelT]:
+    return UpdateQuery()
 
 
-def delete(model: type[ModelT], /) -> DeleteQuery[ModelT]: ...
+def delete(model: type[ModelT], /) -> DeleteQuery[ModelT]:
+    return DeleteQuery()
 
 
 __all__ = [
@@ -707,6 +752,7 @@ __all__ = [
     "Attr",
     "Blob",
     "Boolean",
+    "Col",
     "CurrentTimestamp",
     "Database",
     "DatabaseCloseTimeoutError",
@@ -718,6 +764,7 @@ __all__ = [
     "ExecutionError",
     "Fetched",
     "FrozenModelError",
+    "GenCol",
     "InsertQuery",
     "Integer",
     "Json",
