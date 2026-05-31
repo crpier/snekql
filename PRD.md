@@ -298,21 +298,30 @@ Requirements:
 ### Database Initialization
 
 ```python
+from pathlib import Path
+
 db = await Database.initialize(
-    "sqlite:///app.db",
+    database=Path("app.db"),
     models=[User, AuditLog],
     schema_policy="strict",
     pool_size=5,
     acquire_timeout=30.0,
 )
+
+memory_db = await Database.initialize(database=":memory:")
 ```
 
 Requirements:
 
 - `Database.initialize(...)` is the only public construction path for `Database`.
-- There is no public half-initialized `Database(dsn)` object.
-- `dsn` accepts URL-style SQLite DSNs only, e.g. `sqlite:///app.db` and `sqlite:///:memory:`.
-- Raw path-style DSNs like `app.db` and `:memory:` are not accepted in v1.
+- There is no public half-initialized `Database(...)` object.
+- SQLite v1 uses a required keyword-only `database` parameter instead of a DSN.
+- `database` accepts `pathlib.Path` for file-backed SQLite databases.
+- `database` also accepts the exact string `":memory:"` for an in-memory SQLite database.
+- Plain string file paths such as `"app.db"` are rejected in v1.
+- URL-style DSNs such as `"sqlite:///app.db"` and `"sqlite:///:memory:"` are rejected in v1.
+- Other `os.PathLike`, bytes paths, and driver-specific connection strings are rejected in v1.
+- Future dialects may add their own dedicated keyword-only connection parameters rather than overloading a cross-dialect DSN string.
 - `models` is optional; omitting models initializes connectivity only.
 - `schema_policy` supports `"strict"` and `"warn"`; default is `"strict"`.
 - `pool_size` is a fixed maximum connection count; default is `5` and it must be at least `1`.
@@ -461,4 +470,4 @@ Execution failures must preserve query context:
 - Query builder tests must cover generated SQL, parameter order, `.all()`/`.where()` completeness, update/delete full-table opt-in, predicate composition, invalid predicate usage, and immutable builder behavior.
 - Runtime tests must cover `Database.initialize`, pool acquisition timeout, transaction begin/commit/rollback, fetch result conversion, `fetch_one` first-row behavior, `execute` returning `None`, close semantics, and wrapped execution errors.
 - Schema tests must cover create missing tables, verify existing tables, strict/warn drift policy, duplicate table names, non-`STRICT` drift, and generated SQL comparison.
-- Integration tests should run against a real SQLite database path and `sqlite:///:memory:`.
+- Integration tests should run against a real SQLite `Path` database and `database=":memory:"`.

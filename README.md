@@ -6,6 +6,7 @@ snekql is a Python-only, async-first query builder and query runtime for SQLite 
 
 ```python
 from datetime import datetime
+from pathlib import Path
 
 from snekql import (
     MISSING,
@@ -31,7 +32,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
 
 async def main() -> None:
     db = await Database.initialize(
-        "sqlite:///app.db",
+        database=Path("app.db"),
         models=[User],
         schema_policy="strict",
         pool_size=5,
