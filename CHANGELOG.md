@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-05-31
 
-Initial v1 release candidate.
+Initial v1 release.
 
 - Typed table model declarations with pending/fetched lifecycle states.
 - SQLite-first storage declarations and logical codecs.
