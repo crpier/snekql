@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from types import EllipsisType
 from typing import (
     Any,
+    ClassVar,
     Generic,
     Literal,
     Never,
@@ -14,6 +15,7 @@ from typing import (
     TypeVar,
     TypeVarTuple,
     cast,
+    get_origin,
     dataclass_transform,
     overload,
 )
@@ -232,7 +234,10 @@ class Integer:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class Real:
@@ -250,7 +255,10 @@ class Real:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class Text:
@@ -268,7 +276,10 @@ class Text:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class Blob:
@@ -286,7 +297,10 @@ class Blob:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class Json:
@@ -306,7 +320,10 @@ class Json:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class Boolean:
@@ -323,7 +340,10 @@ class Boolean:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class DateTime:
@@ -344,7 +364,10 @@ class DateTime:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any]()
+        return Attr[Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+        )
 
 
 class CurrentTimestamp:
@@ -401,6 +424,19 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
     helper methods on the model class.
     """
 
+    def __init__(
+        self,
+        *,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> None:
+        self.default: object = default
+        self.default_factory: Callable[[], object] | EllipsisType = default_factory
+        self.name: str | None = None
+
+    def __set_name__(self, owner: type[object], name: str) -> None:
+        self.name = name
+
     @overload
     def __get__(
         self, instance: None, owner: type[Any]
@@ -412,10 +448,30 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
     def __get__(self, instance: object | None, owner: type[Any]) -> object:
         if instance is None:
             return self
-        return None
+        storage = cast(
+            dict[str, object],
+            object.__getattribute__(instance, "__dict__"),
+        )
+        return storage[self._require_name()]
 
     def __set__(self, instance: object, value: WriteT) -> None:
-        return None
+        if getattr(instance, "_snekql_frozen", False):
+            raise FrozenModelError("table models are immutable")
+        storage = cast(
+            dict[str, object],
+            object.__getattribute__(instance, "__dict__"),
+        )
+        storage[self._require_name()] = value
+
+    def build_default(self) -> object:
+        if not isinstance(self.default_factory, EllipsisType):
+            return self.default_factory()
+        return self.default
+
+    def _require_name(self) -> str:
+        if self.name is None:
+            raise ModelDeclarationError("column descriptor is not bound")
+        return self.name
 
     def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
         return Predicate()
@@ -531,6 +587,100 @@ class ModelMeta(type):
     - keep fetched-state generated values narrowed relative to pending-state values
     """
 
+    def __new__(
+        mcls,
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, object],
+        **kwargs: object,
+    ) -> type:
+        if name != "Model":
+            for base in bases:
+                if isinstance(base, ModelMeta):
+                    if base.__name__ != "Model":
+                        raise ModelDeclarationError(
+                            f"cannot subclass concrete model: {base.__name__}",
+                        )
+                    continue
+                if base.__name__ == "Generic":
+                    continue
+                raise ModelDeclarationError(
+                    f"model mixin bases are not supported: {base.__name__}",
+                )
+        model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
+        if name != "Model":
+            annotations_object = namespace.get("__annotations__", {})
+            if isinstance(annotations_object, dict):
+                annotations = cast(dict[str, object], annotations_object)
+                for annotated_name in annotations:
+                    annotated_value = namespace.get(annotated_name)
+                    if isinstance(annotated_value, Attr):
+                        continue
+                    if annotated_name == "__tablename__":
+                        continue
+                    if ModelMeta._is_classvar_annotation(annotations[annotated_name]):
+                        continue
+                    raise ModelDeclarationError(
+                        f"unsupported model annotation: {annotated_name!r}",
+                    )
+            for attribute_name, attribute_value in namespace.items():
+                if isinstance(attribute_value, property):
+                    raise ModelDeclarationError(
+                        f"computed properties are not supported: {attribute_name!r}",
+                    )
+                if getattr(attribute_value, "__isabstractmethod__", False):
+                    raise ModelDeclarationError(
+                        f"abstract members are not supported: {attribute_name!r}",
+                    )
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
+        for attribute_name, attribute_value in model_class.__dict__.items():
+            if isinstance(attribute_value, Attr):
+                if not ModelMeta._is_sql_identifier(attribute_name):
+                    raise ModelDeclarationError(
+                        f"invalid column identifier: {attribute_name!r}",
+                    )
+                columns[attribute_name] = attribute_value
+        if name != "Model":
+            table_name = namespace.get(
+                "__tablename__",
+                ModelMeta._infer_table_name(name),
+            )
+            if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
+                table_name,
+            ):
+                raise ModelDeclarationError(f"invalid table identifier: {table_name!r}")
+            setattr(model_class, "__tablename__", table_name)
+        setattr(model_class, "__snekql_columns__", columns)
+        return model_class
+
+    @staticmethod
+    def _infer_table_name(class_name: str) -> str:
+        characters: list[str] = []
+        previous_was_lower_or_digit = False
+        for character in class_name:
+            if character.isupper() and previous_was_lower_or_digit:
+                characters.append("_")
+            characters.append(character.lower())
+            previous_was_lower_or_digit = character.islower() or character.isdigit()
+        return "".join(characters)
+
+    @staticmethod
+    def _is_classvar_annotation(annotation: object) -> bool:
+        if isinstance(annotation, str):
+            return annotation.startswith("ClassVar[") or annotation.startswith(
+                "typing.ClassVar[",
+            )
+        return get_origin(annotation) is ClassVar
+
+    @staticmethod
+    def _is_sql_identifier(value: str) -> bool:
+        if value == "":
+            return False
+        first_character = value[0]
+        if not (first_character.isalpha() or first_character == "_"):
+            return False
+        return all(character.isalnum() or character == "_" for character in value)
+
 
 class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
     """Base class for declaring table models.
@@ -539,10 +689,70 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
+    __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __tablename__: ClassVar[str]
+
     # Normal persisted-column alias scoped to the declaring model class.
     type Col[T] = Attr[Self, ReadModelT, Self, T, T]
     # Generated/server-filled column alias scoped to the declaring model class.
     type GenCol[T] = Attr[Self, ReadModelT, Self, T | Missing, T]
+
+    def __init__(self, **values: object) -> None:
+        remaining_values = dict(values)
+        storage = cast(
+            dict[str, object],
+            object.__getattribute__(self, "__dict__"),
+        )
+        storage["_snekql_frozen"] = False
+        storage["_snekql_state"] = "Pending"
+        for name, column in self.__class__.__snekql_columns__.items():
+            if name in remaining_values:
+                value = remaining_values.pop(name)
+            else:
+                value = column.build_default()
+            if isinstance(value, EllipsisType):
+                raise ModelValidationError(f"missing required value for {name!r}")
+            setattr(self, name, value)
+        if remaining_values:
+            names = ", ".join(sorted(remaining_values))
+            raise ModelValidationError(f"unknown model values: {names}")
+        storage["_snekql_frozen"] = True
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_snekql_frozen", False):
+            raise FrozenModelError("table models are immutable")
+        super().__setattr__(name, value)
+
+    def __repr__(self) -> str:
+        state = self._snekql_state_name()
+        field_reprs: list[str] = []
+        for name in self.__class__.__snekql_columns__:
+            value = getattr(self, name)
+            if value is MISSING:
+                continue
+            field_reprs.append(f"{name}={value!r}")
+        fields = ", ".join(field_reprs)
+        return f"{self.__class__.__name__}[{state}]({fields})"
+
+    def __eq__(self, other: object) -> bool:
+        if self.__class__ is not other.__class__:
+            return False
+        other_model = cast(Model[Any, Any], other)
+        for name in self.__class__.__snekql_columns__:
+            if getattr(self, name) != getattr(other_model, name):
+                return False
+        return True
+
+    def __hash__(self) -> int:
+        raise TypeError(f"unhashable type: {self.__class__.__name__!r}")
+
+    def _snekql_state_name(self) -> str:
+        storage = cast(
+            dict[str, object],
+            object.__getattribute__(self, "__dict__"),
+        )
+        state = storage.get("_snekql_state", "Pending")
+        return cast(str, state)
 
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:
