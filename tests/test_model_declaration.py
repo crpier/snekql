@@ -158,13 +158,19 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
 
 
 @test()
-def concrete_model_subclasses_are_rejected() -> None:
-    """V1 table models must be direct Model subclasses, not model hierarchies."""
+def non_direct_model_declarations_are_rejected() -> None:
+    """V1 table models reject concrete subclasses and mixin bases."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Concrete table model."""
 
         email: User.Col[str] = Text(nullable=False)
 
+    class EmailMixin:
+        """Mixin that is intentionally unsupported for v1 models."""
+
     with assert_raises(ModelDeclarationError):
         _ = type("AdminUser", (User,), {})
+
+    with assert_raises(ModelDeclarationError):
+        _ = type("MixedUser", (EmailMixin, Model), {})

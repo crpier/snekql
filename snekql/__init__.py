@@ -615,10 +615,17 @@ class ModelMeta(type):
     ) -> type:
         if name != "Model":
             for base in bases:
-                if isinstance(base, ModelMeta) and base.__name__ != "Model":
-                    raise ModelDeclarationError(
-                        f"cannot subclass concrete model: {base.__name__}",
-                    )
+                if isinstance(base, ModelMeta):
+                    if base.__name__ != "Model":
+                        raise ModelDeclarationError(
+                            f"cannot subclass concrete model: {base.__name__}",
+                        )
+                    continue
+                if base.__name__ == "Generic":
+                    continue
+                raise ModelDeclarationError(
+                    f"model mixin bases are not supported: {base.__name__}",
+                )
         model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
         if name != "Model":
             annotations_object = namespace.get("__annotations__", {})
