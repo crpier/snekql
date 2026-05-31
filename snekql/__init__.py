@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import UTC, datetime
+from pathlib import Path
 from json import JSONDecodeError, dumps, loads
-from types import EllipsisType
+from types import EllipsisType, TracebackType
+
 from aiosqlite import Connection, Error, connect
 from typing import (
     Any,
@@ -232,23 +235,14 @@ def _quote_sqlite_identifier(identifier: str) -> str:
     return f'"{escaped_identifier}"'
 
 
-def _parse_sqlite_dsn(dsn: str) -> str:
-    if not dsn.startswith("sqlite:///"):
-        raise DatabaseRuntimeError(
-            "dsn must be a URL-style SQLite DSN such as 'sqlite:///app.db'",
-        )
-    remainder = dsn.removeprefix("sqlite:///")
-    if remainder == "":
-        raise DatabaseRuntimeError("SQLite DSN must include a database path")
-    if remainder == ":memory:":
+def _normalize_sqlite_database(database: object) -> str:
+    if type(database) is str and database == ":memory:":
         return ":memory:"
-    if "?" in remainder or "#" in remainder:
-        raise DatabaseRuntimeError(
-            "SQLite DSN query strings and fragments are not supported",
-        )
-    if remainder.startswith("/"):
-        return remainder
-    return remainder
+    if isinstance(database, Path):
+        return str(database)
+    raise DatabaseRuntimeError(
+        "database must be a pathlib.Path or the exact string ':memory:'",
+    )
 
 
 async def _open_sqlite_connection(database_path: str) -> Connection:
@@ -262,6 +256,13 @@ async def _open_sqlite_connection(database_path: str) -> Connection:
         return connection
     except Error as error:
         raise DatabaseRuntimeError("could not initialize SQLite connection") from error
+
+
+async def _close_sqlite_connection(connection: Connection) -> None:
+    try:
+        await connection.close()
+    except Error as error:
+        raise DatabaseRuntimeError("could not close SQLite connection") from error
 
 
 def _require_model_columns(
@@ -1307,7 +1308,10 @@ class SelectTupleQuery(Generic[OwnerT, *Ts]):
 class InsertQuery(Generic[ModelT]):
     """Immutable insert statement for one pending table model instance."""
 
-    pass
+    row: ModelT
+
+    def __init__(self, row: ModelT) -> None:
+        self.row: ModelT = row
 
 
 class UpdateQuery(Generic[ModelT]):
@@ -1355,13 +1359,66 @@ class Transaction:
     ...     await transaction.execute(insert(user))
     """
 
-    async def __aenter__(self) -> Self: ...
+    _acquire_connection: Callable[[float], Awaitable[Connection]]
+    _closed: bool
+    _connection: Connection | None
+    _release_connection: Callable[[Connection], Awaitable[None]]
+    _timeout: float
+
+    def __init__(
+        self,
+        *,
+        acquire_connection: Callable[[float], Awaitable[Connection]] | None = None,
+        release_connection: Callable[[Connection], Awaitable[None]] | None = None,
+        timeout: float = 0.0,
+    ) -> None:
+        if acquire_connection is None or release_connection is None:
+            raise DatabaseRuntimeError("use db.transaction(...) to start a transaction")
+        self._acquire_connection: Callable[[float], Awaitable[Connection]] = (
+            acquire_connection
+        )
+        self._closed: bool = False
+        self._connection: Connection | None = None
+        self._release_connection: Callable[[Connection], Awaitable[None]] = (
+            release_connection
+        )
+        self._timeout: float = timeout
+
+    async def __aenter__(self) -> Self:
+        if self._closed or self._connection is not None:
+            raise TransactionClosedError("transaction is closed")
+        connection = await self._acquire_connection(self._timeout)
+        try:
+            await self._execute_sqlite(connection, "BEGIN", ())
+        except Error as error:
+            await self._release_connection(connection)
+            raise DatabaseRuntimeError("could not begin transaction") from error
+        self._connection = connection
+        return self
+
     async def __aexit__(
         self,
-        exc_type: object,
-        exc_value: object,
-        traceback: object,
-    ) -> None: ...
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        _ = exc_value
+        _ = traceback
+        connection = self._connection
+        if connection is None:
+            raise TransactionClosedError("transaction is closed")
+        self._connection = None
+        self._closed = True
+        try:
+            if exc_type is None:
+                await self._execute_sqlite(connection, "COMMIT", ())
+            else:
+                await self._execute_sqlite(connection, "ROLLBACK", ())
+        except Error as error:
+            if exc_type is None:
+                raise DatabaseRuntimeError("could not close transaction") from error
+        finally:
+            await self._release_connection(connection)
 
     @overload
     async def fetch_all(
@@ -1373,7 +1430,10 @@ class Transaction:
     async def fetch_all(
         self, query: SelectTupleQuery[OwnerT, *Ts]
     ) -> list[tuple[*Ts]]: ...
-    async def fetch_all(self, query: object) -> object: ...
+    async def fetch_all(self, query: object) -> object:
+        _ = query
+        _ = self._require_connection()
+        raise QueryCompilationError("select execution is not implemented yet")
 
     @overload
     async def fetch_one(
@@ -1385,11 +1445,63 @@ class Transaction:
     async def fetch_one(
         self, query: SelectTupleQuery[OwnerT, *Ts]
     ) -> tuple[*Ts] | None: ...
-    async def fetch_one(self, query: object) -> object: ...
+    async def fetch_one(self, query: object) -> object:
+        _ = query
+        _ = self._require_connection()
+        raise QueryCompilationError("select execution is not implemented yet")
 
     async def execute(
         self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]
-    ) -> None: ...
+    ) -> None:
+        connection = self._require_connection()
+        if not isinstance(query, InsertQuery):
+            raise QueryCompilationError("only insert execution is implemented yet")
+        sql, params = self._compile_insert(query)
+        try:
+            await self._execute_sqlite(connection, sql, params)
+        except Error as error:
+            raise ExecutionError("insert failed", sql=sql, params=params) from error
+
+    def _require_connection(self) -> Connection:
+        connection = self._connection
+        if self._closed or connection is None:
+            raise TransactionClosedError("transaction is closed")
+        return connection
+
+    @staticmethod
+    def _compile_insert(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
+        row = query.row
+        if not isinstance(row, Model):
+            raise QueryConstructionError("insert requires a snekql model instance")
+        model_row = cast(Model[Any, Any], row)
+        model_class = cast(type[Table[Any]], model_row.__class__)
+        table_name = _require_model_table_name(model_class)
+        model_to_row = cast(
+            Callable[[], dict[str, object]],
+            getattr(cast(object, row), "_snekql_to_row"),
+        )
+        row_values = model_to_row()
+        quoted_table = _quote_sqlite_identifier(table_name)
+        if not row_values:
+            return f"INSERT INTO {quoted_table} DEFAULT VALUES", ()
+        names = tuple(row_values)
+        quoted_columns = ", ".join(_quote_sqlite_identifier(name) for name in names)
+        placeholders = ", ".join("?" for _ in names)
+        sql = f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({placeholders})"
+        params = tuple(row_values[name] for name in names)
+        return sql, params
+
+    @staticmethod
+    async def _execute_sqlite(
+        connection: Connection,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> None:
+        cursor = await connection.execute(sql, params)
+        try:
+            return None
+        finally:
+            await cursor.close()
 
 
 class Database:
@@ -1400,25 +1512,32 @@ class Database:
     """
 
     _acquire_timeout: float
+    _active_connections: int
     _closed: bool
-    _connection: Connection | None
+    _closing: bool
+    _condition: asyncio.Condition
     _database_path: str
+    _idle_connections: list[Connection]
+    _opening_connections: int
     _pool_size: int
 
     def __init__(self, _initialized: Never, /) -> None:
         self._acquire_timeout = 0.0
+        self._active_connections = 0
         self._closed = True
-        self._connection = None
+        self._closing = False
+        self._condition = asyncio.Condition()
         self._database_path = ""
+        self._idle_connections = []
+        self._opening_connections = 0
         self._pool_size = 0
         raise DatabaseRuntimeError("use Database.initialize(...) to create a Database")
 
     @classmethod
     async def initialize(
         cls,
-        dsn: str,
-        /,
         *,
+        database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
         pool_size: int = 5,
@@ -1430,35 +1549,150 @@ class Database:
             raise DatabaseRuntimeError("acquire_timeout must be non-negative")
         _validate_schema_policy(schema_policy)
         _validate_schema_models(models)
-        database_path = _parse_sqlite_dsn(dsn)
+        database_path = _normalize_sqlite_database(database)
         connection = await _open_sqlite_connection(database_path)
         try:
             await _initialize_sqlite_schema(connection, models, schema_policy)
         except Exception:
-            await connection.close()
+            await _close_sqlite_connection(connection)
             raise
-        database = cls.__new__(cls)
-        database._acquire_timeout = acquire_timeout
-        database._closed = False
-        database._connection = connection
-        database._database_path = database_path
-        database._pool_size = pool_size
-        return database
+        database_instance = cls.__new__(cls)
+        database_instance._acquire_timeout = acquire_timeout
+        database_instance._active_connections = 0
+        database_instance._closed = False
+        database_instance._closing = False
+        database_instance._condition = asyncio.Condition()
+        database_instance._database_path = database_path
+        database_instance._idle_connections = [connection]
+        database_instance._opening_connections = 0
+        database_instance._pool_size = pool_size
+        return database_instance
 
     def transaction(self, *, timeout: float | None = None) -> Transaction:
         if self._closed:
             raise DatabaseClosedError("database is closed")
-        _ = timeout
-        return Transaction()
+        if self._closing:
+            raise DatabaseClosingError("database is closing")
+        acquisition_timeout = self._acquire_timeout if timeout is None else timeout
+        if acquisition_timeout < 0:
+            raise DatabaseRuntimeError("transaction timeout must be non-negative")
+        return Transaction(
+            acquire_connection=self._acquire_connection,
+            release_connection=self._release_connection,
+            timeout=acquisition_timeout,
+        )
 
     async def close(self) -> None:
+        async with self._condition:
+            if self._closed:
+                return
+            if self._closing:
+                raise DatabaseClosingError("database is already closing")
+            self._closing = True
+            idle_connections = list(self._idle_connections)
+            self._idle_connections.clear()
+            self._condition.notify_all()
+        await self._close_connections(idle_connections)
+
+        event_loop = asyncio.get_running_loop()
+        deadline = event_loop.time() + self._acquire_timeout
+        while True:
+            async with self._condition:
+                if self._active_connections == 0 and self._opening_connections == 0:
+                    remaining_idle_connections = list(self._idle_connections)
+                    self._idle_connections.clear()
+                    self._closed = True
+                    self._closing = False
+                    self._condition.notify_all()
+                    break
+                remaining_timeout = deadline - event_loop.time()
+                if remaining_timeout <= 0:
+                    self._closing = False
+                    self._condition.notify_all()
+                    raise DatabaseCloseTimeoutError("database close timed out")
+                try:
+                    _ = await asyncio.wait_for(
+                        self._condition.wait(),
+                        timeout=remaining_timeout,
+                    )
+                except TimeoutError as error:
+                    self._closing = False
+                    self._condition.notify_all()
+                    raise DatabaseCloseTimeoutError(
+                        "database close timed out"
+                    ) from error
+        await self._close_connections(remaining_idle_connections)
+
+    async def _acquire_connection(self, timeout: float, /) -> Connection:
+        event_loop = asyncio.get_running_loop()
+        deadline = event_loop.time() + timeout
+        while True:
+            async with self._condition:
+                if self._closed:
+                    raise DatabaseClosedError("database is closed")
+                if self._closing:
+                    raise DatabaseClosingError("database is closing")
+                if self._idle_connections:
+                    connection = self._idle_connections.pop()
+                    self._active_connections += 1
+                    return connection
+                if self._connection_count() < self._pool_size:
+                    self._opening_connections += 1
+                    break
+                remaining_timeout = deadline - event_loop.time()
+                if remaining_timeout <= 0:
+                    raise PoolTimeoutError("timed out acquiring database connection")
+                try:
+                    _ = await asyncio.wait_for(
+                        self._condition.wait(),
+                        timeout=remaining_timeout,
+                    )
+                except TimeoutError as error:
+                    raise PoolTimeoutError(
+                        "timed out acquiring database connection",
+                    ) from error
+
+        try:
+            opened_connection = await _open_sqlite_connection(self._database_path)
+        except Exception:
+            async with self._condition:
+                self._opening_connections -= 1
+                self._condition.notify_all()
+            raise
+        async with self._condition:
+            self._opening_connections -= 1
+            if not self._closed and not self._closing:
+                self._active_connections += 1
+                self._condition.notify_all()
+                return opened_connection
+        await _close_sqlite_connection(opened_connection)
         if self._closed:
-            return
-        connection = self._connection
-        self._connection = None
-        self._closed = True
-        if connection is not None:
-            await connection.close()
+            raise DatabaseClosedError("database is closed")
+        raise DatabaseClosingError("database is closing")
+
+    async def _release_connection(self, connection: Connection) -> None:
+        should_close = False
+        async with self._condition:
+            self._active_connections -= 1
+            if self._closed or self._closing:
+                should_close = True
+            else:
+                self._idle_connections.append(connection)
+            self._condition.notify_all()
+        if should_close:
+            await _close_sqlite_connection(connection)
+
+    def _connection_count(self) -> int:
+        return (
+            len(self._idle_connections)
+            + self._active_connections
+            + self._opening_connections
+        )
+
+    @staticmethod
+    async def _close_connections(connections: Sequence[Connection]) -> None:
+        for connection in connections:
+            await _close_sqlite_connection(connection)
 
 
 @overload
@@ -1503,7 +1737,7 @@ def select(*args: object) -> object:
 
 
 def insert(row: ModelT, /) -> InsertQuery[ModelT]:
-    return InsertQuery()
+    return InsertQuery(row)
 
 
 def update(model: type[ModelT], /) -> UpdateQuery[ModelT]:

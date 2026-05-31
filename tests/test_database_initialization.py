@@ -6,6 +6,7 @@ from logging import Handler, LogRecord, getLogger
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
@@ -86,9 +87,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            f"sqlite:///{database_path}", models=[User]
-        )
+        database = await Database.initialize(database=database_path, models=[User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -101,16 +100,33 @@ async def initialize_creates_missing_strict_tables() -> None:
 
 
 @test(mark="medium")
-async def initialize_accepts_only_url_style_sqlite_dsns() -> None:
-    """Raw SQLite path strings are rejected while URL DSNs are accepted."""
+async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None:
+    """Only pathlib.Path and the exact in-memory database string are accepted."""
+
+    initialize = cast(Any, Database.initialize)
+
+    class OtherPath:
+        """Path-like object that is intentionally not pathlib.Path."""
+
+        def __fspath__(self) -> str:
+            return "app.db"
+
+    with assert_raises(TypeError):
+        _ = await initialize("app.db")
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize("app.db")
+        _ = await Database.initialize(database=cast(Any, "app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(":memory:")
+        _ = await Database.initialize(database=cast(Any, "sqlite:///app.db"))
 
-    database = await Database.initialize("sqlite:///:memory:")
+    with assert_raises(DatabaseRuntimeError):
+        _ = await Database.initialize(database=cast(Any, b"app.db"))
+
+    with assert_raises(DatabaseRuntimeError):
+        _ = await Database.initialize(database=cast(Any, OtherPath()))
+
+    database = await Database.initialize(database=":memory:")
     await database.close()
 
 
@@ -138,9 +154,7 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         )
         _execute_sql(database_path, existing_sql)
 
-        database = await Database.initialize(
-            f"sqlite:///{database_path}", models=[User]
-        )
+        database = await Database.initialize(database=database_path, models=[User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -162,7 +176,7 @@ async def strict_schema_policy_raises_on_schema_drift() -> None:
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
         with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(f"sqlite:///{database_path}", models=[User])
+            _ = await Database.initialize(database=database_path, models=[User])
 
 
 @test(mark="medium")
@@ -183,7 +197,7 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
             _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
             database = await Database.initialize(
-                f"sqlite:///{database_path}",
+                database=database_path,
                 models=[User],
                 schema_policy="warn",
             )
@@ -217,7 +231,7 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaError):
             _ = await Database.initialize(
-                f"sqlite:///{database_path}",
+                database=database_path,
                 models=[User, Account],
             )
 
@@ -245,7 +259,7 @@ async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
 
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
-                f"sqlite:///{database_path}",
+                database=database_path,
                 models=[CreatedFirst, ExistingDrift],
             )
 
