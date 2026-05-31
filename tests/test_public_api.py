@@ -79,6 +79,21 @@ def query_factory_functions_reject_empty_selects() -> None:
 
 
 @test()
+def column_declarations_produce_query_attributes() -> None:
+    """Column declarations leave public descriptors on table model classes."""
+
+    class AttributeUser(snekql.Model[snekql.Pending, "AttributeUser[snekql.Fetched]"]):
+        """Table model for descriptor smoke checks."""
+
+        email: AttributeUser.Col[str] = snekql.Text(nullable=False)
+
+    assert_isinstance(AttributeUser.email, snekql.Attr)
+    assert_isinstance(AttributeUser.email.eq("alice@example.com"), snekql.Predicate)
+    assert_isinstance(AttributeUser.email.asc(), snekql.OrderBy)
+    assert_isinstance(AttributeUser.email.to("new@example.com"), snekql.Assignment)
+
+
+@test()
 def mutation_query_chain_methods_return_query_objects() -> None:
     """Public update/delete chain methods keep returning mutation query objects."""
 

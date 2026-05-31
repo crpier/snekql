@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from types import EllipsisType
 from typing import (
     Any,
     Generic,
@@ -229,8 +230,9 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class Real:
@@ -246,8 +248,9 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class Text:
@@ -263,8 +266,9 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class Blob:
@@ -280,8 +284,9 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class Json:
@@ -299,8 +304,9 @@ class Json:
         *,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class Boolean:
@@ -315,8 +321,9 @@ class Boolean:
         *,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class DateTime:
@@ -335,8 +342,9 @@ class DateTime:
         server_default: object | None = None,
         nullable: bool | None = None,
         default: object = ...,
-        default_factory: Callable[[], object] = ...,
-    ) -> Any: ...
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return Attr[Any, Any, Any, Any, Any]()
 
 
 class CurrentTimestamp:
@@ -355,9 +363,14 @@ class Predicate(Generic[OwnerT]):
     They compose with `&`, `|`, and `~` instead of Python comparison operators.
     """
 
-    def __and__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]: ...
-    def __or__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]: ...
-    def __invert__(self) -> Predicate[OwnerT]: ...
+    def __and__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def __or__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def __invert__(self) -> Predicate[OwnerT]:
+        return Predicate()
 
 
 class OrderBy(Generic[OwnerT]):
@@ -387,6 +400,7 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
     models, fetched-state read values on runtime materialized models, and query
     helper methods on the model class.
     """
+
     @overload
     def __get__(
         self, instance: None, owner: type[Any]
@@ -395,25 +409,51 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
     @overload
     def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
-    def __get__(self, instance: object | None, owner: type[Any]) -> object: ...
-    def __set__(self, instance: object, value: WriteT) -> None: ...
+    def __get__(self, instance: object | None, owner: type[Any]) -> object:
+        if instance is None:
+            return self
+        return None
 
-    def eq(self, value: ReadValueT) -> Predicate[OwnerT]: ...
-    def ne(self, value: ReadValueT) -> Predicate[OwnerT]: ...
-    def is_null(self) -> Predicate[OwnerT]: ...
-    def is_not_null(self) -> Predicate[OwnerT]: ...
-    def in_(self, value: ReadValueT, /, *values: ReadValueT) -> Predicate[OwnerT]: ...
+    def __set__(self, instance: object, value: WriteT) -> None:
+        return None
+
+    def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def ne(self, value: ReadValueT) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def is_null(self) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def is_not_null(self) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def in_(self, value: ReadValueT, /, *values: ReadValueT) -> Predicate[OwnerT]:
+        return Predicate()
+
     def not_in(
         self,
         value: ReadValueT,
         /,
         *values: ReadValueT,
-    ) -> Predicate[OwnerT]: ...
-    def like(self, pattern: str) -> Predicate[OwnerT]: ...
-    def not_like(self, pattern: str) -> Predicate[OwnerT]: ...
-    def asc(self) -> OrderBy[OwnerT]: ...
-    def desc(self) -> OrderBy[OwnerT]: ...
-    def to(self, value: ReadValueT) -> Assignment[OwnerT]: ...
+    ) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def like(self, pattern: str) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def not_like(self, pattern: str) -> Predicate[OwnerT]:
+        return Predicate()
+
+    def asc(self) -> OrderBy[OwnerT]:
+        return OrderBy()
+
+    def desc(self) -> OrderBy[OwnerT]:
+        return OrderBy()
+
+    def to(self, value: ReadValueT) -> Assignment[OwnerT]:
+        return Assignment()
 
 
 # Private normal persisted-column alias used to build the public Col alias.
