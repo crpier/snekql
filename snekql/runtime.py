@@ -23,23 +23,36 @@ from snekql.errors import (
 )
 from snekql.model import Table
 from snekql.query import (
+    AnySelectQuery,
     DeleteQuery,
     InsertQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    compile_select_sql,
     compile_write_sql,
+    materialize_select_row,
 )
 from snekql.schema import initialize_sqlite_schema
 from snekql.schema import validate_schema_models, validate_schema_policy
 from snekql.storage import SchemaPolicy
+from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
+
+
+@validate_boundary(DatabaseRuntimeError, "invalid database numeric configuration")
+def _validate_database_numeric_configuration(
+    *,
+    pool_size: PositiveInt,
+    acquire_timeout: NonNegativeFloat,
+) -> None:
+    return None
 
 
 class Transaction:
@@ -52,20 +65,20 @@ class Transaction:
     closed: bool
     connection: Connection | None
     connection_pool: SQLiteConnectionPool
-    timeout: float
+    timeout: NonNegativeFloat
 
     def __init__(
         self,
         *,
         connection_pool: SQLiteConnectionPool | None = None,
-        timeout: float = 0.0,
+        timeout: NonNegativeFloat = 0.0,
     ) -> None:
         if connection_pool is None:
             raise DatabaseRuntimeError("use db.transaction(...) to start a transaction")
         self.closed: bool = False
         self.connection: Connection | None = None
         self.connection_pool: SQLiteConnectionPool = connection_pool
-        self.timeout: float = timeout
+        self.timeout: NonNegativeFloat = timeout
 
     async def __aenter__(self) -> Self:
         if self.closed or self.connection is not None:
@@ -116,9 +129,21 @@ class Transaction:
     async def fetch_all(self, query: object) -> object:
         """Fetch all rows for a select query."""
 
-        _ = query
-        _ = self.require_connection()
-        raise QueryCompilationError("select execution is not implemented yet")
+        connection = self.require_connection()
+        select_query = self._require_select_query(query)
+        sql, params = compile_select_sql(select_query)
+        try:
+            cursor = await connection.execute(sql, params)
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        except Error as error:
+            raise ExecutionError("select failed", sql=sql, params=params) from error
+        return [
+            materialize_select_row(select_query, tuple(cast(Sequence[object], row)))
+            for row in rows
+        ]
 
     @overload
     async def fetch_one(
@@ -133,9 +158,23 @@ class Transaction:
     async def fetch_one(self, query: object) -> object:
         """Fetch one row for a select query."""
 
-        _ = query
-        _ = self.require_connection()
-        raise QueryCompilationError("select execution is not implemented yet")
+        connection = self.require_connection()
+        select_query = self._require_select_query(query)
+        sql, params = compile_select_sql(select_query)
+        try:
+            cursor = await connection.execute(sql, params)
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        except Error as error:
+            raise ExecutionError("select failed", sql=sql, params=params) from error
+        if row is None:
+            return None
+        return materialize_select_row(
+            select_query,
+            tuple(cast(Sequence[object], row)),
+        )
 
     async def execute(
         self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]
@@ -156,6 +195,12 @@ class Transaction:
         if self.closed or connection is None:
             raise TransactionClosedError("transaction is closed")
         return connection
+
+    @staticmethod
+    def _require_select_query(query: object) -> AnySelectQuery:
+        if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
+            return cast(AnySelectQuery, query)
+        raise QueryCompilationError("fetch requires a select query")
 
     @staticmethod
     async def execute_sqlite(
@@ -179,7 +224,7 @@ class Database:
     owns connectivity, schema startup work, and transaction entry.
     """
 
-    acquire_timeout: float
+    acquire_timeout: NonNegativeFloat
     connection_pool: SQLiteConnectionPool
 
     def __init__(self, _initialized: Never, /) -> None:
@@ -194,15 +239,15 @@ class Database:
         database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
-        pool_size: int = 5,
-        acquire_timeout: float = 30.0,
+        pool_size: PositiveInt = 5,
+        acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self:
         """Initialize connectivity, schema startup, and pool lifecycle."""
 
-        if pool_size < 1:
-            raise DatabaseRuntimeError("pool_size must be at least 1")
-        if acquire_timeout < 0:
-            raise DatabaseRuntimeError("acquire_timeout must be non-negative")
+        _validate_database_numeric_configuration(
+            pool_size=pool_size,
+            acquire_timeout=acquire_timeout,
+        )
         validate_schema_policy(schema_policy)
         validate_schema_models(models)
         database_path = normalize_sqlite_database(database)
@@ -221,13 +266,12 @@ class Database:
         )
         return database_instance
 
-    def transaction(self, *, timeout: float | None = None) -> Transaction:
+    @validate_boundary(DatabaseRuntimeError, "transaction timeout must be non-negative")
+    def transaction(self, *, timeout: NonNegativeFloat | None = None) -> Transaction:
         """Create a transaction context manager using the runtime pool."""
 
         self.connection_pool.check_accepting_work()
         acquisition_timeout = self.acquire_timeout if timeout is None else timeout
-        if acquisition_timeout < 0:
-            raise DatabaseRuntimeError("transaction timeout must be non-negative")
         return Transaction(
             connection_pool=self.connection_pool,
             timeout=acquisition_timeout,

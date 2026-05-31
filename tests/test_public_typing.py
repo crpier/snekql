@@ -17,8 +17,10 @@ from snekql import (
     Pending,
     Predicate,
     SelectModelQuery,
+    SelectTupleQuery,
     SelectValueQuery,
     Text,
+    Transaction,
     UpdateQuery,
     insert,
     select,
@@ -61,6 +63,10 @@ if TYPE_CHECKING:
         select(User.email).where(User.email.eq("alice@example.com")).all(),
         SelectValueQuery[User[Pending], str],
     )
+    _ = assert_type(
+        select(User.email, User.status),
+        SelectTupleQuery[User[Pending], str, str],
+    )
     _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.is_null(), Predicate[User[Pending]])
@@ -81,3 +87,23 @@ if TYPE_CHECKING:
         update(User).set(User.email.to("new@example.com")),
         UpdateQuery[User[Pending]],
     )
+
+    async def check_fetch_types(transaction: Transaction) -> None:
+        """Runtime fetch overloads preserve selected result shapes."""
+
+        _ = assert_type(
+            await transaction.fetch_all(select(User).all()),
+            list[User[Fetched]],
+        )
+        _ = assert_type(
+            await transaction.fetch_all(select(User.email).all()),
+            list[str],
+        )
+        _ = assert_type(
+            await transaction.fetch_all(select(User.email, User.status).all()),
+            list[tuple[str, str]],
+        )
+        _ = assert_type(
+            await transaction.fetch_one(select(User.email).all()),
+            str | None,
+        )

@@ -408,6 +408,19 @@ def require_model_table_name(model: type[Table[Any]]) -> str:
     return table_name
 
 
+def decode_model_row(
+    model: type[Table[Any]],
+    row: Mapping[str, object],
+) -> Table[Any]:
+    """Decode SQLite row values into a fetched table model instance."""
+
+    from_row = cast(
+        Callable[[Mapping[str, object]], Table[Any]],
+        getattr(model, "_snekql_from_row"),
+    )
+    return from_row(row)
+
+
 def encode_model_row(row: object) -> tuple[type[Table[Any]], dict[str, object]]:
     """Encode a pending model into table metadata and SQLite row values."""
 
