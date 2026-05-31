@@ -21,6 +21,7 @@ from snekql.errors import (
     QueryConstructionError,
     SnekqlError,
 )
+from snekql.indexes import NormalizedIndex, require_index_declaration
 from snekql.storage import (
     MISSING,
     Attr,
@@ -143,6 +144,14 @@ class ModelMeta(type):
                 namespace,
             )
         model_metadata.__snekql_columns__ = columns
+        if is_model_base:
+            model_metadata.__snekql_indexes__ = ()
+        else:
+            model_metadata.__snekql_indexes__ = ModelMeta._bind_indexes(
+                model_class,
+                namespace,
+                columns,
+            )
         return model_class
 
     @staticmethod
@@ -169,7 +178,7 @@ class ModelMeta(type):
             annotated_value = namespace.get(annotated_name)
             if isinstance(annotated_value, Attr):
                 continue
-            if annotated_name == "__tablename__":
+            if annotated_name in {"__tablename__", "__indexes__"}:
                 continue
             if ModelMeta._is_classvar_annotation(annotation):
                 continue
@@ -181,6 +190,12 @@ class ModelMeta(type):
                 raise ModelDeclarationError(msg)
             if getattr(attribute_value, "__isabstractmethod__", False):
                 msg = f"abstract members are not supported: {attribute_name!r}"
+                raise ModelDeclarationError(msg)
+            if attribute_name == "__indexes__" and not isinstance(
+                attribute_value,
+                list,
+            ):
+                msg = "__indexes__ must be a list"
                 raise ModelDeclarationError(msg)
 
     @staticmethod
@@ -211,6 +226,72 @@ class ModelMeta(type):
         return columns
 
     @staticmethod
+    def _bind_indexes(
+        model_class: type,
+        namespace: dict[str, object],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> tuple[NormalizedIndex, ...]:
+        indexes_object = namespace.get("__indexes__", [])
+        if not isinstance(indexes_object, list):
+            msg = "__indexes__ must be a list"
+            raise ModelDeclarationError(msg)
+        index_declarations = cast("list[object]", indexes_object)
+        column_names_by_id = {id(column): name for name, column in columns.items()}
+        table_name = cast("str", cast("Any", model_class).__tablename__)
+        indexes: list[NormalizedIndex] = [
+            NormalizedIndex(
+                column_names=(column_name,),
+                name=f"ux_{table_name}_{column_name}",
+                unique=True,
+            )
+            for column_name, column in columns.items()
+            if column.unique
+        ]
+        table_indexes: list[NormalizedIndex] = []
+        for index_object in index_declarations:
+            index = require_index_declaration(index_object)
+            column_names: list[str] = []
+            for column in index.columns:
+                if column.owner is not model_class:
+                    msg = "index columns must belong to the declaring model"
+                    raise ModelDeclarationError(msg)
+                try:
+                    column_names.append(column_names_by_id[id(column)])
+                except KeyError as error:
+                    msg = "index columns must be declared model columns"
+                    raise ModelDeclarationError(msg) from error
+            index_name = index.name
+            if index_name is None:
+                prefix = "ux" if index.unique else "ix"
+                index_name = f"{prefix}_{table_name}_{'_'.join(column_names)}"
+            elif not ModelMeta._is_sql_identifier(index_name):
+                msg = f"invalid index identifier: {index_name!r}"
+                raise ModelDeclarationError(msg)
+            normalized_index = NormalizedIndex(
+                column_names=tuple(column_names),
+                name=index_name,
+                unique=index.unique,
+            )
+            indexes.append(normalized_index)
+            table_indexes.append(normalized_index)
+        ModelMeta._validate_index_set(indexes)
+        return tuple(table_indexes)
+
+    @staticmethod
+    def _validate_index_set(indexes: list[NormalizedIndex]) -> None:
+        names: set[str] = set()
+        column_lists: set[tuple[str, ...]] = set()
+        for index in indexes:
+            if index.name in names:
+                msg = f"duplicate index name: {index.name!r}"
+                raise ModelDeclarationError(msg)
+            names.add(index.name)
+            if index.column_names in column_lists:
+                msg = f"duplicate index column list: {index.column_names!r}"
+                raise ModelDeclarationError(msg)
+            column_lists.add(index.column_names)
+
+    @staticmethod
     def _resolve_table_name(name: str, namespace: dict[str, object]) -> str:
         table_name = namespace.get("__tablename__", ModelMeta._infer_table_name(name))
         if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
@@ -236,6 +317,9 @@ class ModelMeta(type):
             raise ModelDeclarationError(
                 msg,
             )
+        if column.unique and column.primary_key:
+            msg = f"primary-key columns cannot be unique: {name!r}"
+            raise ModelDeclarationError(msg)
         if column.server_default is None:
             return
         if not isinstance(column.server_default, CurrentTimestamp):
@@ -301,6 +385,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     """
 
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
     # Normal persisted-column alias scoped to the declaring model class.

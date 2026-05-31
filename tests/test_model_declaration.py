@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from snektest import assert_eq, assert_false, assert_is, assert_raises, test
 
 from snekql import (
     MISSING,
     FrozenModelError,
+    Index,
     Integer,
     Json,
     Model,
@@ -187,6 +188,49 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
             @abstractmethod
             def normalize(self) -> str:
                 """Abstract behavior is intentionally unsupported for v1."""
+
+
+@test()
+def index_declarations_are_validated_in_model_bodies() -> None:
+    """Model declarations reject malformed or duplicate index metadata."""
+
+    with assert_raises(ModelDeclarationError):
+        _unused_empty_index: object = Index[Any]()
+
+    with assert_raises(ModelDeclarationError):
+        _unused_invalid_index: object = Index(cast("Any", "email"))
+
+    with assert_raises(ModelDeclarationError):
+
+        class PrimaryKeyUnique[S = Pending](Model[S, "PrimaryKeyUnique[Fetched]"]):
+            """Invalid redundant primary key unique declaration."""
+
+            id: PrimaryKeyUnique.GenCol[int] = Integer(
+                primary_key=True,
+                unique=True,
+                default=MISSING,
+            )
+
+    with assert_raises(ModelDeclarationError):
+
+        class TupleIndexes[S = Pending](Model[S, "TupleIndexes[Fetched]"]):
+            """Invalid tuple index collection."""
+
+            email: TupleIndexes.Col[str] = Text(nullable=False)
+            __indexes__ = (Index(email),)
+
+    with assert_raises(ModelDeclarationError):
+
+        class DuplicateIndexColumns[S = Pending](
+            Model[S, "DuplicateIndexColumns[Fetched]"],
+        ):
+            """Invalid duplicate exact ordered column list."""
+
+            email: DuplicateIndexColumns.Col[str] = Text(nullable=False)
+            __indexes__: ClassVar[list[Index[Any]]] = [
+                Index(email),
+                Index(email, name="ix_duplicate_email"),
+            ]
 
 
 @test()
