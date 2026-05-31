@@ -94,7 +94,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 
     expected_sql = (
         'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
-        + '"email" TEXT NOT NULL) STRICT'
+        '"email" TEXT NOT NULL) STRICT'
     )
     assert_eq(create_table, expected_sql)
 
@@ -103,7 +103,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None:
     """Only pathlib.Path and the exact in-memory database string are accepted."""
 
-    initialize = cast(Any, Database.initialize)
+    initialize = cast("Any", Database.initialize)
 
     class OtherPath:
         """Path-like object that is intentionally not pathlib.Path."""
@@ -115,16 +115,16 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
         _ = await initialize("app.db")
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast(Any, "app.db"))
+        _ = await Database.initialize(database=cast("Any", "app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast(Any, "sqlite:///app.db"))
+        _ = await Database.initialize(database=cast("Any", "sqlite:///app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast(Any, b"app.db"))
+        _ = await Database.initialize(database=cast("Any", b"app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast(Any, OtherPath()))
+        _ = await Database.initialize(database=cast("Any", OtherPath()))
 
     database = await Database.initialize(database=":memory:")
     await database.close()
@@ -148,9 +148,9 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         database_path = Path(directory) / "app.db"
         existing_sql = (
             'CREATE TABLE "user" (\n'
-            + '    "id" INTEGER PRIMARY KEY AUTOINCREMENT,\n'
-            + '    "email" TEXT NOT NULL\n'
-            + ") STRICT"
+            '    "id" INTEGER PRIMARY KEY AUTOINCREMENT,\n'
+            '    "email" TEXT NOT NULL\n'
+            ") STRICT"
         )
         _execute_sql(database_path, existing_sql)
 

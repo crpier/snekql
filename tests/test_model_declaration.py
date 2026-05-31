@@ -51,7 +51,7 @@ def model_construction_rejects_missing_and_unknown_values() -> None:
 
         email: User.Col[str] = Text(nullable=False)
 
-    user_constructor = cast(Callable[..., User[Pending]], User)
+    user_constructor = cast("Callable[..., User[Pending]]", User)
 
     with assert_raises(ModelValidationError):
         _ = user_constructor()
@@ -93,7 +93,7 @@ def model_instances_are_frozen_after_construction() -> None:
         user.email = "eve@example.com"
 
     with assert_raises(FrozenModelError):
-        setattr(user, "nickname", "alice")
+        user.nickname = "alice"
 
 
 @test()

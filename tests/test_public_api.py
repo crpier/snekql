@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast
 
-import snekql
 from snektest import test
 from snektest.assertions import (
     assert_eq,
@@ -14,6 +13,8 @@ from snektest.assertions import (
     assert_isinstance,
     assert_ne,
 )
+
+import snekql
 
 
 def _assert_has_specific_docstring(value: object) -> None:
@@ -35,30 +36,60 @@ def public_contract_exports_canonical_names() -> None:
     """The package root explicitly curates canonical PRD names."""
 
     expected_names = (
+        "MISSING",
+        "Assignment",
+        "Attr",
         "Blob",
         "Boolean",
         "Col",
         "CurrentTimestamp",
         "Database",
+        "DatabaseCloseTimeoutError",
+        "DatabaseClosedError",
+        "DatabaseClosingError",
+        "DatabaseRuntimeError",
         "DateTime",
+        "DeleteQuery",
+        "ExecutionError",
         "Fetched",
+        "FrozenModelError",
         "GenCol",
+        "InsertQuery",
         "Integer",
         "Json",
-        "MISSING",
         "Missing",
         "Model",
+        "ModelDeclarationError",
+        "ModelError",
+        "ModelMeta",
+        "ModelValidationError",
+        "OrderBy",
         "Pending",
+        "PoolTimeoutError",
+        "Predicate",
+        "QueryCompilationError",
+        "QueryConstructionError",
+        "QueryError",
         "Real",
+        "SchemaError",
         "SchemaPolicy",
+        "SchemaVerificationError",
+        "SelectModelQuery",
+        "SelectTupleQuery",
+        "SelectValueQuery",
         "SnekqlError",
+        "Table",
         "Text",
+        "Transaction",
+        "TransactionClosedError",
+        "UpdateQuery",
         "delete",
         "insert",
         "select",
         "update",
     )
 
+    assert_eq(tuple(snekql.__all__), expected_names)
     for name in expected_names:
         assert_in(name, snekql.__all__)
         assert_eq(getattr(snekql, name), getattr(snekql, name))
@@ -68,14 +99,15 @@ def public_contract_exports_canonical_names() -> None:
 def query_factory_functions_reject_empty_selects() -> None:
     """Selecting no model or fields is package-originated query misuse."""
 
-    select_fn = cast(Callable[..., object], snekql.select)
+    select_fn = cast("Callable[..., object]", snekql.select)
 
     try:
         _ = select_fn()
     except snekql.QueryConstructionError:
         return
 
-    raise AssertionError("select() should reject empty selection")
+    msg = "select() should reject empty selection"
+    raise AssertionError(msg)
 
 
 @test()

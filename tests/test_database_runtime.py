@@ -10,13 +10,13 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_raises, test
 
 from snekql import (
+    MISSING,
     Database,
-    DatabaseRuntimeError,
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
+    DatabaseRuntimeError,
     Integer,
-    MISSING,
     Model,
     Pending,
     PoolTimeoutError,
@@ -82,7 +82,8 @@ async def exceptional_transaction_rolls_back() -> None:
                     await transaction.execute(
                         insert(RuntimeUser(email="rollback@example.com")),
                     )
-                    raise ValueError("force rollback")
+                    msg = "force rollback"
+                    raise ValueError(msg)
         finally:
             await database.close()
 

@@ -60,6 +60,7 @@ from snekql.storage import (
 )
 
 __all__ = [
+    "MISSING",
     "Assignment",
     "Attr",
     "Blob",
@@ -80,7 +81,6 @@ __all__ = [
     "InsertQuery",
     "Integer",
     "Json",
-    "MISSING",
     "Missing",
     "Model",
     "ModelDeclarationError",

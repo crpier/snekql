@@ -63,7 +63,7 @@ def update_assignments_must_belong_to_target_model() -> None:
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
-    set_assignments = cast(Callable[..., object], update(User).set)
+    set_assignments = cast("Callable[..., object]", update(User).set)
 
     with assert_raises(QueryConstructionError):
         _ = set_assignments(AuditLog.message.to("wrong table"))

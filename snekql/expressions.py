@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from snekql.errors import QueryConstructionError
 
@@ -11,7 +11,7 @@ OwnerT = TypeVar("OwnerT")
 
 
 @dataclass(frozen=True)
-class Predicate(Generic[OwnerT]):
+class Predicate[OwnerT]:
     """Boolean SQL predicate for one table model.
 
     Predicates are produced by column descriptor methods such as `User.email.eq`.
@@ -34,11 +34,12 @@ class Predicate(Generic[OwnerT]):
         return Predicate(kind="not", children=(self,))
 
     def __bool__(self) -> bool:
-        raise QueryConstructionError("predicates cannot be used as booleans")
+        msg = "predicates cannot be used as booleans"
+        raise QueryConstructionError(msg)
 
 
 @dataclass(frozen=True)
-class OrderBy(Generic[OwnerT]):
+class OrderBy[OwnerT]:
     """SQL ordering expression for one table model.
 
     `OrderBy` values are produced by column descriptor methods like `.asc()` and
@@ -50,7 +51,7 @@ class OrderBy(Generic[OwnerT]):
 
 
 @dataclass(frozen=True)
-class Assignment(Generic[OwnerT]):
+class Assignment[OwnerT]:
     """SQL update assignment for one table model.
 
     `Assignment` values are produced by update-assignable column descriptors via
