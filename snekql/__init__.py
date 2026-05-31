@@ -656,6 +656,10 @@ class ModelMeta(type):
                     raise ModelDeclarationError(
                         f"computed properties are not supported: {attribute_name!r}",
                     )
+                if getattr(attribute_value, "__isabstractmethod__", False):
+                    raise ModelDeclarationError(
+                        f"abstract members are not supported: {attribute_name!r}",
+                    )
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
         for attribute_name, attribute_value in model_class.__dict__.items():
             if isinstance(attribute_value, Attr):
@@ -708,6 +712,11 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
             names = ", ".join(sorted(remaining_values))
             raise ModelValidationError(f"unknown model values: {names}")
         storage["_snekql_frozen"] = True
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_snekql_frozen", False):
+            raise FrozenModelError("table models are immutable")
+        super().__setattr__(name, value)
 
     def __repr__(self) -> str:
         state = self._snekql_state_name()

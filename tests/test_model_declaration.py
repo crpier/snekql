@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from collections.abc import Callable
 from typing import ClassVar, cast
 
@@ -76,7 +77,7 @@ def model_construction_calls_default_factories_per_instance() -> None:
 
 @test()
 def model_instances_are_frozen_after_construction() -> None:
-    """Post-construction column assignment raises the domain frozen error."""
+    """Post-construction assignment raises the domain frozen error."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with one mutable-looking field."""
@@ -87,6 +88,9 @@ def model_instances_are_frozen_after_construction() -> None:
 
     with assert_raises(FrozenModelError):
         user.email = "eve@example.com"
+
+    with assert_raises(FrozenModelError):
+        setattr(user, "nickname", "alice")
 
 
 @test()
@@ -135,6 +139,9 @@ def table_names_are_inferred_or_overridden_and_validated() -> None:
             __tablename__ = "not valid"
             email: InvalidName.Col[str] = Text(nullable=False)
 
+    with assert_raises(ModelDeclarationError):
+        _ = type("InvalidColumn", (Model,), {"not valid": Text(nullable=False)})
+
 
 @test()
 def unsupported_model_body_members_raise_declaration_errors() -> None:
@@ -163,6 +170,16 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
             @property
             def normalized_email(self) -> str:
                 return "computed"
+
+    with assert_raises(ModelDeclarationError):
+        class AbstractModel[S = Pending](Model[S, "AbstractModel[Fetched]"]):
+            """Invalid abstract table model."""
+
+            email: AbstractModel.Col[str] = Text(nullable=False)
+
+            @abstractmethod
+            def normalize(self) -> str:
+                """Abstract behavior is intentionally unsupported for v1."""
 
 
 @test()
