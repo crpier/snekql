@@ -567,12 +567,12 @@ def _compile_predicates_sql(
     model: type[Table[Any]],
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
-    predicate_params: tuple[object, ...] = ()
+    predicate_params: list[object] = []
     for predicate in predicates:
         predicate_sql, compiled_params = _compile_predicate_sql(predicate, model)
         predicate_sql_parts.append(f"({predicate_sql})")
-        predicate_params = (*predicate_params, *compiled_params)
-    return " AND ".join(predicate_sql_parts), predicate_params
+        predicate_params.extend(compiled_params)
+    return " AND ".join(predicate_sql_parts), tuple(predicate_params)
 
 
 def _compile_update_sql(query: UpdateQuery[Any]) -> tuple[str, tuple[object, ...]]:
@@ -633,16 +633,11 @@ def _compile_select_state(state: _SelectState) -> tuple[str, tuple[object, ...]]
     ]
     params: tuple[object, ...] = ()
     if state.predicates:
-        predicate_sql_parts: list[str] = []
-        predicate_params: tuple[object, ...] = ()
-        for predicate in state.predicates:
-            predicate_sql, compiled_params = _compile_predicate_sql(
-                predicate,
-                state.model,
-            )
-            predicate_sql_parts.append(f"({predicate_sql})")
-            predicate_params = (*predicate_params, *compiled_params)
-        sql_parts.append("WHERE " + " AND ".join(predicate_sql_parts))
+        predicate_sql, predicate_params = _compile_predicates_sql(
+            state.predicates,
+            state.model,
+        )
+        sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.orderings:
         order_by = ", ".join(
