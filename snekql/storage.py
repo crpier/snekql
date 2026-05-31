@@ -75,6 +75,17 @@ MISSING = Missing()
 type SchemaPolicy = Literal["strict", "warn"]
 
 
+def _build_attr(config: _AttrConfig) -> Any:
+    """Build a public column descriptor from normalized storage metadata.
+
+    Storage classes differ mostly by SQLite class and logical type name. Keeping
+    descriptor wiring here gives the storage declaration module one place to
+    change how declaration metadata becomes query/model behavior.
+    """
+
+    return Attr[Any, Any, Any, Any, Any](config)
+
+
 class Integer:
     """SQLite INTEGER column declaration for table model fields.
 
@@ -92,13 +103,13 @@ class Integer:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
+                auto_increment=auto_increment,
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
-                auto_increment=auto_increment,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
@@ -122,7 +133,7 @@ class Real:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
@@ -151,7 +162,7 @@ class Text:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
@@ -180,7 +191,7 @@ class Blob:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
@@ -211,7 +222,7 @@ class Json:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
@@ -238,7 +249,7 @@ class Boolean:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
@@ -269,7 +280,7 @@ class DateTime:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return Attr[Any, Any, Any, Any, Any](
+        return _build_attr(
             _AttrConfig(
                 default=default,
                 default_factory=default_factory,
