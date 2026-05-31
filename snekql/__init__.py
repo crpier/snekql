@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from json import JSONDecodeError, dumps, loads
 from types import EllipsisType
+from aiosqlite import Connection, Error, connect
 from typing import (
     Any,
     ClassVar,
@@ -220,6 +222,182 @@ class SchemaVerificationError(SchemaError):
     """Raised when an existing database table drifts from model DDL."""
 
     pass
+
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _quote_sqlite_identifier(identifier: str) -> str:
+    escaped_identifier = identifier.replace('"', '""')
+    return f'"{escaped_identifier}"'
+
+
+def _parse_sqlite_dsn(dsn: str) -> str:
+    if not dsn.startswith("sqlite:///"):
+        raise DatabaseRuntimeError(
+            "dsn must be a URL-style SQLite DSN such as 'sqlite:///app.db'",
+        )
+    remainder = dsn.removeprefix("sqlite:///")
+    if remainder == "":
+        raise DatabaseRuntimeError("SQLite DSN must include a database path")
+    if remainder == ":memory:":
+        return ":memory:"
+    if "?" in remainder or "#" in remainder:
+        raise DatabaseRuntimeError(
+            "SQLite DSN query strings and fragments are not supported",
+        )
+    if remainder.startswith("/"):
+        return remainder
+    return remainder
+
+
+async def _open_sqlite_connection(database_path: str) -> Connection:
+    try:
+        connection = await connect(database_path, isolation_level=None)
+        cursor = await connection.execute("SELECT 1")
+        try:
+            _ = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        return connection
+    except Error as error:
+        raise DatabaseRuntimeError("could not initialize SQLite connection") from error
+
+
+def _require_model_columns(
+    model: type[Table[Any]],
+) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
+    columns = getattr(model, "__snekql_columns__", None)
+    if not isinstance(columns, dict):
+        raise ModelDeclarationError("schema setup requires snekql table models")
+    return cast(dict[str, Attr[Any, Any, Any, Any, Any]], columns)
+
+
+def _require_model_table_name(model: type[Table[Any]]) -> str:
+    table_name = getattr(model, "__tablename__", None)
+    if not isinstance(table_name, str):
+        raise ModelDeclarationError("schema setup requires snekql table models")
+    return table_name
+
+
+def _compile_column_definition(
+    name: str,
+    column: Attr[Any, Any, Any, Any, Any],
+) -> str:
+    parts = [_quote_sqlite_identifier(name), column.sqlite_storage_class]
+    if column.primary_key:
+        parts.append("PRIMARY KEY")
+    if column.auto_increment:
+        parts.append("AUTOINCREMENT")
+    if column.nullable is False and not column.primary_key:
+        parts.append("NOT NULL")
+    if isinstance(column.server_default, CurrentTimestamp):
+        parts.append("DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
+    return " ".join(parts)
+
+
+def _compile_create_table_sql(model: type[Table[Any]]) -> str:
+    table_name = _require_model_table_name(model)
+    columns = _require_model_columns(model)
+    column_sql = ", ".join(
+        _compile_column_definition(name, column) for name, column in columns.items()
+    )
+    return f"CREATE TABLE {_quote_sqlite_identifier(table_name)} ({column_sql}) STRICT"
+
+
+async def _fetch_existing_create_table_sql(
+    connection: Connection,
+    table_name: str,
+) -> str | None:
+    cursor = await connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    )
+    try:
+        row = await cursor.fetchone()
+    finally:
+        await cursor.close()
+    if row is None:
+        return None
+    value = row[0]
+    if not isinstance(value, str):
+        raise SchemaVerificationError(
+            f"SQLite metadata for table {table_name!r} did not contain SQL text",
+        )
+    return value
+
+
+def _normalize_snekql_create_table_sql(sql: str) -> str:
+    lines = [line.strip() for line in sql.strip().rstrip(";").splitlines()]
+    normalized_sql = " ".join(line for line in lines if line)
+    return normalized_sql.replace("( ", "(").replace(" )", ")").replace(" ,", ",")
+
+
+async def _verify_or_create_model_table(
+    connection: Connection,
+    model: type[Table[Any]],
+    schema_policy: SchemaPolicy,
+) -> None:
+    table_name = _require_model_table_name(model)
+    expected_sql = _compile_create_table_sql(model)
+    existing_sql = await _fetch_existing_create_table_sql(connection, table_name)
+    if existing_sql is None:
+        _ = await connection.execute(expected_sql)
+        return
+    if _normalize_snekql_create_table_sql(
+        existing_sql,
+    ) == _normalize_snekql_create_table_sql(expected_sql):
+        return
+    message = f"schema drift detected for table {table_name!r}"
+    if schema_policy == "strict":
+        raise SchemaVerificationError(message)
+    _LOGGER.warning(
+        "schema drift detected",
+        extra={"table_name": table_name},
+    )
+
+
+def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
+    table_names: set[str] = set()
+    for model in models:
+        table_name = _require_model_table_name(model)
+        if table_name in table_names:
+            raise SchemaError(f"duplicate table name: {table_name!r}")
+        table_names.add(table_name)
+
+
+async def _rollback_schema_setup(connection: Connection) -> None:
+    try:
+        _ = await connection.execute("ROLLBACK")
+    except Error:
+        pass
+
+
+def _validate_schema_policy(schema_policy: SchemaPolicy) -> None:
+    if schema_policy not in ("strict", "warn"):
+        raise SchemaError("schema_policy must be 'strict' or 'warn'")
+
+
+async def _initialize_sqlite_schema(
+    connection: Connection,
+    models: Sequence[type[Table[Any]]],
+    schema_policy: SchemaPolicy,
+) -> None:
+    _validate_schema_policy(schema_policy)
+    _validate_schema_models(models)
+    if not models:
+        return
+    try:
+        _ = await connection.execute("BEGIN")
+        for model in models:
+            await _verify_or_create_model_table(connection, model, schema_policy)
+        _ = await connection.execute("COMMIT")
+    except Error as error:
+        await _rollback_schema_setup(connection)
+        raise SchemaError("SQLite schema setup failed") from error
+    except Exception:
+        await _rollback_schema_setup(connection)
+        raise
 
 
 class Integer:
@@ -1221,7 +1399,19 @@ class Database:
     owns connectivity, schema startup work, and transaction entry.
     """
 
-    def __init__(self, _initialized: Never, /) -> None: ...
+    _acquire_timeout: float
+    _closed: bool
+    _connection: Connection | None
+    _database_path: str
+    _pool_size: int
+
+    def __init__(self, _initialized: Never, /) -> None:
+        self._acquire_timeout = 0.0
+        self._closed = True
+        self._connection = None
+        self._database_path = ""
+        self._pool_size = 0
+        raise DatabaseRuntimeError("use Database.initialize(...) to create a Database")
 
     @classmethod
     async def initialize(
@@ -1233,10 +1423,42 @@ class Database:
         schema_policy: SchemaPolicy = "strict",
         pool_size: int = 5,
         acquire_timeout: float = 30.0,
-    ) -> Self: ...
+    ) -> Self:
+        if pool_size < 1:
+            raise DatabaseRuntimeError("pool_size must be at least 1")
+        if acquire_timeout < 0:
+            raise DatabaseRuntimeError("acquire_timeout must be non-negative")
+        _validate_schema_policy(schema_policy)
+        _validate_schema_models(models)
+        database_path = _parse_sqlite_dsn(dsn)
+        connection = await _open_sqlite_connection(database_path)
+        try:
+            await _initialize_sqlite_schema(connection, models, schema_policy)
+        except Exception:
+            await connection.close()
+            raise
+        database = cls.__new__(cls)
+        database._acquire_timeout = acquire_timeout
+        database._closed = False
+        database._connection = connection
+        database._database_path = database_path
+        database._pool_size = pool_size
+        return database
 
-    def transaction(self, *, timeout: float | None = None) -> Transaction: ...
-    async def close(self) -> None: ...
+    def transaction(self, *, timeout: float | None = None) -> Transaction:
+        if self._closed:
+            raise DatabaseClosedError("database is closed")
+        _ = timeout
+        return Transaction()
+
+    async def close(self) -> None:
+        if self._closed:
+            return
+        connection = self._connection
+        self._connection = None
+        self._closed = True
+        if connection is not None:
+            await connection.close()
 
 
 @overload
