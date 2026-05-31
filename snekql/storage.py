@@ -491,22 +491,19 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
     def is_not_null(self) -> Predicate[OwnerT]:
         return Predicate(kind="is_not_null", column=self)
 
-    def in_(self, value: ReadValueT, /, *values: ReadValueT) -> Predicate[OwnerT]:
-        all_values = (value, *values)
-        if any(candidate is None for candidate in all_values):
+    def in_(self, *values: ReadValueT) -> Predicate[OwnerT]:
+        if not values:
+            raise QueryConstructionError("in_() requires at least one value")
+        if any(candidate is None for candidate in values):
             raise QueryConstructionError("in_() values cannot be None")
-        return Predicate(kind="in", column=self, values=all_values)
+        return Predicate(kind="in", column=self, values=values)
 
-    def not_in(
-        self,
-        value: ReadValueT,
-        /,
-        *values: ReadValueT,
-    ) -> Predicate[OwnerT]:
-        all_values = (value, *values)
-        if any(candidate is None for candidate in all_values):
+    def not_in(self, *values: ReadValueT) -> Predicate[OwnerT]:
+        if not values:
+            raise QueryConstructionError("not_in() requires at least one value")
+        if any(candidate is None for candidate in values):
             raise QueryConstructionError("not_in() values cannot be None")
-        return Predicate(kind="not_in", column=self, values=all_values)
+        return Predicate(kind="not_in", column=self, values=values)
 
     def like(self, pattern: str) -> Predicate[OwnerT]:
         if self.storage_type_name != "Text":

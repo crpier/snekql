@@ -100,8 +100,11 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     class MutationUser(snekql.Model[snekql.Pending, "MutationUser[snekql.Fetched]"]):
         """Table model for mutation chain smoke checks."""
 
-    assignment = snekql.Assignment[MutationUser]()
-    predicate = snekql.Predicate[MutationUser]()
+        email: MutationUser.Col[str] = snekql.Text(nullable=False)
+        status: MutationUser.Col[str] = snekql.Text(nullable=False)
+
+    assignment = MutationUser.status.to("disabled")
+    predicate = MutationUser.email.eq("alice@example.com")
 
     update_query = snekql.update(MutationUser)
     delete_query = snekql.delete(MutationUser)

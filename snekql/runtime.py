@@ -186,7 +186,7 @@ class Transaction:
         try:
             await self.execute_sqlite(connection, sql, params)
         except Error as error:
-            raise ExecutionError("insert failed", sql=sql, params=params) from error
+            raise ExecutionError("write failed", sql=sql, params=params) from error
 
     def require_connection(self) -> Connection:
         """Return the active transaction connection or reject use-after-close."""
