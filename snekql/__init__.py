@@ -15,6 +15,7 @@ from typing import (
     TypeVar,
     TypeVarTuple,
     cast,
+    get_origin,
     dataclass_transform,
     overload,
 )
@@ -55,6 +56,14 @@ def _is_sql_identifier(value: str) -> bool:
     if not (first_character.isalpha() or first_character == "_"):
         return False
     return all(character.isalnum() or character == "_" for character in value)
+
+
+def _is_classvar_annotation(annotation: object) -> bool:
+    if isinstance(annotation, str):
+        return annotation.startswith("ClassVar[") or annotation.startswith(
+            "typing.ClassVar[",
+        )
+    return get_origin(annotation) is ClassVar
 
 
 class Pending:
@@ -636,6 +645,8 @@ class ModelMeta(type):
                     if isinstance(annotated_value, Attr):
                         continue
                     if annotated_name == "__tablename__":
+                        continue
+                    if _is_classvar_annotation(annotations[annotated_name]):
                         continue
                     raise ModelDeclarationError(
                         f"unsupported model annotation: {annotated_name!r}",

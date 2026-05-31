@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_false, assert_is, assert_raises, test
 
@@ -145,6 +145,14 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
             """Invalid table model with a plain instance annotation."""
 
             email: str
+
+    class WithClassVar[S = Pending](Model[S, "WithClassVar[Fetched]"]):
+        """Valid table model with an allowed class-level constant."""
+
+        category: ClassVar[str] = "users"
+        email: WithClassVar.Col[str] = Text(nullable=False)
+
+    assert_eq(WithClassVar.category, "users")
 
     with assert_raises(ModelDeclarationError):
         class ComputedProperty[S = Pending](Model[S, "ComputedProperty[Fetched]"]):
