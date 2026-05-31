@@ -1,51 +1,9 @@
 # snekql
 
-snekql is a Python-only, async-first query builder and query runtime for SQLite
-`STRICT` tables. It gives applications explicit SQL-shaped operations, typed
+snekql is a Python async-first query builder and query runtime for SQL.
+It gives applications explicit SQL-shaped operations, typed
 model declarations, runtime validation, startup schema checks, and transaction-
 based execution without becoming an ORM.
-
-## What snekql is
-
-- A typed table model declaration API.
-- A typed single-table query builder for `select`, `insert`, `update`, and
-  `delete`.
-- An async SQLite runtime backed by a bounded connection pool.
-- A deterministic `STRICT` table creator/verifier for startup schema checks.
-
-## What snekql is not
-
-- Not an ORM: no identity map, relationship loading, lazy loading, session, or
-  unit-of-work abstraction.
-- Not a migration tool: v1 creates missing tables and reports drift; it does not
-  alter existing tables.
-- Not a cross-database abstraction: v1 targets SQLite only.
-- Not a raw SQL runner: v1 intentionally has no raw SQL API.
-
-## Requirements
-
-- Python >= 3.14
-- SQLite through `aiosqlite`
-- Pydantic-backed boundary validation
-
-The package ships `py.typed` and a package-root stub so type checkers can consume
-its public interface.
-
-## Install
-
-```sh
-uv add snekql
-```
-
-For local development:
-
-```sh
-uv sync
-uv run snektest
-uv run pyright .
-uv run ruff check .
-uv run ruff format --check .
-```
 
 ## Quick start
 
@@ -136,13 +94,11 @@ Rules to remember:
 
 ## Storage classes
 
-V1 storage declarations are SQLite-first:
-
 - `Integer`
 - `Real`
 - `Text`
 - `Blob`
-- `Json` stores JSON text.
+- `Json` stores `JSON` text.
 - `Boolean` stores `0` / `1` in an `INTEGER` column.
 - `DateTime` stores UTC text as `YYYY-MM-DDTHH:MM:SS.SSSZ`.
 
@@ -225,11 +181,7 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 
 `ExecutionError` preserves `sql` and `params` for debugging.
 
-## Public API audit notes
-
-The package root is the canonical public interface. Prefer importing from
-`snekql`, not private modules. The exported names are curated in
-`snekql.__all__` and mirrored by `snekql/__init__.pyi`.
+## Public API
 
 Agent navigation map:
 
@@ -246,13 +198,3 @@ Agent navigation map:
 - `tests/test_public_typing.py`: type-checker prototypes for the public API.
 - `PRD.md`: full v1 product contract.
 - `CONTEXT.md`: project language and terminology.
-
-## V1 limitations
-
-- SQLite only.
-- Single-table queries only; no joins.
-- No raw SQL API.
-- No sync runtime.
-- No migrations or table alteration.
-- No streaming result API.
-- No `Varchar` or text length enforcement.
