@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
 from snektest import assert_eq, assert_false, assert_raises, assert_true, test
@@ -24,13 +24,14 @@ from snekql import (
     Real,
     Text,
 )
+from snekql.model import decode_model_row, encode_model_row
 
 
 @test()
 def v1_exposes_only_sqlite_first_storage_classes() -> None:
     """Text has no length option and Varchar is not a v1 storage class."""
 
-    text_constructor = cast(Callable[..., object], Text)
+    text_constructor = cast("Callable[..., object]", Text)
 
     assert_false(hasattr(snekql, "Varchar"))
     with assert_raises(TypeError):
@@ -73,21 +74,17 @@ def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
         enabled: FeatureFlag.Col[bool] = Boolean(nullable=False)
 
     enabled = FeatureFlag(enabled=True)
-    from_row = cast(
-        Callable[[dict[str, object]], FeatureFlag[object]],
-        getattr(FeatureFlag, "_snekql_from_row"),
+    disabled = cast(
+        "FeatureFlag[object]",
+        decode_model_row(FeatureFlag, {"enabled": 0}),
     )
-    to_row = cast(
-        Callable[[], dict[str, object]],
-        getattr(enabled, "_snekql_to_row"),
-    )
-    disabled = from_row({"enabled": 0})
+    _, encoded_enabled = encode_model_row(enabled)
 
-    assert_eq(to_row(), {"enabled": 1})
+    assert_eq(encoded_enabled, {"enabled": 1})
     assert_false(disabled.enabled)
 
     with assert_raises(ModelValidationError):
-        _ = from_row({"enabled": 2})
+        _ = decode_model_row(FeatureFlag, {"enabled": 2})
 
 
 @test()
@@ -100,24 +97,20 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
         payload: Event.Col[dict[str, object]] = Json(nullable=False)
 
     event = Event(payload={"kind": "created", "count": 2})
-    from_row = cast(
-        Callable[[dict[str, object]], Event[object]],
-        getattr(Event, "_snekql_from_row"),
+    fetched = cast(
+        "Event[object]",
+        decode_model_row(Event, {"payload": '{"kind":"created","count":2}'}),
     )
-    to_row = cast(
-        Callable[[], dict[str, object]],
-        getattr(event, "_snekql_to_row"),
-    )
-    fetched = from_row({"payload": '{"kind":"created","count":2}'})
+    _, encoded_event = encode_model_row(event)
 
-    assert_eq(to_row(), {"payload": '{"kind":"created","count":2}'})
+    assert_eq(encoded_event, {"payload": '{"kind":"created","count":2}'})
     assert_eq(fetched.payload, {"kind": "created", "count": 2})
 
     with assert_raises(ModelValidationError):
         _ = Event(payload={"bad": {object()}})
 
     with assert_raises(ModelValidationError):
-        _ = from_row({"payload": "not json"})
+        _ = decode_model_row(Event, {"payload": "not json"})
 
 
 @test()
@@ -132,23 +125,19 @@ def datetime_values_are_utc_millisecond_text() -> None:
     source_timezone = timezone(timedelta(hours=5, minutes=30))
     source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
     audit_log = AuditLog(created_at=source)
-    from_row = cast(
-        Callable[[dict[str, object]], AuditLog[object]],
-        getattr(AuditLog, "_snekql_from_row"),
+    fetched = cast(
+        "AuditLog[object]",
+        decode_model_row(AuditLog, {"created_at": "2026-05-31T06:30:01.987Z"}),
     )
-    to_row = cast(
-        Callable[[], dict[str, object]],
-        getattr(audit_log, "_snekql_to_row"),
-    )
-    fetched = from_row({"created_at": "2026-05-31T06:30:01.987Z"})
+    _, encoded_audit_log = encode_model_row(audit_log)
 
     expected = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
     assert_eq(audit_log.created_at, expected)
-    assert_eq(to_row(), {"created_at": "2026-05-31T06:30:01.987Z"})
+    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T06:30:01.987Z"})
     assert_eq(fetched.created_at, expected)
 
     with assert_raises(ModelValidationError):
-        _ = AuditLog(created_at=datetime(2026, 5, 31, 12, 0, 1))
+        _ = AuditLog(created_at=datetime(2026, 5, 31, 12, 0, 1))  # noqa: DTZ001
 
 
 @test()
@@ -156,7 +145,8 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
     """Default factories and codecs do not leak third-party exceptions."""
 
     def broken_default() -> object:
-        raise ValueError("outside validation failure")
+        msg = "outside validation failure"
+        raise ValueError(msg)
 
     class ExternalValue[S = Pending](Model[S, "ExternalValue[object]"]):
         """Table model with an external default provider."""

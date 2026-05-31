@@ -7,7 +7,6 @@ from types import EllipsisType
 from typing import (
     Any,
     ClassVar,
-    Generic,
     Self,
     TypeVar,
     cast,
@@ -19,6 +18,7 @@ from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
     ModelValidationError,
+    QueryConstructionError,
     SnekqlError,
 )
 from snekql.storage import (
@@ -48,8 +48,6 @@ class Pending:
     'Pending'
     """
 
-    pass
-
 
 class Fetched:
     """Marker state for table models materialized by the Query Runtime.
@@ -62,10 +60,8 @@ class Fetched:
     'Fetched'
     """
 
-    pass
 
-
-class Table(Generic[StateT]):
+class Table[StateT]:
     """Base type shared by concrete table models in any lifecycle state.
 
     Query builders use this shallow base to constrain model-like generic
@@ -133,75 +129,96 @@ class ModelMeta(type):
         namespace: dict[str, object],
         **kwargs: object,
     ) -> type:
-        if name != "Model":
-            for base in bases:
-                if isinstance(base, ModelMeta):
-                    if base.__name__ != "Model":
-                        raise ModelDeclarationError(
-                            f"cannot subclass concrete model: {base.__name__}",
-                        )
-                    continue
-                if base.__name__ == "Generic":
-                    continue
-                raise ModelDeclarationError(
-                    f"model mixin bases are not supported: {base.__name__}",
-                )
+        is_model_base = name == "Model"
+        if not is_model_base:
+            ModelMeta._validate_model_bases(bases)
+            ModelMeta._validate_model_namespace(namespace)
         model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
-        if name != "Model":
-            annotations_object = namespace.get("__annotations__", {})
-            if isinstance(annotations_object, dict):
-                annotations = cast(dict[str, object], annotations_object)
-                for annotated_name in annotations:
-                    annotated_value = namespace.get(annotated_name)
-                    if isinstance(annotated_value, Attr):
-                        continue
-                    if annotated_name == "__tablename__":
-                        continue
-                    if ModelMeta._is_classvar_annotation(annotations[annotated_name]):
-                        continue
-                    raise ModelDeclarationError(
-                        f"unsupported model annotation: {annotated_name!r}",
-                    )
-            for attribute_name, attribute_value in namespace.items():
-                if isinstance(attribute_value, property):
-                    raise ModelDeclarationError(
-                        f"computed properties are not supported: {attribute_name!r}",
-                    )
-                if getattr(attribute_value, "__isabstractmethod__", False):
-                    raise ModelDeclarationError(
-                        f"abstract members are not supported: {attribute_name!r}",
-                    )
+        annotations = ModelMeta._namespace_annotations(namespace)
+        columns = ModelMeta._bind_columns(model_class, annotations)
+        model_metadata = cast("Any", model_class)
+        if not is_model_base:
+            model_metadata.__tablename__ = ModelMeta._resolve_table_name(
+                name,
+                namespace,
+            )
+        model_metadata.__snekql_columns__ = columns
+        return model_class
+
+    @staticmethod
+    def _validate_model_bases(bases: tuple[type, ...]) -> None:
+        """Reject inheritance forms that would blur v1 table model semantics."""
+
+        for base in bases:
+            if isinstance(base, ModelMeta):
+                if base.__name__ != "Model":
+                    msg = f"cannot subclass concrete model: {base.__name__}"
+                    raise ModelDeclarationError(msg)
+                continue
+            if base.__name__ == "Generic":
+                continue
+            msg = f"model mixin bases are not supported: {base.__name__}"
+            raise ModelDeclarationError(msg)
+
+    @staticmethod
+    def _validate_model_namespace(namespace: dict[str, object]) -> None:
+        """Validate class-body contents before freezing snekql metadata."""
+
+        annotations = ModelMeta._namespace_annotations(namespace)
+        for annotated_name, annotation in annotations.items():
+            annotated_value = namespace.get(annotated_name)
+            if isinstance(annotated_value, Attr):
+                continue
+            if annotated_name == "__tablename__":
+                continue
+            if ModelMeta._is_classvar_annotation(annotation):
+                continue
+            msg = f"unsupported model annotation: {annotated_name!r}"
+            raise ModelDeclarationError(msg)
+        for attribute_name, attribute_value in namespace.items():
+            if isinstance(attribute_value, property):
+                msg = f"computed properties are not supported: {attribute_name!r}"
+                raise ModelDeclarationError(msg)
+            if getattr(attribute_value, "__isabstractmethod__", False):
+                msg = f"abstract members are not supported: {attribute_name!r}"
+                raise ModelDeclarationError(msg)
+
+    @staticmethod
+    def _namespace_annotations(namespace: dict[str, object]) -> dict[str, object]:
         annotations_object = namespace.get("__annotations__", {})
-        annotations = (
-            cast(dict[str, object], annotations_object)
-            if isinstance(annotations_object, dict)
-            else {}
-        )
+        if not isinstance(annotations_object, dict):
+            return {}
+        return cast("dict[str, object]", annotations_object)
+
+    @staticmethod
+    def _bind_columns(
+        model_class: type,
+        annotations: dict[str, object],
+    ) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
         for attribute_name, attribute_value in model_class.__dict__.items():
-            if isinstance(attribute_value, Attr):
-                column = cast(Attr[Any, Any, Any, Any, Any], attribute_value)
-                if not ModelMeta._is_sql_identifier(attribute_name):
-                    raise ModelDeclarationError(
-                        f"invalid column identifier: {attribute_name!r}",
-                    )
-                column.is_generated = ModelMeta._is_generated_annotation(
-                    annotations.get(attribute_name),
-                )
-                ModelMeta._validate_column_declaration(attribute_name, column)
-                columns[attribute_name] = column
-        if name != "Model":
-            table_name = namespace.get(
-                "__tablename__",
-                ModelMeta._infer_table_name(name),
+            if not isinstance(attribute_value, Attr):
+                continue
+            column = cast("Attr[Any, Any, Any, Any, Any]", attribute_value)
+            if not ModelMeta._is_sql_identifier(attribute_name):
+                msg = f"invalid column identifier: {attribute_name!r}"
+                raise ModelDeclarationError(msg)
+            column.is_generated = ModelMeta._is_generated_annotation(
+                annotations.get(attribute_name),
             )
-            if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
-                table_name,
-            ):
-                raise ModelDeclarationError(f"invalid table identifier: {table_name!r}")
-            setattr(model_class, "__tablename__", table_name)
-        setattr(model_class, "__snekql_columns__", columns)
-        return model_class
+            ModelMeta._validate_column_declaration(attribute_name, column)
+            columns[attribute_name] = column
+        return columns
+
+    @staticmethod
+    def _resolve_table_name(name: str, namespace: dict[str, object]) -> str:
+        table_name = namespace.get("__tablename__", ModelMeta._infer_table_name(name))
+        if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
+            table_name,
+        ):
+            msg = f"invalid table identifier: {table_name!r}"
+            raise ModelDeclarationError(msg)
+        return table_name
 
     @staticmethod
     def _is_generated_annotation(annotation: object) -> bool:
@@ -215,30 +232,38 @@ class ModelMeta(type):
         column: Attr[Any, Any, Any, Any, Any],
     ) -> None:
         if isinstance(column.default, CurrentTimestamp):
+            msg = f"CurrentTimestamp cannot be a Python default for {name!r}"
             raise ModelDeclarationError(
-                f"CurrentTimestamp cannot be a Python default for {name!r}",
+                msg,
             )
         if column.server_default is None:
             return
         if not isinstance(column.server_default, CurrentTimestamp):
+            msg = f"unsupported server default for {name!r}"
             raise ModelDeclarationError(
-                f"unsupported server default for {name!r}",
+                msg,
             )
         if column.storage_type_name != "DateTime":
+            msg = f"CurrentTimestamp requires a DateTime column: {name!r}"
             raise ModelDeclarationError(
-                f"CurrentTimestamp requires a DateTime column: {name!r}",
+                msg,
             )
         if not column.is_generated:
+            msg = f"CurrentTimestamp requires a generated column: {name!r}"
             raise ModelDeclarationError(
-                f"CurrentTimestamp requires a generated column: {name!r}",
+                msg,
             )
         if column.default is not MISSING:
+            msg = (
+                f"CurrentTimestamp generated columns must default to MISSING: {name!r}"
+            )
             raise ModelDeclarationError(
-                f"CurrentTimestamp generated columns must default to MISSING: {name!r}",
+                msg,
             )
         if not isinstance(column.default_factory, EllipsisType):
+            msg = f"CurrentTimestamp generated columns cannot use default_factory: {name!r}"
             raise ModelDeclarationError(
-                f"CurrentTimestamp generated columns cannot use default_factory: {name!r}",
+                msg,
             )
 
     @staticmethod
@@ -255,9 +280,7 @@ class ModelMeta(type):
     @staticmethod
     def _is_classvar_annotation(annotation: object) -> bool:
         if isinstance(annotation, str):
-            return annotation.startswith("ClassVar[") or annotation.startswith(
-                "typing.ClassVar[",
-            )
+            return annotation.startswith(("ClassVar[", "typing.ClassVar["))
         return get_origin(annotation) is ClassVar
 
     @staticmethod
@@ -270,7 +293,7 @@ class ModelMeta(type):
         return all(character.isalnum() or character == "_" for character in value)
 
 
-class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
+class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta):
     """Base class for declaring table models.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -288,7 +311,7 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
     def __init__(self, **values: object) -> None:
         remaining_values = dict(values)
         storage = cast(
-            dict[str, object],
+            "dict[str, object]",
             object.__getattribute__(self, "__dict__"),
         )
         storage["_snekql_frozen"] = False
@@ -302,20 +325,24 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
                 except SnekqlError:
                     raise
                 except Exception as error:
+                    msg = f"default factory failed for {name!r}"
                     raise ModelValidationError(
-                        f"default factory failed for {name!r}",
+                        msg,
                     ) from error
             if isinstance(value, EllipsisType):
-                raise ModelValidationError(f"missing required value for {name!r}")
+                msg = f"missing required value for {name!r}"
+                raise ModelValidationError(msg)
             setattr(self, name, column.validate_model_value(value))
         if remaining_values:
             names = ", ".join(sorted(remaining_values))
-            raise ModelValidationError(f"unknown model values: {names}")
+            msg = f"unknown model values: {names}"
+            raise ModelValidationError(msg)
         storage["_snekql_frozen"] = True
 
     def __setattr__(self, name: str, value: object) -> None:
         if getattr(self, "_snekql_frozen", False):
-            raise FrozenModelError("table models are immutable")
+            msg = "table models are immutable"
+            raise FrozenModelError(msg)
         super().__setattr__(name, value)
 
     def __repr__(self) -> str:
@@ -332,22 +359,23 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
     def __eq__(self, other: object) -> bool:
         if self.__class__ is not other.__class__:
             return False
-        other_model = cast(Model[Any, Any], other)
+        other_model = cast("Model[Any, Any]", other)
         for name in self.__class__.__snekql_columns__:
             if getattr(self, name) != getattr(other_model, name):
                 return False
         return True
 
     def __hash__(self) -> int:
-        raise TypeError(f"unhashable type: {self.__class__.__name__!r}")
+        msg = f"unhashable type: {self.__class__.__name__!r}"
+        raise TypeError(msg)
 
     def _snekql_state_name(self) -> str:
         storage = cast(
-            dict[str, object],
+            "dict[str, object]",
             object.__getattribute__(self, "__dict__"),
         )
         state = storage.get("_snekql_state", "Pending")
-        return cast(str, state)
+        return cast("str", state)
 
     def _snekql_to_row(self) -> dict[str, object]:
         """Encode this model's present values for SQLite storage."""
@@ -367,25 +395,27 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
         remaining_values = dict(row)
         model = object.__new__(cls)
         storage = cast(
-            dict[str, object],
+            "dict[str, object]",
             object.__getattribute__(model, "__dict__"),
         )
         storage["_snekql_frozen"] = False
         storage["_snekql_state"] = "Fetched"
         for name, column in cls.__snekql_columns__.items():
             if name not in remaining_values:
-                raise ModelValidationError(f"missing database value for {name!r}")
+                msg = f"missing database value for {name!r}"
+                raise ModelValidationError(msg)
             value = column.decode_sqlite(remaining_values.pop(name))
             setattr(model, name, value)
         if remaining_values:
             names = ", ".join(sorted(remaining_values))
-            raise ModelValidationError(f"unknown database values: {names}")
+            msg = f"unknown database values: {names}"
+            raise ModelValidationError(msg)
         storage["_snekql_frozen"] = True
         return model
 
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:
-        return cast(type[ReadModelT], cls)
+        return cast("type[ReadModelT]", cls)
 
 
 def require_model_columns(
@@ -395,8 +425,9 @@ def require_model_columns(
 
     columns = getattr(model, "__snekql_columns__", None)
     if not isinstance(columns, dict):
-        raise ModelDeclarationError("schema setup requires snekql table models")
-    return cast(dict[str, Attr[Any, Any, Any, Any, Any]], columns)
+        msg = "schema setup requires snekql table models"
+        raise ModelDeclarationError(msg)
+    return cast("dict[str, Attr[Any, Any, Any, Any, Any]]", columns)
 
 
 def require_model_table_name(model: type[Table[Any]]) -> str:
@@ -404,7 +435,8 @@ def require_model_table_name(model: type[Table[Any]]) -> str:
 
     table_name = getattr(model, "__tablename__", None)
     if not isinstance(table_name, str):
-        raise ModelDeclarationError("schema setup requires snekql table models")
+        msg = "schema setup requires snekql table models"
+        raise ModelDeclarationError(msg)
     return table_name
 
 
@@ -415,8 +447,8 @@ def decode_model_row(
     """Decode SQLite row values into a fetched table model instance."""
 
     from_row = cast(
-        Callable[[Mapping[str, object]], Table[Any]],
-        getattr(model, "_snekql_from_row"),
+        "Callable[[Mapping[str, object]], Table[Any]]",
+        type.__getattribute__(model, "_snekql_from_row"),
     )
     return from_row(row)
 
@@ -425,13 +457,12 @@ def encode_model_row(row: object) -> tuple[type[Table[Any]], dict[str, object]]:
     """Encode a pending model into table metadata and SQLite row values."""
 
     if not isinstance(row, Model):
-        from snekql.errors import QueryConstructionError
-
-        raise QueryConstructionError("insert requires a snekql model instance")
-    model_row = cast(Model[Any, Any], row)
-    model_class = cast(type[Table[Any]], model_row.__class__)
+        msg = "insert requires a snekql model instance"
+        raise QueryConstructionError(msg)
+    model_row = cast("Model[Any, Any]", row)
+    model_class = cast("type[Table[Any]]", model_row.__class__)
     model_to_row = cast(
-        Callable[[], dict[str, object]],
-        getattr(cast(object, model_row), "_snekql_to_row"),
+        "Callable[[], dict[str, object]]",
+        object.__getattribute__(model_row, "_snekql_to_row"),
     )
     return model_class, model_to_row()

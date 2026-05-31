@@ -34,8 +34,11 @@ from snekql.query import (
     compile_write_sql,
     materialize_select_row,
 )
-from snekql.schema import initialize_sqlite_schema
-from snekql.schema import validate_schema_models, validate_schema_policy
+from snekql.schema import (
+    initialize_sqlite_schema,
+    validate_schema_models,
+    validate_schema_policy,
+)
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
@@ -52,7 +55,7 @@ def _validate_database_numeric_configuration(
     pool_size: PositiveInt,
     acquire_timeout: NonNegativeFloat,
 ) -> None:
-    return None
+    del pool_size, acquire_timeout
 
 
 class Transaction:
@@ -74,7 +77,8 @@ class Transaction:
         timeout: NonNegativeFloat = 0.0,
     ) -> None:
         if connection_pool is None:
-            raise DatabaseRuntimeError("use db.transaction(...) to start a transaction")
+            msg = "use db.transaction(...) to start a transaction"
+            raise DatabaseRuntimeError(msg)
         self.closed: bool = False
         self.connection: Connection | None = None
         self.connection_pool: SQLiteConnectionPool = connection_pool
@@ -82,13 +86,15 @@ class Transaction:
 
     async def __aenter__(self) -> Self:
         if self.closed or self.connection is not None:
-            raise TransactionClosedError("transaction is closed")
+            msg = "transaction is closed"
+            raise TransactionClosedError(msg)
         connection = await self.connection_pool.acquire(self.timeout)
         try:
             await self.execute_sqlite(connection, "BEGIN", ())
         except Error as error:
             await self.connection_pool.release(connection)
-            raise DatabaseRuntimeError("could not begin transaction") from error
+            msg = "could not begin transaction"
+            raise DatabaseRuntimeError(msg) from error
         self.connection = connection
         return self
 
@@ -102,7 +108,8 @@ class Transaction:
         _ = traceback
         connection = self.connection
         if connection is None:
-            raise TransactionClosedError("transaction is closed")
+            msg = "transaction is closed"
+            raise TransactionClosedError(msg)
         self.connection = None
         self.closed = True
         try:
@@ -112,7 +119,8 @@ class Transaction:
                 await self.execute_sqlite(connection, "ROLLBACK", ())
         except Error as error:
             if exc_type is None:
-                raise DatabaseRuntimeError("could not close transaction") from error
+                msg = "could not close transaction"
+                raise DatabaseRuntimeError(msg) from error
         finally:
             await self.connection_pool.release(connection)
 
@@ -139,9 +147,10 @@ class Transaction:
             finally:
                 await cursor.close()
         except Error as error:
-            raise ExecutionError("select failed", sql=sql, params=params) from error
+            msg = "select failed"
+            raise ExecutionError(msg, sql=sql, params=params) from error
         return [
-            materialize_select_row(select_query, tuple(cast(Sequence[object], row)))
+            materialize_select_row(select_query, tuple(cast("Sequence[object]", row)))
             for row in rows
         ]
 
@@ -168,12 +177,13 @@ class Transaction:
             finally:
                 await cursor.close()
         except Error as error:
-            raise ExecutionError("select failed", sql=sql, params=params) from error
+            msg = "select failed"
+            raise ExecutionError(msg, sql=sql, params=params) from error
         if row is None:
             return None
         return materialize_select_row(
             select_query,
-            tuple(cast(Sequence[object], row)),
+            tuple(cast("Sequence[object]", row)),
         )
 
     async def execute(
@@ -186,21 +196,24 @@ class Transaction:
         try:
             await self.execute_sqlite(connection, sql, params)
         except Error as error:
-            raise ExecutionError("write failed", sql=sql, params=params) from error
+            msg = "write failed"
+            raise ExecutionError(msg, sql=sql, params=params) from error
 
     def require_connection(self) -> Connection:
         """Return the active transaction connection or reject use-after-close."""
 
         connection = self.connection
         if self.closed or connection is None:
-            raise TransactionClosedError("transaction is closed")
+            msg = "transaction is closed"
+            raise TransactionClosedError(msg)
         return connection
 
     @staticmethod
     def _require_select_query(query: object) -> AnySelectQuery:
         if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
-            return cast(AnySelectQuery, query)
-        raise QueryCompilationError("fetch requires a select query")
+            return cast("AnySelectQuery", query)
+        msg = "fetch requires a select query"
+        raise QueryCompilationError(msg)
 
     @staticmethod
     async def execute_sqlite(
@@ -212,7 +225,7 @@ class Transaction:
 
         cursor = await connection.execute(sql, params)
         try:
-            return None
+            return
         finally:
             await cursor.close()
 
@@ -229,8 +242,9 @@ class Database:
 
     def __init__(self, _initialized: Never, /) -> None:
         self.acquire_timeout = 0.0
-        self.connection_pool = cast(SQLiteConnectionPool, None)
-        raise DatabaseRuntimeError("use Database.initialize(...) to create a Database")
+        self.connection_pool = cast("SQLiteConnectionPool", None)
+        msg = "use Database.initialize(...) to create a Database"
+        raise DatabaseRuntimeError(msg)
 
     @classmethod
     async def initialize(

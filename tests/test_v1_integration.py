@@ -144,7 +144,8 @@ async def _exercise_v1_runtime(database_target: DatabaseTarget) -> None:
     assert_eq(first_name, "alpha")
     assert_eq(no_name, None)
     if fetched_event is None:
-        raise AssertionError("expected alpha event to be fetched")
+        msg = "expected alpha event to be fetched"
+        raise AssertionError(msg)
     event: V1Event[Fetched] = fetched_event
     assert_eq(event.id, 1)
     assert_true(event.active)
@@ -250,7 +251,8 @@ async def transactions_pool_and_close_lifecycle_are_integrated() -> None:
                 await rollback_transaction.execute(
                     insert(V1Lifecycle(name="rolled-back")),
                 )
-                raise ValueError("force rollback")
+                msg = "force rollback"
+                raise ValueError(msg)
 
         async with database.transaction() as read_transaction:
             names = await read_transaction.fetch_all(

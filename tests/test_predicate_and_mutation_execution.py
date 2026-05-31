@@ -46,9 +46,9 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
         id: User.Col[int] = Integer(nullable=False)
         email: User.Col[str] = Text(nullable=False)
 
-    email_eq = cast(Callable[[object], object], User.email.eq)
-    email_ne = cast(Callable[[object], object], User.email.ne)
-    email_not_in = cast(Callable[..., object], User.email.not_in)
+    email_eq = cast("Callable[[object], object]", User.email.eq)
+    email_ne = cast("Callable[[object], object]", User.email.ne)
+    email_not_in = cast("Callable[..., object]", User.email.not_in)
 
     with assert_raises(QueryConstructionError):
         _ = email_eq(None)

@@ -25,8 +25,9 @@ def normalize_sqlite_database(database: object) -> str:
         return ":memory:"
     if isinstance(database, Path):
         return str(database)
+    msg = "database must be a pathlib.Path or the exact string ':memory:'"
     raise DatabaseRuntimeError(
-        "database must be a pathlib.Path or the exact string ':memory:'",
+        msg,
     )
 
 
@@ -40,9 +41,11 @@ async def open_sqlite_connection(database_path: str) -> Connection:
             _ = await cursor.fetchone()
         finally:
             await cursor.close()
-        return connection
     except Error as error:
-        raise DatabaseRuntimeError("could not initialize SQLite connection") from error
+        msg = "could not initialize SQLite connection"
+        raise DatabaseRuntimeError(msg) from error
+    else:
+        return connection
 
 
 async def close_sqlite_connection(connection: Connection) -> None:
@@ -51,7 +54,8 @@ async def close_sqlite_connection(connection: Connection) -> None:
     try:
         await connection.close()
     except Error as error:
-        raise DatabaseRuntimeError("could not close SQLite connection") from error
+        msg = "could not close SQLite connection"
+        raise DatabaseRuntimeError(msg) from error
 
 
 class SQLiteConnectionPool:
@@ -86,15 +90,17 @@ class SQLiteConnectionPool:
         """Reject new work when closed or temporarily closing."""
 
         if self.closed:
-            raise DatabaseClosedError("database is closed")
+            msg = "database is closed"
+            raise DatabaseClosedError(msg)
         if self.closing:
-            raise DatabaseClosingError("database is closing")
+            msg = "database is closing"
+            raise DatabaseClosingError(msg)
 
-    async def acquire(self, timeout: NonNegativeFloat, /) -> Connection:
+    async def acquire(self, acquisition_timeout: NonNegativeFloat, /) -> Connection:
         """Acquire an existing or lazily-created connection within timeout."""
 
         event_loop = asyncio.get_running_loop()
-        deadline = event_loop.time() + timeout
+        deadline = event_loop.time() + acquisition_timeout
         while True:
             async with self.condition:
                 self.check_accepting_work()
@@ -107,15 +113,17 @@ class SQLiteConnectionPool:
                     break
                 remaining_timeout = deadline - event_loop.time()
                 if remaining_timeout <= 0:
-                    raise PoolTimeoutError("timed out acquiring database connection")
+                    msg = "timed out acquiring database connection"
+                    raise PoolTimeoutError(msg)
                 try:
                     _ = await asyncio.wait_for(
                         self.condition.wait(),
                         timeout=remaining_timeout,
                     )
                 except TimeoutError as error:
+                    msg = "timed out acquiring database connection"
                     raise PoolTimeoutError(
-                        "timed out acquiring database connection",
+                        msg,
                     ) from error
 
         try:
@@ -133,7 +141,8 @@ class SQLiteConnectionPool:
                 return opened_connection
         await close_sqlite_connection(opened_connection)
         self.check_accepting_work()
-        raise DatabaseClosingError("database is closing")
+        msg = "database is closing"
+        raise DatabaseClosingError(msg)
 
     async def release(self, connection: Connection) -> None:
         """Return a checked-out connection or close it during shutdown."""
@@ -149,14 +158,15 @@ class SQLiteConnectionPool:
         if should_close:
             await close_sqlite_connection(connection)
 
-    async def close(self, timeout: NonNegativeFloat, /) -> None:
+    async def close(self, close_timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 
         async with self.condition:
             if self.closed:
                 return
             if self.closing:
-                raise DatabaseClosingError("database is already closing")
+                msg = "database is already closing"
+                raise DatabaseClosingError(msg)
             self.closing = True
             idle_connections = list(self.idle_connections)
             self.idle_connections.clear()
@@ -164,7 +174,7 @@ class SQLiteConnectionPool:
         await self.close_connections(idle_connections)
 
         event_loop = asyncio.get_running_loop()
-        deadline = event_loop.time() + timeout
+        deadline = event_loop.time() + close_timeout
         while True:
             async with self.condition:
                 if self.active_connections == 0 and self.opening_connections == 0:
@@ -178,7 +188,8 @@ class SQLiteConnectionPool:
                 if remaining_timeout <= 0:
                     self.closing = False
                     self.condition.notify_all()
-                    raise DatabaseCloseTimeoutError("database close timed out")
+                    msg = "database close timed out"
+                    raise DatabaseCloseTimeoutError(msg)
                 try:
                     _ = await asyncio.wait_for(
                         self.condition.wait(),
@@ -187,9 +198,8 @@ class SQLiteConnectionPool:
                 except TimeoutError as error:
                     self.closing = False
                     self.condition.notify_all()
-                    raise DatabaseCloseTimeoutError(
-                        "database close timed out"
-                    ) from error
+                    msg = "database close timed out"
+                    raise DatabaseCloseTimeoutError(msg) from error
         await self.close_connections(remaining_idle_connections)
 
     def connection_count(self) -> int:

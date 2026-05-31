@@ -11,11 +11,11 @@ from typing import cast
 from snektest import assert_eq, assert_raises, test
 
 from snekql import (
+    MISSING,
+    Boolean,
     Database,
     Fetched,
-    Boolean,
     Integer,
-    MISSING,
     Model,
     ModelValidationError,
     Pending,
@@ -138,7 +138,7 @@ def select_rejects_mixed_model_and_field_selections() -> None:
 
         email: User.Col[str] = Text(nullable=False)
 
-    select_fn = cast(Callable[..., object], select)
+    select_fn = cast("Callable[..., object]", select)
 
     with assert_raises(QueryConstructionError):
         _ = select_fn(User, User.email)
@@ -158,7 +158,7 @@ def select_rejects_fields_from_multiple_models() -> None:
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
-    select_fn = cast(Callable[..., object], select)
+    select_fn = cast("Callable[..., object]", select)
 
     with assert_raises(QueryConstructionError):
         _ = select_fn(User.email, AuditLog.message)

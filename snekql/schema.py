@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Sequence
+from itertools import starmap
 from typing import Any
 
 from aiosqlite import Connection, Error
@@ -41,9 +43,7 @@ def _compile_column_definition(
 def _compile_create_table_sql(model: type[Table[Any]]) -> str:
     table_name = require_model_table_name(model)
     columns = require_model_columns(model)
-    column_sql = ", ".join(
-        _compile_column_definition(name, column) for name, column in columns.items()
-    )
+    column_sql = ", ".join(starmap(_compile_column_definition, columns.items()))
     return f"CREATE TABLE {quote_sqlite_identifier(table_name)} ({column_sql}) STRICT"
 
 
@@ -63,8 +63,9 @@ async def _fetch_existing_create_table_sql(
         return None
     value = row[0]
     if not isinstance(value, str):
+        msg = f"SQLite metadata for table {table_name!r} did not contain SQL text"
         raise SchemaVerificationError(
-            f"SQLite metadata for table {table_name!r} did not contain SQL text",
+            msg,
         )
     return value
 
@@ -104,20 +105,20 @@ def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
     for model in models:
         table_name = require_model_table_name(model)
         if table_name in table_names:
-            raise SchemaError(f"duplicate table name: {table_name!r}")
+            msg = f"duplicate table name: {table_name!r}"
+            raise SchemaError(msg)
         table_names.add(table_name)
 
 
 async def _rollback_schema_setup(connection: Connection) -> None:
-    try:
+    with contextlib.suppress(Error):
         _ = await connection.execute("ROLLBACK")
-    except Error:
-        pass
 
 
 def _validate_schema_policy(schema_policy: SchemaPolicy) -> None:
-    if schema_policy not in ("strict", "warn"):
-        raise SchemaError("schema_policy must be 'strict' or 'warn'")
+    if schema_policy not in {"strict", "warn"}:
+        msg = "schema_policy must be 'strict' or 'warn'"
+        raise SchemaError(msg)
 
 
 async def _initialize_sqlite_schema(
@@ -136,7 +137,8 @@ async def _initialize_sqlite_schema(
         _ = await connection.execute("COMMIT")
     except Error as error:
         await _rollback_schema_setup(connection)
-        raise SchemaError("SQLite schema setup failed") from error
+        msg = "SQLite schema setup failed"
+        raise SchemaError(msg) from error
     except Exception:
         await _rollback_schema_setup(connection)
         raise

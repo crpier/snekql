@@ -67,7 +67,7 @@ def delete_predicates_must_belong_to_target_model() -> None:
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
-    where = cast(Callable[..., object], delete(User).where)
+    where = cast("Callable[..., object]", delete(User).where)
 
     with assert_raises(QueryConstructionError):
         _ = where(AuditLog.message.eq("wrong table"))

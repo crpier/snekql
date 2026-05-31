@@ -1,7 +1,3 @@
-"""Public API surface for snekql."""
-
-from __future__ import annotations
-
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -22,15 +18,7 @@ from snekql.errors import (
     TransactionClosedError,
 )
 from snekql.expressions import Assignment, OrderBy, Predicate
-from snekql.model import (
-    Col,
-    Fetched,
-    GenCol,
-    Model,
-    ModelMeta,
-    Pending,
-    Table,
-)
+from snekql.model import Col, Fetched, GenCol, Model, ModelMeta, Pending, Table
 from snekql.query import (
     DeleteQuery,
     InsertQuery,

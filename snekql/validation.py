@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Annotated, ParamSpec, TypeVar
+from typing import Annotated
 
 from annotated_types import Ge, Gt
 from pydantic import ConfigDict, ValidationError, validate_call
 
 from snekql.errors import SnekqlError
-
-P = ParamSpec("P")
-R = TypeVar("R")
-ErrorT = TypeVar("ErrorT", bound=SnekqlError)
 
 # Constrained numeric aliases used after public boundary validation.
 type NonNegativeFloat = Annotated[float, Ge(0)]
@@ -21,7 +17,7 @@ type NonNegativeInt = Annotated[int, Ge(0)]
 type PositiveInt = Annotated[int, Gt(0)]
 
 
-def validate_boundary(
+def validate_boundary[ErrorT: SnekqlError, **P, R](
     error_type: type[ErrorT],
     message: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
