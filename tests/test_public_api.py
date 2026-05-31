@@ -86,6 +86,7 @@ def public_contract_exports_canonical_names() -> None:
         "delete",
         "insert",
         "select",
+        "sqlite",
         "update",
     )
 
@@ -123,6 +124,24 @@ def column_declarations_produce_query_attributes() -> None:
     assert_isinstance(AttributeUser.email.eq("alice@example.com"), snekql.Predicate)
     assert_isinstance(AttributeUser.email.asc(), snekql.OrderBy)
     assert_isinstance(AttributeUser.email.to("new@example.com"), snekql.Assignment)
+
+
+@test()
+def sqlite_namespace_exports_backend_specific_names() -> None:
+    """The SQLite namespace exposes the future backend-specific model shape."""
+
+    assert_is(snekql.sqlite.Model, snekql.Model)
+    assert_is(snekql.sqlite.Integer, snekql.Integer)
+    assert_is(snekql.sqlite.Text, snekql.Text)
+    assert_in("Config", snekql.sqlite.__all__)
+
+    class SqliteUser(snekql.sqlite.Model[snekql.Pending, "SqliteUser[snekql.Fetched]"]):
+        """SQLite table model declared through the SQLite namespace."""
+
+        email: SqliteUser.Col[str] = snekql.sqlite.Text(nullable=False)
+
+    assert_isinstance(SqliteUser.email, snekql.sqlite.Attr)
+    assert_isinstance(SqliteUser.email.eq("alice@example.com"), snekql.Predicate)
 
 
 @test()

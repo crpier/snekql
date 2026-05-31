@@ -28,6 +28,14 @@ _Avoid_: Entity, ORM model
 The database-specific SQL and schema behavior targeted by compilation and verification.
 _Avoid_: Driver, runtime
 
+**Backend Namespace**:
+The public database-family namespace that owns model bases, column declarations, and runtime configuration for one database family.
+_Avoid_: generic portability layer, driver module
+
+**Backend Runtime Adapter**:
+The internal adapter that lets the Query Runtime acquire connections, control transactions, compile SQL, and materialize rows for one backend.
+_Avoid_: ORM session, universal dialect abstraction
+
 **Server Default**:
 A database-supplied column value that is filled in by the database when an insert omits that column.
 _Avoid_: Python default, constructor default

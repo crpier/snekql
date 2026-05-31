@@ -19,7 +19,7 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.schema import quote_sqlite_identifier
+from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 

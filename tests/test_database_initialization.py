@@ -20,6 +20,7 @@ from snekql import (
     SchemaError,
     SchemaVerificationError,
     Text,
+    sqlite,
 )
 
 
@@ -100,6 +101,49 @@ async def initialize_creates_missing_strict_tables() -> None:
 
 
 @test(mark="medium")
+async def initialize_accepts_sqlite_config_object() -> None:
+    """SQLite configuration objects select the SQLite runtime explicitly."""
+
+    class User[S = Pending](sqlite.Model[S, "User[object]"]):
+        """Table model used for SQLite config initialization."""
+
+        id: User.GenCol[int] = sqlite.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = sqlite.Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        config = sqlite.Config(database=database_path, pool_size=2)
+        database = await Database.initialize(config, models=[User])
+        await database.close()
+
+        create_table = _fetch_create_table(database_path, "user")
+
+    expected_sql = (
+        'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL) STRICT'
+    )
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
+async def initialize_rejects_mixed_sqlite_config_and_legacy_database() -> None:
+    """A backend config cannot be combined with legacy database arguments."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        config = sqlite.Config(database=database_path)
+
+        initialize = cast("Any", Database.initialize)
+
+        with assert_raises(DatabaseRuntimeError):
+            _ = await initialize(config, database=database_path)
+
+
+@test(mark="medium")
 async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None:
     """Only pathlib.Path and the exact in-memory database string are accepted."""
 
@@ -111,7 +155,7 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
         def __fspath__(self) -> str:
             return "app.db"
 
-    with assert_raises(TypeError):
+    with assert_raises(DatabaseRuntimeError):
         _ = await initialize("app.db")
 
     with assert_raises(DatabaseRuntimeError):
