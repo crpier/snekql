@@ -23,13 +23,16 @@ from snekql.errors import (
 )
 from snekql.model import Table
 from snekql.query import (
+    AnySelectQuery,
     DeleteQuery,
     InsertQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    compile_select_sql,
     compile_write_sql,
+    materialize_select_row,
 )
 from snekql.schema import initialize_sqlite_schema
 from snekql.schema import validate_schema_models, validate_schema_policy
@@ -116,9 +119,21 @@ class Transaction:
     async def fetch_all(self, query: object) -> object:
         """Fetch all rows for a select query."""
 
-        _ = query
-        _ = self.require_connection()
-        raise QueryCompilationError("select execution is not implemented yet")
+        connection = self.require_connection()
+        select_query = self._require_select_query(query)
+        sql, params = compile_select_sql(select_query)
+        try:
+            cursor = await connection.execute(sql, params)
+            try:
+                rows = await cursor.fetchall()
+            finally:
+                await cursor.close()
+        except Error as error:
+            raise ExecutionError("select failed", sql=sql, params=params) from error
+        return [
+            materialize_select_row(select_query, tuple(cast(Sequence[object], row)))
+            for row in rows
+        ]
 
     @overload
     async def fetch_one(
@@ -133,9 +148,23 @@ class Transaction:
     async def fetch_one(self, query: object) -> object:
         """Fetch one row for a select query."""
 
-        _ = query
-        _ = self.require_connection()
-        raise QueryCompilationError("select execution is not implemented yet")
+        connection = self.require_connection()
+        select_query = self._require_select_query(query)
+        sql, params = compile_select_sql(select_query)
+        try:
+            cursor = await connection.execute(sql, params)
+            try:
+                row = await cursor.fetchone()
+            finally:
+                await cursor.close()
+        except Error as error:
+            raise ExecutionError("select failed", sql=sql, params=params) from error
+        if row is None:
+            return None
+        return materialize_select_row(
+            select_query,
+            tuple(cast(Sequence[object], row)),
+        )
 
     async def execute(
         self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]
@@ -156,6 +185,12 @@ class Transaction:
         if self.closed or connection is None:
             raise TransactionClosedError("transaction is closed")
         return connection
+
+    @staticmethod
+    def _require_select_query(query: object) -> AnySelectQuery:
+        if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
+            return cast(AnySelectQuery, query)
+        raise QueryCompilationError("fetch requires a select query")
 
     @staticmethod
     async def execute_sqlite(

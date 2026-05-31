@@ -12,6 +12,7 @@ from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
     ModelValidationError,
+    QueryConstructionError,
     SnekqlError,
 )
 from snekql.expressions import Assignment, OrderBy, Predicate
@@ -266,6 +267,7 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
         self.default_factory: Callable[[], object] | EllipsisType = default_factory
         self.is_generated: bool = False
         self.name: str | None = None
+        self.owner: type[object] | None = None
         self.nullable: bool | None = nullable
         self.primary_key: bool = primary_key
         self.server_default: object | None = server_default
@@ -274,6 +276,7 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name
+        self.owner = owner
 
     @overload
     def __get__(
@@ -473,19 +476,26 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
         return utc_value.replace(microsecond=milliseconds * 1000)
 
     def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
-        return Predicate()
+        if value is None:
+            raise QueryConstructionError("eq(None) is invalid; use is_null()")
+        return Predicate(kind="eq", column=self, value=value)
 
     def ne(self, value: ReadValueT) -> Predicate[OwnerT]:
-        return Predicate()
+        if value is None:
+            raise QueryConstructionError("ne(None) is invalid; use is_not_null()")
+        return Predicate(kind="ne", column=self, value=value)
 
     def is_null(self) -> Predicate[OwnerT]:
-        return Predicate()
+        return Predicate(kind="is_null", column=self)
 
     def is_not_null(self) -> Predicate[OwnerT]:
-        return Predicate()
+        return Predicate(kind="is_not_null", column=self)
 
     def in_(self, value: ReadValueT, /, *values: ReadValueT) -> Predicate[OwnerT]:
-        return Predicate()
+        all_values = (value, *values)
+        if any(candidate is None for candidate in all_values):
+            raise QueryConstructionError("in_() values cannot be None")
+        return Predicate(kind="in", column=self, values=all_values)
 
     def not_in(
         self,
@@ -493,19 +503,26 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
         /,
         *values: ReadValueT,
     ) -> Predicate[OwnerT]:
-        return Predicate()
+        all_values = (value, *values)
+        if any(candidate is None for candidate in all_values):
+            raise QueryConstructionError("not_in() values cannot be None")
+        return Predicate(kind="not_in", column=self, values=all_values)
 
     def like(self, pattern: str) -> Predicate[OwnerT]:
-        return Predicate()
+        if self.storage_type_name != "Text":
+            raise QueryConstructionError("like() is only valid for text columns")
+        return Predicate(kind="like", column=self, value=pattern)
 
     def not_like(self, pattern: str) -> Predicate[OwnerT]:
-        return Predicate()
+        if self.storage_type_name != "Text":
+            raise QueryConstructionError("not_like() is only valid for text columns")
+        return Predicate(kind="not_like", column=self, value=pattern)
 
     def asc(self) -> OrderBy[OwnerT]:
-        return OrderBy()
+        return OrderBy(column=self, direction="ASC")
 
     def desc(self) -> OrderBy[OwnerT]:
-        return OrderBy()
+        return OrderBy(column=self, direction="DESC")
 
     def to(self, value: ReadValueT) -> Assignment[OwnerT]:
-        return Assignment()
+        return Assignment(column=self, value=value)
