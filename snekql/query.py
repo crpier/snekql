@@ -21,6 +21,7 @@ from snekql.model import (
 )
 from snekql.schema import quote_sqlite_identifier
 from snekql.storage import Attr
+from snekql.validation import NonNegativeInt, validate_boundary
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
@@ -90,11 +91,17 @@ class SelectModelQuery(Generic[SelectOwnerT, ReadModelT]):
         state = _select_order_by(self.state, ordering)
         return cast(Self, SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
-    def limit(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "limit() requires a non-negative integer"
+    )
+    def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast(Self, SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
-    def offset(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "offset() requires a non-negative integer"
+    )
+    def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast(Self, SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
@@ -128,11 +135,17 @@ class SelectValueQuery(Generic[OwnerT, T]):
         state = _select_order_by(self.state, ordering)
         return cast(Self, SelectValueQuery[OwnerT, T](state))
 
-    def limit(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "limit() requires a non-negative integer"
+    )
+    def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast(Self, SelectValueQuery[OwnerT, T](state))
 
-    def offset(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "offset() requires a non-negative integer"
+    )
+    def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast(Self, SelectValueQuery[OwnerT, T](state))
 
@@ -166,11 +179,17 @@ class SelectTupleQuery(Generic[OwnerT, *Ts]):
         state = _select_order_by(self.state, ordering)
         return cast(Self, SelectTupleQuery[OwnerT, *Ts](state))
 
-    def limit(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "limit() requires a non-negative integer"
+    )
+    def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast(Self, SelectTupleQuery[OwnerT, *Ts](state))
 
-    def offset(self, value: int) -> Self:
+    @validate_boundary(
+        QueryConstructionError, "offset() requires a non-negative integer"
+    )
+    def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast(Self, SelectTupleQuery[OwnerT, *Ts](state))
 
@@ -263,15 +282,11 @@ def _select_order_by(
     return replace(state, orderings=(*state.orderings, *orderings))
 
 
-def _select_limit(state: _SelectState, value: int) -> _SelectState:
-    if value < 0:
-        raise QueryConstructionError("limit() requires a non-negative integer")
+def _select_limit(state: _SelectState, value: NonNegativeInt) -> _SelectState:
     return replace(state, limit_value=value)
 
 
-def _select_offset(state: _SelectState, value: int) -> _SelectState:
-    if value < 0:
-        raise QueryConstructionError("offset() requires a non-negative integer")
+def _select_offset(state: _SelectState, value: NonNegativeInt) -> _SelectState:
     return replace(state, offset_value=value)
 
 

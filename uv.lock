@@ -184,6 +184,8 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },
+    { name = "annotated-types" },
+    { name = "pydantic" },
 ]
 
 [package.dev-dependencies]
@@ -194,7 +196,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "aiosqlite", specifier = ">=0.22.1" }]
+requires-dist = [
+    { name = "aiosqlite", specifier = ">=0.22.1" },
+    { name = "annotated-types", specifier = ">=0.7.0" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+]
 
 [package.metadata.requires-dev]
 dev = [

@@ -15,6 +15,7 @@ from snekql.errors import (
     DatabaseRuntimeError,
     PoolTimeoutError,
 )
+from snekql.validation import NonNegativeFloat, PositiveInt
 
 
 def normalize_sqlite_database(database: object) -> str:
@@ -63,14 +64,14 @@ class SQLiteConnectionPool:
     database_path: str
     idle_connections: list[Connection]
     opening_connections: int
-    pool_size: int
+    pool_size: PositiveInt
 
     def __init__(
         self,
         *,
         database_path: str,
         initial_connection: Connection,
-        pool_size: int,
+        pool_size: PositiveInt,
     ) -> None:
         self.active_connections: int = 0
         self.closed: bool = False
@@ -79,7 +80,7 @@ class SQLiteConnectionPool:
         self.database_path: str = database_path
         self.idle_connections: list[Connection] = [initial_connection]
         self.opening_connections: int = 0
-        self.pool_size: int = pool_size
+        self.pool_size: PositiveInt = pool_size
 
     def check_accepting_work(self) -> None:
         """Reject new work when closed or temporarily closing."""
@@ -89,7 +90,7 @@ class SQLiteConnectionPool:
         if self.closing:
             raise DatabaseClosingError("database is closing")
 
-    async def acquire(self, timeout: float, /) -> Connection:
+    async def acquire(self, timeout: NonNegativeFloat, /) -> Connection:
         """Acquire an existing or lazily-created connection within timeout."""
 
         event_loop = asyncio.get_running_loop()
@@ -148,7 +149,7 @@ class SQLiteConnectionPool:
         if should_close:
             await close_sqlite_connection(connection)
 
-    async def close(self, timeout: float, /) -> None:
+    async def close(self, timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 
         async with self.condition:
