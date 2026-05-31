@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Generic, Protocol, Self, TypeVar, TypeVarTuple, overload
 
-from snekql.errors import QueryConstructionError
+from snekql.errors import QueryCompilationError, QueryConstructionError
 from snekql.expressions import Assignment, OrderBy, Predicate
 from snekql.model import Table, encode_model_row, require_model_table_name
 from snekql.schema import quote_sqlite_identifier
@@ -156,9 +156,7 @@ class DeleteQuery(Generic[ModelT]):
         return self
 
 
-def compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
-    """Compile a pending model insert into SQLite SQL and parameters."""
-
+def _compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
     model_class, row_values = encode_model_row(query.row)
     table_name = require_model_table_name(model_class)
     quoted_table = quote_sqlite_identifier(table_name)
@@ -170,6 +168,16 @@ def compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]
     sql = f"INSERT INTO {quoted_table} ({quoted_columns}) VALUES ({placeholders})"
     params = tuple(row_values[name] for name in names)
     return sql, params
+
+
+def compile_write_sql(
+    query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any],
+) -> tuple[str, tuple[object, ...]]:
+    """Compile a write query into parameterized SQLite SQL."""
+
+    if isinstance(query, InsertQuery):
+        return _compile_insert_sql(query)
+    raise QueryCompilationError("only insert execution is implemented yet")
 
 
 @overload

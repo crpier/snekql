@@ -29,7 +29,7 @@ from snekql.query import (
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
-    compile_insert_sql,
+    compile_write_sql,
 )
 from snekql.schema import initialize_sqlite_schema
 from snekql.schema import validate_schema_models, validate_schema_policy
@@ -143,9 +143,7 @@ class Transaction:
         """Execute a write query inside this transaction."""
 
         connection = self.require_connection()
-        if not isinstance(query, InsertQuery):
-            raise QueryCompilationError("only insert execution is implemented yet")
-        sql, params = compile_insert_sql(query)
+        sql, params = compile_write_sql(query)
         try:
             await self.execute_sqlite(connection, sql, params)
         except Error as error:
