@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime
+from json import JSONDecodeError, dumps, loads
 from types import EllipsisType
 from typing import (
     Any,
@@ -19,6 +21,8 @@ from typing import (
     dataclass_transform,
     overload,
 )
+
+type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 
 StateT = TypeVar("StateT")
 ModelT = TypeVar("ModelT", bound="Table[Any]")
@@ -237,6 +241,11 @@ class Integer:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            auto_increment=auto_increment,
+            sqlite_storage_class="INTEGER",
+            storage_type_name="Integer",
         )
 
 
@@ -258,6 +267,10 @@ class Real:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            sqlite_storage_class="REAL",
+            storage_type_name="Real",
         )
 
 
@@ -279,6 +292,10 @@ class Text:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Text",
         )
 
 
@@ -300,6 +317,10 @@ class Blob:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            sqlite_storage_class="BLOB",
+            storage_type_name="Blob",
         )
 
 
@@ -323,6 +344,9 @@ class Json:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Json",
         )
 
 
@@ -343,6 +367,9 @@ class Boolean:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            sqlite_storage_class="INTEGER",
+            storage_type_name="Boolean",
         )
 
 
@@ -367,6 +394,10 @@ class DateTime:
         return Attr[Any, Any, Any, Any, Any](
             default=default,
             default_factory=default_factory,
+            nullable=nullable,
+            server_default=server_default,
+            sqlite_storage_class="TEXT",
+            storage_type_name="DateTime",
         )
 
 
@@ -429,10 +460,23 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
         *,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
+        nullable: bool | None = None,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        server_default: object | None = None,
+        sqlite_storage_class: SQLiteStorageClass,
+        storage_type_name: str,
     ) -> None:
+        self.auto_increment: bool = auto_increment
         self.default: object = default
         self.default_factory: Callable[[], object] | EllipsisType = default_factory
+        self.is_generated: bool = False
         self.name: str | None = None
+        self.nullable: bool | None = nullable
+        self.primary_key: bool = primary_key
+        self.server_default: object | None = server_default
+        self.sqlite_storage_class: SQLiteStorageClass = sqlite_storage_class
+        self.storage_type_name: str = storage_type_name
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name
@@ -468,10 +512,171 @@ class Attr(Generic[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]):
             return self.default_factory()
         return self.default
 
+    def decode_sqlite(self, value: object) -> object:
+        """Decode a SQLite value to its logical Python value."""
+
+        try:
+            decoded_value = self._decode_sqlite(value)
+            return self._coerce_logical_value(decoded_value, fetched=True)
+        except SnekqlError:
+            raise
+        except Exception as error:
+            raise ModelValidationError(
+                f"invalid database value for {self._require_name()!r}",
+            ) from error
+
+    def encode_sqlite(self, value: object) -> object:
+        """Encode a logical Python value for SQLite storage."""
+
+        try:
+            logical_value = self._coerce_logical_value(value, fetched=False)
+            if logical_value is MISSING:
+                return MISSING
+            return self._encode_sqlite(logical_value)
+        except SnekqlError:
+            raise
+        except Exception as error:
+            raise ModelValidationError(
+                f"invalid model value for {self._require_name()!r}",
+            ) from error
+
+    def validate_model_value(self, value: object) -> object:
+        """Validate and normalize a pending model value."""
+
+        try:
+            return self._coerce_logical_value(value, fetched=False)
+        except SnekqlError:
+            raise
+        except Exception as error:
+            raise ModelValidationError(
+                f"invalid model value for {self._require_name()!r}",
+            ) from error
+
     def _require_name(self) -> str:
         if self.name is None:
             raise ModelDeclarationError("column descriptor is not bound")
         return self.name
+
+    def _coerce_logical_value(self, value: object, *, fetched: bool) -> object:
+        if value is MISSING:
+            if self.is_generated and not fetched:
+                return MISSING
+            raise ModelValidationError(
+                f"missing generated value for {self._require_name()!r}"
+            )
+        if value is None:
+            if self.nullable is False:
+                raise ModelValidationError(f"{self._require_name()!r} cannot be null")
+            return None
+        if self.storage_type_name == "Integer":
+            if type(value) is not int:
+                raise ModelValidationError(f"{self._require_name()!r} must be an int")
+            return value
+        if self.storage_type_name == "Real":
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                raise ModelValidationError(f"{self._require_name()!r} must be a number")
+            return float(value)
+        if self.storage_type_name == "Text":
+            if not isinstance(value, str):
+                raise ModelValidationError(f"{self._require_name()!r} must be a str")
+            return value
+        if self.storage_type_name == "Blob":
+            if not isinstance(value, bytes):
+                raise ModelValidationError(f"{self._require_name()!r} must be bytes")
+            return value
+        if self.storage_type_name == "Json":
+            try:
+                _ = dumps(value, separators=(",", ":"))
+            except (TypeError, ValueError) as error:
+                raise ModelValidationError(
+                    f"{self._require_name()!r} is not JSON serializable",
+                ) from error
+            return value
+        if self.storage_type_name == "Boolean":
+            if type(value) is not bool:
+                raise ModelValidationError(f"{self._require_name()!r} must be a bool")
+            return value
+        if self.storage_type_name == "DateTime":
+            if not isinstance(value, datetime):
+                raise ModelValidationError(
+                    f"{self._require_name()!r} must be a datetime",
+                )
+            return self._normalize_datetime(value)
+        raise ModelDeclarationError(
+            f"unknown storage type {self.storage_type_name!r}",
+        )
+
+    def _decode_sqlite(self, value: object) -> object:
+        if value is None:
+            return None
+        if self.storage_type_name == "Json":
+            if not isinstance(value, str):
+                raise ModelValidationError(
+                    f"{self._require_name()!r} database value must be JSON text",
+                )
+            try:
+                return loads(value)
+            except JSONDecodeError as error:
+                raise ModelValidationError(
+                    f"{self._require_name()!r} database value is not valid JSON",
+                ) from error
+        if self.storage_type_name == "Boolean":
+            if value == 0:
+                return False
+            if value == 1:
+                return True
+            raise ModelValidationError(
+                f"{self._require_name()!r} database value must be 0 or 1",
+            )
+        if self.storage_type_name == "DateTime":
+            if not isinstance(value, str):
+                raise ModelValidationError(
+                    f"{self._require_name()!r} database value must be timestamp text",
+                )
+            return self._decode_datetime_text(value)
+        return value
+
+    def _decode_datetime_text(self, value: str) -> datetime:
+        if not value.endswith("Z"):
+            raise ModelValidationError(
+                f"{self._require_name()!r} timestamp must end with Z",
+            )
+        try:
+            parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
+        except ValueError as error:
+            raise ModelValidationError(
+                f"{self._require_name()!r} timestamp is not valid ISO text",
+            ) from error
+        return self._normalize_datetime(parsed)
+
+    def _encode_sqlite(self, value: object) -> object:
+        if value is None:
+            return None
+        if self.storage_type_name == "Json":
+            try:
+                return dumps(value, separators=(",", ":"))
+            except (TypeError, ValueError) as error:
+                raise ModelValidationError(
+                    f"{self._require_name()!r} is not JSON serializable",
+                ) from error
+        if self.storage_type_name == "Boolean":
+            return 1 if value else 0
+        if self.storage_type_name == "DateTime":
+            timestamp = cast(datetime, value)
+            return (
+                timestamp.strftime("%Y-%m-%dT%H:%M:%S.")
+                + f"{timestamp.microsecond // 1000:03d}Z"
+            )
+        return value
+
+    def _normalize_datetime(self, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ModelValidationError(
+                f"{self._require_name()!r} must be timezone-aware",
+            )
+        utc_value = value.astimezone(UTC)
+        milliseconds = utc_value.microsecond // 1000
+        return utc_value.replace(microsecond=milliseconds * 1000)
 
     def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
         return Predicate()
@@ -632,14 +837,25 @@ class ModelMeta(type):
                     raise ModelDeclarationError(
                         f"abstract members are not supported: {attribute_name!r}",
                     )
+        annotations_object = namespace.get("__annotations__", {})
+        annotations = (
+            cast(dict[str, object], annotations_object)
+            if isinstance(annotations_object, dict)
+            else {}
+        )
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
         for attribute_name, attribute_value in model_class.__dict__.items():
             if isinstance(attribute_value, Attr):
+                column = cast(Attr[Any, Any, Any, Any, Any], attribute_value)
                 if not ModelMeta._is_sql_identifier(attribute_name):
                     raise ModelDeclarationError(
                         f"invalid column identifier: {attribute_name!r}",
                     )
-                columns[attribute_name] = attribute_value
+                column.is_generated = ModelMeta._is_generated_annotation(
+                    annotations.get(attribute_name),
+                )
+                ModelMeta._validate_column_declaration(attribute_name, column)
+                columns[attribute_name] = column
         if name != "Model":
             table_name = namespace.get(
                 "__tablename__",
@@ -652,6 +868,44 @@ class ModelMeta(type):
             setattr(model_class, "__tablename__", table_name)
         setattr(model_class, "__snekql_columns__", columns)
         return model_class
+
+    @staticmethod
+    def _is_generated_annotation(annotation: object) -> bool:
+        if annotation is None:
+            return False
+        return "GenCol[" in str(annotation)
+
+    @staticmethod
+    def _validate_column_declaration(
+        name: str,
+        column: Attr[Any, Any, Any, Any, Any],
+    ) -> None:
+        if isinstance(column.default, CurrentTimestamp):
+            raise ModelDeclarationError(
+                f"CurrentTimestamp cannot be a Python default for {name!r}",
+            )
+        if column.server_default is None:
+            return
+        if not isinstance(column.server_default, CurrentTimestamp):
+            raise ModelDeclarationError(
+                f"unsupported server default for {name!r}",
+            )
+        if column.storage_type_name != "DateTime":
+            raise ModelDeclarationError(
+                f"CurrentTimestamp requires a DateTime column: {name!r}",
+            )
+        if not column.is_generated:
+            raise ModelDeclarationError(
+                f"CurrentTimestamp requires a generated column: {name!r}",
+            )
+        if column.default is not MISSING:
+            raise ModelDeclarationError(
+                f"CurrentTimestamp generated columns must default to MISSING: {name!r}",
+            )
+        if not isinstance(column.default_factory, EllipsisType):
+            raise ModelDeclarationError(
+                f"CurrentTimestamp generated columns cannot use default_factory: {name!r}",
+            )
 
     @staticmethod
     def _infer_table_name(class_name: str) -> str:
@@ -709,10 +963,17 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
             if name in remaining_values:
                 value = remaining_values.pop(name)
             else:
-                value = column.build_default()
+                try:
+                    value = column.build_default()
+                except SnekqlError:
+                    raise
+                except Exception as error:
+                    raise ModelValidationError(
+                        f"default factory failed for {name!r}",
+                    ) from error
             if isinstance(value, EllipsisType):
                 raise ModelValidationError(f"missing required value for {name!r}")
-            setattr(self, name, value)
+            setattr(self, name, column.validate_model_value(value))
         if remaining_values:
             names = ", ".join(sorted(remaining_values))
             raise ModelValidationError(f"unknown model values: {names}")
@@ -753,6 +1014,40 @@ class Model(Generic[StateT, ReadModelT], Table[StateT], metaclass=ModelMeta):
         )
         state = storage.get("_snekql_state", "Pending")
         return cast(str, state)
+
+    def _snekql_to_row(self) -> dict[str, object]:
+        """Encode this model's present values for SQLite storage."""
+
+        row: dict[str, object] = {}
+        for name, column in self.__class__.__snekql_columns__.items():
+            value = getattr(self, name)
+            if value is MISSING:
+                continue
+            row[name] = column.encode_sqlite(value)
+        return row
+
+    @classmethod
+    def _snekql_from_row(cls, row: Mapping[str, object]) -> Self:
+        """Materialize a fetched model from SQLite storage values."""
+
+        remaining_values = dict(row)
+        model = object.__new__(cls)
+        storage = cast(
+            dict[str, object],
+            object.__getattribute__(model, "__dict__"),
+        )
+        storage["_snekql_frozen"] = False
+        storage["_snekql_state"] = "Fetched"
+        for name, column in cls.__snekql_columns__.items():
+            if name not in remaining_values:
+                raise ModelValidationError(f"missing database value for {name!r}")
+            value = column.decode_sqlite(remaining_values.pop(name))
+            setattr(model, name, value)
+        if remaining_values:
+            names = ", ".join(sorted(remaining_values))
+            raise ModelValidationError(f"unknown database values: {names}")
+        storage["_snekql_frozen"] = True
+        return model
 
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:
