@@ -62,6 +62,21 @@ class _SelectState:
     offset_value: int | None = None
 
 
+@dataclass(frozen=True)
+class _UpdateState:
+    model: type[Table[Any]]
+    assignments: tuple[Assignment[Any], ...] = ()
+    explicit_all: bool = False
+    predicates: tuple[Predicate[Any], ...] = ()
+
+
+@dataclass(frozen=True)
+class _DeleteState:
+    model: type[Table[Any]]
+    explicit_all: bool = False
+    predicates: tuple[Predicate[Any], ...] = ()
+
+
 class SelectModelQuery(Generic[SelectOwnerT, ReadModelT]):
     """Immutable select query that returns fetched table model instances."""
 
@@ -78,13 +93,8 @@ class SelectModelQuery(Generic[SelectOwnerT, ReadModelT]):
             return self
         return cast(Self, SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
-    def where(
-        self,
-        predicate: Predicate[SelectOwnerT],
-        /,
-        *predicates: Predicate[SelectOwnerT],
-    ) -> Self:
-        state = _select_where(self.state, (predicate, *predicates))
+    def where(self, *predicates: Predicate[SelectOwnerT]) -> Self:
+        state = _select_where(self.state, predicates)
         return cast(Self, SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
     def order_by(self, *ordering: OrderBy[SelectOwnerT]) -> Self:
@@ -122,13 +132,8 @@ class SelectValueQuery(Generic[OwnerT, T]):
             return self
         return cast(Self, SelectValueQuery[OwnerT, T](state))
 
-    def where(
-        self,
-        predicate: Predicate[OwnerT],
-        /,
-        *predicates: Predicate[OwnerT],
-    ) -> Self:
-        state = _select_where(self.state, (predicate, *predicates))
+    def where(self, *predicates: Predicate[OwnerT]) -> Self:
+        state = _select_where(self.state, predicates)
         return cast(Self, SelectValueQuery[OwnerT, T](state))
 
     def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
@@ -166,13 +171,8 @@ class SelectTupleQuery(Generic[OwnerT, *Ts]):
             return self
         return cast(Self, SelectTupleQuery[OwnerT, *Ts](state))
 
-    def where(
-        self,
-        predicate: Predicate[OwnerT],
-        /,
-        *predicates: Predicate[OwnerT],
-    ) -> Self:
-        state = _select_where(self.state, (predicate, *predicates))
+    def where(self, *predicates: Predicate[OwnerT]) -> Self:
+        state = _select_where(self.state, predicates)
         return cast(Self, SelectTupleQuery[OwnerT, *Ts](state))
 
     def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
@@ -206,39 +206,47 @@ class InsertQuery(Generic[ModelT]):
 class UpdateQuery(Generic[ModelT]):
     """Immutable update statement for one table model."""
 
+    state: _UpdateState
+
+    def __init__(self, state: _UpdateState | None = None) -> None:
+        if state is None:
+            state = _UpdateState(model=Table[Any])
+        self.state: _UpdateState = state
+
     def all(self) -> Self:
-        return self
+        state = _update_all(self.state)
+        if state is self.state:
+            return self
+        return cast(Self, UpdateQuery[ModelT](state))
 
-    def set(
-        self,
-        assignment: Assignment[ModelT],
-        /,
-        *assignments: Assignment[ModelT],
-    ) -> Self:
-        return self
+    def set(self, *assignments: Assignment[ModelT]) -> Self:
+        state = _update_set(self.state, assignments)
+        return cast(Self, UpdateQuery[ModelT](state))
 
-    def where(
-        self,
-        predicate: Predicate[ModelT],
-        /,
-        *predicates: Predicate[ModelT],
-    ) -> Self:
-        return self
+    def where(self, *predicates: Predicate[ModelT]) -> Self:
+        state = _update_where(self.state, predicates)
+        return cast(Self, UpdateQuery[ModelT](state))
 
 
 class DeleteQuery(Generic[ModelT]):
     """Immutable delete statement for one table model."""
 
-    def all(self) -> Self:
-        return self
+    state: _DeleteState
 
-    def where(
-        self,
-        predicate: Predicate[ModelT],
-        /,
-        *predicates: Predicate[ModelT],
-    ) -> Self:
-        return self
+    def __init__(self, state: _DeleteState | None = None) -> None:
+        if state is None:
+            state = _DeleteState(model=Table[Any])
+        self.state: _DeleteState = state
+
+    def all(self) -> Self:
+        state = _delete_all(self.state)
+        if state is self.state:
+            return self
+        return cast(Self, DeleteQuery[ModelT](state))
+
+    def where(self, *predicates: Predicate[ModelT]) -> Self:
+        state = _delete_where(self.state, predicates)
+        return cast(Self, DeleteQuery[ModelT](state))
 
 
 type AnySelectQuery = (
@@ -264,6 +272,8 @@ def _select_where(
     state: _SelectState,
     predicates: tuple[Predicate[Any], ...],
 ) -> _SelectState:
+    if not predicates:
+        raise QueryConstructionError("where() requires at least one predicate")
     if state.explicit_all:
         raise QueryConstructionError("where() cannot be combined with all()")
     for predicate in predicates:
@@ -288,6 +298,59 @@ def _select_limit(state: _SelectState, value: NonNegativeInt) -> _SelectState:
 
 def _select_offset(state: _SelectState, value: NonNegativeInt) -> _SelectState:
     return replace(state, offset_value=value)
+
+
+def _update_all(state: _UpdateState) -> _UpdateState:
+    if state.predicates:
+        raise QueryConstructionError("all() cannot be combined with where()")
+    if state.explicit_all:
+        return state
+    return replace(state, explicit_all=True)
+
+
+def _update_set(
+    state: _UpdateState,
+    assignments: tuple[Assignment[Any], ...],
+) -> _UpdateState:
+    if not assignments:
+        raise QueryConstructionError("set() requires at least one assignment")
+    for assignment in assignments:
+        _ensure_assignment_targets_model(assignment, state.model)
+    return replace(state, assignments=(*state.assignments, *assignments))
+
+
+def _update_where(
+    state: _UpdateState,
+    predicates: tuple[Predicate[Any], ...],
+) -> _UpdateState:
+    if not predicates:
+        raise QueryConstructionError("where() requires at least one predicate")
+    if state.explicit_all:
+        raise QueryConstructionError("where() cannot be combined with all()")
+    for predicate in predicates:
+        _ensure_predicate_targets_model(predicate, state.model)
+    return replace(state, predicates=(*state.predicates, *predicates))
+
+
+def _delete_all(state: _DeleteState) -> _DeleteState:
+    if state.predicates:
+        raise QueryConstructionError("all() cannot be combined with where()")
+    if state.explicit_all:
+        return state
+    return replace(state, explicit_all=True)
+
+
+def _delete_where(
+    state: _DeleteState,
+    predicates: tuple[Predicate[Any], ...],
+) -> _DeleteState:
+    if not predicates:
+        raise QueryConstructionError("where() requires at least one predicate")
+    if state.explicit_all:
+        raise QueryConstructionError("where() cannot be combined with all()")
+    for predicate in predicates:
+        _ensure_predicate_targets_model(predicate, state.model)
+    return replace(state, predicates=(*state.predicates, *predicates))
 
 
 def _require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
@@ -339,6 +402,19 @@ def _ensure_ordering_targets_model(
         raise QueryConstructionError("joins are not supported in v1")
 
 
+def _ensure_assignment_targets_model(
+    assignment: Assignment[Any],
+    model: type[Table[Any]],
+) -> None:
+    if assignment.column is None:
+        raise QueryConstructionError("assignments must be built from columns")
+    column = _require_field(assignment.column)
+    if _require_column_model(column) is not model:
+        raise QueryConstructionError("joins are not supported in v1")
+    if column.is_generated or column.primary_key:
+        raise QueryConstructionError("generated and primary key columns cannot update")
+
+
 def _compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
     model_class, row_values = encode_model_row(query.row)
     table_name = require_model_table_name(model_class)
@@ -373,8 +449,12 @@ def _compile_predicate_sql(
     column = _require_field(predicate.column)
     column_name = quote_sqlite_identifier(_require_column_name(column))
     if predicate.kind == "eq":
+        if predicate.value is None:
+            raise QueryCompilationError("eq(None) is invalid; use is_null()")
         return f"{column_name} = ?", (column.encode_sqlite(predicate.value),)
     if predicate.kind == "ne":
+        if predicate.value is None:
+            raise QueryCompilationError("ne(None) is invalid; use is_not_null()")
         return f"{column_name} != ?", (column.encode_sqlite(predicate.value),)
     if predicate.kind == "is_null":
         return f"{column_name} IS NULL", ()
@@ -383,13 +463,19 @@ def _compile_predicate_sql(
     if predicate.kind in ("in", "not_in"):
         if not predicate.values:
             raise QueryCompilationError("IN predicates require at least one value")
+        if any(value is None for value in predicate.values):
+            raise QueryCompilationError("IN predicate values cannot be None")
         placeholders = ", ".join("?" for _ in predicate.values)
         operator = "IN" if predicate.kind == "in" else "NOT IN"
         params = tuple(column.encode_sqlite(value) for value in predicate.values)
         return f"{column_name} {operator} ({placeholders})", params
     if predicate.kind == "like":
+        if column.storage_type_name != "Text":
+            raise QueryCompilationError("like() is only valid for text columns")
         return f"{column_name} LIKE ?", (column.encode_sqlite(predicate.value),)
     if predicate.kind == "not_like":
+        if column.storage_type_name != "Text":
+            raise QueryCompilationError("not_like() is only valid for text columns")
         return f"{column_name} NOT LIKE ?", (column.encode_sqlite(predicate.value),)
     raise QueryCompilationError("unknown predicate kind")
 
@@ -402,6 +488,61 @@ def _compile_ordering_sql(
     column = _require_field(ordering.column)
     column_name = quote_sqlite_identifier(_require_column_name(column))
     return f"{column_name} {ordering.direction}"
+
+
+def _compile_predicates_sql(
+    predicates: tuple[Predicate[Any], ...],
+    model: type[Table[Any]],
+) -> tuple[str, tuple[object, ...]]:
+    predicate_sql_parts: list[str] = []
+    predicate_params: tuple[object, ...] = ()
+    for predicate in predicates:
+        predicate_sql, compiled_params = _compile_predicate_sql(predicate, model)
+        predicate_sql_parts.append(f"({predicate_sql})")
+        predicate_params = (*predicate_params, *compiled_params)
+    return " AND ".join(predicate_sql_parts), predicate_params
+
+
+def _compile_update_sql(query: UpdateQuery[Any]) -> tuple[str, tuple[object, ...]]:
+    state = query.state
+    if not state.assignments:
+        raise QueryCompilationError("update requires set() before execution")
+    if not state.explicit_all and not state.predicates:
+        raise QueryCompilationError("update requires all() or where() before execution")
+    table_name = require_model_table_name(state.model)
+    set_sql_parts: list[str] = []
+    params: tuple[object, ...] = ()
+    for assignment in state.assignments:
+        _ensure_assignment_targets_model(assignment, state.model)
+        column = _require_field(assignment.column)
+        column_name = quote_sqlite_identifier(_require_column_name(column))
+        set_sql_parts.append(f"{column_name} = ?")
+        params = (*params, column.encode_sqlite(assignment.value))
+    sql_parts = [
+        f"UPDATE {quote_sqlite_identifier(table_name)} SET ",
+        ", ".join(set_sql_parts),
+    ]
+    if state.predicates:
+        predicate_sql, predicate_params = _compile_predicates_sql(
+            state.predicates,
+            state.model,
+        )
+        sql_parts.append(f" WHERE {predicate_sql}")
+        params = (*params, *predicate_params)
+    return "".join(sql_parts), params
+
+
+def _compile_delete_sql(query: DeleteQuery[Any]) -> tuple[str, tuple[object, ...]]:
+    state = query.state
+    if not state.explicit_all and not state.predicates:
+        raise QueryCompilationError("delete requires all() or where() before execution")
+    table_name = require_model_table_name(state.model)
+    sql = f"DELETE FROM {quote_sqlite_identifier(table_name)}"
+    params: tuple[object, ...] = ()
+    if state.predicates:
+        predicate_sql, params = _compile_predicates_sql(state.predicates, state.model)
+        sql = f"{sql} WHERE {predicate_sql}"
+    return sql, params
 
 
 def _compile_select_state(state: _SelectState) -> tuple[str, tuple[object, ...]]:
@@ -449,14 +590,16 @@ def compile_select_sql(query: AnySelectQuery) -> tuple[str, tuple[object, ...]]:
     return _compile_select_state(query.state)
 
 
-def compile_write_sql(
-    query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any],
-) -> tuple[str, tuple[object, ...]]:
+def compile_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
     """Compile a write query into parameterized SQLite SQL."""
 
     if isinstance(query, InsertQuery):
-        return _compile_insert_sql(query)
-    raise QueryCompilationError("only insert execution is implemented yet")
+        return _compile_insert_sql(cast(InsertQuery[Any], query))
+    if isinstance(query, UpdateQuery):
+        return _compile_update_sql(cast(UpdateQuery[Any], query))
+    if isinstance(query, DeleteQuery):
+        return _compile_delete_sql(cast(DeleteQuery[Any], query))
+    raise QueryCompilationError("execute requires a write query")
 
 
 def materialize_select_row(
@@ -546,8 +689,16 @@ def insert(row: ModelT, /) -> InsertQuery[ModelT]:
 
 
 def update(model: type[ModelT], /) -> UpdateQuery[ModelT]:
-    return UpdateQuery()
+    try:
+        _ = require_model_columns(model)
+    except ModelDeclarationError as error:
+        raise QueryConstructionError("update requires a table model") from error
+    return UpdateQuery(_UpdateState(model=cast(type[Table[Any]], model)))
 
 
 def delete(model: type[ModelT], /) -> DeleteQuery[ModelT]:
-    return DeleteQuery()
+    try:
+        _ = require_model_columns(model)
+    except ModelDeclarationError as error:
+        raise QueryConstructionError("delete requires a table model") from error
+    return DeleteQuery(_DeleteState(model=cast(type[Table[Any]], model)))
