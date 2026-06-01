@@ -7,6 +7,7 @@ from types import EllipsisType
 from typing import (
     Any,
     ClassVar,
+    Literal,
     Self,
     TypeVar,
     cast,
@@ -35,6 +36,8 @@ from snekql.storage import (
     Real,
     Text,
 )
+
+type BackendFamily = Literal["mariadb", "sqlite"]
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound="Table[Any]")
@@ -143,6 +146,10 @@ class ModelMeta(type):
                 name,
                 namespace,
             )
+        model_metadata.__snekql_backend__ = ModelMeta._resolve_backend_family(
+            bases,
+            namespace,
+        )
         model_metadata.__snekql_columns__ = columns
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
@@ -292,6 +299,20 @@ class ModelMeta(type):
             column_lists.add(index.column_names)
 
     @staticmethod
+    def _resolve_backend_family(
+        bases: tuple[type, ...],
+        namespace: dict[str, object],
+    ) -> BackendFamily:
+        configured_backend = namespace.get("__snekql_backend__")
+        if configured_backend in {"mariadb", "sqlite"}:
+            return cast("BackendFamily", configured_backend)
+        for base in bases:
+            inherited_backend = getattr(base, "__snekql_backend__", None)
+            if inherited_backend in {"mariadb", "sqlite"}:
+                return cast("BackendFamily", inherited_backend)
+        return "sqlite"
+
+    @staticmethod
     def _resolve_table_name(name: str, namespace: dict[str, object]) -> str:
         table_name = namespace.get("__tablename__", ModelMeta._infer_table_name(name))
         if not isinstance(table_name, str) or not ModelMeta._is_sql_identifier(
@@ -389,6 +410,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
+    __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
@@ -528,6 +550,16 @@ def require_model_table_name(model: type[Table[Any]]) -> str:
         msg = "schema setup requires snekql table models"
         raise ModelDeclarationError(msg)
     return table_name
+
+
+def require_model_backend(model: type[Table[Any]]) -> BackendFamily:
+    """Return the backend family declared by a table model."""
+
+    backend = getattr(model, "__snekql_backend__", None)
+    if backend not in {"mariadb", "sqlite"}:
+        msg = "schema setup requires snekql table models"
+        raise ModelDeclarationError(msg)
+    return cast("BackendFamily", backend)
 
 
 def decode_model_row(

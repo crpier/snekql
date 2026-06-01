@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from snekql.errors import (
     DatabaseClosedError,
@@ -150,6 +150,8 @@ class MariaDBConnectionPool:
 
 class MariaDBRuntime:
     """MariaDB adapter satisfying the backend-neutral runtime seam."""
+
+    backend_family: Literal["mariadb"] = "mariadb"
 
     def __init__(
         self,

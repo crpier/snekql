@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, Literal, assert_type
 
 from snekql import (
     MISSING,
@@ -80,6 +80,9 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(SqliteUser), SelectModelQuery[SqliteUser[Pending], SqliteUser[Fetched]]
     )
+
+    _ = assert_type(mariadb.Model.__snekql_backend__, Literal["mariadb"])
+    _ = assert_type(sqlite.Model.__snekql_backend__, Literal["sqlite"])
 
     mariadb_config = mariadb.Config(database="app", user="snekql")
     _ = assert_type(mariadb_config, mariadb.Config)

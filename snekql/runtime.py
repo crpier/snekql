@@ -24,7 +24,7 @@ from snekql.errors import (
     TransactionClosedError,
 )
 from snekql.mariadb.config import Config as MariaDBConfig
-from snekql.model import Table
+from snekql.model import BackendFamily, Table, require_model_backend
 from snekql.query import (
     AnySelectQuery,
     DeleteQuery,
@@ -75,6 +75,7 @@ class RuntimeBackend(Protocol):
     """Backend adapter seam used by Database and Transaction."""
 
     acquire_timeout: NonNegativeFloat
+    backend_family: BackendFamily
 
     async def acquire(
         self,
@@ -193,6 +194,7 @@ class Transaction:
 
         connection = self.require_connection()
         select_query = self._require_select_query(query)
+        self._validate_query_backend(select_query)
         sql, params = self.runtime.compile_select_sql(select_query)
         try:
             cursor = await connection.execute(sql, params)
@@ -223,6 +225,7 @@ class Transaction:
 
         connection = self.require_connection()
         select_query = self._require_select_query(query)
+        self._validate_query_backend(select_query)
         sql, params = self.runtime.compile_select_sql(select_query)
         try:
             cursor = await connection.execute(sql, params)
@@ -243,6 +246,7 @@ class Transaction:
         """Execute a write query inside this transaction."""
 
         connection = self.require_connection()
+        self._validate_query_backend(query)
         sql, params = self.runtime.compile_write_sql(query)
         try:
             cursor = await connection.execute(sql, params)
@@ -262,6 +266,30 @@ class Transaction:
             msg = "transaction is closed"
             raise TransactionClosedError(msg)
         return connection
+
+    def _validate_query_backend(self, query: object) -> None:
+        query_model = self._query_model(query)
+        received_backend = require_model_backend(query_model)
+        expected_backend = self.runtime.backend_family
+        if received_backend == expected_backend:
+            return
+        msg = (
+            f"backend mismatch: expected {expected_backend} query, "
+            f"received {received_backend} query for {query_model.__name__}"
+        )
+        raise DatabaseRuntimeError(msg)
+
+    @staticmethod
+    def _query_model(query: object) -> type[Table[Any]]:
+        if isinstance(query, InsertQuery):
+            insert_query = cast("InsertQuery[Any]", query)
+            return cast("type[Table[Any]]", type(insert_query.row))
+        if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
+            return query.state.model
+        if isinstance(query, UpdateQuery | DeleteQuery):
+            return query.state.model
+        msg = "query backend validation requires a snekql query"
+        raise QueryCompilationError(msg)
 
     @staticmethod
     def _require_select_query(query: object) -> AnySelectQuery:
@@ -334,6 +362,7 @@ class Database:
             pool_size=pool_size,
             acquire_timeout=acquire_timeout,
         )
+        cls._validate_model_backends(runtime_config, models)
         if isinstance(runtime_config, MariaDBConfig):
             from snekql.mariadb.runtime import (  # noqa: PLC0415
                 initialize_runtime as initialize_mariadb_runtime,
@@ -379,6 +408,24 @@ class Database:
         """Close this database runtime idempotently when shutdown succeeds."""
 
         await self.runtime.close(self.runtime.acquire_timeout)
+
+    @staticmethod
+    @staticmethod
+    def _validate_model_backends(
+        runtime_config: SQLiteConfig | MariaDBConfig,
+        models: Sequence[type[Table[Any]]],
+    ) -> None:
+        expected_backend: BackendFamily = (
+            "mariadb" if isinstance(runtime_config, MariaDBConfig) else "sqlite"
+        )
+        for model in models:
+            received_backend = require_model_backend(model)
+            if received_backend != expected_backend:
+                msg = (
+                    f"backend mismatch: expected {expected_backend} model, "
+                    f"received {received_backend} model {model.__name__}"
+                )
+                raise DatabaseRuntimeError(msg)
 
     @staticmethod
     def _resolve_backend_config(

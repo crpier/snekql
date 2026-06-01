@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from aiosqlite import Connection, Cursor
 
@@ -80,6 +80,8 @@ class SQLiteConnectionAdapter:
 
 class SQLiteRuntime:
     """SQLite adapter satisfying the backend-neutral runtime seam."""
+
+    backend_family: Literal["sqlite"] = "sqlite"
 
     def __init__(
         self,
