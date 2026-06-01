@@ -23,6 +23,7 @@ from snekql.errors import (
     QueryCompilationError,
     TransactionClosedError,
 )
+from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.model import Table
 from snekql.query import (
     AnySelectQuery,
@@ -296,6 +297,16 @@ class Database:
     @classmethod
     async def initialize(
         cls,
+        backend: MariaDBConfig,
+        *,
+        models: Sequence[type[Table[Any]]] = (),
+        schema_policy: SchemaPolicy = "strict",
+    ) -> Self: ...
+
+    @overload
+    @classmethod
+    async def initialize(
+        cls,
         *,
         database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
@@ -323,6 +334,9 @@ class Database:
             pool_size=pool_size,
             acquire_timeout=acquire_timeout,
         )
+        if isinstance(runtime_config, MariaDBConfig):
+            msg = "MariaDB runtime is not implemented yet"
+            raise DatabaseRuntimeError(msg)
         try:
             from snekql.sqlite.runtime import initialize_runtime  # noqa: PLC0415
         except ModuleNotFoundError as error:
@@ -361,9 +375,9 @@ class Database:
         database: Path | Literal[":memory:"] | None,
         pool_size: PositiveInt,
         acquire_timeout: NonNegativeFloat,
-    ) -> SQLiteConfig:
+    ) -> SQLiteConfig | MariaDBConfig:
         if backend is not None:
-            if not isinstance(backend, SQLiteConfig):
+            if not isinstance(backend, SQLiteConfig | MariaDBConfig):
                 msg = "unsupported database backend config"
                 raise DatabaseRuntimeError(msg)
             if database is not None:

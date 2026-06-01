@@ -1,3 +1,4 @@
+from snekql import mariadb as mariadb
 from snekql import sqlite as sqlite
 from snekql.errors import (
     DatabaseClosedError,
@@ -100,6 +101,7 @@ __all__ = [
     "UpdateQuery",
     "delete",
     "insert",
+    "mariadb",
     "select",
     "sqlite",
     "update",
