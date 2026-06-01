@@ -30,10 +30,10 @@ snekql will:
 
 V1 keeps drift detection deliberately simple:
 
-1. Generate expected `CREATE TABLE` and `CREATE INDEX` SQL for the model.
-2. Read existing table and index SQL from SQLite metadata.
-3. Normalize only table formatting controlled by snekql.
-4. Compare generated SQL with stored SQL.
+1. Generate the expected backend table and index shape for the model.
+2. Read existing table and index metadata from the selected backend.
+3. Normalize only formatting or metadata details controlled by snekql.
+4. Compare the generated shape with the stored backend metadata.
 5. Treat mismatch as schema drift.
 
 Because generated SQLite table DDL always includes `STRICT`, existing SQLite

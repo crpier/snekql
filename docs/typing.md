@@ -71,12 +71,52 @@ await tx.fetch_one(select(User.email).all())
 # str | None
 ```
 
+## Backend namespaces
+
+SQLite compatibility aliases remain available at the package root, but new code
+should prefer explicit backend namespaces:
+
+```python
+from snekql import Database, Fetched, MISSING, Pending, mariadb, sqlite
+
+
+class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
+    id: SqliteUser.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+
+
+class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
+    id: MariadbUser.GenCol[int] = mariadb.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+```
+
+Backend namespaces expose distinct model bases and column declaration classes,
+so backend-specific options can evolve without pretending the dialects are
+portable.
+
+## Mixed-backend safety
+
+Table models carry backend identity. `Database.initialize(...)` rejects a model
+whose backend does not match the runtime config, and `Transaction` rejects a
+query built from another backend's model before SQL is executed.
+
+Pyright can see the backend namespace types where they are explicit, and runtime
+checks cover the remaining cases that Python's type system cannot express yet.
+Top-level `Model`, `Integer`, `Text`, and related compatibility aliases continue
+to behave as SQLite declarations.
+
 ## Import path
 
 Prefer importing public symbols from the package root:
 
 ```python
-from snekql import Database, Model, Pending, Text, select
+from snekql import Database, Pending, Text, select, sqlite
 ```
 
 The root exports are curated in `snekql.__all__` and mirrored by
