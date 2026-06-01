@@ -3,8 +3,10 @@
 snekql v1 has startup schema management, not migrations.
 
 When `Database.initialize(..., models=[...])` runs, snekql creates missing tables
-and verifies existing tables and indexes against deterministic SQLite DDL
-generated from the table models.
+and verifies existing tables and indexes against backend metadata generated
+from the table models. SQLite compares deterministic DDL stored by SQLite;
+MariaDB compares normalized `INFORMATION_SCHEMA` table, column, and index
+metadata.
 
 ## What happens at startup
 
@@ -34,14 +36,18 @@ V1 keeps drift detection deliberately simple:
 4. Compare generated SQL with stored SQL.
 5. Treat mismatch as schema drift.
 
-Because generated table DDL always includes `STRICT`, existing non-`STRICT`
-tables are schema drift. Extra, missing, renamed, reordered, or uniqueness-
+Because generated SQLite table DDL always includes `STRICT`, existing SQLite
+non-`STRICT` tables are schema drift. MariaDB drift is detected from normalized
+column and index metadata. Extra, missing, renamed, reordered, or uniqueness-
 changed indexes on managed tables are also schema drift.
 
 ## Policies
 
 `schema_policy="strict"` is the default. Drift raises
-`SchemaVerificationError` and rolls back schema setup.
+`SchemaVerificationError`. SQLite schema setup is transactional and rolls back
+created tables on startup failure. MariaDB DDL may auto-commit, so failed MariaDB
+startup can leave already-created schema objects in place; rerun startup after
+cleaning up or applying an application-owned migration.
 
 ```python
 await Database.initialize(
