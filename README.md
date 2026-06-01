@@ -8,16 +8,15 @@ based execution without becoming an ORM.
 ## Install
 
 ```sh
-uv add 'snekql[aiosqlite]'
+uv add snekql                 # Query Builder and backend namespaces only
+uv add 'snekql[aiosqlite]'    # SQLite Query Runtime
+uv add 'snekql[aiomysql]'     # MariaDB Query Runtime
 ```
 
-snekql requires Python 3.14 or newer. V1 targets SQLite and generated tables are
-`STRICT`. Database drivers are optional backend extras: use
-`snekql[aiosqlite]` for the SQLite Query Runtime. The future MariaDB Query
-Runtime will use `snekql[aiomysql]`.
-
-The base `snekql` install is enough for importing the Query Builder and backend
-namespaces, but runtime initialization requires the matching backend extra.
+snekql requires Python 3.14 or newer. Database drivers are optional backend
+extras. The base `snekql` install is enough for importing the Query Builder and
+backend namespaces, but runtime initialization requires the matching backend
+extra.
 
 ## Quick start
 
@@ -174,9 +173,9 @@ comparison operators are not part of the v1 API.
 
 ## Runtime
 
-`Database.initialize(...)` is the only public construction path. SQLite can be
-selected explicitly with the backend namespace, while the original SQLite
-keyword form remains supported.
+`Database.initialize(...)` is the only public construction path. Select a backend
+with its namespace config. SQLite can be selected explicitly with the backend
+namespace, while the original SQLite keyword form remains supported.
 
 ```python
 from snekql import sqlite
@@ -184,6 +183,41 @@ from snekql import sqlite
 db = await Database.initialize(sqlite.Config(database=Path("app.db")), models=[User])
 legacy_db = await Database.initialize(database=Path("app.db"), models=[User])
 memory_db = await Database.initialize(sqlite.Config(database=":memory:"))
+```
+
+MariaDB models should use the MariaDB namespace so backend-specific columns and
+runtime checks agree:
+
+```python
+from snekql import MISSING, Database, Fetched, Pending, insert, mariadb, select
+
+
+class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
+    id: Account.GenCol[int] = mariadb.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
+
+
+config = mariadb.Config(
+    database="app",
+    host="127.0.0.1",
+    port=3306,
+    user="snekql",
+    password="secret",
+)
+
+db = await Database.initialize(config, models=[Account])
+try:
+    async with db.transaction() as tx:
+        await tx.execute(insert(Account(email="alice@example.com")))
+        account = await tx.fetch_one(
+            select(Account).where(Account.email.eq("alice@example.com")),
+        )
+finally:
+    await db.close()
 ```
 
 Use transactions for all work:
@@ -208,9 +242,10 @@ When initialized with `models=[...]`, snekql:
 
 1. Preserves model order.
 2. Rejects duplicate resolved table and index names.
-3. Creates missing `STRICT` tables and their indexes.
-4. Verifies existing tables and indexes by comparing deterministic generated
-   DDL with SQLite metadata.
+3. Creates missing backend tables and their indexes.
+4. Verifies existing tables and indexes with backend metadata: SQLite compares
+   deterministic `STRICT` DDL; MariaDB compares normalized `INFORMATION_SCHEMA`
+   metadata.
 5. Treats drift according to `schema_policy`: `"strict"` raises,
    `"warn"` logs and continues.
 
@@ -234,6 +269,7 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 - [Typing guide](docs/typing.md)
 - [Schema startup and drift](docs/schema-drift.md)
 - [Error handling guide](docs/error-handling.md)
+- [MariaDB integration PRD](https://github.com/crpier/snekql/issues/34)
 
 Runnable examples live in `examples/`:
 
@@ -241,6 +277,10 @@ Runnable examples live in `examples/`:
 uv run python -m examples.basic_app
 uv run pyright examples/typed_queries.py
 ```
+
+Local validation uses `uv run snektest`. MariaDB integration tests start an
+unprivileged temporary `mariadbd` instance through `tests/mariadb_server.py`, so
+`mariadbd` and `mariadb-install-db` must be available on the test machine.
 
 ## Public API
 
