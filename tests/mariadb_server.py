@@ -45,6 +45,8 @@ class MariaDBServer:
             str(self.port),
             "-u",
             self.user,
+            "-D",
+            self.database,
             "-e",
             sql,
         )
@@ -146,7 +148,18 @@ def _wait_until_ready(
             msg = f"mariadbd exited before becoming ready\n{error_log}"
             raise AssertionError(msg)
         try:
-            _ = server.run_sql("SELECT 1")
+            _ = _run_command(
+                "mariadb",
+                "--protocol=tcp",
+                "-h",
+                server.host,
+                "-P",
+                str(server.port),
+                "-u",
+                server.user,
+                "-e",
+                "SELECT 1",
+            )
         except AssertionError:
             time.sleep(0.25)
         else:
@@ -188,7 +201,18 @@ def provide_mariadb_server() -> Generator[MariaDBServer]:
                 process=process,
                 server=server,
             )
-            _ = server.run_sql(f"CREATE DATABASE {server.database}")
+            _ = _run_command(
+                "mariadb",
+                "--protocol=tcp",
+                "-h",
+                server.host,
+                "-P",
+                str(server.port),
+                "-u",
+                server.user,
+                "-e",
+                f"CREATE DATABASE {server.database}",
+            )
             yield server
         finally:
             _stop_process(process)
