@@ -1,3 +1,4 @@
+from snekql import sqlite as sqlite
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -100,5 +101,6 @@ __all__ = [
     "delete",
     "insert",
     "select",
+    "sqlite",
     "update",
 ]

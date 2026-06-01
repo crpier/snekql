@@ -13,6 +13,7 @@ from aiosqlite import Connection, Error
 from snekql.errors import SchemaError, SchemaVerificationError
 from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
+from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 
 _LOGGER = logging.getLogger("snekql")
@@ -21,8 +22,7 @@ _LOGGER = logging.getLogger("snekql")
 def quote_sqlite_identifier(identifier: str) -> str:
     """Quote a SQLite identifier with double-quote escaping."""
 
-    escaped_identifier = identifier.replace('"', '""')
-    return f'"{escaped_identifier}"'
+    return quote_identifier(identifier)
 
 
 def _compile_column_definition(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, assert_type
 
 from snekql import (
@@ -25,6 +26,7 @@ from snekql import (
     UpdateQuery,
     insert,
     select,
+    sqlite,
     update,
 )
 
@@ -45,7 +47,28 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
 
 
+class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
+    """SQLite namespace table model used by public API typing examples."""
+
+    id: SqliteUser.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
+
+
 if TYPE_CHECKING:
+    sqlite_config = sqlite.Config(database=Path("app.db"))
+    _ = assert_type(sqlite_config, sqlite.Config)
+    sqlite_index = sqlite.Index(SqliteUser.email)
+    _ = assert_type(sqlite_index, Index[SqliteUser[Pending]])
+    sqlite_user = SqliteUser(email="alice@example.com")
+    _ = assert_type(sqlite_user, SqliteUser[Pending])
+    _ = assert_type(
+        select(SqliteUser), SelectModelQuery[SqliteUser[Pending], SqliteUser[Fetched]]
+    )
+
     pending_user = User(email="alice@example.com")
     _ = assert_type(pending_user, User[Pending])
     _ = assert_type(pending_user.id, int | Missing)

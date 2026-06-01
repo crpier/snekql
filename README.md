@@ -169,11 +169,16 @@ comparison operators are not part of the v1 API.
 
 ## Runtime
 
-`Database.initialize(...)` is the only public construction path.
+`Database.initialize(...)` is the only public construction path. SQLite can be
+selected explicitly with the backend namespace, while the original SQLite
+keyword form remains supported.
 
 ```python
-db = await Database.initialize(database=Path("app.db"), models=[User])
-memory_db = await Database.initialize(database=":memory:")
+from snekql import sqlite
+
+db = await Database.initialize(sqlite.Config(database=Path("app.db")), models=[User])
+legacy_db = await Database.initialize(database=Path("app.db"), models=[User])
+memory_db = await Database.initialize(sqlite.Config(database=":memory:"))
 ```
 
 Use transactions for all work:
