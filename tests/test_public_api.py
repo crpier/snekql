@@ -86,6 +86,7 @@ def public_contract_exports_canonical_names() -> None:
         "UpdateQuery",
         "delete",
         "insert",
+        "mariadb",
         "select",
         "sqlite",
         "update",

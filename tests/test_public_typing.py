@@ -25,6 +25,7 @@ from snekql import (
     Transaction,
     UpdateQuery,
     insert,
+    mariadb,
     select,
     sqlite,
     update,
@@ -58,6 +59,17 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
 
 
+class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
+    """MariaDB namespace table model used by public API typing examples."""
+
+    id: MariadbUser.GenCol[int] = mariadb.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
+
+
 if TYPE_CHECKING:
     sqlite_config = sqlite.Config(database=Path("app.db"))
     _ = assert_type(sqlite_config, sqlite.Config)
@@ -67,6 +79,17 @@ if TYPE_CHECKING:
     _ = assert_type(sqlite_user, SqliteUser[Pending])
     _ = assert_type(
         select(SqliteUser), SelectModelQuery[SqliteUser[Pending], SqliteUser[Fetched]]
+    )
+
+    mariadb_config = mariadb.Config(database="app", user="snekql")
+    _ = assert_type(mariadb_config, mariadb.Config)
+    mariadb_index = mariadb.Index(MariadbUser.email)
+    _ = assert_type(mariadb_index, Index[MariadbUser[Pending]])
+    mariadb_user = MariadbUser(email="alice@example.com")
+    _ = assert_type(mariadb_user, MariadbUser[Pending])
+    _ = assert_type(
+        select(MariadbUser),
+        SelectModelQuery[MariadbUser[Pending], MariadbUser[Fetched]],
     )
 
     pending_user = User(email="alice@example.com")

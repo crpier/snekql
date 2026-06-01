@@ -52,7 +52,7 @@ def public_imports_do_not_import_optional_drivers() -> None:
     script = """
 import sys
 import snekql
-from snekql import sqlite
+from snekql import mariadb, sqlite
 
 if "aiosqlite" in sys.modules:
     raise AssertionError("aiosqlite was imported")
@@ -63,6 +63,7 @@ if "snekql._pool" in sys.modules:
 if "snekql.schema" in sys.modules:
     raise AssertionError("SQLite schema was imported")
 _ = sqlite.Config(database=":memory:")
+_ = mariadb.Config(database="app", user="snekql")
 print("ok")
 """
 

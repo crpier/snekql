@@ -22,7 +22,7 @@ type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 
 
 @dataclass(frozen=True, kw_only=True)
-class _AttrConfig:
+class AttrConfig:
     """Constructor bundle for column descriptors.
 
     Keeping descriptor configuration in one value avoids long internal
@@ -75,7 +75,7 @@ MISSING = Missing()
 type SchemaPolicy = Literal["strict", "warn"]
 
 
-def _build_attr(config: _AttrConfig) -> Any:
+def build_attr(config: AttrConfig) -> Any:
     """Build a public column descriptor from normalized storage metadata.
 
     Storage classes differ mostly by SQLite class and logical type name. Keeping
@@ -103,8 +103,8 @@ class Integer:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 auto_increment=auto_increment,
                 default=default,
                 default_factory=default_factory,
@@ -133,8 +133,8 @@ class Real:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -162,8 +162,8 @@ class Text:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -191,8 +191,8 @@ class Blob:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -222,8 +222,8 @@ class Json:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -249,8 +249,8 @@ class Boolean:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -280,8 +280,8 @@ class DateTime:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return _build_attr(
-            _AttrConfig(
+        return build_attr(
+            AttrConfig(
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
@@ -308,7 +308,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
     helper methods on the model class.
     """
 
-    def __init__(self, config: _AttrConfig) -> None:
+    def __init__(self, config: AttrConfig) -> None:
         self.auto_increment: bool = config.auto_increment
         self.default: object = config.default
         self.default_factory: Callable[[], object] | EllipsisType = (
