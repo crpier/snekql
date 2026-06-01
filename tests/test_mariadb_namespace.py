@@ -75,15 +75,3 @@ def mariadb_config_validates_connection_and_pool_settings() -> None:
 
     with assert_raises(DatabaseRuntimeError):
         _ = config_factory(database="app", pool_size=True, user="snekql")
-
-
-@test(mark="medium")
-async def mariadb_database_initialization_is_not_implemented_yet() -> None:
-    """The declaration surface fails clearly before runtime support exists."""
-
-    config = snekql.mariadb.Config(database="app", user="snekql")
-
-    with assert_raises(DatabaseRuntimeError) as raised:
-        _ = await snekql.Database.initialize(config)
-
-    assert_in("MariaDB runtime is not implemented yet", str(raised.exception))

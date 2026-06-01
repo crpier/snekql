@@ -335,17 +335,29 @@ class Database:
             acquire_timeout=acquire_timeout,
         )
         if isinstance(runtime_config, MariaDBConfig):
-            msg = "MariaDB runtime is not implemented yet"
-            raise DatabaseRuntimeError(msg)
-        try:
-            from snekql.sqlite.runtime import initialize_runtime  # noqa: PLC0415
-        except ModuleNotFoundError as error:
-            if error.name == "aiosqlite":
-                msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
-                raise DatabaseRuntimeError(msg) from error
-            raise
+            from snekql.mariadb.runtime import (  # noqa: PLC0415
+                initialize_runtime as initialize_mariadb_runtime,
+            )
 
-        runtime = await initialize_runtime(runtime_config, models, schema_policy)
+            runtime = await initialize_mariadb_runtime(
+                runtime_config,
+                models,
+                schema_policy,
+            )
+        else:
+            try:
+                from snekql.sqlite.runtime import (  # noqa: PLC0415
+                    initialize_runtime as initialize_sqlite_runtime,
+                )
+            except ModuleNotFoundError as error:
+                if error.name == "aiosqlite":
+                    msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
+                    raise DatabaseRuntimeError(msg) from error
+                raise
+
+            runtime = await initialize_sqlite_runtime(
+                runtime_config, models, schema_policy
+            )
         database_instance = cls.__new__(cls)
         database_instance.runtime = runtime
         return database_instance
