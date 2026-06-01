@@ -218,6 +218,7 @@ aiosqlite = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "aiomysql" },
     { name = "aiosqlite" },
     { name = "pyright" },
     { name = "ruff" },
@@ -235,6 +236,7 @@ provides-extras = ["aiomysql", "aiosqlite"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "aiomysql", specifier = ">=0.3.2" },
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "pyright", specifier = ">=1.1.409" },
     { name = "ruff", specifier = ">=0.15.15" },
