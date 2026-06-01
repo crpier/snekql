@@ -79,6 +79,7 @@ def public_contract_exports_canonical_names() -> None:
         "SelectTupleQuery",
         "SelectValueQuery",
         "SnekqlError",
+        "StructuredLogger",
         "Table",
         "Text",
         "Transaction",

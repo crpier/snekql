@@ -24,7 +24,12 @@ from snekql.errors import (
     TransactionClosedError,
 )
 from snekql.mariadb.config import Config as MariaDBConfig
-from snekql.model import BackendFamily, Table, require_model_backend
+from snekql.model import (
+    BackendFamily,
+    Table,
+    require_model_backend,
+    require_model_table_name,
+)
 from snekql.query import (
     AnySelectQuery,
     DeleteQuery,
@@ -36,6 +41,11 @@ from snekql.query import (
 )
 from snekql.sqlite.config import Config as SQLiteConfig
 from snekql.storage import SchemaPolicy
+from snekql.structured_logging import (
+    ResolvedStructuredLogger,
+    StructuredLogger,
+    resolve_structured_logger,
+)
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
@@ -76,6 +86,7 @@ class RuntimeBackend(Protocol):
 
     acquire_timeout: NonNegativeFloat
     backend_family: BackendFamily
+    logger: ResolvedStructuredLogger
 
     async def acquire(
         self,
@@ -143,14 +154,28 @@ class Transaction:
         if self.closed or self.connection is not None:
             msg = "transaction is closed"
             raise TransactionClosedError(msg)
+        self.runtime.logger.debug(
+            "transaction acquiring connection",
+            backend=self.runtime.backend_family,
+            timeout=self.timeout,
+        )
         connection = await self.runtime.acquire(self.timeout)
         try:
             await connection.begin()
         except Exception as error:
+            self.runtime.logger.error(  # noqa: TRY400
+                "transaction begin failed",
+                backend=self.runtime.backend_family,
+                error_type=type(error).__name__,
+            )
             await self.runtime.release(connection)
             msg = "could not begin transaction"
             raise DatabaseRuntimeError(msg) from error
         self.connection = connection
+        self.runtime.logger.debug(
+            "transaction begin",
+            backend=self.runtime.backend_family,
+        )
         return self
 
     async def __aexit__(
@@ -170,14 +195,32 @@ class Transaction:
         try:
             if exc_type is None:
                 await connection.commit()
+                self.runtime.logger.debug(
+                    "transaction commit",
+                    backend=self.runtime.backend_family,
+                )
             else:
                 await connection.rollback()
+                self.runtime.logger.debug(
+                    "transaction rollback",
+                    backend=self.runtime.backend_family,
+                    exception_type=exc_type.__name__,
+                )
         except Exception as error:
+            self.runtime.logger.error(  # noqa: TRY400
+                "transaction close failed",
+                backend=self.runtime.backend_family,
+                error_type=type(error).__name__,
+            )
             if exc_type is None:
                 msg = "could not close transaction"
                 raise DatabaseRuntimeError(msg) from error
         finally:
             await self.runtime.release(connection)
+            self.runtime.logger.debug(
+                "transaction released",
+                backend=self.runtime.backend_family,
+            )
 
     @overload
     async def fetch_all(
@@ -203,8 +246,24 @@ class Transaction:
             finally:
                 await cursor.close()
         except Exception as error:
+            self.runtime.logger.error(  # noqa: TRY400
+                "query failed",
+                backend=self.runtime.backend_family,
+                error_type=type(error).__name__,
+                operation="fetch_all",
+                params=params,
+                sql=sql,
+            )
             msg = "select failed"
             raise ExecutionError(msg, sql=sql, params=params) from error
+        self.runtime.logger.debug(
+            "query executed",
+            backend=self.runtime.backend_family,
+            operation="fetch_all",
+            params=params,
+            row_count=len(rows),
+            sql=sql,
+        )
         return [
             self.runtime.materialize_select_row(select_query, tuple(row))
             for row in rows
@@ -234,8 +293,24 @@ class Transaction:
             finally:
                 await cursor.close()
         except Exception as error:
+            self.runtime.logger.error(  # noqa: TRY400
+                "query failed",
+                backend=self.runtime.backend_family,
+                error_type=type(error).__name__,
+                operation="fetch_one",
+                params=params,
+                sql=sql,
+            )
             msg = "select failed"
             raise ExecutionError(msg, sql=sql, params=params) from error
+        self.runtime.logger.debug(
+            "query executed",
+            backend=self.runtime.backend_family,
+            operation="fetch_one",
+            params=params,
+            row_found=row is not None,
+            sql=sql,
+        )
         if row is None:
             return None
         return self.runtime.materialize_select_row(select_query, tuple(row))
@@ -251,12 +326,27 @@ class Transaction:
         try:
             cursor = await connection.execute(sql, params)
             try:
-                return
+                pass
             finally:
                 await cursor.close()
         except Exception as error:
+            self.runtime.logger.error(  # noqa: TRY400
+                "query failed",
+                backend=self.runtime.backend_family,
+                error_type=type(error).__name__,
+                operation="write",
+                params=params,
+                sql=sql,
+            )
             msg = "write failed"
             raise ExecutionError(msg, sql=sql, params=params) from error
+        self.runtime.logger.debug(
+            "query executed",
+            backend=self.runtime.backend_family,
+            operation="write",
+            params=params,
+            sql=sql,
+        )
 
     def require_connection(self) -> RuntimeConnection:
         """Return the active transaction connection or reject use-after-close."""
@@ -302,19 +392,20 @@ class Transaction:
 class Database:
     """Initialized snekql runtime service for database-backed execution.
 
-    `Database.initialize(...)` is the only public construction path. A Database
+    `Database.initialize(logger, ...)` is the only public construction path. A Database
     owns connectivity, schema startup work, and transaction entry.
     """
 
     def __init__(self, _initialized: Never, /) -> None:
         self.runtime = cast("RuntimeBackend", None)
-        msg = "use Database.initialize(...) to create a Database"
+        msg = "use Database.initialize(logger, ...) to create a Database"
         raise DatabaseRuntimeError(msg)
 
     @overload
     @classmethod
     async def initialize(
         cls,
+        logger: StructuredLogger,
         backend: SQLiteConfig,
         *,
         models: Sequence[type[Table[Any]]] = (),
@@ -325,6 +416,7 @@ class Database:
     @classmethod
     async def initialize(
         cls,
+        logger: StructuredLogger,
         backend: MariaDBConfig,
         *,
         models: Sequence[type[Table[Any]]] = (),
@@ -335,6 +427,7 @@ class Database:
     @classmethod
     async def initialize(
         cls,
+        logger: StructuredLogger,
         *,
         database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
@@ -346,6 +439,7 @@ class Database:
     @classmethod
     async def initialize(  # noqa: PLR0913
         cls,
+        logger: StructuredLogger,
         backend: object | None = None,
         *,
         database: Path | Literal[":memory:"] | None = None,
@@ -356,37 +450,72 @@ class Database:
     ) -> Self:
         """Initialize connectivity, schema startup, and runtime lifecycle."""
 
-        runtime_config = cls._resolve_backend_config(
-            backend=backend,
-            database=database,
-            pool_size=pool_size,
-            acquire_timeout=acquire_timeout,
-        )
-        cls._validate_model_backends(runtime_config, models)
-        if isinstance(runtime_config, MariaDBConfig):
-            from snekql.mariadb.runtime import (  # noqa: PLC0415
-                initialize_runtime as initialize_mariadb_runtime,
+        structured_logger = resolve_structured_logger(logger)
+        try:
+            runtime_config = cls._resolve_backend_config(
+                backend=backend,
+                database=database,
+                pool_size=pool_size,
+                acquire_timeout=acquire_timeout,
             )
-
-            runtime = await initialize_mariadb_runtime(
-                runtime_config,
-                models,
-                schema_policy,
+            backend_family: BackendFamily = (
+                "mariadb" if isinstance(runtime_config, MariaDBConfig) else "sqlite"
             )
-        else:
-            try:
-                from snekql.sqlite.runtime import (  # noqa: PLC0415
-                    initialize_runtime as initialize_sqlite_runtime,
+            cls._validate_model_backends(runtime_config, models)
+            table_names = tuple(require_model_table_name(model) for model in models)
+            structured_logger.info(
+                "database initialization started",
+                backend=backend_family,
+                model_count=len(models),
+                schema_policy=schema_policy,
+                table_names=table_names,
+            )
+            structured_logger.debug(
+                "database backend selected",
+                backend=backend_family,
+                acquire_timeout=runtime_config.acquire_timeout,
+                pool_size=runtime_config.pool_size,
+            )
+            if isinstance(runtime_config, MariaDBConfig):
+                from snekql.mariadb.runtime import (  # noqa: PLC0415
+                    initialize_runtime as initialize_mariadb_runtime,
                 )
-            except ModuleNotFoundError as error:
-                if error.name == "aiosqlite":
-                    msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
-                    raise DatabaseRuntimeError(msg) from error
-                raise
 
-            runtime = await initialize_sqlite_runtime(
-                runtime_config, models, schema_policy
+                runtime = await initialize_mariadb_runtime(
+                    runtime_config,
+                    models,
+                    schema_policy,
+                    structured_logger,
+                )
+            else:
+                try:
+                    from snekql.sqlite.runtime import (  # noqa: PLC0415
+                        initialize_runtime as initialize_sqlite_runtime,
+                    )
+                except ModuleNotFoundError as error:
+                    if error.name == "aiosqlite":
+                        msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
+                        raise DatabaseRuntimeError(msg) from error
+                    raise
+
+                runtime = await initialize_sqlite_runtime(
+                    runtime_config,
+                    models,
+                    schema_policy,
+                    structured_logger,
+                )
+            structured_logger.info(
+                "database initialization completed",
+                backend=backend_family,
+                model_count=len(models),
+                table_names=table_names,
             )
+        except Exception as error:
+            structured_logger.error(  # noqa: TRY400
+                "database initialization failed",
+                error_type=type(error).__name__,
+            )
+            raise
         database_instance = cls.__new__(cls)
         database_instance.runtime = runtime
         return database_instance
@@ -409,7 +538,6 @@ class Database:
 
         await self.runtime.close(self.runtime.acquire_timeout)
 
-    @staticmethod
     @staticmethod
     def _validate_model_backends(
         runtime_config: SQLiteConfig | MariaDBConfig,

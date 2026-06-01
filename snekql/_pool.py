@@ -15,6 +15,7 @@ from snekql.errors import (
     DatabaseRuntimeError,
     PoolTimeoutError,
 )
+from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat, PositiveInt
 
 
@@ -75,6 +76,7 @@ class SQLiteConnectionPool:
         *,
         database_path: str,
         initial_connection: Connection,
+        logger: ResolvedStructuredLogger,
         pool_size: PositiveInt,
     ) -> None:
         self.active_connections: int = 0
@@ -83,6 +85,7 @@ class SQLiteConnectionPool:
         self.condition: asyncio.Condition = asyncio.Condition()
         self.database_path: str = database_path
         self.idle_connections: list[Connection] = [initial_connection]
+        self.logger: ResolvedStructuredLogger = logger
         self.opening_connections: int = 0
         self.pool_size: PositiveInt = pool_size
 
@@ -90,15 +93,22 @@ class SQLiteConnectionPool:
         """Reject new work when closed or temporarily closing."""
 
         if self.closed:
+            self.logger.warning("database rejected work", reason="closed")
             msg = "database is closed"
             raise DatabaseClosedError(msg)
         if self.closing:
+            self.logger.warning("database rejected work", reason="closing")
             msg = "database is closing"
             raise DatabaseClosingError(msg)
 
     async def acquire(self, acquisition_timeout: NonNegativeFloat, /) -> Connection:
         """Acquire an existing or lazily-created connection within timeout."""
 
+        self.logger.debug(
+            "connection acquisition started",
+            backend="sqlite",
+            timeout=acquisition_timeout,
+        )
         event_loop = asyncio.get_running_loop()
         deadline = event_loop.time() + acquisition_timeout
         while True:
@@ -107,12 +117,22 @@ class SQLiteConnectionPool:
                 if self.idle_connections:
                     connection = self.idle_connections.pop()
                     self.active_connections += 1
+                    self.logger.debug(
+                        "connection acquired",
+                        backend="sqlite",
+                        source="idle",
+                    )
                     return connection
                 if self.connection_count() < self.pool_size:
                     self.opening_connections += 1
                     break
                 remaining_timeout = deadline - event_loop.time()
                 if remaining_timeout <= 0:
+                    self.logger.warning(
+                        "connection acquisition timed out",
+                        backend="sqlite",
+                        timeout=acquisition_timeout,
+                    )
                     msg = "timed out acquiring database connection"
                     raise PoolTimeoutError(msg)
                 try:
@@ -121,6 +141,11 @@ class SQLiteConnectionPool:
                         timeout=remaining_timeout,
                     )
                 except TimeoutError as error:
+                    self.logger.warning(
+                        "connection acquisition timed out",
+                        backend="sqlite",
+                        timeout=acquisition_timeout,
+                    )
                     msg = "timed out acquiring database connection"
                     raise PoolTimeoutError(
                         msg,
@@ -138,6 +163,11 @@ class SQLiteConnectionPool:
             if not self.closed and not self.closing:
                 self.active_connections += 1
                 self.condition.notify_all()
+                self.logger.debug(
+                    "connection acquired",
+                    backend="sqlite",
+                    source="opened",
+                )
                 return opened_connection
         await close_sqlite_connection(opened_connection)
         self.check_accepting_work()
@@ -155,14 +185,21 @@ class SQLiteConnectionPool:
             else:
                 self.idle_connections.append(connection)
             self.condition.notify_all()
+        self.logger.debug(
+            "connection released",
+            backend="sqlite",
+            closed=should_close,
+        )
         if should_close:
             await close_sqlite_connection(connection)
 
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 
+        self.logger.debug("database close started", backend="sqlite")
         async with self.condition:
             if self.closed:
+                self.logger.debug("database close skipped", backend="sqlite")
                 return
             if self.closing:
                 msg = "database is already closing"
@@ -188,6 +225,7 @@ class SQLiteConnectionPool:
                 if remaining_timeout <= 0:
                     self.closing = False
                     self.condition.notify_all()
+                    self.logger.warning("database close timed out", backend="sqlite")
                     msg = "database close timed out"
                     raise DatabaseCloseTimeoutError(msg)
                 try:
@@ -198,9 +236,11 @@ class SQLiteConnectionPool:
                 except TimeoutError as error:
                     self.closing = False
                     self.condition.notify_all()
+                    self.logger.warning("database close timed out", backend="sqlite")
                     msg = "database close timed out"
                     raise DatabaseCloseTimeoutError(msg) from error
         await self.close_connections(remaining_idle_connections)
+        self.logger.debug("database close completed", backend="sqlite")
 
     def connection_count(self) -> int:
         """Return all open, checked-out, and currently opening connections."""

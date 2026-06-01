@@ -102,7 +102,7 @@ portable.
 
 ## Mixed-backend safety
 
-Table models carry backend identity. `Database.initialize(...)` rejects a model
+Table models carry backend identity. `Database.initialize(logger, ...)` rejects a model
 whose backend does not match the runtime config, and `Transaction` rejects a
 query built from another backend's model before SQL is executed.
 

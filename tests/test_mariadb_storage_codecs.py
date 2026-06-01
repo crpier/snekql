@@ -17,6 +17,7 @@ from snekql import (
     mariadb,
     select,
 )
+from tests.logging_helpers import NULL_LOGGER
 from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 
 
@@ -102,7 +103,9 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
     server = load_fixture(provide_mariadb_server())
-    database = await Database.initialize(_config_from_server(server), models=[Event])
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server), models=[Event]
+    )
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     try:
         async with database.transaction() as transaction:

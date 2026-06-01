@@ -14,6 +14,7 @@ from snekql import (
     select,
     sqlite,
 )
+from tests.logging_helpers import NULL_LOGGER
 from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 
 
@@ -51,12 +52,15 @@ async def initialization_rejects_models_from_the_wrong_backend() -> None:
     """Database startup rejects model/config backend mismatches before runtime work."""
 
     with assert_raises(DatabaseRuntimeError) as sqlite_error:
-        _ = await Database.initialize(database=":memory:", models=[MariadbIdentityUser])
+        _ = await Database.initialize(
+            NULL_LOGGER, database=":memory:", models=[MariadbIdentityUser]
+        )
     assert_in("expected sqlite", str(sqlite_error.exception))
     assert_in("received mariadb", str(sqlite_error.exception))
 
     with assert_raises(DatabaseRuntimeError) as mariadb_error:
         _ = await Database.initialize(
+            NULL_LOGGER,
             mariadb.Config(database="app", user="snekql"),
             models=[SqliteIdentityUser],
         )
@@ -68,7 +72,7 @@ async def initialization_rejects_models_from_the_wrong_backend() -> None:
 async def transactions_reject_queries_from_the_wrong_backend() -> None:
     """Transactions reject query/model backends that do not match their runtime."""
 
-    sqlite_database = await Database.initialize(database=":memory:")
+    sqlite_database = await Database.initialize(NULL_LOGGER, database=":memory:")
     try:
         async with sqlite_database.transaction() as transaction:
             with assert_raises(DatabaseRuntimeError) as error:
@@ -79,7 +83,9 @@ async def transactions_reject_queries_from_the_wrong_backend() -> None:
         await sqlite_database.close()
 
     server = load_fixture(provide_mariadb_server())
-    mariadb_database = await Database.initialize(_config_from_server(server))
+    mariadb_database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server)
+    )
     try:
         async with mariadb_database.transaction() as transaction:
             with assert_raises(DatabaseRuntimeError) as error:

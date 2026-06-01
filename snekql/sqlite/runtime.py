@@ -24,6 +24,7 @@ from snekql.schema import (
 )
 from snekql.sqlite.config import Config
 from snekql.storage import SchemaPolicy
+from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
 
 
@@ -88,9 +89,11 @@ class SQLiteRuntime:
         *,
         acquire_timeout: NonNegativeFloat,
         connection_pool: SQLiteConnectionPool,
+        logger: ResolvedStructuredLogger,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: SQLiteConnectionPool = connection_pool
+        self.logger: ResolvedStructuredLogger = logger
 
     async def acquire(
         self,
@@ -132,15 +135,17 @@ async def initialize_runtime(
     config: Config,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> SQLiteRuntime:
     """Initialize SQLite connectivity, schema startup, and pool lifecycle."""
 
     validate_schema_policy(schema_policy)
     validate_schema_models(models)
     database_path = normalize_sqlite_database(config.database)
+    logger.debug("sqlite connection opening", database_path=database_path)
     connection = await open_sqlite_connection(database_path)
     try:
-        await initialize_sqlite_schema(connection, models, schema_policy)
+        await initialize_sqlite_schema(connection, models, schema_policy, logger)
     except Exception:
         await close_sqlite_connection(connection)
         raise
@@ -149,8 +154,10 @@ async def initialize_runtime(
         connection_pool=SQLiteConnectionPool(
             database_path=database_path,
             initial_connection=connection,
+            logger=logger,
             pool_size=config.pool_size,
         ),
+        logger=logger,
     )
 
 

@@ -20,6 +20,7 @@ from snekql import (
     select,
     update,
 )
+from tests.logging_helpers import NULL_LOGGER
 from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 
 
@@ -62,7 +63,9 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     server = load_fixture(provide_mariadb_server())
-    database = await Database.initialize(_config_from_server(server), models=[User])
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server), models=[User]
+    )
     try:
         async with database.transaction() as transaction:
             await transaction.execute(insert(User(email="alice@example.com")))
@@ -95,7 +98,7 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
 
     server = load_fixture(provide_mariadb_server())
     database = await Database.initialize(
-        _config_from_server(server, pool_size=1), models=[User]
+        NULL_LOGGER, _config_from_server(server, pool_size=1), models=[User]
     )
     try:
         try:
@@ -141,7 +144,9 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
     server = load_fixture(provide_mariadb_server())
-    database = await Database.initialize(_config_from_server(server), models=[User])
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server), models=[User]
+    )
     try:
         async with database.transaction() as transaction:
             await transaction.execute(
@@ -210,7 +215,9 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         email: Account.Col[str] = mariadb.Text(nullable=False)
 
     server = load_fixture(provide_mariadb_server())
-    database = await Database.initialize(_config_from_server(server), models=[Account])
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server), models=[Account]
+    )
     try:
         async with database.transaction() as transaction:
             await transaction.execute(insert(Account(id=1, email="first@example.com")))
@@ -239,6 +246,7 @@ import sys
 
 import snekql
 from snekql import Database, mariadb
+from tests.logging_helpers import NULL_LOGGER
 
 
 class BlockAiomysql(importlib.abc.MetaPathFinder):
@@ -253,7 +261,7 @@ async def main() -> None:
     sys.modules.pop("aiomysql", None)
     sys.meta_path.insert(0, blocker)
     try:
-        _ = await Database.initialize(mariadb.Config(database="app", user="snekql"))
+        _ = await Database.initialize(NULL_LOGGER, mariadb.Config(database="app", user="snekql"))
     except snekql.DatabaseRuntimeError as error:
         print(error)
         return

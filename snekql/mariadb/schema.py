@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import starmap
@@ -13,8 +12,7 @@ from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
-
-_LOGGER = logging.getLogger("snekql")
+from snekql.structured_logging import ResolvedStructuredLogger
 
 
 @dataclass(frozen=True)
@@ -299,13 +297,14 @@ async def _fetch_existing_index_signatures(
 async def _report_schema_drift(
     schema_policy: SchemaPolicy,
     table_name: str,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     message = f"schema drift detected for table {table_name!r}"
     if schema_policy == "strict":
         raise SchemaVerificationError(message)
-    _LOGGER.warning(
+    logger.warning(
         "schema drift detected",
-        extra={"table_name": table_name},
+        table_name=table_name,
     )
 
 
@@ -313,6 +312,7 @@ async def _verify_model_schema(
     connection: object,
     model: type[Table[Any]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     table_name = require_model_table_name(model)
     columns = require_model_columns(model)
@@ -321,35 +321,55 @@ async def _verify_model_schema(
     ]
     existing_columns = await _fetch_existing_column_signatures(connection, table_name)
     if existing_columns != expected_columns:
-        await _report_schema_drift(schema_policy, table_name)
+        await _report_schema_drift(schema_policy, table_name, logger)
         return
     expected_indexes = sorted(
         _expected_index_signatures(model), key=lambda index: index.name
     )
     existing_indexes = await _fetch_existing_index_signatures(connection, table_name)
     if existing_indexes != expected_indexes:
-        await _report_schema_drift(schema_policy, table_name)
+        await _report_schema_drift(schema_policy, table_name, logger)
+        return
+    logger.debug("schema table verified", table_name=table_name)
+    logger.debug("schema indexes verified", table_name=table_name)
 
 
-async def _create_model_schema(connection: object, model: type[Table[Any]]) -> None:
+async def _create_model_schema(
+    connection: object,
+    model: type[Table[Any]],
+    logger: ResolvedStructuredLogger,
+) -> None:
     table_name = require_model_table_name(model)
     await _execute(connection, _compile_create_table_sql(model))
+    logger.debug("schema table created", table_name=table_name)
     for index in _compile_model_indexes(model):
-        await _execute(connection, _compile_create_index_sql(table_name, index))
+        sql = _compile_create_index_sql(table_name, index)
+        await _execute(connection, sql)
+        logger.debug("schema index created", table_name=table_name, sql=sql)
 
 
 async def initialize_mariadb_schema(
     connection: object,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     """Create or verify all configured MariaDB tables."""
 
     _validate_schema_policy(schema_policy)
     _validate_schema_models(models)
+    if not models:
+        return
+    logger.debug("schema startup started", model_count=len(models))
     for model in models:
         table_name = require_model_table_name(model)
         if await _table_exists(connection, table_name):
-            await _verify_model_schema(connection, model, schema_policy)
+            await _verify_model_schema(
+                connection,
+                model,
+                schema_policy,
+                logger,
+            )
         else:
-            await _create_model_schema(connection, model)
+            await _create_model_schema(connection, model, logger)
+    logger.debug("schema startup completed", model_count=len(models))

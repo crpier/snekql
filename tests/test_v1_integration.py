@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
-from logging import Handler, LogRecord, getLogger
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
@@ -34,6 +33,7 @@ from snekql import (
     select,
     update,
 )
+from tests.logging_helpers import NULL_LOGGER
 
 type DatabaseTarget = Path | Literal[":memory:"]
 
@@ -67,15 +67,23 @@ class V1Lifecycle[S = Pending](Model[S, "V1Lifecycle[Fetched]"]):
     name: V1Lifecycle.Col[str] = Text(nullable=False)
 
 
-class _CollectingHandler(Handler):
-    """Logging handler that stores schema warning records."""
+class _RecordingStructuredLogger:
+    """Structured logger fake that stores schema warning events."""
 
     def __init__(self) -> None:
-        super().__init__()
-        self.records: list[LogRecord] = []
+        self.events: list[tuple[str, str, dict[str, object]]] = []
 
-    def emit(self, record: LogRecord) -> None:
-        self.records.append(record)
+    def debug(self, event: str, **fields: object) -> None:
+        self.events.append(("debug", event, fields))
+
+    def info(self, event: str, **fields: object) -> None:
+        self.events.append(("info", event, fields))
+
+    def warning(self, event: str, **fields: object) -> None:
+        self.events.append(("warning", event, fields))
+
+    def error(self, event: str, **fields: object) -> None:
+        self.events.append(("error", event, fields))
 
 
 def _execute_sql(database_path: Path, sql: str) -> None:
@@ -93,7 +101,9 @@ async def _exercise_v1_runtime(database_target: DatabaseTarget) -> None:
     expected_happened_at = datetime(2026, 5, 31, 16, 30, 1, 987000, tzinfo=UTC)
     payload: dict[str, object] = {"kind": "created", "count": 2, "tags": ["v1"]}
 
-    database = await Database.initialize(database=database_target, models=[V1Event])
+    database = await Database.initialize(
+        NULL_LOGGER, database=database_target, models=[V1Event]
+    )
     try:
         async with database.transaction() as transaction:
             insert_result = await transaction.execute(
@@ -163,7 +173,9 @@ async def path_database_exercises_v1_runtime_and_schema_verification() -> None:
         database_path = Path(directory) / "app.db"
         await _exercise_v1_runtime(database_path)
 
-        database = await Database.initialize(database=database_path, models=[V1Event])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[V1Event]
+        )
         await database.close()
 
 
@@ -203,30 +215,30 @@ async def schema_policies_cover_duplicate_names_and_non_strict_drift() -> None:
         )
 
         with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[DriftedEvent])
-
-        logger = getLogger("snekql")
-        handler = _CollectingHandler()
-        logger.addHandler(handler)
-        try:
-            database = await Database.initialize(
-                database=database_path,
-                models=[DriftedEvent],
-                schema_policy="warn",
+            _ = await Database.initialize(
+                NULL_LOGGER, database=database_path, models=[DriftedEvent]
             )
-            await database.close()
-        finally:
-            logger.removeHandler(handler)
+
+        logger = _RecordingStructuredLogger()
+        database = await Database.initialize(
+            logger,
+            database=database_path,
+            models=[DriftedEvent],
+            schema_policy="warn",
+        )
+        await database.close()
 
         with assert_raises(SchemaError):
             _ = await Database.initialize(
+                NULL_LOGGER,
                 database=database_path,
                 models=[DuplicateOne, DuplicateTwo],
             )
 
     assert_true(
         any(
-            record.getMessage() == "schema drift detected" for record in handler.records
+            level == "warning" and event == "schema drift detected"
+            for level, event, _fields in logger.events
         )
     )
 
@@ -236,6 +248,7 @@ async def transactions_pool_and_close_lifecycle_are_integrated() -> None:
     """Transactions commit/roll back and close remains idempotent and retryable."""
 
     database = await Database.initialize(
+        NULL_LOGGER,
         database=":memory:",
         models=[V1Lifecycle],
         pool_size=1,

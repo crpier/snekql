@@ -35,6 +35,7 @@ from snekql import (
     Integer,
     Model,
     Pending,
+    StructuredLogger,
     Text,
     insert,
     select,
@@ -55,8 +56,9 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
 
 
-async def main() -> None:
+async def main(logger: StructuredLogger) -> None:
     db = await Database.initialize(
+        logger,
         database=Path("app.db"),
         models=[User],
         schema_policy="strict",
@@ -173,16 +175,56 @@ comparison operators are not part of the v1 API.
 
 ## Runtime
 
-`Database.initialize(...)` is the only public construction path. Select a backend
+`Database.initialize(logger, ...)` is the only public construction path. Select a backend
 with its namespace config. SQLite can be selected explicitly with the backend
 namespace, while the original SQLite keyword form remains supported.
 
 ```python
 from snekql import sqlite
 
-db = await Database.initialize(sqlite.Config(database=Path("app.db")), models=[User])
-legacy_db = await Database.initialize(database=Path("app.db"), models=[User])
-memory_db = await Database.initialize(sqlite.Config(database=":memory:"))
+db = await Database.initialize(logger, sqlite.Config(database=Path("app.db")), models=[User])
+legacy_db = await Database.initialize(logger, database=Path("app.db"), models=[User])
+memory_db = await Database.initialize(logger, sqlite.Config(database=":memory:"))
+```
+
+snekql requires a structured logger. The logger must use the structlog-style
+shape `logger.debug("event", field=value)`. stdlib
+`logging.Logger` is not accepted directly; wrap it in an adapter if needed.
+
+```python
+class AppLogger:
+    def debug(self, event: str, **fields: object) -> None: ...
+    def info(self, event: str, **fields: object) -> None: ...
+    def warning(self, event: str, **fields: object) -> None: ...
+    def error(self, event: str, **fields: object) -> None: ...
+
+
+logger = AppLogger()
+db = await Database.initialize(
+    logger,
+    sqlite.Config(database=Path("app.db")),
+    models=[User],
+)
+```
+
+A stdlib logger can be adapted at the application boundary:
+
+```python
+class StdlibStructuredLogger:
+    def __init__(self, logger: logging.Logger) -> None:
+        self.logger = logger
+
+    def debug(self, event: str, **fields: object) -> None:
+        self.logger.debug(event, extra=fields)
+
+    def info(self, event: str, **fields: object) -> None:
+        self.logger.info(event, extra=fields)
+
+    def warning(self, event: str, **fields: object) -> None:
+        self.logger.warning(event, extra=fields)
+
+    def error(self, event: str, **fields: object) -> None:
+        self.logger.error(event, extra=fields)
 ```
 
 MariaDB models should use the MariaDB namespace so backend-specific columns and
@@ -209,7 +251,7 @@ config = mariadb.Config(
     password="secret",
 )
 
-db = await Database.initialize(config, models=[Account])
+db = await Database.initialize(logger, config, models=[Account])
 try:
     async with db.transaction() as tx:
         await tx.execute(insert(Account(email="alice@example.com")))
@@ -260,7 +302,9 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
   `ExecutionError`
 - `SchemaVerificationError`
 
-`ExecutionError` preserves `sql` and `params` for debugging.
+`ExecutionError` preserves `sql` and `params` for debugging. Structured query
+logs may also include SQL and params exactly as supplied to the database driver;
+snekql does not redact secrets.
 
 ## Further reading
 
