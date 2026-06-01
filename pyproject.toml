@@ -1,7 +1,7 @@
 [project]
 name = "snekql"
-version = "0.1.0"
-description = "Async typed query builder and runtime for SQLite STRICT tables"
+version = "0.2.0"
+description = "Async typed query builder and runtime for SQLite and MariaDB"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
