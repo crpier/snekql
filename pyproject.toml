@@ -5,9 +5,16 @@ description = "Async typed query builder and runtime for SQLite STRICT tables"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "aiosqlite>=0.22.1",
     "annotated-types>=0.7.0",
     "pydantic>=2.13.4",
+]
+
+[project.optional-dependencies]
+aiomysql = [
+    "aiomysql>=0.3.2",
+]
+aiosqlite = [
+    "aiosqlite>=0.22.1",
 ]
 
 [project.urls]
@@ -17,6 +24,7 @@ Repository = "https://github.com/crpier/snekql"
 
 [dependency-groups]
 dev = [
+    "aiosqlite>=0.22.1",
     "pyright>=1.1.409",
     "ruff>=0.15.15",
     "snektest>=0.12.0",

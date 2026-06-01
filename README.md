@@ -8,11 +8,16 @@ based execution without becoming an ORM.
 ## Install
 
 ```sh
-uv add snekql
+uv add 'snekql[aiosqlite]'
 ```
 
 snekql requires Python 3.14 or newer. V1 targets SQLite and generated tables are
-`STRICT`.
+`STRICT`. Database drivers are optional backend extras: use
+`snekql[aiosqlite]` for the SQLite Query Runtime. The future MariaDB Query
+Runtime will use `snekql[aiomysql]`.
+
+The base `snekql` install is enough for importing the Query Builder and backend
+namespaces, but runtime initialization requires the matching backend extra.
 
 ## Quick start
 
