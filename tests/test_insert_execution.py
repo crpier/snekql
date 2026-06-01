@@ -19,6 +19,7 @@ from snekql import (
     insert,
 )
 from snekql.query import compile_write_sql
+from tests.logging_helpers import NULL_LOGGER
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -76,7 +77,9 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         try:
             async with database.transaction() as transaction:
                 result = await transaction.execute(insert(User(email="a@example.com")))
@@ -104,7 +107,9 @@ async def execution_errors_preserve_insert_sql_and_params() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         try:
             async with database.transaction() as transaction:
                 await transaction.execute(insert(User(id=1, email="first@example.com")))

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from logging import Handler, LogRecord, getLogger
 from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, load_fixture, test
@@ -16,18 +15,27 @@ from snekql import (
     SchemaVerificationError,
     mariadb,
 )
+from tests.logging_helpers import NULL_LOGGER
 from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 
 
-class _CollectingHandler(Handler):
-    """Logging handler that stores records for assertions."""
+class _RecordingStructuredLogger:
+    """Structured logger fake that stores event calls for assertions."""
 
     def __init__(self) -> None:
-        super().__init__()
-        self.records: list[LogRecord] = []
+        self.events: list[tuple[str, str, dict[str, object]]] = []
 
-    def emit(self, record: LogRecord) -> None:
-        self.records.append(record)
+    def debug(self, event: str, **fields: object) -> None:
+        self.events.append(("debug", event, fields))
+
+    def info(self, event: str, **fields: object) -> None:
+        self.events.append(("info", event, fields))
+
+    def warning(self, event: str, **fields: object) -> None:
+        self.events.append(("warning", event, fields))
+
+    def error(self, event: str, **fields: object) -> None:
+        self.events.append(("error", event, fields))
 
 
 def _config_from_server(server: MariaDBServer) -> mariadb.Config:
@@ -85,7 +93,9 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
         ]
 
     server = load_fixture(provide_mariadb_server())
-    database = await Database.initialize(_config_from_server(server), models=[User])
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server), models=[User]
+    )
     await database.close()
 
     assert_eq(
@@ -119,7 +129,9 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
     server = load_fixture(provide_mariadb_server())
 
     with assert_raises(SchemaError):
-        _ = await Database.initialize(_config_from_server(server), models=[User, Org])
+        _ = await Database.initialize(
+            NULL_LOGGER, _config_from_server(server), models=[User, Org]
+        )
 
     result = server.run_sql(
         """
@@ -151,7 +163,9 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
     _ = server.run_sql("CREATE TABLE issue39_table_drift (`email` VARCHAR(255))")
 
     with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(_config_from_server(server), models=[User])
+        _ = await Database.initialize(
+            NULL_LOGGER, _config_from_server(server), models=[User]
+        )
 
 
 @test(mark="medium")
@@ -170,7 +184,9 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
     )
 
     with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(_config_from_server(server), models=[User])
+        _ = await Database.initialize(
+            NULL_LOGGER, _config_from_server(server), models=[User]
+        )
 
 
 @test(mark="medium")
@@ -190,18 +206,19 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
 
     server = load_fixture(provide_mariadb_server())
     _ = server.run_sql("CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))")
-    logger = getLogger("snekql")
-    handler = _CollectingHandler()
-    logger.addHandler(handler)
-    try:
-        database = await Database.initialize(
-            _config_from_server(server),
-            models=[User],
-            schema_policy="warn",
-        )
-        await database.close()
-    finally:
-        logger.removeHandler(handler)
+    logger = _RecordingStructuredLogger()
+    database = await Database.initialize(
+        logger,
+        _config_from_server(server),
+        models=[User],
+        schema_policy="warn",
+    )
+    await database.close()
 
-    assert_eq(len(handler.records), 1)
-    assert_eq(handler.records[0].getMessage(), "schema drift detected")
+    warnings = [
+        fields
+        for level, event, fields in logger.events
+        if level == "warning" and event == "schema drift detected"
+    ]
+    assert_eq(len(warnings), 1)
+    assert_eq(warnings[0]["table_name"], "issue39_warn_drift")

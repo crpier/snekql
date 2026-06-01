@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from logging import Handler, LogRecord, getLogger
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
@@ -23,6 +22,7 @@ from snekql import (
     Text,
     sqlite,
 )
+from tests.logging_helpers import NULL_LOGGER
 
 
 def _execute_sql(database_path: Path, sql: str) -> None:
@@ -83,15 +83,23 @@ def _table_exists(database_path: Path, table_name: str) -> bool:
         connection.close()
 
 
-class _CollectingHandler(Handler):
-    """Logging handler that stores records for assertions."""
+class _RecordingStructuredLogger:
+    """Structured logger fake that stores event calls for assertions."""
 
     def __init__(self) -> None:
-        super().__init__()
-        self.records: list[LogRecord] = []
+        self.events: list[tuple[str, str, dict[str, object]]] = []
 
-    def emit(self, record: LogRecord) -> None:
-        self.records.append(record)
+    def debug(self, event: str, **fields: object) -> None:
+        self.events.append(("debug", event, fields))
+
+    def info(self, event: str, **fields: object) -> None:
+        self.events.append(("info", event, fields))
+
+    def warning(self, event: str, **fields: object) -> None:
+        self.events.append(("warning", event, fields))
+
+    def error(self, event: str, **fields: object) -> None:
+        self.events.append(("error", event, fields))
 
 
 @test(mark="medium")
@@ -110,7 +118,9 @@ async def initialize_creates_missing_strict_tables() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -139,7 +149,7 @@ async def initialize_accepts_sqlite_config_object() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         config = sqlite.Config(database=database_path, pool_size=2)
-        database = await Database.initialize(config, models=[User])
+        database = await Database.initialize(NULL_LOGGER, config, models=[User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -162,7 +172,7 @@ async def initialize_rejects_mixed_sqlite_config_and_legacy_database() -> None:
         initialize = cast("Any", Database.initialize)
 
         with assert_raises(DatabaseRuntimeError):
-            _ = await initialize(config, database=database_path)
+            _ = await initialize(NULL_LOGGER, config, database=database_path)
 
 
 @test(mark="medium")
@@ -177,7 +187,9 @@ async def initialize_creates_column_unique_indexes_after_tables() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -212,7 +224,9 @@ async def initialize_creates_table_indexes_in_declaration_order() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         await database.close()
 
         create_indexes = _fetch_create_indexes(database_path, "user")
@@ -241,21 +255,23 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
             return "app.db"
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await initialize("app.db")
+        _ = await initialize(NULL_LOGGER, "app.db")
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast("Any", "app.db"))
+        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", "app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast("Any", "sqlite:///app.db"))
+        _ = await Database.initialize(
+            NULL_LOGGER, database=cast("Any", "sqlite:///app.db")
+        )
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast("Any", b"app.db"))
+        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", b"app.db"))
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(database=cast("Any", OtherPath()))
+        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", OtherPath()))
 
-    database = await Database.initialize(database=":memory:")
+    database = await Database.initialize(NULL_LOGGER, database=":memory:")
     await database.close()
 
 
@@ -283,7 +299,9 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         )
         _execute_sql(database_path, existing_sql)
 
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(
+            NULL_LOGGER, database=database_path, models=[User]
+        )
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -307,7 +325,9 @@ async def strict_schema_policy_raises_on_index_drift() -> None:
         )
 
         with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[User])
+            _ = await Database.initialize(
+                NULL_LOGGER, database=database_path, models=[User]
+            )
 
 
 @test(mark="medium")
@@ -334,6 +354,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaError):
             _ = await Database.initialize(
+                NULL_LOGGER,
                 database=database_path,
                 models=[User, Account],
             )
@@ -353,7 +374,9 @@ async def strict_schema_policy_raises_on_schema_drift() -> None:
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
         with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[User])
+            _ = await Database.initialize(
+                NULL_LOGGER, database=database_path, models=[User]
+            )
 
 
 @test(mark="medium")
@@ -365,26 +388,23 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
 
         email: User.Col[str] = Text(nullable=False)
 
-    logger = getLogger("snekql")
-    handler = _CollectingHandler()
-    logger.addHandler(handler)
-    try:
-        with TemporaryDirectory() as directory:
-            database_path = Path(directory) / "app.db"
-            _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
+    logger = _RecordingStructuredLogger()
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
-            database = await Database.initialize(
-                database=database_path,
-                models=[User],
-                schema_policy="warn",
-            )
-            await database.close()
-    finally:
-        logger.removeHandler(handler)
+        database = await Database.initialize(
+            logger,
+            database=database_path,
+            models=[User],
+            schema_policy="warn",
+        )
+        await database.close()
 
     assert_true(
         any(
-            record.getMessage() == "schema drift detected" for record in handler.records
+            level == "warning" and event == "schema drift detected"
+            for level, event, _fields in logger.events
         )
     )
 
@@ -408,6 +428,7 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaError):
             _ = await Database.initialize(
+                NULL_LOGGER,
                 database=database_path,
                 models=[User, Account],
             )
@@ -436,6 +457,7 @@ async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
 
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
+                NULL_LOGGER,
                 database=database_path,
                 models=[CreatedFirst, ExistingDrift],
             )

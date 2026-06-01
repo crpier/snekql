@@ -19,12 +19,29 @@ from snekql import (
     Integer,
     Model,
     Pending,
+    StructuredLogger,
     Text,
     delete,
     insert,
     select,
     update,
 )
+
+
+class ExampleLogger:
+    """Tiny structured logger for the runnable example."""
+
+    def debug(self, event: str, **fields: object) -> None:
+        print("debug", event, fields)
+
+    def info(self, event: str, **fields: object) -> None:
+        print("info", event, fields)
+
+    def warning(self, event: str, **fields: object) -> None:
+        print("warning", event, fields)
+
+    def error(self, event: str, **fields: object) -> None:
+        print("error", event, fields)
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -43,10 +60,11 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
 
 
-async def main() -> None:
+async def main(logger: StructuredLogger) -> None:
     """Exercise v1 create, read, update, and delete behavior."""
 
     db = await Database.initialize(
+        logger,
         database=":memory:",
         models=[User],
         pool_size=1,
@@ -84,4 +102,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(ExampleLogger()))

@@ -28,6 +28,7 @@ from snekql import (
     Integer,
     Model,
     Pending,
+    StructuredLogger,
     Text,
     insert,
     select,
@@ -47,8 +48,15 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
 
 
-async def main() -> None:
-    db = await Database.initialize(database=":memory:", models=[User], pool_size=1)
+class SmokeLogger:
+    def debug(self, event: str, **fields: object) -> None: ...
+    def info(self, event: str, **fields: object) -> None: ...
+    def warning(self, event: str, **fields: object) -> None: ...
+    def error(self, event: str, **fields: object) -> None: ...
+
+
+async def main(logger: StructuredLogger) -> None:
+    db = await Database.initialize(logger, database=":memory:", models=[User], pool_size=1)
     try:
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
@@ -58,7 +66,7 @@ async def main() -> None:
         await db.close()
 
 
-asyncio.run(main())
+asyncio.run(main(SmokeLogger()))
 PY
 uv run python smoke.py
 uv add --dev pyright

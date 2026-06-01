@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import logging
 from collections.abc import Sequence
 from itertools import starmap
 from typing import Any
@@ -15,8 +14,7 @@ from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
-
-_LOGGER = logging.getLogger("snekql")
+from snekql.structured_logging import ResolvedStructuredLogger
 
 
 def quote_sqlite_identifier(identifier: str) -> str:
@@ -137,13 +135,14 @@ def _normalize_snekql_create_table_sql(sql: str) -> str:
 async def _report_schema_drift(
     schema_policy: SchemaPolicy,
     table_name: str,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     message = f"schema drift detected for table {table_name!r}"
     if schema_policy == "strict":
         raise SchemaVerificationError(message)
-    _LOGGER.warning(
+    logger.warning(
         "schema drift detected",
-        extra={"table_name": table_name},
+        table_name=table_name,
     )
 
 
@@ -151,34 +150,40 @@ async def _verify_model_indexes(
     connection: Connection,
     model: type[Table[Any]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     table_name = require_model_table_name(model)
     expected_sql = _compile_model_index_sql(model)
     existing_sql = await _fetch_existing_create_index_sql(connection, table_name)
     if existing_sql == expected_sql:
+        logger.debug("schema indexes verified", table_name=table_name)
         return
-    await _report_schema_drift(schema_policy, table_name)
+    await _report_schema_drift(schema_policy, table_name, logger)
 
 
 async def _verify_or_create_model_table(
     connection: Connection,
     model: type[Table[Any]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     table_name = require_model_table_name(model)
     expected_sql = _compile_create_table_sql(model)
     existing_sql = await _fetch_existing_create_table_sql(connection, table_name)
     if existing_sql is None:
         _ = await connection.execute(expected_sql)
+        logger.debug("schema table created", table_name=table_name)
         for index_sql in _compile_model_index_sql(model):
             _ = await connection.execute(index_sql)
+            logger.debug("schema index created", table_name=table_name, sql=index_sql)
         return
     if _normalize_snekql_create_table_sql(
         existing_sql,
     ) != _normalize_snekql_create_table_sql(expected_sql):
-        await _report_schema_drift(schema_policy, table_name)
+        await _report_schema_drift(schema_policy, table_name, logger)
         return
-    await _verify_model_indexes(connection, model, schema_policy)
+    logger.debug("schema table verified", table_name=table_name)
+    await _verify_model_indexes(connection, model, schema_policy, logger)
 
 
 def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
@@ -212,16 +217,24 @@ async def _initialize_sqlite_schema(
     connection: Connection,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     _validate_schema_policy(schema_policy)
     _validate_schema_models(models)
     if not models:
         return
+    logger.debug("schema startup started", model_count=len(models))
     try:
         _ = await connection.execute("BEGIN")
         for model in models:
-            await _verify_or_create_model_table(connection, model, schema_policy)
+            await _verify_or_create_model_table(
+                connection,
+                model,
+                schema_policy,
+                logger,
+            )
         _ = await connection.execute("COMMIT")
+        logger.debug("schema startup completed", model_count=len(models))
     except Error as error:
         await _rollback_schema_setup(connection)
         msg = "SQLite schema setup failed"
@@ -247,7 +260,13 @@ async def initialize_sqlite_schema(
     connection: Connection,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    logger: ResolvedStructuredLogger,
 ) -> None:
     """Create or verify all configured SQLite tables transactionally."""
 
-    await _initialize_sqlite_schema(connection, models, schema_policy)
+    await _initialize_sqlite_schema(
+        connection,
+        models,
+        schema_policy,
+        logger,
+    )

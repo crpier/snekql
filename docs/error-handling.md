@@ -52,12 +52,15 @@ try:
 except ExecutionError as error:
     logger.warning(
         "snekql execution failed",
-        extra={"sql": error.sql, "params": error.params},
+        sql=error.sql,
+        params=error.params,
     )
 ```
 
-`str(error)` includes SQL and parameter reprs for debugging. snekql does not
-attempt secret redaction beyond using each value's normal `repr`.
+`str(error)` includes SQL and parameter reprs for debugging. Runtime structured
+logs may also include SQL and params exactly as supplied to the database driver.
+snekql does not redact secrets; applications should encrypt or safely represent
+private values before they reach the Query Runtime.
 
 ## Agent guidance
 

@@ -2,7 +2,7 @@
 
 snekql v1 has startup schema management, not migrations.
 
-When `Database.initialize(..., models=[...])` runs, snekql creates missing tables
+When `Database.initialize(logger, ..., models=[...])` runs, snekql creates missing tables
 and verifies existing tables and indexes against backend metadata generated
 from the table models. SQLite compares deterministic DDL stored by SQLite;
 MariaDB compares normalized `INFORMATION_SCHEMA` table, column, and index
@@ -12,6 +12,7 @@ metadata.
 
 ```python
 db = await Database.initialize(
+    logger,
     database=Path("app.db"),
     models=[User, AuditLog],
     schema_policy="strict",
@@ -51,6 +52,7 @@ cleaning up or applying an application-owned migration.
 
 ```python
 await Database.initialize(
+    logger,
     database=Path("app.db"),
     models=[User],
     schema_policy="strict",
@@ -61,6 +63,7 @@ await Database.initialize(
 
 ```python
 await Database.initialize(
+    logger,
     database=Path("app.db"),
     models=[User],
     schema_policy="warn",

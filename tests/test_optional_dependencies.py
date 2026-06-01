@@ -52,6 +52,7 @@ def public_imports_do_not_import_optional_drivers() -> None:
     script = """
 import sys
 import snekql
+from tests.logging_helpers import NULL_LOGGER
 from snekql import mariadb, sqlite
 
 if "aiosqlite" in sys.modules:
@@ -85,6 +86,7 @@ import builtins
 
 import snekql
 from snekql import Database, sqlite
+from tests.logging_helpers import NULL_LOGGER
 
 original_import = builtins.__import__
 
@@ -99,7 +101,7 @@ async def main() -> None:
     builtins.__import__ = block_aiosqlite
     try:
         try:
-            _ = await Database.initialize(sqlite.Config(database=":memory:"))
+            _ = await Database.initialize(NULL_LOGGER, sqlite.Config(database=":memory:"))
         except snekql.DatabaseRuntimeError as error:
             print(error)
             return
