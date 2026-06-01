@@ -323,7 +323,13 @@ class Database:
             pool_size=pool_size,
             acquire_timeout=acquire_timeout,
         )
-        from snekql.sqlite.runtime import initialize_runtime  # noqa: PLC0415
+        try:
+            from snekql.sqlite.runtime import initialize_runtime  # noqa: PLC0415
+        except ModuleNotFoundError as error:
+            if error.name == "aiosqlite":
+                msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
+                raise DatabaseRuntimeError(msg) from error
+            raise
 
         runtime = await initialize_runtime(runtime_config, models, schema_policy)
         database_instance = cls.__new__(cls)
