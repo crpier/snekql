@@ -11,11 +11,14 @@ from snekql import (
     MISSING,
     Database,
     DatabaseClosedError,
+    ExecutionError,
     Pending,
     PoolTimeoutError,
+    delete,
     insert,
     mariadb,
     select,
+    update,
 )
 from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 
@@ -117,6 +120,110 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()
+
+
+@test(mark="medium")
+async def mariadb_runtime_executes_the_full_query_surface() -> None:
+    """MariaDB supports result shapes, filters, ordering, updates, and deletes."""
+
+    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+        """Table model for MariaDB query surface coverage."""
+
+        __tablename__ = "issue38_user_query_surface"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+        status: User.Col[str] = mariadb.Text(nullable=False)
+        tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
+
+    server = load_fixture(provide_mariadb_server())
+    database = await Database.initialize(_config_from_server(server), models=[User])
+    try:
+        async with database.transaction() as transaction:
+            await transaction.execute(
+                insert(
+                    User(email="charlie@example.com", status="inactive", tenant_id=1)
+                )
+            )
+            await transaction.execute(
+                insert(User(email="alice@example.com", status="active", tenant_id=1))
+            )
+            await transaction.execute(
+                insert(User(email="bob@example.com", status="active", tenant_id=2))
+            )
+
+            scalar_rows = await transaction.fetch_all(
+                select(User.email)
+                .where(User.tenant_id.eq(1) & User.status.eq("active"))
+                .order_by(User.email.asc())
+                .limit(1)
+                .offset(0),
+            )
+            tuple_rows = await transaction.fetch_all(
+                select(User.email, User.status)
+                .where(User.tenant_id.eq(1))
+                .order_by(User.email.asc())
+                .limit(1)
+                .offset(1),
+            )
+
+            await transaction.execute(
+                update(User)
+                .set(User.status.to("disabled"))
+                .where(User.email.eq("bob@example.com")),
+            )
+            updated_status = await transaction.fetch_one(
+                select(User.status).where(User.email.eq("bob@example.com")),
+            )
+
+            await transaction.execute(delete(User).where(User.status.eq("inactive")))
+            deleted_user = await transaction.fetch_one(
+                select(User).where(User.email.eq("charlie@example.com")),
+            )
+
+            await transaction.execute(delete(User).all())
+            remaining_users = await transaction.fetch_all(select(User).all())
+    finally:
+        await database.close()
+
+    assert_eq(scalar_rows, ["alice@example.com"])
+    assert_eq(tuple_rows, [("charlie@example.com", "inactive")])
+    assert_eq(updated_status, "disabled")
+    assert_eq(deleted_user, None)
+    assert_eq(remaining_users, [])
+
+
+@test(mark="medium")
+async def mariadb_execution_errors_preserve_sql_and_params() -> None:
+    """MariaDB write failures expose backend SQL and parameter context."""
+
+    class Account[S = Pending](mariadb.Model[S, "Account[object]"]):
+        """Table model for MariaDB execution error coverage."""
+
+        __tablename__ = "issue38_account_errors"
+
+        id: Account.Col[int] = mariadb.Integer(primary_key=True)
+        email: Account.Col[str] = mariadb.Text(nullable=False)
+
+    server = load_fixture(provide_mariadb_server())
+    database = await Database.initialize(_config_from_server(server), models=[Account])
+    try:
+        async with database.transaction() as transaction:
+            await transaction.execute(insert(Account(id=1, email="first@example.com")))
+            with assert_raises(ExecutionError) as raised:
+                await transaction.execute(
+                    insert(Account(id=1, email="duplicate@example.com")),
+                )
+    finally:
+        await database.close()
+
+    assert_in("INSERT INTO `issue38_account_errors`", raised.exception.sql)
+    assert_in("%s", raised.exception.sql)
+    assert_eq(raised.exception.params, (1, "duplicate@example.com"))
 
 
 @test(mark="medium")
