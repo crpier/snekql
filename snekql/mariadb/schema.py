@@ -12,7 +12,7 @@ from snekql.errors import SchemaError, SchemaVerificationError
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table, require_model_columns, require_model_table_name
-from snekql.storage import Attr, SchemaPolicy
+from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 
 _LOGGER = logging.getLogger("snekql")
 
@@ -107,6 +107,8 @@ def _compile_column_definition(
         parts.append("AUTO_INCREMENT")
     if column.primary_key:
         parts.append("PRIMARY KEY")
+    if isinstance(column.server_default, CurrentTimestamp):
+        parts.append("DEFAULT CURRENT_TIMESTAMP(3)")
     return " ".join(parts)
 
 
