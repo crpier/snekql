@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Literal, TypeVar
 
 from snekql.indexes import NormalizedIndex
 from snekql.model import Model as BaseModel
@@ -20,6 +20,7 @@ class Model[StateT, ReadModelT: Table[Any]](BaseModel[StateT, ReadModelT]):
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
+    __snekql_backend__: ClassVar[Literal["mariadb"]] = "mariadb"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
