@@ -320,6 +320,11 @@ class ModelMeta(type):
         if column.unique and column.primary_key:
             msg = f"primary-key columns cannot be unique: {name!r}"
             raise ModelDeclarationError(msg)
+        if column.auto_increment and (
+            not column.primary_key or column.storage_type_name != "Integer"
+        ):
+            msg = f"auto-increment requires an integer primary-key column: {name!r}"
+            raise ModelDeclarationError(msg)
         if column.server_default is None:
             return
         if not isinstance(column.server_default, CurrentTimestamp):
