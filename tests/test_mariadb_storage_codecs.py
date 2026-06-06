@@ -24,12 +24,7 @@ from tests.mariadb_server import MariaDBServer, provide_mariadb_server
 def _config_from_server(server: MariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
-    return mariadb.Config(
-        database=server.database,
-        host=server.host,
-        port=server.port,
-        user=server.user,
-    )
+    return server.config()
 
 
 @test()
@@ -102,7 +97,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         message: Event.Col[str] = mariadb.Text(nullable=False)
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[Event]
     )

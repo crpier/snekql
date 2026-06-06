@@ -8,10 +8,10 @@ from tests.mariadb_server import provide_mariadb_server
 
 
 @test(mark="medium")
-def mariadb_server_fixture_starts_queryable_server() -> None:
+async def mariadb_server_fixture_starts_queryable_server() -> None:
     """The shared fixture provides a local unprivileged MariaDB server."""
 
-    server = load_fixture(provide_mariadb_server())
-    result = server.run_sql("SELECT 1")
+    server = await load_fixture(provide_mariadb_server())
+    result = await server.run_sql("SELECT 1")
 
     assert_in("1", result.stdout)

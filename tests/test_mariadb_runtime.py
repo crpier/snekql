@@ -37,13 +37,7 @@ def _force_rollback() -> None:
 def _config_from_server(server: MariaDBServer, *, pool_size: int = 5) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
-    return mariadb.Config(
-        database=server.database,
-        host=server.host,
-        pool_size=pool_size,
-        port=server.port,
-        user=server.user,
-    )
+    return server.config(pool_size=pool_size)
 
 
 @test(mark="medium")
@@ -62,7 +56,7 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[User]
     )
@@ -96,7 +90,7 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server, pool_size=1), models=[User]
     )
@@ -143,7 +137,7 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         status: User.Col[str] = mariadb.Text(nullable=False)
         tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[User]
     )
@@ -214,7 +208,7 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         id: Account.Col[int] = mariadb.Integer(primary_key=True)
         email: Account.Col[str] = mariadb.Text(nullable=False)
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[Account]
     )

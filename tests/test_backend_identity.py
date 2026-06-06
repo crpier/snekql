@@ -39,12 +39,7 @@ class MariadbIdentityUser[S = Pending](mariadb.Model[S, "MariadbIdentityUser[obj
 def _config_from_server(server: MariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
-    return mariadb.Config(
-        database=server.database,
-        host=server.host,
-        port=server.port,
-        user=server.user,
-    )
+    return server.config()
 
 
 @test(mark="medium")
@@ -82,7 +77,7 @@ async def transactions_reject_queries_from_the_wrong_backend() -> None:
     finally:
         await sqlite_database.close()
 
-    server = load_fixture(provide_mariadb_server())
+    server = await load_fixture(provide_mariadb_server())
     mariadb_database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server)
     )

@@ -17,6 +17,9 @@ aiosqlite = [
     "aiosqlite>=0.22.1",
 ]
 
+[project.scripts]
+snekql-mariadb-server = "snekql.testing.mariadb.cli:main"
+
 [project.urls]
 Changelog = "https://github.com/crpier/snekql/blob/main/CHANGELOG.md"
 Issues = "https://github.com/crpier/snekql/issues"
