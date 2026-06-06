@@ -152,12 +152,19 @@ async def temporary_mariadb_server_resolves_relative_data_directories() -> None:
         relative_data_directory = Path("relative-mariadb-data")
         expected_data_directory = Path.cwd() / relative_data_directory
 
-        with assert_raises(TemporaryMariaDBServerError) as error:
-            async with temporary_mariadb_server(
-                data_directory=relative_data_directory,
-                install_db=install_db,
-            ):
-                pass
+        try:
+            with assert_raises(TemporaryMariaDBServerError) as error:
+                async with temporary_mariadb_server(
+                    data_directory=relative_data_directory,
+                    install_db=install_db,
+                ):
+                    pass
+        finally:
+            await asyncio.to_thread(
+                shutil.rmtree,
+                expected_data_directory,
+                ignore_errors=True,
+            )
 
     assert_in(f"--datadir={expected_data_directory}", str(error.exception))
 
@@ -179,8 +186,13 @@ async def temporary_mariadb_server_explains_quota_limited_install_failures() -> 
         )
         _ = install_db.chmod(0o700)
 
+        data_directory = Path(temporary_directory) / "data"
+
         with assert_raises(TemporaryMariaDBServerError) as error:
-            async with temporary_mariadb_server(install_db=install_db):
+            async with temporary_mariadb_server(
+                data_directory=data_directory,
+                install_db=install_db,
+            ):
                 pass
 
     message = str(error.exception)
