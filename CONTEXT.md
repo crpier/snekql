@@ -36,6 +36,18 @@ _Avoid_: generic portability layer, driver module
 The internal adapter that lets the Query Runtime acquire connections, control transactions, compile SQL, and materialize rows for one backend.
 _Avoid_: ORM session, universal dialect abstraction
 
+**Temporary MariaDB Test Server**:
+A local throwaway MariaDB server managed by snekql test-support APIs for integration tests and short-lived CLI sessions.
+_Avoid_: development database, production database, MariaDB provisioning
+
+**Temporary MariaDB Test Server Auth Policy**:
+The access model chosen for a Temporary MariaDB Test Server: insecure grant-table bypass or password credentials.
+_Avoid_: Unix-socket authentication, production authentication, account management
+
+**Temporary MariaDB Test Server Transport**:
+The local connection path exposed by a Temporary MariaDB Test Server: Unix socket by default, local TCP when explicitly requested, or both when requested together.
+_Avoid_: authentication policy, network service
+
 **Server Default**:
 A database-supplied column value that is filled in by the database when an insert omits that column.
 _Avoid_: Python default, constructor default

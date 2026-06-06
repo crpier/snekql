@@ -15,6 +15,7 @@ from snektest.assertions import (
 )
 
 import snekql
+from snekql.testing import mariadb as testing_mariadb
 
 
 def _assert_has_specific_docstring(value: object) -> None:
@@ -97,6 +98,30 @@ def public_contract_exports_canonical_names() -> None:
     for name in expected_names:
         assert_in(name, snekql.__all__)
         assert_eq(getattr(snekql, name), getattr(snekql, name))
+
+
+@test()
+def testing_mariadb_namespace_exports_test_server_names() -> None:
+    """The testing namespace exposes MariaDB test-server support directly."""
+
+    assert_eq(
+        tuple(testing_mariadb.__all__),
+        (
+            "MariaDBAuth",
+            "MariaDBCommandResult",
+            "MariaDBTransport",
+            "TemporaryMariaDBServer",
+            "TemporaryMariaDBServerError",
+            "temporary_mariadb_server",
+        ),
+    )
+    assert_in("mariadb", __import__("snekql.testing").testing.__all__)
+    assert_in("temporary_mariadb_server", testing_mariadb.__all__)
+    assert_isinstance(
+        testing_mariadb.TemporaryMariaDBServerError("failure"),
+        snekql.SnekqlError,
+    )
+    assert "testing" not in snekql.__all__
 
 
 @test()

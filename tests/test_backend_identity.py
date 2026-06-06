@@ -15,7 +15,7 @@ from snekql import (
     sqlite,
 )
 from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import MariaDBServer, provide_mariadb_server
+from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
 
 
 class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[object]"]):
@@ -36,53 +36,62 @@ class MariadbIdentityUser[S = Pending](mariadb.Model[S, "MariadbIdentityUser[obj
     email: MariadbIdentityUser.Col[str] = mariadb.Text(nullable=False)
 
 
-def _config_from_server(server: MariaDBServer) -> mariadb.Config:
+def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
-    return mariadb.Config(
-        database=server.database,
-        host=server.host,
-        port=server.port,
-        user=server.user,
-    )
+    return server.config()
 
 
 @test(mark="medium")
-async def initialization_rejects_models_from_the_wrong_backend() -> None:
-    """Database startup rejects model/config backend mismatches before runtime work."""
+async def sqlite_initialization_rejects_mariadb_models() -> None:
+    """SQLite Database startup rejects MariaDB Table Models."""
 
-    with assert_raises(DatabaseRuntimeError) as sqlite_error:
+    with assert_raises(DatabaseRuntimeError) as error:
         _ = await Database.initialize(
             NULL_LOGGER, database=":memory:", models=[MariadbIdentityUser]
         )
-    assert_in("expected sqlite", str(sqlite_error.exception))
-    assert_in("received mariadb", str(sqlite_error.exception))
 
-    with assert_raises(DatabaseRuntimeError) as mariadb_error:
+    assert_in("expected sqlite", str(error.exception))
+    assert_in("received mariadb", str(error.exception))
+
+
+@test(mark="medium")
+async def mariadb_initialization_rejects_sqlite_models() -> None:
+    """MariaDB Database startup rejects SQLite Table Models."""
+
+    with assert_raises(DatabaseRuntimeError) as error:
         _ = await Database.initialize(
             NULL_LOGGER,
             mariadb.Config(database="app", user="snekql"),
             models=[SqliteIdentityUser],
         )
-    assert_in("expected mariadb", str(mariadb_error.exception))
-    assert_in("received sqlite", str(mariadb_error.exception))
+
+    assert_in("expected mariadb", str(error.exception))
+    assert_in("received sqlite", str(error.exception))
 
 
 @test(mark="medium")
-async def transactions_reject_queries_from_the_wrong_backend() -> None:
-    """Transactions reject query/model backends that do not match their runtime."""
+async def sqlite_transaction_rejects_mariadb_queries() -> None:
+    """SQLite Transactions reject MariaDB queries."""
 
     sqlite_database = await Database.initialize(NULL_LOGGER, database=":memory:")
     try:
         async with sqlite_database.transaction() as transaction:
             with assert_raises(DatabaseRuntimeError) as error:
                 _ = await transaction.fetch_all(select(MariadbIdentityUser).all())
-        assert_in("expected sqlite", str(error.exception))
-        assert_in("received mariadb", str(error.exception))
     finally:
         await sqlite_database.close()
 
-    server = load_fixture(provide_mariadb_server())
+    assert_in("expected sqlite", str(error.exception))
+    assert_in("received mariadb", str(error.exception))
+
+
+@test(mark="medium")
+async def mariadb_transaction_rejects_sqlite_queries() -> None:
+    """MariaDB Transactions reject SQLite queries."""
+
+    server = await load_fixture(provide_mariadb_server())
+
     mariadb_database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server)
     )
@@ -90,10 +99,11 @@ async def transactions_reject_queries_from_the_wrong_backend() -> None:
         async with mariadb_database.transaction() as transaction:
             with assert_raises(DatabaseRuntimeError) as error:
                 _ = await transaction.fetch_all(select(SqliteIdentityUser).all())
-        assert_in("expected mariadb", str(error.exception))
-        assert_in("received sqlite", str(error.exception))
     finally:
         await mariadb_database.close()
+
+    assert_in("expected mariadb", str(error.exception))
+    assert_in("received sqlite", str(error.exception))
 
 
 @test()

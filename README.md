@@ -312,6 +312,7 @@ snekql does not redact secrets.
 - [Why snekql is not an ORM](docs/why-not-orm.md)
 - [Typing guide](docs/typing.md)
 - [Schema startup and drift](docs/schema-drift.md)
+- [Temporary MariaDB Test Server](docs/testing-mariadb.md)
 - [Error handling guide](docs/error-handling.md)
 - [MariaDB integration PRD](https://github.com/crpier/snekql/issues/34)
 
@@ -322,9 +323,9 @@ uv run python -m examples.basic_app
 uv run pyright examples/typed_queries.py
 ```
 
-Local validation uses `uv run snektest`. MariaDB integration tests start an
-unprivileged temporary `mariadbd` instance through `tests/mariadb_server.py`, so
-`mariadbd` and `mariadb-install-db` must be available on the test machine.
+Local validation uses `uv run snektest`. MariaDB integration tests start a
+Temporary MariaDB Test Server through `snekql.testing.mariadb`, so `mariadbd`,
+`mariadb-install-db`, and `mariadb` must be available on the test machine.
 
 ## Public API
 

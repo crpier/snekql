@@ -54,6 +54,7 @@ import sys
 import snekql
 from tests.logging_helpers import NULL_LOGGER
 from snekql import mariadb, sqlite
+from snekql.testing import mariadb as testing_mariadb
 
 if "aiosqlite" in sys.modules:
     raise AssertionError("aiosqlite was imported")
@@ -65,6 +66,7 @@ if "snekql.schema" in sys.modules:
     raise AssertionError("SQLite schema was imported")
 _ = sqlite.Config(database=":memory:")
 _ = mariadb.Config(database="app", user="snekql")
+_ = testing_mariadb.temporary_mariadb_server()
 print("ok")
 """
 
