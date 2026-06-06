@@ -16,7 +16,7 @@ from snekql import (
     mariadb,
 )
 from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import MariaDBServer, provide_mariadb_server
+from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
 
 
 class _RecordingStructuredLogger:
@@ -38,14 +38,14 @@ class _RecordingStructuredLogger:
         self.events.append(("error", event, fields))
 
 
-def _config_from_server(server: MariaDBServer) -> mariadb.Config:
+def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
     return server.config()
 
 
 async def _fetch_index_rows(
-    server: MariaDBServer, table_name: str
+    server: TemporaryMariaDBServer, table_name: str
 ) -> list[tuple[str, str, str]]:
     """Fetch non-primary index metadata from MariaDB information_schema."""
 

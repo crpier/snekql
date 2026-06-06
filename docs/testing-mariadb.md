@@ -44,6 +44,8 @@ Data directories are retained after shutdown so failed tests can be inspected.
 
 snekql never deletes a data directory when the server stops.
 
+Because MariaDB data directories are large, spawning many temporary servers with the default retained system-temp location can fill `/tmp` or hit a filesystem quota. MariaDB may then fail during initialization with InnoDB preallocation errors such as `error 122`. In long-running test workflows, prefer an explicit `data_directory` that the test fixture deletes after shutdown, or periodically remove stale retained directories such as `/tmp/snekql-mariadb-*`.
+
 ## SQL helper
 
 The yielded server exposes a public async SQL helper for test setup and diagnostics:

@@ -18,10 +18,10 @@ from snekql import (
     select,
 )
 from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import MariaDBServer, provide_mariadb_server
+from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
 
 
-def _config_from_server(server: MariaDBServer) -> mariadb.Config:
+def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
     return server.config()

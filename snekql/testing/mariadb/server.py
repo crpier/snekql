@@ -210,16 +210,30 @@ class _TemporaryMariaDBServerOptions:
     user: str
 
 
+def _resolve_user_path(path: Path) -> Path:
+    """Make caller-provided paths stable for MariaDB helper processes."""
+
+    return path.expanduser().resolve()
+
+
 async def _create_process_paths(
     options: _TemporaryMariaDBServerOptions,
 ) -> _ProcessPaths:
     """Create retained runtime paths without deleting them at shutdown."""
 
     runtime_directory = Path(mkdtemp(prefix="snekql-mariadb-"))
-    data_directory = options.data_directory or runtime_directory / "data"
+    data_directory = (
+        _resolve_user_path(options.data_directory)
+        if options.data_directory is not None
+        else runtime_directory / "data"
+    )
     public_socket_path = None
     if "unix_socket" in options.transports:
-        public_socket_path = options.socket_path or runtime_directory / "mariadb.sock"
+        public_socket_path = (
+            _resolve_user_path(options.socket_path)
+            if options.socket_path is not None
+            else runtime_directory / "mariadb.sock"
+        )
     internal_socket_path = public_socket_path or runtime_directory / "internal.sock"
     return _ProcessPaths(
         data_directory=data_directory,
@@ -254,6 +268,12 @@ async def _ensure_data_directory(
     raise TemporaryMariaDBServerError(msg)
 
 
+def _is_quota_limited_install_error(stderr: str) -> bool:
+    """Recognize MariaDB's quota-exhaustion initialization failure."""
+
+    return "error 122" in stderr and "preallocating" in stderr
+
+
 async def _initialize_data_directory(
     *,
     options: _TemporaryMariaDBServerOptions,
@@ -269,8 +289,16 @@ async def _initialize_data_directory(
         "--skip-test-db",
     )
     if result.returncode != 0:
-        msg = f"mariadb-install-db failed\n{result.stderr}"
-        raise TemporaryMariaDBServerError(msg)
+        message = f"mariadb-install-db failed\n{result.stderr}"
+        if _is_quota_limited_install_error(result.stderr):
+            message += (
+                "\nMariaDB reported error 122 while preallocating files. "
+                "This usually means the data_directory is on a full or "
+                "quota-limited filesystem. Pass data_directory on a filesystem "
+                "with enough free space, or clean retained temporary MariaDB "
+                "data directories such as /tmp/snekql-mariadb-* before retrying."
+            )
+        raise TemporaryMariaDBServerError(message)
 
 
 async def _start_process(

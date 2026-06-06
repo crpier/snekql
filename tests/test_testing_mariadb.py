@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from snektest import (
     assert_eq,
@@ -121,31 +124,98 @@ def temporary_mariadb_server_config_prefers_unix_socket() -> None:
         ).config(transport="tcp")
 
 
+@test(mark="fast")
+async def temporary_mariadb_server_resolves_relative_data_directories() -> None:
+    """Relative data directories are made absolute before invoking MariaDB."""
+
+    with TemporaryDirectory() as temporary_directory:
+        base_directory = Path(temporary_directory)
+        install_db = base_directory / "mariadb-install-db"
+        _ = install_db.write_text(
+            "".join(
+                (
+                    "#!/bin/sh\n",
+                    "printf '%s\\n' \"$@\" >&2\n",
+                    "exit 1\n",
+                )
+            ),
+        )
+        _ = install_db.chmod(0o700)
+        relative_data_directory = Path("relative-mariadb-data")
+        expected_data_directory = Path.cwd() / relative_data_directory
+
+        with assert_raises(TemporaryMariaDBServerError) as error:
+            async with temporary_mariadb_server(
+                data_directory=relative_data_directory,
+                install_db=install_db,
+            ):
+                pass
+
+    assert_in(f"--datadir={expected_data_directory}", str(error.exception))
+
+
+@test(mark="fast")
+async def temporary_mariadb_server_explains_quota_limited_install_failures() -> None:
+    """Install failures caused by quota exhaustion include cleanup guidance."""
+
+    with TemporaryDirectory() as temporary_directory:
+        install_db = Path(temporary_directory) / "mariadb-install-db"
+        _ = install_db.write_text(
+            "".join(
+                (
+                    "#!/bin/sh\n",
+                    "echo 'InnoDB: preallocating 100663296 bytes failed with error 122' >&2\n",
+                    "exit 1\n",
+                )
+            ),
+        )
+        _ = install_db.chmod(0o700)
+
+        with assert_raises(TemporaryMariaDBServerError) as error:
+            async with temporary_mariadb_server(install_db=install_db):
+                pass
+
+    message = str(error.exception)
+    assert_in("quota-limited filesystem", message)
+    assert_in("clean retained temporary MariaDB data directories", message)
+    assert_in("data_directory", message)
+
+
 @test(mark="medium")
 async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
     """The public helper starts a queryable Unix-socket server by default."""
 
-    async with temporary_mariadb_server() as server:
-        result = await server.run_sql("SELECT 1")
-        config = server.config()
-        data_directory = server.data_directory
+    data_directory: Path | None = None
+    try:
+        async with temporary_mariadb_server() as server:
+            result = await server.run_sql("SELECT 1")
+            config = server.config()
+            data_directory = server.data_directory
 
-        assert_eq(server.transports, frozenset({"unix_socket"}))
-        assert_is_none(server.host)
-        assert_is_none(server.port)
-        assert_eq(config.unix_socket, server.socket_path)
-        assert_in("1", result.stdout)
+            assert_eq(server.transports, frozenset({"unix_socket"}))
+            assert_is_none(server.host)
+            assert_is_none(server.port)
+            assert_eq(config.unix_socket, server.socket_path)
+            assert_in("1", result.stdout)
 
-    assert_true(data_directory.exists())
+        assert_true(data_directory.exists())
+    finally:
+        if data_directory is not None:
+            await asyncio.to_thread(shutil.rmtree, data_directory, ignore_errors=True)
 
 
 @test(mark="medium")
 async def temporary_mariadb_server_supports_password_auth() -> None:
     """Password-auth test servers generate usable credentials."""
 
-    async with temporary_mariadb_server(auth="password") as server:
-        result = await server.run_sql("SELECT 1")
+    with TemporaryDirectory() as temporary_directory:
+        data_directory = Path(temporary_directory) / "data"
+        async with temporary_mariadb_server(
+            auth="password",
+            data_directory=data_directory,
+        ) as server:
+            result = await server.run_sql("SELECT 1")
 
-        assert_eq(server.auth, "password")
-        assert server.password != ""
-        assert_in("1", result.stdout)
+            assert_eq(server.auth, "password")
+            assert server.password != ""
+            assert_in("1", result.stdout)

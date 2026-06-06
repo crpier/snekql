@@ -15,7 +15,7 @@ from snekql import (
     sqlite,
 )
 from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import MariaDBServer, provide_mariadb_server
+from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
 
 
 class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[object]"]):
@@ -36,7 +36,7 @@ class MariadbIdentityUser[S = Pending](mariadb.Model[S, "MariadbIdentityUser[obj
     email: MariadbIdentityUser.Col[str] = mariadb.Text(nullable=False)
 
 
-def _config_from_server(server: MariaDBServer) -> mariadb.Config:
+def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
     return server.config()

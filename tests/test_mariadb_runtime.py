@@ -21,7 +21,7 @@ from snekql import (
     update,
 )
 from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import MariaDBServer, provide_mariadb_server
+from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
 
 
 class _RollbackSentinelError(Exception):
@@ -34,7 +34,9 @@ def _force_rollback() -> None:
     raise _RollbackSentinelError
 
 
-def _config_from_server(server: MariaDBServer, *, pool_size: int = 5) -> mariadb.Config:
+def _config_from_server(
+    server: TemporaryMariaDBServer, *, pool_size: int = 5
+) -> mariadb.Config:
     """Build a MariaDB config for the shared local test server."""
 
     return server.config(pool_size=pool_size)
@@ -79,8 +81,6 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
     """The initial MariaDB adapter handles transaction and pool lifecycle."""
 
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
-        """Table model for MariaDB transaction lifecycle coverage."""
-
         __tablename__ = "issue37_user_lifecycle"
 
         id: User.GenCol[int] = mariadb.Integer(
