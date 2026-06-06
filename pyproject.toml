@@ -29,9 +29,11 @@ Repository = "https://github.com/crpier/snekql"
 dev = [
     "aiomysql>=0.3.2",
     "aiosqlite>=0.22.1",
+    "pyrefly>=1.0.0",
     "pyright>=1.1.409",
     "ruff>=0.15.15",
     "snektest>=0.12.0",
+    "ty>=0.0.44",
 ]
 
 [build-system]

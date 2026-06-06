@@ -222,15 +222,15 @@ async def update_and_delete_execute_against_sqlite() -> None:
             logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
-            async with database.transaction() as transaction:
-                await transaction.execute(insert(User(email="a@example.com")))
-                await transaction.execute(insert(User(email="b@example.com")))
-                await transaction.execute(
+            async with database.transaction() as tx:
+                await tx.execute(insert(User(email="a@example.com")))
+                await tx.execute(insert(User(email="b@example.com")))
+                await tx.execute(
                     update(User)
                     .set(User.status.to("disabled"))
                     .where(User.email.eq("a@example.com")),
                 )
-                await transaction.execute(
+                await tx.execute(
                     delete(User).where(User.status.eq("active")),
                 )
         finally:

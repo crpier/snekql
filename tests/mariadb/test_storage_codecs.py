@@ -104,8 +104,8 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
     )
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(
                 insert(
                     Event(
                         amount=12.5,
@@ -117,7 +117,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
                     )
                 )
             )
-            event = await transaction.fetch_one(select(Event).all())
+            event = await tx.fetch_one(select(Event).all())
     finally:
         await database.close()
 

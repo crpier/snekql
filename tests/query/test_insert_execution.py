@@ -82,8 +82,8 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
             logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
-            async with database.transaction() as transaction:
-                result = await transaction.execute(insert(User(email="a@example.com")))
+            async with database.transaction() as tx:
+                result = await tx.execute(insert(User(email="a@example.com")))
         finally:
             await database.close()
 
@@ -112,10 +112,10 @@ async def execution_errors_preserve_insert_sql_and_params() -> None:
             logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
-            async with database.transaction() as transaction:
-                await transaction.execute(insert(User(id=1, email="first@example.com")))
+            async with database.transaction() as tx:
+                await tx.execute(insert(User(id=1, email="first@example.com")))
                 with assert_raises(ExecutionError) as caught_error:
-                    await transaction.execute(
+                    await tx.execute(
                         insert(User(id=1, email="second@example.com")),
                     )
         finally:

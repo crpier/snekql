@@ -78,9 +78,9 @@ async def sqlite_transaction_rejects_mariadb_queries() -> None:
 
     sqlite_database = await Database.initialize(logger=NULL_LOGGER, database=":memory:")
     try:
-        async with sqlite_database.transaction() as transaction:
+        async with sqlite_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await transaction.fetch_all(select(MariadbIdentityUser).all())
+                _ = await tx.fetch_all(select(MariadbIdentityUser).all())
     finally:
         await sqlite_database.close()
 
@@ -98,9 +98,9 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
         _config_from_server(server), logger=NULL_LOGGER
     )
     try:
-        async with mariadb_database.transaction() as transaction:
+        async with mariadb_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await transaction.fetch_all(select(SqliteIdentityUser).all())
+                _ = await tx.fetch_all(select(SqliteIdentityUser).all())
     finally:
         await mariadb_database.close()
 

@@ -167,9 +167,9 @@ async def transaction_execution_emits_query_context() -> None:
         models=[User],
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="secret@example.com")))
-            row = await transaction.fetch_one(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="secret@example.com")))
+            row = await tx.fetch_one(
                 select(User.email).where(User.email.eq("secret@example.com"))
             )
     finally:
@@ -209,10 +209,10 @@ async def query_failure_emits_structured_error_context() -> None:
         models=[User],
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="duplicate@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="duplicate@example.com")))
             with assert_raises(ExecutionError):
-                await transaction.execute(insert(User(email="duplicate@example.com")))
+                await tx.execute(insert(User(email="duplicate@example.com")))
     finally:
         await database.close()
 

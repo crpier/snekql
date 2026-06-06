@@ -50,11 +50,11 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="alice@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="alice@example.com")))
 
-        async with database.transaction() as transaction:
-            fetched_user = await transaction.fetch_one(
+        async with database.transaction() as tx:
+            fetched_user = await tx.fetch_one(
                 select(User).where(User.email.eq("alice@example.com")),
             )
 
@@ -87,14 +87,14 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
     )
     try:
         try:
-            async with database.transaction() as transaction:
-                await transaction.execute(insert(User(email="rolled-back@example.com")))
+            async with database.transaction() as tx:
+                await tx.execute(insert(User(email="rolled-back@example.com")))
                 raise _RollbackSentinelError  # noqa: TRY301
         except _RollbackSentinelError:
             pass
 
-        async with database.transaction() as transaction:
-            rolled_back_user = await transaction.fetch_one(
+        async with database.transaction() as tx:
+            rolled_back_user = await tx.fetch_one(
                 select(User).where(User.email.eq("rolled-back@example.com")),
             )
     finally:
@@ -156,27 +156,27 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(
                 insert(
                     User(email="charlie@example.com", status="inactive", tenant_id=1)
                 )
             )
-            await transaction.execute(
+            await tx.execute(
                 insert(User(email="alice@example.com", status="active", tenant_id=1))
             )
-            await transaction.execute(
+            await tx.execute(
                 insert(User(email="bob@example.com", status="active", tenant_id=2))
             )
 
-            scalar_rows = await transaction.fetch_all(
+            scalar_rows = await tx.fetch_all(
                 select(User.email)
                 .where(User.tenant_id.eq(1) & User.status.eq("active"))
                 .order_by(User.email.asc())
                 .limit(1)
                 .offset(0),
             )
-            tuple_rows = await transaction.fetch_all(
+            tuple_rows = await tx.fetch_all(
                 select(User.email, User.status)
                 .where(User.tenant_id.eq(1))
                 .order_by(User.email.asc())
@@ -184,22 +184,22 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
                 .offset(1),
             )
 
-            await transaction.execute(
+            await tx.execute(
                 update(User)
                 .set(User.status.to("disabled"))
                 .where(User.email.eq("bob@example.com")),
             )
-            updated_status = await transaction.fetch_one(
+            updated_status = await tx.fetch_one(
                 select(User.status).where(User.email.eq("bob@example.com")),
             )
 
-            await transaction.execute(delete(User).where(User.status.eq("inactive")))
-            deleted_user = await transaction.fetch_one(
+            await tx.execute(delete(User).where(User.status.eq("inactive")))
+            deleted_user = await tx.fetch_one(
                 select(User).where(User.email.eq("charlie@example.com")),
             )
 
-            await transaction.execute(delete(User).all())
-            remaining_users = await transaction.fetch_all(select(User).all())
+            await tx.execute(delete(User).all())
+            remaining_users = await tx.fetch_all(select(User).all())
     finally:
         await database.close()
 
@@ -228,10 +228,10 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         server.config(pool_size=1), logger=NULL_LOGGER, models=[Account]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(Account(id=1, email="first@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(Account(id=1, email="first@example.com")))
             with assert_raises(ExecutionError) as raised:
-                await transaction.execute(
+                await tx.execute(
                     insert(Account(id=1, email="duplicate@example.com")),
                 )
     finally:

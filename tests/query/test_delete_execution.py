@@ -122,20 +122,20 @@ async def delete_execute_returns_none_for_filtered_and_explicit_all_forms() -> N
         logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
 
-            filtered_result = await transaction.execute(
+            filtered_result = await tx.execute(
                 delete(User).where(User.status.eq("disabled")),
             )
-            remaining_after_filtered = await transaction.fetch_all(
+            remaining_after_filtered = await tx.fetch_all(
                 select(User.email).all().order_by(User.email.asc()),
             )
-            all_result = await transaction.execute(delete(User).all())
-            remaining_after_all = await transaction.fetch_all(select(User.email).all())
+            all_result = await tx.execute(delete(User).all())
+            remaining_after_all = await tx.fetch_all(select(User.email).all())
     finally:
         await database.close()
 

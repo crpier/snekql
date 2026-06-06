@@ -104,14 +104,14 @@ async def update_execute_returns_none_and_supports_explicit_all() -> None:
         logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(insert(User(email="b@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(insert(User(email="b@example.com")))
 
-            result = await transaction.execute(
+            result = await tx.execute(
                 update(User).set(User.status.to("disabled")).all(),
             )
-            statuses = await transaction.fetch_all(
+            statuses = await tx.fetch_all(
                 select(User.status).all().order_by(User.id.asc()),
             )
     finally:

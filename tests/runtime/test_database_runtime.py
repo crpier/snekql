@@ -59,10 +59,8 @@ async def successful_transaction_commits() -> None:
             logger=NULL_LOGGER, database=database_path, models=[RuntimeUser]
         )
         try:
-            async with database.transaction() as transaction:
-                await transaction.execute(
-                    insert(RuntimeUser(email="alice@example.com"))
-                )
+            async with database.transaction() as tx:
+                await tx.execute(insert(RuntimeUser(email="alice@example.com")))
         finally:
             await database.close()
 
@@ -80,8 +78,8 @@ async def exceptional_transaction_rolls_back() -> None:
         )
         try:
             with assert_raises(ValueError):
-                async with database.transaction() as transaction:
-                    await transaction.execute(
+                async with database.transaction() as tx:
+                    await tx.execute(
                         insert(RuntimeUser(email="rollback@example.com")),
                     )
                     msg = "force rollback"

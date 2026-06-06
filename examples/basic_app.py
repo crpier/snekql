@@ -64,11 +64,11 @@ async def main(*, logger: StructuredLogger) -> None:
         models=[User],
     )
     try:
-        async with db.transaction() as transaction:
-            await transaction.execute(insert(User(email="alice@example.com")))
-            await transaction.execute(insert(User(email="bob@example.com")))
+        async with db.transaction() as tx:
+            await tx.execute(insert(User(email="alice@example.com")))
+            await tx.execute(insert(User(email="bob@example.com")))
 
-            active_emails = await transaction.fetch_all(
+            active_emails = await tx.fetch_all(
                 select(User.email)
                 .where(User.status.eq("active"))
                 .order_by(
@@ -77,18 +77,18 @@ async def main(*, logger: StructuredLogger) -> None:
             )
             print("active users:", active_emails)
 
-            await transaction.execute(
+            await tx.execute(
                 update(User)
                 .set(User.status.to("disabled"))
                 .where(User.email.eq("bob@example.com")),
             )
 
-            disabled_user = await transaction.fetch_one(
+            disabled_user = await tx.fetch_one(
                 select(User).where(User.status.eq("disabled")),
             )
             print("disabled user:", disabled_user)
 
-            await transaction.execute(
+            await tx.execute(
                 delete(User).where(User.email.eq("alice@example.com")),
             )
     finally:
