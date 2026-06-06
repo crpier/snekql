@@ -76,6 +76,8 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
 async def mariadb_value_families_round_trip_through_runtime() -> None:
     """MariaDB round trips the initial value families through a live database."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class Event[S = Pending](mariadb.Model[S, "Event[object]"]):
         """Model covering MariaDB value family round trips."""
 
@@ -97,7 +99,6 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         message: Event.Col[str] = mariadb.Text(nullable=False)
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[Event]
     )

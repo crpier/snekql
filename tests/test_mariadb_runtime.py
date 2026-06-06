@@ -46,6 +46,8 @@ def _config_from_server(
 async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
     """A minimal MariaDB Database can create, insert, select, and close."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Table model for the first MariaDB runtime tracer bullet."""
 
@@ -58,7 +60,6 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[User]
     )
@@ -77,8 +78,10 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
 
 
 @test(mark="medium")
-async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
-    """The initial MariaDB adapter handles transaction and pool lifecycle."""
+async def mariadb_runtime_rolls_back_failed_transactions() -> None:
+    """MariaDB Transactions roll back when the body raises."""
+
+    server = await load_fixture(provide_mariadb_server())
 
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         __tablename__ = "issue37_user_lifecycle"
@@ -90,9 +93,8 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server, pool_size=1), models=[User]
+        NULL_LOGGER, _config_from_server(server), models=[User]
     )
     try:
         try:
@@ -106,14 +108,38 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
             rolled_back_user = await transaction.fetch_one(
                 select(User).where(User.email.eq("rolled-back@example.com")),
             )
-            assert_eq(rolled_back_user, None)
+    finally:
+        await database.close()
 
+    assert_eq(rolled_back_user, None)
+
+
+@test(mark="medium")
+async def mariadb_runtime_reports_pool_timeout() -> None:
+    """MariaDB Database reports pool exhaustion as a timeout."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    database = await Database.initialize(
+        NULL_LOGGER, _config_from_server(server, pool_size=1)
+    )
+    try:
         async with database.transaction(timeout=0.5):
             with assert_raises(PoolTimeoutError):
                 async with database.transaction(timeout=0.01):
                     pass
     finally:
         await database.close()
+
+
+@test(mark="medium")
+async def mariadb_runtime_rejects_transactions_after_close() -> None:
+    """MariaDB Database rejects new Transactions after close."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    database = await Database.initialize(NULL_LOGGER, _config_from_server(server))
+    await database.close()
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()
@@ -122,6 +148,8 @@ async def mariadb_runtime_covers_rollback_pool_timeout_and_close() -> None:
 @test(mark="medium")
 async def mariadb_runtime_executes_the_full_query_surface() -> None:
     """MariaDB supports result shapes, filters, ordering, updates, and deletes."""
+
+    server = await load_fixture(provide_mariadb_server())
 
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Table model for MariaDB query surface coverage."""
@@ -137,7 +165,6 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         status: User.Col[str] = mariadb.Text(nullable=False)
         tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[User]
     )
@@ -200,6 +227,8 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
 async def mariadb_execution_errors_preserve_sql_and_params() -> None:
     """MariaDB write failures expose backend SQL and parameter context."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class Account[S = Pending](mariadb.Model[S, "Account[object]"]):
         """Table model for MariaDB execution error coverage."""
 
@@ -208,7 +237,6 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         id: Account.Col[int] = mariadb.Integer(primary_key=True)
         email: Account.Col[str] = mariadb.Text(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[Account]
     )

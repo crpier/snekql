@@ -68,6 +68,8 @@ async def _fetch_index_rows(
 async def mariadb_schema_creates_unique_and_table_indexes() -> None:
     """MariaDB startup creates column unique indexes and table indexes."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Table model with MariaDB indexes."""
 
@@ -87,7 +89,6 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
             Index(tenant_id, email, unique=True),
         ]
 
-    server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
         NULL_LOGGER, _config_from_server(server), models=[User]
     )
@@ -107,6 +108,8 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
 async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None:
     """Duplicate resolved index names are rejected before creating tables."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """First model using a duplicate index name."""
 
@@ -120,8 +123,6 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
         __tablename__ = "issue39_duplicate_org"
         name: Org.Col[str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(name, name="ix_duplicate")]
-
-    server = await load_fixture(provide_mariadb_server())
 
     with assert_raises(SchemaError):
         _ = await Database.initialize(
@@ -143,6 +144,8 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
     """Strict MariaDB schema verification rejects existing table drift."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Model that expects more columns than the existing table."""
 
@@ -154,7 +157,6 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     _ = await server.run_sql("CREATE TABLE issue39_table_drift (`email` VARCHAR(255))")
 
     with assert_raises(SchemaVerificationError):
@@ -167,13 +169,14 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
     """Strict MariaDB schema verification rejects missing managed indexes."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Model that expects a unique index absent from the existing table."""
 
         __tablename__ = "issue39_index_drift"
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 
-    server = await load_fixture(provide_mariadb_server())
     _ = await server.run_sql(
         "CREATE TABLE issue39_index_drift (`email` VARCHAR(255) NOT NULL)"
     )
@@ -188,6 +191,8 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
 async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
     """Warn policy logs MariaDB schema drift without rejecting startup."""
 
+    server = await load_fixture(provide_mariadb_server())
+
     class User[S = Pending](mariadb.Model[S, "User[object]"]):
         """Model used for warn-policy drift verification."""
 
@@ -199,7 +204,6 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    server = await load_fixture(provide_mariadb_server())
     _ = await server.run_sql("CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))")
     logger = _RecordingStructuredLogger()
     database = await Database.initialize(
