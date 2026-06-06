@@ -88,7 +88,9 @@ if TYPE_CHECKING:
 
     mariadb_config = mariadb.Config(database="app", user="snekql")
     _ = assert_type(mariadb_config, mariadb.Config)
-    test_server_context = testing_mariadb.temporary_mariadb_server()
+    test_server_context = testing_mariadb.temporary_mariadb_server(
+        reset_database=True,
+    )
     _ = assert_type(
         test_server_context,
         AbstractAsyncContextManager[testing_mariadb.TemporaryMariaDBServer],
@@ -113,6 +115,7 @@ if TYPE_CHECKING:
 
         command_result = await test_server.run_sql("SELECT 1", check=False)
         _ = assert_type(command_result, testing_mariadb.MariaDBCommandResult)
+        _ = assert_type(await test_server.reset_database(), None)
 
     mariadb_index = mariadb.Index(MariadbUser.email)
     _ = assert_type(mariadb_index, Index[MariadbUser[Pending]])

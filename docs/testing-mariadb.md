@@ -44,7 +44,27 @@ Data directories are retained after shutdown so failed tests can be inspected.
 
 snekql never deletes a data directory when the server stops.
 
-Because MariaDB data directories are large, spawning many temporary servers with the default retained system-temp location can fill `/tmp` or hit a filesystem quota. MariaDB may then fail during initialization with InnoDB preallocation errors such as `error 122`. In long-running test workflows, prefer an explicit `data_directory` that the test fixture deletes after shutdown, or periodically remove stale retained directories such as `/tmp/snekql-mariadb-*`.
+Because MariaDB data directories are large, spawning many temporary servers with the default retained system-temp location can fill `/tmp` or hit a filesystem quota. MariaDB may then fail during initialization with InnoDB preallocation errors such as `error 122`. In long-running test workflows, prefer an explicit `data_directory` that the test fixture deletes after shutdown, periodically remove stale retained directories such as `/tmp/snekql-mariadb-*`, or reuse an explicit `data_directory` with `reset_database=True`.
+
+## Database reset
+
+For retained data directories, `reset_database=True` drops all base tables from the configured test database after startup and before yielding the server:
+
+```python
+async with temporary_mariadb_server(
+    data_directory=Path(".snektest/mariadb-data"),
+    reset_database=True,
+) as server:
+    ...
+```
+
+The yielded server also exposes the same operation as an explicit fixture cleanup helper:
+
+```python
+await server.reset_database()
+```
+
+Resetting the database is incompatible with `clean_before_start=True`; choose one reset strategy per server startup. `clean_before_start=True` rebuilds the whole data directory, while `reset_database=True` reuses the existing data directory and removes only application tables from the configured database.
 
 ## SQL helper
 

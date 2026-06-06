@@ -64,6 +64,14 @@ def temporary_mariadb_server_rejects_invalid_option_combinations() -> None:
             lambda: temporary_mariadb_server(server_args=("--port=3307",)),
             "managed mariadbd option",
         ),
+        (
+            lambda: temporary_mariadb_server(
+                clean_before_start=True,
+                data_directory=Path("data"),
+                reset_database=True,
+            ),
+            "reset_database is incompatible with clean_before_start",
+        ),
     )
 
     for invalid_call, expected_message in invalid_calls:
@@ -202,6 +210,40 @@ async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
     finally:
         if data_directory is not None:
             await asyncio.to_thread(shutil.rmtree, data_directory, ignore_errors=True)
+
+
+@test(mark="medium")
+async def temporary_mariadb_server_reset_database_drops_reused_tables() -> None:
+    """The public reset helper removes stale tables from a reused database."""
+
+    with TemporaryDirectory() as temporary_directory:
+        data_directory = Path(temporary_directory) / "data"
+        async with temporary_mariadb_server(data_directory=data_directory) as server:
+            _ = await server.run_sql("CREATE TABLE stale_public_table (`id` INT)")
+
+        async with temporary_mariadb_server(data_directory=data_directory) as server:
+            await server.reset_database()
+            result = await server.run_sql("SHOW TABLES LIKE 'stale_public_table'")
+
+    assert_eq(result.stdout, "")
+
+
+@test(mark="medium")
+async def temporary_mariadb_server_reset_database_option_runs_before_yield() -> None:
+    """The startup option resets reused data directories before yielding."""
+
+    with TemporaryDirectory() as temporary_directory:
+        data_directory = Path(temporary_directory) / "data"
+        async with temporary_mariadb_server(data_directory=data_directory) as server:
+            _ = await server.run_sql("CREATE TABLE stale_option_table (`id` INT)")
+
+        async with temporary_mariadb_server(
+            data_directory=data_directory,
+            reset_database=True,
+        ) as server:
+            result = await server.run_sql("SHOW TABLES LIKE 'stale_option_table'")
+
+    assert_eq(result.stdout, "")
 
 
 @test(mark="medium")

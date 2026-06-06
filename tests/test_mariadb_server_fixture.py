@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_in, load_fixture, test
 
 from snekql.testing.mariadb import temporary_mariadb_server
-from tests.mariadb_server import provide_mariadb_server, reset_mariadb_database
+from tests.mariadb_server import provide_mariadb_server
 
 
 @test(mark="medium")
@@ -31,7 +31,7 @@ async def mariadb_server_fixture_reset_drops_tables_from_reused_data_dir() -> No
             _ = await server.run_sql("CREATE TABLE stale_fixture_table (`id` INT)")
 
         async with temporary_mariadb_server(data_directory=data_directory) as server:
-            await reset_mariadb_database(server)
+            await server.reset_database()
             result = await server.run_sql("SHOW TABLES LIKE 'stale_fixture_table'")
 
     assert_eq(result.stdout, "")

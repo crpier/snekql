@@ -37,6 +37,24 @@ _MANAGED_SERVER_OPTIONS = frozenset(
         "--socket",
     }
 )
+_RESET_DATABASE_SQL = """
+SET SESSION group_concat_max_len = 1000000;
+SET FOREIGN_KEY_CHECKS = 0;
+SELECT GROUP_CONCAT(CONCAT('`', REPLACE(TABLE_NAME, '`', '``'), '`'))
+INTO @snekql_tables_to_drop
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_TYPE = 'BASE TABLE';
+SET @snekql_drop_tables = IF(
+    @snekql_tables_to_drop IS NULL,
+    'DO 0',
+    CONCAT('DROP TABLE ', @snekql_tables_to_drop)
+);
+PREPARE snekql_drop_tables_statement FROM @snekql_drop_tables;
+EXECUTE snekql_drop_tables_statement;
+DEALLOCATE PREPARE snekql_drop_tables_statement;
+SET FOREIGN_KEY_CHECKS = 1;
+"""
 _SHUTDOWN_TIMEOUT = 10.0
 
 
@@ -132,6 +150,15 @@ class TemporaryMariaDBServer:
             user=self.user,
         )
 
+    async def reset_database(
+        self,
+        *,
+        transport: MariaDBTransport | None = None,
+    ) -> None:
+        """Drop all base tables from the configured test database."""
+
+        _ = await self.run_sql(_RESET_DATABASE_SQL, transport=transport)
+
     async def run_sql(
         self,
         sql: str,
@@ -203,6 +230,7 @@ class _TemporaryMariaDBServerOptions:
     mariadbd: str | Path
     password: str | None
     port: int | None
+    reset_database: bool
     server_args: tuple[str, ...]
     socket_path: Path | None
     startup_timeout: float
@@ -651,6 +679,8 @@ async def _temporary_mariadb_server_context(
         user=options.user,
     )
     object.__setattr__(server, "_client", options.client)
+    if options.reset_database:
+        await server.reset_database()
     try:
         yield server
     finally:
@@ -737,6 +767,9 @@ def _validate_options(options: _TemporaryMariaDBServerOptions) -> None:
     if options.clean_before_start and options.data_directory is None:
         msg = "clean_before_start requires data_directory"
         raise TemporaryMariaDBServerError(msg)
+    if options.clean_before_start and options.reset_database:
+        msg = "reset_database is incompatible with clean_before_start"
+        raise TemporaryMariaDBServerError(msg)
     if options.port is not None and "tcp" not in options.transports:
         msg = "port requires tcp transport"
         raise TemporaryMariaDBServerError(msg)
@@ -764,6 +797,7 @@ def temporary_mariadb_server(  # noqa: PLR0913
     transports: set[MariaDBTransport] | None = None,
     data_directory: Path | None = None,
     clean_before_start: bool = False,
+    reset_database: bool = False,
     database: str = _DEFAULT_DATABASE,
     user: str = "root",
     password: str | None = None,
@@ -792,6 +826,7 @@ def temporary_mariadb_server(  # noqa: PLR0913
         mariadbd=mariadbd,
         password=password,
         port=port,
+        reset_database=reset_database,
         server_args=server_args,
         socket_path=socket_path,
         startup_timeout=startup_timeout,
