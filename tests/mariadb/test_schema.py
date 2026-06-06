@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
-from snektest import assert_eq, assert_raises, load_fixture, test
+from snektest import AsyncFixture, assert_eq, assert_raises, load_fixture, test
 
 from snekql import (
     MISSING,
@@ -13,10 +15,21 @@ from snekql import (
     Index,
     Pending,
     SchemaError,
+    SchemaPolicy,
     SchemaVerificationError,
+    StructuredLogger,
     mariadb,
 )
+from snekql.model import Table
 from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
+
+
+@dataclass(frozen=True)
+class _DatabaseSession:
+    """Initialized database plus the backing MariaDB server fixture."""
+
+    database: Database
+    server: TemporaryMariaDBServer
 
 
 class _RecordingStructuredLogger:
@@ -36,12 +49,6 @@ class _RecordingStructuredLogger:
 
     def error(self, event: str, **fields: object) -> None:
         self.events.append(("error", event, fields))
-
-
-def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
-    """Build a MariaDB config for the shared local test server."""
-
-    return server.config()
 
 
 async def _fetch_index_rows(
@@ -64,16 +71,38 @@ async def _fetch_index_rows(
     return [cast("tuple[str, str, str]", tuple(line.split("\t"))) for line in lines[1:]]
 
 
-@test(mark="medium")
-async def mariadb_schema_creates_unique_and_table_indexes() -> None:
-    """MariaDB startup creates column unique indexes and table indexes."""
+async def database_session(
+    models: Sequence[type[Table[Any]]] = (),
+    *,
+    logger: StructuredLogger = NULL_LOGGER,
+    schema_policy: SchemaPolicy = "strict",
+    setup_sql: Sequence[str] = (),
+) -> AsyncFixture[_DatabaseSession]:
+    """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())
+    for sql in setup_sql:
+        _ = await server.run_sql(sql)
+    database = await Database.initialize(
+        server.config(),
+        logger=logger,
+        models=models,
+        schema_policy=schema_policy,
+    )
+    try:
+        yield _DatabaseSession(database=database, server=server)
+    finally:
+        await database.close()
+
+
+@test(mark="medium")
+async def mariadb_schema_creates_column_unique_indexes() -> None:
+    """MariaDB startup creates column unique indexes."""
 
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
-        """Table model with MariaDB indexes."""
+        """Table model with a MariaDB column unique index."""
 
-        __tablename__ = "issue39_user_indexes"
+        __tablename__ = "issue39_user_column_unique_indexes"
 
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
@@ -81,6 +110,30 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
             default=MISSING,
         )
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
+
+    session = await load_fixture(database_session([User]))
+
+    assert_eq(
+        await _fetch_index_rows(session.server, "issue39_user_column_unique_indexes"),
+        [("ux_issue39_user_column_unique_indexes_email", "0", "email")],
+    )
+
+
+@test(mark="medium")
+async def mariadb_schema_creates_table_indexes() -> None:
+    """MariaDB startup creates declared table indexes."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model with MariaDB table indexes."""
+
+        __tablename__ = "issue39_user_table_indexes"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
         tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
@@ -89,17 +142,13 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
             Index(tenant_id, email, unique=True),
         ]
 
-    database = await Database.initialize(
-        _config_from_server(server), logger=NULL_LOGGER, models=[User]
-    )
-    await database.close()
+    session = await load_fixture(database_session([User]))
 
     assert_eq(
-        await _fetch_index_rows(server, "issue39_user_indexes"),
+        await _fetch_index_rows(session.server, "issue39_user_table_indexes"),
         [
-            ("ix_issue39_user_indexes_status", "1", "status"),
-            ("ux_issue39_user_indexes_email", "0", "email"),
-            ("ux_issue39_user_indexes_tenant_id_email", "0", "tenant_id,email"),
+            ("ix_issue39_user_table_indexes_status", "1", "status"),
+            ("ux_issue39_user_table_indexes_tenant_id_email", "0", "tenant_id,email"),
         ],
     )
 
@@ -126,7 +175,7 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 
     with assert_raises(SchemaError):
         _ = await Database.initialize(
-            _config_from_server(server), logger=NULL_LOGGER, models=[User, Org]
+            server.config(), logger=NULL_LOGGER, models=[User, Org]
         )
 
     result = await server.run_sql(
@@ -161,7 +210,7 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 
     with assert_raises(SchemaVerificationError):
         _ = await Database.initialize(
-            _config_from_server(server), logger=NULL_LOGGER, models=[User]
+            server.config(), logger=NULL_LOGGER, models=[User]
         )
 
 
@@ -183,15 +232,13 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
 
     with assert_raises(SchemaVerificationError):
         _ = await Database.initialize(
-            _config_from_server(server), logger=NULL_LOGGER, models=[User]
+            server.config(), logger=NULL_LOGGER, models=[User]
         )
 
 
 @test(mark="medium")
 async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
     """Warn policy logs MariaDB schema drift without rejecting startup."""
-
-    server = await load_fixture(provide_mariadb_server())
 
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used for warn-policy drift verification."""
@@ -204,15 +251,15 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    _ = await server.run_sql("CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))")
     logger = _RecordingStructuredLogger()
-    database = await Database.initialize(
-        _config_from_server(server),
-        logger=logger,
-        models=[User],
-        schema_policy="warn",
+    _session = await load_fixture(
+        database_session(
+            [User],
+            logger=logger,
+            schema_policy="warn",
+            setup_sql=["CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))"],
+        )
     )
-    await database.close()
 
     warnings = [
         fields

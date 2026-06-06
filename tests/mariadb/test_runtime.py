@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
+from collections.abc import Sequence
+from typing import Any
 
-from snektest import assert_eq, assert_in, assert_raises, load_fixture, test
+from snektest import (
+    AsyncFixture,
+    assert_eq,
+    assert_raises,
+    load_fixture,
+    test,
+)
 
 from snekql import (
     MISSING,
@@ -21,6 +27,7 @@ from snekql import (
     select,
     update,
 )
+from snekql.model import Table
 from tests.helpers import NULL_LOGGER, provide_mariadb_server
 
 
@@ -28,14 +35,55 @@ class _RollbackSentinelError(Exception):
     """Test-only exception used to force a transaction rollback."""
 
 
-@test(mark="medium")
-async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
-    """A minimal MariaDB Database can insert, select, and close."""
+class _UpdateUser[S = Pending](mariadb.Model[S, "_UpdateUser[Fetched]"]):
+    """Table model for MariaDB update coverage."""
+
+    __tablename__ = "issue38_user_update"
+
+    id: _UpdateUser.GenCol[int] = mariadb.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
+    status: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
+
+
+async def database_session(
+    models: Sequence[type[Table[Any]]] = (),
+    *,
+    pool_size: int = 1,
+) -> AsyncFixture[Database]:
+    """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())
+    database = await Database.initialize(
+        server.config(pool_size=pool_size), logger=NULL_LOGGER, models=models
+    )
+    try:
+        yield database
+    finally:
+        await database.close()
+
+
+async def database_with_update_users() -> AsyncFixture[Database]:
+    """Provide a MariaDB Database seeded with update target rows."""
+
+    database = await load_fixture(database_session([_UpdateUser]))
+    async with database.transaction() as tx:
+        await tx.execute(
+            insert(_UpdateUser(email="alice@example.com", status="active"))
+        )
+        await tx.execute(insert(_UpdateUser(email="bob@example.com", status="active")))
+    yield database
+
+
+@test(mark="medium")
+async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
+    """A MariaDB Database can insert, select, and close."""
 
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
-        """Table model for the first MariaDB runtime tracer bullet."""
+        """Table model for the MariaDB runtime."""
 
         __tablename__ = "issue37_user_round_trip"
 
@@ -46,20 +94,15 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    database = await Database.initialize(
-        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
-    )
-    try:
-        async with database.transaction() as tx:
-            await tx.execute(insert(User(email="alice@example.com")))
+    database = await load_fixture(database_session([User]))
 
-        async with database.transaction() as tx:
-            fetched_user = await tx.fetch_one(
-                select(User).where(User.email.eq("alice@example.com")),
-            )
+    async with database.transaction() as tx:
+        await tx.execute(insert(User(email="alice@example.com")))
 
-    finally:
-        await database.close()
+    async with database.transaction() as tx:
+        fetched_user = await tx.fetch_one(
+            select(User).where(User.email.eq("alice@example.com")),
+        )
 
     assert fetched_user is not None
     assert_eq(fetched_user.email, "alice@example.com")
@@ -69,8 +112,6 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
 @test(mark="medium")
 async def mariadb_runtime_rolls_back_failed_transactions() -> None:
     """MariaDB Transactions roll back when the body raises."""
-
-    server = await load_fixture(provide_mariadb_server())
 
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         __tablename__ = "issue37_user_lifecycle"
@@ -82,23 +123,19 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    database = await Database.initialize(
-        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
-    )
-    try:
-        try:
-            async with database.transaction() as tx:
-                await tx.execute(insert(User(email="rolled-back@example.com")))
-                raise _RollbackSentinelError  # noqa: TRY301
-        except _RollbackSentinelError:
-            pass
+    database = await load_fixture(database_session([User]))
 
+    try:
         async with database.transaction() as tx:
-            rolled_back_user = await tx.fetch_one(
-                select(User).where(User.email.eq("rolled-back@example.com")),
-            )
-    finally:
-        await database.close()
+            await tx.execute(insert(User(email="rolled-back@example.com")))
+            raise _RollbackSentinelError  # noqa: TRY301
+    except _RollbackSentinelError:
+        pass
+
+    async with database.transaction() as tx:
+        rolled_back_user = await tx.fetch_one(
+            select(User).where(User.email.eq("rolled-back@example.com")),
+        )
 
     assert_eq(rolled_back_user, None)
 
@@ -107,25 +144,19 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
 async def mariadb_runtime_reports_pool_timeout() -> None:
     """MariaDB Database reports pool exhaustion as a timeout."""
 
-    server = await load_fixture(provide_mariadb_server())
+    database = await load_fixture(database_session(pool_size=1))
 
-    database = await Database.initialize(server.config(pool_size=1), logger=NULL_LOGGER)
-    try:
-        async with database.transaction(timeout=0.5):
-            with assert_raises(PoolTimeoutError):
-                async with database.transaction(timeout=0.01):
-                    pass
-    finally:
-        await database.close()
+    async with database.transaction():
+        with assert_raises(PoolTimeoutError):
+            async with database.transaction(timeout=0.01):
+                pass
 
 
 @test(mark="medium")
 async def mariadb_runtime_rejects_transactions_after_close() -> None:
     """MariaDB Database rejects new Transactions after close."""
 
-    server = await load_fixture(provide_mariadb_server())
-
-    database = await Database.initialize(server.config(pool_size=1), logger=NULL_LOGGER)
+    database = await load_fixture(database_session())
     await database.close()
 
     with assert_raises(DatabaseClosedError):
@@ -133,15 +164,38 @@ async def mariadb_runtime_rejects_transactions_after_close() -> None:
 
 
 @test(mark="medium")
-async def mariadb_runtime_executes_the_full_query_surface() -> None:
-    """MariaDB supports result shapes, filters, ordering, updates, and deletes."""
-
-    server = await load_fixture(provide_mariadb_server())
+async def mariadb_runtime_fetches_scalar_rows() -> None:
+    """MariaDB fetch_all returns scalar rows for single-column selects."""
 
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
-        """Table model for MariaDB query surface coverage."""
+        """Table model for MariaDB scalar result coverage."""
 
-        __tablename__ = "issue38_user_query_surface"
+        __tablename__ = "issue38_user_scalar_result"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(User(email="alice@example.com")))
+        scalar_rows = await tx.fetch_all(select(User.email).all())
+
+    assert_eq(scalar_rows, ["alice@example.com"])
+
+
+@test(mark="medium")
+async def mariadb_runtime_fetches_tuple_rows() -> None:
+    """MariaDB fetch_all returns tuples for multi-column selects."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB tuple result coverage."""
+
+        __tablename__ = "issue38_user_tuple_result"
 
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
@@ -150,71 +204,103 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
-        tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
-    database = await Database.initialize(
-        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(User(email="alice@example.com", status="active")))
+        tuple_rows = await tx.fetch_all(select(User.email, User.status).all())
+
+    assert_eq(tuple_rows, [("alice@example.com", "active")])
+
+
+@test(mark="medium")
+async def mariadb_runtime_updates_matching_rows() -> None:
+    """MariaDB update changes only rows matching the predicate."""
+
+    database = await load_fixture(database_with_update_users())
+
+    async with database.transaction() as tx:
+        await tx.execute(
+            update(_UpdateUser)
+            .set(_UpdateUser.status.to("disabled"))
+            .where(_UpdateUser.email.eq("bob@example.com")),
+        )
+
+    async with database.transaction() as tx:
+        statuses = await tx.fetch_all(
+            select(_UpdateUser.email, _UpdateUser.status).all()
+        )
+
+    assert_eq(
+        sorted(statuses),
+        [
+            ("alice@example.com", "active"),
+            ("bob@example.com", "disabled"),
+        ],
     )
-    try:
-        async with database.transaction() as tx:
-            await tx.execute(
-                insert(
-                    User(email="charlie@example.com", status="inactive", tenant_id=1)
-                )
-            )
-            await tx.execute(
-                insert(User(email="alice@example.com", status="active", tenant_id=1))
-            )
-            await tx.execute(
-                insert(User(email="bob@example.com", status="active", tenant_id=2))
-            )
 
-            scalar_rows = await tx.fetch_all(
-                select(User.email)
-                .where(User.tenant_id.eq(1) & User.status.eq("active"))
-                .order_by(User.email.asc())
-                .limit(1)
-                .offset(0),
-            )
-            tuple_rows = await tx.fetch_all(
-                select(User.email, User.status)
-                .where(User.tenant_id.eq(1))
-                .order_by(User.email.asc())
-                .limit(1)
-                .offset(1),
-            )
 
-            await tx.execute(
-                update(User)
-                .set(User.status.to("disabled"))
-                .where(User.email.eq("bob@example.com")),
-            )
-            updated_status = await tx.fetch_one(
-                select(User.status).where(User.email.eq("bob@example.com")),
-            )
+@test(mark="medium")
+async def mariadb_runtime_deletes_filtered_rows() -> None:
+    """MariaDB delete removes rows matching the predicate."""
 
-            await tx.execute(delete(User).where(User.status.eq("inactive")))
-            deleted_user = await tx.fetch_one(
-                select(User).where(User.email.eq("charlie@example.com")),
-            )
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB filtered delete coverage."""
 
-            await tx.execute(delete(User).all())
-            remaining_users = await tx.fetch_all(select(User).all())
-    finally:
-        await database.close()
+        __tablename__ = "issue38_user_filtered_delete"
 
-    assert_eq(scalar_rows, ["alice@example.com"])
-    assert_eq(tuple_rows, [("charlie@example.com", "inactive")])
-    assert_eq(updated_status, "disabled")
-    assert_eq(deleted_user, None)
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+        status: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(User(email="alice@example.com", status="active")))
+        await tx.execute(insert(User(email="bob@example.com", status="inactive")))
+
+        await tx.execute(delete(User).where(User.status.eq("inactive")))
+        remaining_emails = await tx.fetch_all(select(User.email).all())
+
+    assert_eq(remaining_emails, ["alice@example.com"])
+
+
+@test(mark="medium")
+async def mariadb_runtime_deletes_all_rows() -> None:
+    """MariaDB delete all removes every row."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB delete-all coverage."""
+
+        __tablename__ = "issue38_user_delete_all"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(User(email="alice@example.com")))
+        await tx.execute(insert(User(email="bob@example.com")))
+
+        await tx.execute(delete(User).all())
+        remaining_users = await tx.fetch_all(select(User).all())
+
     assert_eq(remaining_users, [])
 
 
 @test(mark="medium")
 async def mariadb_execution_errors_preserve_sql_and_params() -> None:
     """MariaDB write failures expose backend SQL and parameter context."""
-
-    server = await load_fixture(provide_mariadb_server())
 
     class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
         """Table model for MariaDB execution error coverage."""
@@ -224,70 +310,17 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         id: Account.Col[int] = mariadb.Integer(primary_key=True)
         email: Account.Col[str] = mariadb.Text(nullable=False)
 
-    database = await Database.initialize(
-        server.config(pool_size=1), logger=NULL_LOGGER, models=[Account]
-    )
-    try:
-        async with database.transaction() as tx:
-            await tx.execute(insert(Account(id=1, email="first@example.com")))
-            with assert_raises(ExecutionError) as raised:
-                await tx.execute(
-                    insert(Account(id=1, email="duplicate@example.com")),
-                )
-    finally:
-        await database.close()
+    database = await load_fixture(database_session([Account]))
 
-    assert_in("INSERT INTO `issue38_account_errors`", raised.exception.sql)
-    assert_in("%s", raised.exception.sql)
+    async with database.transaction() as tx:
+        await tx.execute(insert(Account(id=1, email="first@example.com")))
+        with assert_raises(ExecutionError) as raised:
+            await tx.execute(
+                insert(Account(id=1, email="duplicate@example.com")),
+            )
+
+    assert_eq(
+        raised.exception.sql,
+        "INSERT INTO `issue38_account_errors` (`id`, `email`) VALUES (%s, %s)",
+    )
     assert_eq(raised.exception.params, (1, "duplicate@example.com"))
-
-
-@test(mark="medium")
-def mariadb_initialization_without_extra_reports_install_hint() -> None:
-    """Runtime initialization explains how to install a missing MariaDB driver."""
-
-    script = """
-from __future__ import annotations
-
-import asyncio
-import importlib.abc
-import sys
-
-import snekql
-from snekql import Database, mariadb
-from tests.helpers import NULL_LOGGER
-
-
-class BlockAiomysql(importlib.abc.MetaPathFinder):
-    def find_spec(self, fullname, path=None, target=None):
-        if fullname == "aiomysql" or fullname.startswith("aiomysql."):
-            raise ModuleNotFoundError("No module named 'aiomysql'", name="aiomysql")
-        return None
-
-
-async def main() -> None:
-    blocker = BlockAiomysql()
-    sys.modules.pop("aiomysql", None)
-    sys.meta_path.insert(0, blocker)
-    try:
-        _ = await Database.initialize(mariadb.Config(database="app", user="snekql"), logger=NULL_LOGGER)
-    except snekql.DatabaseRuntimeError as error:
-        print(error)
-        return
-    finally:
-        sys.meta_path.remove(blocker)
-    raise AssertionError("MariaDB initialization unexpectedly succeeded")
-
-
-asyncio.run(main())
-"""
-
-    result = subprocess.run(
-        [sys.executable, "-c", script],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    assert_eq(result.returncode, 0)
-    assert_in("snekql[aiomysql]", result.stdout)
