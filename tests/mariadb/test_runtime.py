@@ -12,6 +12,7 @@ from snekql import (
     Database,
     DatabaseClosedError,
     ExecutionError,
+    Fetched,
     Pending,
     PoolTimeoutError,
     delete,
@@ -20,35 +21,20 @@ from snekql import (
     select,
     update,
 )
-from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import NULL_LOGGER, provide_mariadb_server
 
 
 class _RollbackSentinelError(Exception):
     """Test-only exception used to force a transaction rollback."""
 
 
-def _force_rollback() -> None:
-    """Raise the sentinel outside the transaction test body."""
-
-    raise _RollbackSentinelError
-
-
-def _config_from_server(
-    server: TemporaryMariaDBServer, *, pool_size: int = 5
-) -> mariadb.Config:
-    """Build a MariaDB config for the shared local test server."""
-
-    return server.config(pool_size=pool_size)
-
-
 @test(mark="medium")
 async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
-    """A minimal MariaDB Database can create, insert, select, and close."""
+    """A minimal MariaDB Database can insert, select, and close."""
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Table model for the first MariaDB runtime tracer bullet."""
 
         __tablename__ = "issue37_user_round_trip"
@@ -61,14 +47,17 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[User]
+        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
     )
     try:
         async with database.transaction() as transaction:
             await transaction.execute(insert(User(email="alice@example.com")))
+
+        async with database.transaction() as transaction:
             fetched_user = await transaction.fetch_one(
                 select(User).where(User.email.eq("alice@example.com")),
             )
+
     finally:
         await database.close()
 
@@ -83,7 +72,7 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         __tablename__ = "issue37_user_lifecycle"
 
         id: User.GenCol[int] = mariadb.Integer(
@@ -94,13 +83,13 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[User]
+        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
     )
     try:
         try:
             async with database.transaction() as transaction:
                 await transaction.execute(insert(User(email="rolled-back@example.com")))
-                _force_rollback()
+                raise _RollbackSentinelError  # noqa: TRY301
         except _RollbackSentinelError:
             pass
 
@@ -120,9 +109,7 @@ async def mariadb_runtime_reports_pool_timeout() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server, pool_size=1)
-    )
+    database = await Database.initialize(server.config(pool_size=1), logger=NULL_LOGGER)
     try:
         async with database.transaction(timeout=0.5):
             with assert_raises(PoolTimeoutError):
@@ -138,7 +125,7 @@ async def mariadb_runtime_rejects_transactions_after_close() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    database = await Database.initialize(NULL_LOGGER, _config_from_server(server))
+    database = await Database.initialize(server.config(pool_size=1), logger=NULL_LOGGER)
     await database.close()
 
     with assert_raises(DatabaseClosedError):
@@ -151,7 +138,7 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Table model for MariaDB query surface coverage."""
 
         __tablename__ = "issue38_user_query_surface"
@@ -166,7 +153,7 @@ async def mariadb_runtime_executes_the_full_query_surface() -> None:
         tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[User]
+        server.config(pool_size=1), logger=NULL_LOGGER, models=[User]
     )
     try:
         async with database.transaction() as transaction:
@@ -229,7 +216,7 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = Pending](mariadb.Model[S, "Account[object]"]):
+    class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
         """Table model for MariaDB execution error coverage."""
 
         __tablename__ = "issue38_account_errors"
@@ -238,7 +225,7 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         email: Account.Col[str] = mariadb.Text(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[Account]
+        server.config(pool_size=1), logger=NULL_LOGGER, models=[Account]
     )
     try:
         async with database.transaction() as transaction:
@@ -268,7 +255,7 @@ import sys
 
 import snekql
 from snekql import Database, mariadb
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 class BlockAiomysql(importlib.abc.MetaPathFinder):
@@ -283,7 +270,7 @@ async def main() -> None:
     sys.modules.pop("aiomysql", None)
     sys.meta_path.insert(0, blocker)
     try:
-        _ = await Database.initialize(NULL_LOGGER, mariadb.Config(database="app", user="snekql"))
+        _ = await Database.initialize(mariadb.Config(database="app", user="snekql"), logger=NULL_LOGGER)
     except snekql.DatabaseRuntimeError as error:
         print(error)
         return

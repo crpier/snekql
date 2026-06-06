@@ -13,6 +13,7 @@ from snekql import (
     MISSING,
     Database,
     DatabaseRuntimeError,
+    Fetched,
     Index,
     Integer,
     Model,
@@ -22,7 +23,7 @@ from snekql import (
     Text,
     sqlite,
 )
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 def _execute_sql(database_path: Path, sql: str) -> None:
@@ -106,7 +107,7 @@ class _RecordingStructuredLogger:
 async def initialize_creates_missing_strict_tables() -> None:
     """Initialization creates deterministic quoted STRICT tables."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for schema creation."""
 
         id: User.GenCol[int] = Integer(
@@ -119,7 +120,7 @@ async def initialize_creates_missing_strict_tables() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         await database.close()
 
@@ -136,7 +137,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 async def initialize_accepts_sqlite_config_object() -> None:
     """SQLite configuration objects select the SQLite runtime explicitly."""
 
-    class User[S = Pending](sqlite.Model[S, "User[object]"]):
+    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Table model used for SQLite config initialization."""
 
         id: User.GenCol[int] = sqlite.Integer(
@@ -149,7 +150,7 @@ async def initialize_accepts_sqlite_config_object() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         config = sqlite.Config(database=database_path, pool_size=2)
-        database = await Database.initialize(NULL_LOGGER, config, models=[User])
+        database = await Database.initialize(config, logger=NULL_LOGGER, models=[User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -172,14 +173,14 @@ async def initialize_rejects_mixed_sqlite_config_and_legacy_database() -> None:
         initialize = cast("Any", Database.initialize)
 
         with assert_raises(DatabaseRuntimeError):
-            _ = await initialize(NULL_LOGGER, config, database=database_path)
+            _ = await initialize(config, logger=NULL_LOGGER, database=database_path)
 
 
 @test(mark="medium")
 async def initialize_creates_column_unique_indexes_after_tables() -> None:
     """Column unique declarations create separate deterministic unique indexes."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique public identifier."""
 
         email: User.Col[str] = Text(nullable=False, unique=True)
@@ -188,7 +189,7 @@ async def initialize_creates_column_unique_indexes_after_tables() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         await database.close()
 
@@ -209,7 +210,7 @@ async def initialize_creates_column_unique_indexes_after_tables() -> None:
 async def initialize_creates_table_indexes_in_declaration_order() -> None:
     """Table index declarations create deterministic index SQL after uniques."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with single and composite table indexes."""
 
         email: User.Col[str] = Text(nullable=False, unique=True)
@@ -225,7 +226,7 @@ async def initialize_creates_table_indexes_in_declaration_order() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         await database.close()
 
@@ -255,23 +256,29 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
             return "app.db"
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await initialize(NULL_LOGGER, "app.db")
-
-    with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", "app.db"))
+        _ = await initialize(logger=NULL_LOGGER, database="app.db")
 
     with assert_raises(DatabaseRuntimeError):
         _ = await Database.initialize(
-            NULL_LOGGER, database=cast("Any", "sqlite:///app.db")
+            logger=NULL_LOGGER, database=cast("Any", "app.db")
         )
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", b"app.db"))
+        _ = await Database.initialize(
+            logger=NULL_LOGGER, database=cast("Any", "sqlite:///app.db")
+        )
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(NULL_LOGGER, database=cast("Any", OtherPath()))
+        _ = await Database.initialize(
+            logger=NULL_LOGGER, database=cast("Any", b"app.db")
+        )
 
-    database = await Database.initialize(NULL_LOGGER, database=":memory:")
+    with assert_raises(DatabaseRuntimeError):
+        _ = await Database.initialize(
+            logger=NULL_LOGGER, database=cast("Any", OtherPath())
+        )
+
+    database = await Database.initialize(logger=NULL_LOGGER, database=":memory:")
     await database.close()
 
 
@@ -279,7 +286,7 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
 async def initialize_verifies_existing_tables_after_controlled_normalization() -> None:
     """Equivalent snekql DDL with formatting differences verifies cleanly."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for existing schema verification."""
 
         id: User.GenCol[int] = Integer(
@@ -300,7 +307,7 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         _execute_sql(database_path, existing_sql)
 
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         await database.close()
 
@@ -313,7 +320,7 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
 async def strict_schema_policy_raises_on_index_drift() -> None:
     """Strict schema verification rejects missing managed indexes."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model requiring an index for verification."""
 
         email: User.Col[str] = Text(nullable=False, unique=True)
@@ -326,7 +333,7 @@ async def strict_schema_policy_raises_on_index_drift() -> None:
 
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
-                NULL_LOGGER, database=database_path, models=[User]
+                logger=NULL_LOGGER, database=database_path, models=[User]
             )
 
 
@@ -334,7 +341,7 @@ async def strict_schema_policy_raises_on_index_drift() -> None:
 async def duplicate_resolved_index_names_are_rejected() -> None:
     """Initialization rejects duplicate index names across configured models."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """First model using an explicit index name."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -342,7 +349,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
             Index(email, name="ix_conflict"),
         ]
 
-    class Account[S = Pending](Model[S, "Account[object]"]):
+    class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Second model reusing the explicit index name."""
 
         email: Account.Col[str] = Text(nullable=False)
@@ -354,7 +361,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaError):
             _ = await Database.initialize(
-                NULL_LOGGER,
+                logger=NULL_LOGGER,
                 database=database_path,
                 models=[User, Account],
             )
@@ -364,7 +371,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
 async def strict_schema_policy_raises_on_schema_drift() -> None:
     """Strict schema verification rejects existing non-STRICT tables."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for drift detection."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -375,7 +382,7 @@ async def strict_schema_policy_raises_on_schema_drift() -> None:
 
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
-                NULL_LOGGER, database=database_path, models=[User]
+                logger=NULL_LOGGER, database=database_path, models=[User]
             )
 
 
@@ -383,7 +390,7 @@ async def strict_schema_policy_raises_on_schema_drift() -> None:
 async def warn_schema_policy_logs_drift_and_continues() -> None:
     """Warn schema verification reports drift without blocking startup."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift detection."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -394,7 +401,7 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
         database = await Database.initialize(
-            logger,
+            logger=logger,
             database=database_path,
             models=[User],
             schema_policy="warn",
@@ -413,13 +420,13 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
 async def duplicate_resolved_table_names_are_rejected() -> None:
     """Initialization rejects duplicate table names before schema setup."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """First model for duplicate table detection."""
 
         __tablename__ = "account"
         email: User.Col[str] = Text(nullable=False)
 
-    class Account[S = Pending](Model[S, "Account[object]"]):
+    class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Second model with the same resolved table name."""
 
         email: Account.Col[str] = Text(nullable=False)
@@ -428,7 +435,7 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaError):
             _ = await Database.initialize(
-                NULL_LOGGER,
+                logger=NULL_LOGGER,
                 database=database_path,
                 models=[User, Account],
             )
@@ -438,12 +445,12 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
 async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
     """Schema setup is transactional for create plus verification failure."""
 
-    class CreatedFirst[S = Pending](Model[S, "CreatedFirst[object]"]):
+    class CreatedFirst[S = Pending](Model[S, "CreatedFirst[Fetched]"]):
         """Missing table that should be rolled back."""
 
         email: CreatedFirst.Col[str] = Text(nullable=False)
 
-    class ExistingDrift[S = Pending](Model[S, "ExistingDrift[object]"]):
+    class ExistingDrift[S = Pending](Model[S, "ExistingDrift[Fetched]"]):
         """Existing drift table that aborts initialization."""
 
         email: ExistingDrift.Col[str] = Text(nullable=False)
@@ -457,7 +464,7 @@ async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
 
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
-                NULL_LOGGER,
+                logger=NULL_LOGGER,
                 database=database_path,
                 models=[CreatedFirst, ExistingDrift],
             )

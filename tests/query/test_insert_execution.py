@@ -12,6 +12,7 @@ from snekql import (
     MISSING,
     Database,
     ExecutionError,
+    Fetched,
     Integer,
     Model,
     Pending,
@@ -19,7 +20,7 @@ from snekql import (
     insert,
 )
 from snekql.query import compile_write_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -35,7 +36,7 @@ def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
 def insert_compilation_omits_missing_and_quotes_identifiers() -> None:
     """Compiled insert SQL targets the model table and omits MISSING fields."""
 
-    class Order[S = Pending](Model[S, "Order[object]"]):
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table model with identifiers that must be quoted."""
 
         __tablename__ = "select"
@@ -52,7 +53,7 @@ def insert_compilation_omits_missing_and_quotes_identifiers() -> None:
 def insert_compilation_uses_default_values_when_every_field_is_missing() -> None:
     """An all-generated model compiles to SQLite DEFAULT VALUES."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[object]"]):
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with no explicit insertable values."""
 
         id: AuditLog.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -67,7 +68,7 @@ def insert_compilation_uses_default_values_when_every_field_is_missing() -> None
 async def insert_execution_includes_defaults_and_returns_none() -> None:
     """Executing an insert persists Python defaults and default-factory values."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with explicit, default, and generated fields."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -78,7 +79,7 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
             async with database.transaction() as transaction:
@@ -99,7 +100,7 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
 async def execution_errors_preserve_insert_sql_and_params() -> None:
     """SQLite insert failures are wrapped with SQL and parameter context."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to trigger a duplicate primary key failure."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -108,7 +109,7 @@ async def execution_errors_preserve_insert_sql_and_params() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
             async with database.transaction() as transaction:

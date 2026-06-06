@@ -9,14 +9,14 @@ from snektest import assert_eq, assert_raises, load_fixture, test
 from snekql import (
     MISSING,
     Database,
+    Fetched,
     Index,
     Pending,
     SchemaError,
     SchemaVerificationError,
     mariadb,
 )
-from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
 
 
 class _RecordingStructuredLogger:
@@ -70,7 +70,7 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Table model with MariaDB indexes."""
 
         __tablename__ = "issue39_user_indexes"
@@ -90,7 +90,7 @@ async def mariadb_schema_creates_unique_and_table_indexes() -> None:
         ]
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[User]
+        _config_from_server(server), logger=NULL_LOGGER, models=[User]
     )
     await database.close()
 
@@ -110,14 +110,14 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """First model using a duplicate index name."""
 
         __tablename__ = "issue39_duplicate_user"
         email: User.Col[str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class Org[S = Pending](mariadb.Model[S, "Org[object]"]):
+    class Org[S = Pending](mariadb.Model[S, "Org[Fetched]"]):
         """Second model using a duplicate index name."""
 
         __tablename__ = "issue39_duplicate_org"
@@ -126,7 +126,7 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 
     with assert_raises(SchemaError):
         _ = await Database.initialize(
-            NULL_LOGGER, _config_from_server(server), models=[User, Org]
+            _config_from_server(server), logger=NULL_LOGGER, models=[User, Org]
         )
 
     result = await server.run_sql(
@@ -146,7 +146,7 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model that expects more columns than the existing table."""
 
         __tablename__ = "issue39_table_drift"
@@ -161,7 +161,7 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 
     with assert_raises(SchemaVerificationError):
         _ = await Database.initialize(
-            NULL_LOGGER, _config_from_server(server), models=[User]
+            _config_from_server(server), logger=NULL_LOGGER, models=[User]
         )
 
 
@@ -171,7 +171,7 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model that expects a unique index absent from the existing table."""
 
         __tablename__ = "issue39_index_drift"
@@ -183,7 +183,7 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
 
     with assert_raises(SchemaVerificationError):
         _ = await Database.initialize(
-            NULL_LOGGER, _config_from_server(server), models=[User]
+            _config_from_server(server), logger=NULL_LOGGER, models=[User]
         )
 
 
@@ -193,7 +193,7 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used for warn-policy drift verification."""
 
         __tablename__ = "issue39_warn_drift"
@@ -207,8 +207,8 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
     _ = await server.run_sql("CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))")
     logger = _RecordingStructuredLogger()
     database = await Database.initialize(
-        logger,
         _config_from_server(server),
+        logger=logger,
         models=[User],
         schema_policy="warn",
     )

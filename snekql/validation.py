@@ -18,8 +18,8 @@ type PositiveInt = Annotated[int, Gt(0)]
 
 
 def validate_boundary[ErrorT: SnekqlError, **P, R](
+    *,
     error_type: type[ErrorT],
-    message: str,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Validate public API calls and wrap validation errors as domain errors."""
 
@@ -33,7 +33,7 @@ def validate_boundary[ErrorT: SnekqlError, **P, R](
             try:
                 return validated(*args, **kwargs)
             except ValidationError as error:
-                raise error_type(message) from error
+                raise error_type(str(error)) from error
 
         return wrapper
 

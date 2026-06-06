@@ -26,7 +26,7 @@ from snekql import (
     select,
 )
 from snekql.query import compile_select_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 @test(mark="medium")
@@ -45,7 +45,7 @@ async def fetch_all_materializes_model_rows() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
         async with database.transaction() as transaction:
@@ -84,7 +84,7 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
         async with database.transaction() as transaction:
@@ -119,7 +119,7 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
         async with database.transaction() as transaction:
@@ -186,7 +186,7 @@ async def fetch_one_returns_first_row_or_none_without_cardinality_checks() -> No
         email: User.Col[str] = Text(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
         async with database.transaction() as transaction:
@@ -217,7 +217,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER,
+            logger=NULL_LOGGER,
             database=database_path,
             models=[FeatureFlag],
         )
@@ -233,7 +233,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
             connection.close()
 
         database = await Database.initialize(
-            NULL_LOGGER,
+            logger=NULL_LOGGER,
             database=database_path,
             models=[FeatureFlag],
         )

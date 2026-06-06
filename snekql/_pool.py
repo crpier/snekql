@@ -74,9 +74,9 @@ class SQLiteConnectionPool:
     def __init__(
         self,
         *,
+        logger: ResolvedStructuredLogger,
         database_path: str,
         initial_connection: Connection,
-        logger: ResolvedStructuredLogger,
         pool_size: PositiveInt,
     ) -> None:
         self.active_connections: int = 0

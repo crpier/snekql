@@ -13,6 +13,7 @@ from snektest import assert_eq, assert_is, assert_ne, assert_raises, test
 from snekql import (
     MISSING,
     Database,
+    Fetched,
     Integer,
     Model,
     Pending,
@@ -25,7 +26,7 @@ from snekql import (
     update,
 )
 from snekql.query import compile_select_sql, compile_write_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -41,7 +42,7 @@ def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
 def predicates_reject_ambiguous_or_invalid_intent() -> None:
     """Predicate helpers reject null ambiguity, empty IN, and non-text LIKE."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by predicate construction checks."""
 
         id: User.Col[int] = Integer(nullable=False)
@@ -71,7 +72,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
 def select_builders_are_immutable_and_require_filter_intent() -> None:
     """Select chain methods return new queries except repeated all() no-ops."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by immutable select checks."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -119,7 +120,7 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
 def update_compilation_requires_set_and_filter_intent() -> None:
     """Update SQL is parameterized and refuses implicit full-table updates."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by update compilation checks."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -168,7 +169,7 @@ def update_compilation_requires_set_and_filter_intent() -> None:
 def delete_compilation_requires_filter_intent() -> None:
     """Delete SQL requires explicit where() or all() before compilation."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by delete compilation checks."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -208,7 +209,7 @@ def delete_compilation_requires_filter_intent() -> None:
 async def update_and_delete_execute_against_sqlite() -> None:
     """Mutation queries persist changes through the async transaction runtime."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by mutation execution checks."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -218,7 +219,7 @@ async def update_and_delete_execute_against_sqlite() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER, database=database_path, models=[User]
+            logger=NULL_LOGGER, database=database_path, models=[User]
         )
         try:
             async with database.transaction() as transaction:

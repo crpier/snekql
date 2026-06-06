@@ -11,19 +11,14 @@ import asyncio
 from datetime import datetime
 
 from snekql import (
-    MISSING,
-    CurrentTimestamp,
     Database,
-    DateTime,
-    Fetched,  # noqa: F401 - used by the forward reference in the model base.
-    Integer,
-    Model,
+    Fetched,
     Pending,
     StructuredLogger,
-    Text,
     delete,
     insert,
     select,
+    sqlite,
     update,
 )
 
@@ -44,30 +39,29 @@ class ExampleLogger:
         print("error", event, fields)
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Example table model used by the basic application."""
 
-    id: User.GenCol[int] = Integer(
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=sqlite.MISSING,
     )
-    email: User.Col[str] = Text(nullable=False)
-    status: User.Col[str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = DateTime(
-        server_default=CurrentTimestamp(),
-        default=MISSING,
+    email: User.Col[str] = sqlite.Text(nullable=False)
+    status: User.Col[str] = sqlite.Text(nullable=False, default="active")
+    created_at: User.GenCol[datetime] = sqlite.DateTime(
+        server_default=sqlite.CurrentTimestamp(),
+        default=sqlite.MISSING,
     )
 
 
-async def main(logger: StructuredLogger) -> None:
+async def main(*, logger: StructuredLogger) -> None:
     """Exercise v1 create, read, update, and delete behavior."""
 
     db = await Database.initialize(
-        logger,
-        database=":memory:",
+        sqlite.Config(database=":memory:", pool_size=1),
+        logger=logger,
         models=[User],
-        pool_size=1,
     )
     try:
         async with db.transaction() as transaction:
@@ -102,4 +96,4 @@ async def main(logger: StructuredLogger) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main(ExampleLogger()))
+    asyncio.run(main(logger=ExampleLogger()))

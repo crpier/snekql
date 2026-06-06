@@ -87,9 +87,9 @@ class SQLiteRuntime:
     def __init__(
         self,
         *,
+        logger: ResolvedStructuredLogger,
         acquire_timeout: NonNegativeFloat,
         connection_pool: SQLiteConnectionPool,
-        logger: ResolvedStructuredLogger,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: SQLiteConnectionPool = connection_pool
@@ -135,6 +135,7 @@ async def initialize_runtime(
     config: Config,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    *,
     logger: ResolvedStructuredLogger,
 ) -> SQLiteRuntime:
     """Initialize SQLite connectivity, schema startup, and pool lifecycle."""
@@ -145,19 +146,24 @@ async def initialize_runtime(
     logger.debug("sqlite connection opening", database_path=database_path)
     connection = await open_sqlite_connection(database_path)
     try:
-        await initialize_sqlite_schema(connection, models, schema_policy, logger)
+        await initialize_sqlite_schema(
+            connection,
+            models,
+            schema_policy,
+            logger=logger,
+        )
     except Exception:
         await close_sqlite_connection(connection)
         raise
     return SQLiteRuntime(
+        logger=logger,
         acquire_timeout=config.acquire_timeout,
         connection_pool=SQLiteConnectionPool(
+            logger=logger,
             database_path=database_path,
             initial_connection=connection,
-            logger=logger,
             pool_size=config.pool_size,
         ),
-        logger=logger,
     )
 
 

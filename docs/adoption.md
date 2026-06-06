@@ -55,8 +55,13 @@ class SmokeLogger:
     def error(self, event: str, **fields: object) -> None: ...
 
 
-async def main(logger: StructuredLogger) -> None:
-    db = await Database.initialize(logger, database=":memory:", models=[User], pool_size=1)
+async def main(*, logger: StructuredLogger) -> None:
+    db = await Database.initialize(
+        logger=logger,
+        database=":memory:",
+        models=[User],
+        pool_size=1,
+    )
     try:
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
@@ -66,7 +71,7 @@ async def main(logger: StructuredLogger) -> None:
         await db.close()
 
 
-asyncio.run(main(SmokeLogger()))
+asyncio.run(main(logger=SmokeLogger()))
 PY
 uv run python smoke.py
 uv add --dev pyright

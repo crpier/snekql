@@ -297,6 +297,7 @@ async def _fetch_existing_index_signatures(
 async def _report_schema_drift(
     schema_policy: SchemaPolicy,
     table_name: str,
+    *,
     logger: ResolvedStructuredLogger,
 ) -> None:
     message = f"schema drift detected for table {table_name!r}"
@@ -312,6 +313,7 @@ async def _verify_model_schema(
     connection: object,
     model: type[Table[Any]],
     schema_policy: SchemaPolicy,
+    *,
     logger: ResolvedStructuredLogger,
 ) -> None:
     table_name = require_model_table_name(model)
@@ -321,14 +323,14 @@ async def _verify_model_schema(
     ]
     existing_columns = await _fetch_existing_column_signatures(connection, table_name)
     if existing_columns != expected_columns:
-        await _report_schema_drift(schema_policy, table_name, logger)
+        await _report_schema_drift(schema_policy, table_name, logger=logger)
         return
     expected_indexes = sorted(
         _expected_index_signatures(model), key=lambda index: index.name
     )
     existing_indexes = await _fetch_existing_index_signatures(connection, table_name)
     if existing_indexes != expected_indexes:
-        await _report_schema_drift(schema_policy, table_name, logger)
+        await _report_schema_drift(schema_policy, table_name, logger=logger)
         return
     logger.debug("schema table verified", table_name=table_name)
     logger.debug("schema indexes verified", table_name=table_name)
@@ -337,6 +339,7 @@ async def _verify_model_schema(
 async def _create_model_schema(
     connection: object,
     model: type[Table[Any]],
+    *,
     logger: ResolvedStructuredLogger,
 ) -> None:
     table_name = require_model_table_name(model)
@@ -352,6 +355,7 @@ async def initialize_mariadb_schema(
     connection: object,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    *,
     logger: ResolvedStructuredLogger,
 ) -> None:
     """Create or verify all configured MariaDB tables."""
@@ -368,8 +372,8 @@ async def initialize_mariadb_schema(
                 connection,
                 model,
                 schema_policy,
-                logger,
+                logger=logger,
             )
         else:
-            await _create_model_schema(connection, model, logger)
+            await _create_model_schema(connection, model, logger=logger)
     logger.debug("schema startup completed", model_count=len(models))

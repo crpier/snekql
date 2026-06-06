@@ -10,7 +10,7 @@ from snekql.testing.mariadb import temporary_mariadb_server
 
 async with temporary_mariadb_server() as server:
     config = server.config()
-    database = await Database.initialize(logger, config, models=[User])
+    database = await Database.initialize(config, logger=logger, models=[User])
 ```
 
 The context manager starts an unprivileged local `mariadbd`, waits until it is ready, creates the requested test database, yields connection details, and stops the server when the context exits.
@@ -75,7 +75,7 @@ result = await server.run_sql("SELECT 1")
 failing = await server.run_sql("SELECT * FROM missing_table", check=False)
 ```
 
-`run_sql` shells out to the `mariadb` client and returns `MariaDBCommandResult` with `returncode`, `stdout`, and `stderr`. It accepts raw SQL only; application queries should use `Database.initialize(..., server.config())`.
+`run_sql` shells out to the `mariadb` client and returns `MariaDBCommandResult` with `returncode`, `stdout`, and `stderr`. It accepts raw SQL only; application queries should use `Database.initialize(server.config(), logger=logger)`.
 
 ## Foreground CLI
 

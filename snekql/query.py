@@ -104,16 +104,12 @@ class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]]:
         state = _select_order_by(self.state, ordering)
         return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
-    @validate_boundary(
-        QueryConstructionError, "limit() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
-    @validate_boundary(
-        QueryConstructionError, "offset() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
@@ -143,16 +139,12 @@ class SelectValueQuery[OwnerT: Table[Any], T]:
         state = _select_order_by(self.state, ordering)
         return cast("Self", SelectValueQuery[OwnerT, T](state))
 
-    @validate_boundary(
-        QueryConstructionError, "limit() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast("Self", SelectValueQuery[OwnerT, T](state))
 
-    @validate_boundary(
-        QueryConstructionError, "offset() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast("Self", SelectValueQuery[OwnerT, T](state))
@@ -182,16 +174,12 @@ class SelectTupleQuery[OwnerT: Table[Any], *Ts]:
         state = _select_order_by(self.state, ordering)
         return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
 
-    @validate_boundary(
-        QueryConstructionError, "limit() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
 
-    @validate_boundary(
-        QueryConstructionError, "offset() requires a non-negative integer"
-    )
+    @validate_boundary(error_type=QueryConstructionError)
     def offset(self, value: NonNegativeInt) -> Self:
         state = _select_offset(self.state, value)
         return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
