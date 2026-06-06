@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import secrets
-import shlex
 import shutil
 import socket
 from collections.abc import AsyncGenerator, Mapping
@@ -13,13 +11,15 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import Literal
 
 from snekql import mariadb
-from snekql.errors import SnekqlError
-
-type MariaDBAuth = Literal["insecure", "password"]
-type MariaDBTransport = Literal["unix_socket", "tcp"]
+from snekql.testing.mariadb._commands import MariaDBClientCommand
+from snekql.testing.mariadb._types import (
+    MariaDBAuth,
+    MariaDBCommandResult,
+    MariaDBTransport,
+    TemporaryMariaDBServerError,
+)
 
 _DEFAULT_DATABASE = "test"
 _DEFAULT_HOST = "127.0.0.1"
@@ -57,71 +57,6 @@ DEALLOCATE PREPARE snekql_drop_tables_statement;
 SET FOREIGN_KEY_CHECKS = 1;
 """
 _SHUTDOWN_TIMEOUT = 10.0
-
-
-@dataclass(frozen=True, kw_only=True)
-class MariaDBCommandResult:
-    """Captured result from a MariaDB command-line client invocation."""
-
-    returncode: int
-    stderr: str
-    stdout: str
-
-
-class TemporaryMariaDBServerError(SnekqlError):
-    """Failure while managing a local Temporary MariaDB Test Server."""
-
-
-@dataclass(frozen=True, kw_only=True)
-class MariaDBClientCommand:
-    """Build executable and renderable MariaDB client commands."""
-
-    auth: MariaDBAuth
-    client: str | Path
-    database: str | None
-    host: str | None
-    password: str
-    port: int | None
-    socket_path: Path | None
-    transport: MariaDBTransport
-    user: str
-
-    def arguments(self, *, password_prompt: bool = False) -> tuple[str, ...]:
-        """Build argv while keeping transport rules in one module."""
-
-        arguments = [str(self.client)]
-        if self.transport == "unix_socket":
-            if self.socket_path is None:
-                msg = "unix_socket client command requires socket_path"
-                raise TemporaryMariaDBServerError(msg)
-            arguments.extend(("--socket", str(self.socket_path)))
-        else:
-            if self.host is None or self.port is None:
-                msg = "tcp client command requires host and port"
-                raise TemporaryMariaDBServerError(msg)
-            arguments.extend(("--protocol=tcp", "-h", self.host, "-P", str(self.port)))
-        arguments.extend(("-u", self.user))
-        if self.auth == "password" and password_prompt:
-            arguments.append("-p")
-        if self.database is not None:
-            arguments.extend(("-D", self.database))
-        return tuple(arguments)
-
-    def environment(self) -> Mapping[str, str] | None:
-        """Provide password credentials without exposing them in argv."""
-
-        if self.auth != "password":
-            return None
-        environment = os.environ.copy()
-        environment["MYSQL_PWD"] = self.password
-        return environment
-
-    def shell_command(self) -> str:
-        """Render a ready-to-copy interactive client command."""
-
-        return " ".join(
-            shlex.quote(argument) for argument in self.arguments(password_prompt=True)
-        )
 
 
 @dataclass(frozen=True, kw_only=True)

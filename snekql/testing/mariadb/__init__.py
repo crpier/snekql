@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from snekql.testing.mariadb.server import (
+from snekql.testing.mariadb._types import (
     MariaDBAuth,
     MariaDBCommandResult,
     MariaDBTransport,
-    TemporaryMariaDBServer,
     TemporaryMariaDBServerError,
+)
+from snekql.testing.mariadb.server import (
+    TemporaryMariaDBServer,
     temporary_mariadb_server,
 )
 

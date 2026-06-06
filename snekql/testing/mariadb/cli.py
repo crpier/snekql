@@ -16,7 +16,7 @@ from snekql.testing.mariadb import (
     TemporaryMariaDBServerError,
     temporary_mariadb_server,
 )
-from snekql.testing.mariadb.server import MariaDBClientCommand
+from snekql.testing.mariadb._commands import MariaDBClientCommand
 
 
 @dataclass(frozen=True, kw_only=True)
