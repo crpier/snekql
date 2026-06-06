@@ -91,6 +91,12 @@ The command starts a foreground Temporary MariaDB Test Server, prints one ready-
 snekql-mariadb-server --transport unix_socket --transport tcp --auth password
 ```
 
+For retained CLI data directories, use `--reset-database` to remove base tables from the configured database before the command prints connection commands:
+
+```sh
+snekql-mariadb-server --data-directory .snektest/mariadb-data --reset-database
+```
+
 For password auth, stdout commands use `-p` and the generated or provided password is printed to stderr. The CLI does not accept a direct password argument; use an environment variable when deterministic credentials are needed:
 
 ```sh

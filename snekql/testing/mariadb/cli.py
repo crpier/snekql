@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +16,7 @@ from snekql.testing.mariadb import (
     TemporaryMariaDBServerError,
     temporary_mariadb_server,
 )
+from snekql.testing.mariadb.server import MariaDBClientCommand
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,6 +32,7 @@ class _CLIOptions:
     mariadbd: str | Path
     password: str | None
     port: int | None
+    reset_database: bool
     server_args: tuple[str, ...]
     socket_path: Path | None
     startup_timeout: float
@@ -61,6 +62,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _ = parser.add_argument("--data-directory", type=Path)
     _ = parser.add_argument("--clean-before-start", action="store_true")
+    _ = parser.add_argument("--reset-database", action="store_true")
     _ = parser.add_argument("--database", default="test")
     _ = parser.add_argument("--user", default="root")
     _ = parser.add_argument("--password-env")
@@ -107,18 +109,13 @@ def _parse_options(argv: list[str] | None) -> _CLIOptions:
         mariadbd=namespace.mariadbd,
         password=password,
         port=namespace.port,
+        reset_database=namespace.reset_database,
         server_args=tuple(namespace.server_arg),
         socket_path=namespace.socket_path,
         startup_timeout=namespace.startup_timeout,
         transports=transports,
         user=namespace.user,
     )
-
-
-def _quote_command(arguments: tuple[str, ...]) -> str:
-    """Render one shell-ready command line without exposing password values."""
-
-    return " ".join(shlex.quote(argument) for argument in arguments)
 
 
 def _render_client_commands(
@@ -128,24 +125,20 @@ def _render_client_commands(
 ) -> tuple[str, ...]:
     """Render one ready-to-copy mariadb command for each public transport."""
 
-    password_arguments: tuple[str, ...] = ()
-    if server.auth == "password":
-        password_arguments = ("-p",)
     commands: list[str] = []
     if "unix_socket" in server.transports and server.socket_path is not None:
         commands.append(
-            _quote_command(
-                (
-                    str(client),
-                    "--socket",
-                    str(server.socket_path),
-                    "-u",
-                    server.user,
-                    *password_arguments,
-                    "-D",
-                    server.database,
-                )
-            )
+            MariaDBClientCommand(
+                auth=server.auth,
+                client=client,
+                database=server.database,
+                host=None,
+                password=server.password,
+                port=None,
+                socket_path=server.socket_path,
+                transport="unix_socket",
+                user=server.user,
+            ).shell_command()
         )
     if (
         "tcp" in server.transports
@@ -153,21 +146,17 @@ def _render_client_commands(
         and server.port is not None
     ):
         commands.append(
-            _quote_command(
-                (
-                    str(client),
-                    "--protocol=tcp",
-                    "-h",
-                    server.host,
-                    "-P",
-                    str(server.port),
-                    "-u",
-                    server.user,
-                    *password_arguments,
-                    "-D",
-                    server.database,
-                )
-            )
+            MariaDBClientCommand(
+                auth=server.auth,
+                client=client,
+                database=server.database,
+                host=server.host,
+                password=server.password,
+                port=server.port,
+                socket_path=None,
+                transport="tcp",
+                user=server.user,
+            ).shell_command()
         )
     return tuple(commands)
 
@@ -186,6 +175,7 @@ async def _run(argv: list[str] | None) -> int:
         mariadbd=options.mariadbd,
         password=options.password,
         port=options.port,
+        reset_database=options.reset_database,
         server_args=options.server_args,
         socket_path=options.socket_path,
         startup_timeout=options.startup_timeout,

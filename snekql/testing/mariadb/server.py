@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
+import shlex
 import shutil
 import socket
 from collections.abc import AsyncGenerator, Mapping
@@ -69,6 +70,58 @@ class MariaDBCommandResult:
 
 class TemporaryMariaDBServerError(SnekqlError):
     """Failure while managing a local Temporary MariaDB Test Server."""
+
+
+@dataclass(frozen=True, kw_only=True)
+class MariaDBClientCommand:
+    """Build executable and renderable MariaDB client commands."""
+
+    auth: MariaDBAuth
+    client: str | Path
+    database: str | None
+    host: str | None
+    password: str
+    port: int | None
+    socket_path: Path | None
+    transport: MariaDBTransport
+    user: str
+
+    def arguments(self, *, password_prompt: bool = False) -> tuple[str, ...]:
+        """Build argv while keeping transport rules in one module."""
+
+        arguments = [str(self.client)]
+        if self.transport == "unix_socket":
+            if self.socket_path is None:
+                msg = "unix_socket client command requires socket_path"
+                raise TemporaryMariaDBServerError(msg)
+            arguments.extend(("--socket", str(self.socket_path)))
+        else:
+            if self.host is None or self.port is None:
+                msg = "tcp client command requires host and port"
+                raise TemporaryMariaDBServerError(msg)
+            arguments.extend(("--protocol=tcp", "-h", self.host, "-P", str(self.port)))
+        arguments.extend(("-u", self.user))
+        if self.auth == "password" and password_prompt:
+            arguments.append("-p")
+        if self.database is not None:
+            arguments.extend(("-D", self.database))
+        return tuple(arguments)
+
+    def environment(self) -> Mapping[str, str] | None:
+        """Provide password credentials without exposing them in argv."""
+
+        if self.auth != "password":
+            return None
+        environment = os.environ.copy()
+        environment["MYSQL_PWD"] = self.password
+        return environment
+
+    def shell_command(self) -> str:
+        """Render a ready-to-copy interactive client command."""
+
+        return " ".join(
+            shlex.quote(argument) for argument in self.arguments(password_prompt=True)
+        )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -238,6 +291,42 @@ class _TemporaryMariaDBServerOptions:
     user: str
 
 
+@dataclass(frozen=True, kw_only=True)
+class _StartupPlan:
+    """Resolved lifecycle facts for one Temporary MariaDB Test Server run."""
+
+    options: _TemporaryMariaDBServerOptions
+    password: str
+    paths: _ProcessPaths
+    port: int | None
+    readiness_transport: MariaDBTransport
+
+    def server(self) -> TemporaryMariaDBServer:
+        """Build the public server value from resolved startup facts."""
+
+        server = TemporaryMariaDBServer(
+            auth=self.options.auth,
+            database=self.options.database,
+            data_directory=self.paths.data_directory,
+            error_log_path=self.paths.error_log_path,
+            host=_DEFAULT_HOST if "tcp" in self.options.transports else None,
+            password=self.password,
+            pid_path=self.paths.pid_path,
+            port=self.port,
+            socket_path=self.paths.public_socket_path,
+            transports=self.options.transports,
+            user=self.options.user,
+        )
+        object.__setattr__(server, "_client", self.options.client)
+        return server
+
+    @property
+    def tcp_enabled(self) -> bool:
+        """Whether this plan exposes local TCP transport."""
+
+        return "tcp" in self.options.transports
+
+
 def _resolve_user_path(path: Path) -> Path:
     """Make caller-provided paths stable for MariaDB helper processes."""
 
@@ -294,6 +383,31 @@ async def _ensure_data_directory(
         return
     msg = f"MariaDB data_directory is not empty and does not look initialized: {paths.data_directory}"
     raise TemporaryMariaDBServerError(msg)
+
+
+async def _build_startup_plan(
+    options: _TemporaryMariaDBServerOptions,
+) -> _StartupPlan:
+    """Resolve one startup plan before process lifecycle work begins."""
+
+    paths = await _create_process_paths(options)
+    await _ensure_data_directory(options=options, paths=paths)
+    password = options.password or (
+        secrets.token_urlsafe(24) if options.auth == "password" else ""
+    )
+    port = None
+    if "tcp" in options.transports:
+        port = options.port or _find_free_tcp_port()
+    readiness_transport: MariaDBTransport = (
+        "unix_socket" if "unix_socket" in options.transports else "tcp"
+    )
+    return _StartupPlan(
+        options=options,
+        password=password,
+        paths=paths,
+        port=port,
+        readiness_transport=readiness_transport,
+    )
 
 
 def _is_quota_limited_install_error(stderr: str) -> bool:
@@ -480,50 +594,47 @@ async def _run_client_sql(  # noqa: PLR0913
 ) -> MariaDBCommandResult:
     """Execute SQL through the configured MariaDB CLI transport."""
 
-    arguments = [str(client)]
-    if transport == "unix_socket":
-        if socket_path is None:
-            msg = "unix_socket client command requires socket_path"
-            raise TemporaryMariaDBServerError(msg)
-        arguments.extend(("--socket", str(socket_path)))
-    else:
-        if host is None or port is None:
-            msg = "tcp client command requires host and port"
-            raise TemporaryMariaDBServerError(msg)
-        arguments.extend(("--protocol=tcp", "-h", host, "-P", str(port)))
-    arguments.extend(("-u", user))
-    if database is not None:
-        arguments.extend(("-D", database))
-    arguments.extend(("-e", sql))
-    env = None
-    if auth == "password":
-        env = os.environ.copy()
-        env["MYSQL_PWD"] = password
-    return await _run_command(*arguments, env=env)
+    command = MariaDBClientCommand(
+        auth=auth,
+        client=client,
+        database=database,
+        host=host,
+        password=password,
+        port=port,
+        socket_path=socket_path,
+        transport=transport,
+        user=user,
+    )
+    return await _run_command(
+        *command.arguments(),
+        "-e",
+        sql,
+        env=command.environment(),
+    )
 
 
-async def _create_database(  # noqa: PLR0913
+async def _create_database(
     *,
-    options: _TemporaryMariaDBServerOptions,
-    paths: _ProcessPaths,
-    password: str,
+    plan: _StartupPlan,
     process: asyncio.subprocess.Process,
-    port: int | None,
-    transport: MariaDBTransport,
 ) -> None:
     """Create the requested test database after the server is reachable."""
 
     result = await _run_client_sql(
-        auth=options.auth,
-        client=options.client,
+        auth=plan.options.auth,
+        client=plan.options.client,
         database=None,
-        host=_DEFAULT_HOST if port is not None else None,
-        password=password,
-        port=port,
-        socket_path=paths.internal_socket_path if transport == "unix_socket" else None,
-        sql=f"CREATE DATABASE IF NOT EXISTS `{options.database}`",
-        transport=transport,
-        user=options.user,
+        host=_DEFAULT_HOST if plan.port is not None else None,
+        password=plan.password,
+        port=plan.port,
+        socket_path=(
+            plan.paths.internal_socket_path
+            if plan.readiness_transport == "unix_socket"
+            else None
+        ),
+        sql=f"CREATE DATABASE IF NOT EXISTS `{plan.options.database}`",
+        transport=plan.readiness_transport,
+        user=plan.options.user,
     )
     if result.returncode != 0:
         await _stop_process(process)
@@ -531,17 +642,12 @@ async def _create_database(  # noqa: PLR0913
         raise TemporaryMariaDBServerError(msg)
 
 
-async def _bootstrap_password_auth(
-    *,
-    options: _TemporaryMariaDBServerOptions,
-    paths: _ProcessPaths,
-    password: str,
-) -> None:
+async def _bootstrap_password_auth(plan: _StartupPlan) -> None:
     """Use a short insecure local bootstrap server to set password auth."""
 
     process = await _start_process(
-        options=options,
-        paths=paths,
+        options=plan.options,
+        paths=plan.paths,
         port=None,
         skip_grant_tables=True,
         tcp_enabled=False,
@@ -549,31 +655,31 @@ async def _bootstrap_password_auth(
     try:
         await _wait_until_ready(
             auth="insecure",
-            client=options.client,
+            client=plan.options.client,
             database=None,
-            error_log_path=paths.error_log_path,
+            error_log_path=plan.paths.error_log_path,
             host=None,
             password="",
             port=None,
             process=process,
-            socket_path=paths.internal_socket_path,
-            startup_timeout=options.startup_timeout,
+            socket_path=plan.paths.internal_socket_path,
+            startup_timeout=plan.options.startup_timeout,
             transport="unix_socket",
             user="root",
         )
         bootstrap_sql = _password_bootstrap_sql(
-            database=options.database,
-            password=password,
-            user=options.user,
+            database=plan.options.database,
+            password=plan.password,
+            user=plan.options.user,
         )
         result = await _run_client_sql(
             auth="insecure",
-            client=options.client,
+            client=plan.options.client,
             database=None,
             host=None,
             password="",
             port=None,
-            socket_path=paths.internal_socket_path,
+            socket_path=plan.paths.internal_socket_path,
             sql=bootstrap_sql,
             transport="unix_socket",
             user="root",
@@ -585,53 +691,37 @@ async def _bootstrap_password_auth(
         await _stop_process(process)
 
 
-async def _start_ready_server(
-    *,
-    options: _TemporaryMariaDBServerOptions,
-    paths: _ProcessPaths,
-    password: str,
-    port: int | None,
-) -> asyncio.subprocess.Process:
+async def _start_ready_server(plan: _StartupPlan) -> asyncio.subprocess.Process:
     """Start the final server and wait on its preferred public transport."""
 
     process = await _start_process(
-        options=options,
-        paths=paths,
-        port=port,
-        skip_grant_tables=options.auth == "insecure",
-        tcp_enabled="tcp" in options.transports,
-    )
-    readiness_transport: MariaDBTransport = (
-        "unix_socket" if "unix_socket" in options.transports else "tcp"
+        options=plan.options,
+        paths=plan.paths,
+        port=plan.port,
+        skip_grant_tables=plan.options.auth == "insecure",
+        tcp_enabled=plan.tcp_enabled,
     )
     try:
         await _wait_until_ready(
-            auth=options.auth,
-            client=options.client,
+            auth=plan.options.auth,
+            client=plan.options.client,
             database=None,
-            error_log_path=paths.error_log_path,
-            host=_DEFAULT_HOST if readiness_transport == "tcp" else None,
-            password=password,
-            port=port if readiness_transport == "tcp" else None,
+            error_log_path=plan.paths.error_log_path,
+            host=_DEFAULT_HOST if plan.readiness_transport == "tcp" else None,
+            password=plan.password,
+            port=plan.port if plan.readiness_transport == "tcp" else None,
             process=process,
             socket_path=(
-                paths.public_socket_path
-                if readiness_transport == "unix_socket"
+                plan.paths.public_socket_path
+                if plan.readiness_transport == "unix_socket"
                 else None
             ),
-            startup_timeout=options.startup_timeout,
-            transport=readiness_transport,
-            user=options.user,
+            startup_timeout=plan.options.startup_timeout,
+            transport=plan.readiness_transport,
+            user=plan.options.user,
         )
-        if options.auth == "insecure":
-            await _create_database(
-                options=options,
-                paths=paths,
-                password=password,
-                process=process,
-                port=port if readiness_transport == "tcp" else None,
-                transport=readiness_transport,
-            )
+        if plan.options.auth == "insecure":
+            await _create_database(plan=plan, process=process)
     except TemporaryMariaDBServerError:
         await _stop_process(process)
         raise
@@ -645,40 +735,11 @@ async def _temporary_mariadb_server_context(
 ) -> AsyncGenerator[TemporaryMariaDBServer]:
     """Manage the full MariaDB child process lifecycle."""
 
-    paths = await _create_process_paths(options)
-    await _ensure_data_directory(options=options, paths=paths)
-    password = options.password or (
-        secrets.token_urlsafe(24) if options.auth == "password" else ""
-    )
+    plan = await _build_startup_plan(options)
     if options.auth == "password":
-        await _bootstrap_password_auth(
-            options=options,
-            password=password,
-            paths=paths,
-        )
-    port = None
-    if "tcp" in options.transports:
-        port = options.port or _find_free_tcp_port()
-    process = await _start_ready_server(
-        options=options,
-        password=password,
-        paths=paths,
-        port=port,
-    )
-    server = TemporaryMariaDBServer(
-        auth=options.auth,
-        database=options.database,
-        data_directory=paths.data_directory,
-        error_log_path=paths.error_log_path,
-        host=_DEFAULT_HOST if "tcp" in options.transports else None,
-        password=password,
-        pid_path=paths.pid_path,
-        port=port,
-        socket_path=paths.public_socket_path,
-        transports=options.transports,
-        user=options.user,
-    )
-    object.__setattr__(server, "_client", options.client)
+        await _bootstrap_password_auth(plan)
+    process = await _start_ready_server(plan)
+    server = plan.server()
     if options.reset_database:
         await server.reset_database()
     try:
@@ -809,12 +870,7 @@ def temporary_mariadb_server(  # noqa: PLR0913
     client: str | Path = "mariadb",
     startup_timeout: float = 20.0,
 ) -> AbstractAsyncContextManager[TemporaryMariaDBServer]:
-    """Start a local Temporary MariaDB Test Server.
-
-    >>> context = temporary_mariadb_server()
-    >>> hasattr(context, "__aenter__")
-    True
-    """
+    """Start a local Temporary MariaDB Test Server."""
 
     options = _TemporaryMariaDBServerOptions(
         auth=auth,

@@ -25,3 +25,4 @@ def mariadb_server_cli_documents_foreground_options() -> None:
     assert_in("--password-env", result.stdout)
     assert_in("--server-arg", result.stdout)
     assert_in("--socket-path", result.stdout)
+    assert_in("--reset-database", result.stdout)
