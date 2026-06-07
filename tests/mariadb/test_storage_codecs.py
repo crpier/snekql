@@ -11,14 +11,14 @@ from snekql import (
     MISSING,
     CurrentTimestamp,
     Database,
+    Fetched,
     ModelDeclarationError,
     Pending,
     insert,
     mariadb,
     select,
 )
-from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
 
 
 def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
@@ -31,7 +31,7 @@ def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
 def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
     """MariaDB columns expose backend-specific value codecs."""
 
-    class Event[S = Pending](mariadb.Model[S, "Event[object]"]):
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """Model used to bind MariaDB descriptors for direct codec checks."""
 
         flag: Event.Col[bool] = mariadb.Boolean(nullable=False)
@@ -57,7 +57,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class BadEvent[S = Pending](mariadb.Model[S, "BadEvent[object]"]):
+        class BadEvent[S = Pending](mariadb.Model[S, "BadEvent[Fetched]"]):
             """Invalid MariaDB model using a server default on a normal column."""
 
             created_at: BadEvent.Col[datetime] = mariadb.DateTime(
@@ -66,7 +66,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class BadCounter[S = Pending](mariadb.Model[S, "BadCounter[object]"]):
+        class BadCounter[S = Pending](mariadb.Model[S, "BadCounter[Fetched]"]):
             """Invalid MariaDB model using auto increment outside a primary key."""
 
             count: BadCounter.Col[int] = mariadb.Integer(auto_increment=True)
@@ -78,7 +78,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Event[S = Pending](mariadb.Model[S, "Event[object]"]):
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """Model covering MariaDB value family round trips."""
 
         __tablename__ = "issue40_event_values"
@@ -100,12 +100,12 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server), models=[Event]
+        _config_from_server(server), logger=NULL_LOGGER, models=[Event]
     )
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(
                 insert(
                     Event(
                         amount=12.5,
@@ -117,7 +117,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
                     )
                 )
             )
-            event = await transaction.fetch_one(select(Event).all())
+            event = await tx.fetch_one(select(Event).all())
     finally:
         await database.close()
 

@@ -10,7 +10,7 @@ from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 
-@validate_boundary(DatabaseRuntimeError, "invalid SQLite runtime configuration")
+@validate_boundary(error_type=DatabaseRuntimeError)
 def _validate_sqlite_config(
     *,
     acquire_timeout: NonNegativeFloat,

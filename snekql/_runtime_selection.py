@@ -18,7 +18,7 @@ from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 type RuntimeConfig = SQLiteConfig | MariaDBConfig
 
 
-@validate_boundary(DatabaseRuntimeError, "invalid database numeric configuration")
+@validate_boundary(error_type=DatabaseRuntimeError)
 def _build_legacy_sqlite_config(
     *,
     acquire_timeout: NonNegativeFloat,
@@ -57,6 +57,7 @@ class RuntimeSelection:
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
+        *,
         logger: ResolvedStructuredLogger,
     ) -> object:
         """Import and initialize the selected Backend Runtime Adapter lazily."""
@@ -70,7 +71,7 @@ class RuntimeSelection:
                 self.config,
                 models,
                 schema_policy,
-                logger,
+                logger=logger,
             )
         try:
             from snekql.sqlite.runtime import (  # noqa: PLC0415
@@ -86,7 +87,7 @@ class RuntimeSelection:
             self.config,
             models,
             schema_policy,
-            logger,
+            logger=logger,
         )
 
 

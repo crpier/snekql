@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_in, load_fixture, test
 
 from snekql.testing.mariadb import temporary_mariadb_server
-from tests.mariadb_server import provide_mariadb_server
+from tests.helpers import provide_mariadb_server
 
 
 @test(mark="medium")

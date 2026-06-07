@@ -15,6 +15,7 @@ from snekql import (
     Boolean,
     CurrentTimestamp,
     DateTime,
+    Fetched,
     Integer,
     Json,
     Model,
@@ -42,7 +43,7 @@ def v1_exposes_only_sqlite_first_storage_classes() -> None:
 def storage_classes_expose_sqlite_metadata() -> None:
     """V1 columns record the SQLite storage class used for schema generation."""
 
-    class StorageExample[S = Pending](Model[S, "StorageExample[object]"]):
+    class StorageExample[S = Pending](Model[S, "StorageExample[Fetched]"]):
         """Table model using every v1 storage class."""
 
         integer_value: StorageExample.Col[int] = Integer(nullable=False)
@@ -68,14 +69,14 @@ def storage_classes_expose_sqlite_metadata() -> None:
 def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
     """Boolean columns use INTEGER storage while models expose bools."""
 
-    class FeatureFlag[S = Pending](Model[S, "FeatureFlag[object]"]):
+    class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
         """Table model with a boolean flag."""
 
         enabled: FeatureFlag.Col[bool] = Boolean(nullable=False)
 
     enabled = FeatureFlag(enabled=True)
     disabled = cast(
-        "FeatureFlag[object]",
+        "FeatureFlag[Fetched]",
         decode_model_row(FeatureFlag, {"enabled": 0}),
     )
     _, encoded_enabled = encode_model_row(enabled)
@@ -91,14 +92,14 @@ def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
 def json_values_encode_to_text_and_decode_before_validation() -> None:
     """Json columns store JSON text and expose decoded Python values."""
 
-    class Event[S = Pending](Model[S, "Event[object]"]):
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with a JSON payload."""
 
         payload: Event.Col[dict[str, object]] = Json(nullable=False)
 
     event = Event(payload={"kind": "created", "count": 2})
     fetched = cast(
-        "Event[object]",
+        "Event[Fetched]",
         decode_model_row(Event, {"payload": '{"kind":"created","count":2}'}),
     )
     _, encoded_event = encode_model_row(event)
@@ -117,7 +118,7 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
 def datetime_values_are_utc_millisecond_text() -> None:
     """DateTime accepts aware values and stores UTC millisecond text."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[object]"]):
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with a timestamp."""
 
         created_at: AuditLog.Col[datetime] = DateTime(nullable=False)
@@ -126,7 +127,7 @@ def datetime_values_are_utc_millisecond_text() -> None:
     source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
     audit_log = AuditLog(created_at=source)
     fetched = cast(
-        "AuditLog[object]",
+        "AuditLog[Fetched]",
         decode_model_row(AuditLog, {"created_at": "2026-05-31T06:30:01.987Z"}),
     )
     _, encoded_audit_log = encode_model_row(audit_log)
@@ -148,7 +149,7 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
         msg = "outside validation failure"
         raise ValueError(msg)
 
-    class ExternalValue[S = Pending](Model[S, "ExternalValue[object]"]):
+    class ExternalValue[S = Pending](Model[S, "ExternalValue[Fetched]"]):
         """Table model with an external default provider."""
 
         payload: ExternalValue.Col[object] = Json(default_factory=broken_default)
@@ -161,7 +162,7 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
 def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
     """Server timestamp defaults are limited to generated DateTime fields."""
 
-    class CreatedEvent[S = Pending](Model[S, "CreatedEvent[object]"]):
+    class CreatedEvent[S = Pending](Model[S, "CreatedEvent[Fetched]"]):
         """Valid generated timestamp column."""
 
         created_at: CreatedEvent.GenCol[datetime] = DateTime(
@@ -179,7 +180,7 @@ def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
     with assert_raises(ModelDeclarationError):
 
         class NonGeneratedTimestamp[S = Pending](
-            Model[S, "NonGeneratedTimestamp[object]"]
+            Model[S, "NonGeneratedTimestamp[Fetched]"]
         ):
             """Invalid non-generated timestamp default."""
 
@@ -191,7 +192,7 @@ def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
     with assert_raises(ModelDeclarationError):
 
         class NonDateTimeTimestamp[S = Pending](
-            Model[S, "NonDateTimeTimestamp[object]"]
+            Model[S, "NonDateTimeTimestamp[Fetched]"]
         ):
             """Invalid CurrentTimestamp use outside a DateTime server default."""
 
@@ -202,7 +203,7 @@ def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
     with assert_raises(ModelDeclarationError):
 
         class TimestampWithPythonDefault[S = Pending](
-            Model[S, "TimestampWithPythonDefault[object]"],
+            Model[S, "TimestampWithPythonDefault[Fetched]"],
         ):
             """Invalid server default paired with a Python default."""
 

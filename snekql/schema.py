@@ -155,7 +155,7 @@ async def _verify_model_indexes(
     if existing_sql == expected_sql:
         logger.debug("schema indexes verified", table_name=planned_model.table_name)
         return
-    await _report_schema_drift(schema_policy, planned_model.table_name, logger)
+    await _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
 
 
 async def _verify_or_create_model_table(
@@ -183,7 +183,7 @@ async def _verify_or_create_model_table(
     if _normalize_snekql_create_table_sql(
         existing_sql,
     ) != _normalize_snekql_create_table_sql(expected_sql):
-        await _report_schema_drift(schema_policy, planned_model.table_name, logger)
+        await _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
         return
     logger.debug("schema table verified", table_name=planned_model.table_name)
     await _verify_model_indexes(connection, planned_model, schema_policy, logger)

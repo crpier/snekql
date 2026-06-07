@@ -96,7 +96,12 @@ class MariaDBConnectionAdapter:
 class MariaDBConnectionPool:
     """Small lifecycle wrapper around an aiomysql connection pool."""
 
-    def __init__(self, pool: object, logger: ResolvedStructuredLogger) -> None:
+    def __init__(
+        self,
+        pool: object,
+        *,
+        logger: ResolvedStructuredLogger,
+    ) -> None:
         self.closed: bool = False
         self.closing: bool = False
         self.logger: ResolvedStructuredLogger = logger
@@ -181,9 +186,9 @@ class MariaDBRuntime:
     def __init__(
         self,
         *,
+        logger: ResolvedStructuredLogger,
         acquire_timeout: NonNegativeFloat,
         connection_pool: MariaDBConnectionPool,
-        logger: ResolvedStructuredLogger,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: MariaDBConnectionPool = connection_pool
@@ -229,6 +234,7 @@ async def initialize_runtime(
     config: Config,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
+    *,
     logger: ResolvedStructuredLogger,
 ) -> MariaDBRuntime:
     """Initialize MariaDB connectivity, schema startup, and pool lifecycle."""
@@ -248,19 +254,24 @@ async def initialize_runtime(
         unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
         user=config.user,
     )
-    connection_pool = MariaDBConnectionPool(pool, logger)
+    connection_pool = MariaDBConnectionPool(pool, logger=logger)
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
-        await initialize_mariadb_schema(connection, models, schema_policy, logger)
+        await initialize_mariadb_schema(
+            connection,
+            models,
+            schema_policy,
+            logger=logger,
+        )
     except Exception:
         await connection_pool.release(connection)
         await connection_pool.close(config.acquire_timeout)
         raise
     await connection_pool.release(connection)
     return MariaDBRuntime(
+        logger=logger,
         acquire_timeout=config.acquire_timeout,
         connection_pool=connection_pool,
-        logger=logger,
     )
 
 

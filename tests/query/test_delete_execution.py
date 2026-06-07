@@ -17,6 +17,7 @@ from snektest import (
 from snekql import (
     MISSING,
     Database,
+    Fetched,
     Integer,
     Model,
     Pending,
@@ -28,14 +29,14 @@ from snekql import (
     select,
 )
 from snekql.query import compile_write_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 @test(mark="fast")
 def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
     """Delete compiles quoted table and column names with bound parameters."""
 
-    class Order[S = Pending](Model[S, "Order[object]"]):
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table model with identifiers requiring SQLite quoting."""
 
         __tablename__ = "select"
@@ -58,12 +59,12 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
 def delete_predicates_must_belong_to_target_model() -> None:
     """Delete where() rejects predicates built from another table model."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Target table model for ownership checks."""
 
         email: User.Col[str] = Text(nullable=False)
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[object]"]):
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Unrelated table model for ownership checks."""
 
         message: AuditLog.Col[str] = Text(nullable=False)
@@ -78,7 +79,7 @@ def delete_predicates_must_belong_to_target_model() -> None:
 def delete_requires_exactly_one_filter_intent() -> None:
     """Delete requires exactly one of where() or all() before compilation."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by explicit delete intent checks."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -110,7 +111,7 @@ def delete_requires_exactly_one_filter_intent() -> None:
 async def delete_execute_returns_none_for_filtered_and_explicit_all_forms() -> None:
     """tx.execute(delete(...)) returns None for filtered and full-table deletes."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through the async runtime."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -118,23 +119,23 @@ async def delete_execute_returns_none_for_filtered_and_explicit_all_forms() -> N
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
 
-            filtered_result = await transaction.execute(
+            filtered_result = await tx.execute(
                 delete(User).where(User.status.eq("disabled")),
             )
-            remaining_after_filtered = await transaction.fetch_all(
+            remaining_after_filtered = await tx.fetch_all(
                 select(User.email).all().order_by(User.email.asc()),
             )
-            all_result = await transaction.execute(delete(User).all())
-            remaining_after_all = await transaction.fetch_all(select(User.email).all())
+            all_result = await tx.execute(delete(User).all())
+            remaining_after_all = await tx.fetch_all(select(User.email).all())
     finally:
         await database.close()
 

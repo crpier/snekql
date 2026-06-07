@@ -6,41 +6,36 @@ from datetime import datetime
 from typing import TYPE_CHECKING, assert_type
 
 from snekql import (
-    MISSING,
-    CurrentTimestamp,
-    DateTime,
     Fetched,
     InsertQuery,
-    Integer,
     Missing,
-    Model,
     Pending,
     Predicate,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
-    Text,
     Transaction,
     UpdateQuery,
     insert,
     select,
+    sqlite,
     update,
 )
 
 
-class Account[S = Pending](Model[S, "Account[Fetched]"]):
+class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
     """Example model focused on static result-shape inference."""
 
-    id: Account.GenCol[int] = Integer(
+    id: Account.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=sqlite.MISSING,
     )
-    email: Account.Col[str] = Text(nullable=False)
-    status: Account.Col[str] = Text(nullable=False, default="active")
-    created_at: Account.GenCol[datetime] = DateTime(
-        server_default=CurrentTimestamp(),
-        default=MISSING,
+    email: Account.Col[str] = sqlite.Text(nullable=False)
+    status: Account.Col[str] = sqlite.Text(nullable=False, default="active")
+    created_at: Account.GenCol[datetime] = sqlite.DateTime(
+        server_default=sqlite.CurrentTimestamp(),
+        default=sqlite.MISSING,
     )
 
 

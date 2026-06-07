@@ -7,6 +7,7 @@ from snektest import assert_in, assert_raises, load_fixture, test
 from snekql import (
     Database,
     DatabaseRuntimeError,
+    Fetched,
     Model,
     Pending,
     Text,
@@ -14,23 +15,24 @@ from snekql import (
     select,
     sqlite,
 )
-from tests.logging_helpers import NULL_LOGGER
-from tests.mariadb_server import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
 
 
-class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[object]"]):
+class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[Fetched]"]):
     """SQLite table model for backend identity checks."""
 
     email: SqliteIdentityUser.Col[str] = sqlite.Text(nullable=False)
 
 
-class LegacyIdentityUser[S = Pending](Model[S, "LegacyIdentityUser[object]"]):
+class LegacyIdentityUser[S = Pending](Model[S, "LegacyIdentityUser[Fetched]"]):
     """Legacy top-level model remains a SQLite declaration."""
 
     email: LegacyIdentityUser.Col[str] = Text(nullable=False)
 
 
-class MariadbIdentityUser[S = Pending](mariadb.Model[S, "MariadbIdentityUser[object]"]):
+class MariadbIdentityUser[S = Pending](
+    mariadb.Model[S, "MariadbIdentityUser[Fetched]"]
+):
     """MariaDB table model for backend identity checks."""
 
     email: MariadbIdentityUser.Col[str] = mariadb.Text(nullable=False)
@@ -48,7 +50,7 @@ async def sqlite_initialization_rejects_mariadb_models() -> None:
 
     with assert_raises(DatabaseRuntimeError) as error:
         _ = await Database.initialize(
-            NULL_LOGGER, database=":memory:", models=[MariadbIdentityUser]
+            logger=NULL_LOGGER, database=":memory:", models=[MariadbIdentityUser]
         )
 
     assert_in("expected sqlite", str(error.exception))
@@ -61,8 +63,8 @@ async def mariadb_initialization_rejects_sqlite_models() -> None:
 
     with assert_raises(DatabaseRuntimeError) as error:
         _ = await Database.initialize(
-            NULL_LOGGER,
             mariadb.Config(database="app", user="snekql"),
+            logger=NULL_LOGGER,
             models=[SqliteIdentityUser],
         )
 
@@ -74,11 +76,11 @@ async def mariadb_initialization_rejects_sqlite_models() -> None:
 async def sqlite_transaction_rejects_mariadb_queries() -> None:
     """SQLite Transactions reject MariaDB queries."""
 
-    sqlite_database = await Database.initialize(NULL_LOGGER, database=":memory:")
+    sqlite_database = await Database.initialize(logger=NULL_LOGGER, database=":memory:")
     try:
-        async with sqlite_database.transaction() as transaction:
+        async with sqlite_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await transaction.fetch_all(select(MariadbIdentityUser).all())
+                _ = await tx.fetch_all(select(MariadbIdentityUser).all())
     finally:
         await sqlite_database.close()
 
@@ -93,12 +95,12 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
     server = await load_fixture(provide_mariadb_server())
 
     mariadb_database = await Database.initialize(
-        NULL_LOGGER, _config_from_server(server)
+        _config_from_server(server), logger=NULL_LOGGER
     )
     try:
-        async with mariadb_database.transaction() as transaction:
+        async with mariadb_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await transaction.fetch_all(select(SqliteIdentityUser).all())
+                _ = await tx.fetch_all(select(SqliteIdentityUser).all())
     finally:
         await mariadb_database.close()
 

@@ -27,43 +27,40 @@ from datetime import datetime
 from pathlib import Path
 
 from snekql import (
-    MISSING,
-    CurrentTimestamp,
     Database,
-    DateTime,
     Fetched,
-    Integer,
-    Model,
     Pending,
     StructuredLogger,
-    Text,
     insert,
     select,
+    sqlite,
 )
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(
+class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=sqlite.MISSING,
     )
-    email: User.Col[str] = Text(nullable=False, unique=True)
-    status: User.Col[str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = DateTime(
-        server_default=CurrentTimestamp(),
-        default=MISSING,
+    email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
+    status: User.Col[str] = sqlite.Text(nullable=False, default="active")
+    created_at: User.GenCol[datetime] = sqlite.DateTime(
+        server_default=sqlite.CurrentTimestamp(),
+        default=sqlite.MISSING,
     )
 
 
-async def main(logger: StructuredLogger) -> None:
+async def main(*, logger: StructuredLogger) -> None:
     db = await Database.initialize(
-        logger,
-        database=Path("app.db"),
+        sqlite.Config(
+            database=Path("app.db"),
+            pool_size=5,
+            acquire_timeout=30.0,
+        ),
+        logger=logger,
         models=[User],
         schema_policy="strict",
-        pool_size=5,
-        acquire_timeout=30.0,
     )
     try:
         async with db.transaction(timeout=5.0) as tx:
@@ -79,22 +76,28 @@ async def main(logger: StructuredLogger) -> None:
 
 ## Model declaration
 
-Models directly subclass `Model[S, "ModelName[Fetched]"]`. Application-created
-instances are `Pending`; database reads return `Fetched` instances.
+Table models are declared through a backend namespace such as `sqlite` or
+`mariadb`. Application-created instances are `Pending`; database reads return
+`Fetched` instances.
 
 ```python
-class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+from datetime import datetime
+
+from snekql import Fetched, Pending, sqlite
+
+
+class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
     __tablename__ = "audit_log"
 
-    id: AuditLog.GenCol[int] = Integer(
+    id: AuditLog.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=sqlite.MISSING,
     )
-    message: AuditLog.Col[str] = Text(nullable=False)
-    created_at: AuditLog.GenCol[datetime] = DateTime(
-        server_default=CurrentTimestamp(),
-        default=MISSING,
+    message: AuditLog.Col[str] = sqlite.Text(nullable=False)
+    created_at: AuditLog.GenCol[datetime] = sqlite.DateTime(
+        server_default=sqlite.CurrentTimestamp(),
+        default=sqlite.MISSING,
     )
 ```
 
@@ -109,38 +112,42 @@ Rules to remember:
 
 ## Storage classes
 
-- `Integer`
-- `Real`
-- `Text`
-- `Blob`
-- `Json` stores `JSON` text.
-- `Boolean` stores `0` / `1` in an `INTEGER` column.
-- `DateTime` stores UTC text as `YYYY-MM-DDTHH:MM:SS.SSSZ`.
+Use storage declarations from the same backend namespace as the model:
+
+- `sqlite.Integer` / `mariadb.Integer`
+- `sqlite.Real` / `mariadb.Real`
+- `sqlite.Text` / `mariadb.Text`
+- `sqlite.Blob` / `mariadb.Blob`
+- `sqlite.Json` / `mariadb.Json` stores JSON text.
+- `sqlite.Boolean` / `mariadb.Boolean` stores boolean values in
+  integer-compatible columns.
+- `sqlite.DateTime` / `mariadb.DateTime` stores UTC datetimes.
 
 All storage declarations accept `unique=True` for column-level unique indexes.
 SQLite allows multiple `NULL` values in a unique index, so use `nullable=False`
 when uniqueness should also require a value. Primary-key columns reject
 `unique=True` because it is redundant.
 
-`CurrentTimestamp()` is the only v1 server default and is valid only on
-`DateTime` `GenCol` fields.
+`sqlite.CurrentTimestamp()` and `mariadb.CurrentTimestamp()` are the only v1
+server defaults and are valid only on `DateTime` `GenCol` fields.
 
 ## Indexes
 
-Use `Index(...)` in `__indexes__` for table-level indexes:
+Use the backend namespace `Index(...)` in `__indexes__` for table-level indexes:
 
 ```python
-from snekql import Index
+from snekql import Fetched, Pending, sqlite
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
-    email: User.Col[str] = Text(nullable=False, unique=True)
-    status: User.Col[str] = Text(nullable=False)
-    tenant_id: User.Col[int] = Integer(nullable=False)
+
+class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
+    status: User.Col[str] = sqlite.Text(nullable=False)
+    tenant_id: User.Col[int] = sqlite.Integer(nullable=False)
 
     __indexes__ = [
-        Index(status),
-        Index(tenant_id, email, unique=True),
-        Index(tenant_id, name="ix_user_tenant_custom"),
+        sqlite.Index(status),
+        sqlite.Index(tenant_id, email, unique=True),
+        sqlite.Index(tenant_id, name="ix_user_tenant_custom"),
     ]
 ```
 
@@ -175,16 +182,25 @@ comparison operators are not part of the v1 API.
 
 ## Runtime
 
-`Database.initialize(logger, ...)` is the only public construction path. Select a backend
-with its namespace config. SQLite can be selected explicitly with the backend
-namespace, while the original SQLite keyword form remains supported.
+`Database.initialize(..., logger=logger)` is the only public construction path.
+Select the backend with its namespace config. The legacy SQLite keyword form
+remains supported for compatibility, but new code should use `sqlite.Config`.
 
 ```python
-from snekql import sqlite
+from pathlib import Path
 
-db = await Database.initialize(logger, sqlite.Config(database=Path("app.db")), models=[User])
-legacy_db = await Database.initialize(logger, database=Path("app.db"), models=[User])
-memory_db = await Database.initialize(logger, sqlite.Config(database=":memory:"))
+from snekql import Database, sqlite
+
+
+db = await Database.initialize(
+    sqlite.Config(database=Path("app.db"), pool_size=5),
+    logger=logger,
+    models=[User],
+)
+memory_db = await Database.initialize(
+    sqlite.Config(database=":memory:"),
+    logger=logger,
+)
 ```
 
 snekql requires a structured logger. The logger must use the structlog-style
@@ -201,8 +217,8 @@ class AppLogger:
 
 logger = AppLogger()
 db = await Database.initialize(
-    logger,
     sqlite.Config(database=Path("app.db")),
+    logger=logger,
     models=[User],
 )
 ```
@@ -211,7 +227,7 @@ A stdlib logger can be adapted at the application boundary:
 
 ```python
 class StdlibStructuredLogger:
-    def __init__(self, logger: logging.Logger) -> None:
+    def __init__(self, *, logger: logging.Logger) -> None:
         self.logger = logger
 
     def debug(self, event: str, **fields: object) -> None:
@@ -231,14 +247,14 @@ MariaDB models should use the MariaDB namespace so backend-specific columns and
 runtime checks agree:
 
 ```python
-from snekql import MISSING, Database, Fetched, Pending, insert, mariadb, select
+from snekql import Database, Fetched, Pending, insert, mariadb, select
 
 
 class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
     id: Account.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=mariadb.MISSING,
     )
     email: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
 
@@ -251,7 +267,7 @@ config = mariadb.Config(
     password="secret",
 )
 
-db = await Database.initialize(logger, config, models=[Account])
+db = await Database.initialize(config, logger=logger, models=[Account])
 try:
     async with db.transaction() as tx:
         await tx.execute(insert(Account(email="alice@example.com")))

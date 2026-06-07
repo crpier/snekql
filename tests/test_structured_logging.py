@@ -13,6 +13,7 @@ from snekql import (
     MISSING,
     Database,
     ExecutionError,
+    Fetched,
     Integer,
     Model,
     Pending,
@@ -77,12 +78,15 @@ def database_initialization_requires_a_logger() -> None:
     with assert_raises(TypeError):
         _ = initialize(database=":memory:")
 
+    with assert_raises(TypeError):
+        _ = initialize(_RecordingStructuredLogger(), database=":memory:")
+
 
 @test(mark="medium")
 async def database_initialization_emits_structured_events() -> None:
     """Database initialization logs backend and schema startup context."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to observe schema startup logging."""
 
         id: User.GenCol[int] = Integer(
@@ -96,7 +100,7 @@ async def database_initialization_emits_structured_events() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger,
+            logger=logger,
             database=database_path,
             models=[User],
         )
@@ -119,7 +123,7 @@ async def database_initialization_emits_structured_events() -> None:
 async def warn_schema_policy_uses_injected_structured_logger() -> None:
     """Warn schema verification reports drift through the supplied logger."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift logging."""
 
         email: User.Col[str] = Text(nullable=False)
@@ -130,7 +134,7 @@ async def warn_schema_policy_uses_injected_structured_logger() -> None:
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
         database = await Database.initialize(
-            logger,
+            logger=logger,
             database=database_path,
             models=[User],
             schema_policy="warn",
@@ -146,7 +150,7 @@ async def warn_schema_policy_uses_injected_structured_logger() -> None:
 async def transaction_execution_emits_query_context() -> None:
     """Transaction logging includes SQL and params without redaction."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to observe query execution logging."""
 
         id: User.GenCol[int] = Integer(
@@ -158,14 +162,14 @@ async def transaction_execution_emits_query_context() -> None:
 
     logger = _RecordingStructuredLogger()
     database = await Database.initialize(
-        logger,
+        logger=logger,
         database=":memory:",
         models=[User],
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="secret@example.com")))
-            row = await transaction.fetch_one(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="secret@example.com")))
+            row = await tx.fetch_one(
                 select(User.email).where(User.email.eq("secret@example.com"))
             )
     finally:
@@ -193,22 +197,22 @@ async def transaction_execution_emits_query_context() -> None:
 async def query_failure_emits_structured_error_context() -> None:
     """Execution failures log SQL and params before raising ExecutionError."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique field used to force a write failure."""
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
     logger = _RecordingStructuredLogger()
     database = await Database.initialize(
-        logger,
+        logger=logger,
         database=":memory:",
         models=[User],
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="duplicate@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="duplicate@example.com")))
             with assert_raises(ExecutionError):
-                await transaction.execute(insert(User(email="duplicate@example.com")))
+                await tx.execute(insert(User(email="duplicate@example.com")))
     finally:
         await database.close()
 
@@ -224,7 +228,7 @@ async def pool_timeout_emits_structured_warning() -> None:
 
     logger = _RecordingStructuredLogger()
     database = await Database.initialize(
-        logger,
+        logger=logger,
         database=":memory:",
         acquire_timeout=0.0,
         pool_size=1,

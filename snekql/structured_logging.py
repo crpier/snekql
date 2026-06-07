@@ -48,7 +48,7 @@ class ResolvedStructuredLogger(Protocol):
 class _SafeStructuredLogger:
     """Best-effort logger wrapper that keeps observability out of control flow."""
 
-    def __init__(self, logger: StructuredLogger) -> None:
+    def __init__(self, *, logger: StructuredLogger) -> None:
         self.logger: StructuredLogger = logger
 
     def debug(self, event: str, **fields: object) -> None:
@@ -69,6 +69,7 @@ class _SafeStructuredLogger:
 
 
 def resolve_structured_logger(
+    *,
     logger: StructuredLogger,
 ) -> ResolvedStructuredLogger:
     """Return a safe structured logger for runtime internals.
@@ -77,4 +78,4 @@ def resolve_structured_logger(
     should not change Database, Transaction, or query execution behavior.
     """
 
-    return _SafeStructuredLogger(logger)
+    return _SafeStructuredLogger(logger=logger)

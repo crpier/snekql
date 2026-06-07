@@ -11,7 +11,7 @@ from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 _MAX_TCP_PORT = 65535
 
 
-@validate_boundary(DatabaseRuntimeError, "invalid MariaDB runtime configuration")
+@validate_boundary(error_type=DatabaseRuntimeError)
 def _validate_numeric_config(
     *,
     acquire_timeout: NonNegativeFloat,

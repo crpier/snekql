@@ -26,7 +26,7 @@ from snekql import (
     select,
 )
 from snekql.query import compile_select_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 @test(mark="medium")
@@ -45,15 +45,15 @@ async def fetch_all_materializes_model_rows() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
-            rows = await transaction.fetch_all(select(User).all())
+            rows = await tx.fetch_all(select(User).all())
     finally:
         await database.close()
 
@@ -84,15 +84,15 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
-            emails = await transaction.fetch_all(
+            emails = await tx.fetch_all(
                 select(User.email)
                 .where(User.status.eq("active"))
                 .order_by(User.email.desc()),
@@ -119,15 +119,15 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
-            rows = await transaction.fetch_all(
+            rows = await tx.fetch_all(
                 select(User.status, User.email).all().order_by(User.id.asc()),
             )
     finally:
@@ -186,17 +186,17 @@ async def fetch_one_returns_first_row_or_none_without_cardinality_checks() -> No
         email: User.Col[str] = Text(nullable=False)
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(insert(User(email="b@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(insert(User(email="b@example.com")))
 
-            first_email = await transaction.fetch_one(
+            first_email = await tx.fetch_one(
                 select(User.email).all().order_by(User.id.asc()),
             )
-            no_email = await transaction.fetch_one(select(User.email).all().limit(0))
+            no_email = await tx.fetch_one(select(User.email).all().limit(0))
     finally:
         await database.close()
 
@@ -217,7 +217,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            NULL_LOGGER,
+            logger=NULL_LOGGER,
             database=database_path,
             models=[FeatureFlag],
         )
@@ -233,14 +233,14 @@ async def fetch_all_validates_decoded_database_values() -> None:
             connection.close()
 
         database = await Database.initialize(
-            NULL_LOGGER,
+            logger=NULL_LOGGER,
             database=database_path,
             models=[FeatureFlag],
         )
         try:
-            async with database.transaction() as transaction:
+            async with database.transaction() as tx:
                 with assert_raises(ModelValidationError):
-                    _ = await transaction.fetch_all(select(FeatureFlag).all())
+                    _ = await tx.fetch_all(select(FeatureFlag).all())
         finally:
             await database.close()
 

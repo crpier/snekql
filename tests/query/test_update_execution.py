@@ -10,6 +10,7 @@ from snektest import assert_eq, assert_is_none, assert_raises, test
 from snekql import (
     MISSING,
     Database,
+    Fetched,
     Integer,
     Model,
     Pending,
@@ -20,14 +21,14 @@ from snekql import (
     update,
 )
 from snekql.query import compile_write_sql
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 
 @test(mark="fast")
 def update_compilation_accepts_multiple_quoted_assignments() -> None:
     """Update compiles multiple assignments in caller-provided order."""
 
-    class Order[S = Pending](Model[S, "Order[object]"]):
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table model with identifiers requiring SQLite quoting."""
 
         __tablename__ = "select"
@@ -54,12 +55,12 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
 def update_assignments_must_belong_to_target_model() -> None:
     """Update set() rejects assignments built from another table model."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Target table model for ownership checks."""
 
         email: User.Col[str] = Text(nullable=False)
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[object]"]):
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Unrelated table model for ownership checks."""
 
         message: AuditLog.Col[str] = Text(nullable=False)
@@ -74,7 +75,7 @@ def update_assignments_must_belong_to_target_model() -> None:
 def update_rejects_generated_and_primary_key_assignments() -> None:
     """Generated and primary key columns are not update-assignable."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with both protected and updateable columns."""
 
         account_id: User.Col[int] = Integer(primary_key=True)
@@ -92,7 +93,7 @@ def update_rejects_generated_and_primary_key_assignments() -> None:
 async def update_execute_returns_none_and_supports_explicit_all() -> None:
     """tx.execute(update(...).all()) returns None after full-table update."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through the async runtime."""
 
         id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -100,17 +101,17 @@ async def update_execute_returns_none_and_supports_explicit_all() -> None:
         status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await Database.initialize(
-        NULL_LOGGER, database=":memory:", models=[User]
+        logger=NULL_LOGGER, database=":memory:", models=[User]
     )
     try:
-        async with database.transaction() as transaction:
-            await transaction.execute(insert(User(email="a@example.com")))
-            await transaction.execute(insert(User(email="b@example.com")))
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(insert(User(email="b@example.com")))
 
-            result = await transaction.execute(
+            result = await tx.execute(
                 update(User).set(User.status.to("disabled")).all(),
             )
-            statuses = await transaction.fetch_all(
+            statuses = await tx.fetch_all(
                 select(User.status).all().order_by(User.id.asc()),
             )
     finally:

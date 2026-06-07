@@ -22,10 +22,10 @@ from snekql import (
 )
 
 if TYPE_CHECKING:
-    from snekql import Fetched  # noqa: F401
+    from snekql import Fetched
 
 
-@test()
+@test(mark="fast")
 def pending_model_construction_applies_defaults_and_missing() -> None:
     """Constructed table models expose provided values, defaults, and MISSING."""
 
@@ -43,7 +43,7 @@ def pending_model_construction_applies_defaults_and_missing() -> None:
     assert_eq(user.status, "active")
 
 
-@test()
+@test(mark="fast")
 def model_construction_rejects_missing_and_unknown_values() -> None:
     """Constructing pending models validates constructor field names."""
 
@@ -61,7 +61,7 @@ def model_construction_rejects_missing_and_unknown_values() -> None:
         _ = user_constructor(email="alice@example.com", nickname="alice")
 
 
-@test()
+@test(mark="fast")
 def model_construction_calls_default_factories_per_instance() -> None:
     """Default factories create real values independently for each model."""
 
@@ -79,7 +79,7 @@ def model_construction_calls_default_factories_per_instance() -> None:
     assert_eq(second.tags, [])
 
 
-@test()
+@test(mark="fast")
 def model_instances_are_frozen_after_construction() -> None:
     """Post-construction assignment raises the domain frozen error."""
 
@@ -97,7 +97,7 @@ def model_instances_are_frozen_after_construction() -> None:
         user.nickname = "alice"
 
 
-@test()
+@test(mark="fast")
 def model_repr_equality_and_hashing_are_value_based() -> None:
     """Models compare by field values, omit MISSING in repr, and are unhashable."""
 
@@ -118,7 +118,7 @@ def model_repr_equality_and_hashing_are_value_based() -> None:
         _ = hash(first)
 
 
-@test()
+@test(mark="fast")
 def table_names_are_inferred_or_overridden_and_validated() -> None:
     """Model class creation resolves stable table names from public rules."""
 
@@ -148,7 +148,7 @@ def table_names_are_inferred_or_overridden_and_validated() -> None:
         _ = type("InvalidColumn", (Model,), {"not valid": Text(nullable=False)})
 
 
-@test()
+@test(mark="fast")
 def unsupported_model_body_members_raise_declaration_errors() -> None:
     """V1 model bodies reject non-column annotations and computed properties."""
 
@@ -190,7 +190,7 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
                 """Abstract behavior is intentionally unsupported for v1."""
 
 
-@test()
+@test(mark="fast")
 def index_declarations_are_validated_in_model_bodies() -> None:
     """Model declarations reject malformed or duplicate index metadata."""
 
@@ -233,7 +233,7 @@ def index_declarations_are_validated_in_model_bodies() -> None:
             ]
 
 
-@test()
+@test(mark="fast")
 def non_direct_model_declarations_are_rejected() -> None:
     """V1 table models reject concrete subclasses and mixin bases."""
 

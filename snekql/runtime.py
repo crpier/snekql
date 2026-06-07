@@ -377,13 +377,15 @@ class Transaction:
 class Database:
     """Initialized snekql runtime service for database-backed execution.
 
-    `Database.initialize(logger, ...)` is the only public construction path. A Database
-    owns connectivity, schema startup work, and transaction entry.
+    `Database.initialize(..., logger=logger)` is the preferred public construction
+    path. The legacy `Database.initialize(logger, ...)` shape remains accepted for
+    compatibility. A Database owns connectivity, schema startup work, and
+    transaction entry.
     """
 
     def __init__(self, _initialized: Never, /) -> None:
         self.runtime = cast("RuntimeBackend", None)
-        msg = "use Database.initialize(logger, ...) to create a Database"
+        msg = "use Database.initialize(..., logger=logger) to create a Database"
         raise DatabaseRuntimeError(msg)
 
     @overload
@@ -421,12 +423,46 @@ class Database:
         acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self: ...
 
+    @overload
+    @classmethod
+    async def initialize(
+        cls,
+        backend: SQLiteConfig,
+        *,
+        logger: StructuredLogger,
+        models: Sequence[type[Table[Any]]] = (),
+        schema_policy: SchemaPolicy = "strict",
+    ) -> Self: ...
+
+    @overload
+    @classmethod
+    async def initialize(
+        cls,
+        backend: MariaDBConfig,
+        *,
+        logger: StructuredLogger,
+        models: Sequence[type[Table[Any]]] = (),
+        schema_policy: SchemaPolicy = "strict",
+    ) -> Self: ...
+
+    @overload
+    @classmethod
+    async def initialize(
+        cls,
+        *,
+        logger: StructuredLogger,
+        database: Path | Literal[":memory:"],
+        models: Sequence[type[Table[Any]]] = (),
+        schema_policy: SchemaPolicy = "strict",
+        pool_size: PositiveInt = 5,
+        acquire_timeout: NonNegativeFloat = 30.0,
+    ) -> Self: ...
+
     @classmethod
     async def initialize(  # noqa: PLR0913
         cls,
-        logger: StructuredLogger,
-        backend: object | None = None,
-        *,
+        *args: object,
+        logger: StructuredLogger | None = None,
         database: Path | Literal[":memory:"] | None = None,
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
@@ -435,7 +471,8 @@ class Database:
     ) -> Self:
         """Initialize connectivity, schema startup, and runtime lifecycle."""
 
-        structured_logger = resolve_structured_logger(logger)
+        resolved_logger, backend = cls._resolve_initialize_call(args, logger)
+        structured_logger = resolve_structured_logger(logger=resolved_logger)
         try:
             runtime_selection = resolve_runtime_selection(
                 backend=backend,
@@ -465,7 +502,7 @@ class Database:
                 await runtime_selection.initialize_runtime(
                     models,
                     schema_policy,
-                    structured_logger,
+                    logger=structured_logger,
                 ),
             )
             structured_logger.info(
@@ -484,7 +521,33 @@ class Database:
         database_instance.runtime = runtime
         return database_instance
 
-    @validate_boundary(DatabaseRuntimeError, "transaction timeout must be non-negative")
+    @staticmethod
+    def _resolve_initialize_call(
+        args: tuple[object, ...],
+        logger: StructuredLogger | None,
+    ) -> tuple[StructuredLogger, object | None]:
+        if len(args) > 2:  # noqa: PLR2004
+            msg = "Database.initialize accepts at most logger and backend positional arguments"
+            raise DatabaseRuntimeError(msg)
+        if not args:
+            if logger is None:
+                msg = "Database.initialize requires logger"
+                raise DatabaseRuntimeError(msg)
+            return logger, None
+        if len(args) == 1:
+            argument = args[0]
+            if logger is not None:
+                return logger, argument
+            if isinstance(argument, SQLiteConfig | MariaDBConfig):
+                msg = "Database.initialize requires logger"
+                raise DatabaseRuntimeError(msg)
+            return cast("StructuredLogger", argument), None
+        if logger is not None:
+            msg = "logger cannot be provided twice"
+            raise DatabaseRuntimeError(msg)
+        return cast("StructuredLogger", args[0]), args[1]
+
+    @validate_boundary(error_type=DatabaseRuntimeError)
     def transaction(self, *, timeout: NonNegativeFloat | None = None) -> Transaction:
         """Create a transaction context manager using the runtime backend."""
 

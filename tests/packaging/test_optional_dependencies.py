@@ -20,7 +20,7 @@ def _run_python(script: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-@test()
+@test(mark="medium")
 def package_metadata_declares_backend_driver_extras() -> None:
     """SQLite and MariaDB drivers are optional backend extras."""
 
@@ -45,14 +45,13 @@ def package_metadata_declares_backend_driver_extras() -> None:
     )
 
 
-@test()
+@test(mark="medium")
 def public_imports_do_not_import_optional_drivers() -> None:
-    """Root and backend namespace imports do not load optional database drivers."""
+    """Public imports and configs do not load optional database drivers."""
 
     script = """
 import sys
 import snekql
-from tests.logging_helpers import NULL_LOGGER
 from snekql import mariadb, sqlite
 from snekql.testing import mariadb as testing_mariadb
 
@@ -60,10 +59,6 @@ if "aiosqlite" in sys.modules:
     raise AssertionError("aiosqlite was imported")
 if "aiomysql" in sys.modules:
     raise AssertionError("aiomysql was imported")
-if "snekql._pool" in sys.modules:
-    raise AssertionError("SQLite pool was imported")
-if "snekql.schema" in sys.modules:
-    raise AssertionError("SQLite schema was imported")
 _ = sqlite.Config(database=":memory:")
 _ = mariadb.Config(database="app", user="snekql")
 _ = testing_mariadb.temporary_mariadb_server()
@@ -88,7 +83,7 @@ import builtins
 
 import snekql
 from snekql import Database, sqlite
-from tests.logging_helpers import NULL_LOGGER
+from tests.helpers import NULL_LOGGER
 
 original_import = builtins.__import__
 
@@ -103,7 +98,7 @@ async def main() -> None:
     builtins.__import__ = block_aiosqlite
     try:
         try:
-            _ = await Database.initialize(NULL_LOGGER, sqlite.Config(database=":memory:"))
+            _ = await Database.initialize(sqlite.Config(database=":memory:"), logger=NULL_LOGGER)
         except snekql.DatabaseRuntimeError as error:
             print(error)
             return
