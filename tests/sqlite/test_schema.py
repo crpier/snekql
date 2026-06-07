@@ -1,4 +1,4 @@
-"""Database initialization and schema verification tests."""
+"""SQLite Database initialization and schema verification tests."""
 
 from __future__ import annotations
 

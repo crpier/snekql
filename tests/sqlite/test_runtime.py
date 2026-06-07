@@ -1,4 +1,4 @@
-"""Database runtime lifecycle behavior tests."""
+"""SQLite Database runtime lifecycle behavior tests."""
 
 from __future__ import annotations
 
