@@ -4,13 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from itertools import starmap
 from typing import Any, cast
 
+from snekql._schema_plan import (
+    PlannedColumn,
+    PlannedModel,
+    build_schema_plan,
+)
+from snekql._schema_plan import (
+    validate_schema_policy as validate_planned_schema_policy,
+)
 from snekql.errors import SchemaError, SchemaVerificationError
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier
-from snekql.model import Table, require_model_columns, require_model_table_name
+from snekql.model import Table
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 from snekql.structured_logging import ResolvedStructuredLogger
 
@@ -80,15 +87,13 @@ def _column_max_length(column: Attr[Any, Any, Any, Any, Any]) -> int | None:
     return None
 
 
-def _expected_column_signature(
-    name: str,
-    column: Attr[Any, Any, Any, Any, Any],
-) -> _ColumnSignature:
+def _expected_column_signature(planned_column: PlannedColumn) -> _ColumnSignature:
+    column = planned_column.column
     return _ColumnSignature(
         auto_increment=column.auto_increment,
         data_type=_column_data_type(column),
         max_length=_column_max_length(column),
-        name=name,
+        name=planned_column.name,
         nullable=column.nullable is not False and not column.primary_key,
         primary_key=column.primary_key,
     )
@@ -110,11 +115,16 @@ def _compile_column_definition(
     return " ".join(parts)
 
 
-def _compile_create_table_sql(model: type[Table[Any]]) -> str:
-    table_name = require_model_table_name(model)
-    columns = require_model_columns(model)
-    column_sql = ", ".join(starmap(_compile_column_definition, columns.items()))
-    return f"CREATE TABLE {quote_identifier(table_name)} ({column_sql})"
+def _compile_planned_column_definition(planned_column: PlannedColumn) -> str:
+    return _compile_column_definition(planned_column.name, planned_column.column)
+
+
+def _compile_create_table_sql(planned_model: PlannedModel) -> str:
+    column_sql = ", ".join(
+        _compile_planned_column_definition(planned_column)
+        for planned_column in planned_model.columns
+    )
+    return f"CREATE TABLE {quote_identifier(planned_model.table_name)} ({column_sql})"
 
 
 def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
@@ -128,56 +138,15 @@ def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
     )
 
 
-def _compile_column_unique_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
-    table_name = require_model_table_name(model)
-    columns = require_model_columns(model)
-    return [
-        NormalizedIndex(
-            column_names=(column_name,),
-            name=f"ux_{table_name}_{column_name}",
-            unique=True,
-        )
-        for column_name, column in columns.items()
-        if column.unique
-    ]
-
-
-def _compile_model_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
-    table_indexes = getattr(model, "__snekql_indexes__", ())
-    return [*_compile_column_unique_indexes(model), *table_indexes]
-
-
-def _expected_index_signatures(model: type[Table[Any]]) -> list[_IndexSignature]:
+def _expected_index_signatures(planned_model: PlannedModel) -> list[_IndexSignature]:
     return [
         _IndexSignature(
             column_names=index.column_names,
             name=index.name,
             unique=index.unique,
         )
-        for index in _compile_model_indexes(model)
+        for index in planned_model.indexes
     ]
-
-
-def _validate_schema_policy(schema_policy: SchemaPolicy) -> None:
-    if schema_policy not in {"strict", "warn"}:
-        msg = "schema_policy must be 'strict' or 'warn'"
-        raise SchemaError(msg)
-
-
-def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
-    table_names: set[str] = set()
-    index_names: set[str] = set()
-    for model in models:
-        table_name = require_model_table_name(model)
-        if table_name in table_names:
-            msg = f"duplicate table name: {table_name!r}"
-            raise SchemaError(msg)
-        table_names.add(table_name)
-        for index in _compile_model_indexes(model):
-            if index.name in index_names:
-                msg = f"duplicate index name: {index.name!r}"
-                raise SchemaError(msg)
-            index_names.add(index.name)
 
 
 async def _close_cursor(cursor: object) -> None:
@@ -310,42 +279,50 @@ async def _report_schema_drift(
 
 async def _verify_model_schema(
     connection: object,
-    model: type[Table[Any]],
+    planned_model: PlannedModel,
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    table_name = require_model_table_name(model)
-    columns = require_model_columns(model)
     expected_columns = [
-        _expected_column_signature(name, column) for name, column in columns.items()
+        _expected_column_signature(planned_column)
+        for planned_column in planned_model.columns
     ]
-    existing_columns = await _fetch_existing_column_signatures(connection, table_name)
+    existing_columns = await _fetch_existing_column_signatures(
+        connection,
+        planned_model.table_name,
+    )
     if existing_columns != expected_columns:
-        await _report_schema_drift(schema_policy, table_name, logger)
+        await _report_schema_drift(schema_policy, planned_model.table_name, logger)
         return
     expected_indexes = sorted(
-        _expected_index_signatures(model), key=lambda index: index.name
+        _expected_index_signatures(planned_model), key=lambda index: index.name
     )
-    existing_indexes = await _fetch_existing_index_signatures(connection, table_name)
+    existing_indexes = await _fetch_existing_index_signatures(
+        connection,
+        planned_model.table_name,
+    )
     if existing_indexes != expected_indexes:
-        await _report_schema_drift(schema_policy, table_name, logger)
+        await _report_schema_drift(schema_policy, planned_model.table_name, logger)
         return
-    logger.debug("schema table verified", table_name=table_name)
-    logger.debug("schema indexes verified", table_name=table_name)
+    logger.debug("schema table verified", table_name=planned_model.table_name)
+    logger.debug("schema indexes verified", table_name=planned_model.table_name)
 
 
 async def _create_model_schema(
     connection: object,
-    model: type[Table[Any]],
+    planned_model: PlannedModel,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    table_name = require_model_table_name(model)
-    await _execute(connection, _compile_create_table_sql(model))
-    logger.debug("schema table created", table_name=table_name)
-    for index in _compile_model_indexes(model):
-        sql = _compile_create_index_sql(table_name, index)
+    await _execute(connection, _compile_create_table_sql(planned_model))
+    logger.debug("schema table created", table_name=planned_model.table_name)
+    for index in planned_model.indexes:
+        sql = _compile_create_index_sql(planned_model.table_name, index)
         await _execute(connection, sql)
-        logger.debug("schema index created", table_name=table_name, sql=sql)
+        logger.debug(
+            "schema index created",
+            table_name=planned_model.table_name,
+            sql=sql,
+        )
 
 
 async def initialize_mariadb_schema(
@@ -356,20 +333,19 @@ async def initialize_mariadb_schema(
 ) -> None:
     """Create or verify all configured MariaDB tables."""
 
-    _validate_schema_policy(schema_policy)
-    _validate_schema_models(models)
-    if not models:
+    validate_planned_schema_policy(schema_policy)
+    plan = build_schema_plan(models)
+    if not plan.models:
         return
-    logger.debug("schema startup started", model_count=len(models))
-    for model in models:
-        table_name = require_model_table_name(model)
-        if await _table_exists(connection, table_name):
+    logger.debug("schema startup started", model_count=len(plan.models))
+    for planned_model in plan.models:
+        if await _table_exists(connection, planned_model.table_name):
             await _verify_model_schema(
                 connection,
-                model,
+                planned_model,
                 schema_policy,
                 logger,
             )
         else:
-            await _create_model_schema(connection, model, logger)
-    logger.debug("schema startup completed", model_count=len(models))
+            await _create_model_schema(connection, planned_model, logger)
+    logger.debug("schema startup completed", model_count=len(plan.models))
