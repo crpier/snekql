@@ -17,6 +17,7 @@ from typing import (
     overload,
 )
 
+from snekql._runtime_selection import resolve_runtime_selection
 from snekql.errors import (
     DatabaseRuntimeError,
     ExecutionError,
@@ -111,22 +112,6 @@ class RuntimeBackend(Protocol):
         query: AnySelectQuery,
         row: Sequence[object],
     ) -> object: ...
-
-
-@validate_boundary(DatabaseRuntimeError, "invalid database numeric configuration")
-def _build_legacy_sqlite_config(
-    *,
-    acquire_timeout: NonNegativeFloat,
-    database: Path | Literal[":memory:"],
-    pool_size: PositiveInt,
-) -> SQLiteConfig:
-    """Build an explicit SQLite config for the legacy initializer shape."""
-
-    return SQLiteConfig(
-        acquire_timeout=acquire_timeout,
-        database=database,
-        pool_size=pool_size,
-    )
 
 
 class Transaction:
@@ -452,16 +437,15 @@ class Database:
 
         structured_logger = resolve_structured_logger(logger)
         try:
-            runtime_config = cls._resolve_backend_config(
+            runtime_selection = resolve_runtime_selection(
                 backend=backend,
                 database=database,
                 pool_size=pool_size,
                 acquire_timeout=acquire_timeout,
             )
-            backend_family: BackendFamily = (
-                "mariadb" if isinstance(runtime_config, MariaDBConfig) else "sqlite"
-            )
-            cls._validate_model_backends(runtime_config, models)
+            runtime_config = runtime_selection.config
+            backend_family = runtime_selection.backend_family
+            runtime_selection.validate_model_backends(models)
             table_names = tuple(require_model_table_name(model) for model in models)
             structured_logger.info(
                 "database initialization started",
@@ -476,34 +460,14 @@ class Database:
                 acquire_timeout=runtime_config.acquire_timeout,
                 pool_size=runtime_config.pool_size,
             )
-            if isinstance(runtime_config, MariaDBConfig):
-                from snekql.mariadb.runtime import (  # noqa: PLC0415
-                    initialize_runtime as initialize_mariadb_runtime,
-                )
-
-                runtime = await initialize_mariadb_runtime(
-                    runtime_config,
+            runtime = cast(
+                "RuntimeBackend",
+                await runtime_selection.initialize_runtime(
                     models,
                     schema_policy,
                     structured_logger,
-                )
-            else:
-                try:
-                    from snekql.sqlite.runtime import (  # noqa: PLC0415
-                        initialize_runtime as initialize_sqlite_runtime,
-                    )
-                except ModuleNotFoundError as error:
-                    if error.name == "aiosqlite":
-                        msg = "SQLite runtime requires the aiosqlite extra; install with snekql[aiosqlite]"
-                        raise DatabaseRuntimeError(msg) from error
-                    raise
-
-                runtime = await initialize_sqlite_runtime(
-                    runtime_config,
-                    models,
-                    schema_policy,
-                    structured_logger,
-                )
+                ),
+            )
             structured_logger.info(
                 "database initialization completed",
                 backend=backend_family,
@@ -537,45 +501,3 @@ class Database:
         """Close this database runtime idempotently when shutdown succeeds."""
 
         await self.runtime.close(self.runtime.acquire_timeout)
-
-    @staticmethod
-    def _validate_model_backends(
-        runtime_config: SQLiteConfig | MariaDBConfig,
-        models: Sequence[type[Table[Any]]],
-    ) -> None:
-        expected_backend: BackendFamily = (
-            "mariadb" if isinstance(runtime_config, MariaDBConfig) else "sqlite"
-        )
-        for model in models:
-            received_backend = require_model_backend(model)
-            if received_backend != expected_backend:
-                msg = (
-                    f"backend mismatch: expected {expected_backend} model, "
-                    f"received {received_backend} model {model.__name__}"
-                )
-                raise DatabaseRuntimeError(msg)
-
-    @staticmethod
-    def _resolve_backend_config(
-        *,
-        backend: object | None,
-        database: Path | Literal[":memory:"] | None,
-        pool_size: PositiveInt,
-        acquire_timeout: NonNegativeFloat,
-    ) -> SQLiteConfig | MariaDBConfig:
-        if backend is not None:
-            if not isinstance(backend, SQLiteConfig | MariaDBConfig):
-                msg = "unsupported database backend config"
-                raise DatabaseRuntimeError(msg)
-            if database is not None:
-                msg = "backend config cannot be combined with database"
-                raise DatabaseRuntimeError(msg)
-            return backend
-        if database is None:
-            msg = "Database.initialize requires a backend config or database"
-            raise DatabaseRuntimeError(msg)
-        return _build_legacy_sqlite_config(
-            acquire_timeout=acquire_timeout,
-            database=database,
-            pool_size=pool_size,
-        )
