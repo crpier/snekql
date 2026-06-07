@@ -4,14 +4,21 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Sequence
-from itertools import starmap
 from typing import Any
 
 from aiosqlite import Connection, Error
 
+from snekql._schema_plan import (
+    PlannedColumn,
+    PlannedModel,
+    build_schema_plan,
+)
+from snekql._schema_plan import (
+    validate_schema_policy as validate_planned_schema_policy,
+)
 from snekql.errors import SchemaError, SchemaVerificationError
 from snekql.indexes import NormalizedIndex
-from snekql.model import Table, require_model_columns, require_model_table_name
+from snekql.model import Table
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 from snekql.structured_logging import ResolvedStructuredLogger
@@ -39,11 +46,19 @@ def _compile_column_definition(
     return " ".join(parts)
 
 
-def _compile_create_table_sql(model: type[Table[Any]]) -> str:
-    table_name = require_model_table_name(model)
-    columns = require_model_columns(model)
-    column_sql = ", ".join(starmap(_compile_column_definition, columns.items()))
-    return f"CREATE TABLE {quote_sqlite_identifier(table_name)} ({column_sql}) STRICT"
+def _compile_planned_column_definition(planned_column: PlannedColumn) -> str:
+    return _compile_column_definition(planned_column.name, planned_column.column)
+
+
+def _compile_create_table_sql(planned_model: PlannedModel) -> str:
+    column_sql = ", ".join(
+        _compile_planned_column_definition(planned_column)
+        for planned_column in planned_model.columns
+    )
+    return (
+        f"CREATE TABLE {quote_sqlite_identifier(planned_model.table_name)} "
+        f"({column_sql}) STRICT"
+    )
 
 
 def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
@@ -57,30 +72,10 @@ def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
     )
 
 
-def _compile_column_unique_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
-    table_name = require_model_table_name(model)
-    columns = require_model_columns(model)
+def _compile_model_index_sql(planned_model: PlannedModel) -> list[str]:
     return [
-        NormalizedIndex(
-            column_names=(column_name,),
-            name=f"ux_{table_name}_{column_name}",
-            unique=True,
-        )
-        for column_name, column in columns.items()
-        if column.unique
-    ]
-
-
-def _compile_model_indexes(model: type[Table[Any]]) -> list[NormalizedIndex]:
-    table_indexes = getattr(model, "__snekql_indexes__", ())
-    return [*_compile_column_unique_indexes(model), *table_indexes]
-
-
-def _compile_model_index_sql(model: type[Table[Any]]) -> list[str]:
-    table_name = require_model_table_name(model)
-    return [
-        _compile_create_index_sql(table_name, index)
-        for index in _compile_model_indexes(model)
+        _compile_create_index_sql(planned_model.table_name, index)
+        for index in planned_model.indexes
     ]
 
 
@@ -148,69 +143,55 @@ async def _report_schema_drift(
 
 async def _verify_model_indexes(
     connection: Connection,
-    model: type[Table[Any]],
+    planned_model: PlannedModel,
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    table_name = require_model_table_name(model)
-    expected_sql = _compile_model_index_sql(model)
-    existing_sql = await _fetch_existing_create_index_sql(connection, table_name)
+    expected_sql = _compile_model_index_sql(planned_model)
+    existing_sql = await _fetch_existing_create_index_sql(
+        connection,
+        planned_model.table_name,
+    )
     if existing_sql == expected_sql:
-        logger.debug("schema indexes verified", table_name=table_name)
+        logger.debug("schema indexes verified", table_name=planned_model.table_name)
         return
-    await _report_schema_drift(schema_policy, table_name, logger)
+    await _report_schema_drift(schema_policy, planned_model.table_name, logger)
 
 
 async def _verify_or_create_model_table(
     connection: Connection,
-    model: type[Table[Any]],
+    planned_model: PlannedModel,
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    table_name = require_model_table_name(model)
-    expected_sql = _compile_create_table_sql(model)
-    existing_sql = await _fetch_existing_create_table_sql(connection, table_name)
+    expected_sql = _compile_create_table_sql(planned_model)
+    existing_sql = await _fetch_existing_create_table_sql(
+        connection,
+        planned_model.table_name,
+    )
     if existing_sql is None:
         _ = await connection.execute(expected_sql)
-        logger.debug("schema table created", table_name=table_name)
-        for index_sql in _compile_model_index_sql(model):
+        logger.debug("schema table created", table_name=planned_model.table_name)
+        for index_sql in _compile_model_index_sql(planned_model):
             _ = await connection.execute(index_sql)
-            logger.debug("schema index created", table_name=table_name, sql=index_sql)
+            logger.debug(
+                "schema index created",
+                table_name=planned_model.table_name,
+                sql=index_sql,
+            )
         return
     if _normalize_snekql_create_table_sql(
         existing_sql,
     ) != _normalize_snekql_create_table_sql(expected_sql):
-        await _report_schema_drift(schema_policy, table_name, logger)
+        await _report_schema_drift(schema_policy, planned_model.table_name, logger)
         return
-    logger.debug("schema table verified", table_name=table_name)
-    await _verify_model_indexes(connection, model, schema_policy, logger)
-
-
-def _validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
-    table_names: set[str] = set()
-    index_names: set[str] = set()
-    for model in models:
-        table_name = require_model_table_name(model)
-        if table_name in table_names:
-            msg = f"duplicate table name: {table_name!r}"
-            raise SchemaError(msg)
-        table_names.add(table_name)
-        for index in _compile_model_indexes(model):
-            if index.name in index_names:
-                msg = f"duplicate index name: {index.name!r}"
-                raise SchemaError(msg)
-            index_names.add(index.name)
+    logger.debug("schema table verified", table_name=planned_model.table_name)
+    await _verify_model_indexes(connection, planned_model, schema_policy, logger)
 
 
 async def _rollback_schema_setup(connection: Connection) -> None:
     with contextlib.suppress(Error):
         _ = await connection.execute("ROLLBACK")
-
-
-def _validate_schema_policy(schema_policy: SchemaPolicy) -> None:
-    if schema_policy not in {"strict", "warn"}:
-        msg = "schema_policy must be 'strict' or 'warn'"
-        raise SchemaError(msg)
 
 
 async def _initialize_sqlite_schema(
@@ -219,22 +200,22 @@ async def _initialize_sqlite_schema(
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    _validate_schema_policy(schema_policy)
-    _validate_schema_models(models)
-    if not models:
+    validate_planned_schema_policy(schema_policy)
+    plan = build_schema_plan(models)
+    if not plan.models:
         return
-    logger.debug("schema startup started", model_count=len(models))
+    logger.debug("schema startup started", model_count=len(plan.models))
     try:
         _ = await connection.execute("BEGIN")
-        for model in models:
+        for planned_model in plan.models:
             await _verify_or_create_model_table(
                 connection,
-                model,
+                planned_model,
                 schema_policy,
                 logger,
             )
         _ = await connection.execute("COMMIT")
-        logger.debug("schema startup completed", model_count=len(models))
+        logger.debug("schema startup completed", model_count=len(plan.models))
     except Error as error:
         await _rollback_schema_setup(connection)
         msg = "SQLite schema setup failed"
@@ -247,13 +228,13 @@ async def _initialize_sqlite_schema(
 def validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
     """Reject duplicate resolved table names before schema startup."""
 
-    _validate_schema_models(models)
+    _ = build_schema_plan(models)
 
 
 def validate_schema_policy(schema_policy: SchemaPolicy) -> None:
     """Reject unsupported schema policy values."""
 
-    _validate_schema_policy(schema_policy)
+    validate_planned_schema_policy(schema_policy)
 
 
 async def initialize_sqlite_schema(
