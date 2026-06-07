@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from types import EllipsisType
 from typing import (
     Any,
@@ -19,7 +19,6 @@ from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
     ModelValidationError,
-    QueryConstructionError,
     SnekqlError,
 )
 from snekql.indexes import NormalizedIndex, require_index_declaration
@@ -492,38 +491,14 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     def _snekql_to_row(self) -> dict[str, object]:
         """Encode this model's present values for SQLite storage."""
 
-        row: dict[str, object] = {}
-        for name, column in self.__class__.__snekql_columns__.items():
-            value = getattr(self, name)
-            if value is MISSING:
-                continue
-            row[name] = column.encode_sqlite(value)
+        _, row = encode_model_row(self, backend="sqlite")
         return row
 
     @classmethod
     def _snekql_from_row(cls, row: Mapping[str, object]) -> Self:
         """Materialize a fetched model from SQLite storage values."""
 
-        remaining_values = dict(row)
-        model = object.__new__(cls)
-        storage = cast(
-            "dict[str, object]",
-            object.__getattribute__(model, "__dict__"),
-        )
-        storage["_snekql_frozen"] = False
-        storage["_snekql_state"] = "Fetched"
-        for name, column in cls.__snekql_columns__.items():
-            if name not in remaining_values:
-                msg = f"missing database value for {name!r}"
-                raise ModelValidationError(msg)
-            value = column.decode_sqlite(remaining_values.pop(name))
-            setattr(model, name, value)
-        if remaining_values:
-            names = ", ".join(sorted(remaining_values))
-            msg = f"unknown database values: {names}"
-            raise ModelValidationError(msg)
-        storage["_snekql_frozen"] = True
-        return model
+        return cast("Self", decode_model_row(cls, row, backend="sqlite"))
 
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:
@@ -562,29 +537,62 @@ def require_model_backend(model: type[Table[Any]]) -> BackendFamily:
     return cast("BackendFamily", backend)
 
 
+def encode_column_value(
+    column: Attr[Any, Any, Any, Any, Any],
+    value: object,
+    *,
+    backend: BackendFamily = "sqlite",
+) -> object:
+    """Encode one logical model value through a backend-specific column codec."""
+
+    from snekql._model_materialization import (  # noqa: PLC0415
+        encode_column_value as encode_value,
+    )
+
+    return encode_value(column, value, backend=backend)
+
+
+def decode_column_value(
+    column: Attr[Any, Any, Any, Any, Any],
+    value: object,
+    *,
+    backend: BackendFamily = "sqlite",
+) -> object:
+    """Decode one database value through a backend-specific column codec."""
+
+    from snekql._model_materialization import (  # noqa: PLC0415
+        decode_column_value as decode_value,
+    )
+
+    return decode_value(column, value, backend=backend)
+
+
 def decode_model_row(
     model: type[Table[Any]],
     row: Mapping[str, object],
+    *,
+    backend: BackendFamily = "sqlite",
 ) -> Table[Any]:
-    """Decode SQLite row values into a fetched table model instance."""
+    """Decode backend row values into a fetched table model instance."""
 
-    from_row = cast(
-        "Callable[[Mapping[str, object]], Table[Any]]",
-        type.__getattribute__(model, "_snekql_from_row"),
+    from snekql._model_materialization import (  # noqa: PLC0415
+        decode_model_row as decode_row,
     )
-    return from_row(row)
+
+    return cast("Table[Any]", decode_row(model, row, backend=backend))
 
 
-def encode_model_row(row: object) -> tuple[type[Table[Any]], dict[str, object]]:
-    """Encode a pending model into table metadata and SQLite row values."""
+def encode_model_row(
+    row: object,
+    *,
+    backend: BackendFamily = "sqlite",
+) -> tuple[type[Table[Any]], dict[str, object]]:
+    """Encode a pending model into table metadata and backend row values."""
 
-    if not isinstance(row, Model):
-        msg = "insert requires a snekql model instance"
-        raise QueryConstructionError(msg)
-    model_row = cast("Model[Any, Any]", row)
-    model_class = cast("type[Table[Any]]", model_row.__class__)
-    model_to_row = cast(
-        "Callable[[], dict[str, object]]",
-        object.__getattribute__(model_row, "_snekql_to_row"),
+    from snekql._model_materialization import (  # noqa: PLC0415
+        encode_model_row as encode_row,
     )
-    return model_class, model_to_row()
+
+    return cast(
+        "tuple[type[Table[Any]], dict[str, object]]", encode_row(row, backend=backend)
+    )

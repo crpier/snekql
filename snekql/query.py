@@ -6,6 +6,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
+from snekql._model_materialization import (
+    decode_column_value,
+    encode_column_value,
+)
 from snekql._query_dialect import QueryDialect
 from snekql.errors import (
     ModelDeclarationError,
@@ -48,7 +52,7 @@ def _encode_sqlite_column_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
-    return column.encode_sqlite(value)
+    return encode_column_value(column, value, backend="sqlite")
 
 
 _SQLITE_QUERY_DIALECT = QueryDialect(
@@ -814,7 +818,8 @@ def materialize_select_row(
         }
         return decode_model_row(state.model, values)
     decoded_values = tuple(
-        column.decode_sqlite(row[index]) for index, column in enumerate(state.fields)
+        decode_column_value(column, row[index], backend="sqlite")
+        for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
         return decoded_values[0]
