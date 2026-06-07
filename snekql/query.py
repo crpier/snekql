@@ -6,6 +6,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
+from snekql._model_materialization import (
+    decode_column_value,
+    encode_column_value,
+)
 from snekql.errors import (
     ModelDeclarationError,
     QueryCompilationError,
@@ -489,7 +493,10 @@ def _compile_equality_predicate_sql(
             msg = "eq(None) is invalid; use is_null()"
         raise QueryCompilationError(msg)
     operator = "=" if predicate.kind == "eq" else "!="
-    return f"{column_name} {operator} ?", (column.encode_sqlite(predicate.value),)
+    return (
+        f"{column_name} {operator} ?",
+        (encode_column_value(column, predicate.value, backend="sqlite"),),
+    )
 
 
 def _compile_membership_predicate_sql(
@@ -505,7 +512,10 @@ def _compile_membership_predicate_sql(
         raise QueryCompilationError(msg)
     placeholders = ", ".join("?" for _ in predicate.values)
     operator = "IN" if predicate.kind == "in" else "NOT IN"
-    params = tuple(column.encode_sqlite(value) for value in predicate.values)
+    params = tuple(
+        encode_column_value(column, value, backend="sqlite")
+        for value in predicate.values
+    )
     return f"{column_name} {operator} ({placeholders})", params
 
 
@@ -518,7 +528,10 @@ def _compile_like_predicate_sql(
         msg = f"{predicate.kind}() is only valid for text columns"
         raise QueryCompilationError(msg)
     operator = "LIKE" if predicate.kind == "like" else "NOT LIKE"
-    return f"{column_name} {operator} ?", (column.encode_sqlite(predicate.value),)
+    return (
+        f"{column_name} {operator} ?",
+        (encode_column_value(column, predicate.value, backend="sqlite"),),
+    )
 
 
 def _compile_column_predicate_sql(
@@ -591,7 +604,10 @@ def _compile_update_sql(query: UpdateQuery[Any]) -> tuple[str, tuple[object, ...
         column = _require_field(assignment.column)
         column_name = quote_sqlite_identifier(_require_column_name(column))
         set_sql_parts.append(f"{column_name} = ?")
-        params = (*params, column.encode_sqlite(assignment.value))
+        params = (
+            *params,
+            encode_column_value(column, assignment.value, backend="sqlite"),
+        )
     sql_parts = [
         "UPDATE " + quote_sqlite_identifier(table_name) + " SET ",  # noqa: S608
         ", ".join(set_sql_parts),
@@ -691,7 +707,8 @@ def materialize_select_row(
         }
         return decode_model_row(state.model, values)
     decoded_values = tuple(
-        column.decode_sqlite(row[index]) for index, column in enumerate(state.fields)
+        decode_column_value(column, row[index], backend="sqlite")
+        for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
         return decoded_values[0]

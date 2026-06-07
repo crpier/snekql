@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any, cast
 
+from snekql._model_materialization import (
+    decode_column_value,
+    decode_model_row,
+    encode_column_value,
+    encode_model_row,
+)
+from snekql.errors import QueryCompilationError
 from snekql.expressions import Predicate
-from snekql.model import Table, require_model_columns
 from snekql.query import (
     AnySelectQuery,
     DeleteQuery,
@@ -15,7 +21,7 @@ from snekql.query import (
     compile_select_sql,
     compile_write_sql,
 )
-from snekql.storage import MISSING, Attr
+from snekql.storage import Attr
 
 
 def _translate_sqlite_sql(sql: str) -> str:
@@ -31,7 +37,7 @@ def _encode_column_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
-    return column.encode_mariadb(value)
+    return encode_column_value(column, value, backend="mariadb")
 
 
 def _predicate_params(predicate: Predicate[Any]) -> tuple[object, ...]:
@@ -64,15 +70,8 @@ def _select_params(query: AnySelectQuery) -> tuple[object, ...]:
 
 
 def _insert_params(query: InsertQuery[Any]) -> tuple[object, ...]:
-    row = query.row
-    columns = require_model_columns(cast("type[Table[Any]]", type(row)))
-    params: list[object] = []
-    for name, column in columns.items():
-        value = getattr(row, name)
-        if value is MISSING:
-            continue
-        params.append(_encode_column_value(column, value))
-    return tuple(params)
+    _, row_values = encode_model_row(query.row, backend="mariadb")
+    return tuple(row_values.values())
 
 
 def _update_params(query: UpdateQuery[Any]) -> tuple[object, ...]:
@@ -119,28 +118,6 @@ def compile_mariadb_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
     return _translate_sqlite_sql(sql), params
 
 
-def _decode_model_row(
-    model: type[Table[Any]],
-    row: Mapping[str, object],
-) -> Table[Any]:
-    remaining_values = dict(row)
-    from_row = type.__getattribute__(model, "_snekql_from_row")
-    model_instance = object.__new__(model)
-    storage = cast(
-        "dict[str, object]",
-        object.__getattribute__(model_instance, "__dict__"),
-    )
-    storage["_snekql_frozen"] = False
-    storage["_snekql_state"] = "Fetched"
-    for name, column in require_model_columns(model).items():
-        value = column.decode_mariadb(remaining_values.pop(name))
-        setattr(model_instance, name, value)
-    if remaining_values:
-        return cast("Table[Any]", from_row(row))
-    storage["_snekql_frozen"] = True
-    return model_instance
-
-
 def materialize_mariadb_select_row(
     query: AnySelectQuery,
     row: Sequence[object],
@@ -148,13 +125,17 @@ def materialize_mariadb_select_row(
     """Decode one MariaDB result row according to a select query."""
 
     state = query.state
+    if len(row) != len(state.fields):
+        msg = "database row shape did not match select query"
+        raise QueryCompilationError(msg)
     if state.returns_model:
         values = {
             column.name or "": row[index] for index, column in enumerate(state.fields)
         }
-        return _decode_model_row(state.model, values)
+        return decode_model_row(state.model, values, backend="mariadb")
     decoded_values = tuple(
-        column.decode_mariadb(row[index]) for index, column in enumerate(state.fields)
+        decode_column_value(column, row[index], backend="mariadb")
+        for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
         return decoded_values[0]
