@@ -292,7 +292,9 @@ async def _verify_model_schema(
         planned_model.table_name,
     )
     if existing_columns != expected_columns:
-        await _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
+        await _report_schema_drift(
+            schema_policy, planned_model.table_name, logger=logger
+        )
         return
     expected_indexes = sorted(
         _expected_index_signatures(planned_model), key=lambda index: index.name
@@ -302,7 +304,9 @@ async def _verify_model_schema(
         planned_model.table_name,
     )
     if existing_indexes != expected_indexes:
-        await _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
+        await _report_schema_drift(
+            schema_policy, planned_model.table_name, logger=logger
+        )
         return
     logger.debug("schema table verified", table_name=planned_model.table_name)
     logger.debug("schema indexes verified", table_name=planned_model.table_name)
