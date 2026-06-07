@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from pathlib import Path
 
-from snektest import session_fixture
+from snektest import AsyncSessionFixture
 
 from snekql.testing.mariadb import (
     TemporaryMariaDBServer,
@@ -13,8 +12,7 @@ from snekql.testing.mariadb import (
 )
 
 
-@session_fixture()
-async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
+async def provide_mariadb_server() -> AsyncSessionFixture[TemporaryMariaDBServer]:
     """Provide a local MariaDB server for medium integration tests."""
 
     async with temporary_mariadb_server(

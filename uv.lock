@@ -245,16 +245,16 @@ dev = [
 
 [[package]]
 name = "snektest"
-version = "0.14.0"
+version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "hypothesis" },
     { name = "pydantic" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/1c/6392323bc02ef063304cc1ebbbab4afaa858e0ec284af4aecfa8870764e4/snektest-0.14.0.tar.gz", hash = "sha256:3492c1e0681750ca6fe65075d53ddf63f633dae2c5da60fc5887b6e6d92645f1", size = 61506, upload-time = "2026-05-31T10:30:52.483Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/88/0c6db6bca94fe921c2ad83a3e6c5ae0f9d8e9e9367986b507f486f087219/snektest-0.15.0.tar.gz", hash = "sha256:1908112344a3284a4678aacd8272364ed096d6fd986ed109e858bfa4fa297aab", size = 63751, upload-time = "2026-06-06T19:23:56.857Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/1b/053b13d40554a1052132a36b710464f062b4056b347c7f5fd19577638b92/snektest-0.14.0-py3-none-any.whl", hash = "sha256:b0f81c0659b5279a82b510aeb378c3e6fd3a0f4dfabb9fc6672bf14407de4558", size = 35378, upload-time = "2026-05-31T10:30:53.541Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/09/360edb3e1423c5be1048ce8ef5cf0694d2fe4708869445d4b5eb96387563/snektest-0.15.0-py3-none-any.whl", hash = "sha256:04539de90a84333663ed4ff1c71fea3ca15d2c0d20acf21dcf0a734ac5fa0d2d", size = 36708, upload-time = "2026-06-06T19:23:55.337Z" },
 ]
 
 [[package]]
