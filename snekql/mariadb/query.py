@@ -5,94 +5,34 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from snekql.expressions import Predicate
+from snekql._query_dialect import QueryDialect
+from snekql.mariadb.identifiers import quote_identifier as quote_mariadb_identifier
 from snekql.model import Table, require_model_columns
 from snekql.query import (
     AnySelectQuery,
-    DeleteQuery,
-    InsertQuery,
-    UpdateQuery,
-    compile_select_sql,
-    compile_write_sql,
+    compile_select_sql_for_dialect,
+    compile_write_sql_for_dialect,
 )
-from snekql.storage import MISSING, Attr
+from snekql.storage import Attr
 
 
-def _translate_sqlite_sql(sql: str) -> str:
-    """Translate the shared v1 SQL shape to MariaDB quoting and placeholders."""
-
-    translated_sql = sql.replace('"', "`").replace("?", "%s")
-    if translated_sql.endswith(" DEFAULT VALUES"):
-        return translated_sql.removesuffix(" DEFAULT VALUES") + " () VALUES ()"
-    return translated_sql
+def _mariadb_empty_insert_sql(quoted_table: str) -> str:
+    return f"INSERT INTO {quoted_table} () VALUES ()"  # noqa: S608
 
 
-def _encode_column_value(
+def _encode_mariadb_column_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
     return column.encode_mariadb(value)
 
 
-def _predicate_params(predicate: Predicate[Any]) -> tuple[object, ...]:
-    if predicate.kind in {"and", "or"}:
-        return tuple(
-            param for child in predicate.children for param in _predicate_params(child)
-        )
-    if predicate.kind == "not":
-        return _predicate_params(predicate.children[0])
-    column = cast("Attr[Any, Any, Any, Any, Any]", predicate.column)
-    if predicate.kind in {"eq", "ne", "like", "not_like"}:
-        return (_encode_column_value(column, predicate.value),)
-    if predicate.kind in {"in", "not_in"}:
-        return tuple(_encode_column_value(column, value) for value in predicate.values)
-    return ()
-
-
-def _select_params(query: AnySelectQuery) -> tuple[object, ...]:
-    state = query.state
-    params = tuple(
-        param
-        for predicate in state.predicates
-        for param in _predicate_params(predicate)
-    )
-    if state.limit_value is not None:
-        params = (*params, state.limit_value)
-    if state.offset_value is not None:
-        params = (*params, state.offset_value)
-    return params
-
-
-def _insert_params(query: InsertQuery[Any]) -> tuple[object, ...]:
-    row = query.row
-    columns = require_model_columns(cast("type[Table[Any]]", type(row)))
-    params: list[object] = []
-    for name, column in columns.items():
-        value = getattr(row, name)
-        if value is MISSING:
-            continue
-        params.append(_encode_column_value(column, value))
-    return tuple(params)
-
-
-def _update_params(query: UpdateQuery[Any]) -> tuple[object, ...]:
-    params: tuple[object, ...] = tuple(
-        _encode_column_value(
-            cast("Attr[Any, Any, Any, Any, Any]", assignment.column), assignment.value
-        )
-        for assignment in query.state.assignments
-    )
-    for predicate in query.state.predicates:
-        params = (*params, *_predicate_params(predicate))
-    return params
-
-
-def _delete_params(query: DeleteQuery[Any]) -> tuple[object, ...]:
-    return tuple(
-        param
-        for predicate in query.state.predicates
-        for param in _predicate_params(predicate)
-    )
+_MARIADB_QUERY_DIALECT = QueryDialect(
+    empty_insert_sql=_mariadb_empty_insert_sql,
+    encode_column_value=_encode_mariadb_column_value,
+    placeholder="%s",
+    quote_identifier=quote_mariadb_identifier,
+)
 
 
 def compile_mariadb_select_sql(
@@ -100,23 +40,13 @@ def compile_mariadb_select_sql(
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a select query into parameterized MariaDB SQL."""
 
-    sql, _ = compile_select_sql(query)
-    return _translate_sqlite_sql(sql), _select_params(query)
+    return compile_select_sql_for_dialect(query, _MARIADB_QUERY_DIALECT)
 
 
 def compile_mariadb_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
     """Compile a write query into parameterized MariaDB SQL."""
 
-    sql, _ = compile_write_sql(query)
-    if isinstance(query, InsertQuery):
-        params = _insert_params(cast("InsertQuery[Any]", query))
-    elif isinstance(query, UpdateQuery):
-        params = _update_params(cast("UpdateQuery[Any]", query))
-    elif isinstance(query, DeleteQuery):
-        params = _delete_params(cast("DeleteQuery[Any]", query))
-    else:
-        params = ()
-    return _translate_sqlite_sql(sql), params
+    return compile_write_sql_for_dialect(query, _MARIADB_QUERY_DIALECT)
 
 
 def _decode_model_row(

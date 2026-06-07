@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
+from snekql._query_dialect import QueryDialect
 from snekql.errors import (
     ModelDeclarationError,
     QueryCompilationError,
@@ -13,14 +14,14 @@ from snekql.errors import (
 )
 from snekql.expressions import Assignment, OrderBy, Predicate
 from snekql.model import (
+    Model,
     Table,
     decode_model_row,
-    encode_model_row,
     require_model_columns,
     require_model_table_name,
 )
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
-from snekql.storage import Attr
+from snekql.storage import MISSING, Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -37,6 +38,25 @@ Ts = TypeVarTuple("Ts")
 
 _BINARY_PREDICATE_CHILD_COUNT = 2
 _UNARY_PREDICATE_CHILD_COUNT = 1
+
+
+def _sqlite_empty_insert_sql(quoted_table: str) -> str:
+    return "INSERT INTO " + quoted_table + " DEFAULT VALUES"
+
+
+def _encode_sqlite_column_value(
+    column: Attr[Any, Any, Any, Any, Any],
+    value: object,
+) -> object:
+    return column.encode_sqlite(value)
+
+
+_SQLITE_QUERY_DIALECT = QueryDialect(
+    empty_insert_sql=_sqlite_empty_insert_sql,
+    encode_column_value=_encode_sqlite_column_value,
+    placeholder="?",
+    quote_identifier=quote_sqlite_identifier,
+)
 
 
 class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
@@ -440,15 +460,40 @@ def _ensure_assignment_targets_model(
         raise QueryConstructionError(msg)
 
 
-def _compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...]]:
-    model_class, row_values = encode_model_row(query.row)
+def _require_insert_model(row: object) -> type[Table[Any]]:
+    if not isinstance(row, Model):
+        msg = "insert requires a snekql model instance"
+        raise QueryConstructionError(msg)
+    model_row = cast("Model[Any, Any]", row)
+    return cast("type[Table[Any]]", model_row.__class__)
+
+
+def _encode_insert_row(
+    query: InsertQuery[Any],
+    dialect: QueryDialect,
+) -> tuple[type[Table[Any]], dict[str, object]]:
+    model_class = _require_insert_model(query.row)
+    row_values: dict[str, object] = {}
+    for name, column in require_model_columns(model_class).items():
+        value = getattr(query.row, name)
+        if value is MISSING:
+            continue
+        row_values[name] = dialect.encode_column_value(column, value)
+    return model_class, row_values
+
+
+def _compile_insert_sql(
+    query: InsertQuery[Any],
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    model_class, row_values = _encode_insert_row(query, dialect)
     table_name = require_model_table_name(model_class)
-    quoted_table = quote_sqlite_identifier(table_name)
+    quoted_table = dialect.quote_identifier(table_name)
     if not row_values:
-        return "INSERT INTO " + quoted_table + " DEFAULT VALUES", ()
+        return dialect.empty_insert_sql(quoted_table), ()
     names = tuple(row_values)
-    quoted_columns = ", ".join(quote_sqlite_identifier(name) for name in names)
-    placeholders = ", ".join("?" for _ in names)
+    quoted_columns = ", ".join(dialect.quote_identifier(name) for name in names)
+    placeholders = ", ".join(dialect.placeholder for _ in names)
     sql = "INSERT INTO " + quoted_table + f" ({quoted_columns}) VALUES ({placeholders})"  # noqa: S608
     params = tuple(row_values[name] for name in names)
     return sql, params
@@ -457,12 +502,21 @@ def _compile_insert_sql(query: InsertQuery[Any]) -> tuple[str, tuple[object, ...
 def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
     model: type[Table[Any]],
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
         msg = "compound predicate is malformed"
         raise QueryCompilationError(msg)
-    left_sql, left_params = _compile_predicate_sql(predicate.children[0], model)
-    right_sql, right_params = _compile_predicate_sql(predicate.children[1], model)
+    left_sql, left_params = _compile_predicate_sql(
+        predicate.children[0],
+        model,
+        dialect,
+    )
+    right_sql, right_params = _compile_predicate_sql(
+        predicate.children[1],
+        model,
+        dialect,
+    )
     operator = "AND" if predicate.kind == "and" else "OR"
     return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
 
@@ -470,11 +524,16 @@ def _compile_compound_predicate_sql(
 def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
     model: type[Table[Any]],
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
         msg = "negated predicate is malformed"
         raise QueryCompilationError(msg)
-    child_sql, child_params = _compile_predicate_sql(predicate.children[0], model)
+    child_sql, child_params = _compile_predicate_sql(
+        predicate.children[0],
+        model,
+        dialect,
+    )
     return f"NOT ({child_sql})", child_params
 
 
@@ -482,6 +541,7 @@ def _compile_equality_predicate_sql(
     predicate: Predicate[Any],
     column: Attr[Any, Any, Any, Any, Any],
     column_name: str,
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     if predicate.value is None:
         msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
@@ -489,13 +549,17 @@ def _compile_equality_predicate_sql(
             msg = "eq(None) is invalid; use is_null()"
         raise QueryCompilationError(msg)
     operator = "=" if predicate.kind == "eq" else "!="
-    return f"{column_name} {operator} ?", (column.encode_sqlite(predicate.value),)
+    return (
+        f"{column_name} {operator} {dialect.placeholder}",
+        (dialect.encode_column_value(column, predicate.value),),
+    )
 
 
 def _compile_membership_predicate_sql(
     predicate: Predicate[Any],
     column: Attr[Any, Any, Any, Any, Any],
     column_name: str,
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     if not predicate.values:
         msg = "IN predicates require at least one value"
@@ -503,9 +567,11 @@ def _compile_membership_predicate_sql(
     if any(value is None for value in predicate.values):
         msg = "IN predicate values cannot be None"
         raise QueryCompilationError(msg)
-    placeholders = ", ".join("?" for _ in predicate.values)
+    placeholders = ", ".join(dialect.placeholder for _ in predicate.values)
     operator = "IN" if predicate.kind == "in" else "NOT IN"
-    params = tuple(column.encode_sqlite(value) for value in predicate.values)
+    params = tuple(
+        dialect.encode_column_value(column, value) for value in predicate.values
+    )
     return f"{column_name} {operator} ({placeholders})", params
 
 
@@ -513,29 +579,44 @@ def _compile_like_predicate_sql(
     predicate: Predicate[Any],
     column: Attr[Any, Any, Any, Any, Any],
     column_name: str,
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     if column.storage_type_name != "Text":
         msg = f"{predicate.kind}() is only valid for text columns"
         raise QueryCompilationError(msg)
     operator = "LIKE" if predicate.kind == "like" else "NOT LIKE"
-    return f"{column_name} {operator} ?", (column.encode_sqlite(predicate.value),)
+    return (
+        f"{column_name} {operator} {dialect.placeholder}",
+        (dialect.encode_column_value(column, predicate.value),),
+    )
 
 
 def _compile_column_predicate_sql(
     predicate: Predicate[Any],
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     column = _require_field(predicate.column)
-    column_name = quote_sqlite_identifier(_require_column_name(column))
+    column_name = dialect.quote_identifier(_require_column_name(column))
     if predicate.kind in {"eq", "ne"}:
-        return _compile_equality_predicate_sql(predicate, column, column_name)
+        return _compile_equality_predicate_sql(
+            predicate,
+            column,
+            column_name,
+            dialect,
+        )
     if predicate.kind == "is_null":
         return f"{column_name} IS NULL", ()
     if predicate.kind == "is_not_null":
         return f"{column_name} IS NOT NULL", ()
     if predicate.kind in {"in", "not_in"}:
-        return _compile_membership_predicate_sql(predicate, column, column_name)
+        return _compile_membership_predicate_sql(
+            predicate,
+            column,
+            column_name,
+            dialect,
+        )
     if predicate.kind in {"like", "not_like"}:
-        return _compile_like_predicate_sql(predicate, column, column_name)
+        return _compile_like_predicate_sql(predicate, column, column_name, dialect)
     msg = "unknown predicate kind"
     raise QueryCompilationError(msg)
 
@@ -543,39 +624,49 @@ def _compile_column_predicate_sql(
 def _compile_predicate_sql(
     predicate: Predicate[Any],
     model: type[Table[Any]],
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     _ensure_predicate_targets_model(predicate, model)
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(predicate, model)
+        return _compile_compound_predicate_sql(predicate, model, dialect)
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(predicate, model)
-    return _compile_column_predicate_sql(predicate)
+        return _compile_negated_predicate_sql(predicate, model, dialect)
+    return _compile_column_predicate_sql(predicate, dialect)
 
 
 def _compile_ordering_sql(
     ordering: OrderBy[Any],
     model: type[Table[Any]],
+    dialect: QueryDialect,
 ) -> str:
     _ensure_ordering_targets_model(ordering, model)
     column = _require_field(ordering.column)
-    column_name = quote_sqlite_identifier(_require_column_name(column))
+    column_name = dialect.quote_identifier(_require_column_name(column))
     return f"{column_name} {ordering.direction}"
 
 
 def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
     model: type[Table[Any]],
+    dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
     predicate_params: list[object] = []
     for predicate in predicates:
-        predicate_sql, compiled_params = _compile_predicate_sql(predicate, model)
+        predicate_sql, compiled_params = _compile_predicate_sql(
+            predicate,
+            model,
+            dialect,
+        )
         predicate_sql_parts.append(f"({predicate_sql})")
         predicate_params.extend(compiled_params)
     return " AND ".join(predicate_sql_parts), tuple(predicate_params)
 
 
-def _compile_update_sql(query: UpdateQuery[Any]) -> tuple[str, tuple[object, ...]]:
+def _compile_update_sql(
+    query: UpdateQuery[Any],
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
     state = query.state
     if not state.assignments:
         msg = "update requires set() before execution"
@@ -589,89 +680,121 @@ def _compile_update_sql(query: UpdateQuery[Any]) -> tuple[str, tuple[object, ...
     for assignment in state.assignments:
         _ensure_assignment_targets_model(assignment, state.model)
         column = _require_field(assignment.column)
-        column_name = quote_sqlite_identifier(_require_column_name(column))
-        set_sql_parts.append(f"{column_name} = ?")
-        params = (*params, column.encode_sqlite(assignment.value))
+        column_name = dialect.quote_identifier(_require_column_name(column))
+        set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
+        params = (*params, dialect.encode_column_value(column, assignment.value))
     sql_parts = [
-        "UPDATE " + quote_sqlite_identifier(table_name) + " SET ",  # noqa: S608
+        "UPDATE " + dialect.quote_identifier(table_name) + " SET ",  # noqa: S608
         ", ".join(set_sql_parts),
     ]
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             state.model,
+            dialect,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     return "".join(sql_parts), params
 
 
-def _compile_delete_sql(query: DeleteQuery[Any]) -> tuple[str, tuple[object, ...]]:
+def _compile_delete_sql(
+    query: DeleteQuery[Any],
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
     state = query.state
     if not state.explicit_all and not state.predicates:
         msg = "delete requires all() or where() before execution"
         raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
-    sql = "DELETE FROM " + quote_sqlite_identifier(table_name)  # noqa: S608
+    sql = "DELETE FROM " + dialect.quote_identifier(table_name)  # noqa: S608
     params: tuple[object, ...] = ()
     if state.predicates:
-        predicate_sql, params = _compile_predicates_sql(state.predicates, state.model)
+        predicate_sql, params = _compile_predicates_sql(
+            state.predicates,
+            state.model,
+            dialect,
+        )
         sql = f"{sql} WHERE {predicate_sql}"
     return sql, params
 
 
-def _compile_select_state(state: _SelectState) -> tuple[str, tuple[object, ...]]:
+def _compile_select_state(
+    state: _SelectState,
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
         raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        quote_sqlite_identifier(_require_column_name(column)) for column in state.fields
+        dialect.quote_identifier(_require_column_name(column))
+        for column in state.fields
     )
     sql_parts = [
-        "SELECT " + quoted_columns + " FROM " + quote_sqlite_identifier(table_name),  # noqa: S608
+        "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
     ]
     params: tuple[object, ...] = ()
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             state.model,
+            dialect,
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.orderings:
         order_by = ", ".join(
-            _compile_ordering_sql(ordering, state.model) for ordering in state.orderings
+            _compile_ordering_sql(ordering, state.model, dialect)
+            for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
     if state.limit_value is not None:
-        sql_parts.append("LIMIT ?")
+        sql_parts.append(f"LIMIT {dialect.placeholder}")
         params = (*params, state.limit_value)
     if state.offset_value is not None:
         if state.limit_value is None:
             sql_parts.append("LIMIT -1")
-        sql_parts.append("OFFSET ?")
+        sql_parts.append(f"OFFSET {dialect.placeholder}")
         params = (*params, state.offset_value)
     return " ".join(sql_parts), params
+
+
+def compile_select_sql_for_dialect(
+    query: AnySelectQuery,
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    """Compile a select query into backend Dialect SQL."""
+
+    return _compile_select_state(query.state, dialect)
+
+
+def compile_write_sql_for_dialect(
+    query: object,
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    """Compile a write query into backend Dialect SQL."""
+
+    if isinstance(query, InsertQuery):
+        return _compile_insert_sql(cast("InsertQuery[Any]", query), dialect)
+    if isinstance(query, UpdateQuery):
+        return _compile_update_sql(cast("UpdateQuery[Any]", query), dialect)
+    if isinstance(query, DeleteQuery):
+        return _compile_delete_sql(cast("DeleteQuery[Any]", query), dialect)
+    msg = "execute requires a write query"
+    raise QueryCompilationError(msg)
 
 
 def compile_select_sql(query: AnySelectQuery) -> tuple[str, tuple[object, ...]]:
     """Compile a select query into parameterized SQLite SQL."""
 
-    return _compile_select_state(query.state)
+    return compile_select_sql_for_dialect(query, _SQLITE_QUERY_DIALECT)
 
 
 def compile_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
     """Compile a write query into parameterized SQLite SQL."""
 
-    if isinstance(query, InsertQuery):
-        return _compile_insert_sql(cast("InsertQuery[Any]", query))
-    if isinstance(query, UpdateQuery):
-        return _compile_update_sql(cast("UpdateQuery[Any]", query))
-    if isinstance(query, DeleteQuery):
-        return _compile_delete_sql(cast("DeleteQuery[Any]", query))
-    msg = "execute requires a write query"
-    raise QueryCompilationError(msg)
+    return compile_write_sql_for_dialect(query, _SQLITE_QUERY_DIALECT)
 
 
 def materialize_select_row(
