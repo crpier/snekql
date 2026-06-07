@@ -1,4 +1,4 @@
-"""Structured Query Runtime logging tests."""
+"""SQLite Query Runtime structured logging tests."""
 
 from __future__ import annotations
 
