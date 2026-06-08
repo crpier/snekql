@@ -110,6 +110,21 @@ Rules to remember:
 - Models are immutable after construction/materialization.
 - Fetched models are produced by database reads only.
 
+### Ruff/Pyflakes unused-import note
+
+`Fetched` appears in model declarations as part of a string forward reference,
+for example `sqlite.Model[S, "User[Fetched]"]`. Type checkers resolve that name,
+but Ruff's Pyflakes `F401` check does not count names inside string literals as
+import usage. If a project imports `Fetched` only for those model self-types,
+allow that import in Ruff:
+
+```toml
+[tool.ruff.lint.pyflakes]
+allowed-unused-imports = [
+  "snekql.Fetched",
+]
+```
+
 ## Storage classes
 
 Use storage declarations from the same backend namespace as the model:
