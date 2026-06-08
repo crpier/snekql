@@ -17,6 +17,8 @@ from typing import (
     overload,
 )
 
+import anyio
+
 from snekql._runtime_selection import resolve_runtime_selection
 from snekql.errors import (
     DatabaseRuntimeError,
@@ -134,6 +136,7 @@ class Transaction:
         self.connection: RuntimeConnection | None = None
         self.runtime: RuntimeBackend = runtime
         self.timeout: NonNegativeFloat = timeout
+        self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
         if self.closed or self.connection is not None:
@@ -153,7 +156,8 @@ class Transaction:
                 backend=self.runtime.backend_family,
                 error_type=type(error).__name__,
             )
-            await self.runtime.release(connection)
+            with anyio.CancelScope(shield=True):
+                await self.runtime.release(connection)
             msg = "could not begin transaction"
             raise DatabaseRuntimeError(msg) from error
         self.connection = connection
@@ -171,41 +175,43 @@ class Transaction:
     ) -> None:
         _ = exc_value
         _ = traceback
-        connection = self.connection
-        if connection is None:
-            msg = "transaction is closed"
-            raise TransactionClosedError(msg)
-        self.connection = None
-        self.closed = True
-        try:
-            if exc_type is None:
-                await connection.commit()
-                self.runtime.logger.debug(
-                    "transaction commit",
-                    backend=self.runtime.backend_family,
-                )
-            else:
-                await connection.rollback()
-                self.runtime.logger.debug(
-                    "transaction rollback",
-                    backend=self.runtime.backend_family,
-                    exception_type=exc_type.__name__,
-                )
-        except Exception as error:
-            self.runtime.logger.error(  # noqa: TRY400
-                "transaction close failed",
-                backend=self.runtime.backend_family,
-                error_type=type(error).__name__,
-            )
-            if exc_type is None:
-                msg = "could not close transaction"
-                raise DatabaseRuntimeError(msg) from error
-        finally:
-            await self.runtime.release(connection)
-            self.runtime.logger.debug(
-                "transaction released",
-                backend=self.runtime.backend_family,
-            )
+        with anyio.CancelScope(shield=True):
+            async with self._lock:
+                connection = self.connection
+                if connection is None:
+                    msg = "transaction is closed"
+                    raise TransactionClosedError(msg)
+                self.connection = None
+                self.closed = True
+                try:
+                    if exc_type is None:
+                        await connection.commit()
+                        self.runtime.logger.debug(
+                            "transaction commit",
+                            backend=self.runtime.backend_family,
+                        )
+                    else:
+                        await connection.rollback()
+                        self.runtime.logger.debug(
+                            "transaction rollback",
+                            backend=self.runtime.backend_family,
+                            exception_type=exc_type.__name__,
+                        )
+                except Exception as error:
+                    self.runtime.logger.error(  # noqa: TRY400
+                        "transaction close failed",
+                        backend=self.runtime.backend_family,
+                        error_type=type(error).__name__,
+                    )
+                    if exc_type is None:
+                        msg = "could not close transaction"
+                        raise DatabaseRuntimeError(msg) from error
+                finally:
+                    await self.runtime.release(connection)
+                    self.runtime.logger.debug(
+                        "transaction released",
+                        backend=self.runtime.backend_family,
+                    )
 
     @overload
     async def fetch_all(
@@ -220,39 +226,40 @@ class Transaction:
     async def fetch_all(self, query: object) -> object:
         """Fetch all rows for a select query."""
 
-        connection = self.require_connection()
-        select_query = self._require_select_query(query)
-        self._validate_query_backend(select_query)
-        sql, params = self.runtime.compile_select_sql(select_query)
-        try:
-            cursor = await connection.execute(sql, params)
+        async with self._lock:
+            connection = self.require_connection()
+            select_query = self._require_select_query(query)
+            self._validate_query_backend(select_query)
+            sql, params = self.runtime.compile_select_sql(select_query)
             try:
-                rows = await cursor.fetchall()
-            finally:
-                await cursor.close()
-        except Exception as error:
-            self.runtime.logger.error(  # noqa: TRY400
-                "query failed",
+                cursor = await connection.execute(sql, params)
+                try:
+                    rows = await cursor.fetchall()
+                finally:
+                    await cursor.close()
+            except Exception as error:
+                self.runtime.logger.error(  # noqa: TRY400
+                    "query failed",
+                    backend=self.runtime.backend_family,
+                    error_type=type(error).__name__,
+                    operation="fetch_all",
+                    params=params,
+                    sql=sql,
+                )
+                msg = "select failed"
+                raise ExecutionError(msg, sql=sql, params=params) from error
+            self.runtime.logger.debug(
+                "query executed",
                 backend=self.runtime.backend_family,
-                error_type=type(error).__name__,
                 operation="fetch_all",
                 params=params,
+                row_count=len(rows),
                 sql=sql,
             )
-            msg = "select failed"
-            raise ExecutionError(msg, sql=sql, params=params) from error
-        self.runtime.logger.debug(
-            "query executed",
-            backend=self.runtime.backend_family,
-            operation="fetch_all",
-            params=params,
-            row_count=len(rows),
-            sql=sql,
-        )
-        return [
-            self.runtime.materialize_select_row(select_query, tuple(row))
-            for row in rows
-        ]
+            return [
+                self.runtime.materialize_select_row(select_query, tuple(row))
+                for row in rows
+            ]
 
     @overload
     async def fetch_one(
@@ -267,71 +274,73 @@ class Transaction:
     async def fetch_one(self, query: object) -> object:
         """Fetch one row for a select query."""
 
-        connection = self.require_connection()
-        select_query = self._require_select_query(query)
-        self._validate_query_backend(select_query)
-        sql, params = self.runtime.compile_select_sql(select_query)
-        try:
-            cursor = await connection.execute(sql, params)
+        async with self._lock:
+            connection = self.require_connection()
+            select_query = self._require_select_query(query)
+            self._validate_query_backend(select_query)
+            sql, params = self.runtime.compile_select_sql(select_query)
             try:
-                row = await cursor.fetchone()
-            finally:
-                await cursor.close()
-        except Exception as error:
-            self.runtime.logger.error(  # noqa: TRY400
-                "query failed",
+                cursor = await connection.execute(sql, params)
+                try:
+                    row = await cursor.fetchone()
+                finally:
+                    await cursor.close()
+            except Exception as error:
+                self.runtime.logger.error(  # noqa: TRY400
+                    "query failed",
+                    backend=self.runtime.backend_family,
+                    error_type=type(error).__name__,
+                    operation="fetch_one",
+                    params=params,
+                    sql=sql,
+                )
+                msg = "select failed"
+                raise ExecutionError(msg, sql=sql, params=params) from error
+            self.runtime.logger.debug(
+                "query executed",
                 backend=self.runtime.backend_family,
-                error_type=type(error).__name__,
                 operation="fetch_one",
                 params=params,
+                row_found=row is not None,
                 sql=sql,
             )
-            msg = "select failed"
-            raise ExecutionError(msg, sql=sql, params=params) from error
-        self.runtime.logger.debug(
-            "query executed",
-            backend=self.runtime.backend_family,
-            operation="fetch_one",
-            params=params,
-            row_found=row is not None,
-            sql=sql,
-        )
-        if row is None:
-            return None
-        return self.runtime.materialize_select_row(select_query, tuple(row))
+            if row is None:
+                return None
+            return self.runtime.materialize_select_row(select_query, tuple(row))
 
     async def execute(
         self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]
     ) -> None:
         """Execute a write query inside this transaction."""
 
-        connection = self.require_connection()
-        self._validate_query_backend(query)
-        sql, params = self.runtime.compile_write_sql(query)
-        try:
-            cursor = await connection.execute(sql, params)
+        async with self._lock:
+            connection = self.require_connection()
+            self._validate_query_backend(query)
+            sql, params = self.runtime.compile_write_sql(query)
             try:
-                pass
-            finally:
-                await cursor.close()
-        except Exception as error:
-            self.runtime.logger.error(  # noqa: TRY400
-                "query failed",
+                cursor = await connection.execute(sql, params)
+                try:
+                    pass
+                finally:
+                    await cursor.close()
+            except Exception as error:
+                self.runtime.logger.error(  # noqa: TRY400
+                    "query failed",
+                    backend=self.runtime.backend_family,
+                    error_type=type(error).__name__,
+                    operation="write",
+                    params=params,
+                    sql=sql,
+                )
+                msg = "write failed"
+                raise ExecutionError(msg, sql=sql, params=params) from error
+            self.runtime.logger.debug(
+                "query executed",
                 backend=self.runtime.backend_family,
-                error_type=type(error).__name__,
                 operation="write",
                 params=params,
                 sql=sql,
             )
-            msg = "write failed"
-            raise ExecutionError(msg, sql=sql, params=params) from error
-        self.runtime.logger.debug(
-            "query executed",
-            backend=self.runtime.backend_family,
-            operation="write",
-            params=params,
-            sql=sql,
-        )
 
     def require_connection(self) -> RuntimeConnection:
         """Return the active transaction connection or reject use-after-close."""
@@ -500,4 +509,5 @@ class Database:
     async def close(self) -> None:
         """Close this database runtime idempotently when shutdown succeeds."""
 
-        await self.runtime.close(self.runtime.acquire_timeout)
+        with anyio.CancelScope(shield=True):
+            await self.runtime.close(self.runtime.acquire_timeout)

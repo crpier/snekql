@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
 
+import anyio
+import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
 from snekql import (
@@ -139,12 +140,15 @@ async def close_rejects_new_transactions_while_waiting_for_checkouts() -> None:
         pool_size=1,
         acquire_timeout=1.0,
     )
-    async with database.transaction():
-        close_task = asyncio.create_task(database.close())
-        await asyncio.sleep(0)
-        with assert_raises(DatabaseClosingError):
-            _ = database.transaction()
-    await close_task
+    async with anyio.create_task_group() as task_group, database.transaction():
+        task_group.start_soon(database.close)
+        with anyio.fail_after(1.0):
+            while True:
+                try:
+                    _ = database.transaction()
+                except DatabaseClosingError:
+                    break
+                await anyio.lowlevel.checkpoint()
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()

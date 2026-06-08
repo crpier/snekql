@@ -10,6 +10,17 @@ from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 
+def _resolve_pool_size(
+    database: Path | Literal[":memory:"],
+    pool_size: PositiveInt,
+) -> PositiveInt:
+    """Keep exact SQLite in-memory databases on a single connection."""
+
+    if database == ":memory:":
+        return 1
+    return pool_size
+
+
 @validate_boundary(error_type=DatabaseRuntimeError)
 def _validate_sqlite_config(
     *,
@@ -47,3 +58,5 @@ class Config:
             database=self.database,
             pool_size=self.pool_size,
         )
+        pool_size = _resolve_pool_size(self.database, self.pool_size)
+        object.__setattr__(self, "pool_size", pool_size)

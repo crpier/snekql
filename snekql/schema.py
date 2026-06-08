@@ -79,6 +79,20 @@ def _compile_model_index_sql(planned_model: PlannedModel) -> list[str]:
     ]
 
 
+async def _execute_schema_sql(
+    connection: Connection,
+    sql: str,
+    params: tuple[object, ...] = (),
+) -> None:
+    """Execute schema DDL/control statements and always close their cursor."""
+
+    cursor = await connection.execute(sql, params)
+    try:
+        return
+    finally:
+        await cursor.close()
+
+
 async def _fetch_existing_create_index_sql(
     connection: Connection,
     table_name: str,
@@ -170,10 +184,10 @@ async def _verify_or_create_model_table(
         planned_model.table_name,
     )
     if existing_sql is None:
-        _ = await connection.execute(expected_sql)
+        await _execute_schema_sql(connection, expected_sql)
         logger.debug("schema table created", table_name=planned_model.table_name)
         for index_sql in _compile_model_index_sql(planned_model):
-            _ = await connection.execute(index_sql)
+            await _execute_schema_sql(connection, index_sql)
             logger.debug(
                 "schema index created",
                 table_name=planned_model.table_name,
@@ -193,7 +207,7 @@ async def _verify_or_create_model_table(
 
 async def _rollback_schema_setup(connection: Connection) -> None:
     with contextlib.suppress(Error):
-        _ = await connection.execute("ROLLBACK")
+        await _execute_schema_sql(connection, "ROLLBACK")
 
 
 async def _initialize_sqlite_schema(
@@ -208,7 +222,7 @@ async def _initialize_sqlite_schema(
         return
     logger.debug("schema startup started", model_count=len(plan.models))
     try:
-        _ = await connection.execute("BEGIN")
+        await _execute_schema_sql(connection, "BEGIN")
         for planned_model in plan.models:
             await _verify_or_create_model_table(
                 connection,
@@ -216,7 +230,7 @@ async def _initialize_sqlite_schema(
                 schema_policy,
                 logger,
             )
-        _ = await connection.execute("COMMIT")
+        await _execute_schema_sql(connection, "COMMIT")
         logger.debug("schema startup completed", model_count=len(plan.models))
     except Error as error:
         await _rollback_schema_setup(connection)

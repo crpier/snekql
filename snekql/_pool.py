@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Sequence
 from pathlib import Path
 
+import anyio
 from aiosqlite import Connection, Error, connect
 
 from snekql.errors import (
@@ -65,7 +65,7 @@ class SQLiteConnectionPool:
     active_connections: int
     closed: bool
     closing: bool
-    condition: asyncio.Condition
+    condition: anyio.Condition
     database_path: str
     idle_connections: list[Connection]
     opening_connections: int
@@ -82,7 +82,7 @@ class SQLiteConnectionPool:
         self.active_connections: int = 0
         self.closed: bool = False
         self.closing: bool = False
-        self.condition: asyncio.Condition = asyncio.Condition()
+        self.condition: anyio.Condition = anyio.Condition()
         self.database_path: str = database_path
         self.idle_connections: list[Connection] = [initial_connection]
         self.logger: ResolvedStructuredLogger = logger
@@ -109,8 +109,7 @@ class SQLiteConnectionPool:
             backend="sqlite",
             timeout=acquisition_timeout,
         )
-        event_loop = asyncio.get_running_loop()
-        deadline = event_loop.time() + acquisition_timeout
+        deadline = anyio.current_time() + acquisition_timeout
         while True:
             async with self.condition:
                 self.check_accepting_work()
@@ -126,7 +125,7 @@ class SQLiteConnectionPool:
                 if self.connection_count() < self.pool_size:
                     self.opening_connections += 1
                     break
-                remaining_timeout = deadline - event_loop.time()
+                remaining_timeout = deadline - anyio.current_time()
                 if remaining_timeout <= 0:
                     self.logger.warning(
                         "connection acquisition timed out",
@@ -136,10 +135,8 @@ class SQLiteConnectionPool:
                     msg = "timed out acquiring database connection"
                     raise PoolTimeoutError(msg)
                 try:
-                    _ = await asyncio.wait_for(
-                        self.condition.wait(),
-                        timeout=remaining_timeout,
-                    )
+                    with anyio.fail_after(remaining_timeout):
+                        await self.condition.wait()
                 except TimeoutError as error:
                     self.logger.warning(
                         "connection acquisition timed out",
@@ -177,21 +174,22 @@ class SQLiteConnectionPool:
     async def release(self, connection: Connection) -> None:
         """Return a checked-out connection or close it during shutdown."""
 
-        should_close = False
-        async with self.condition:
-            self.active_connections -= 1
-            if self.closed or self.closing:
-                should_close = True
-            else:
-                self.idle_connections.append(connection)
-            self.condition.notify_all()
-        self.logger.debug(
-            "connection released",
-            backend="sqlite",
-            closed=should_close,
-        )
-        if should_close:
-            await close_sqlite_connection(connection)
+        with anyio.CancelScope(shield=True):
+            should_close = False
+            async with self.condition:
+                self.active_connections -= 1
+                if self.closed or self.closing:
+                    should_close = True
+                else:
+                    self.idle_connections.append(connection)
+                self.condition.notify_all()
+            self.logger.debug(
+                "connection released",
+                backend="sqlite",
+                closed=should_close,
+            )
+            if should_close:
+                await close_sqlite_connection(connection)
 
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""
@@ -210,8 +208,7 @@ class SQLiteConnectionPool:
             self.condition.notify_all()
         await self.close_connections(idle_connections)
 
-        event_loop = asyncio.get_running_loop()
-        deadline = event_loop.time() + close_timeout
+        deadline = anyio.current_time() + close_timeout
         while True:
             async with self.condition:
                 if self.active_connections == 0 and self.opening_connections == 0:
@@ -221,7 +218,7 @@ class SQLiteConnectionPool:
                     self.closing = False
                     self.condition.notify_all()
                     break
-                remaining_timeout = deadline - event_loop.time()
+                remaining_timeout = deadline - anyio.current_time()
                 if remaining_timeout <= 0:
                     self.closing = False
                     self.condition.notify_all()
@@ -229,10 +226,8 @@ class SQLiteConnectionPool:
                     msg = "database close timed out"
                     raise DatabaseCloseTimeoutError(msg)
                 try:
-                    _ = await asyncio.wait_for(
-                        self.condition.wait(),
-                        timeout=remaining_timeout,
-                    )
+                    with anyio.fail_after(remaining_timeout):
+                        await self.condition.wait()
                 except TimeoutError as error:
                     self.closing = False
                     self.condition.notify_all()

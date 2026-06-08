@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
 from typing import Any, Literal, cast
+
+import anyio
 
 from snekql.errors import (
     DatabaseClosedError,
@@ -135,7 +136,8 @@ class MariaDBConnectionPool:
         try:
             pool = cast("Any", self.pool)
             acquire = cast("Callable[[], Awaitable[object]]", pool.acquire)
-            connection = await asyncio.wait_for(acquire(), timeout=acquisition_timeout)
+            with anyio.fail_after(acquisition_timeout):
+                connection = await acquire()
         except TimeoutError as error:
             self.logger.warning(
                 "connection acquisition timed out",
@@ -166,9 +168,9 @@ class MariaDBConnectionPool:
             pool = cast("Any", self.pool)
             pool.close()
             wait_closed = cast("Callable[[], Awaitable[None]]", pool.wait_closed)
-            await asyncio.wait_for(wait_closed(), timeout=close_timeout)
+            with anyio.fail_after(close_timeout):
+                await wait_closed()
         except TimeoutError as error:
-            self.closing = False
             self.logger.warning("database close timed out", backend="mariadb")
             msg = "timed out closing database"
             raise DatabaseCloseTimeoutError(msg) from error
@@ -205,10 +207,12 @@ class MariaDBRuntime:
         if not isinstance(connection, MariaDBConnectionAdapter):
             msg = "MariaDB runtime cannot release a foreign connection"
             raise DatabaseRuntimeError(msg)
-        await self.connection_pool.release(connection.connection)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.release(connection.connection)
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
-        await self.connection_pool.close(close_timeout)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.close(close_timeout)
 
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()

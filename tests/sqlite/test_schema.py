@@ -23,6 +23,7 @@ from snekql import (
     Text,
     sqlite,
 )
+from snekql.schema import initialize_sqlite_schema
 from tests.helpers import NULL_LOGGER
 
 
@@ -101,6 +102,43 @@ class _RecordingStructuredLogger:
 
     def error(self, event: str, **fields: object) -> None:
         self.events.append(("error", event, fields))
+
+
+class _SchemaCursor:
+    """Cursor fake that records whether schema startup closes it."""
+
+    def __init__(self, *, fetchone_row: tuple[object, ...] | None = None) -> None:
+        self.closed: bool = False
+        self.fetchone_row: tuple[object, ...] | None = fetchone_row
+
+    async def fetchone(self) -> tuple[object, ...] | None:
+        return self.fetchone_row
+
+    async def fetchall(self) -> list[tuple[object, ...]]:
+        return []
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _SchemaConnection:
+    """Connection fake that returns close-observable cursors for every statement."""
+
+    def __init__(self) -> None:
+        self.cursors: list[_SchemaCursor] = []
+
+    async def execute(
+        self,
+        sql: str,
+        params: tuple[object, ...] = (),
+    ) -> _SchemaCursor:
+        _ = params
+        cursor = _SchemaCursor()
+        self.cursors.append(cursor)
+        if "sqlite_master WHERE type = 'table'" in sql:
+            cursor = _SchemaCursor(fetchone_row=None)
+            self.cursors[-1] = cursor
+        return cursor
 
 
 @test(mark="medium")
@@ -470,3 +508,25 @@ async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
             )
 
         assert_true(not _table_exists(database_path, "created_first"))
+
+
+@test(mark="fast")
+async def schema_startup_closes_ddl_and_control_cursors() -> None:
+    """SQLite schema startup closes cursors returned by DDL/control statements."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model used to force BEGIN, DDL, metadata fetch, and COMMIT."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    connection = _SchemaConnection()
+
+    await initialize_sqlite_schema(
+        cast("Any", connection),
+        [User],
+        "strict",
+        logger=NULL_LOGGER,
+    )
+
+    assert connection.cursors
+    assert_true(all(cursor.closed for cursor in connection.cursors))
