@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
+import anyio
 from aiosqlite import Connection, Cursor
 
 from snekql._pool import (
@@ -106,10 +107,12 @@ class SQLiteRuntime:
         if not isinstance(connection, SQLiteConnectionAdapter):
             msg = "SQLite runtime cannot release a foreign connection"
             raise DatabaseRuntimeError(msg)
-        await self.connection_pool.release(connection.connection)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.release(connection.connection)
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
-        await self.connection_pool.close(close_timeout)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.close(close_timeout)
 
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()

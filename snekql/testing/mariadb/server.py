@@ -9,8 +9,12 @@ import socket
 from collections.abc import AsyncGenerator, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from tempfile import mkdtemp
+
+import anyio
+from anyio.to_thread import run_sync
 
 from snekql import mariadb
 from snekql.testing.mariadb._commands import MariaDBClientCommand
@@ -305,12 +309,12 @@ async def _ensure_data_directory(
     """Initialize missing/empty data directories and reject invalid reuse."""
 
     if options.clean_before_start and paths.data_directory.exists():
-        await asyncio.to_thread(shutil.rmtree, paths.data_directory)
+        await run_sync(shutil.rmtree, paths.data_directory)
     if not paths.data_directory.exists():
-        await asyncio.to_thread(paths.data_directory.mkdir, parents=True)
+        await run_sync(partial(paths.data_directory.mkdir, parents=True))
         await _initialize_data_directory(options=options, paths=paths)
         return
-    children = await asyncio.to_thread(lambda: tuple(paths.data_directory.iterdir()))
+    children = await run_sync(lambda: tuple(paths.data_directory.iterdir()))
     if len(children) == 0:
         await _initialize_data_directory(options=options, paths=paths)
         return
@@ -430,7 +434,8 @@ async def _stop_process(process: asyncio.subprocess.Process) -> None:
         return
     process.terminate()
     try:
-        _ = await asyncio.wait_for(process.wait(), timeout=_SHUTDOWN_TIMEOUT)
+        with anyio.fail_after(_SHUTDOWN_TIMEOUT):
+            _ = await process.wait()
     except TimeoutError:
         process.kill()
         _ = await process.wait()
@@ -453,9 +458,8 @@ async def _wait_until_ready(  # noqa: PLR0913
 ) -> None:
     """Poll the MariaDB CLI until the server accepts local connections."""
 
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + startup_timeout
-    while loop.time() < deadline:
+    deadline = anyio.current_time() + startup_timeout
+    while anyio.current_time() < deadline:
         if process.returncode is not None:
             error_log = await _read_error_log(error_log_path)
             msg = f"mariadbd exited before becoming ready\n{error_log}"
@@ -474,7 +478,7 @@ async def _wait_until_ready(  # noqa: PLR0913
         )
         if result.returncode == 0:
             return
-        await asyncio.sleep(0.25)
+        await anyio.sleep(0.25)
     error_log = await _read_error_log(error_log_path)
     msg = f"mariadbd did not become ready\n{error_log}"
     raise TemporaryMariaDBServerError(msg)
@@ -483,10 +487,10 @@ async def _wait_until_ready(  # noqa: PLR0913
 async def _read_error_log(error_log_path: Path) -> str:
     """Read MariaDB's error log only when it exists."""
 
-    exists = await asyncio.to_thread(error_log_path.exists)
+    exists = await run_sync(error_log_path.exists)
     if not exists:
         return ""
-    return await asyncio.to_thread(error_log_path.read_text)
+    return await run_sync(error_log_path.read_text)
 
 
 async def _run_command(

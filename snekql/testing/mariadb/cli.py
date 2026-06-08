@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+import anyio
 
 from snekql.testing.mariadb import (
     MariaDBAuth,
@@ -189,7 +190,7 @@ async def _run(argv: list[str] | None) -> int:
         if server.auth == "password":
             print(f"password: {server.password}", file=sys.stderr)
         print("Press Ctrl-C to stop.", file=sys.stderr)
-        stop_event = asyncio.Event()
+        stop_event = anyio.Event()
         _ = await stop_event.wait()
         return 0
 
@@ -198,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     """Run the `snekql-mariadb-server` foreground CLI."""
 
     try:
-        return asyncio.run(_run(argv))
+        return anyio.run(_run, argv, backend="asyncio")
     except KeyboardInterrupt:
         return 130
     except TemporaryMariaDBServerError as error:
