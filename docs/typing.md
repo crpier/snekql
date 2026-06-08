@@ -30,6 +30,18 @@ fetched_user = await tx.fetch_one(select(User).where(User.email.eq("x")))
 # fetched_user: User[Fetched] | None
 ```
 
+Because `Fetched` is used in string forward references such as
+`Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
+as used. Projects that lint model declarations with Ruff should allow the
+package-root import:
+
+```toml
+[tool.ruff.lint.pyflakes]
+allowed-unused-imports = [
+  "snekql.Fetched",
+]
+```
+
 ## `Col` and `GenCol`
 
 Use `Col[T]` for normal persisted values. The pending and fetched value type is
