@@ -25,7 +25,7 @@ from snekql import (
     insert,
     select,
 )
-from snekql.query import compile_select_sql
+from snekql.sqlite.query import compile_sqlite_select_sql
 from tests.helpers import NULL_LOGGER
 
 
@@ -255,7 +255,7 @@ def select_compilation_requires_explicit_all_or_where() -> None:
         email: User.Col[str] = Text(nullable=False)
 
     with assert_raises(QueryCompilationError):
-        _ = compile_select_sql(select(User))
+        _ = compile_sqlite_select_sql(select(User))
 
 
 @test(mark="fast")
@@ -275,7 +275,7 @@ def select_compilation_parameterizes_filters_limits_and_offsets() -> None:
         .offset(2)
     )
 
-    sql, params = compile_select_sql(query)
+    sql, params = compile_sqlite_select_sql(query)
 
     expected_sql = (
         'SELECT "email", "status" FROM "user" '

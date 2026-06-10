@@ -28,7 +28,7 @@ from snekql import (
     insert,
     select,
 )
-from snekql.query import compile_write_sql
+from snekql.sqlite.query import compile_sqlite_write_sql
 from tests.helpers import NULL_LOGGER
 
 
@@ -48,7 +48,7 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
         Order.status.eq("done"),
     )
 
-    sql, params = compile_write_sql(query)
+    sql, params = compile_sqlite_write_sql(query)
 
     expected_sql = 'DELETE FROM "select" WHERE ("where" != ?) AND ("status" = ?)'
     assert_eq(sql, expected_sql)
@@ -102,9 +102,9 @@ def delete_requires_exactly_one_filter_intent() -> None:
         _ = all_query.where(User.status.eq("disabled"))
 
     with assert_raises(QueryCompilationError):
-        _ = compile_write_sql(base_query)
+        _ = compile_sqlite_write_sql(base_query)
 
-    assert_eq(compile_write_sql(all_query), ('DELETE FROM "user"', ()))
+    assert_eq(compile_sqlite_write_sql(all_query), ('DELETE FROM "user"', ()))
 
 
 @test(mark="medium")

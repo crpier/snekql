@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
-from snekql._model_materialization import (
-    decode_column_value,
-    encode_column_value,
-)
 from snekql._query_dialect import QueryDialect
 from snekql.errors import (
     ModelDeclarationError,
@@ -20,11 +15,9 @@ from snekql.expressions import Assignment, OrderBy, Predicate
 from snekql.model import (
     Model,
     Table,
-    decode_model_row,
     require_model_columns,
     require_model_table_name,
 )
-from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
 from snekql.storage import MISSING, Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
@@ -42,25 +35,6 @@ Ts = TypeVarTuple("Ts")
 
 _BINARY_PREDICATE_CHILD_COUNT = 2
 _UNARY_PREDICATE_CHILD_COUNT = 1
-
-
-def _sqlite_empty_insert_sql(quoted_table: str) -> str:
-    return "INSERT INTO " + quoted_table + " DEFAULT VALUES"
-
-
-def _encode_sqlite_column_value(
-    column: Attr[Any, Any, Any, Any, Any],
-    value: object,
-) -> object:
-    return encode_column_value(column, value, backend="sqlite")
-
-
-_SQLITE_QUERY_DIALECT = QueryDialect(
-    empty_insert_sql=_sqlite_empty_insert_sql,
-    encode_column_value=_encode_sqlite_column_value,
-    placeholder="?",
-    quote_identifier=quote_sqlite_identifier,
-)
 
 
 class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
@@ -776,43 +750,6 @@ def compile_write_sql_for_dialect(
         return _compile_delete_sql(cast("DeleteQuery[Any]", query), dialect)
     msg = "execute requires a write query"
     raise QueryCompilationError(msg)
-
-
-def compile_select_sql(query: AnySelectQuery) -> tuple[str, tuple[object, ...]]:
-    """Compile a select query into parameterized SQLite SQL."""
-
-    return compile_select_sql_for_dialect(query, _SQLITE_QUERY_DIALECT)
-
-
-def compile_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
-    """Compile a write query into parameterized SQLite SQL."""
-
-    return compile_write_sql_for_dialect(query, _SQLITE_QUERY_DIALECT)
-
-
-def materialize_select_row(
-    query: AnySelectQuery,
-    row: Sequence[object],
-) -> object:
-    """Decode one SQLite result row according to a select query."""
-
-    state = query.state
-    if len(row) != len(state.fields):
-        msg = "database row shape did not match select query"
-        raise QueryCompilationError(msg)
-    if state.returns_model:
-        values = {
-            _require_column_name(column): row[index]
-            for index, column in enumerate(state.fields)
-        }
-        return decode_model_row(state.model, values)
-    decoded_values = tuple(
-        decode_column_value(column, row[index], backend="sqlite")
-        for index, column in enumerate(state.fields)
-    )
-    if len(decoded_values) == 1:
-        return decoded_values[0]
-    return decoded_values
 
 
 @overload
