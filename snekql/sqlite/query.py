@@ -11,7 +11,6 @@ from snekql._model_materialization import (
     encode_column_value,
 )
 from snekql._query_dialect import QueryDialect
-from snekql.errors import QueryCompilationError
 from snekql.query import (
     AnySelectQuery,
     compile_select_sql_for_dialect,
@@ -61,9 +60,9 @@ def materialize_sqlite_select_row(
     """Decode one SQLite result row according to a select query."""
 
     state = query.state
-    if len(row) != len(state.fields):
-        msg = "database row shape did not match select query"
-        raise QueryCompilationError(msg)
+    assert len(row) == len(state.fields), (  # noqa: S101
+        "database row shape did not match select query"
+    )
     if state.returns_model:
         values = {
             column.name or "": row[index] for index, column in enumerate(state.fields)
