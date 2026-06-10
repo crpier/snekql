@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import Index, Model, Pending, SchemaError, Text
+from snekql import Fetched, Index, Model, Pending, SchemaError, Text
 from snekql._schema_plan import build_schema_plan
 
 
@@ -14,7 +14,7 @@ from snekql._schema_plan import build_schema_plan
 def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
     """Schema startup derives table names and managed indexes once per model."""
 
-    class User[S = Pending](Model[S, "User[object]"]):
+    class User[S = Pending](Model[S, "User[Fetched]"]):
         """First table model in a schema plan."""
 
         email: User.Col[str] = Text(nullable=False, unique=True)
@@ -22,7 +22,7 @@ def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
 
         __indexes__: ClassVar[list[Index[Any]]] = [Index(status)]
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[object]"]):
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Second table model in a schema plan."""
 
         message: AuditLog.Col[str] = Text(nullable=False)
@@ -41,25 +41,25 @@ def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
 def schema_plan_rejects_duplicate_resolved_names() -> None:
     """Schema startup validates duplicate table and index names in one plan."""
 
-    class First[S = Pending](Model[S, "First[object]"]):
+    class First[S = Pending](Model[S, "First[Fetched]"]):
         """First table model using a duplicate index name."""
 
         email: First.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class Second[S = Pending](Model[S, "Second[object]"]):
+    class Second[S = Pending](Model[S, "Second[Fetched]"]):
         """Second table model using a duplicate index name."""
 
         email: Second.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class DuplicateFirst[S = Pending](Model[S, "DuplicateFirst[object]"]):
+    class DuplicateFirst[S = Pending](Model[S, "DuplicateFirst[Fetched]"]):
         """First table model using a duplicate table name."""
 
         __tablename__ = "duplicate"
         email: DuplicateFirst.Col[str] = Text(nullable=False)
 
-    class DuplicateSecond[S = Pending](Model[S, "DuplicateSecond[object]"]):
+    class DuplicateSecond[S = Pending](Model[S, "DuplicateSecond[Fetched]"]):
         """Second table model using a duplicate table name."""
 
         __tablename__ = "duplicate"

@@ -7,7 +7,7 @@ from typing import cast
 
 from snektest import assert_eq, test
 
-from snekql import Boolean, DateTime, Json, Model, Pending
+from snekql import Boolean, DateTime, Fetched, Json, Model, Pending
 from snekql._model_materialization import decode_model_row, encode_model_row
 
 
@@ -15,7 +15,7 @@ from snekql._model_materialization import decode_model_row, encode_model_row
 def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     """SQLite Pending/Fetched Model conversion is handled by the materializer."""
 
-    class Event[S = Pending](Model[S, "Event[object]"]):
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """SQLite model used by materialization seam tests."""
 
         enabled: Event.Col[bool] = Boolean(nullable=False)
@@ -30,7 +30,7 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     )
     model_class, encoded_row = encode_model_row(pending_event, backend="sqlite")
     fetched_event = cast(
-        "Event[object]",
+        "Event[Fetched]",
         decode_model_row(
             Event,
             {
