@@ -7,8 +7,9 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import Fetched, ModelValidationError, Pending, mariadb
+from snekql import Fetched, Pending, mariadb, select
 from snekql._model_materialization import decode_model_row, encode_model_row
+from snekql.mariadb.query import materialize_mariadb_select_row
 
 
 @test(mark="fast")
@@ -58,16 +59,34 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
 
 
 @test(mark="fast")
-def mariadb_model_materialization_validates_database_row_shape() -> None:
-    """Fetched Model materialization reports missing or extra database columns."""
+def mariadb_model_materialization_asserts_database_row_shape() -> None:
+    """MariaDB model materialization treats row-shape mismatch as invariant failure."""
 
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model used by row-shape checks."""
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
 
-    with assert_raises(ModelValidationError):
+    with assert_raises(AssertionError):
         _ = decode_model_row(Event, {}, backend="mariadb")
 
-    with assert_raises(ModelValidationError):
+    with assert_raises(AssertionError):
         _ = decode_model_row(Event, {"enabled": 1, "extra": 2}, backend="mariadb")
+
+
+@test(mark="fast")
+def mariadb_select_materialization_asserts_database_row_shape() -> None:
+    """MariaDB select materialization treats row-shape mismatch as invariant failure."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """MariaDB model used by row-shape materialization checks."""
+
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    query = select(User.email).all()
+
+    with assert_raises(AssertionError):
+        _ = materialize_mariadb_select_row(query, ())
+
+    with assert_raises(AssertionError):
+        _ = materialize_mariadb_select_row(query, ("a@example.com", "extra"))

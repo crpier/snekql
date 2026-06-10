@@ -797,9 +797,9 @@ def materialize_select_row(
     """Decode one SQLite result row according to a select query."""
 
     state = query.state
-    if len(row) != len(state.fields):
-        msg = "database row shape did not match select query"
-        raise QueryCompilationError(msg)
+    assert len(row) == len(state.fields), (  # noqa: S101
+        "database row shape did not match select query"
+    )
     if state.returns_model:
         values = {
             _require_column_name(column): row[index]

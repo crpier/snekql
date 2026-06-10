@@ -25,7 +25,7 @@ from snekql import (
     insert,
     select,
 )
-from snekql.query import compile_select_sql
+from snekql.query import compile_select_sql, materialize_select_row
 from tests.helpers import NULL_LOGGER
 
 
@@ -243,6 +243,24 @@ async def fetch_all_validates_decoded_database_values() -> None:
                     _ = await tx.fetch_all(select(FeatureFlag).all())
         finally:
             await database.close()
+
+
+@test(mark="fast")
+def sqlite_select_materialization_asserts_database_row_shape() -> None:
+    """SQLite select materialization treats row-shape mismatch as invariant failure."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model used by row-shape materialization checks."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    query = select(User.email).all()
+
+    with assert_raises(AssertionError):
+        _ = materialize_select_row(query, ())
+
+    with assert_raises(AssertionError):
+        _ = materialize_select_row(query, ("a@example.com", "extra"))
 
 
 @test(mark="fast")

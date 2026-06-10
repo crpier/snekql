@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import cast
 
-from snektest import assert_eq, test
+from snektest import assert_eq, assert_raises, test
 
 from snekql import Boolean, DateTime, Fetched, Json, Model, Pending
 from snekql._model_materialization import decode_model_row, encode_model_row
@@ -56,3 +56,19 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
         fetched_event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)
     )
     assert_eq(fetched_event.payload, {"ok": True})
+
+
+@test(mark="fast")
+def sqlite_model_materialization_asserts_database_row_shape() -> None:
+    """SQLite model materialization treats row-shape mismatch as invariant failure."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """SQLite model used by row-shape checks."""
+
+        enabled: Event.Col[bool] = Boolean(nullable=False)
+
+    with assert_raises(AssertionError):
+        _ = decode_model_row(Event, {}, backend="sqlite")
+
+    with assert_raises(AssertionError):
+        _ = decode_model_row(Event, {"enabled": 1, "extra": 2}, backend="sqlite")
