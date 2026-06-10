@@ -9,7 +9,7 @@ The layer that declares relational data contracts and builds typed SQL-shaped op
 _Avoid_: ORM, repository
 
 **Query Runtime**:
-The layer that executes built queries against a database and manages database-backed execution concerns.
+The layer that executes built queries against a database and owns connection acquisition, transaction lifecycle, and result materialization.
 _Avoid_: ORM session, persistence layer
 
 **Materialization**:
@@ -25,19 +25,27 @@ A database transaction exposed directly through the library as the unit within w
 _Avoid_: Unit of Work, session
 
 **Table Model**:
-A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's schema model.
+A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata.
 _Avoid_: Entity, ORM model
 
 **Dialect**:
-The database-specific SQL and schema behavior targeted by compilation and verification.
+The database-specific SQL compilation behavior — parameter placeholders, identifier quoting, and value encoding — targeted by the Query Builder when compiling queries.
 _Avoid_: Driver, runtime
+
+**Schema Drift**:
+A mismatch between a Table Model's declared schema and the live database schema, discovered during the Database's schema startup verification.
+_Avoid_: migration, schema evolution
+
+**Schema Policy**:
+The Database initialization choice of how Schema Drift is handled at startup: strict raises, warn logs and continues.
+_Avoid_: migration strategy, runtime toggle
 
 **Backend Namespace**:
 The public database-family namespace that owns model bases, column declarations, and runtime configuration for one database family.
 _Avoid_: generic portability layer, driver module
 
 **Backend Runtime Adapter**:
-The internal adapter that lets the Query Runtime acquire connections, control transactions, compile SQL, and materialize rows for one backend.
+The internal adapter that lets the Query Runtime acquire connections, compile SQL, and materialize rows for one backend; transaction control runs on the connections it yields.
 _Avoid_: ORM session, universal dialect abstraction
 
 **Temporary MariaDB Test Server**:
@@ -55,6 +63,14 @@ _Avoid_: authentication policy, network service
 **Server Default**:
 A database-supplied column value that is filled in by the database when an insert omits that column.
 _Avoid_: Python default, constructor default
+
+**Generated Column**:
+A column whose value the database produces (auto-increment or Server Default), declared with `GenCol`: its value may be Missing on a Pending Model but is always present on a Fetched Model.
+_Avoid_: computed property, Python default
+
+**Missing**:
+The sentinel marking a Generated Column value that is not available yet on a Pending Model; inserts omit Missing values so the database can fill them.
+_Avoid_: None, NULL, empty value
 
 **Pending Model**:
 A model instance constructed by application code for write-side query building.
