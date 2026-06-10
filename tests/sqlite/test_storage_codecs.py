@@ -24,7 +24,7 @@ from snekql import (
     Real,
     Text,
 )
-from snekql.model import decode_model_row, encode_model_row
+from snekql._model_materialization import decode_model_row, encode_model_row
 
 
 @test()
@@ -74,15 +74,15 @@ def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
     enabled = FeatureFlag(enabled=True)
     disabled = cast(
         "FeatureFlag[Fetched]",
-        decode_model_row(FeatureFlag, {"enabled": 0}),
+        decode_model_row(FeatureFlag, {"enabled": 0}, backend="sqlite"),
     )
-    _, encoded_enabled = encode_model_row(enabled)
+    _, encoded_enabled = encode_model_row(enabled, backend="sqlite")
 
     assert_eq(encoded_enabled, {"enabled": 1})
     assert_false(disabled.enabled)
 
     with assert_raises(ModelValidationError):
-        _ = decode_model_row(FeatureFlag, {"enabled": 2})
+        _ = decode_model_row(FeatureFlag, {"enabled": 2}, backend="sqlite")
 
 
 @test()
@@ -97,9 +97,11 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
     event = Event(payload={"kind": "created", "count": 2})
     fetched = cast(
         "Event[Fetched]",
-        decode_model_row(Event, {"payload": '{"kind":"created","count":2}'}),
+        decode_model_row(
+            Event, {"payload": '{"kind":"created","count":2}'}, backend="sqlite"
+        ),
     )
-    _, encoded_event = encode_model_row(event)
+    _, encoded_event = encode_model_row(event, backend="sqlite")
 
     assert_eq(encoded_event, {"payload": '{"kind":"created","count":2}'})
     assert_eq(fetched.payload, {"kind": "created", "count": 2})
@@ -108,7 +110,7 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
         _ = Event(payload={"bad": {object()}})
 
     with assert_raises(ModelValidationError):
-        _ = decode_model_row(Event, {"payload": "not json"})
+        _ = decode_model_row(Event, {"payload": "not json"}, backend="sqlite")
 
 
 @test()
@@ -125,9 +127,11 @@ def datetime_values_are_utc_millisecond_text() -> None:
     audit_log = AuditLog(created_at=source)
     fetched = cast(
         "AuditLog[Fetched]",
-        decode_model_row(AuditLog, {"created_at": "2026-05-31T06:30:01.987Z"}),
+        decode_model_row(
+            AuditLog, {"created_at": "2026-05-31T06:30:01.987Z"}, backend="sqlite"
+        ),
     )
-    _, encoded_audit_log = encode_model_row(audit_log)
+    _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
 
     expected = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
     assert_eq(audit_log.created_at, expected)

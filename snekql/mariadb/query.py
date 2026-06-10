@@ -5,11 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from snekql._model_materialization import (
-    decode_column_value,
-    decode_model_row,
-    encode_column_value,
-)
+from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb_identifier
 from snekql.query import (
@@ -28,7 +24,7 @@ def _encode_mariadb_column_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
-    return encode_column_value(column, value, backend="mariadb")
+    return column.encode(value, backend="mariadb")
 
 
 _MARIADB_QUERY_DIALECT = QueryDialect(
@@ -69,7 +65,7 @@ def materialize_mariadb_select_row(
         }
         return decode_model_row(state.model, values, backend="mariadb")
     decoded_values = tuple(
-        decode_column_value(column, row[index], backend="mariadb")
+        column.decode(row[index], backend="mariadb")
         for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:

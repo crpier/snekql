@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 from snekql.errors import ModelDeclarationError, QueryConstructionError
-from snekql.storage import MISSING, Attr
-
-type StorageBackend = Literal["mariadb", "sqlite"]
+from snekql.storage import MISSING, Attr, StorageBackend
 
 
 def _require_model_columns(
@@ -31,32 +29,6 @@ def _require_insert_model(row: object) -> type[object]:
     return model_class
 
 
-def encode_column_value(
-    column: Attr[Any, Any, Any, Any, Any],
-    value: object,
-    *,
-    backend: StorageBackend,
-) -> object:
-    """Encode one logical model value through a backend-specific column codec."""
-
-    if backend == "mariadb":
-        return column.encode_mariadb(value)
-    return column.encode_sqlite(value)
-
-
-def decode_column_value(
-    column: Attr[Any, Any, Any, Any, Any],
-    value: object,
-    *,
-    backend: StorageBackend,
-) -> object:
-    """Decode one database value through a backend-specific column codec."""
-
-    if backend == "mariadb":
-        return column.decode_mariadb(value)
-    return column.decode_sqlite(value)
-
-
 def encode_model_row(
     row: object,
     *,
@@ -70,7 +42,7 @@ def encode_model_row(
         value = getattr(row, name)
         if value is MISSING:
             continue
-        encoded_row[name] = encode_column_value(column, value, backend=backend)
+        encoded_row[name] = column.encode(value, backend=backend)
     return model_class, encoded_row
 
 
@@ -94,11 +66,7 @@ def decode_model_row(
         assert name in remaining_values, (  # noqa: S101
             f"missing database value for {name!r}"
         )
-        value = decode_column_value(
-            column,
-            remaining_values.pop(name),
-            backend=backend,
-        )
+        value = column.decode(remaining_values.pop(name), backend=backend)
         setattr(model_instance, name, value)
     assert not remaining_values, (  # noqa: S101
         f"unknown database values: {', '.join(sorted(remaining_values))}"

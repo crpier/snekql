@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from types import EllipsisType
 from typing import (
     Any,
@@ -33,10 +32,11 @@ from snekql.storage import (
     Json,
     Missing,
     Real,
+    StorageBackend,
     Text,
 )
 
-type BackendFamily = Literal["mariadb", "sqlite"]
+type BackendFamily = StorageBackend
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound="Table[Any]")
@@ -488,18 +488,6 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
         state = storage.get("_snekql_state", "Pending")
         return cast("str", state)
 
-    def _snekql_to_row(self) -> dict[str, object]:
-        """Encode this model's present values for SQLite storage."""
-
-        _, row = encode_model_row(self, backend="sqlite")
-        return row
-
-    @classmethod
-    def _snekql_from_row(cls, row: Mapping[str, object]) -> Self:
-        """Materialize a fetched model from SQLite storage values."""
-
-        return cast("Self", decode_model_row(cls, row, backend="sqlite"))
-
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:
         return cast("type[ReadModelT]", cls)
@@ -535,64 +523,3 @@ def require_model_backend(model: type[Table[Any]]) -> BackendFamily:
         msg = "schema setup requires snekql table models"
         raise ModelDeclarationError(msg)
     return cast("BackendFamily", backend)
-
-
-def encode_column_value(
-    column: Attr[Any, Any, Any, Any, Any],
-    value: object,
-    *,
-    backend: BackendFamily = "sqlite",
-) -> object:
-    """Encode one logical model value through a backend-specific column codec."""
-
-    from snekql._model_materialization import (  # noqa: PLC0415
-        encode_column_value as encode_value,
-    )
-
-    return encode_value(column, value, backend=backend)
-
-
-def decode_column_value(
-    column: Attr[Any, Any, Any, Any, Any],
-    value: object,
-    *,
-    backend: BackendFamily = "sqlite",
-) -> object:
-    """Decode one database value through a backend-specific column codec."""
-
-    from snekql._model_materialization import (  # noqa: PLC0415
-        decode_column_value as decode_value,
-    )
-
-    return decode_value(column, value, backend=backend)
-
-
-def decode_model_row(
-    model: type[Table[Any]],
-    row: Mapping[str, object],
-    *,
-    backend: BackendFamily = "sqlite",
-) -> Table[Any]:
-    """Decode backend row values into a fetched table model instance."""
-
-    from snekql._model_materialization import (  # noqa: PLC0415
-        decode_model_row as decode_row,
-    )
-
-    return cast("Table[Any]", decode_row(model, row, backend=backend))
-
-
-def encode_model_row(
-    row: object,
-    *,
-    backend: BackendFamily = "sqlite",
-) -> tuple[type[Table[Any]], dict[str, object]]:
-    """Encode a pending model into table metadata and backend row values."""
-
-    from snekql._model_materialization import (  # noqa: PLC0415
-        encode_model_row as encode_row,
-    )
-
-    return cast(
-        "tuple[type[Table[Any]], dict[str, object]]", encode_row(row, backend=backend)
-    )

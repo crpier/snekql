@@ -40,13 +40,16 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
 
     timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
 
-    assert_eq(Event.flag.encode_mariadb(True), 1)
-    assert_eq(Event.flag.decode_mariadb(0), False)
-    assert_eq(Event.payload.encode_mariadb({"ok": True}), '{"ok":true}')
-    assert_eq(Event.payload.decode_mariadb('{"ok":true}'), {"ok": True})
-    assert_eq(Event.happened_at.encode_mariadb(timestamp), "2026-01-02 03:04:05.678")
+    assert_eq(Event.flag.encode(True, backend="mariadb"), 1)
+    assert_eq(Event.flag.decode(0, backend="mariadb"), False)
+    assert_eq(Event.payload.encode({"ok": True}, backend="mariadb"), '{"ok":true}')
+    assert_eq(Event.payload.decode('{"ok":true}', backend="mariadb"), {"ok": True})
     assert_eq(
-        Event.happened_at.decode_mariadb("2026-01-02 03:04:05.678"),
+        Event.happened_at.encode(timestamp, backend="mariadb"),
+        "2026-01-02 03:04:05.678",
+    )
+    assert_eq(
+        Event.happened_at.decode("2026-01-02 03:04:05.678", backend="mariadb"),
         datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
     )
 

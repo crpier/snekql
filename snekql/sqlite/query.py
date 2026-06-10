@@ -5,11 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from snekql._model_materialization import (
-    decode_column_value,
-    decode_model_row,
-    encode_column_value,
-)
+from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
 from snekql.query import (
     AnySelectQuery,
@@ -28,7 +24,7 @@ def _encode_sqlite_column_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
-    return encode_column_value(column, value, backend="sqlite")
+    return column.encode(value, backend="sqlite")
 
 
 _SQLITE_QUERY_DIALECT = QueryDialect(
@@ -69,7 +65,7 @@ def materialize_sqlite_select_row(
         }
         return decode_model_row(state.model, values, backend="sqlite")
     decoded_values = tuple(
-        decode_column_value(column, row[index], backend="sqlite")
+        column.decode(row[index], backend="sqlite")
         for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
