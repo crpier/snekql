@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import Pending, insert, mariadb, select, update
+from snekql import Fetched, Pending, insert, mariadb, select, update
 from snekql.mariadb.query import compile_mariadb_select_sql, compile_mariadb_write_sql
 
 
@@ -12,7 +12,7 @@ from snekql.mariadb.query import compile_mariadb_select_sql, compile_mariadb_wri
 def mariadb_select_compilation_quotes_identifiers_with_backticks() -> None:
     """MariaDB select SQL quotes table and column identifiers with backticks."""
 
-    class KeywordModel[S = Pending](mariadb.Model[S, "KeywordModel[object]"]):
+    class KeywordModel[S = Pending](mariadb.Model[S, "KeywordModel[Fetched]"]):
         """Model using SQL keywords to make identifier quoting observable."""
 
         __tablename__ = "select"
@@ -30,7 +30,7 @@ def mariadb_select_compilation_quotes_identifiers_with_backticks() -> None:
 def mariadb_select_compilation_uses_percent_s_placeholders() -> None:
     """MariaDB select predicates use driver-style `%s` placeholders."""
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile one equality predicate."""
 
         status: User.Col[str] = mariadb.Text(nullable=False)
@@ -47,7 +47,7 @@ def mariadb_select_compilation_uses_percent_s_placeholders() -> None:
 def mariadb_select_compilation_renders_in_predicates() -> None:
     """MariaDB select SQL expands IN predicates into one placeholder per value."""
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile an IN predicate."""
 
         status: User.Col[str] = mariadb.Text(nullable=False)
@@ -64,7 +64,7 @@ def mariadb_select_compilation_renders_in_predicates() -> None:
 def mariadb_select_compilation_renders_result_windowing() -> None:
     """MariaDB select SQL renders ordering and pagination clauses."""
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile result-windowing clauses."""
 
         email: User.Col[str] = mariadb.Text(nullable=False)
@@ -84,7 +84,7 @@ def mariadb_select_compilation_renders_result_windowing() -> None:
 def mariadb_update_compilation_renders_predicated_assignments() -> None:
     """MariaDB update SQL renders SET assignments with a WHERE predicate."""
 
-    class User[S = Pending](mariadb.Model[S, "User[object]"]):
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile one update statement."""
 
         enabled: User.Col[bool] = mariadb.Boolean(nullable=False)
@@ -102,7 +102,7 @@ def mariadb_update_compilation_renders_predicated_assignments() -> None:
 def mariadb_insert_compilation_encodes_boolean_values_with_mariadb_codecs() -> None:
     """MariaDB insert SQL delegates parameter encoding to MariaDB column codecs."""
 
-    class FeatureFlag[S = Pending](mariadb.Model[S, "FeatureFlag[object]"]):
+    class FeatureFlag[S = Pending](mariadb.Model[S, "FeatureFlag[Fetched]"]):
         """Model with a boolean column whose encoded value differs from Python."""
 
         enabled: FeatureFlag.Col[bool] = mariadb.Boolean(nullable=False)

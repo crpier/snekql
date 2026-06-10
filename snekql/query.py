@@ -129,6 +129,7 @@ class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]]:
         return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
 
     @validate_boundary(error_type=QueryConstructionError)
+    # TODO: docstrings for these functions
     def limit(self, value: NonNegativeInt) -> Self:
         state = _select_limit(self.state, value)
         return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))

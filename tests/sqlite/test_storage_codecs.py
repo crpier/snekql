@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
@@ -32,11 +31,9 @@ from snekql.model import decode_model_row, encode_model_row
 def v1_exposes_only_sqlite_first_storage_classes() -> None:
     """Text has no length option and Varchar is not a v1 storage class."""
 
-    text_constructor = cast("Callable[..., object]", Text)
-
     assert_false(hasattr(snekql, "Varchar"))
     with assert_raises(TypeError):
-        _ = text_constructor(length=255)
+        _ = Text()(length=255)
 
 
 @test()

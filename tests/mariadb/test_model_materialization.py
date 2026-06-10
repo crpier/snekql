@@ -7,7 +7,7 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import ModelValidationError, Pending, mariadb
+from snekql import Fetched, ModelValidationError, Pending, mariadb
 from snekql._model_materialization import decode_model_row, encode_model_row
 
 
@@ -15,22 +15,21 @@ from snekql._model_materialization import decode_model_row, encode_model_row
 def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
     """MariaDB Pending/Fetched Model conversion is handled by the materializer."""
 
-    class Event[S = Pending](mariadb.Model[S, "Event[object]"]):
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model used by materialization seam tests."""
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
         payload: Event.Col[dict[str, object]] = mariadb.Json(nullable=False)
 
-    timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     pending_event = Event(
         enabled=True,
-        happened_at=timestamp,
+        happened_at=datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC),
         payload={"ok": True},
     )
     model_class, encoded_row = encode_model_row(pending_event, backend="mariadb")
     fetched_event = cast(
-        "Event[object]",
+        "Event[Fetched]",
         decode_model_row(
             Event,
             {
@@ -62,7 +61,7 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
 def mariadb_model_materialization_validates_database_row_shape() -> None:
     """Fetched Model materialization reports missing or extra database columns."""
 
-    class Event[S = Pending](mariadb.Model[S, "Event[object]"]):
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model used by row-shape checks."""
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)

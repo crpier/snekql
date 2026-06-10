@@ -12,6 +12,10 @@ _Avoid_: ORM, repository
 The layer that executes built queries against a database and manages database-backed execution concerns.
 _Avoid_: ORM session, persistence layer
 
+**Materialization**:
+The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Fetched Model; for scalar or tuple selects, it produces decoded Python values.
+_Avoid_: hydration, insert encoding, write compilation
+
 **Database**:
 An initialized snekql runtime service that owns database connectivity, schema startup work, and transaction entry.
 _Avoid_: Pool, uninitialized database config
@@ -53,9 +57,9 @@ A database-supplied column value that is filled in by the database when an inser
 _Avoid_: Python default, constructor default
 
 **Pending Model**:
-A model instance constructed by application code before it has been materialized from the database.
-_Avoid_: Draft, unsaved entity
+A model instance constructed by application code for write-side query building.
+_Avoid_: Draft, unsaved entity, materialized model
 
 **Fetched Model**:
-A model instance materialized from database query results by the Query Runtime.
+A Table Model instance produced by materializing a table-model select result.
 _Avoid_: Loaded, read model, entity
