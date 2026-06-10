@@ -5,11 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Literal, cast
 
-from snekql.errors import (
-    ModelDeclarationError,
-    ModelValidationError,
-    QueryConstructionError,
-)
+from snekql.errors import ModelDeclarationError, QueryConstructionError
 from snekql.storage import MISSING, Attr
 
 type StorageBackend = Literal["mariadb", "sqlite"]
@@ -95,18 +91,17 @@ def decode_model_row(
     storage["_snekql_frozen"] = False
     storage["_snekql_state"] = "Fetched"
     for name, column in _require_model_columns(model).items():
-        if name not in remaining_values:
-            msg = f"missing database value for {name!r}"
-            raise ModelValidationError(msg)
+        assert name in remaining_values, (  # noqa: S101
+            f"missing database value for {name!r}"
+        )
         value = decode_column_value(
             column,
             remaining_values.pop(name),
             backend=backend,
         )
         setattr(model_instance, name, value)
-    if remaining_values:
-        names = ", ".join(sorted(remaining_values))
-        msg = f"unknown database values: {names}"
-        raise ModelValidationError(msg)
+    assert not remaining_values, (  # noqa: S101
+        f"unknown database values: {', '.join(sorted(remaining_values))}"
+    )
     storage["_snekql_frozen"] = True
     return model_instance
