@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, cast
 
-from snekql._schema_plan import (
-    PlannedColumn,
-    PlannedModel,
-    build_schema_plan,
-)
-from snekql._schema_plan import (
-    validate_schema_policy as validate_planned_schema_policy,
-)
-from snekql.errors import SchemaError, SchemaVerificationError
+from snekql._schema_plan import PlannedColumn, PlannedModel
+from snekql._schema_startup import initialize_schema
+from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table
@@ -263,70 +258,49 @@ async def _fetch_existing_index_signatures(
     return indexes
 
 
-async def _report_schema_drift(
-    schema_policy: SchemaPolicy,
-    table_name: str,
-    logger: ResolvedStructuredLogger,
-) -> None:
-    message = f"schema drift detected for table {table_name!r}"
-    if schema_policy == "strict":
-        raise SchemaVerificationError(message)
-    logger.warning(
-        "schema drift detected",
-        table_name=table_name,
-    )
+class MariaDBSchemaBackend:
+    """Schema backend adapter answering the neutral startup flow for MariaDB."""
 
+    def __init__(self, connection: object) -> None:
+        self.connection: object = connection
 
-async def _verify_model_schema(
-    connection: object,
-    planned_model: PlannedModel,
-    schema_policy: SchemaPolicy,
-    logger: ResolvedStructuredLogger,
-) -> None:
-    expected_columns = [
-        _expected_column_signature(planned_column)
-        for planned_column in planned_model.columns
-    ]
-    existing_columns = await _fetch_existing_column_signatures(
-        connection,
-        planned_model.table_name,
-    )
-    if existing_columns != expected_columns:
-        await _report_schema_drift(
-            schema_policy, planned_model.table_name, logger=logger
+    @asynccontextmanager
+    async def startup_transaction(self) -> AsyncGenerator[None]:
+        """MariaDB DDL is not transactional; startup runs without one."""
+
+        yield
+
+    async def table_exists(self, table_name: str) -> bool:
+        return await _table_exists(self.connection, table_name)
+
+    async def table_matches(self, planned_model: PlannedModel) -> bool:
+        expected_columns = [
+            _expected_column_signature(planned_column)
+            for planned_column in planned_model.columns
+        ]
+        existing_columns = await _fetch_existing_column_signatures(
+            self.connection,
+            planned_model.table_name,
         )
-        return
-    expected_indexes = sorted(
-        _expected_index_signatures(planned_model), key=lambda index: index.name
-    )
-    existing_indexes = await _fetch_existing_index_signatures(
-        connection,
-        planned_model.table_name,
-    )
-    if existing_indexes != expected_indexes:
-        await _report_schema_drift(
-            schema_policy, planned_model.table_name, logger=logger
-        )
-        return
-    logger.debug("schema table verified", table_name=planned_model.table_name)
-    logger.debug("schema indexes verified", table_name=planned_model.table_name)
+        return existing_columns == expected_columns
 
-
-async def _create_model_schema(
-    connection: object,
-    planned_model: PlannedModel,
-    logger: ResolvedStructuredLogger,
-) -> None:
-    await _execute(connection, _compile_create_table_sql(planned_model))
-    logger.debug("schema table created", table_name=planned_model.table_name)
-    for index in planned_model.indexes:
-        sql = _compile_create_index_sql(planned_model.table_name, index)
-        await _execute(connection, sql)
-        logger.debug(
-            "schema index created",
-            table_name=planned_model.table_name,
-            sql=sql,
+    async def indexes_match(self, planned_model: PlannedModel) -> bool:
+        expected_indexes = sorted(
+            _expected_index_signatures(planned_model), key=lambda index: index.name
         )
+        existing_indexes = await _fetch_existing_index_signatures(
+            self.connection,
+            planned_model.table_name,
+        )
+        return existing_indexes == expected_indexes
+
+    async def create_table(self, planned_model: PlannedModel) -> None:
+        await _execute(self.connection, _compile_create_table_sql(planned_model))
+
+    async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
+        sql = _compile_create_index_sql(table_name, index)
+        await _execute(self.connection, sql)
+        return sql
 
 
 async def initialize_mariadb_schema(
@@ -337,19 +311,9 @@ async def initialize_mariadb_schema(
 ) -> None:
     """Create or verify all configured MariaDB tables."""
 
-    validate_planned_schema_policy(schema_policy)
-    plan = build_schema_plan(models)
-    if not plan.models:
-        return
-    logger.debug("schema startup started", model_count=len(plan.models))
-    for planned_model in plan.models:
-        if await _table_exists(connection, planned_model.table_name):
-            await _verify_model_schema(
-                connection,
-                planned_model,
-                schema_policy,
-                logger,
-            )
-        else:
-            await _create_model_schema(connection, planned_model, logger)
-    logger.debug("schema startup completed", model_count=len(plan.models))
+    await initialize_schema(
+        MariaDBSchemaBackend(connection),
+        models,
+        schema_policy,
+        logger=logger,
+    )

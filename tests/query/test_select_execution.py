@@ -25,7 +25,10 @@ from snekql import (
     insert,
     select,
 )
-from snekql.query import compile_select_sql, materialize_select_row
+from snekql.sqlite.query import (
+    compile_sqlite_select_sql,
+    materialize_sqlite_select_row,
+)
 from tests.helpers import NULL_LOGGER
 
 
@@ -257,10 +260,10 @@ def sqlite_select_materialization_asserts_database_row_shape() -> None:
     query = select(User.email).all()
 
     with assert_raises(AssertionError):
-        _ = materialize_select_row(query, ())
+        _ = materialize_sqlite_select_row(query, ())
 
     with assert_raises(AssertionError):
-        _ = materialize_select_row(query, ("a@example.com", "extra"))
+        _ = materialize_sqlite_select_row(query, ("a@example.com", "extra"))
 
 
 @test(mark="fast")
@@ -273,7 +276,7 @@ def select_compilation_requires_explicit_all_or_where() -> None:
         email: User.Col[str] = Text(nullable=False)
 
     with assert_raises(QueryCompilationError):
-        _ = compile_select_sql(select(User))
+        _ = compile_sqlite_select_sql(select(User))
 
 
 @test(mark="fast")
@@ -293,7 +296,7 @@ def select_compilation_parameterizes_filters_limits_and_offsets() -> None:
         .offset(2)
     )
 
-    sql, params = compile_select_sql(query)
+    sql, params = compile_sqlite_select_sql(query)
 
     expected_sql = (
         'SELECT "email", "status" FROM "user" '

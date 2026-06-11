@@ -19,6 +19,7 @@ from snekql.errors import (
 from snekql.expressions import Assignment, OrderBy, Predicate
 
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+type StorageBackend = Literal["mariadb", "sqlite"]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -360,31 +361,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             return self.default_factory()
         return self.default
 
-    def decode_sqlite(self, value: object) -> object:
-        """Decode a SQLite value to its logical Python value."""
-
-        return self._decode_backend_value(value, backend="SQLite")
-
-    def decode_mariadb(self, value: object) -> object:
-        """Decode a MariaDB value to its logical Python value."""
-
-        return self._decode_backend_value(value, backend="MariaDB")
-
-    def encode_sqlite(self, value: object) -> object:
-        """Encode a logical Python value for SQLite storage."""
-
-        return self._encode_backend_value(value, backend="SQLite")
-
-    def encode_mariadb(self, value: object) -> object:
-        """Encode a logical Python value for MariaDB storage."""
-
-        return self._encode_backend_value(value, backend="MariaDB")
-
-    def _decode_backend_value(self, value: object, *, backend: str) -> object:
-        """Decode database values using backend-specific storage codecs."""
+    def decode(self, value: object, *, backend: StorageBackend) -> object:
+        """Decode a database value through this column's backend storage codec."""
 
         try:
-            if backend == "MariaDB":
+            if backend == "mariadb":
                 decoded_value = self._decode_mariadb(value)
             else:
                 decoded_value = self._decode_sqlite(value)
@@ -397,14 +378,14 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
                 msg,
             ) from error
 
-    def _encode_backend_value(self, value: object, *, backend: str) -> object:
-        """Encode model values using backend-specific storage codecs."""
+    def encode(self, value: object, *, backend: StorageBackend) -> object:
+        """Encode a logical Python value through this column's backend codec."""
 
         try:
             logical_value = self._coerce_logical_value(value, fetched=False)
             if logical_value is MISSING:
                 return MISSING
-            if backend == "MariaDB":
+            if backend == "mariadb":
                 return self._encode_mariadb(logical_value)
             return self._encode_sqlite(logical_value)
         except SnekqlError:

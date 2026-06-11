@@ -14,16 +14,17 @@ from snekql._pool import (
     normalize_sqlite_database,
     open_sqlite_connection,
 )
+from snekql._schema_startup import validate_schema_models, validate_schema_policy
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
-from snekql.query import AnySelectQuery, compile_select_sql, compile_write_sql
-from snekql.query import materialize_select_row as materialize_sqlite_select_row
-from snekql.schema import (
-    initialize_sqlite_schema,
-    validate_schema_models,
-    validate_schema_policy,
-)
+from snekql.query import AnySelectQuery
 from snekql.sqlite.config import Config
+from snekql.sqlite.query import (
+    compile_sqlite_select_sql,
+    compile_sqlite_write_sql,
+    materialize_sqlite_select_row,
+)
+from snekql.sqlite.schema import initialize_sqlite_schema
 from snekql.storage import SchemaPolicy
 from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
@@ -121,10 +122,10 @@ class SQLiteRuntime:
         self,
         query: AnySelectQuery,
     ) -> tuple[str, tuple[object, ...]]:
-        return compile_select_sql(query)
+        return compile_sqlite_select_sql(query)
 
     def compile_write_sql(self, query: object) -> tuple[str, tuple[object, ...]]:
-        return compile_write_sql(query)
+        return compile_sqlite_write_sql(query)
 
     def materialize_select_row(
         self,

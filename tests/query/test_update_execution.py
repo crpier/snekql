@@ -20,7 +20,7 @@ from snekql import (
     select,
     update,
 )
-from snekql.query import compile_write_sql
+from snekql.sqlite.query import compile_sqlite_write_sql
 from tests.helpers import NULL_LOGGER
 
 
@@ -44,7 +44,7 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
         .where(Order.where.ne("old"))
     )
 
-    sql, params = compile_write_sql(query)
+    sql, params = compile_sqlite_write_sql(query)
 
     expected_sql = 'UPDATE "select" SET "where" = ?, "status" = ? WHERE ("where" != ?)'
     assert_eq(sql, expected_sql)

@@ -23,7 +23,7 @@ from snekql import (
     Text,
     sqlite,
 )
-from snekql.schema import initialize_sqlite_schema
+from snekql.sqlite.schema import initialize_sqlite_schema
 from tests.helpers import NULL_LOGGER
 
 
