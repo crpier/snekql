@@ -19,14 +19,17 @@ from typing import (
 
 import anyio
 
-from snekql._runtime_selection import resolve_runtime_selection
+from snekql._runtime_selection import (
+    RuntimeConfig,
+    resolve_runtime_config,
+    validate_model_backends,
+)
 from snekql.errors import (
     DatabaseRuntimeError,
     ExecutionError,
     QueryCompilationError,
     TransactionClosedError,
 )
-from snekql.mariadb.config import Config as MariaDBConfig
 from snekql.model import (
     BackendFamily,
     Table,
@@ -42,7 +45,6 @@ from snekql.query import (
     SelectValueQuery,
     UpdateQuery,
 )
-from snekql.sqlite.config import Config as SQLiteConfig
 from snekql.storage import SchemaPolicy
 from snekql.structured_logging import (
     ResolvedStructuredLogger,
@@ -399,18 +401,7 @@ class Database:
     @classmethod
     async def initialize(
         cls,
-        backend: SQLiteConfig,
-        *,
-        logger: StructuredLogger,
-        models: Sequence[type[Table[Any]]] = (),
-        schema_policy: SchemaPolicy = "strict",
-    ) -> Self: ...
-
-    @overload
-    @classmethod
-    async def initialize(
-        cls,
-        backend: MariaDBConfig,
+        backend: RuntimeConfig,
         *,
         logger: StructuredLogger,
         models: Sequence[type[Table[Any]]] = (),
@@ -446,15 +437,14 @@ class Database:
 
         structured_logger = resolve_structured_logger(logger=logger)
         try:
-            runtime_selection = resolve_runtime_selection(
+            runtime_config = resolve_runtime_config(
                 backend=backend,
                 database=database,
                 pool_size=pool_size,
                 acquire_timeout=acquire_timeout,
             )
-            runtime_config = runtime_selection.config
-            backend_family = runtime_selection.backend_family
-            runtime_selection.validate_model_backends(models)
+            backend_family = runtime_config.backend_family
+            validate_model_backends(backend_family, models)
             table_names = tuple(require_model_table_name(model) for model in models)
             structured_logger.info(
                 "database initialization started",
@@ -471,7 +461,7 @@ class Database:
             )
             runtime = cast(
                 "RuntimeBackend",
-                await runtime_selection.initialize_runtime(
+                await runtime_config.initialize_runtime(
                     models,
                     schema_policy,
                     logger=structured_logger,

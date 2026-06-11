@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from snekql.model import Table
+    from snekql.storage import SchemaPolicy
+    from snekql.structured_logging import ResolvedStructuredLogger
 
 
 def _resolve_pool_size(
@@ -60,3 +68,36 @@ class Config:
         )
         pool_size = _resolve_pool_size(self.database, self.pool_size)
         object.__setattr__(self, "pool_size", pool_size)
+
+    @property
+    def backend_family(self) -> Literal["sqlite"]:
+        """Identify the backend family this config initializes."""
+
+        return "sqlite"
+
+    async def initialize_runtime(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+        *,
+        logger: ResolvedStructuredLogger,
+    ) -> object:
+        """Import and initialize the SQLite Backend Runtime Adapter lazily."""
+
+        try:
+            runtime_module = import_module("snekql.sqlite.runtime")
+        except ModuleNotFoundError as error:
+            if error.name == "aiosqlite":
+                msg = (
+                    "SQLite runtime requires the aiosqlite extra; "
+                    "install with snekql[aiosqlite]"
+                )
+                raise DatabaseRuntimeError(msg) from error
+            raise
+
+        return await cast("Any", runtime_module).initialize_runtime(
+            self,
+            models,
+            schema_policy,
+            logger=logger,
+        )
