@@ -78,110 +78,66 @@ class _DeleteState:
     predicates: tuple[Predicate[Any], ...] = ()
 
 
-class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]]:
+class _FluentSelectQuery[FluentOwnerT: Table[Any]]:
+    """Shared fluent surface over immutable select state.
+
+    The subclasses only add the generic read shape promised to fetch
+    overloads; every state transition is defined once here.
+    """
+
+    state: _SelectState
+
+    def __init__(self, state: _SelectState | None = None) -> None:
+        if state is None:
+            state = _empty_select_state()
+        self.state = state
+
+    def _replace_state(self, state: _SelectState) -> Self:
+        return type(self)(state)
+
+    def all(self) -> Self:
+        """Select every row explicitly instead of providing predicates."""
+
+        state = _select_all(self.state)
+        if state is self.state:
+            return self
+        return self._replace_state(state)
+
+    def where(self, *predicates: Predicate[FluentOwnerT]) -> Self:
+        """Filter selected rows by AND-combined column predicates."""
+
+        return self._replace_state(_select_where(self.state, predicates))
+
+    def order_by(self, *ordering: OrderBy[FluentOwnerT]) -> Self:
+        """Order selected rows by the given column orderings."""
+
+        return self._replace_state(_select_order_by(self.state, ordering))
+
+    @validate_boundary(error_type=QueryConstructionError)
+    def limit(self, value: NonNegativeInt) -> Self:
+        """Limit the number of selected rows."""
+
+        return self._replace_state(_select_limit(self.state, value))
+
+    @validate_boundary(error_type=QueryConstructionError)
+    def offset(self, value: NonNegativeInt) -> Self:
+        """Skip the given number of selected rows."""
+
+        return self._replace_state(_select_offset(self.state, value))
+
+
+class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
+    _FluentSelectQuery[SelectOwnerT],
+):
     """Immutable select query that returns fetched table model instances."""
 
-    state: _SelectState
 
-    def __init__(self, state: _SelectState | None = None) -> None:
-        if state is None:
-            state = _empty_select_state()
-        self.state = state
-
-    def all(self) -> Self:
-        state = _select_all(self.state)
-        if state is self.state:
-            return self
-        return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
-
-    def where(self, *predicates: Predicate[SelectOwnerT]) -> Self:
-        state = _select_where(self.state, predicates)
-        return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
-
-    def order_by(self, *ordering: OrderBy[SelectOwnerT]) -> Self:
-        state = _select_order_by(self.state, ordering)
-        return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    # TODO: docstrings for these functions
-    def limit(self, value: NonNegativeInt) -> Self:
-        state = _select_limit(self.state, value)
-        return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    def offset(self, value: NonNegativeInt) -> Self:
-        state = _select_offset(self.state, value)
-        return cast("Self", SelectModelQuery[SelectOwnerT, ReadModelT](state))
-
-
-class SelectValueQuery[OwnerT: Table[Any], T]:
+class SelectValueQuery[OwnerT: Table[Any], T](_FluentSelectQuery[OwnerT]):
     """Immutable select query that returns one scalar column value per row."""
 
-    state: _SelectState
 
-    def __init__(self, state: _SelectState | None = None) -> None:
-        if state is None:
-            state = _empty_select_state()
-        self.state = state
-
-    def all(self) -> Self:
-        state = _select_all(self.state)
-        if state is self.state:
-            return self
-        return cast("Self", SelectValueQuery[OwnerT, T](state))
-
-    def where(self, *predicates: Predicate[OwnerT]) -> Self:
-        state = _select_where(self.state, predicates)
-        return cast("Self", SelectValueQuery[OwnerT, T](state))
-
-    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
-        state = _select_order_by(self.state, ordering)
-        return cast("Self", SelectValueQuery[OwnerT, T](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    def limit(self, value: NonNegativeInt) -> Self:
-        state = _select_limit(self.state, value)
-        return cast("Self", SelectValueQuery[OwnerT, T](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    def offset(self, value: NonNegativeInt) -> Self:
-        state = _select_offset(self.state, value)
-        return cast("Self", SelectValueQuery[OwnerT, T](state))
-
-
-class SelectTupleQuery[OwnerT: Table[Any], *Ts]:
+class SelectTupleQuery[OwnerT: Table[Any], *Ts](_FluentSelectQuery[OwnerT]):
     """Immutable select query that returns selected column tuples per row."""
-
-    state: _SelectState
-
-    def __init__(self, state: _SelectState | None = None) -> None:
-        if state is None:
-            state = _empty_select_state()
-        self.state = state
-
-    def all(self) -> Self:
-        state = _select_all(self.state)
-        if state is self.state:
-            return self
-        return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
-
-    def where(self, *predicates: Predicate[OwnerT]) -> Self:
-        state = _select_where(self.state, predicates)
-        return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
-
-    def order_by(self, *ordering: OrderBy[OwnerT]) -> Self:
-        state = _select_order_by(self.state, ordering)
-        return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    def limit(self, value: NonNegativeInt) -> Self:
-        state = _select_limit(self.state, value)
-        return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
-
-    @validate_boundary(error_type=QueryConstructionError)
-    def offset(self, value: NonNegativeInt) -> Self:
-        state = _select_offset(self.state, value)
-        return cast("Self", SelectTupleQuery[OwnerT, *Ts](state))
 
 
 class InsertQuery[ModelT: Table[Any]]:
