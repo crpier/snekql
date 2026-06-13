@@ -324,6 +324,20 @@ def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
     return column.name
 
 
+def _render_column_ref(
+    column: Attr[Any, Any, Any, Any, Any],
+    dialect: QueryDialect,
+) -> str:
+    """Render a column as the SQL reference used in compiled statements.
+
+    Every column-name emission (predicates, orderings, assignments, and the
+    select list) routes through this single seam so the qualification strategy
+    lives in one place. Today it renders a bare dialect-quoted column name.
+    """
+
+    return dialect.quote_identifier(_require_column_name(column))
+
+
 def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
     owner = column.owner
     if owner is None:
@@ -519,7 +533,7 @@ def _compile_column_predicate_sql(
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     column = _require_field(predicate.column)
-    column_name = dialect.quote_identifier(_require_column_name(column))
+    column_name = _render_column_ref(column, dialect)
     if predicate.kind in {"eq", "ne"}:
         return _compile_equality_predicate_sql(
             predicate,
@@ -564,7 +578,7 @@ def _compile_ordering_sql(
 ) -> str:
     _ensure_ordering_targets_model(ordering, model)
     column = _require_field(ordering.column)
-    column_name = dialect.quote_identifier(_require_column_name(column))
+    column_name = _render_column_ref(column, dialect)
     return f"{column_name} {ordering.direction}"
 
 
@@ -603,7 +617,7 @@ def _compile_update_sql(
     for assignment in state.assignments:
         _ensure_assignment_targets_model(assignment, state.model)
         column = _require_field(assignment.column)
-        column_name = dialect.quote_identifier(_require_column_name(column))
+        column_name = _render_column_ref(column, dialect)
         set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
         params = (*params, dialect.encode_column_value(column, assignment.value))
     sql_parts = [
@@ -651,8 +665,7 @@ def _compile_select_state(
         raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        dialect.quote_identifier(_require_column_name(column))
-        for column in state.fields
+        _render_column_ref(column, dialect) for column in state.fields
     )
     sql_parts = [
         "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
