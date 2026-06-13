@@ -163,6 +163,11 @@ if TYPE_CHECKING:
         User.email.eq("alice@example.com") & User.status.eq("active"),
         Predicate[User[Pending]],
     )
+    # A single-table predicate flows into a wider union-owner slot: `Predicate`
+    # is covariant in its owner type, which join queries rely on to accept a
+    # predicate built from any one of the joined tables.
+    _single_owner_predicate = User.email.eq("alice@example.com")
+    _widened_owner_predicate: Predicate[User[Pending] | int] = _single_owner_predicate
     _ = assert_type(Index(User.email), Index[User[Pending]])
     _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])

@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from snekql.errors import QueryConstructionError
-
-OwnerT = TypeVar("OwnerT")
 
 
 @dataclass(frozen=True)
@@ -22,12 +19,14 @@ class Predicate[OwnerT]:
     column: object | None = None
     value: object = None
     values: tuple[object, ...] = field(default_factory=tuple)
-    children: tuple[Predicate[OwnerT], ...] = field(default_factory=tuple)
+    # Type-erased so the recursive field does not pin OwnerT to invariant; this
+    # is what makes `Predicate` covariant in its owner type (see proto_c).
+    children: tuple[Predicate[object], ...] = field(default_factory=tuple)
 
-    def __and__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]:
+    def __and__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
         return Predicate(kind="and", children=(self, other))
 
-    def __or__(self, other: Predicate[OwnerT]) -> Predicate[OwnerT]:
+    def __or__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
         return Predicate(kind="or", children=(self, other))
 
     def __invert__(self) -> Predicate[OwnerT]:

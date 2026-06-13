@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
+from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
 from snekql.errors import (
     ModelDeclarationError,
@@ -18,7 +20,7 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import MISSING, Attr
+from snekql.storage import MISSING, Attr, StorageBackend
 from snekql.validation import NonNegativeInt, validate_boundary
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -324,6 +326,20 @@ def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
     return column.name
 
 
+def _render_column_ref(
+    column: Attr[Any, Any, Any, Any, Any],
+    dialect: QueryDialect,
+) -> str:
+    """Render a column as the SQL reference used in compiled statements.
+
+    Every column-name emission (predicates, orderings, assignments, and the
+    select list) routes through this single seam so the qualification strategy
+    lives in one place. Today it renders a bare dialect-quoted column name.
+    """
+
+    return dialect.quote_identifier(_require_column_name(column))
+
+
 def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
     owner = column.owner
     if owner is None:
@@ -519,7 +535,7 @@ def _compile_column_predicate_sql(
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     column = _require_field(predicate.column)
-    column_name = dialect.quote_identifier(_require_column_name(column))
+    column_name = _render_column_ref(column, dialect)
     if predicate.kind in {"eq", "ne"}:
         return _compile_equality_predicate_sql(
             predicate,
@@ -564,7 +580,7 @@ def _compile_ordering_sql(
 ) -> str:
     _ensure_ordering_targets_model(ordering, model)
     column = _require_field(ordering.column)
-    column_name = dialect.quote_identifier(_require_column_name(column))
+    column_name = _render_column_ref(column, dialect)
     return f"{column_name} {ordering.direction}"
 
 
@@ -603,7 +619,7 @@ def _compile_update_sql(
     for assignment in state.assignments:
         _ensure_assignment_targets_model(assignment, state.model)
         column = _require_field(assignment.column)
-        column_name = dialect.quote_identifier(_require_column_name(column))
+        column_name = _render_column_ref(column, dialect)
         set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
         params = (*params, dialect.encode_column_value(column, assignment.value))
     sql_parts = [
@@ -651,8 +667,7 @@ def _compile_select_state(
         raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        dialect.quote_identifier(_require_column_name(column))
-        for column in state.fields
+        _render_column_ref(column, dialect) for column in state.fields
     )
     sql_parts = [
         "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
@@ -690,6 +705,38 @@ def compile_select_sql_for_dialect(
     """Compile a select query into backend Dialect SQL."""
 
     return _compile_select_state(query.state, dialect)
+
+
+def materialize_select_row_for_backend(
+    query: AnySelectQuery,
+    row: Sequence[object],
+    *,
+    backend: StorageBackend,
+) -> object:
+    """Materialize one database row into the select query's result shape.
+
+    Shared by every backend: a model select decodes the whole row into a
+    Fetched Model, a single-column select returns one decoded scalar, and a
+    multi-column select returns a tuple of decoded scalars in order.
+    """
+
+    state = query.state
+    assert len(row) == len(state.fields), (  # noqa: S101
+        "database row shape did not match select query"
+    )
+    if state.returns_model:
+        values = {
+            _require_column_name(column): row[index]
+            for index, column in enumerate(state.fields)
+        }
+        return decode_model_row(state.model, values, backend=backend)
+    decoded_values = tuple(
+        column.decode(row[index], backend=backend)
+        for index, column in enumerate(state.fields)
+    )
+    if len(decoded_values) == 1:
+        return decoded_values[0]
+    return decoded_values
 
 
 def compile_write_sql_for_dialect(

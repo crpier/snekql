@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
 from snekql.query import (
     AnySelectQuery,
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
+    materialize_select_row_for_backend,
 )
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
 from snekql.storage import Attr
@@ -55,19 +55,4 @@ def materialize_sqlite_select_row(
 ) -> object:
     """Decode one SQLite result row according to a select query."""
 
-    state = query.state
-    assert len(row) == len(state.fields), (  # noqa: S101
-        "database row shape did not match select query"
-    )
-    if state.returns_model:
-        values = {
-            column.name or "": row[index] for index, column in enumerate(state.fields)
-        }
-        return decode_model_row(state.model, values, backend="sqlite")
-    decoded_values = tuple(
-        column.decode(row[index], backend="sqlite")
-        for index, column in enumerate(state.fields)
-    )
-    if len(decoded_values) == 1:
-        return decoded_values[0]
-    return decoded_values
+    return materialize_select_row_for_backend(query, row, backend="sqlite")
