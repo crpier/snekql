@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
+from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
 from snekql.errors import (
     ModelDeclarationError,
@@ -18,7 +20,7 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import MISSING, Attr
+from snekql.storage import MISSING, Attr, StorageBackend
 from snekql.validation import NonNegativeInt, validate_boundary
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -703,6 +705,38 @@ def compile_select_sql_for_dialect(
     """Compile a select query into backend Dialect SQL."""
 
     return _compile_select_state(query.state, dialect)
+
+
+def materialize_select_row_for_backend(
+    query: AnySelectQuery,
+    row: Sequence[object],
+    *,
+    backend: StorageBackend,
+) -> object:
+    """Materialize one database row into the select query's result shape.
+
+    Shared by every backend: a model select decodes the whole row into a
+    Fetched Model, a single-column select returns one decoded scalar, and a
+    multi-column select returns a tuple of decoded scalars in order.
+    """
+
+    state = query.state
+    assert len(row) == len(state.fields), (  # noqa: S101
+        "database row shape did not match select query"
+    )
+    if state.returns_model:
+        values = {
+            _require_column_name(column): row[index]
+            for index, column in enumerate(state.fields)
+        }
+        return decode_model_row(state.model, values, backend=backend)
+    decoded_values = tuple(
+        column.decode(row[index], backend=backend)
+        for index, column in enumerate(state.fields)
+    )
+    if len(decoded_values) == 1:
+        return decoded_values[0]
+    return decoded_values
 
 
 def compile_write_sql_for_dialect(
