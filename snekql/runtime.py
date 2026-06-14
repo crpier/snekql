@@ -40,6 +40,7 @@ from snekql.query import (
     AnySelectQuery,
     DeleteQuery,
     InsertQuery,
+    JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
@@ -225,6 +226,10 @@ class Transaction:
     async def fetch_all(
         self, query: SelectTupleQuery[OwnerT, *Ts]
     ) -> list[tuple[*Ts]]: ...
+    @overload
+    async def fetch_all(
+        self, query: JoinModelQuery[OwnerT, *Ts]
+    ) -> list[tuple[*Ts]]: ...
     async def fetch_all(self, query: object) -> object:
         """Fetch all rows for a select query."""
 
@@ -272,6 +277,10 @@ class Transaction:
     @overload
     async def fetch_one(
         self, query: SelectTupleQuery[OwnerT, *Ts]
+    ) -> tuple[*Ts] | None: ...
+    @overload
+    async def fetch_one(
+        self, query: JoinModelQuery[OwnerT, *Ts]
     ) -> tuple[*Ts] | None: ...
     async def fetch_one(self, query: object) -> object:
         """Fetch one row for a select query."""
@@ -370,7 +379,10 @@ class Transaction:
         if isinstance(query, InsertQuery):
             insert_query = cast("InsertQuery[Any]", query)
             return cast("type[Table[Any]]", type(insert_query.row))
-        if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
+        if isinstance(
+            query,
+            SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
+        ):
             return query.state.model
         if isinstance(query, UpdateQuery | DeleteQuery):
             return query.state.model
@@ -379,7 +391,10 @@ class Transaction:
 
     @staticmethod
     def _require_select_query(query: object) -> AnySelectQuery:
-        if isinstance(query, SelectModelQuery | SelectValueQuery | SelectTupleQuery):
+        if isinstance(
+            query,
+            SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
+        ):
             return cast("AnySelectQuery", query)
         msg = "fetch requires a select query"
         raise QueryCompilationError(msg)

@@ -28,6 +28,7 @@ from snekql.storage import (
     Boolean,
     CurrentTimestamp,
     DateTime,
+    FKAttr,
     Integer,
     Json,
     Missing,
@@ -106,6 +107,26 @@ type GenCol[WriteModelT: Table[Any], FetchedModelT, T] = _GenCol[
     WriteModelT,
     FetchedModelT,
     T,
+]
+
+# Private foreign-key column alias used to build the public FKCol alias. The
+# trailing Target records the referenced model so `references` can require a
+# matching target column.
+type _FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = FKAttr[
+    WriteModelT,
+    FetchedModelT,
+    WriteModelT,
+    T,
+    T,
+    Target,
+]
+
+# Public foreign-key column alias for external table model helpers.
+type FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = _FKCol[
+    WriteModelT,
+    FetchedModelT,
+    T,
+    Target,
 ]
 
 
@@ -418,6 +439,10 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     type Col[T] = Attr[Self, ReadModelT, Self, T, T]
     # Generated/server-filled column alias scoped to the declaring model class.
     type GenCol[T] = Attr[Self, ReadModelT, Self, T | Missing, T]
+    # Foreign-key column alias; Target is the *Pending* owner of the referenced
+    # model (`Order.FKCol[User, int]`). PEP 696 resolves the bare `User` to
+    # `User[Pending]`, so no `[Pending]` suffix is required.
+    type FKCol[Target, T] = FKAttr[Self, ReadModelT, Self, T, T, Target]
 
     def __init__(self, **values: object) -> None:
         remaining_values = dict(values)

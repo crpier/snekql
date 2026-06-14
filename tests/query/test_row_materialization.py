@@ -11,7 +11,7 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import Boolean, Fetched, Pending, Text, select, sqlite
+from snekql import MISSING, Boolean, Fetched, Pending, Text, select, sqlite
 from snekql.query import materialize_select_row_for_backend
 
 
@@ -20,6 +20,29 @@ class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
 
     label: Widget.Col[str] = Text(nullable=False)
     enabled: Widget.Col[bool] = Boolean(nullable=False)
+
+
+class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
+    """Referenced table for join materialization tests."""
+
+    id: JoinUser.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: JoinUser.Col[str] = Text(nullable=False)
+
+
+class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
+    """Table with a foreign key to ``JoinUser``."""
+
+    id: JoinOrder.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.Integer(foreign_key=True)
+    note: JoinOrder.Col[str] = Text(nullable=False)
 
 
 @test(mark="fast")
@@ -57,6 +80,55 @@ def multi_value_select_returns_a_decoded_tuple() -> None:
     values = materialize_select_row_for_backend(query, ("hi", 1), backend="sqlite")
 
     assert_eq(values, ("hi", True))
+
+
+@test(mark="fast")
+def inner_join_materializes_a_tuple_of_fetched_models() -> None:
+    """An inner join splits the flat row into one Fetched model per table."""
+
+    query = (
+        select(JoinUser)
+        .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+        .all()
+    )
+
+    result = cast(
+        "tuple[JoinUser[Fetched], JoinOrder[Fetched]]",
+        materialize_select_row_for_backend(
+            query,
+            (1, "a@b.c", 10, 1, "hello"),
+            backend="sqlite",
+        ),
+    )
+
+    assert_eq(result[0].id, 1)
+    assert_eq(result[0].email, "a@b.c")
+    assert_eq(result[1].id, 10)
+    assert_eq(result[1].user_id, 1)
+    assert_eq(result[1].note, "hello")
+
+
+@test(mark="fast")
+def left_join_yields_none_when_the_right_side_is_all_null() -> None:
+    """A left join with no matching right row materializes the right as None."""
+
+    query = (
+        select(JoinUser)
+        .left_join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+        .all()
+    )
+
+    result = cast(
+        "tuple[JoinUser[Fetched], JoinOrder[Fetched] | None]",
+        materialize_select_row_for_backend(
+            query,
+            (1, "a@b.c", None, None, None),
+            backend="sqlite",
+        ),
+    )
+
+    assert_eq(result[0].email, "a@b.c")
+    assert result[1] is None
 
 
 @test(mark="fast")

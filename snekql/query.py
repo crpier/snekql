@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
+from typing import Any, Literal, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
 from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
@@ -13,7 +13,7 @@ from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
 )
-from snekql.expressions import Assignment, OrderBy, Predicate
+from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
 from snekql.model import (
     Model,
     Table,
@@ -53,6 +53,19 @@ class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
+type JoinType = Literal["INNER", "LEFT"]
+
+
+@dataclass(frozen=True)
+class _JoinSpec:
+    """One joined table and the equality condition that brings it into scope."""
+
+    model: type[Table[Any]]
+    join_type: JoinType
+    left_column: Attr[Any, Any, Any, Any, Any]
+    right_column: Attr[Any, Any, Any, Any, Any]
+
+
 @dataclass(frozen=True)
 class _SelectState:
     model: type[Table[Any]]
@@ -63,6 +76,12 @@ class _SelectState:
     orderings: tuple[OrderBy[Any], ...] = ()
     limit_value: int | None = None
     offset_value: int | None = None
+    joins: tuple[_JoinSpec, ...] = ()
+
+    def result_models(self) -> tuple[type[Table[Any]], ...]:
+        """Return the base model followed by each joined model, in join order."""
+
+        return (self.model, *(join.model for join in self.joins))
 
 
 @dataclass(frozen=True)
@@ -133,6 +152,75 @@ class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 ):
     """Immutable select query that returns fetched table model instances."""
 
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | JoinOn[SelectOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]:
+        """Inner-join another table, appending its fetched model to each row."""
+
+        return cast(
+            "JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "INNER"),
+            ),
+        )
+
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | JoinOn[SelectOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]:
+        """Left-join another table; its fetched model is optional per row."""
+
+        return cast(
+            "JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "LEFT"),
+            ),
+        )
+
+
+class JoinModelQuery[JoinOwnerT: Table[Any], *ResultTs](
+    _FluentSelectQuery[JoinOwnerT],
+):
+    """Immutable model-select across joined tables; rows are model tuples.
+
+    `JoinOwnerT` accumulates a union of every joined table's `Pending` owner, so
+    `where`/`order_by` accept predicates from any joined table (via the covariant
+    `Predicate`) and reject columns from tables not in the query. `*ResultTs`
+    accumulates the per-table fetched models: `join` appends `T[Fetched]` and
+    `left_join` appends `T[Fetched] | None`.
+    """
+
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | JoinOn[JoinOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]:
+        """Inner-join another table, appending its fetched model to each row."""
+
+        return cast(
+            "JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "INNER"),
+            ),
+        )
+
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | JoinOn[JoinOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]:
+        """Left-join another table; its fetched model is optional per row."""
+
+        return cast(
+            "JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "LEFT"),
+            ),
+        )
+
 
 class SelectValueQuery[OwnerT: Table[Any], T](_FluentSelectQuery[OwnerT]):
     """Immutable select query that returns one scalar column value per row."""
@@ -201,6 +289,7 @@ type AnySelectQuery = (
     SelectModelQuery[Any, Any]
     | SelectValueQuery[Any, Any]
     | SelectTupleQuery[Any, *tuple[Any, ...]]
+    | JoinModelQuery[Any, *tuple[Any, ...]]
 )
 
 
@@ -228,7 +317,7 @@ def _select_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, state.result_models())
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -240,8 +329,54 @@ def _select_order_by(
         msg = "order_by() requires at least one ordering"
         raise QueryConstructionError(msg)
     for ordering in orderings:
-        _ensure_ordering_targets_model(ordering, state.model)
+        _ensure_ordering_targets_models(ordering, state.result_models())
     return replace(state, orderings=(*state.orderings, *orderings))
+
+
+def _select_join(
+    state: _SelectState,
+    model: object,
+    on: object,
+    join_type: JoinType,
+) -> _SelectState:
+    if not isinstance(model, type):
+        msg = "join requires a table model"
+        raise QueryConstructionError(msg)
+    table_model = cast("type[Table[Any]]", model)
+    try:
+        new_columns = require_model_columns(table_model)
+    except ModelDeclarationError as error:
+        msg = "join requires a table model"
+        raise QueryConstructionError(msg) from error
+    if not isinstance(on, JoinOn):
+        msg = "join requires an on= condition built from references()"
+        raise QueryConstructionError(msg)
+    condition = cast("JoinOn[Any, Any]", on)
+    left_column = _require_field(condition.left_column)
+    right_column = _require_field(condition.right_column)
+    related = {_require_column_model(left_column), _require_column_model(right_column)}
+    if table_model not in related:
+        msg = "join condition must reference the joined table"
+        raise QueryConstructionError(msg)
+    already_joined = set(state.result_models())
+    if table_model in already_joined:
+        msg = "table is already joined"
+        raise QueryConstructionError(msg)
+    if not (related - {table_model}) <= already_joined:
+        msg = "join condition must relate the joined table to an already-joined table"
+        raise QueryConstructionError(msg)
+    spec = _JoinSpec(
+        model=table_model,
+        join_type=join_type,
+        left_column=left_column,
+        right_column=right_column,
+    )
+    return replace(
+        state,
+        fields=(*state.fields, *new_columns.values()),
+        returns_model=True,
+        joins=(*state.joins, spec),
+    )
 
 
 def _select_limit(state: _SelectState, value: NonNegativeInt) -> _SelectState:
@@ -284,7 +419,7 @@ def _update_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -308,7 +443,7 @@ def _delete_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -329,15 +464,23 @@ def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
 def _render_column_ref(
     column: Attr[Any, Any, Any, Any, Any],
     dialect: QueryDialect,
+    *,
+    qualified: bool = False,
 ) -> str:
     """Render a column as the SQL reference used in compiled statements.
 
     Every column-name emission (predicates, orderings, assignments, and the
     select list) routes through this single seam so the qualification strategy
-    lives in one place. Today it renders a bare dialect-quoted column name.
+    lives in one place. Single-table statements render a bare dialect-quoted
+    column name; joined statements qualify it with the owning table so columns
+    from different tables never collide.
     """
 
-    return dialect.quote_identifier(_require_column_name(column))
+    quoted_name = dialect.quote_identifier(_require_column_name(column))
+    if not qualified:
+        return quoted_name
+    table_name = require_model_table_name(_require_column_model(column))
+    return f"{dialect.quote_identifier(table_name)}.{quoted_name}"
 
 
 def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
@@ -354,32 +497,32 @@ def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[A
     return model
 
 
-def _ensure_predicate_targets_model(
+def _ensure_predicate_targets_models(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
 ) -> None:
     if predicate.kind == "":
         msg = "where predicates must be built from columns"
         raise QueryConstructionError(msg)
     if predicate.column is not None:
         column = _require_field(predicate.column)
-        if _require_column_model(column) is not model:
-            msg = "joins are not supported in v1"
+        if _require_column_model(column) not in models:
+            msg = "predicate references a table that is not in the query"
             raise QueryConstructionError(msg)
     for child in predicate.children:
-        _ensure_predicate_targets_model(child, model)
+        _ensure_predicate_targets_models(child, models)
 
 
-def _ensure_ordering_targets_model(
+def _ensure_ordering_targets_models(
     ordering: OrderBy[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
 ) -> None:
     if ordering.column is None or ordering.direction not in {"ASC", "DESC"}:
         msg = "orderings must be built from columns"
         raise QueryConstructionError(msg)
     column = _require_field(ordering.column)
-    if _require_column_model(column) is not model:
-        msg = "joins are not supported in v1"
+    if _require_column_model(column) not in models:
+        msg = "ordering references a table that is not in the query"
         raise QueryConstructionError(msg)
 
 
@@ -392,7 +535,7 @@ def _ensure_assignment_targets_model(
         raise QueryConstructionError(msg)
     column = _require_field(assignment.column)
     if _require_column_model(column) is not model:
-        msg = "joins are not supported in v1"
+        msg = "assignment references a table that is not in the query"
         raise QueryConstructionError(msg)
     if column.is_generated or column.primary_key:
         msg = "generated and primary key columns cannot update"
@@ -440,21 +583,25 @@ def _compile_insert_sql(
 
 def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
         msg = "compound predicate is malformed"
         raise QueryCompilationError(msg)
     left_sql, left_params = _compile_predicate_sql(
         predicate.children[0],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     right_sql, right_params = _compile_predicate_sql(
         predicate.children[1],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     operator = "AND" if predicate.kind == "and" else "OR"
     return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
@@ -462,16 +609,19 @@ def _compile_compound_predicate_sql(
 
 def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
         msg = "negated predicate is malformed"
         raise QueryCompilationError(msg)
     child_sql, child_params = _compile_predicate_sql(
         predicate.children[0],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     return f"NOT ({child_sql})", child_params
 
@@ -533,9 +683,11 @@ def _compile_like_predicate_sql(
 def _compile_column_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     column = _require_field(predicate.column)
-    column_name = _render_column_ref(column, dialect)
+    column_name = _render_column_ref(column, dialect, qualified=qualified)
     if predicate.kind in {"eq", "ne"}:
         return _compile_equality_predicate_sql(
             predicate,
@@ -562,40 +714,57 @@ def _compile_column_predicate_sql(
 
 def _compile_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
-    _ensure_predicate_targets_model(predicate, model)
+    _ensure_predicate_targets_models(predicate, models)
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(predicate, model, dialect)
+        return _compile_compound_predicate_sql(
+            predicate,
+            models,
+            dialect,
+            qualified=qualified,
+        )
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(predicate, model, dialect)
-    return _compile_column_predicate_sql(predicate, dialect)
+        return _compile_negated_predicate_sql(
+            predicate,
+            models,
+            dialect,
+            qualified=qualified,
+        )
+    return _compile_column_predicate_sql(predicate, dialect, qualified=qualified)
 
 
 def _compile_ordering_sql(
     ordering: OrderBy[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> str:
-    _ensure_ordering_targets_model(ordering, model)
+    _ensure_ordering_targets_models(ordering, models)
     column = _require_field(ordering.column)
-    column_name = _render_column_ref(column, dialect)
+    column_name = _render_column_ref(column, dialect, qualified=qualified)
     return f"{column_name} {ordering.direction}"
 
 
 def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
     predicate_params: list[object] = []
     for predicate in predicates:
         predicate_sql, compiled_params = _compile_predicate_sql(
             predicate,
-            model,
+            models,
             dialect,
+            qualified=qualified,
         )
         predicate_sql_parts.append(f"({predicate_sql})")
         predicate_params.extend(compiled_params)
@@ -629,8 +798,9 @@ def _compile_update_sql(
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            (state.model,),
             dialect,
+            qualified=False,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
@@ -651,8 +821,9 @@ def _compile_delete_sql(
     if state.predicates:
         predicate_sql, params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            (state.model,),
             dialect,
+            qualified=False,
         )
         sql = f"{sql} WHERE {predicate_sql}"
     return sql, params
@@ -665,25 +836,36 @@ def _compile_select_state(
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
         raise QueryCompilationError(msg)
+    qualified = bool(state.joins)
+    models = state.result_models()
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        _render_column_ref(column, dialect) for column in state.fields
+        _render_column_ref(column, dialect, qualified=qualified)
+        for column in state.fields
     )
     sql_parts = [
         "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
     ]
+    for join in state.joins:
+        join_table = dialect.quote_identifier(require_model_table_name(join.model))
+        left_ref = _render_column_ref(join.left_column, dialect, qualified=True)
+        right_ref = _render_column_ref(join.right_column, dialect, qualified=True)
+        sql_parts.append(
+            f"{join.join_type} JOIN {join_table} ON {left_ref} = {right_ref}"
+        )
     params: tuple[object, ...] = ()
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            models,
             dialect,
+            qualified=qualified,
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.orderings:
         order_by = ", ".join(
-            _compile_ordering_sql(ordering, state.model, dialect)
+            _compile_ordering_sql(ordering, models, dialect, qualified=qualified)
             for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
@@ -707,6 +889,34 @@ def compile_select_sql_for_dialect(
     return _compile_select_state(query.state, dialect)
 
 
+def _materialize_join_row(
+    state: _SelectState,
+    row: Sequence[object],
+    *,
+    backend: StorageBackend,
+) -> tuple[object, ...]:
+    """Split one joined row into a Fetched model per table, in join order.
+
+    A left-joined table whose columns are all NULL produced no matching row, so
+    its tuple slot is materialized as None rather than a model.
+    """
+
+    elements: list[object] = []
+    offset = 0
+    for index, model in enumerate(state.result_models()):
+        columns = require_model_columns(model)
+        width = len(columns)
+        chunk = row[offset : offset + width]
+        offset += width
+        is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
+        if is_left_join and all(value is None for value in chunk):
+            elements.append(None)
+            continue
+        values = {name: chunk[position] for position, name in enumerate(columns)}
+        elements.append(decode_model_row(model, values, backend=backend))
+    return tuple(elements)
+
+
 def materialize_select_row_for_backend(
     query: AnySelectQuery,
     row: Sequence[object],
@@ -715,15 +925,18 @@ def materialize_select_row_for_backend(
 ) -> object:
     """Materialize one database row into the select query's result shape.
 
-    Shared by every backend: a model select decodes the whole row into a
-    Fetched Model, a single-column select returns one decoded scalar, and a
-    multi-column select returns a tuple of decoded scalars in order.
+    Shared by every backend: a join select decodes the row into a tuple of
+    Fetched models (one per joined table), a model select decodes the whole row
+    into a Fetched Model, a single-column select returns one decoded scalar, and
+    a multi-column select returns a tuple of decoded scalars in order.
     """
 
     state = query.state
     assert len(row) == len(state.fields), (  # noqa: S101
         "database row shape did not match select query"
     )
+    if state.joins:
+        return _materialize_join_row(state, row, backend=backend)
     if state.returns_model:
         values = {
             _require_column_name(column): row[index]
