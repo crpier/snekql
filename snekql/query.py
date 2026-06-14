@@ -99,11 +99,12 @@ class _DeleteState:
     predicates: tuple[Predicate[Any], ...] = ()
 
 
-class _FluentSelectQuery[FluentOwnerT: Table[Any]]:
-    """Shared fluent surface over immutable select state.
+class _BaseSelectQuery:
+    """Immutable select-state plumbing shared by every select query.
 
-    The subclasses only add the generic read shape promised to fetch
-    overloads; every state transition is defined once here.
+    Holds the state object and the transitions that never change a query's
+    generic shape (`all`, `limit`, `offset`). Subclasses add the typed surface
+    (`where`/`order_by`/`join`) whose return types depend on their parameters.
     """
 
     state: _SelectState
@@ -124,16 +125,6 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]]:
             return self
         return self._replace_state(state)
 
-    def where(self, *predicates: Predicate[FluentOwnerT]) -> Self:
-        """Filter selected rows by AND-combined column predicates."""
-
-        return self._replace_state(_select_where(self.state, predicates))
-
-    def order_by(self, *ordering: OrderBy[FluentOwnerT]) -> Self:
-        """Order selected rows by the given column orderings."""
-
-        return self._replace_state(_select_order_by(self.state, ordering))
-
     @validate_boundary(error_type=QueryConstructionError)
     def limit(self, value: NonNegativeInt) -> Self:
         """Limit the number of selected rows."""
@@ -145,6 +136,26 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]]:
         """Skip the given number of selected rows."""
 
         return self._replace_state(_select_offset(self.state, value))
+
+
+class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
+    """Model-select fluent surface whose `where`/`order_by` are owner-scoped.
+
+    Used by model selects (`SelectModelQuery`, `JoinModelQuery`): the owner
+    union types `where`/`order_by` directly, rejecting out-of-scope predicates
+    at the call site. Projection selects defer that check to fetch instead (see
+    the dual-union scope check), so they do not share this surface.
+    """
+
+    def where(self, *predicates: Predicate[FluentOwnerT]) -> Self:
+        """Filter selected rows by AND-combined column predicates."""
+
+        return self._replace_state(_select_where(self.state, predicates))
+
+    def order_by(self, *ordering: OrderBy[FluentOwnerT]) -> Self:
+        """Order selected rows by the given column orderings."""
+
+        return self._replace_state(_select_order_by(self.state, ordering))
 
 
 class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
@@ -222,12 +233,155 @@ class JoinModelQuery[JoinOwnerT: Table[Any], *ResultTs](
         )
 
 
-class SelectValueQuery[OwnerT: Table[Any], T](_FluentSelectQuery[OwnerT]):
-    """Immutable select query that returns one scalar column value per row."""
+class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T](_BaseSelectQuery):
+    """Projection select of one column; fetch yields one scalar value per row.
+
+    Carries the dual-union scope check shared by projection selects. `ScopeT` is
+    the FROM/JOIN graph, seeded with the projected column's table (the implicit
+    `FROM` anchor) and grown by `join`/`left_join`. `RefT` is every referenced
+    table: the projected column plus any added by `where`/`order_by`.
+    `fetch_all`/`fetch_one` unify the two through one fresh type variable, which
+    forces `RefT <: ScopeT` -- referencing a table that was never joined is a
+    type error. `ScopeT` is pinned invariant by `_pin_scope` so the constraint
+    does not collapse.
+    """
+
+    def _pin_scope(self, _scope: ScopeT) -> None:
+        """Phantom input-position member that pins `ScopeT` to invariant."""
+
+    def where[RefOwnerT: Table[Any]](
+        self,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T]:
+        """Filter rows, widening the referenced-table union by the predicates."""
+
+        return cast(
+            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T]",
+            SelectValueQuery[Any, Any, T](_select_where(self.state, predicates)),
+        )
+
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        *ordering: OrderBy[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T]:
+        """Order rows, widening the referenced-table union by the orderings."""
+
+        return cast(
+            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T]",
+            SelectValueQuery[Any, Any, T](_select_order_by(self.state, ordering)),
+        )
+
+    def join[
+        NewOwnerT: Table[Any],
+        NewReadT: Table[Any],
+        LeftT: Table[Any],
+        RightT: Table[Any],
+    ](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[LeftT, RightT],
+    ) -> SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]:
+        """Inner-join another table into the scope without changing the result."""
+
+        return cast(
+            "SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]",
+            SelectValueQuery[Any, Any, T](
+                _select_join(self.state, model, on, "INNER", project=True),
+            ),
+        )
+
+    def left_join[
+        NewOwnerT: Table[Any],
+        NewReadT: Table[Any],
+        LeftT: Table[Any],
+        RightT: Table[Any],
+    ](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[LeftT, RightT],
+    ) -> SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]:
+        """Left-join another table into the scope without changing the result."""
+
+        return cast(
+            "SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]",
+            SelectValueQuery[Any, Any, T](
+                _select_join(self.state, model, on, "LEFT", project=True),
+            ),
+        )
 
 
-class SelectTupleQuery[OwnerT: Table[Any], *Ts](_FluentSelectQuery[OwnerT]):
-    """Immutable select query that returns selected column tuples per row."""
+class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQuery):
+    """Projection select of several columns; fetch yields a tuple per row.
+
+    Carries the same dual-union scope check as `SelectValueQuery` (see its
+    docstring): `ScopeT` is the joined FROM graph, `RefT` is every referenced
+    table, and the fetch overloads force `RefT <: ScopeT`. `*Ts` is the fixed
+    tuple of projected read types, unchanged by joins -- a join only declares
+    how tables connect, never the result shape.
+    """
+
+    def _pin_scope(self, _scope: ScopeT) -> None:
+        """Phantom input-position member that pins `ScopeT` to invariant."""
+
+    def where[RefOwnerT: Table[Any]](
+        self,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+        """Filter rows, widening the referenced-table union by the predicates."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](_select_where(self.state, predicates)),
+        )
+
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        *ordering: OrderBy[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+        """Order rows, widening the referenced-table union by the orderings."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](_select_order_by(self.state, ordering)),
+        )
+
+    def join[
+        NewOwnerT: Table[Any],
+        NewReadT: Table[Any],
+        LeftT: Table[Any],
+        RightT: Table[Any],
+    ](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[LeftT, RightT],
+    ) -> SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]:
+        """Inner-join another table into the scope without changing the result."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](
+                _select_join(self.state, model, on, "INNER", project=True),
+            ),
+        )
+
+    def left_join[
+        NewOwnerT: Table[Any],
+        NewReadT: Table[Any],
+        LeftT: Table[Any],
+        RightT: Table[Any],
+    ](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[LeftT, RightT],
+    ) -> SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]:
+        """Left-join another table into the scope without changing the result."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](
+                _select_join(self.state, model, on, "LEFT", project=True),
+            ),
+        )
 
 
 class InsertQuery[ModelT: Table[Any]]:
@@ -287,8 +441,8 @@ class DeleteQuery[ModelT: Table[Any]]:
 
 type AnySelectQuery = (
     SelectModelQuery[Any, Any]
-    | SelectValueQuery[Any, Any]
-    | SelectTupleQuery[Any, *tuple[Any, ...]]
+    | SelectValueQuery[Any, Any, Any]
+    | SelectTupleQuery[Any, Any, *tuple[Any, ...]]
     | JoinModelQuery[Any, *tuple[Any, ...]]
 )
 
@@ -338,6 +492,8 @@ def _select_join(
     model: object,
     on: object,
     join_type: JoinType,
+    *,
+    project: bool = False,
 ) -> _SelectState:
     if not isinstance(model, type):
         msg = "join requires a table model"
@@ -371,6 +527,10 @@ def _select_join(
         left_column=left_column,
         right_column=right_column,
     )
+    if project:
+        # Projection selects keep their fixed projected columns; a join only
+        # brings the table into the FROM graph, it never widens the SELECT list.
+        return replace(state, joins=(*state.joins, spec))
     return replace(
         state,
         fields=(*state.fields, *new_columns.values()),
@@ -838,6 +998,10 @@ def _compile_select_state(
         raise QueryCompilationError(msg)
     qualified = bool(state.joins)
     models = state.result_models()
+    for column in state.fields:
+        if _require_column_model(column) not in models:
+            msg = "select references a table that is not in the query"
+            raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
         _render_column_ref(column, dialect, qualified=qualified)
@@ -935,7 +1099,7 @@ def materialize_select_row_for_backend(
     assert len(row) == len(state.fields), (  # noqa: S101
         "database row shape did not match select query"
     )
-    if state.joins:
+    if state.joins and state.returns_model:
         return _materialize_join_row(state, row, backend=backend)
     if state.returns_model:
         values = {
@@ -975,28 +1139,39 @@ def select[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 ) -> SelectModelQuery[SelectOwnerT, ReadModelT]: ...
 
 
+# Projection overloads capture each column's owner separately. `ScopeT` is
+# seeded with the FIRST column's table (the implicit `FROM` anchor); `RefT` is
+# the union of every column's owner. The dual union is what lets the fetch
+# overloads reject referencing a table that was never joined.
 @overload
-def select[OwnerT: Table[Any], T1](
-    field1: Attr[Any, Any, OwnerT, Any, T1],
+def select[Owner1T: Table[Any], T1](
+    field1: Attr[Any, Any, Owner1T, Any, T1],
     /,
-) -> SelectValueQuery[OwnerT, T1]: ...
-
-
-@overload
-def select[OwnerT: Table[Any], T1, T2](
-    field1: Attr[Any, Any, OwnerT, Any, T1],
-    field2: Attr[Any, Any, OwnerT, Any, T2],
-    /,
-) -> SelectTupleQuery[OwnerT, T1, T2]: ...
+) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
 
 
 @overload
-def select[OwnerT: Table[Any], T1, T2, T3](
-    field1: Attr[Any, Any, OwnerT, Any, T1],
-    field2: Attr[Any, Any, OwnerT, Any, T2],
-    field3: Attr[Any, Any, OwnerT, Any, T3],
+def select[Owner1T: Table[Any], T1, Owner2T: Table[Any], T2](
+    field1: Attr[Any, Any, Owner1T, Any, T1],
+    field2: Attr[Any, Any, Owner2T, Any, T2],
     /,
-) -> SelectTupleQuery[OwnerT, T1, T2, T3]: ...
+) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T, T1, T2]: ...
+
+
+@overload
+def select[
+    Owner1T: Table[Any],
+    T1,
+    Owner2T: Table[Any],
+    T2,
+    Owner3T: Table[Any],
+    T3,
+](
+    field1: Attr[Any, Any, Owner1T, Any, T1],
+    field2: Attr[Any, Any, Owner2T, Any, T2],
+    field3: Attr[Any, Any, Owner3T, Any, T3],
+    /,
+) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
 
 
 def select(*args: object) -> object:
@@ -1020,15 +1195,14 @@ def select(*args: object) -> object:
         )
         return SelectModelQuery[Any, Any](state)
     fields = tuple(_require_field(argument) for argument in args)
+    # The first projected column's table is the implicit FROM anchor; columns
+    # from other tables must be brought into scope with join()/left_join(),
+    # which the dual-union scope check enforces statically.
     model = _require_column_model(fields[0])
-    for field in fields[1:]:
-        if _require_column_model(field) is not model:
-            msg = "joins are not supported in v1"
-            raise QueryConstructionError(msg)
     state = _SelectState(model=model, fields=fields)
     if len(fields) == 1:
-        return SelectValueQuery[Any, Any](state)
-    return SelectTupleQuery[Any, *tuple[Any, ...]](state)
+        return SelectValueQuery[Any, Any, Any](state)
+    return SelectTupleQuery[Any, Any, *tuple[Any, ...]](state)
 
 
 def insert[ModelT: Table[Any]](row: ModelT, /) -> InsertQuery[ModelT]:

@@ -55,10 +55,13 @@ if TYPE_CHECKING:
         select(Account),
         SelectModelQuery[Account[Pending], Account[Fetched]],
     )
-    _ = assert_type(select(Account.email), SelectValueQuery[Account[Pending], str])
+    _ = assert_type(
+        select(Account.email),
+        SelectValueQuery[Account[Pending], Account[Pending], str],
+    )
     _ = assert_type(
         select(Account.email, Account.status),
-        SelectTupleQuery[Account[Pending], str, str],
+        SelectTupleQuery[Account[Pending], Account[Pending], str, str],
     )
     _ = assert_type(Account.email.eq("alice@example.com"), Predicate[Account[Pending]])
     _ = assert_type(insert(pending_account), InsertQuery[Account[Pending]])
