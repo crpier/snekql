@@ -137,13 +137,13 @@ Before announcing a release:
 snekql v1 is a good fit when an application wants:
 
 - explicit SQL-shaped query construction;
+- typed `INNER`/`LEFT` joins across declared foreign-key relationships;
 - async SQLite execution;
 - `STRICT` table startup checks;
 - typed row contracts without ORM identity or relationship behavior.
 
 snekql v1 is not a fit when an application needs:
 
-- joins;
 - migrations or automatic table alteration;
 - raw SQL execution;
 - sync database access;

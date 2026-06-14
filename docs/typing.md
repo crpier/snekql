@@ -83,6 +83,107 @@ await tx.fetch_one(select(User.email).all())
 # str | None
 ```
 
+## Joins
+
+A column may declare the model it references with `FKCol[Target, T]`. The
+relationship is carried in the annotation, so it participates in type checking
+at zero runtime cost:
+
+```python
+class User[S = Pending](Model[S, "User[Fetched]"]):
+    id: User.GenCol[int] = Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: User.Col[str] = Text(nullable=False)
+
+
+class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    id: Order.GenCol[int] = Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+    note: Order.Col[str] = Text(nullable=False)
+```
+
+A join condition is built from an FK column against its target with
+`references(...)`. It only accepts a column of the referenced model whose read
+type matches, so the condition is provably between related tables of compatible
+key type:
+
+```python
+Order.user_id.references(User.id)        # ok
+Order.user_id.references(User.email)     # type error: str column vs int FK
+```
+
+### Model-select joins
+
+A model-select join accumulates a tuple of `Fetched` models. `left_join` makes
+the right side optional:
+
+```python
+await tx.fetch_all(
+    select(User)
+    .join(Order, on=Order.user_id.references(User.id))
+    .where(User.email.eq("a@b.c") & Order.note.eq("x")),
+)
+# list[tuple[User[Fetched], Order[Fetched]]]
+
+await tx.fetch_all(
+    select(User).left_join(Order, on=Order.user_id.references(User.id)),
+)
+# list[tuple[User[Fetched], Order[Fetched] | None]]
+```
+
+`where(...)` and `order_by(...)` accept predicates and orderings from any joined
+table and reject columns from a table that is not in the query.
+
+### Projection-select joins
+
+A projection-select join keeps the projected columns as the result; the joined
+table contributes only to the `FROM`/`JOIN` graph:
+
+```python
+await tx.fetch_all(
+    select(User.email, Order.note)
+    .join(Order, on=Order.user_id.references(User.id)),
+)
+# list[tuple[str, str]]
+```
+
+Referencing — selecting or filtering — a table that was never joined is a type
+error, caught at `fetch_all`/`fetch_one`:
+
+```python
+select(User.email, Region.code).join(Order, on=Order.user_id.references(User.id))
+# Region is never joined: rejected when fetched
+```
+
+> **LEFT-join nullability caveat.** For projection-select, a projected column
+> taken from the nullable side of a `left_join` keeps its non-optional read type
+> (for example `str`, not `str | None`), even though an unmatched row yields
+> `None` at runtime. Model-select left joins are sound — the whole right model
+> becomes `... | None`. Prefer model-select when you need a left join's
+> nullability reflected in the types.
+
+### Optional foreign-key DDL
+
+`FKCol[...]` controls typing only. Emitting an actual `FOREIGN KEY` constraint
+(and including it in startup drift checks) is opt-in per column with
+`foreign_key=True`:
+
+```python
+user_id: Order.FKCol[User, int] = Integer(foreign_key=True)  # emits FK constraint
+ref_code: Order.FKCol[Region, str] = Text()                  # typed-only soft reference
+```
+
+The constraint references the target model's primary key. A typed-only reference
+keeps the relationship available for joins without enforcing referential
+integrity.
+
 ## Backend namespaces
 
 SQLite compatibility aliases remain available at the package root, but new code

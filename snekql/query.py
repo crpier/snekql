@@ -300,7 +300,13 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T](_BaseSelectQuery
         model: _SelectableModelClass[NewOwnerT, NewReadT],
         on: JoinOn[LeftT, RightT],
     ) -> SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]:
-        """Left-join another table into the scope without changing the result."""
+        """Left-join another table into the scope without changing the result.
+
+        Nullability caveat: a projected column taken from the nullable side keeps
+        its non-optional read type even though an unmatched row yields `None` at
+        runtime. Use a model-select left join when you need that nullability in
+        the types.
+        """
 
         return cast(
             "SelectValueQuery[ScopeT | LeftT | RightT, RefT, T]",
@@ -374,7 +380,13 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         model: _SelectableModelClass[NewOwnerT, NewReadT],
         on: JoinOn[LeftT, RightT],
     ) -> SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]:
-        """Left-join another table into the scope without changing the result."""
+        """Left-join another table into the scope without changing the result.
+
+        Nullability caveat: a projected column taken from the nullable side keeps
+        its non-optional read type even though an unmatched row yields `None` at
+        runtime. Use a model-select left join when you need that nullability in
+        the types.
+        """
 
         return cast(
             "SelectTupleQuery[ScopeT | LeftT | RightT, RefT, *Ts]",
