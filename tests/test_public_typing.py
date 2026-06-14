@@ -20,6 +20,7 @@ from snekql import (
     JoinModelQuery,
     Missing,
     Model,
+    OrderBy,
     Pending,
     Predicate,
     SelectModelQuery,
@@ -183,6 +184,25 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(Order.id.sum()).all(),
         SelectValueQuery[Order[Pending], Order[Pending], int | None],
+    )
+    # Grouped projection: a column and an aggregate land in a tuple select; the
+    # aggregate carries its result type and an aggregate can drive order_by.
+    _ = assert_type(
+        select(User.status, User.id.count()).group_by(User.status).all(),
+        SelectTupleQuery[User[Pending], User[Pending], str, int],
+    )
+    _ = assert_type(User.id.count().desc(), OrderBy[User[Pending]])
+    _ = assert_type(
+        select(User.status, Order.id.sum())
+        .join(Order, on=Order.user_id.references(User.id))
+        .group_by(User.status)
+        .all(),
+        SelectTupleQuery[
+            User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
+            str,
+            int | None,
+        ],
     )
     _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])

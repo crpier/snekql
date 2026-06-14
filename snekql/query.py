@@ -74,6 +74,7 @@ class _SelectState:
     explicit_all: bool = False
     distinct: bool = False
     predicates: tuple[Predicate[Any], ...] = ()
+    groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
     orderings: tuple[OrderBy[Any], ...] = ()
     limit_value: int | None = None
     offset_value: int | None = None
@@ -280,6 +281,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T](_BaseSelectQuery
             SelectValueQuery[Any, Any, T](_select_order_by(self.state, ordering)),
         )
 
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T]:
+        """Group rows by columns, widening the referenced-table union by them."""
+
+        return cast(
+            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T]",
+            SelectValueQuery[Any, Any, T](_select_group_by(self.state, columns)),
+        )
+
     def join[
         NewOwnerT: Table[Any],
         NewReadT: Table[Any],
@@ -358,6 +370,17 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         return cast(
             "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
             SelectTupleQuery[Any, Any, *Ts](_select_order_by(self.state, ordering)),
+        )
+
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+        """Group rows by columns, widening the referenced-table union by them."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](_select_group_by(self.state, columns)),
         )
 
     def join[
@@ -512,6 +535,22 @@ def _select_order_by(
     for ordering in orderings:
         _ensure_ordering_targets_models(ordering, state.result_models())
     return replace(state, orderings=(*state.orderings, *orderings))
+
+
+def _select_group_by(
+    state: _SelectState,
+    columns: tuple[Attr[Any, Any, Any, Any, Any], ...],
+) -> _SelectState:
+    if not columns:
+        msg = "group_by() requires at least one column"
+        raise QueryConstructionError(msg)
+    grouped = tuple(_require_field(column) for column in columns)
+    models = state.result_models()
+    for column in grouped:
+        if _require_column_model(column) not in models:
+            msg = "group_by references a table that is not in the query"
+            raise QueryConstructionError(msg)
+    return replace(state, groupings=(*state.groupings, *grouped))
 
 
 def _select_join(
@@ -824,10 +863,35 @@ def _ensure_ordering_targets_models(
     if ordering.column is None or ordering.direction not in {"ASC", "DESC"}:
         msg = "orderings must be built from columns"
         raise QueryConstructionError(msg)
-    column = _require_field(ordering.column)
-    if _require_column_model(column) not in models:
+    selectable = _require_selectable(ordering.column)
+    if _selectable_owner_model(selectable) not in models:
         msg = "ordering references a table that is not in the query"
         raise QueryConstructionError(msg)
+
+
+def _ensure_grouping_covers_projection(state: _SelectState) -> None:
+    """Reject an aggregated projection that selects an ungrouped bare column.
+
+    A query is aggregated when it projects an aggregate or carries a
+    ``group_by``; in either case SQL requires every non-aggregate projected
+    column to appear in the ``GROUP BY`` list. ``COUNT(*)``-style aggregates have
+    no column, so they never need grouping.
+    """
+
+    has_aggregate = any(isinstance(field, Aggregate) for field in state.fields)
+    if not (has_aggregate or state.groupings):
+        return
+    grouped_keys = {
+        (_require_column_model(column), _require_column_name(column))
+        for column in state.groupings
+    }
+    for field in state.fields:
+        if isinstance(field, Aggregate):
+            continue
+        key = (_require_column_model(field), _require_column_name(field))
+        if key not in grouped_keys:
+            msg = "non-aggregated column in an aggregated select must appear in group_by()"
+            raise QueryCompilationError(msg)
 
 
 def _ensure_assignment_targets_model(
@@ -1089,6 +1153,19 @@ def _compile_predicate_sql(
     return _compile_column_predicate_sql(predicate, dialect, qualified=qualified)
 
 
+def _compile_group_by_sql(
+    state: _SelectState,
+    dialect: QueryDialect,
+    *,
+    qualified: bool,
+) -> str:
+    group_by = ", ".join(
+        _render_column_ref(column, dialect, qualified=qualified)
+        for column in state.groupings
+    )
+    return f"GROUP BY {group_by}"
+
+
 def _compile_ordering_sql(
     ordering: OrderBy[Any],
     models: tuple[type[Table[Any]], ...],
@@ -1097,8 +1174,8 @@ def _compile_ordering_sql(
     qualified: bool,
 ) -> str:
     _ensure_ordering_targets_models(ordering, models)
-    column = _require_field(ordering.column)
-    column_name = _render_column_ref(column, dialect, qualified=qualified)
+    selectable = _require_selectable(ordering.column)
+    column_name = _render_selectable(selectable, dialect, qualified=qualified)
     return f"{column_name} {ordering.direction}"
 
 
@@ -1194,6 +1271,7 @@ def _compile_select_state(
         if _selectable_owner_model(column) not in models:
             msg = "select references a table that is not in the query"
             raise QueryCompilationError(msg)
+    _ensure_grouping_covers_projection(state)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
         _render_selectable(column, dialect, qualified=qualified)
@@ -1221,21 +1299,35 @@ def _compile_select_state(
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
+    if state.groupings:
+        sql_parts.append(_compile_group_by_sql(state, dialect, qualified=qualified))
     if state.orderings:
         order_by = ", ".join(
             _compile_ordering_sql(ordering, models, dialect, qualified=qualified)
             for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
+    limit_parts, limit_params = _compile_limit_offset_sql(state, dialect)
+    sql_parts.extend(limit_parts)
+    params = (*params, *limit_params)
+    return " ".join(sql_parts), params
+
+
+def _compile_limit_offset_sql(
+    state: _SelectState,
+    dialect: QueryDialect,
+) -> tuple[list[str], tuple[object, ...]]:
+    parts: list[str] = []
+    params: tuple[object, ...] = ()
     if state.limit_value is not None:
-        sql_parts.append(f"LIMIT {dialect.placeholder}")
+        parts.append(f"LIMIT {dialect.placeholder}")
         params = (*params, state.limit_value)
     if state.offset_value is not None:
         if state.limit_value is None:
-            sql_parts.append("LIMIT -1")
-        sql_parts.append(f"OFFSET {dialect.placeholder}")
+            parts.append("LIMIT -1")
+        parts.append(f"OFFSET {dialect.placeholder}")
         params = (*params, state.offset_value)
-    return " ".join(sql_parts), params
+    return parts, params
 
 
 def compile_select_sql_for_dialect(
@@ -1358,10 +1450,14 @@ def select[Owner1T: Table[Any], T1](
 ) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
 
 
+# Multi-column projections accept a column or an aggregate in each slot: a single
+# `Attr | Aggregate` union arm per position binds the same `OwnerT`/`T` either way,
+# so grouped projections (`select(User.country, count(User.id))`) reuse the tuple
+# machinery without a combinatorial overload explosion.
 @overload
 def select[Owner1T: Table[Any], T1, Owner2T: Table[Any], T2](
-    field1: Attr[Any, Any, Owner1T, Any, T1],
-    field2: Attr[Any, Any, Owner2T, Any, T2],
+    field1: Attr[Any, Any, Owner1T, Any, T1] | Aggregate[Owner1T, T1],
+    field2: Attr[Any, Any, Owner2T, Any, T2] | Aggregate[Owner2T, T2],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T, T1, T2]: ...
 
@@ -1375,9 +1471,9 @@ def select[
     Owner3T: Table[Any],
     T3,
 ](
-    field1: Attr[Any, Any, Owner1T, Any, T1],
-    field2: Attr[Any, Any, Owner2T, Any, T2],
-    field3: Attr[Any, Any, Owner3T, Any, T3],
+    field1: Attr[Any, Any, Owner1T, Any, T1] | Aggregate[Owner1T, T1],
+    field2: Attr[Any, Any, Owner2T, Any, T2] | Aggregate[Owner2T, T2],
+    field3: Attr[Any, Any, Owner3T, Any, T3] | Aggregate[Owner3T, T3],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
 

@@ -41,17 +41,28 @@ class Predicate[OwnerT]:
 class Aggregate[OwnerT, T]:
     """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
 
-    Produced by column methods (``Order.amount.sum()``) and the model ``_count()``
-    classmethod for the star form. Fields are type-erased like :class:`Predicate`
-    so the generic params stay phantom: ``OwnerT`` carries the owning table for the
-    scope check, ``T`` the decoded result type. ``column`` is the wrapped column
-    descriptor, or ``None`` for ``COUNT(*)``; ``owner`` is the owning table model,
-    always present so it can anchor the ``FROM`` clause and the scope check.
+    Produced by column methods (``Order.amount.sum()``) and the model
+    ``count_all()`` classmethod for the star form. Fields are type-erased like
+    :class:`Predicate` so the generic params stay phantom: ``OwnerT`` carries the
+    owning table for the scope check, ``T`` the decoded result type. ``column`` is
+    the wrapped column descriptor, or ``None`` for ``COUNT(*)``; ``owner`` is the
+    owning table model, always present so it can anchor the ``FROM`` clause and the
+    scope check.
     """
 
     func: str = ""
     column: object | None = None
     owner: object | None = None
+
+    def asc(self) -> OrderBy[OwnerT]:
+        """Order rows by this aggregate ascending (e.g. ``ORDER BY COUNT(id)``)."""
+
+        return OrderBy(column=self, direction="ASC")
+
+    def desc(self) -> OrderBy[OwnerT]:
+        """Order rows by this aggregate descending."""
+
+        return OrderBy(column=self, direction="DESC")
 
 
 @dataclass(frozen=True)

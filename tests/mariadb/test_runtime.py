@@ -363,3 +363,41 @@ async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
     assert_eq(mean, 3.5)
     assert isinstance(mean, float)
     assert_eq(rows, 2)
+
+
+@test(mark="medium")
+async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
+    """A grouped SUM on MariaDB returns one normalized int per group.
+
+    Slice 2 (#112) parity: ``GROUP BY`` collapses rows per key, and the slice-1
+    SUM normalization still applies to each group's DECIMAL result.
+    """
+
+    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+        """Integer-amount table grouped by region for per-group normalization."""
+
+        __tablename__ = "issue112_sale_grouped"
+
+        id: Sale.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        region: Sale.Col[str] = mariadb.Text(nullable=False)
+        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+
+    database = await load_fixture(database_session([Sale]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(Sale(region="east", amount=3)))
+        await tx.execute(insert(Sale(region="east", amount=4)))
+        await tx.execute(insert(Sale(region="west", amount=5)))
+        rows = await tx.fetch_all(
+            select(Sale.region, Sale.amount.sum())
+            .group_by(Sale.region)
+            .order_by(Sale.region.asc())
+            .all(),
+        )
+
+    assert_eq(rows, [("east", 7), ("west", 5)])
+    assert all(isinstance(total, int) for _, total in rows)
