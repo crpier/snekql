@@ -22,6 +22,7 @@ from snekql.mariadb.query import (
     materialize_mariadb_select_row,
 )
 from snekql.mariadb.schema import initialize_mariadb_schema
+from snekql.mariadb.settings import configure_mariadb_connection
 from snekql.model import Table
 from snekql.query import AnySelectQuery
 from snekql.storage import SchemaPolicy
@@ -146,8 +147,27 @@ class MariaDBConnectionPool:
             )
             msg = "timed out acquiring database connection"
             raise PoolTimeoutError(msg) from error
+        await self._ensure_configured(connection)
         self.logger.debug("connection acquired", backend="mariadb")
         return connection
+
+    async def _ensure_configured(self, connection: object) -> None:
+        """Apply required session settings once per physical connection."""
+
+        if getattr(connection, "_snekql_configured", False):
+            return
+        try:
+            await configure_mariadb_connection(connection)
+        except Exception:
+            release = cast("Any", self.pool).release
+            _ = release(connection)
+            raise
+        try:
+            connection._snekql_configured = True  # type: ignore[attr-defined]  # noqa: SLF001
+        except AttributeError:
+            self.logger.debug(
+                "connection configuration marker unavailable", backend="mariadb"
+            )
 
     async def release(self, connection: object) -> None:
         """Return a connection to the underlying aiomysql pool."""

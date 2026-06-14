@@ -15,6 +15,7 @@ from snekql.errors import (
     DatabaseRuntimeError,
     PoolTimeoutError,
 )
+from snekql.sqlite.settings import apply_sqlite_connection_settings
 from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat, PositiveInt
 
@@ -42,6 +43,7 @@ async def open_sqlite_connection(database_path: str) -> Connection:
             _ = await cursor.fetchone()
         finally:
             await cursor.close()
+        await apply_sqlite_connection_settings(connection)
     except Error as error:
         msg = "could not initialize SQLite connection"
         raise DatabaseRuntimeError(msg) from error
