@@ -15,6 +15,7 @@ from snekql import (
     Index,
     InsertQuery,
     Integer,
+    JoinModelQuery,
     Missing,
     Model,
     Pending,
@@ -48,6 +49,24 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
         server_default=CurrentTimestamp(),
         default=MISSING,
     )
+
+
+class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    """Table with a foreign key to ``User`` for join typing examples."""
+
+    id: Order.GenCol[int] = Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+    note: Order.Col[str] = Text(nullable=False)
+
+
+class Region[S = Pending](Model[S, "Region[Fetched]"]):
+    """Unjoined table used to probe out-of-scope rejections."""
+
+    code: Region.Col[str] = Text(nullable=False)
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
@@ -168,6 +187,37 @@ if TYPE_CHECKING:
     # predicate built from any one of the joined tables.
     _single_owner_predicate = User.email.eq("alice@example.com")
     _widened_owner_predicate: Predicate[User[Pending] | int] = _single_owner_predicate
+
+    # Typed joins: the result tuple accumulates fetched models, the owner union
+    # types where()/order_by(), and a left join makes the right model optional.
+    _user_orders = select(User).join(Order, on=Order.user_id.references(User.id))
+    _ = assert_type(
+        _user_orders,
+        JoinModelQuery[User[Pending] | Order[Pending], User[Fetched], Order[Fetched]],
+    )
+    _ = _user_orders.where(User.email.eq("a@b.c") & Order.note.eq("x"))
+    _ = _user_orders.where(Order.note.eq("x"))
+    _ = _user_orders.order_by(Order.note.asc(), User.id.asc())
+    _ = assert_type(
+        select(User).left_join(Order, on=Order.user_id.references(User.id)),
+        JoinModelQuery[
+            User[Pending] | Order[Pending],
+            User[Fetched],
+            Order[Fetched] | None,
+        ],
+    )
+    # Rejection: right table, wrong-type key (int FK vs str column).
+    _ = select(User).join(
+        Order,
+        on=Order.user_id.references(User.email),  # type: ignore[arg-type]
+    )
+    # Rejection: a plain (non-FK) column has no `references`.
+    _ = select(User).join(
+        Order,
+        on=Order.note.references(User.id),  # type: ignore[attr-defined]
+    )
+    # Rejection: a predicate from a table not in the query is out of scope.
+    _ = _user_orders.where(Region.code.eq("EU"))  # type: ignore[arg-type]
     _ = assert_type(Index(User.email), Index[User[Pending]])
     _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])

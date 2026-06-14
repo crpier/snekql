@@ -19,12 +19,22 @@ from snekql.errors import (
     SnekqlError,
     TransactionClosedError,
 )
-from snekql.expressions import Assignment, OrderBy, Predicate
+from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
 from snekql.indexes import Index
-from snekql.model import Col, Fetched, GenCol, Model, ModelMeta, Pending, Table
+from snekql.model import (
+    Col,
+    Fetched,
+    FKCol,
+    GenCol,
+    Model,
+    ModelMeta,
+    Pending,
+    Table,
+)
 from snekql.query import (
     DeleteQuery,
     InsertQuery,
+    JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
@@ -42,6 +52,7 @@ from snekql.storage import (
     Boolean,
     CurrentTimestamp,
     DateTime,
+    FKAttr,
     Integer,
     Json,
     Missing,
@@ -67,12 +78,16 @@ __all__ = [
     "DateTime",
     "DeleteQuery",
     "ExecutionError",
+    "FKAttr",
+    "FKCol",
     "Fetched",
     "FrozenModelError",
     "GenCol",
     "Index",
     "InsertQuery",
     "Integer",
+    "JoinModelQuery",
+    "JoinOn",
     "Json",
     "Missing",
     "Model",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
+from typing import Any, Literal, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
 from snekql._model_materialization import decode_model_row
 from snekql._query_dialect import QueryDialect
@@ -13,7 +13,7 @@ from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
 )
-from snekql.expressions import Assignment, OrderBy, Predicate
+from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
 from snekql.model import (
     Model,
     Table,
@@ -53,6 +53,19 @@ class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
+type JoinType = Literal["INNER", "LEFT"]
+
+
+@dataclass(frozen=True)
+class _JoinSpec:
+    """One joined table and the equality condition that brings it into scope."""
+
+    model: type[Table[Any]]
+    join_type: JoinType
+    left_column: Attr[Any, Any, Any, Any, Any]
+    right_column: Attr[Any, Any, Any, Any, Any]
+
+
 @dataclass(frozen=True)
 class _SelectState:
     model: type[Table[Any]]
@@ -63,6 +76,12 @@ class _SelectState:
     orderings: tuple[OrderBy[Any], ...] = ()
     limit_value: int | None = None
     offset_value: int | None = None
+    joins: tuple[_JoinSpec, ...] = ()
+
+    def result_models(self) -> tuple[type[Table[Any]], ...]:
+        """Return the base model followed by each joined model, in join order."""
+
+        return (self.model, *(join.model for join in self.joins))
 
 
 @dataclass(frozen=True)
@@ -133,6 +152,75 @@ class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 ):
     """Immutable select query that returns fetched table model instances."""
 
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | JoinOn[SelectOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]:
+        """Inner-join another table, appending its fetched model to each row."""
+
+        return cast(
+            "JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "INNER"),
+            ),
+        )
+
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | JoinOn[SelectOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]:
+        """Left-join another table; its fetched model is optional per row."""
+
+        return cast(
+            "JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "LEFT"),
+            ),
+        )
+
+
+class JoinModelQuery[JoinOwnerT: Table[Any], *ResultTs](
+    _FluentSelectQuery[JoinOwnerT],
+):
+    """Immutable model-select across joined tables; rows are model tuples.
+
+    `JoinOwnerT` accumulates a union of every joined table's `Pending` owner, so
+    `where`/`order_by` accept predicates from any joined table (via the covariant
+    `Predicate`) and reject columns from tables not in the query. `*ResultTs`
+    accumulates the per-table fetched models: `join` appends `T[Fetched]` and
+    `left_join` appends `T[Fetched] | None`.
+    """
+
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | JoinOn[JoinOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]:
+        """Inner-join another table, appending its fetched model to each row."""
+
+        return cast(
+            "JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "INNER"),
+            ),
+        )
+
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+        self,
+        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | JoinOn[JoinOwnerT, NewOwnerT],
+    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]:
+        """Left-join another table; its fetched model is optional per row."""
+
+        return cast(
+            "JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]",
+            JoinModelQuery[Any, *tuple[Any, ...]](
+                _select_join(self.state, model, on, "LEFT"),
+            ),
+        )
+
 
 class SelectValueQuery[OwnerT: Table[Any], T](_FluentSelectQuery[OwnerT]):
     """Immutable select query that returns one scalar column value per row."""
@@ -201,6 +289,7 @@ type AnySelectQuery = (
     SelectModelQuery[Any, Any]
     | SelectValueQuery[Any, Any]
     | SelectTupleQuery[Any, *tuple[Any, ...]]
+    | JoinModelQuery[Any, *tuple[Any, ...]]
 )
 
 
@@ -242,6 +331,52 @@ def _select_order_by(
     for ordering in orderings:
         _ensure_ordering_targets_model(ordering, state.model)
     return replace(state, orderings=(*state.orderings, *orderings))
+
+
+def _select_join(
+    state: _SelectState,
+    model: object,
+    on: object,
+    join_type: JoinType,
+) -> _SelectState:
+    if not isinstance(model, type):
+        msg = "join requires a table model"
+        raise QueryConstructionError(msg)
+    table_model = cast("type[Table[Any]]", model)
+    try:
+        new_columns = require_model_columns(table_model)
+    except ModelDeclarationError as error:
+        msg = "join requires a table model"
+        raise QueryConstructionError(msg) from error
+    if not isinstance(on, JoinOn):
+        msg = "join requires an on= condition built from references()"
+        raise QueryConstructionError(msg)
+    condition = cast("JoinOn[Any, Any]", on)
+    left_column = _require_field(condition.left_column)
+    right_column = _require_field(condition.right_column)
+    related = {_require_column_model(left_column), _require_column_model(right_column)}
+    if table_model not in related:
+        msg = "join condition must reference the joined table"
+        raise QueryConstructionError(msg)
+    already_joined = set(state.result_models())
+    if table_model in already_joined:
+        msg = "table is already joined"
+        raise QueryConstructionError(msg)
+    if not (related - {table_model}) <= already_joined:
+        msg = "join condition must relate the joined table to an already-joined table"
+        raise QueryConstructionError(msg)
+    spec = _JoinSpec(
+        model=table_model,
+        join_type=join_type,
+        left_column=left_column,
+        right_column=right_column,
+    )
+    return replace(
+        state,
+        fields=(*state.fields, *new_columns.values()),
+        returns_model=True,
+        joins=(*state.joins, spec),
+    )
 
 
 def _select_limit(state: _SelectState, value: NonNegativeInt) -> _SelectState:
