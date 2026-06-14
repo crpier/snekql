@@ -324,3 +324,42 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
         "INSERT INTO `issue38_account_errors` (`id`, `email`) VALUES (%s, %s)",
     )
     assert_eq(raised.exception.params, (1, "duplicate@example.com"))
+
+
+@test(mark="medium")
+async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
+    """MariaDB SUM/AVG return DECIMAL; decoding normalizes to int/float.
+
+    This is the cross-backend divergence #109 calls out: SQLite returns an int
+    for an integer-column SUM while MariaDB returns DECIMAL. The decode layer
+    must make both agree, so SUM over an Integer column is a plain int here too.
+    """
+
+    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+        """Integer-amount table for MariaDB aggregate normalization."""
+
+        __tablename__ = "issue109_sale_aggregate"
+
+        id: Sale.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+
+    database = await load_fixture(database_session([Sale]))
+
+    async with database.transaction() as tx:
+        empty_sum = await tx.fetch_one(select(Sale.amount.sum()).all())
+        await tx.execute(insert(Sale(amount=3)))
+        await tx.execute(insert(Sale(amount=4)))
+        total = await tx.fetch_one(select(Sale.amount.sum()).all())
+        mean = await tx.fetch_one(select(Sale.amount.avg()).all())
+        rows = await tx.fetch_one(select(Sale.count_all()).all())
+
+    assert_eq(empty_sum, None)
+    assert_eq(total, 7)
+    assert isinstance(total, int)
+    assert_eq(mean, 3.5)
+    assert isinstance(mean, float)
+    assert_eq(rows, 2)

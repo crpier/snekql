@@ -21,6 +21,7 @@ from snekql.errors import (
     ModelValidationError,
     SnekqlError,
 )
+from snekql.expressions import Aggregate
 from snekql.indexes import NormalizedIndex, require_index_declaration
 from snekql.storage import (
     MISSING,
@@ -78,6 +79,18 @@ class Table[StateT]:
     @classmethod
     def __owner_type__(cls) -> type[Self]:
         return cls
+
+    @classmethod
+    def count_all(cls) -> Aggregate[Self, int]:
+        """Aggregate the whole table as ``COUNT(*)``.
+
+        The star form has no column to hang a method on, so it lives on the
+        model. ``count_all`` (vs a column's ``.count()``, which counts non-NULL
+        values) reads as "count every row" and is unlikely to collide with a
+        user column name -- a column that shadowed it would break the call.
+        """
+
+        return Aggregate(func="COUNT", column=None, owner=cls)
 
 
 # Private normal persisted-column alias used to build the public Col alias.

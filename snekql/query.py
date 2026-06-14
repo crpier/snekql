@@ -13,7 +13,7 @@ from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
 )
-from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
+from snekql.expressions import Aggregate, Assignment, JoinOn, OrderBy, Predicate
 from snekql.model import (
     Model,
     Table,
@@ -69,7 +69,7 @@ class _JoinSpec:
 @dataclass(frozen=True)
 class _SelectState:
     model: type[Table[Any]]
-    fields: tuple[Attr[Any, Any, Any, Any, Any], ...]
+    fields: tuple[Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any], ...]
     returns_model: bool = False
     explicit_all: bool = False
     distinct: bool = False
@@ -641,6 +641,14 @@ def _require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
     return cast("Attr[Any, Any, Any, Any, Any]", value)
 
 
+def _require_selectable(
+    value: object,
+) -> Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any]:
+    if isinstance(value, Aggregate):
+        return cast("Aggregate[Any, Any]", value)
+    return _require_field(value)
+
+
 def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
     if column.name is None:
         msg = "field is not bound to a model"
@@ -682,6 +690,115 @@ def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[A
         msg = "field is not bound to a table model"
         raise QueryConstructionError(msg) from error
     return model
+
+
+def _selectable_owner_model(
+    field: Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any],
+) -> type[Table[Any]]:
+    """Return the table model owning a selectable (column or aggregate).
+
+    An aggregate carries its owner directly (the wrapped column's table, or the
+    model for ``COUNT(*)``), so the scope check can treat columns and aggregates
+    uniformly.
+    """
+
+    if isinstance(field, Aggregate):
+        owner = field.owner
+        if owner is None:
+            msg = "aggregate is not bound to a table model"
+            raise QueryConstructionError(msg)
+        model = cast("type[Table[Any]]", owner)
+        try:
+            _ = require_model_columns(model)
+        except ModelDeclarationError as error:
+            msg = "aggregate is not bound to a table model"
+            raise QueryConstructionError(msg) from error
+        return model
+    return _require_column_model(field)
+
+
+def _render_aggregate(
+    aggregate: Aggregate[Any, Any],
+    dialect: QueryDialect,
+    *,
+    qualified: bool,
+) -> str:
+    """Render an aggregate as ``FUNC(col)`` or ``COUNT(*)`` for the select list."""
+
+    column = aggregate.column
+    if column is None:
+        return f"{aggregate.func}(*)"
+    column_ref = _render_column_ref(
+        _require_field(column),
+        dialect,
+        qualified=qualified,
+    )
+    return f"{aggregate.func}({column_ref})"
+
+
+def _render_selectable(
+    field: Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any],
+    dialect: QueryDialect,
+    *,
+    qualified: bool,
+) -> str:
+    if isinstance(field, Aggregate):
+        return _render_aggregate(field, dialect, qualified=qualified)
+    return _render_column_ref(field, dialect, qualified=qualified)
+
+
+def _decode_aggregate(
+    aggregate: Aggregate[Any, Any],
+    value: object,
+    *,
+    backend: StorageBackend,
+) -> object:
+    """Decode an aggregate value, normalizing across backends.
+
+    Aggregates are not real columns: ``COUNT`` is always an ``int``; ``AVG`` is a
+    ``float``; ``SUM`` mirrors the wrapped column's logical type (so MariaDB's
+    ``DECIMAL`` and SQLite's integer agree); ``MIN``/``MAX`` reuse the column's
+    wire decode but skip per-row logical validation, since an aggregate value
+    need not satisfy the column's declared constraints. ``NULL`` over an empty
+    set decodes to ``None`` for everything but ``COUNT``.
+    """
+
+    if value is None:
+        return None
+    if aggregate.func == "COUNT":
+        return int(cast("int", value))
+    if aggregate.func == "AVG":
+        return float(cast("float", value))
+    column = _require_field(aggregate.column)
+    if aggregate.func == "SUM":
+        return _normalize_sum(column, value)
+    return column.decode(value, backend=backend, validate=False)
+
+
+def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
+    """Normalize ``SUM`` to the wrapped column's logical type across backends.
+
+    SQLite returns an integer for an integer-column sum; MariaDB returns
+    ``DECIMAL``. Mirroring the column's storage type makes both agree.
+    """
+
+    if column.storage_type_name == "Integer":
+        return int(cast("int", value))
+    if column.storage_type_name == "Real":
+        return float(cast("float", value))
+    return value
+
+
+def _decode_selectable(
+    field: Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any],
+    value: object,
+    *,
+    backend: StorageBackend,
+    validate: bool,
+) -> object:
+    if isinstance(field, Aggregate):
+        return _decode_aggregate(field, value, backend=backend)
+    return field.decode(value, backend=backend, validate=validate)
 
 
 def _ensure_predicate_targets_models(
@@ -1074,12 +1191,12 @@ def _compile_select_state(
     qualified = bool(state.joins)
     models = state.result_models()
     for column in state.fields:
-        if _require_column_model(column) not in models:
+        if _selectable_owner_model(column) not in models:
             msg = "select references a table that is not in the query"
             raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        _render_column_ref(column, dialect, qualified=qualified)
+        _render_selectable(column, dialect, qualified=qualified)
         for column in state.fields
     )
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
@@ -1183,13 +1300,14 @@ def materialize_select_row_for_backend(
     if state.joins and state.returns_model:
         return _materialize_join_row(state, row, backend=backend, validate=validate)
     if state.returns_model:
+        # Model selects only ever project real columns, never aggregates.
         values = {
-            _require_column_name(column): row[index]
+            _require_column_name(_require_field(column)): row[index]
             for index, column in enumerate(state.fields)
         }
         return decode_model_row(state.model, values, backend=backend, validate=validate)
     decoded_values = tuple(
-        column.decode(row[index], backend=backend, validate=validate)
+        _decode_selectable(column, row[index], backend=backend, validate=validate)
         for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
@@ -1227,6 +1345,15 @@ def select[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 @overload
 def select[Owner1T: Table[Any], T1](
     field1: Attr[Any, Any, Owner1T, Any, T1],
+    /,
+) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
+
+
+# A lone aggregate projects one scalar over the (grouped or whole-table) set; it
+# reuses the value-select machinery because the aggregate carries its result `T`.
+@overload
+def select[Owner1T: Table[Any], T1](
+    field1: Aggregate[Owner1T, T1],
     /,
 ) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
 
@@ -1275,11 +1402,11 @@ def select(*args: object) -> object:
             returns_model=True,
         )
         return SelectModelQuery[Any, Any](state)
-    fields = tuple(_require_field(argument) for argument in args)
-    # The first projected column's table is the implicit FROM anchor; columns
-    # from other tables must be brought into scope with join()/left_join(),
-    # which the dual-union scope check enforces statically.
-    model = _require_column_model(fields[0])
+    fields = tuple(_require_selectable(argument) for argument in args)
+    # The first projected selectable's table is the implicit FROM anchor;
+    # columns from other tables must be brought into scope with
+    # join()/left_join(), which the dual-union scope check enforces statically.
+    model = _selectable_owner_model(fields[0])
     state = _SelectState(model=model, fields=fields)
     if len(fields) == 1:
         return SelectValueQuery[Any, Any, Any](state)
