@@ -30,7 +30,14 @@ from snekql.errors import (
     QueryConstructionError,
     SnekqlError,
 )
-from snekql.expressions import Aggregate, Assignment, JoinOn, OrderBy, Predicate
+from snekql.expressions import (
+    Aggregate,
+    Assignment,
+    Comparable,
+    JoinOn,
+    OrderBy,
+    Predicate,
+)
 
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
@@ -509,7 +516,9 @@ def _strip_optional(annotation: object) -> object:
     return annotation
 
 
-class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
+class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
+    Comparable[OwnerT, ReadValueT],
+):
     """Typed model column descriptor used for fields and query construction.
 
     The descriptor exposes pending-state write values on application-created
@@ -856,42 +865,6 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             msg = f"{self._require_name()!r} is not JSON serializable"
             raise ModelValidationError(msg) from error
 
-    def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "eq(None) is invalid; use is_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="eq", column=self, value=value)
-
-    def ne(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "ne(None) is invalid; use is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="ne", column=self, value=value)
-
-    def is_null(self) -> Predicate[OwnerT]:
-        return Predicate(kind="is_null", column=self)
-
-    def is_not_null(self) -> Predicate[OwnerT]:
-        return Predicate(kind="is_not_null", column=self)
-
-    def in_(self, *values: ReadValueT) -> Predicate[OwnerT]:
-        if not values:
-            msg = "in_() requires at least one value"
-            raise QueryConstructionError(msg)
-        if any(candidate is None for candidate in values):
-            msg = "in_() values cannot be None"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="in", column=self, values=values)
-
-    def not_in(self, *values: ReadValueT) -> Predicate[OwnerT]:
-        if not values:
-            msg = "not_in() requires at least one value"
-            raise QueryConstructionError(msg)
-        if any(candidate is None for candidate in values):
-            msg = "not_in() values cannot be None"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="not_in", column=self, values=values)
-
     def like(self, pattern: str) -> Predicate[OwnerT]:
         if self.storage_type_name != "Text":
             msg = "like() is only valid for text columns"
@@ -903,36 +876,6 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             msg = "not_like() is only valid for text columns"
             raise QueryConstructionError(msg)
         return Predicate(kind="not_like", column=self, value=pattern)
-
-    def gt(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "gt(None) is invalid; use is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="gt", column=self, value=value)
-
-    def gte(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "gte(None) is invalid; use is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="gte", column=self, value=value)
-
-    def lt(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "lt(None) is invalid; use is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="lt", column=self, value=value)
-
-    def lte(self, value: ReadValueT) -> Predicate[OwnerT]:
-        if value is None:
-            msg = "lte(None) is invalid; use is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="lte", column=self, value=value)
-
-    def between(self, low: ReadValueT, high: ReadValueT) -> Predicate[OwnerT]:
-        if low is None or high is None:
-            msg = "between() bounds cannot be None; use is_null()/is_not_null()"
-            raise QueryConstructionError(msg)
-        return Predicate(kind="between", column=self, values=(low, high))
 
     def count(self) -> Aggregate[OwnerT, int]:
         """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
