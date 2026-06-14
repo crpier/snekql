@@ -1070,6 +1070,7 @@ def _materialize_join_row(
     row: Sequence[object],
     *,
     backend: StorageBackend,
+    validate: bool,
 ) -> tuple[object, ...]:
     """Split one joined row into a Fetched model per table, in join order.
 
@@ -1089,7 +1090,9 @@ def _materialize_join_row(
             elements.append(None)
             continue
         values = {name: chunk[position] for position, name in enumerate(columns)}
-        elements.append(decode_model_row(model, values, backend=backend))
+        elements.append(
+            decode_model_row(model, values, backend=backend, validate=validate),
+        )
     return tuple(elements)
 
 
@@ -1098,6 +1101,7 @@ def materialize_select_row_for_backend(
     row: Sequence[object],
     *,
     backend: StorageBackend,
+    validate: bool = True,
 ) -> object:
     """Materialize one database row into the select query's result shape.
 
@@ -1112,15 +1116,15 @@ def materialize_select_row_for_backend(
         "database row shape did not match select query"
     )
     if state.joins and state.returns_model:
-        return _materialize_join_row(state, row, backend=backend)
+        return _materialize_join_row(state, row, backend=backend, validate=validate)
     if state.returns_model:
         values = {
             _require_column_name(column): row[index]
             for index, column in enumerate(state.fields)
         }
-        return decode_model_row(state.model, values, backend=backend)
+        return decode_model_row(state.model, values, backend=backend, validate=validate)
     decoded_values = tuple(
-        column.decode(row[index], backend=backend)
+        column.decode(row[index], backend=backend, validate=validate)
         for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:

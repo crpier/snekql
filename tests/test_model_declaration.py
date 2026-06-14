@@ -6,7 +6,15 @@ from abc import abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
-from snektest import assert_eq, assert_false, assert_is, assert_raises, test
+from pydantic import PositiveInt
+from snektest import (
+    assert_eq,
+    assert_false,
+    assert_is,
+    assert_isinstance,
+    assert_raises,
+    test,
+)
 
 from snekql import (
     MISSING,
@@ -18,6 +26,7 @@ from snekql import (
     ModelDeclarationError,
     ModelValidationError,
     Pending,
+    Real,
     Text,
 )
 
@@ -250,3 +259,82 @@ def non_direct_model_declarations_are_rejected() -> None:
 
     with assert_raises(ModelDeclarationError):
         _ = type("MixedUser", (EmailMixin, Model), {})
+
+
+@test(mark="fast")
+def model_construction_validates_logical_types_with_pydantic() -> None:
+    """Constructing a pending model validates field values against the logical type."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Table model with a constrained integer column."""
+
+        receipt: Event.Col[PositiveInt] = Integer(nullable=False)
+
+    event = Event(receipt=5)
+
+    assert_eq(event.receipt, 5)
+
+    with assert_raises(ModelValidationError):
+        _ = Event(receipt=-1)
+
+
+@test(mark="fast")
+def construct_builds_pending_models_without_validation() -> None:
+    """The construct classmethod skips logical validation as an escape hatch."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Table model with a constrained integer column."""
+
+        receipt: Event.Col[PositiveInt] = Integer(nullable=False)
+
+    event = Event.construct(receipt=-1)
+
+    assert_eq(event.receipt, -1)
+
+
+@test(mark="fast")
+def integer_columns_reject_non_int_in_strict_mode() -> None:
+    """Strict validation rejects bool and float for Integer columns."""
+
+    class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+        """Table model with an integer column."""
+
+        value: Counter.Col[int] = Integer(nullable=False)
+
+    with assert_raises(ModelValidationError):
+        _ = Counter(value=cast("int", True))
+
+    with assert_raises(ModelValidationError):
+        _ = Counter(value=cast("int", 1.0))
+
+
+@test(mark="fast")
+def json_columns_validate_annotated_shape() -> None:
+    """Json columns validate the annotated container shape, not just dict-ness."""
+
+    class Settings[S = Pending](Model[S, "Settings[Fetched]"]):
+        """Table model with a typed JSON column."""
+
+        options: Settings.Col[dict[str, int]] = Json(nullable=False)
+
+    settings = Settings(options={"retries": 3})
+
+    assert_eq(settings.options, {"retries": 3})
+
+    with assert_raises(ModelValidationError):
+        _ = Settings(options=cast("dict[str, int]", {"retries": "many"}))
+
+
+@test(mark="fast")
+def real_columns_widen_int_to_float() -> None:
+    """Real columns accept int and widen it to float, matching pydantic defaults."""
+
+    class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
+        """Table model with a real column."""
+
+        value: Reading.Col[float] = Real(nullable=False)
+
+    reading = Reading(value=cast("float", 1))
+
+    assert_eq(reading.value, 1.0)
+    assert_isinstance(reading.value, float)

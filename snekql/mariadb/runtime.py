@@ -250,8 +250,10 @@ class MariaDBRuntime:
         self,
         query: AnySelectQuery,
         row: Sequence[object],
+        *,
+        validate: bool = True,
     ) -> object:
-        return materialize_mariadb_select_row(query, row)
+        return materialize_mariadb_select_row(query, row, validate=validate)
 
 
 async def initialize_runtime(

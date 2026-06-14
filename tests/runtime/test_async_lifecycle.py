@@ -145,9 +145,12 @@ class _FakeRuntime:
         self,
         query: AnySelectQuery,
         row: Sequence[object],
+        *,
+        validate: bool = True,
     ) -> object:
         _ = query
         _ = row
+        _ = validate
         return object()
 
 

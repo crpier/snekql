@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- Table Model field values are now validated against their declared logical type with a strict per-column pydantic `TypeAdapter`, both when constructing a Pending Model and when materializing a Fetched Model. Values that previously slipped through column coercion (for example a `bool` or `float` for an `Integer` column, or a JSON payload that does not match its annotated container shape) now raise `ModelValidationError`. The logical type comes from the column's `Col[T]` / `GenCol[T]` / `FKCol[Target, T]` annotation.
+- `DateTime` columns now require timezone-aware `datetime` values and reject naive ones (validated via pydantic `AwareDatetime`). UTC and millisecond canonicalization happen only when the value crosses the database boundary, so a Pending Model now holds the raw aware `datetime` you constructed it with rather than a pre-normalized UTC value.
+- `Json` columns validate the annotated container shape at construction; JSON serializability is now a wire-codec concern checked only when the value is encoded for storage. A value matching the annotated shape but not serializable is accepted at construction and rejected at encode time.
 - Removed the `foreign_key=` parameter from `Integer`, `Real`, `Text`, `Blob`, and `DateTime`, and the primary-key-default foreign-key resolver. Foreign keys are now declared with the `ForeignKey(target_column)` specifier, which names the target column explicitly (including primary-key targets).
 - SQLite connections now enforce foreign keys (`PRAGMA foreign_keys = ON`), so previously inert `FOREIGN KEY` constraints are now enforced on every write. MariaDB tables are created with `ENGINE=InnoDB` and enforce foreign keys via `foreign_key_checks`. Databases with pre-existing referential-integrity violations may surface errors on writes that touch the dangling rows; see [docs/engine-settings.md](./docs/engine-settings.md).
 - MariaDB text columns are now created as `VARCHAR(255) ... COLLATE utf8mb4_bin` (case-sensitive) to match SQLite's default `BINARY` collation. Existing tables using the default case-insensitive collation are reported as schema drift.
@@ -14,6 +17,12 @@
 - `ForeignKey` column specifier, exported from the package root and the `sqlite`/`mariadb` backend namespaces. It records the referenced column on the descriptor, derives the column's storage class from that target, and cross-checks the target against the column's `FKCol[Target, T]` annotation at declaration time.
 - Foreign keys may reference any unique non-primary-key target column (for example `User.email`), not only the target's single primary key.
 - Centralized engine-settings seam that applies and verifies the connection settings snekql depends on, failing fast when a setting cannot be confirmed. SQLite verifies `foreign_keys`, `busy_timeout`, and UTF-8 `encoding` on every pooled connection; MariaDB verifies a strict `sql_mode` (`STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION`), UTC `time_zone`, and `foreign_key_checks` on every physical connection, plus a minimum-version guard. Documented in [docs/engine-settings.md](./docs/engine-settings.md).
+- `Model.construct(**values)` classmethod that builds a Pending Model while skipping per-column logical validation, for values already known to satisfy their declared types. Defaults, missing/unknown-field structural checks, and freezing still apply.
+- `validate: bool = True` keyword on `Transaction.fetch_one` and `Transaction.fetch_all` (threaded through row materialization) to skip read-side logical validation for trusted result sets while keeping wire decoding.
+
+### Notes
+
+- Following pydantic's documented behavior, `Real` columns accept an `int` and widen it to `float` even under strict validation.
 
 ## 0.3.0 - 2026-06-07
 

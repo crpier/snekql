@@ -85,7 +85,7 @@ def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]
     # (``Order.GenCol[int]``), which is not yet bound while the class body runs.
     captured_localns = cast(
         "dict[str, Any] | None",
-        getattr(model, "__snekql_fk_localns__", None),
+        getattr(model, "__snekql_localns__", None),
     )
     localns: dict[str, Any] = {**(captured_localns or {}), model.__name__: model}
     try:

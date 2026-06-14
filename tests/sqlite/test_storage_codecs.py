@@ -106,8 +106,12 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
     assert_eq(encoded_event, {"payload": '{"kind":"created","count":2}'})
     assert_eq(fetched.payload, {"kind": "created", "count": 2})
 
+    # Logical validation checks the annotated shape (dict[str, object]); JSON
+    # serializability is a wire-codec concern, so a non-serializable value is
+    # accepted at construction and rejected only when encoded for storage.
+    not_serializable = Event(payload={"bad": {object()}})
     with assert_raises(ModelValidationError):
-        _ = Event(payload={"bad": {object()}})
+        _ = encode_model_row(not_serializable, backend="sqlite")
 
     with assert_raises(ModelValidationError):
         _ = decode_model_row(Event, {"payload": "not json"}, backend="sqlite")
@@ -115,7 +119,7 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
 
 @test()
 def datetime_values_are_utc_millisecond_text() -> None:
-    """DateTime accepts aware values and stores UTC millisecond text."""
+    """DateTime keeps the raw aware value and canonicalizes only at the boundary."""
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with a timestamp."""
@@ -133,10 +137,12 @@ def datetime_values_are_utc_millisecond_text() -> None:
     )
     _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
 
-    expected = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
-    assert_eq(audit_log.created_at, expected)
+    canonical = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
+    # The Pending Model holds the raw validated datetime; UTC and millisecond
+    # canonicalization happen only when the value crosses the DB boundary.
+    assert_eq(audit_log.created_at, source)
     assert_eq(encoded_audit_log, {"created_at": "2026-05-31T06:30:01.987Z"})
-    assert_eq(fetched.created_at, expected)
+    assert_eq(fetched.created_at, canonical)
 
     with assert_raises(ModelValidationError):
         _ = AuditLog(created_at=datetime(2026, 5, 31, 12, 0, 1))  # noqa: DTZ001

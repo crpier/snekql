@@ -121,6 +121,8 @@ class RuntimeBackend(Protocol):
         self,
         query: AnySelectQuery,
         row: Sequence[object],
+        *,
+        validate: bool = True,
     ) -> object: ...
 
 
@@ -223,21 +225,33 @@ class Transaction:
 
     @overload
     async def fetch_all(
-        self, query: SelectModelQuery[SelectOwnerT, ReadModelT]
+        self,
+        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        *,
+        validate: bool = True,
     ) -> list[ReadModelT]: ...
     @overload
     async def fetch_all(
-        self, query: SelectValueQuery[ScopeRefT, ScopeRefT, T]
+        self,
+        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
+        *,
+        validate: bool = True,
     ) -> list[T]: ...
     @overload
     async def fetch_all(
-        self, query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts]
+        self,
+        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
+        *,
+        validate: bool = True,
     ) -> list[tuple[*Ts]]: ...
     @overload
     async def fetch_all(
-        self, query: JoinModelQuery[OwnerT, *Ts]
+        self,
+        query: JoinModelQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
     ) -> list[tuple[*Ts]]: ...
-    async def fetch_all(self, query: object) -> object:
+    async def fetch_all(self, query: object, *, validate: bool = True) -> object:
         """Fetch all rows for a select query."""
 
         async with self._lock:
@@ -271,27 +285,41 @@ class Transaction:
                 sql=sql,
             )
             return [
-                self.runtime.materialize_select_row(select_query, tuple(row))
+                self.runtime.materialize_select_row(
+                    select_query, tuple(row), validate=validate
+                )
                 for row in rows
             ]
 
     @overload
     async def fetch_one(
-        self, query: SelectModelQuery[SelectOwnerT, ReadModelT]
+        self,
+        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        *,
+        validate: bool = True,
     ) -> ReadModelT | None: ...
     @overload
     async def fetch_one(
-        self, query: SelectValueQuery[ScopeRefT, ScopeRefT, T]
+        self,
+        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
+        *,
+        validate: bool = True,
     ) -> T | None: ...
     @overload
     async def fetch_one(
-        self, query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts]
+        self,
+        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
+        *,
+        validate: bool = True,
     ) -> tuple[*Ts] | None: ...
     @overload
     async def fetch_one(
-        self, query: JoinModelQuery[OwnerT, *Ts]
+        self,
+        query: JoinModelQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
     ) -> tuple[*Ts] | None: ...
-    async def fetch_one(self, query: object) -> object:
+    async def fetch_one(self, query: object, *, validate: bool = True) -> object:
         """Fetch one row for a select query."""
 
         async with self._lock:
@@ -326,7 +354,9 @@ class Transaction:
             )
             if row is None:
                 return None
-            return self.runtime.materialize_select_row(select_query, tuple(row))
+            return self.runtime.materialize_select_row(
+                select_query, tuple(row), validate=validate
+            )
 
     async def execute(
         self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]

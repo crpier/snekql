@@ -7,7 +7,19 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from json import JSONDecodeError, dumps, loads
 from types import EllipsisType
-from typing import Any, Literal, Self, TypeVar, cast, overload
+from typing import (
+    Any,
+    Literal,
+    Self,
+    TypeVar,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+    overload,
+)
+
+from pydantic import AwareDatetime, TypeAdapter, ValidationError
 
 from snekql.errors import (
     FrozenModelError,
@@ -339,6 +351,48 @@ class ForeignKey:
         )
 
 
+def _resolve_model_hints(owner: type[object]) -> dict[str, Any]:
+    """Resolve and cache a model's annotations for per-column validation.
+
+    The logical type a column validates against lives only in its annotation
+    (`Col[T]` / `GenCol[T]` / `FKCol[Target, T]`), which carries no runtime
+    value. Resolving it needs the names visible where the model was declared --
+    the captured declaring-scope locals plus the model's own name for
+    self-referential annotations -- so the resolution mirrors foreign-key
+    target resolution. Hints are cached on the owning class so each column does
+    not re-resolve the whole annotation set.
+    """
+
+    cached = cast("dict[str, Any] | None", vars(owner).get("__snekql_hints__"))
+    if cached is not None:
+        return cached
+    captured_localns = cast(
+        "dict[str, Any] | None",
+        getattr(owner, "__snekql_localns__", None),
+    )
+    localns: dict[str, Any] = {**(captured_localns or {}), owner.__name__: owner}
+    hints = get_type_hints(owner, localns=localns, include_extras=True)
+    cast("Any", owner).__snekql_hints__ = hints
+    return hints
+
+
+def _extract_logical_type(annotation: object, name: str) -> object:
+    """Pull the validated value type out of a column annotation.
+
+    `Col[T]` and `GenCol[T]` carry the logical type as their only argument;
+    `FKCol[Target, T]` carries it second, after the referenced model.
+    """
+
+    alias_name = getattr(get_origin(annotation), "__name__", None)
+    arguments = get_args(annotation)
+    if alias_name in {"Col", "GenCol"} and arguments:
+        return arguments[0]
+    if alias_name == "FKCol" and len(arguments) >= 2:  # noqa: PLR2004
+        return arguments[1]
+    msg = f"cannot determine validated type for column {name!r}"
+    raise ModelDeclarationError(msg)
+
+
 class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
     """Typed model column descriptor used for fields and query construction.
 
@@ -366,6 +420,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         self.sqlite_storage_class: SQLiteStorageClass = config.sqlite_storage_class
         self.storage_type_name: str = config.storage_type_name
         self.unique: bool = config.unique
+        self._logical_adapter_cache: TypeAdapter[Any] | None = None
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name
@@ -403,15 +458,28 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             return self.default_factory()
         return self.default
 
-    def decode(self, value: object, *, backend: StorageBackend) -> object:
-        """Decode a database value through this column's backend storage codec."""
+    def decode(
+        self,
+        value: object,
+        *,
+        backend: StorageBackend,
+        validate: bool = True,
+    ) -> object:
+        """Decode a database value through this column's backend storage codec.
+
+        Layer 1 wire decoding (`0/1` -> bool, JSON text -> value, timestamp text
+        -> aware datetime) always runs. Layer 2 logical validation against the
+        column's declared type runs unless ``validate`` is disabled.
+        """
 
         try:
             if backend == "mariadb":
                 decoded_value = self._decode_mariadb(value)
             else:
                 decoded_value = self._decode_sqlite(value)
-            return self._coerce_logical_value(decoded_value, fetched=True)
+            if not validate:
+                return decoded_value
+            return self._validate_logical_value(decoded_value, fetched=True)
         except SnekqlError:
             raise
         except Exception as error:
@@ -421,15 +489,19 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             ) from error
 
     def encode(self, value: object, *, backend: StorageBackend) -> object:
-        """Encode a logical Python value through this column's backend codec."""
+        """Encode a logical Python value through this column's backend codec.
+
+        Encoding performs only Layer 1 wire conversion (including the UTC and
+        millisecond canonicalization for timestamps); logical type validation
+        happens when the Pending Model is constructed, not here.
+        """
 
         try:
-            logical_value = self._coerce_logical_value(value, fetched=False)
-            if logical_value is MISSING:
+            if value is MISSING:
                 return MISSING
             if backend == "mariadb":
-                return self._encode_mariadb(logical_value)
-            return self._encode_sqlite(logical_value)
+                return self._encode_mariadb(value)
+            return self._encode_sqlite(value)
         except SnekqlError:
             raise
         except Exception as error:
@@ -439,10 +511,10 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             ) from error
 
     def validate_model_value(self, value: object) -> object:
-        """Validate and normalize a pending model value."""
+        """Validate a pending model value against its declared logical type."""
 
         try:
-            return self._coerce_logical_value(value, fetched=False)
+            return self._validate_logical_value(value, fetched=False)
         except SnekqlError:
             raise
         except Exception as error:
@@ -457,26 +529,34 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             raise ModelDeclarationError(msg)
         return self.name
 
-    def _coerce_logical_value(self, value: object, *, fetched: bool) -> object:
+    def _validate_logical_value(self, value: object, *, fetched: bool) -> object:
         if value is MISSING:
             return self._coerce_missing_value(fetched=fetched)
         if value is None:
             return self._coerce_null_value()
-        coercers: dict[str, Callable[[object], object]] = {
-            "Blob": self._coerce_blob_value,
-            "Boolean": self._coerce_boolean_value,
-            "DateTime": self._coerce_datetime_value,
-            "Integer": self._coerce_integer_value,
-            "Json": self._coerce_json_value,
-            "Real": self._coerce_real_value,
-            "Text": self._coerce_text_value,
-        }
         try:
-            coercer = coercers[self.storage_type_name]
-        except KeyError as error:
-            msg = f"unknown storage type {self.storage_type_name!r}"
-            raise ModelDeclarationError(msg) from error
-        return coercer(value)
+            return self._logical_adapter().validate_python(value, strict=True)
+        except ValidationError as error:
+            msg = f"{self._require_name()!r} failed type validation: {error}"
+            raise ModelValidationError(msg) from error
+
+    def _logical_adapter(self) -> TypeAdapter[Any]:
+        cached = self._logical_adapter_cache
+        if cached is not None:
+            return cached
+        name = self._require_name()
+        if self.storage_type_name == "DateTime":
+            validated_type: object = AwareDatetime
+        else:
+            owner = self.owner
+            if owner is None:
+                msg = "column descriptor is not bound"
+                raise ModelDeclarationError(msg)
+            annotation = _resolve_model_hints(owner).get(name)
+            validated_type = _extract_logical_type(annotation, name)
+        adapter: TypeAdapter[Any] = TypeAdapter(validated_type)
+        self._logical_adapter_cache = adapter
+        return adapter
 
     def _coerce_missing_value(self, *, fetched: bool) -> Missing:
         if self.is_generated and not fetched:
@@ -488,50 +568,6 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         if self.nullable is False:
             msg = f"{self._require_name()!r} cannot be null"
             raise ModelValidationError(msg)
-
-    def _coerce_blob_value(self, value: object) -> bytes:
-        if not isinstance(value, bytes):
-            msg = f"{self._require_name()!r} must be bytes"
-            raise ModelValidationError(msg)
-        return value
-
-    def _coerce_boolean_value(self, value: object) -> bool:
-        if type(value) is not bool:
-            msg = f"{self._require_name()!r} must be a bool"
-            raise ModelValidationError(msg)
-        return value
-
-    def _coerce_datetime_value(self, value: object) -> datetime:
-        if not isinstance(value, datetime):
-            msg = f"{self._require_name()!r} must be a datetime"
-            raise ModelValidationError(msg)
-        return self._normalize_datetime(value)
-
-    def _coerce_integer_value(self, value: object) -> int:
-        if type(value) is not int:
-            msg = f"{self._require_name()!r} must be an int"
-            raise ModelValidationError(msg)
-        return value
-
-    def _coerce_json_value(self, value: object) -> object:
-        try:
-            _ = dumps(value, separators=(",", ":"))
-        except (TypeError, ValueError) as error:
-            msg = f"{self._require_name()!r} is not JSON serializable"
-            raise ModelValidationError(msg) from error
-        return value
-
-    def _coerce_real_value(self, value: object) -> float:
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            msg = f"{self._require_name()!r} must be a number"
-            raise ModelValidationError(msg)
-        return float(value)
-
-    def _coerce_text_value(self, value: object) -> str:
-        if not isinstance(value, str):
-            msg = f"{self._require_name()!r} must be a str"
-            raise ModelValidationError(msg)
-        return value
 
     def _decode_sqlite(self, value: object) -> object:
         if value is None:
@@ -622,7 +658,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             raise ModelValidationError(
                 msg,
             ) from error
-        return self._normalize_datetime(parsed)
+        return parsed
 
     def _decode_mariadb_datetime_text(self, value: str) -> datetime:
         try:
@@ -631,8 +667,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             msg = f"{self._require_name()!r} timestamp is not valid MariaDB text"
             raise ModelValidationError(msg) from error
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=UTC)
-        return self._normalize_datetime(parsed)
+            return parsed.replace(tzinfo=UTC)
+        return parsed
 
     def _encode_sqlite(self, value: object) -> object:
         if value is None:
@@ -648,7 +684,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value)
+            timestamp = cast("datetime", value).astimezone(UTC)
             return (
                 timestamp.strftime("%Y-%m-%dT%H:%M:%S.")
                 + f"{timestamp.microsecond // 1000:03d}Z"
@@ -667,22 +703,12 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value)
+            timestamp = cast("datetime", value).astimezone(UTC)
             return (
                 timestamp.strftime("%Y-%m-%d %H:%M:%S.")
                 + f"{timestamp.microsecond // 1000:03d}"
             )
         return value
-
-    def _normalize_datetime(self, value: datetime) -> datetime:
-        if value.tzinfo is None or value.utcoffset() is None:
-            msg = f"{self._require_name()!r} must be timezone-aware"
-            raise ModelValidationError(
-                msg,
-            )
-        utc_value = value.astimezone(UTC)
-        milliseconds = utc_value.microsecond // 1000
-        return utc_value.replace(microsecond=milliseconds * 1000)
 
     def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
         if value is None:
