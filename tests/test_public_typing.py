@@ -161,11 +161,11 @@ if TYPE_CHECKING:
     _ = assert_type(select(User), SelectModelQuery[User[Pending], User[Fetched]])
     _ = assert_type(
         select(User.email).where(User.email.eq("alice@example.com")).all(),
-        SelectValueQuery[User[Pending], str],
+        SelectValueQuery[User[Pending], User[Pending], str],
     )
     _ = assert_type(
         select(User.email, User.status),
-        SelectTupleQuery[User[Pending], str, str],
+        SelectTupleQuery[User[Pending], User[Pending], str, str],
     )
     _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])
@@ -218,6 +218,56 @@ if TYPE_CHECKING:
     )
     # Rejection: a predicate from a table not in the query is out of scope.
     _ = _user_orders.where(Region.code.eq("EU"))  # type: ignore[arg-type]
+
+    # Projection joins: the result tuple is fixed by the selected columns, the
+    # scope union grows with each join, and the referenced union grows with the
+    # selected columns and where()/order_by(). A join only declares how tables
+    # connect; it never changes the projected result shape.
+    _email_notes = select(User.email, Order.note).join(
+        Order,
+        on=Order.user_id.references(User.id),
+    )
+    _ = assert_type(
+        _email_notes,
+        SelectTupleQuery[
+            User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
+            str,
+            str,
+        ],
+    )
+    _ = _email_notes.where(User.email.eq("a@b.c") & Order.note.eq("x"))
+    _ = _email_notes.order_by(Order.note.asc())
+    # A left join keeps the same projected result shape (its nullability is a
+    # documented gap for projection selects).
+    _ = assert_type(
+        select(User.id, Order.note, Order.note).left_join(
+            Order, on=Order.user_id.references(User.id)
+        ),
+        SelectTupleQuery[
+            User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
+            int,
+            str,
+            str,
+        ],
+    )
+    # Single-column projection join: filter on a joined table you do not select.
+    _ = assert_type(
+        select(User.email)
+        .join(Order, on=Order.user_id.references(User.id))
+        .where(Order.note.eq("x")),
+        SelectValueQuery[
+            User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
+            str,
+        ],
+    )
+    # Rejection: a projection-join `on` with a wrong-type key.
+    _ = select(User.email, Order.note).join(
+        Order,
+        on=Order.user_id.references(User.email),  # type: ignore[arg-type]
+    )
     _ = assert_type(Index(User.email), Index[User[Pending]])
     _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
     _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])
@@ -245,3 +295,39 @@ if TYPE_CHECKING:
             await transaction.fetch_one(select(User.email).all()),
             str | None,
         )
+        # Projection join: the result tuple comes from the projected columns.
+        _ = assert_type(
+            await transaction.fetch_all(
+                select(User.email, Order.note).join(
+                    Order,
+                    on=Order.user_id.references(User.id),
+                ),
+            ),
+            list[tuple[str, str]],
+        )
+        # Filtering a joined table you do not project is fine.
+        _ = assert_type(
+            await transaction.fetch_all(
+                select(User.email)
+                .join(Order, on=Order.user_id.references(User.id))
+                .where(Order.note.eq("x")),
+            ),
+            list[str],
+        )
+        # Dual-union scope check: selecting a column whose table is never joined
+        # is rejected at fetch because the referenced union escapes the scope.
+        _unjoined_select = select(User.email, Region.code).join(
+            Order,
+            on=Order.user_id.references(User.id),
+        )
+        await transaction.fetch_all(_unjoined_select)  # type: ignore[type-var]
+        # Same check for filtering an unjoined table.
+        _unjoined_filter = (
+            select(User.email)
+            .join(Order, on=Order.user_id.references(User.id))
+            .where(Region.code.eq("EU"))
+        )
+        await transaction.fetch_all(_unjoined_filter)  # type: ignore[type-var]
+        # Projecting two tables but joining nothing is rejected too.
+        _no_join = select(User.email, Order.note)
+        await transaction.fetch_all(_no_join)  # type: ignore[type-var]

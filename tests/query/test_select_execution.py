@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, test
 
@@ -155,23 +155,29 @@ def select_rejects_mixed_model_and_field_selections() -> None:
 
 
 @test(mark="fast")
-def select_rejects_fields_from_multiple_models() -> None:
-    """V1 select queries do not support joins across table models."""
+def select_rejects_projecting_a_table_that_is_not_joined() -> None:
+    """Projecting a column whose table is never joined fails at compilation.
+
+    A cross-table projection is constructible (joins may still be added), but
+    compiling one that references a table outside the FROM/JOIN graph is
+    rejected -- the runtime mirror of the static dual-union scope check.
+    """
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
-        """First table model used by invalid select construction checks."""
+        """First table model used by invalid select compilation checks."""
 
         email: User.Col[str] = Text(nullable=False)
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
-        """Second table model used by invalid select construction checks."""
+        """Second table model used by invalid select compilation checks."""
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
-    select_fn = cast("Callable[..., object]", select)
+    select_fn = cast("Callable[..., Any]", select)
+    query = select_fn(User.email, AuditLog.message).all()
 
-    with assert_raises(QueryConstructionError):
-        _ = select_fn(User.email, AuditLog.message)
+    with assert_raises(QueryCompilationError):
+        _ = compile_sqlite_select_sql(query)
 
 
 @test(mark="medium")

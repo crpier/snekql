@@ -91,3 +91,50 @@ def cross_table_where_and_order_by_are_qualified() -> None:
     )
     assert_eq(sql, expected)
     assert_eq(params, ("a@b.c", "x"))
+
+
+@test(mark="fast")
+def projection_join_selects_only_the_projected_columns() -> None:
+    """A projection join qualifies the projected columns and joins the table.
+
+    Unlike a model-select join, the SELECT list stays the projected columns; the
+    joined table contributes only to the FROM/JOIN graph, never the result.
+    """
+
+    sql, params = compile_sqlite_select_sql(
+        select(User.email, Order.note)
+        .join(Order, on=Order.user_id.references(User.id))
+        .all(),
+    )
+
+    expected = " ".join(
+        [
+            'SELECT "user"."email", "order"."note"',
+            'FROM "user"',
+            'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
+        ],
+    )
+    assert_eq(sql, expected)
+    assert_eq(params, ())
+
+
+@test(mark="fast")
+def projection_join_filters_a_joined_but_unprojected_table() -> None:
+    """Filtering a joined table you do not project qualifies its predicate."""
+
+    sql, params = compile_sqlite_select_sql(
+        select(User.email)
+        .join(Order, on=Order.user_id.references(User.id))
+        .where(Order.note.eq("x")),
+    )
+
+    expected = " ".join(
+        [
+            'SELECT "user"."email"',
+            'FROM "user"',
+            'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
+            'WHERE ("order"."note" = ?)',
+        ],
+    )
+    assert_eq(sql, expected)
+    assert_eq(params, ("x",))

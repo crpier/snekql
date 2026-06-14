@@ -132,6 +132,40 @@ def left_join_yields_none_when_the_right_side_is_all_null() -> None:
 
 
 @test(mark="fast")
+def projection_join_materializes_a_tuple_of_scalars() -> None:
+    """A projection join decodes the row into the projected scalar tuple."""
+
+    query = (
+        select(JoinUser.email, JoinOrder.note)
+        .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+        .all()
+    )
+
+    values = materialize_select_row_for_backend(
+        query,
+        ("a@b.c", "hello"),
+        backend="sqlite",
+    )
+
+    assert_eq(values, ("a@b.c", "hello"))
+
+
+@test(mark="fast")
+def single_column_projection_join_unwraps_to_one_scalar() -> None:
+    """A single projected column over a join still returns a bare scalar."""
+
+    query = (
+        select(JoinUser.email)
+        .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+        .where(JoinOrder.note.eq("x"))
+    )
+
+    value = materialize_select_row_for_backend(query, ("a@b.c",), backend="sqlite")
+
+    assert_eq(value, "a@b.c")
+
+
+@test(mark="fast")
 def row_shape_mismatch_is_an_invariant_failure() -> None:
     """A row whose width differs from the select fields fails the invariant."""
 

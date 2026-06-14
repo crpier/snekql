@@ -108,3 +108,62 @@ async def left_join_yields_none_for_unmatched_right_rows() -> None:
     user, order = rows[0]
     assert_eq(user.email, "bob@example.com")
     assert order is None
+
+
+@test(mark="medium")
+async def projection_join_fetches_tuples_of_scalars() -> None:
+    """A projection join returns the projected (email, note) columns per row."""
+
+    database = await Database.initialize(
+        logger=NULL_LOGGER,
+        database=":memory:",
+        models=[JoinUser, JoinOrder],
+    )
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(JoinUser(email="alice@example.com")))
+            await tx.execute(insert(JoinOrder(user_id=1, note="first")))
+            await tx.execute(insert(JoinOrder(user_id=1, note="second")))
+
+            rows = await tx.fetch_all(
+                select(JoinUser.email, JoinOrder.note)
+                .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+                .order_by(JoinOrder.note.asc())
+                .all(),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(
+        rows,
+        [
+            ("alice@example.com", "first"),
+            ("alice@example.com", "second"),
+        ],
+    )
+
+
+@test(mark="medium")
+async def projection_join_filters_on_a_table_it_does_not_project() -> None:
+    """A single-column projection can filter a joined but unprojected table."""
+
+    database = await Database.initialize(
+        logger=NULL_LOGGER,
+        database=":memory:",
+        models=[JoinUser, JoinOrder],
+    )
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(JoinUser(email="alice@example.com")))
+            await tx.execute(insert(JoinOrder(user_id=1, note="keep")))
+            await tx.execute(insert(JoinOrder(user_id=1, note="drop")))
+
+            rows = await tx.fetch_all(
+                select(JoinUser.email)
+                .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+                .where(JoinOrder.note.eq("keep")),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(rows, ["alice@example.com"])

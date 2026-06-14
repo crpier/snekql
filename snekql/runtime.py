@@ -57,6 +57,11 @@ from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
+# A single fresh variable used for both the scope and referenced unions of a
+# projection select. Because the projection query pins its scope union to
+# invariant and leaves its referenced union covariant, unifying both through
+# one variable forces every referenced table to be in scope (i.e. joined).
+ScopeRefT = TypeVar("ScopeRefT", bound=Table[Any])
 T = TypeVar("T")
 Ts = TypeVarTuple("Ts")
 
@@ -221,10 +226,12 @@ class Transaction:
         self, query: SelectModelQuery[SelectOwnerT, ReadModelT]
     ) -> list[ReadModelT]: ...
     @overload
-    async def fetch_all(self, query: SelectValueQuery[OwnerT, T]) -> list[T]: ...
+    async def fetch_all(
+        self, query: SelectValueQuery[ScopeRefT, ScopeRefT, T]
+    ) -> list[T]: ...
     @overload
     async def fetch_all(
-        self, query: SelectTupleQuery[OwnerT, *Ts]
+        self, query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts]
     ) -> list[tuple[*Ts]]: ...
     @overload
     async def fetch_all(
@@ -273,10 +280,12 @@ class Transaction:
         self, query: SelectModelQuery[SelectOwnerT, ReadModelT]
     ) -> ReadModelT | None: ...
     @overload
-    async def fetch_one(self, query: SelectValueQuery[OwnerT, T]) -> T | None: ...
+    async def fetch_one(
+        self, query: SelectValueQuery[ScopeRefT, ScopeRefT, T]
+    ) -> T | None: ...
     @overload
     async def fetch_one(
-        self, query: SelectTupleQuery[OwnerT, *Ts]
+        self, query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts]
     ) -> tuple[*Ts] | None: ...
     @overload
     async def fetch_one(
