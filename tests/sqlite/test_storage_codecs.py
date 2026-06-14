@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
+from pydantic import BaseModel
 from snektest import assert_eq, assert_false, assert_raises, assert_true, test
 
 import snekql
@@ -115,6 +116,68 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
 
     with assert_raises(ModelValidationError):
         _ = decode_model_row(Event, {"payload": "not json"}, backend="sqlite")
+
+
+@test()
+def json_columns_round_trip_rich_annotated_types() -> None:
+    """Json encode/decode route through the column's pydantic adapter, so any
+    type the annotation can validate also serializes and round-trips."""
+
+    class Inner(BaseModel):
+        x: int
+
+    class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
+        """Json column annotated with a pydantic model."""
+
+        payload: ModelEvent.Col[Inner] = Json(nullable=False)
+
+    model_event = ModelEvent(payload=Inner(x=1))
+    _, encoded_model = encode_model_row(model_event, backend="sqlite")
+    assert_eq(encoded_model, {"payload": '{"x":1}'})
+    fetched_model = cast(
+        "ModelEvent[Fetched]",
+        decode_model_row(ModelEvent, {"payload": '{"x":1}'}, backend="sqlite"),
+    )
+    assert_eq(fetched_model.payload, Inner(x=1))
+
+    class WhenEvent[S = Pending](Model[S, "WhenEvent[Fetched]"]):
+        """Json column annotated with a datetime."""
+
+        when: WhenEvent.Col[datetime] = Json(nullable=False)
+
+    moment = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
+    when_event = WhenEvent(when=moment)
+    _, encoded_when = encode_model_row(when_event, backend="sqlite")
+    assert_eq(encoded_when, {"when": '"2026-05-31T06:30:01.987000Z"'})
+    fetched_when = cast(
+        "WhenEvent[Fetched]",
+        decode_model_row(
+            WhenEvent, {"when": '"2026-05-31T06:30:01.987000Z"'}, backend="sqlite"
+        ),
+    )
+    assert_eq(fetched_when.when, moment)
+
+
+@test()
+def json_decode_without_validation_returns_raw_decoded_value() -> None:
+    """validate=False keeps the wire-only escape hatch: raw json.loads, no
+    adapter coercion into the annotated type."""
+
+    class Inner(BaseModel):
+        x: int
+
+    class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
+        """Json column annotated with a pydantic model."""
+
+        payload: ModelEvent.Col[Inner] = Json(nullable=False)
+
+    raw = cast(
+        "ModelEvent[Fetched]",
+        decode_model_row(
+            ModelEvent, {"payload": '{"x":1}'}, backend="sqlite", validate=False
+        ),
+    )
+    assert_eq(cast("object", raw.payload), {"x": 1})
 
 
 @test()

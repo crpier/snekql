@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import BaseModel
 from snektest import assert_eq, assert_isinstance, assert_raises, load_fixture, test
 
 from snekql import (
@@ -51,6 +52,29 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
     assert_eq(
         Event.happened_at.decode("2026-01-02 03:04:05.678", backend="mariadb"),
         datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
+    )
+
+
+@test()
+def mariadb_json_codec_round_trips_rich_annotated_types() -> None:
+    """MariaDB Json codec routes through the column's pydantic adapter, so rich
+    annotated types serialize, validate, and round-trip symmetrically."""
+
+    class Inner(BaseModel):
+        x: int
+
+    class RichEvent[S = Pending](mariadb.Model[S, "RichEvent[Fetched]"]):
+        """Json column annotated with a pydantic model."""
+
+        payload: RichEvent.Col[Inner] = mariadb.Json(nullable=False)
+
+    assert_eq(RichEvent.payload.encode(Inner(x=1), backend="mariadb"), '{"x":1}')
+    assert_eq(RichEvent.payload.decode('{"x":1}', backend="mariadb"), Inner(x=1))
+    # MariaDB hands JSON columns back as bytes; the adapter validates them too.
+    assert_eq(RichEvent.payload.decode(b'{"x":1}', backend="mariadb"), Inner(x=1))
+    assert_eq(
+        RichEvent.payload.decode(b'{"x":1}', backend="mariadb", validate=False),
+        {"x": 1},
     )
 
 
