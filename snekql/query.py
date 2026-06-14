@@ -317,7 +317,7 @@ def _select_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, state.result_models())
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -329,7 +329,7 @@ def _select_order_by(
         msg = "order_by() requires at least one ordering"
         raise QueryConstructionError(msg)
     for ordering in orderings:
-        _ensure_ordering_targets_model(ordering, state.model)
+        _ensure_ordering_targets_models(ordering, state.result_models())
     return replace(state, orderings=(*state.orderings, *orderings))
 
 
@@ -419,7 +419,7 @@ def _update_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -443,7 +443,7 @@ def _delete_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_model(predicate, state.model)
+        _ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -464,15 +464,23 @@ def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
 def _render_column_ref(
     column: Attr[Any, Any, Any, Any, Any],
     dialect: QueryDialect,
+    *,
+    qualified: bool = False,
 ) -> str:
     """Render a column as the SQL reference used in compiled statements.
 
     Every column-name emission (predicates, orderings, assignments, and the
     select list) routes through this single seam so the qualification strategy
-    lives in one place. Today it renders a bare dialect-quoted column name.
+    lives in one place. Single-table statements render a bare dialect-quoted
+    column name; joined statements qualify it with the owning table so columns
+    from different tables never collide.
     """
 
-    return dialect.quote_identifier(_require_column_name(column))
+    quoted_name = dialect.quote_identifier(_require_column_name(column))
+    if not qualified:
+        return quoted_name
+    table_name = require_model_table_name(_require_column_model(column))
+    return f"{dialect.quote_identifier(table_name)}.{quoted_name}"
 
 
 def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
@@ -489,32 +497,32 @@ def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[A
     return model
 
 
-def _ensure_predicate_targets_model(
+def _ensure_predicate_targets_models(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
 ) -> None:
     if predicate.kind == "":
         msg = "where predicates must be built from columns"
         raise QueryConstructionError(msg)
     if predicate.column is not None:
         column = _require_field(predicate.column)
-        if _require_column_model(column) is not model:
-            msg = "joins are not supported in v1"
+        if _require_column_model(column) not in models:
+            msg = "predicate references a table that is not in the query"
             raise QueryConstructionError(msg)
     for child in predicate.children:
-        _ensure_predicate_targets_model(child, model)
+        _ensure_predicate_targets_models(child, models)
 
 
-def _ensure_ordering_targets_model(
+def _ensure_ordering_targets_models(
     ordering: OrderBy[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
 ) -> None:
     if ordering.column is None or ordering.direction not in {"ASC", "DESC"}:
         msg = "orderings must be built from columns"
         raise QueryConstructionError(msg)
     column = _require_field(ordering.column)
-    if _require_column_model(column) is not model:
-        msg = "joins are not supported in v1"
+    if _require_column_model(column) not in models:
+        msg = "ordering references a table that is not in the query"
         raise QueryConstructionError(msg)
 
 
@@ -527,7 +535,7 @@ def _ensure_assignment_targets_model(
         raise QueryConstructionError(msg)
     column = _require_field(assignment.column)
     if _require_column_model(column) is not model:
-        msg = "joins are not supported in v1"
+        msg = "assignment references a table that is not in the query"
         raise QueryConstructionError(msg)
     if column.is_generated or column.primary_key:
         msg = "generated and primary key columns cannot update"
@@ -575,21 +583,25 @@ def _compile_insert_sql(
 
 def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
         msg = "compound predicate is malformed"
         raise QueryCompilationError(msg)
     left_sql, left_params = _compile_predicate_sql(
         predicate.children[0],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     right_sql, right_params = _compile_predicate_sql(
         predicate.children[1],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     operator = "AND" if predicate.kind == "and" else "OR"
     return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
@@ -597,16 +609,19 @@ def _compile_compound_predicate_sql(
 
 def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
         msg = "negated predicate is malformed"
         raise QueryCompilationError(msg)
     child_sql, child_params = _compile_predicate_sql(
         predicate.children[0],
-        model,
+        models,
         dialect,
+        qualified=qualified,
     )
     return f"NOT ({child_sql})", child_params
 
@@ -668,9 +683,11 @@ def _compile_like_predicate_sql(
 def _compile_column_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     column = _require_field(predicate.column)
-    column_name = _render_column_ref(column, dialect)
+    column_name = _render_column_ref(column, dialect, qualified=qualified)
     if predicate.kind in {"eq", "ne"}:
         return _compile_equality_predicate_sql(
             predicate,
@@ -697,40 +714,57 @@ def _compile_column_predicate_sql(
 
 def _compile_predicate_sql(
     predicate: Predicate[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
-    _ensure_predicate_targets_model(predicate, model)
+    _ensure_predicate_targets_models(predicate, models)
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(predicate, model, dialect)
+        return _compile_compound_predicate_sql(
+            predicate,
+            models,
+            dialect,
+            qualified=qualified,
+        )
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(predicate, model, dialect)
-    return _compile_column_predicate_sql(predicate, dialect)
+        return _compile_negated_predicate_sql(
+            predicate,
+            models,
+            dialect,
+            qualified=qualified,
+        )
+    return _compile_column_predicate_sql(predicate, dialect, qualified=qualified)
 
 
 def _compile_ordering_sql(
     ordering: OrderBy[Any],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> str:
-    _ensure_ordering_targets_model(ordering, model)
+    _ensure_ordering_targets_models(ordering, models)
     column = _require_field(ordering.column)
-    column_name = _render_column_ref(column, dialect)
+    column_name = _render_column_ref(column, dialect, qualified=qualified)
     return f"{column_name} {ordering.direction}"
 
 
 def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
-    model: type[Table[Any]],
+    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
+    *,
+    qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
     predicate_params: list[object] = []
     for predicate in predicates:
         predicate_sql, compiled_params = _compile_predicate_sql(
             predicate,
-            model,
+            models,
             dialect,
+            qualified=qualified,
         )
         predicate_sql_parts.append(f"({predicate_sql})")
         predicate_params.extend(compiled_params)
@@ -764,8 +798,9 @@ def _compile_update_sql(
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            (state.model,),
             dialect,
+            qualified=False,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
@@ -786,8 +821,9 @@ def _compile_delete_sql(
     if state.predicates:
         predicate_sql, params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            (state.model,),
             dialect,
+            qualified=False,
         )
         sql = f"{sql} WHERE {predicate_sql}"
     return sql, params
@@ -800,25 +836,36 @@ def _compile_select_state(
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
         raise QueryCompilationError(msg)
+    qualified = bool(state.joins)
+    models = state.result_models()
     table_name = require_model_table_name(state.model)
     quoted_columns = ", ".join(
-        _render_column_ref(column, dialect) for column in state.fields
+        _render_column_ref(column, dialect, qualified=qualified)
+        for column in state.fields
     )
     sql_parts = [
         "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
     ]
+    for join in state.joins:
+        join_table = dialect.quote_identifier(require_model_table_name(join.model))
+        left_ref = _render_column_ref(join.left_column, dialect, qualified=True)
+        right_ref = _render_column_ref(join.right_column, dialect, qualified=True)
+        sql_parts.append(
+            f"{join.join_type} JOIN {join_table} ON {left_ref} = {right_ref}"
+        )
     params: tuple[object, ...] = ()
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            state.model,
+            models,
             dialect,
+            qualified=qualified,
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.orderings:
         order_by = ", ".join(
-            _compile_ordering_sql(ordering, state.model, dialect)
+            _compile_ordering_sql(ordering, models, dialect, qualified=qualified)
             for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
