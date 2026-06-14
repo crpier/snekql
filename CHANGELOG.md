@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Breaking changes
+
+- Removed the `foreign_key=` parameter from `Integer`, `Real`, `Text`, `Blob`, and `DateTime`, and the primary-key-default foreign-key resolver. Foreign keys are now declared with the `ForeignKey(target_column)` specifier, which names the target column explicitly (including primary-key targets).
+
+### Added
+
+- `ForeignKey` column specifier, exported from the package root and the `sqlite`/`mariadb` backend namespaces. It records the referenced column on the descriptor, derives the column's storage class from that target, and cross-checks the target against the column's `FKCol[Target, T]` annotation at declaration time.
+- Foreign keys may reference any unique non-primary-key target column (for example `User.email`), not only the target's single primary key.
+
 ## 0.3.0 - 2026-06-07
 
 ### Breaking changes

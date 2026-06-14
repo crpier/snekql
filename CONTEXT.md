@@ -68,6 +68,10 @@ _Avoid_: Python default, constructor default
 A column whose value the database produces (auto-increment or Server Default), declared with `GenCol`: its value may be Missing on a Pending Model but is always present on a Fetched Model.
 _Avoid_: computed property, Python default
 
+**Foreign-Key Column**:
+A column that references a target column on another Table Model. Declared with `ForeignKey`, it names the exact target column — a primary key or unique column — derives its storage from that target, and emits a `FOREIGN KEY` constraint; a typed-only reference (the same annotation with a plain column declaration) keeps the relationship available for typed joins without enforcing referential integrity.
+_Avoid_: association, ORM relation, relationship object
+
 **Missing**:
 The sentinel marking a Generated Column value that is not available yet on a Pending Model; inserts omit Missing values so the database can fill them.
 _Avoid_: None, NULL, empty value
