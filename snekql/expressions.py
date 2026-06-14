@@ -38,6 +38,23 @@ class Predicate[OwnerT]:
 
 
 @dataclass(frozen=True)
+class Aggregate[OwnerT, T]:
+    """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
+
+    Produced by column methods (``Order.amount.sum()``) and the model ``_count()``
+    classmethod for the star form. Fields are type-erased like :class:`Predicate`
+    so the generic params stay phantom: ``OwnerT`` carries the owning table for the
+    scope check, ``T`` the decoded result type. ``column`` is the wrapped column
+    descriptor, or ``None`` for ``COUNT(*)``; ``owner`` is the owning table model,
+    always present so it can anchor the ``FROM`` clause and the scope check.
+    """
+
+    func: str = ""
+    column: object | None = None
+    owner: object | None = None
+
+
+@dataclass(frozen=True)
 class JoinOn[LeftOwnerT, RightOwnerT]:
     """Join condition relating two table models on equal columns.
 

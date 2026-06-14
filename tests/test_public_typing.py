@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal, assert_type
 
 from snekql import (
     MISSING,
+    Aggregate,
     CurrentTimestamp,
     DateTime,
     Fetched,
@@ -167,6 +168,21 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User.email, User.status),
         SelectTupleQuery[User[Pending], User[Pending], str, str],
+    )
+    # Aggregates: column methods carry owner + result type; the star form lives
+    # on the model. count is int; sum/min/max are nullable; avg is float | None.
+    _ = assert_type(User.id.count(), Aggregate[User[Pending], int])
+    _ = assert_type(User.count_all(), Aggregate[User[Pending], int])
+    _ = assert_type(Order.id.sum(), Aggregate[Order[Pending], int | None])
+    _ = assert_type(Order.id.min(), Aggregate[Order[Pending], int | None])
+    _ = assert_type(Order.id.avg(), Aggregate[Order[Pending], float | None])
+    _ = assert_type(
+        select(User.id.count()).all(),
+        SelectValueQuery[User[Pending], User[Pending], int],
+    )
+    _ = assert_type(
+        select(Order.id.sum()).all(),
+        SelectValueQuery[Order[Pending], Order[Pending], int | None],
     )
     _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])

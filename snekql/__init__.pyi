@@ -19,7 +19,7 @@ from snekql.errors import (
     SnekqlError,
     TransactionClosedError,
 )
-from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
+from snekql.expressions import Aggregate, Assignment, JoinOn, OrderBy, Predicate
 from snekql.indexes import Index
 from snekql.model import (
     Col,
@@ -65,6 +65,7 @@ from snekql.structured_logging import StructuredLogger
 
 __all__ = [
     "MISSING",
+    "Aggregate",
     "Assignment",
     "Attr",
     "Blob",

@@ -38,6 +38,7 @@ def public_contract_exports_canonical_names() -> None:
 
     expected_names = (
         "MISSING",
+        "Aggregate",
         "Assignment",
         "Attr",
         "Blob",

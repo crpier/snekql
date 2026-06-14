@@ -30,7 +30,7 @@ from snekql.errors import (
     QueryConstructionError,
     SnekqlError,
 )
-from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
+from snekql.expressions import Aggregate, Assignment, JoinOn, OrderBy, Predicate
 
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
@@ -933,6 +933,31 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="between", column=self, values=(low, high))
+
+    def count(self) -> Aggregate[OwnerT, int]:
+        """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
+
+        return Aggregate(func="COUNT", column=self, owner=self.owner)
+
+    def sum(self) -> Aggregate[OwnerT, ReadValueT | None]:
+        """Aggregate this column as ``SUM(col)`` (``None`` over an empty set)."""
+
+        return Aggregate(func="SUM", column=self, owner=self.owner)
+
+    def avg(self) -> Aggregate[OwnerT, float | None]:
+        """Aggregate this column as ``AVG(col)`` (``float``, ``None`` if empty)."""
+
+        return Aggregate(func="AVG", column=self, owner=self.owner)
+
+    def min(self) -> Aggregate[OwnerT, ReadValueT | None]:
+        """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
+
+        return Aggregate(func="MIN", column=self, owner=self.owner)
+
+    def max(self) -> Aggregate[OwnerT, ReadValueT | None]:
+        """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
+
+        return Aggregate(func="MAX", column=self, owner=self.owner)
 
     def asc(self) -> OrderBy[OwnerT]:
         return OrderBy(column=self, direction="ASC")
