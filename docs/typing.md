@@ -105,7 +105,7 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
     note: Order.Col[str] = Text(nullable=False)
 ```
 
@@ -171,18 +171,22 @@ select(User.email, Region.code).join(Order, on=Order.user_id.references(User.id)
 
 ### Optional foreign-key DDL
 
-`FKCol[...]` controls typing only. Emitting an actual `FOREIGN KEY` constraint
-(and including it in startup drift checks) is opt-in per column with
-`foreign_key=True`:
+An `FKCol[...]` annotation controls typing only. Emitting an actual
+`FOREIGN KEY` constraint (and including it in startup drift checks) is opt-in
+per column by declaring it with `ForeignKey(...)`, which names the exact target
+column. The column's storage class is derived from that target — never restated
+— and the named target is cross-checked against the annotation at declaration
+time:
 
 ```python
-user_id: Order.FKCol[User, int] = Integer(foreign_key=True)  # emits FK constraint
-ref_code: Order.FKCol[Region, str] = Text()                  # typed-only soft reference
+user_id: Order.FKCol[User, int] = ForeignKey(User.id)            # references user(id)
+owner_email: Order.FKCol[User, str] = ForeignKey(User.email)     # references user(email)
+ref_code: Order.FKCol[Region, str] = Text()                      # typed-only soft reference
 ```
 
-The constraint references the target model's primary key. A typed-only reference
-keeps the relationship available for joins without enforcing referential
-integrity.
+The target column may be any primary key or `unique=True` column. A typed-only
+reference (an `FKCol` annotation with a plain storage specifier) keeps the
+relationship available for joins without enforcing referential integrity.
 
 ## Backend namespaces
 

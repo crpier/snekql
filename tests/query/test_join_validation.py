@@ -34,7 +34,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: Order.FKCol[User, int] = sqlite.Integer(foreign_key=True)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     note: Order.Col[str] = sqlite.Text(nullable=False)
 
 
@@ -46,7 +46,7 @@ class Item[S = Pending](sqlite.Model[S, "Item[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    order_id: Item.FKCol[Order, int] = sqlite.Integer(foreign_key=True)
+    order_id: Item.FKCol[Order, int] = sqlite.ForeignKey(Order.id)
 
 
 @test(mark="fast")

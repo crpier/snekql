@@ -35,7 +35,7 @@ class AttrConfig:
     auto_increment: bool = False
     default: object = ...
     default_factory: Callable[[], object] | EllipsisType = ...
-    foreign_key: bool = False
+    foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None
     nullable: bool | None = None
     primary_key: bool = False
     server_default: object | None = None
@@ -100,7 +100,6 @@ class Integer:
         *,
         primary_key: bool = False,
         auto_increment: bool = False,
-        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -111,7 +110,6 @@ class Integer:
                 auto_increment=auto_increment,
                 default=default,
                 default_factory=default_factory,
-                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -128,11 +126,10 @@ class Real:
     ...     value: Reading.Col[float] = Real(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
-        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -142,7 +139,6 @@ class Real:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
-                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -159,11 +155,10 @@ class Text:
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
-        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -178,7 +173,6 @@ class Text:
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
-                foreign_key=foreign_key,
             ),
         )
 
@@ -190,11 +184,10 @@ class Blob:
     ...     content: File.Col[bytes] = Blob(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
-        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -204,7 +197,6 @@ class Blob:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
-                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -281,11 +273,10 @@ class DateTime:
     ...     )
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         server_default: object | None = None,
-        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -295,7 +286,6 @@ class DateTime:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
-                foreign_key=foreign_key,
                 nullable=nullable,
                 server_default=server_default,
                 unique=unique,
@@ -312,6 +302,43 @@ class CurrentTimestamp:
     """
 
 
+class ForeignKey:
+    """Foreign-key column declaration that names its target column.
+
+    The single way to declare any foreign key: the target column is passed as a
+    value (`ForeignKey(User.email)`), and the precise `FKAttr[..., T, T, Target]`
+    return cross-checks it against the field's `FKCol[Target, T]` annotation at
+    declaration time. Storage is *derived* from the target column rather than
+    restated, so an FK to a `TEXT` column is itself `TEXT`. PK targets are named
+    explicitly like any other (`ForeignKey(User.id)`).
+
+    >>> class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    ...     owner_email: Order.FKCol[User, str] = ForeignKey(
+    ...         User.email, nullable=False
+    ...     )
+    """
+
+    def __new__[Target, T](
+        cls,
+        references: Attr[Any, Any, Target, Any, T],
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+    ) -> FKAttr[Any, Any, Any, T, T, Target]:
+        target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
+        return build_attr(
+            AttrConfig(
+                default=default,
+                foreign_key_target=target_column,
+                nullable=nullable,
+                sqlite_storage_class=target_column.sqlite_storage_class,
+                storage_type_name=target_column.storage_type_name,
+                unique=unique,
+            ),
+        )
+
+
 class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
     """Typed model column descriptor used for fields and query construction.
 
@@ -326,7 +353,10 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         self.default_factory: Callable[[], object] | EllipsisType = (
             config.default_factory
         )
-        self.foreign_key: bool = config.foreign_key
+        self.foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = (
+            config.foreign_key_target
+        )
+        self.foreign_key: bool = config.foreign_key_target is not None
         self.is_generated: bool = False
         self.name: str | None = None
         self.owner: type[object] | None = None

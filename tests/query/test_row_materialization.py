@@ -41,7 +41,7 @@ class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.Integer(foreign_key=True)
+    user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
     note: JoinOrder.Col[str] = Text(nullable=False)
 
 

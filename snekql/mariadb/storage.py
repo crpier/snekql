@@ -6,7 +6,7 @@ from collections.abc import Callable
 from types import EllipsisType
 from typing import Any
 
-from snekql.storage import AttrConfig, CurrentTimestamp, build_attr
+from snekql.storage import AttrConfig, CurrentTimestamp, ForeignKey, build_attr
 
 
 class Integer:
@@ -191,6 +191,7 @@ __all__ = [
     "Boolean",
     "CurrentTimestamp",
     "DateTime",
+    "ForeignKey",
     "Integer",
     "Json",
     "Real",

@@ -9,6 +9,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql import (
     MISSING,
     Fetched,
+    ForeignKey,
     Index,
     Integer,
     Model,
@@ -82,12 +83,12 @@ def schema_plan_rejects_duplicate_resolved_names() -> None:
 
 
 @test(mark="fast")
-def schema_plan_resolves_foreign_key_constraints_from_annotations() -> None:
-    """`foreign_key=True` columns resolve to the target table's primary key.
+def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
+    """`ForeignKey(User.id)` resolves to the named primary-key target column.
 
-    A typed-only reference (an ``FKCol`` without ``foreign_key=True``) declares a
-    relationship for joins but emits no constraint, so it is absent from the
-    resolved foreign keys.
+    A typed-only reference (an ``FKCol`` declared with a plain storage specifier)
+    records no target, so it declares a relationship for joins but emits no
+    constraint and is absent from the resolved foreign keys.
     """
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -108,7 +109,7 @@ def schema_plan_resolves_foreign_key_constraints_from_annotations() -> None:
             auto_increment=True,
             default=MISSING,
         )
-        user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         soft_user_id: Order.FKCol[User, int] = Integer()
         note: Order.Col[str] = Text(nullable=False)
 
@@ -128,32 +129,73 @@ def schema_plan_resolves_foreign_key_constraints_from_annotations() -> None:
 
 
 @test(mark="fast")
-def schema_plan_rejects_foreign_key_without_a_target_annotation() -> None:
-    """A ``foreign_key=True`` column must declare a target via ``FKCol``."""
+def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
+    """`ForeignKey(User.email)` resolves to a unique non-PK target column."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table whose unique email is a non-PK target."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        email: User.Col[str] = Text(nullable=False, unique=True)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
-        """Table flagging a plain column as a foreign key without a target."""
+        """Table referencing the target's unique email column."""
 
-        user_id: Order.Col[int] = Integer(foreign_key=True)
-        note: Order.Col[str] = Text(nullable=False)
+        owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
 
-    with assert_raises(SchemaError):
-        _ = build_schema_plan([Order])
+    plan = build_schema_plan([User, Order])
+
+    assert_eq(
+        plan.models[1].foreign_keys,
+        (
+            PlannedForeignKey(
+                column_name="owner_email",
+                target_table="user",
+                target_column="email",
+            ),
+        ),
+    )
 
 
 @test(mark="fast")
-def schema_plan_rejects_foreign_key_to_a_target_without_one_primary_key() -> None:
-    """The target of an enforced foreign key must have exactly one primary key."""
+def schema_plan_rejects_a_foreign_key_to_a_non_unique_target_column() -> None:
+    """An FK target column must be a primary key or carry a unique constraint."""
 
-    class Keyless[S = Pending](Model[S, "Keyless[Fetched]"]):
-        """Referenced table that declares no primary key."""
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table whose name column is neither PK nor unique."""
 
-        name: Keyless.Col[str] = Text(nullable=False)
+        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        name: User.Col[str] = Text(nullable=False)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
-        """Table referencing a primary-keyless target."""
+        """Table referencing a non-unique target column."""
 
-        ref: Order.FKCol[Keyless, str] = Text(foreign_key=True)
+        owner_name: Order.FKCol[User, str] = ForeignKey(User.name)
 
     with assert_raises(SchemaError):
-        _ = build_schema_plan([Keyless, Order])
+        _ = build_schema_plan([User, Order])
+
+
+@test(mark="fast")
+def schema_plan_rejects_a_foreign_key_whose_target_is_not_on_the_annotated_model() -> (
+    None
+):
+    """The recorded target column must belong to the annotation's target model."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table owning the column the foreign key actually points at."""
+
+        email: User.Col[str] = Text(nullable=False, unique=True)
+
+    class Region[S = Pending](Model[S, "Region[Fetched]"]):
+        """Unrelated table named as the annotated target."""
+
+        code: Region.Col[str] = Text(nullable=False, unique=True)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table whose annotation and recorded target disagree."""
+
+        owner: Order.FKCol[Region, str] = ForeignKey(User.email)  # type: ignore[arg-type]
+
+    with assert_raises(SchemaError):
+        _ = build_schema_plan([User, Region, Order])
