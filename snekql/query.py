@@ -831,6 +831,46 @@ def _compile_equality_predicate_sql(
     )
 
 
+_COMPARISON_OPERATORS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<="}
+
+
+def _compile_comparison_predicate_sql(
+    predicate: Predicate[Any],
+    column: Attr[Any, Any, Any, Any, Any],
+    column_name: str,
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    if predicate.value is None:
+        msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
+        raise QueryCompilationError(msg)
+    operator = _COMPARISON_OPERATORS[predicate.kind]
+    return (
+        f"{column_name} {operator} {dialect.placeholder}",
+        (dialect.encode_column_value(column, predicate.value),),
+    )
+
+
+def _compile_between_predicate_sql(
+    predicate: Predicate[Any],
+    column: Attr[Any, Any, Any, Any, Any],
+    column_name: str,
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    if len(predicate.values) != 2:  # noqa: PLR2004
+        msg = "between() requires exactly two bounds"
+        raise QueryCompilationError(msg)
+    if any(bound is None for bound in predicate.values):
+        msg = "between() bounds cannot be None; use is_null()/is_not_null()"
+        raise QueryCompilationError(msg)
+    params = tuple(
+        dialect.encode_column_value(column, bound) for bound in predicate.values
+    )
+    return (
+        f"{column_name} BETWEEN {dialect.placeholder} AND {dialect.placeholder}",
+        params,
+    )
+
+
 def _compile_membership_predicate_sql(
     predicate: Predicate[Any],
     column: Attr[Any, Any, Any, Any, Any],
@@ -882,10 +922,9 @@ def _compile_column_predicate_sql(
             column_name,
             dialect,
         )
-    if predicate.kind == "is_null":
-        return f"{column_name} IS NULL", ()
-    if predicate.kind == "is_not_null":
-        return f"{column_name} IS NOT NULL", ()
+    if predicate.kind in {"is_null", "is_not_null"}:
+        operator = "IS NULL" if predicate.kind == "is_null" else "IS NOT NULL"
+        return f"{column_name} {operator}", ()
     if predicate.kind in {"in", "not_in"}:
         return _compile_membership_predicate_sql(
             predicate,
@@ -895,6 +934,15 @@ def _compile_column_predicate_sql(
         )
     if predicate.kind in {"like", "not_like"}:
         return _compile_like_predicate_sql(predicate, column, column_name, dialect)
+    if predicate.kind in _COMPARISON_OPERATORS:
+        return _compile_comparison_predicate_sql(
+            predicate,
+            column,
+            column_name,
+            dialect,
+        )
+    if predicate.kind == "between":
+        return _compile_between_predicate_sql(predicate, column, column_name, dialect)
     msg = "unknown predicate kind"
     raise QueryCompilationError(msg)
 
