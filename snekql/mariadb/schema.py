@@ -22,6 +22,7 @@ class _ColumnSignature:
     """Normalized MariaDB column metadata used for drift verification."""
 
     auto_increment: bool
+    collation: str | None
     data_type: str
     max_length: int | None
     name: str
@@ -38,6 +39,12 @@ class _IndexSignature:
     unique: bool
 
 
+# Case-sensitive, byte-ordered collation chosen so MariaDB string equality and
+# UNIQUE constraints match SQLite's default BINARY collation instead of the
+# case-insensitive utf8mb4 default.
+TEXT_COLLATION = "utf8mb4_bin"
+
+
 def _compile_column_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
     """Map the initial shared value families to MariaDB column types."""
 
@@ -48,7 +55,7 @@ def _compile_column_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
         "Integer": "BIGINT",
         "Json": "JSON",
         "Real": "DOUBLE",
-        "Text": "VARCHAR(255)",
+        "Text": f"VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {TEXT_COLLATION}",
     }
     try:
         return column_types[column.storage_type_name]
@@ -82,10 +89,19 @@ def _column_max_length(column: Attr[Any, Any, Any, Any, Any]) -> int | None:
     return None
 
 
+def _column_collation(column: Attr[Any, Any, Any, Any, Any]) -> str | None:
+    """Text columns pin a case-sensitive collation; others have none here."""
+
+    if column.storage_type_name == "Text":
+        return TEXT_COLLATION
+    return None
+
+
 def _expected_column_signature(planned_column: PlannedColumn) -> _ColumnSignature:
     column = planned_column.column
     return _ColumnSignature(
         auto_increment=column.auto_increment,
+        collation=_column_collation(column),
         data_type=_column_data_type(column),
         max_length=_column_max_length(column),
         name=planned_column.name,
@@ -132,7 +148,10 @@ def _compile_create_table_sql(planned_model: PlannedModel) -> str:
         for foreign_key in planned_model.foreign_keys
     )
     table_body = ", ".join(definitions)
-    return f"CREATE TABLE {quote_identifier(planned_model.table_name)} ({table_body})"
+    return (
+        f"CREATE TABLE {quote_identifier(planned_model.table_name)} "
+        f"({table_body}) ENGINE=InnoDB"
+    )
 
 
 def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
@@ -205,6 +224,24 @@ async def _table_exists(connection: object, table_name: str) -> bool:
     return bool(rows)
 
 
+async def _table_uses_innodb(connection: object, table_name: str) -> bool:
+    """Whether an existing table uses InnoDB, required to enforce foreign keys."""
+
+    rows = await _fetchall(
+        connection,
+        """
+        SELECT ENGINE
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = %s
+        """,
+        (table_name,),
+    )
+    if not rows:
+        return False
+    return str(rows[0][0]).lower() == "innodb"
+
+
 async def _fetch_existing_column_signatures(
     connection: object,
     table_name: str,
@@ -213,7 +250,7 @@ async def _fetch_existing_column_signatures(
         connection,
         """
         SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE,
-               COLUMN_KEY, EXTRA
+               COLUMN_KEY, EXTRA, COLLATION_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = %s
@@ -223,13 +260,18 @@ async def _fetch_existing_column_signatures(
     )
     signatures: list[_ColumnSignature] = []
     for row in rows:
-        name, data_type, max_length, nullable, column_key, extra = row
+        name, data_type, max_length, nullable, column_key, extra, collation = row
         parsed_max_length = (
             int(max_length) if isinstance(max_length, int | str) else None
         )
         signatures.append(
             _ColumnSignature(
                 auto_increment="auto_increment" in str(extra),
+                collation=(
+                    str(collation)
+                    if str(data_type) == "varchar" and collation
+                    else None
+                ),
                 data_type=str(data_type),
                 max_length=parsed_max_length,
                 name=str(name),
@@ -287,6 +329,8 @@ class MariaDBSchemaBackend:
         return await _table_exists(self.connection, table_name)
 
     async def table_matches(self, planned_model: PlannedModel) -> bool:
+        if not await _table_uses_innodb(self.connection, planned_model.table_name):
+            return False
         expected_columns = [
             _expected_column_signature(planned_column)
             for planned_column in planned_model.columns
