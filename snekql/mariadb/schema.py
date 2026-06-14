@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, cast
 
-from snekql._schema_plan import PlannedColumn, PlannedModel
+from snekql._schema_plan import PlannedColumn, PlannedForeignKey, PlannedModel
 from snekql._schema_startup import initialize_schema
 from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
@@ -114,12 +114,25 @@ def _compile_planned_column_definition(planned_column: PlannedColumn) -> str:
     return _compile_column_definition(planned_column.name, planned_column.column)
 
 
+def _compile_foreign_key_constraint(foreign_key: PlannedForeignKey) -> str:
+    return (
+        f"FOREIGN KEY ({quote_identifier(foreign_key.column_name)}) "
+        f"REFERENCES {quote_identifier(foreign_key.target_table)} "
+        f"({quote_identifier(foreign_key.target_column)})"
+    )
+
+
 def _compile_create_table_sql(planned_model: PlannedModel) -> str:
-    column_sql = ", ".join(
+    definitions = [
         _compile_planned_column_definition(planned_column)
         for planned_column in planned_model.columns
+    ]
+    definitions.extend(
+        _compile_foreign_key_constraint(foreign_key)
+        for foreign_key in planned_model.foreign_keys
     )
-    return f"CREATE TABLE {quote_identifier(planned_model.table_name)} ({column_sql})"
+    table_body = ", ".join(definitions)
+    return f"CREATE TABLE {quote_identifier(planned_model.table_name)} ({table_body})"
 
 
 def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
