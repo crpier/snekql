@@ -889,6 +889,34 @@ def compile_select_sql_for_dialect(
     return _compile_select_state(query.state, dialect)
 
 
+def _materialize_join_row(
+    state: _SelectState,
+    row: Sequence[object],
+    *,
+    backend: StorageBackend,
+) -> tuple[object, ...]:
+    """Split one joined row into a Fetched model per table, in join order.
+
+    A left-joined table whose columns are all NULL produced no matching row, so
+    its tuple slot is materialized as None rather than a model.
+    """
+
+    elements: list[object] = []
+    offset = 0
+    for index, model in enumerate(state.result_models()):
+        columns = require_model_columns(model)
+        width = len(columns)
+        chunk = row[offset : offset + width]
+        offset += width
+        is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
+        if is_left_join and all(value is None for value in chunk):
+            elements.append(None)
+            continue
+        values = {name: chunk[position] for position, name in enumerate(columns)}
+        elements.append(decode_model_row(model, values, backend=backend))
+    return tuple(elements)
+
+
 def materialize_select_row_for_backend(
     query: AnySelectQuery,
     row: Sequence[object],
@@ -897,15 +925,18 @@ def materialize_select_row_for_backend(
 ) -> object:
     """Materialize one database row into the select query's result shape.
 
-    Shared by every backend: a model select decodes the whole row into a
-    Fetched Model, a single-column select returns one decoded scalar, and a
-    multi-column select returns a tuple of decoded scalars in order.
+    Shared by every backend: a join select decodes the row into a tuple of
+    Fetched models (one per joined table), a model select decodes the whole row
+    into a Fetched Model, a single-column select returns one decoded scalar, and
+    a multi-column select returns a tuple of decoded scalars in order.
     """
 
     state = query.state
     assert len(row) == len(state.fields), (  # noqa: S101
         "database row shape did not match select query"
     )
+    if state.joins:
+        return _materialize_join_row(state, row, backend=backend)
     if state.returns_model:
         values = {
             _require_column_name(column): row[index]
