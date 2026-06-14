@@ -55,6 +55,7 @@ def public_contract_exports_canonical_names() -> None:
         "FKAttr",
         "FKCol",
         "Fetched",
+        "ForeignKey",
         "FrozenModelError",
         "GenCol",
         "Index",

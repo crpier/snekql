@@ -12,6 +12,7 @@ from snekql import (
     MISSING,
     Database,
     Fetched,
+    ForeignKey,
     Integer,
     Model,
     Pending,
@@ -41,7 +42,7 @@ class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: JoinOrder.FKCol[JoinUser, int] = Integer(foreign_key=True)
+    user_id: JoinOrder.FKCol[JoinUser, int] = ForeignKey(JoinUser.id)
     note: JoinOrder.Col[str] = Text(nullable=False)
 
 

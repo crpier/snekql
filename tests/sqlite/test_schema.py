@@ -14,6 +14,7 @@ from snekql import (
     Database,
     DatabaseRuntimeError,
     Fetched,
+    ForeignKey,
     Index,
     Integer,
     Model,
@@ -173,7 +174,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 
 @test(mark="medium")
 async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
-    """`foreign_key=True` renders a REFERENCES constraint; soft refs do not."""
+    """`ForeignKey` renders a REFERENCES constraint; soft refs do not."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table whose primary key anchors the constraint."""
@@ -193,7 +194,7 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
             auto_increment=True,
             default=MISSING,
         )
-        user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         soft_user_id: Order.FKCol[User, int] = Integer(nullable=False)
         note: Order.Col[str] = Text(nullable=False)
 
@@ -211,6 +212,47 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
         '"user_id" INTEGER, "soft_user_id" INTEGER NOT NULL, '
         '"note" TEXT NOT NULL, '
         'FOREIGN KEY ("user_id") REFERENCES "user" ("id")) STRICT'
+    )
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
+async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> None:
+    """A `ForeignKey` to a unique non-PK column references that column by name."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table whose unique email is the FK target."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = Text(nullable=False, unique=True)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table whose owner_email references ``user(email)``."""
+
+        id: Order.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User, Order]
+        )
+        await database.close()
+
+        create_table = _fetch_create_table(database_path, "order")
+
+    expected_sql = (
+        'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"owner_email" TEXT NOT NULL, '
+        'FOREIGN KEY ("owner_email") REFERENCES "user" ("email")) STRICT'
     )
     assert_eq(create_table, expected_sql)
 
@@ -238,7 +280,7 @@ async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing()
             auto_increment=True,
             default=MISSING,
         )
-        user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"

@@ -30,6 +30,7 @@ from snekql.storage import (
     CurrentTimestamp,
     DateTime,
     FKAttr,
+    ForeignKey,
     Integer,
     Json,
     Missing,
@@ -132,7 +133,7 @@ type FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = _FKCol[
 
 
 @dataclass_transform(
-    field_specifiers=(Integer, Real, Text, Blob, Json, Boolean, DateTime),
+    field_specifiers=(Integer, Real, Text, Blob, Json, Boolean, DateTime, ForeignKey),
     kw_only_default=True,
 )
 class ModelMeta(type):

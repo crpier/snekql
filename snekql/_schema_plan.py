@@ -25,8 +25,9 @@ class PlannedForeignKey:
     """One enforced foreign-key relationship resolved for schema startup.
 
     The local ``column_name`` references ``target_column`` on ``target_table``;
-    the target is resolved from the column's ``FKCol[Target, T]`` annotation and
-    defaults to the target model's single primary key.
+    the target column is the one named explicitly by ``ForeignKey(Target.col)``,
+    and the target model is cross-checked against the column's ``FKCol[Target, T]``
+    annotation.
     """
 
     column_name: str
@@ -105,22 +106,41 @@ def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]
     return cast("type[Table[Any]]", target_model)
 
 
-def _resolve_target_primary_key(target_model: type[Table[Any]], name: str) -> str:
-    """Return the single primary-key column name of a foreign-key target."""
+def _resolve_target_column(
+    target_model: type[Table[Any]],
+    name: str,
+    target_column: Attr[Any, Any, Any, Any, Any],
+) -> str:
+    """Resolve and validate the FK target column named by ``ForeignKey``.
 
-    primary_keys = [
-        column_name
-        for column_name, column in require_model_columns(target_model).items()
-        if column.primary_key
-    ]
-    if len(primary_keys) != 1:
-        target_table = require_model_table_name(target_model)
+    The target column is the descriptor passed to ``ForeignKey(Target.col)``; it
+    must belong to the annotation's target model (identity, not just name match)
+    and be a primary key or carry a unique constraint, since a foreign key can
+    only reference a uniquely indexed column.
+    """
+
+    target_table = require_model_table_name(target_model)
+    target_column_name = next(
+        (
+            column_name
+            for column_name, column in require_model_columns(target_model).items()
+            if column is target_column
+        ),
+        None,
+    )
+    if target_column_name is None:
         msg = (
-            f"foreign_key column {name!r} requires target table {target_table!r} "
-            "to declare exactly one primary-key column"
+            f"foreign-key column {name!r} references a column that is not on "
+            f"target table {target_table!r}"
         )
         raise SchemaError(msg)
-    return primary_keys[0]
+    if not (target_column.primary_key or target_column.unique):
+        msg = (
+            f"foreign-key column {name!r} target "
+            f"{target_table}.{target_column_name} must be a primary key or unique"
+        )
+        raise SchemaError(msg)
+    return target_column_name
 
 
 def _plan_foreign_keys(
@@ -129,15 +149,19 @@ def _plan_foreign_keys(
 ) -> tuple[PlannedForeignKey, ...]:
     foreign_keys: list[PlannedForeignKey] = []
     for planned_column in columns:
-        if not planned_column.column.foreign_key:
+        target_column = planned_column.column.foreign_key_target
+        if target_column is None:
             continue
         target_model = _resolve_target_model(model, planned_column.name)
-        target_column = _resolve_target_primary_key(target_model, planned_column.name)
         foreign_keys.append(
             PlannedForeignKey(
                 column_name=planned_column.name,
                 target_table=require_model_table_name(target_model),
-                target_column=target_column,
+                target_column=_resolve_target_column(
+                    target_model,
+                    planned_column.name,
+                    target_column,
+                ),
             ),
         )
     return tuple(foreign_keys)

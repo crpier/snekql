@@ -12,6 +12,7 @@ from snekql import (
     CurrentTimestamp,
     DateTime,
     Fetched,
+    ForeignKey,
     Index,
     InsertQuery,
     Integer,
@@ -59,7 +60,7 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
     note: Order.Col[str] = Text(nullable=False)
 
 

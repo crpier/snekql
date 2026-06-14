@@ -32,7 +32,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
         auto_increment=True,
         default=MISSING,
     )
-    user_id: Order.FKCol[User, int] = sqlite.Integer(foreign_key=True)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     note: Order.Col[str] = sqlite.Text(nullable=False)
 
 

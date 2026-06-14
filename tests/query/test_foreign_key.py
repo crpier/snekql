@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import MISSING, Fetched, Pending, sqlite
+from snekql import MISSING, Fetched, ForeignKey, Pending, sqlite
 from snekql.expressions import JoinOn
 
 
@@ -37,7 +37,7 @@ def references_builds_join_condition() -> None:
             auto_increment=True,
             default=MISSING,
         )
-        user_id: Order.FKCol[User, int] = sqlite.Integer(foreign_key=True)
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         note: Order.Col[str] = sqlite.Text(nullable=False)
 
     condition = Order.user_id.references(User.id)
@@ -48,14 +48,42 @@ def references_builds_join_condition() -> None:
 
 
 @test(mark="fast")
-def foreign_key_flag_is_recorded_on_the_descriptor() -> None:
-    """`foreign_key=True` is stored for later DDL emission."""
+def foreign_key_records_its_target_column_on_the_descriptor() -> None:
+    """`ForeignKey` stores the referenced column for later DDL resolution."""
+
+    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+        """Referenced table whose primary key anchors the constraint."""
+
+        id: User.GenCol[int] = sqlite.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
 
     class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
         """Table with one FK column and one plain column."""
 
-        user_id: Order.Col[int] = sqlite.Integer(foreign_key=True)
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         note: Order.Col[str] = sqlite.Text(nullable=False)
 
-    assert_eq(Order.user_id.foreign_key, True)
-    assert_eq(Order.note.foreign_key, False)
+    assert_eq(Order.user_id.foreign_key_target, User.id)
+    assert Order.note.foreign_key_target is None
+
+
+@test(mark="fast")
+def foreign_key_derives_its_storage_class_from_the_target_column() -> None:
+    """An FK to a TEXT column is itself TEXT; storage is never restated."""
+
+    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+        """Referenced table whose unique email is a non-PK target."""
+
+        id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=MISSING)
+        email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
+
+    class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+        """Table referencing the target's TEXT email column."""
+
+        owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
+
+    assert_eq(Order.owner_email.storage_type_name, "Text")
+    assert_eq(Order.owner_email.sqlite_storage_class, "TEXT")
