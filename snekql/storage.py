@@ -904,6 +904,36 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             raise QueryConstructionError(msg)
         return Predicate(kind="not_like", column=self, value=pattern)
 
+    def gt(self, value: ReadValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "gt(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="gt", column=self, value=value)
+
+    def gte(self, value: ReadValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "gte(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="gte", column=self, value=value)
+
+    def lt(self, value: ReadValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "lt(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="lt", column=self, value=value)
+
+    def lte(self, value: ReadValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "lte(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="lte", column=self, value=value)
+
+    def between(self, low: ReadValueT, high: ReadValueT) -> Predicate[OwnerT]:
+        if low is None or high is None:
+            msg = "between() bounds cannot be None; use is_null()/is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="between", column=self, values=(low, high))
+
     def asc(self) -> OrderBy[OwnerT]:
         return OrderBy(column=self, direction="ASC")
 

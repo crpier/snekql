@@ -14,6 +14,7 @@
 
 ### Added
 
+- Ordered-comparison and range column predicates: `.gt(...)`, `.gte(...)`, `.lt(...)`, `.lte(...)`, and `.between(low, high)`. They compile to `> >= < <=` and `BETWEEN ? AND ?`, are scope-checked and composable with `&`/`|`/`~` like the existing predicates, and reject `None` arguments (steering callers at `is_null()`/`is_not_null()`).
 - `ForeignKey` column specifier, exported from the package root and the `sqlite`/`mariadb` backend namespaces. It records the referenced column on the descriptor, derives the column's storage class from that target, and cross-checks the target against the column's `FKCol[Target, T]` annotation at declaration time.
 - Foreign keys may reference any unique non-primary-key target column (for example `User.email`), not only the target's single primary key.
 - Centralized engine-settings seam that applies and verifies the connection settings snekql depends on, failing fast when a setting cannot be confirmed. SQLite verifies `foreign_keys`, `busy_timeout`, and UTF-8 `encoding` on every pooled connection; MariaDB verifies a strict `sql_mode` (`STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION`), UTC `time_zone`, and `foreign_key_checks` on every physical connection, plus a minimum-version guard. Documented in [docs/engine-settings.md](./docs/engine-settings.md).

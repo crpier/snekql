@@ -195,7 +195,8 @@ delete(User).all()  # explicit full-table delete
 
 Filtering is explicit: `select`, `update`, and `delete` must choose exactly one
 of `.where(...)` or `.all()` before execution. Predicates use methods such as
-`.eq(...)`, `.ne(...)`, `.is_null()`, `.in_(...)`, `.like(...)`; Python
+`.eq(...)`, `.ne(...)`, `.is_null()`, `.in_(...)`, `.like(...)`,
+`.gt(...)`/`.gte(...)`/`.lt(...)`/`.lte(...)`, and `.between(low, high)`; Python
 comparison operators are not part of the v1 API.
 
 ## Runtime
