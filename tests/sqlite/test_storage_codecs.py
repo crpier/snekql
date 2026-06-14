@@ -49,7 +49,7 @@ def storage_classes_expose_sqlite_metadata() -> None:
         blob_value: StorageExample.Col[bytes] = Blob(nullable=False)
         json_value: StorageExample.Col[dict[str, object]] = Json(nullable=False)
         boolean_value: StorageExample.Col[bool] = Boolean(nullable=False)
-        datetime_value: StorageExample.Col[object] = DateTime(nullable=False)
+        datetime_value: StorageExample.Col[datetime] = DateTime(nullable=False)
 
     columns = StorageExample.__snekql_columns__
 

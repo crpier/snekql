@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from datetime import datetime
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
-from pydantic import PositiveInt
+from pydantic import BaseModel, PositiveInt
 from snektest import (
     assert_eq,
     assert_false,
@@ -18,6 +19,10 @@ from snektest import (
 
 from snekql import (
     MISSING,
+    Blob,
+    Boolean,
+    DateTime,
+    ForeignKey,
     FrozenModelError,
     Index,
     Integer,
@@ -326,7 +331,112 @@ def json_columns_validate_annotated_shape() -> None:
 
 
 @test(mark="fast")
-def real_columns_widen_int_to_float() -> None:
+def compatible_annotations_and_storage_are_accepted() -> None:
+    """Each scalar storage type accepts its matching logical annotation."""
+
+    class Sample[S = Pending](Model[S, "Sample[Fetched]"]):
+        """Table model exercising every checked storage/annotation pair."""
+
+        count: Sample.Col[int] = Integer(nullable=False)
+        amount: Sample.Col[float] = Real(nullable=False)
+        label: Sample.Col[str] = Text(nullable=False)
+        payload: Sample.Col[bytes] = Blob(nullable=False)
+        enabled: Sample.Col[bool] = Boolean(nullable=False)
+        created_at: Sample.Col[datetime] = DateTime(nullable=False)
+        optional_count: Sample.Col[int | None] = Integer(nullable=True)
+        constrained: Sample.Col[Annotated[int, "meta"]] = Integer(nullable=False)
+
+    assert_eq(Sample.__snekql_columns__["count"].storage_type_name, "Integer")
+    assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "DateTime")
+
+
+@test(mark="fast")
+def foreign_key_annotation_storage_pairs_are_accepted() -> None:
+    """A foreign-key column's key annotation is checked against derived storage."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table with an integer primary key."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table carrying an integer foreign key to ``User``."""
+
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
+
+    assert_eq(Order.__snekql_columns__["user_id"].storage_type_name, "Integer")
+
+
+@test(mark="fast")
+def column_annotation_incompatible_with_storage_raises() -> None:
+    """Declaration rejects unambiguous logical/storage scalar mismatches."""
+
+    with assert_raises(ModelDeclarationError):
+
+        class FloatInInteger[S = Pending](Model[S, "FloatInInteger[Fetched]"]):
+            """Integer storage cannot hold a float logical type."""
+
+            value: FloatInInteger.Col[float] = Integer(nullable=False)
+
+    with assert_raises(ModelDeclarationError):
+
+        class IntInBoolean[S = Pending](Model[S, "IntInBoolean[Fetched]"]):
+            """Boolean storage silently corrupts arbitrary ints (issue #101)."""
+
+            value: IntInBoolean.Col[int] = Boolean(nullable=False)
+
+    with assert_raises(ModelDeclarationError):
+
+        class BoolInInteger[S = Pending](Model[S, "BoolInInteger[Fetched]"]):
+            """``bool`` is not ``int`` under the exact-pair matrix."""
+
+            value: BoolInInteger.Col[bool] = Integer(nullable=False)
+
+    with assert_raises(ModelDeclarationError):
+
+        class StrInDateTime[S = Pending](Model[S, "StrInDateTime[Fetched]"]):
+            """DateTime storage demands a ``datetime`` annotation."""
+
+            value: StrInDateTime.Col[str] = DateTime(nullable=False)
+
+    with assert_raises(ModelDeclarationError):
+
+        class IntInText[S = Pending](Model[S, "IntInText[Fetched]"]):
+            """Text storage cannot hold an int logical type, even optional."""
+
+            value: IntInText.Col[int | None] = Text(nullable=True)
+
+
+@test(mark="fast")
+def json_columns_skip_annotation_storage_compat() -> None:
+    """Json has no single base type, so the compat check leaves it alone."""
+
+    class Document[S = Pending](Model[S, "Document[Fetched]"]):
+        """Json columns accept any logical annotation at declaration time."""
+
+        when: Document.Col[datetime] = Json(nullable=False)
+        items: Document.Col[list[int]] = Json(nullable=False)
+
+    assert_eq(Document.__snekql_columns__["when"].storage_type_name, "Json")
+
+
+@test(mark="fast")
+def annotation_storage_compat_is_best_effort() -> None:
+    """Unresolvable and multi-type annotations are skipped, scalars still checked."""
+
+    class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+        """A forward-ref Json sibling must not block binding the scalar column."""
+
+        count: Mixed.Col[int] = Integer(nullable=False)
+        blob: Mixed.Col[Payload] = Json(nullable=False)
+        either: Mixed.Col[int | str] = Integer(nullable=False)
+
+    class Payload(BaseModel):
+        """Logical type defined only after the model that annotates it."""
+
+        x: int
+
+    assert_eq(Mixed.__snekql_columns__["count"].storage_type_name, "Integer")
     """Real columns accept int and widen it to float, matching pydantic defaults."""
 
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):

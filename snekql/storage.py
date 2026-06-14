@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from json import JSONDecodeError, dumps, loads
-from types import EllipsisType
+from types import EllipsisType, UnionType
 from typing import (
     Any,
     Literal,
@@ -391,6 +392,120 @@ def _extract_logical_type(annotation: object, name: str) -> object:
         return arguments[1]
     msg = f"cannot determine validated type for column {name!r}"
     raise ModelDeclarationError(msg)
+
+
+# Storage types whose logical type is a single, unambiguous Python base. Json
+# (any JSON-serializable value) and other multi-type storage are deliberately
+# absent: they have no single base to compare an annotation against.
+_STORAGE_LOGICAL_TYPE: dict[str, type] = {
+    "Integer": int,
+    "Real": float,
+    "Text": str,
+    "Blob": bytes,
+    "Boolean": bool,
+    "DateTime": datetime,
+}
+
+
+def check_column_storage_compatibility(
+    owner: type,
+    columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    raw_annotations: dict[str, object],
+) -> None:
+    """Reject columns whose logical annotation cannot match their storage.
+
+    A column has two independent sources of truth: the field annotation drives
+    pydantic validation, and the storage descriptor drives encode/decode.
+    Nothing else forces them to agree, so a mismatch like ``Col[int] = Boolean()``
+    silently corrupts data (``5`` stored as ``1``). This declaration-time guard
+    catches the unambiguous scalar mismatches.
+
+    The check is **best-effort**: storage types with no single logical base
+    (``Json``), annotations that do not reduce to one base type (unions of two
+    non-``None`` members, enums, pydantic models), and annotations that cannot
+    be resolved yet (forward references defined later in the module) are all let
+    through. Every checked base is a builtin that always resolves, so nothing in
+    scope is ever skipped for being unresolvable.
+    """
+
+    for name, column in columns.items():
+        expected = _STORAGE_LOGICAL_TYPE.get(column.storage_type_name)
+        if expected is None:
+            continue
+        annotation = _resolve_annotation(owner, raw_annotations.get(name))
+        if annotation is None:
+            continue
+        logical = _logical_base_type(annotation, name)
+        if logical is None:
+            continue
+        if logical is not expected:
+            msg = (
+                f"column {name!r} annotated {logical.__name__!r} is incompatible "
+                f"with {column.storage_type_name} storage "
+                f"(expected {expected.__name__!r})"
+            )
+            raise ModelDeclarationError(msg)
+
+
+def _resolve_annotation(owner: type, raw: object) -> object:
+    """Resolve one column annotation in isolation, or ``None`` if it cannot be.
+
+    Annotations are strings under ``from __future__ import annotations``.
+    Resolving each column on its own -- rather than batch ``get_type_hints`` --
+    keeps one unresolvable forward reference from blocking the check on its
+    resolvable siblings.
+    """
+
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return raw
+    module = sys.modules.get(owner.__module__)
+    globalns = getattr(module, "__dict__", {})
+    captured = cast("dict[str, Any] | None", getattr(owner, "__snekql_localns__", None))
+    localns: dict[str, Any] = {**(captured or {}), owner.__name__: owner}
+    try:
+        return eval(raw, dict(globalns), localns)  # noqa: S307
+    except Exception:  # best-effort: any resolution failure means "skip".
+        return None
+
+
+def _logical_base_type(annotation: object, name: str) -> type | None:
+    """Reduce a column annotation to its single Python base type, if it has one.
+
+    Strips the column alias (``Col``/``GenCol``/``FKCol``), then ``Annotated``
+    metadata, then an optional ``| None``. Anything that does not bottom out in
+    a single concrete class -- a multi-member union, a parametrized generic, a
+    type variable -- returns ``None`` and is left for the caller to skip.
+    """
+
+    try:
+        logical = _extract_logical_type(annotation, name)
+    except ModelDeclarationError:
+        return None
+    logical = _strip_annotated(logical)
+    logical = _strip_optional(logical)
+    if isinstance(logical, type):
+        return logical
+    return None
+
+
+def _strip_annotated(annotation: object) -> object:
+    metadata = getattr(annotation, "__metadata__", None)
+    if metadata is not None:
+        return cast("Any", annotation).__origin__
+    return annotation
+
+
+def _strip_optional(annotation: object) -> object:
+    # Only PEP 604 ``X | None`` unions are unwrapped, matching house style; an
+    # old-style ``Optional[X]`` simply falls through as "not a single base type"
+    # and is left for the caller to skip rather than risk a false positive.
+    if get_origin(annotation) is UnionType:
+        non_none = [arg for arg in get_args(annotation) if arg is not type(None)]
+        if len(non_none) == 1:
+            return non_none[0]
+    return annotation
 
 
 class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
