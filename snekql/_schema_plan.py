@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast, get_args, get_origin, get_type_hints
 
 from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
@@ -21,10 +21,25 @@ class PlannedColumn:
 
 
 @dataclass(frozen=True)
+class PlannedForeignKey:
+    """One enforced foreign-key relationship resolved for schema startup.
+
+    The local ``column_name`` references ``target_column`` on ``target_table``;
+    the target is resolved from the column's ``FKCol[Target, T]`` annotation and
+    defaults to the target model's single primary key.
+    """
+
+    column_name: str
+    target_table: str
+    target_column: str
+
+
+@dataclass(frozen=True)
 class PlannedModel:
     """One table model's backend-neutral schema startup inputs."""
 
     columns: tuple[PlannedColumn, ...]
+    foreign_keys: tuple[PlannedForeignKey, ...]
     indexes: tuple[NormalizedIndex, ...]
     model: type[Table[Any]]
     table_name: str
@@ -61,6 +76,73 @@ def _model_indexes(
     return (*_column_unique_indexes(table_name, columns), *table_indexes)
 
 
+def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]]:
+    """Resolve the referenced model from a column's ``FKCol`` annotation."""
+
+    # Resolving annotations needs names visible where the model was declared,
+    # plus the model's own name for self-referential column owners
+    # (``Order.GenCol[int]``), which is not yet bound while the class body runs.
+    captured_localns = cast(
+        "dict[str, Any] | None",
+        getattr(model, "__snekql_fk_localns__", None),
+    )
+    localns: dict[str, Any] = {**(captured_localns or {}), model.__name__: model}
+    try:
+        hints = get_type_hints(model, localns=localns, include_extras=True)
+    except Exception as error:
+        msg = f"cannot resolve foreign-key annotation for column {name!r}"
+        raise SchemaError(msg) from error
+    annotation = hints.get(name)
+    origin = get_origin(annotation)
+    if origin is None or getattr(origin, "__name__", None) != "FKCol":
+        msg = f"foreign_key column {name!r} must be annotated as FKCol[Target, T]"
+        raise SchemaError(msg)
+    target_argument = cast("object", get_args(annotation)[0])
+    target_model = get_origin(target_argument) or target_argument
+    if not isinstance(target_model, type) or not issubclass(target_model, Table):
+        msg = f"foreign-key target for column {name!r} is not a table model"
+        raise SchemaError(msg)
+    return cast("type[Table[Any]]", target_model)
+
+
+def _resolve_target_primary_key(target_model: type[Table[Any]], name: str) -> str:
+    """Return the single primary-key column name of a foreign-key target."""
+
+    primary_keys = [
+        column_name
+        for column_name, column in require_model_columns(target_model).items()
+        if column.primary_key
+    ]
+    if len(primary_keys) != 1:
+        target_table = require_model_table_name(target_model)
+        msg = (
+            f"foreign_key column {name!r} requires target table {target_table!r} "
+            "to declare exactly one primary-key column"
+        )
+        raise SchemaError(msg)
+    return primary_keys[0]
+
+
+def _plan_foreign_keys(
+    model: type[Table[Any]],
+    columns: tuple[PlannedColumn, ...],
+) -> tuple[PlannedForeignKey, ...]:
+    foreign_keys: list[PlannedForeignKey] = []
+    for planned_column in columns:
+        if not planned_column.column.foreign_key:
+            continue
+        target_model = _resolve_target_model(model, planned_column.name)
+        target_column = _resolve_target_primary_key(target_model, planned_column.name)
+        foreign_keys.append(
+            PlannedForeignKey(
+                column_name=planned_column.name,
+                target_table=require_model_table_name(target_model),
+                target_column=target_column,
+            ),
+        )
+    return tuple(foreign_keys)
+
+
 def _plan_model(model: type[Table[Any]]) -> PlannedModel:
     table_name = require_model_table_name(model)
     columns = tuple(
@@ -69,6 +151,7 @@ def _plan_model(model: type[Table[Any]]) -> PlannedModel:
     )
     return PlannedModel(
         columns=columns,
+        foreign_keys=_plan_foreign_keys(model, columns),
         indexes=_model_indexes(model, table_name, columns),
         model=model,
         table_name=table_name,

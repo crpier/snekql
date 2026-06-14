@@ -172,6 +172,93 @@ async def initialize_creates_missing_strict_tables() -> None:
 
 
 @test(mark="medium")
+async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
+    """`foreign_key=True` renders a REFERENCES constraint; soft refs do not."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table whose primary key anchors the constraint."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table with an enforced and a typed-only reference to ``User``."""
+
+        id: Order.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+        soft_user_id: Order.FKCol[User, int] = Integer(nullable=False)
+        note: Order.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User, Order]
+        )
+        await database.close()
+
+        create_table = _fetch_create_table(database_path, "order")
+
+    expected_sql = (
+        'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"user_id" INTEGER, "soft_user_id" INTEGER NOT NULL, '
+        '"note" TEXT NOT NULL, '
+        'FOREIGN KEY ("user_id") REFERENCES "user" ("id")) STRICT'
+    )
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
+async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing() -> (
+    None
+):
+    """An existing table lacking a managed FK constraint is strict-policy drift."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table for foreign-key drift detection."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table whose model declares a constraint absent from the database."""
+
+        id: Order.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        user_id: Order.FKCol[User, int] = Integer(foreign_key=True)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        order_sql = (
+            'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"user_id" INTEGER) STRICT'
+        )
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT) STRICT',
+        )
+        _execute_sql(database_path, order_sql)
+
+        with assert_raises(SchemaVerificationError):
+            _ = await Database.initialize(
+                logger=NULL_LOGGER, database=database_path, models=[User, Order]
+            )
+
+
+@test(mark="medium")
 async def initialize_accepts_sqlite_config_object() -> None:
     """SQLite configuration objects select the SQLite runtime explicitly."""
 

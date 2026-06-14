@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from types import EllipsisType
 from typing import (
     Any,
@@ -171,6 +172,9 @@ class ModelMeta(type):
             namespace,
         )
         model_metadata.__snekql_columns__ = columns
+        model_metadata.__snekql_fk_localns__ = ModelMeta._capture_foreign_key_localns(
+            columns,
+        )
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -180,6 +184,32 @@ class ModelMeta(type):
                 columns,
             )
         return model_class
+
+    @staticmethod
+    def _capture_foreign_key_localns(
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> dict[str, Any] | None:
+        """Snapshot the defining scope's locals for later FK target resolution.
+
+        A foreign-key target is declared only in the column annotation
+        (`FKCol[Target, T]`), which carries no runtime value. Resolving it at
+        schema-startup time with `get_type_hints` needs the names visible where
+        the model was declared -- including function-local targets that module
+        globals do not see. Only models that declare a foreign key pay this cost.
+        """
+
+        if not any(column.foreign_key for column in columns.values()):
+            return None
+        # Walk past this helper, __new__, and any PEP 695 type-parameter scopes
+        # (a generic `class Order[S]` inserts a synthetic frame carrying
+        # ``.type_params``) to reach the scope where the model was declared.
+        current = inspect.currentframe()
+        frame = current.f_back.f_back if current and current.f_back else None
+        while frame is not None:
+            if ".type_params" not in frame.f_locals:
+                return dict(frame.f_locals)
+            frame = frame.f_back
+        return None
 
     @staticmethod
     def _validate_model_bases(bases: tuple[type, ...]) -> None:
@@ -432,6 +462,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_fk_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
