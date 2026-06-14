@@ -37,6 +37,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    check_column_storage_compatibility,
 )
 
 type BackendFamily = StorageBackend
@@ -176,6 +177,8 @@ class ModelMeta(type):
         model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
             is_model_base=is_model_base,
         )
+        if not is_model_base:
+            check_column_storage_compatibility(model_class, columns, annotations)
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
