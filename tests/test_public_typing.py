@@ -204,6 +204,31 @@ if TYPE_CHECKING:
             int | None,
         ],
     )
+    # HAVING: aggregates share the column comparison surface, so an aggregate
+    # predicate carries its owner and having() widens the referenced-table union
+    # exactly like where().
+    _ = assert_type(User.id.count().gt(5), Predicate[User[Pending]])
+    _ = assert_type(Order.id.sum().gt(5), Predicate[Order[Pending]])
+    _ = assert_type(
+        select(User.status, User.id.count())
+        .group_by(User.status)
+        .having(User.id.count().gt(5))
+        .all(),
+        SelectTupleQuery[User[Pending], User[Pending], str, int],
+    )
+    _ = assert_type(
+        select(User.status, Order.id.sum())
+        .join(Order, on=Order.user_id.references(User.id))
+        .group_by(User.status)
+        .having(Order.id.sum().gt(5))
+        .all(),
+        SelectTupleQuery[
+            User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
+            str,
+            int | None,
+        ],
+    )
     _ = assert_type(User.email.eq("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.ne("alice@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.is_null(), Predicate[User[Pending]])

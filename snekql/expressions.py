@@ -37,8 +37,91 @@ class Predicate[OwnerT]:
         raise QueryConstructionError(msg)
 
 
+class Comparable[OwnerT, ValueT]:
+    """Predicate-building surface shared by columns and aggregates.
+
+    Both column descriptors (``Attr``) and :class:`Aggregate` mix this in so a
+    comparison builds the same :class:`Predicate` whether it targets a column in
+    ``WHERE`` (``Order.amount.gt(5)``) or an aggregate in ``HAVING``
+    (``Order.amount.sum().gt(5)``). ``ValueT`` is the comparison value type -- a
+    column's read type or an aggregate's result type -- and ``OwnerT`` the owning
+    table model the resulting predicate is scoped to. Predicates store the
+    operand as ``column`` (an ``Attr`` or an :class:`Aggregate`); the compiler
+    renders the operand and encodes the value according to which it is.
+
+    Text-only helpers (``like``/``not_like``) stay on ``Attr`` since they are not
+    meaningful over an aggregate.
+    """
+
+    def eq(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "eq(None) is invalid; use is_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="eq", column=self, value=value)
+
+    def ne(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "ne(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="ne", column=self, value=value)
+
+    def is_null(self) -> Predicate[OwnerT]:
+        return Predicate(kind="is_null", column=self)
+
+    def is_not_null(self) -> Predicate[OwnerT]:
+        return Predicate(kind="is_not_null", column=self)
+
+    def in_(self, *values: ValueT) -> Predicate[OwnerT]:
+        if not values:
+            msg = "in_() requires at least one value"
+            raise QueryConstructionError(msg)
+        if any(candidate is None for candidate in values):
+            msg = "in_() values cannot be None"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="in", column=self, values=values)
+
+    def not_in(self, *values: ValueT) -> Predicate[OwnerT]:
+        if not values:
+            msg = "not_in() requires at least one value"
+            raise QueryConstructionError(msg)
+        if any(candidate is None for candidate in values):
+            msg = "not_in() values cannot be None"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="not_in", column=self, values=values)
+
+    def gt(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "gt(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="gt", column=self, value=value)
+
+    def gte(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "gte(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="gte", column=self, value=value)
+
+    def lt(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "lt(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="lt", column=self, value=value)
+
+    def lte(self, value: ValueT) -> Predicate[OwnerT]:
+        if value is None:
+            msg = "lte(None) is invalid; use is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="lte", column=self, value=value)
+
+    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]:
+        if low is None or high is None:
+            msg = "between() bounds cannot be None; use is_null()/is_not_null()"
+            raise QueryConstructionError(msg)
+        return Predicate(kind="between", column=self, values=(low, high))
+
+
 @dataclass(frozen=True)
-class Aggregate[OwnerT, T]:
+class Aggregate[OwnerT, T](Comparable[OwnerT, T]):
     """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
 
     Produced by column methods (``Order.amount.sum()``) and the model

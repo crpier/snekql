@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Literal, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
@@ -75,6 +75,7 @@ class _SelectState:
     distinct: bool = False
     predicates: tuple[Predicate[Any], ...] = ()
     groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
+    having: tuple[Predicate[Any], ...] = ()
     orderings: tuple[OrderBy[Any], ...] = ()
     limit_value: int | None = None
     offset_value: int | None = None
@@ -292,6 +293,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T](_BaseSelectQuery
             SelectValueQuery[Any, Any, T](_select_group_by(self.state, columns)),
         )
 
+    def having[RefOwnerT: Table[Any]](
+        self,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T]:
+        """Filter groups by aggregate or grouped column, widening the union."""
+
+        return cast(
+            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T]",
+            SelectValueQuery[Any, Any, T](_select_having(self.state, predicates)),
+        )
+
     def join[
         NewOwnerT: Table[Any],
         NewReadT: Table[Any],
@@ -381,6 +393,17 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         return cast(
             "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
             SelectTupleQuery[Any, Any, *Ts](_select_group_by(self.state, columns)),
+        )
+
+    def having[RefOwnerT: Table[Any]](
+        self,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+        """Filter groups by aggregate or grouped column, widening the union."""
+
+        return cast(
+            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[Any, Any, *Ts](_select_having(self.state, predicates)),
         )
 
     def join[
@@ -551,6 +574,18 @@ def _select_group_by(
             msg = "group_by references a table that is not in the query"
             raise QueryConstructionError(msg)
     return replace(state, groupings=(*state.groupings, *grouped))
+
+
+def _select_having(
+    state: _SelectState,
+    predicates: tuple[Predicate[Any], ...],
+) -> _SelectState:
+    if not predicates:
+        msg = "having() requires at least one predicate"
+        raise QueryConstructionError(msg)
+    for predicate in predicates:
+        _ensure_having_targets(predicate, state)
+    return replace(state, having=(*state.having, *predicates))
 
 
 def _select_join(
@@ -848,12 +883,54 @@ def _ensure_predicate_targets_models(
         msg = "where predicates must be built from columns"
         raise QueryConstructionError(msg)
     if predicate.column is not None:
+        if isinstance(predicate.column, Aggregate):
+            msg = "aggregates cannot appear in where(); use having()"
+            raise QueryConstructionError(msg)
         column = _require_field(predicate.column)
         if _require_column_model(column) not in models:
             msg = "predicate references a table that is not in the query"
             raise QueryConstructionError(msg)
     for child in predicate.children:
         _ensure_predicate_targets_models(child, models)
+
+
+def _ensure_having_targets(
+    predicate: Predicate[Any],
+    state: _SelectState,
+) -> None:
+    """Validate that a HAVING predicate targets only aggregates or grouped columns.
+
+    SQL allows ``HAVING`` to reference the per-group aggregates and the grouping
+    keys, never an ungrouped bare column. Aggregates carry their owner directly;
+    a plain column must appear in ``group_by`` (and, like ``where``, name a table
+    already in scope).
+    """
+
+    if predicate.kind == "":
+        msg = "having predicates must be built from columns or aggregates"
+        raise QueryConstructionError(msg)
+    if predicate.column is not None:
+        _ensure_having_selectable(predicate.column, state)
+    for child in predicate.children:
+        _ensure_having_targets(child, state)
+
+
+def _ensure_having_selectable(column: object, state: _SelectState) -> None:
+    selectable = _require_selectable(column)
+    models = state.result_models()
+    if _selectable_owner_model(selectable) not in models:
+        msg = "having references a table that is not in the query"
+        raise QueryConstructionError(msg)
+    if isinstance(selectable, Aggregate):
+        return
+    grouped_keys = {
+        (_require_column_model(grouped), _require_column_name(grouped))
+        for grouped in state.groupings
+    }
+    key = (_require_column_model(selectable), _require_column_name(selectable))
+    if key not in grouped_keys:
+        msg = "having references a column that is not grouped or aggregated"
+        raise QueryConstructionError(msg)
 
 
 def _ensure_ordering_targets_models(
@@ -951,7 +1028,6 @@ def _compile_insert_sql(
 
 def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
-    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
     *,
     qualified: bool,
@@ -961,13 +1037,11 @@ def _compile_compound_predicate_sql(
         raise QueryCompilationError(msg)
     left_sql, left_params = _compile_predicate_sql(
         predicate.children[0],
-        models,
         dialect,
         qualified=qualified,
     )
     right_sql, right_params = _compile_predicate_sql(
         predicate.children[1],
-        models,
         dialect,
         qualified=qualified,
     )
@@ -977,7 +1051,6 @@ def _compile_compound_predicate_sql(
 
 def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
-    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
     *,
     qualified: bool,
@@ -987,7 +1060,6 @@ def _compile_negated_predicate_sql(
         raise QueryCompilationError(msg)
     child_sql, child_params = _compile_predicate_sql(
         predicate.children[0],
-        models,
         dialect,
         qualified=qualified,
     )
@@ -996,7 +1068,7 @@ def _compile_negated_predicate_sql(
 
 def _compile_equality_predicate_sql(
     predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
+    encode: Callable[[object], object],
     column_name: str,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
@@ -1008,7 +1080,7 @@ def _compile_equality_predicate_sql(
     operator = "=" if predicate.kind == "eq" else "!="
     return (
         f"{column_name} {operator} {dialect.placeholder}",
-        (dialect.encode_column_value(column, predicate.value),),
+        (encode(predicate.value),),
     )
 
 
@@ -1017,7 +1089,7 @@ _COMPARISON_OPERATORS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<="}
 
 def _compile_comparison_predicate_sql(
     predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
+    encode: Callable[[object], object],
     column_name: str,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
@@ -1027,13 +1099,13 @@ def _compile_comparison_predicate_sql(
     operator = _COMPARISON_OPERATORS[predicate.kind]
     return (
         f"{column_name} {operator} {dialect.placeholder}",
-        (dialect.encode_column_value(column, predicate.value),),
+        (encode(predicate.value),),
     )
 
 
 def _compile_between_predicate_sql(
     predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
+    encode: Callable[[object], object],
     column_name: str,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
@@ -1043,9 +1115,7 @@ def _compile_between_predicate_sql(
     if any(bound is None for bound in predicate.values):
         msg = "between() bounds cannot be None; use is_null()/is_not_null()"
         raise QueryCompilationError(msg)
-    params = tuple(
-        dialect.encode_column_value(column, bound) for bound in predicate.values
-    )
+    params = tuple(encode(bound) for bound in predicate.values)
     return (
         f"{column_name} BETWEEN {dialect.placeholder} AND {dialect.placeholder}",
         params,
@@ -1054,7 +1124,7 @@ def _compile_between_predicate_sql(
 
 def _compile_membership_predicate_sql(
     predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
+    encode: Callable[[object], object],
     column_name: str,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
@@ -1066,9 +1136,7 @@ def _compile_membership_predicate_sql(
         raise QueryCompilationError(msg)
     placeholders = ", ".join(dialect.placeholder for _ in predicate.values)
     operator = "IN" if predicate.kind == "in" else "NOT IN"
-    params = tuple(
-        dialect.encode_column_value(column, value) for value in predicate.values
-    )
+    params = tuple(encode(value) for value in predicate.values)
     return f"{column_name} {operator} ({placeholders})", params
 
 
@@ -1088,68 +1156,76 @@ def _compile_like_predicate_sql(
     )
 
 
+def _predicate_value_encoder(
+    selectable: Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any],
+    dialect: QueryDialect,
+) -> Callable[[object], object]:
+    """Build the value encoder for a predicate operand.
+
+    A column encodes comparison values through its own logical codec. An
+    aggregate's comparison value follows its result type: ``COUNT``/``AVG``
+    compare against a plain ``int``/``float`` and pass through unencoded, while
+    ``SUM``/``MIN``/``MAX`` share the wrapped column's type and reuse its encoder
+    (so e.g. a ``datetime`` ``MIN`` bound is serialized correctly).
+    """
+
+    if isinstance(selectable, Aggregate):
+        if selectable.func in {"COUNT", "AVG"}:
+            return lambda value: value
+        wrapped = _require_field(selectable.column)
+        return lambda value: dialect.encode_column_value(wrapped, value)
+    column = selectable
+    return lambda value: dialect.encode_column_value(column, value)
+
+
 def _compile_column_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
     qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
-    column = _require_field(predicate.column)
-    column_name = _render_column_ref(column, dialect, qualified=qualified)
+    selectable = _require_selectable(predicate.column)
+    column_name = _render_selectable(selectable, dialect, qualified=qualified)
+    encode = _predicate_value_encoder(selectable, dialect)
     if predicate.kind in {"eq", "ne"}:
-        return _compile_equality_predicate_sql(
-            predicate,
-            column,
-            column_name,
-            dialect,
-        )
+        return _compile_equality_predicate_sql(predicate, encode, column_name, dialect)
     if predicate.kind in {"is_null", "is_not_null"}:
         operator = "IS NULL" if predicate.kind == "is_null" else "IS NOT NULL"
         return f"{column_name} {operator}", ()
     if predicate.kind in {"in", "not_in"}:
         return _compile_membership_predicate_sql(
             predicate,
-            column,
+            encode,
             column_name,
             dialect,
         )
     if predicate.kind in {"like", "not_like"}:
-        return _compile_like_predicate_sql(predicate, column, column_name, dialect)
-    if predicate.kind in _COMPARISON_OPERATORS:
-        return _compile_comparison_predicate_sql(
+        return _compile_like_predicate_sql(
             predicate,
-            column,
+            _require_field(predicate.column),
             column_name,
             dialect,
         )
+    if predicate.kind in _COMPARISON_OPERATORS:
+        return _compile_comparison_predicate_sql(
+            predicate, encode, column_name, dialect
+        )
     if predicate.kind == "between":
-        return _compile_between_predicate_sql(predicate, column, column_name, dialect)
+        return _compile_between_predicate_sql(predicate, encode, column_name, dialect)
     msg = "unknown predicate kind"
     raise QueryCompilationError(msg)
 
 
 def _compile_predicate_sql(
     predicate: Predicate[Any],
-    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
     *,
     qualified: bool,
 ) -> tuple[str, tuple[object, ...]]:
-    _ensure_predicate_targets_models(predicate, models)
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(
-            predicate,
-            models,
-            dialect,
-            qualified=qualified,
-        )
+        return _compile_compound_predicate_sql(predicate, dialect, qualified=qualified)
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(
-            predicate,
-            models,
-            dialect,
-            qualified=qualified,
-        )
+        return _compile_negated_predicate_sql(predicate, dialect, qualified=qualified)
     return _compile_column_predicate_sql(predicate, dialect, qualified=qualified)
 
 
@@ -1181,7 +1257,6 @@ def _compile_ordering_sql(
 
 def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
-    models: tuple[type[Table[Any]], ...],
     dialect: QueryDialect,
     *,
     qualified: bool,
@@ -1191,7 +1266,6 @@ def _compile_predicates_sql(
     for predicate in predicates:
         predicate_sql, compiled_params = _compile_predicate_sql(
             predicate,
-            models,
             dialect,
             qualified=qualified,
         )
@@ -1227,7 +1301,6 @@ def _compile_update_sql(
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            (state.model,),
             dialect,
             qualified=False,
         )
@@ -1250,7 +1323,6 @@ def _compile_delete_sql(
     if state.predicates:
         predicate_sql, params = _compile_predicates_sql(
             state.predicates,
-            (state.model,),
             dialect,
             qualified=False,
         )
@@ -1293,7 +1365,6 @@ def _compile_select_state(
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
-            models,
             dialect,
             qualified=qualified,
         )
@@ -1301,6 +1372,14 @@ def _compile_select_state(
         params = (*params, *predicate_params)
     if state.groupings:
         sql_parts.append(_compile_group_by_sql(state, dialect, qualified=qualified))
+    if state.having:
+        having_sql, having_params = _compile_predicates_sql(
+            state.having,
+            dialect,
+            qualified=qualified,
+        )
+        sql_parts.append(f"HAVING {having_sql}")
+        params = (*params, *having_params)
     if state.orderings:
         order_by = ", ".join(
             _compile_ordering_sql(ordering, models, dialect, qualified=qualified)

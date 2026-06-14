@@ -401,3 +401,42 @@ async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
 
     assert_eq(rows, [("east", 7), ("west", 5)])
     assert all(isinstance(total, int) for _, total in rows)
+
+
+@test(mark="medium")
+async def mariadb_runtime_filters_groups_with_having() -> None:
+    """HAVING over an aggregate keeps only qualifying groups on MariaDB.
+
+    Slice 3 (#113) parity: ``HAVING`` filters the grouped rows server-side, and
+    the surviving group's DECIMAL SUM still normalizes to ``int``.
+    """
+
+    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+        """Integer-amount table grouped by region for HAVING filtering."""
+
+        __tablename__ = "issue113_sale_having"
+
+        id: Sale.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        region: Sale.Col[str] = mariadb.Text(nullable=False)
+        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+
+    database = await load_fixture(database_session([Sale]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(Sale(region="east", amount=3)))
+        await tx.execute(insert(Sale(region="east", amount=4)))
+        await tx.execute(insert(Sale(region="west", amount=5)))
+        rows = await tx.fetch_all(
+            select(Sale.region, Sale.amount.sum())
+            .group_by(Sale.region)
+            .having(Sale.amount.sum().gt(5))
+            .order_by(Sale.region.asc())
+            .all(),
+        )
+
+    assert_eq(rows, [("east", 7)])
+    assert all(isinstance(total, int) for _, total in rows)
