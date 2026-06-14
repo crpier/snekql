@@ -173,8 +173,8 @@ class ModelMeta(type):
             namespace,
         )
         model_metadata.__snekql_columns__ = columns
-        model_metadata.__snekql_fk_localns__ = ModelMeta._capture_foreign_key_localns(
-            columns,
+        model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
+            is_model_base=is_model_base,
         )
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
@@ -187,19 +187,18 @@ class ModelMeta(type):
         return model_class
 
     @staticmethod
-    def _capture_foreign_key_localns(
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
-    ) -> dict[str, Any] | None:
-        """Snapshot the defining scope's locals for later FK target resolution.
+    def _capture_declaring_localns(*, is_model_base: bool) -> dict[str, Any] | None:
+        """Snapshot the defining scope's locals for later annotation resolution.
 
-        A foreign-key target is declared only in the column annotation
-        (`FKCol[Target, T]`), which carries no runtime value. Resolving it at
-        schema-startup time with `get_type_hints` needs the names visible where
-        the model was declared -- including function-local targets that module
-        globals do not see. Only models that declare a foreign key pay this cost.
+        The types a model validates against and its foreign-key targets are
+        declared only in column annotations (`Col[T]` / `FKCol[Target, T]`),
+        which carry no runtime value. Resolving them with `get_type_hints` needs
+        the names visible where the model was declared -- including
+        function-local types that module globals do not see -- so every concrete
+        model snapshots its declaring scope.
         """
 
-        if not any(column.foreign_key for column in columns.values()):
+        if is_model_base:
             return None
         # Walk past this helper, __new__, and any PEP 695 type-parameter scopes
         # (a generic `class Order[S]` inserts a synthetic frame carrying
@@ -463,7 +462,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
-    __snekql_fk_localns__: ClassVar[dict[str, Any] | None]
+    __snekql_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
@@ -477,6 +476,30 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     type FKCol[Target, T] = FKAttr[Self, ReadModelT, Self, T, T, Target]
 
     def __init__(self, **values: object) -> None:
+        self._snekql_populate(values, validate=True)
+
+    @classmethod
+    def construct(cls, **values: object) -> Self:
+        """Build a Pending Model without running logical type validation.
+
+        The escape hatch for values already known to satisfy their declared
+        types -- materialized rows re-constructed by hand, trusted bulk loads --
+        where the per-column pydantic check is redundant. Defaults, the
+        missing/unknown structural checks, and freezing still apply; only the
+        logical type validation is skipped. Construction itself has no clean slot
+        for such a flag, so the unvalidated path is a classmethod.
+        """
+
+        instance = cls.__new__(cls)
+        instance._snekql_populate(values, validate=False)  # noqa: SLF001
+        return instance
+
+    def _snekql_populate(
+        self,
+        values: dict[str, object],
+        *,
+        validate: bool,
+    ) -> None:
         remaining_values = dict(values)
         storage = cast(
             "dict[str, object]",
@@ -500,7 +523,9 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
             if isinstance(value, EllipsisType):
                 msg = f"missing required value for {name!r}"
                 raise ModelValidationError(msg)
-            setattr(self, name, column.validate_model_value(value))
+            setattr(
+                self, name, column.validate_model_value(value) if validate else value
+            )
         if remaining_values:
             names = ", ".join(sorted(remaining_values))
             msg = f"unknown model values: {names}"

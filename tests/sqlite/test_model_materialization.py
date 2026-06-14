@@ -5,9 +5,19 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import cast
 
+from pydantic import PositiveInt
 from snektest import assert_eq, assert_raises, test
 
-from snekql import Boolean, DateTime, Fetched, Json, Model, Pending
+from snekql import (
+    Boolean,
+    DateTime,
+    Fetched,
+    Integer,
+    Json,
+    Model,
+    ModelValidationError,
+    Pending,
+)
 from snekql._model_materialization import decode_model_row, encode_model_row
 
 
@@ -72,3 +82,33 @@ def sqlite_model_materialization_asserts_database_row_shape() -> None:
 
     with assert_raises(AssertionError):
         _ = decode_model_row(Event, {"enabled": 1, "extra": 2}, backend="sqlite")
+
+
+@test(mark="fast")
+def sqlite_model_materialization_validates_logical_types() -> None:
+    """Materialization validates wire-decoded values against the logical type."""
+
+    class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
+        """SQLite model with a constrained logical type."""
+
+        amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
+
+    with assert_raises(ModelValidationError):
+        _ = decode_model_row(Receipt, {"amount": -5}, backend="sqlite")
+
+
+@test(mark="fast")
+def sqlite_model_materialization_can_skip_validation() -> None:
+    """Passing validate=False materializes the wire-decoded value unchecked."""
+
+    class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
+        """SQLite model with a constrained logical type."""
+
+        amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
+
+    fetched = cast(
+        "Receipt[Fetched]",
+        decode_model_row(Receipt, {"amount": -5}, backend="sqlite", validate=False),
+    )
+
+    assert_eq(fetched.amount, -5)

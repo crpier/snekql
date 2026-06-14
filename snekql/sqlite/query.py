@@ -52,7 +52,14 @@ def compile_sqlite_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
 def materialize_sqlite_select_row(
     query: AnySelectQuery,
     row: Sequence[object],
+    *,
+    validate: bool = True,
 ) -> object:
     """Decode one SQLite result row according to a select query."""
 
-    return materialize_select_row_for_backend(query, row, backend="sqlite")
+    return materialize_select_row_for_backend(
+        query,
+        row,
+        backend="sqlite",
+        validate=validate,
+    )

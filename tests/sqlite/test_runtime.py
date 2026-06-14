@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 import anyio
 import anyio.lowlevel
+from pydantic import PositiveInt
 from snektest import assert_eq, assert_raises, test
 
 from snekql import (
@@ -20,10 +21,12 @@ from snekql import (
     Fetched,
     Integer,
     Model,
+    ModelValidationError,
     Pending,
     PoolTimeoutError,
     Text,
     insert,
+    select,
 )
 from tests.helpers import NULL_LOGGER
 
@@ -37,6 +40,17 @@ class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
         default=MISSING,
     )
     email: RuntimeUser.Col[str] = Text(nullable=False)
+
+
+class RuntimeReceipt[S = Pending](Model[S, "RuntimeReceipt[Fetched]"]):
+    """Table model with a constrained column for read-side validation tests."""
+
+    id: RuntimeReceipt.GenCol[int] = Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    amount: RuntimeReceipt.Col[PositiveInt] = Integer(nullable=False)
 
 
 def _count_users(database_path: Path) -> int:
@@ -177,3 +191,29 @@ async def timed_out_close_keeps_database_retryable() -> None:
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()
+
+
+@test(mark="medium")
+async def fetch_validates_logical_types_and_can_skip_validation() -> None:
+    """fetch_all validates rows by default and skips checks when validate=False."""
+
+    database = await Database.initialize(
+        logger=NULL_LOGGER,
+        database=":memory:",
+        models=[RuntimeReceipt],
+    )
+    try:
+        async with database.transaction() as tx:
+            # construct bypasses the write-side check, so an out-of-range value
+            # reaches storage and only the read side can reject it.
+            await tx.execute(insert(RuntimeReceipt.construct(amount=-5)))
+
+            with assert_raises(ModelValidationError):
+                _ = await tx.fetch_all(select(RuntimeReceipt).all())
+
+            rows = await tx.fetch_all(select(RuntimeReceipt).all(), validate=False)
+    finally:
+        await database.close()
+
+    assert_eq(len(rows), 1)
+    assert_eq(rows[0].amount, -5)

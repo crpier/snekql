@@ -52,7 +52,14 @@ def compile_mariadb_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
 def materialize_mariadb_select_row(
     query: AnySelectQuery,
     row: Sequence[object],
+    *,
+    validate: bool = True,
 ) -> object:
     """Decode one MariaDB result row according to a select query."""
 
-    return materialize_select_row_for_backend(query, row, backend="mariadb")
+    return materialize_select_row_for_backend(
+        query,
+        row,
+        backend="mariadb",
+        validate=validate,
+    )

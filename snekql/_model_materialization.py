@@ -51,6 +51,7 @@ def decode_model_row(
     row: Mapping[str, object],
     *,
     backend: StorageBackend,
+    validate: bool = True,
 ) -> object:
     """Materialize a Fetched Model from backend row values."""
 
@@ -66,7 +67,11 @@ def decode_model_row(
         assert name in remaining_values, (  # noqa: S101
             f"missing database value for {name!r}"
         )
-        value = column.decode(remaining_values.pop(name), backend=backend)
+        value = column.decode(
+            remaining_values.pop(name),
+            backend=backend,
+            validate=validate,
+        )
         setattr(model_instance, name, value)
     assert not remaining_values, (  # noqa: S101
         f"unknown database values: {', '.join(sorted(remaining_values))}"
