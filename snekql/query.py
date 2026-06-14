@@ -72,6 +72,7 @@ class _SelectState:
     fields: tuple[Attr[Any, Any, Any, Any, Any], ...]
     returns_model: bool = False
     explicit_all: bool = False
+    distinct: bool = False
     predicates: tuple[Predicate[Any], ...] = ()
     orderings: tuple[OrderBy[Any], ...] = ()
     limit_value: int | None = None
@@ -121,6 +122,14 @@ class _BaseSelectQuery:
         """Select every row explicitly instead of providing predicates."""
 
         state = _select_all(self.state)
+        if state is self.state:
+            return self
+        return self._replace_state(state)
+
+    def distinct(self) -> Self:
+        """Collapse duplicate rows by emitting ``SELECT DISTINCT``."""
+
+        state = _select_distinct(self.state)
         if state is self.state:
             return self
         return self._replace_state(state)
@@ -470,6 +479,12 @@ def _select_all(state: _SelectState) -> _SelectState:
     if state.explicit_all:
         return state
     return replace(state, explicit_all=True)
+
+
+def _select_distinct(state: _SelectState) -> _SelectState:
+    if state.distinct:
+        return state
+    return replace(state, distinct=True)
 
 
 def _select_where(
@@ -1019,8 +1034,10 @@ def _compile_select_state(
         _render_column_ref(column, dialect, qualified=qualified)
         for column in state.fields
     )
+    select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
+    quoted_table = dialect.quote_identifier(table_name)
     sql_parts = [
-        "SELECT " + quoted_columns + " FROM " + dialect.quote_identifier(table_name),  # noqa: S608
+        f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
     for join in state.joins:
         join_table = dialect.quote_identifier(require_model_table_name(join.model))
