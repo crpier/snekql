@@ -6,7 +6,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from json import JSONDecodeError, dumps, loads
+from json import JSONDecodeError, loads
 from types import EllipsisType, UnionType
 from typing import (
     Any,
@@ -21,6 +21,7 @@ from typing import (
 )
 
 from pydantic import AwareDatetime, TypeAdapter, ValidationError
+from pydantic_core import PydanticSerializationError
 
 from snekql.errors import (
     FrozenModelError,
@@ -588,6 +589,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         """
 
         try:
+            if self.storage_type_name == "Json":
+                return self._decode_json(value, backend=backend, validate=validate)
             if backend == "mariadb":
                 decoded_value = self._decode_mariadb(value)
             else:
@@ -684,22 +687,56 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
             msg = f"{self._require_name()!r} cannot be null"
             raise ModelValidationError(msg)
 
+    def _decode_json(
+        self,
+        value: object,
+        *,
+        backend: StorageBackend,
+        validate: bool,
+    ) -> object:
+        """Decode a Json column value, symmetric with :meth:`_encode_json`.
+
+        With ``validate`` the wire text is parsed *and* validated by the column's
+        logical adapter in one pass (``validate_json``), so rich annotated types
+        round-trip. With ``validate`` disabled the escape hatch keeps its meaning
+        -- a raw ``json.loads`` value, no type coercion.
+        """
+
+        if value is None:
+            if validate:
+                self._coerce_null_value()
+            return None
+        text = self._json_text(value, backend=backend)
+        if not validate:
+            try:
+                return loads(text)
+            except JSONDecodeError as error:
+                msg = f"{self._require_name()!r} database value is not valid JSON"
+                raise ModelValidationError(msg) from error
+        try:
+            return self._logical_adapter().validate_json(text)
+        except ValidationError as error:
+            msg = f"{self._require_name()!r} failed type validation: {error}"
+            raise ModelValidationError(msg) from error
+
+    def _json_text(self, value: object, *, backend: StorageBackend) -> str:
+        """Extract raw JSON text from a backend value, before parsing."""
+
+        if backend == "mariadb":
+            if not isinstance(value, str | bytes | bytearray):
+                msg = f"{self._require_name()!r} database value must be JSON text"
+                raise ModelValidationError(msg)
+            if isinstance(value, bytes | bytearray):
+                return value.decode()
+            return value
+        if not isinstance(value, str):
+            msg = f"{self._require_name()!r} database value must be JSON text"
+            raise ModelValidationError(msg)
+        return value
+
     def _decode_sqlite(self, value: object) -> object:
         if value is None:
             return None
-        if self.storage_type_name == "Json":
-            if not isinstance(value, str):
-                msg = f"{self._require_name()!r} database value must be JSON text"
-                raise ModelValidationError(
-                    msg,
-                )
-            try:
-                return loads(value)
-            except JSONDecodeError as error:
-                msg = f"{self._require_name()!r} database value is not valid JSON"
-                raise ModelValidationError(
-                    msg,
-                ) from error
         if self.storage_type_name == "Boolean":
             if value == 0:
                 return False
@@ -724,23 +761,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         decoders: dict[str, Callable[[object], object]] = {
             "Boolean": self._decode_mariadb_boolean,
             "DateTime": self._decode_mariadb_datetime,
-            "Json": self._decode_mariadb_json,
         }
         decoder = decoders.get(self.storage_type_name)
         if decoder is None:
             return value
         return decoder(value)
-
-    def _decode_mariadb_json(self, value: object) -> object:
-        if not isinstance(value, str | bytes | bytearray):
-            msg = f"{self._require_name()!r} database value must be JSON text"
-            raise ModelValidationError(msg)
-        json_text = value.decode() if isinstance(value, bytes | bytearray) else value
-        try:
-            return loads(json_text)
-        except JSONDecodeError as error:
-            msg = f"{self._require_name()!r} database value is not valid JSON"
-            raise ModelValidationError(msg) from error
 
     def _decode_mariadb_boolean(self, value: object) -> bool:
         if value == 0:
@@ -789,13 +814,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         if value is None:
             return None
         if self.storage_type_name == "Json":
-            try:
-                return dumps(value, separators=(",", ":"))
-            except (TypeError, ValueError) as error:
-                msg = f"{self._require_name()!r} is not JSON serializable"
-                raise ModelValidationError(
-                    msg,
-                ) from error
+            return self._encode_json(value)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "DateTime":
@@ -810,11 +829,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         if value is None:
             return None
         if self.storage_type_name == "Json":
-            try:
-                return dumps(value, separators=(",", ":"))
-            except (TypeError, ValueError) as error:
-                msg = f"{self._require_name()!r} is not JSON serializable"
-                raise ModelValidationError(msg) from error
+            return self._encode_json(value)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "DateTime":
@@ -824,6 +839,22 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
                 + f"{timestamp.microsecond // 1000:03d}"
             )
         return value
+
+    def _encode_json(self, value: object) -> str:
+        """Serialize a Json column value through its logical pydantic adapter.
+
+        Using the same ``TypeAdapter(T)`` that drives validation makes the codec
+        symmetric: any annotation pydantic can validate it can also serialize
+        (``datetime``, pydantic models, ``list[Model]``, ...), and native
+        ``dict``/``list``/primitive payloads still emit the compact, byte-stable
+        text the stdlib ``json`` writer produced before.
+        """
+
+        try:
+            return self._logical_adapter().dump_json(value).decode()
+        except PydanticSerializationError as error:
+            msg = f"{self._require_name()!r} is not JSON serializable"
+            raise ModelValidationError(msg) from error
 
     def eq(self, value: ReadValueT) -> Predicate[OwnerT]:
         if value is None:

@@ -19,6 +19,7 @@
 - Centralized engine-settings seam that applies and verifies the connection settings snekql depends on, failing fast when a setting cannot be confirmed. SQLite verifies `foreign_keys`, `busy_timeout`, and UTF-8 `encoding` on every pooled connection; MariaDB verifies a strict `sql_mode` (`STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION`), UTC `time_zone`, and `foreign_key_checks` on every physical connection, plus a minimum-version guard. Documented in [docs/engine-settings.md](./docs/engine-settings.md).
 - `Model.construct(**values)` classmethod that builds a Pending Model while skipping per-column logical validation, for values already known to satisfy their declared types. Defaults, missing/unknown-field structural checks, and freezing still apply.
 - `validate: bool = True` keyword on `Transaction.fetch_one` and `Transaction.fetch_all` (threaded through row materialization) to skip read-side logical validation for trusted result sets while keeping wire decoding.
+- `Json` columns now serialize and decode through the same per-column pydantic `TypeAdapter` that drives validation (`dump_json` / `validate_json`), making the codec symmetric. Any type the `Col[T]` annotation can validate -- `datetime`, pydantic models, `list[Model]`, and so on -- now round-trips, rather than only `dict`/`list`/primitives. Native payloads keep the same compact, byte-stable text as before. A `validate=False` decode still returns the raw `json.loads` value with no type coercion.
 
 ### Notes
 

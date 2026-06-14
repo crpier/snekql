@@ -133,7 +133,10 @@ Use storage declarations from the same backend namespace as the model:
 - `sqlite.Real` / `mariadb.Real`
 - `sqlite.Text` / `mariadb.Text`
 - `sqlite.Blob` / `mariadb.Blob`
-- `sqlite.Json` / `mariadb.Json` stores JSON text.
+- `sqlite.Json` / `mariadb.Json` stores JSON text. Serialization and validation
+  both go through the column's annotated type, so any type Pydantic can validate
+  (`datetime`, Pydantic models, `list[Model]`, ...) round-trips, not just
+  `dict`/`list`/primitives.
 - `sqlite.Boolean` / `mariadb.Boolean` stores boolean values in
   integer-compatible columns.
 - `sqlite.DateTime` / `mariadb.DateTime` stores UTC datetimes.
