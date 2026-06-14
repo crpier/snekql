@@ -38,6 +38,20 @@ class Predicate[OwnerT]:
 
 
 @dataclass(frozen=True)
+class JoinOn[LeftOwnerT, RightOwnerT]:
+    """Join condition relating two table models on equal columns.
+
+    Produced by `FKAttr.references` from a foreign-key column against the
+    column it references. The two owner type parameters record which models the
+    condition relates so `join()` can require the new table to be tied to an
+    already-joined one (in either argument order).
+    """
+
+    left_column: object | None = None
+    right_column: object | None = None
+
+
+@dataclass(frozen=True)
 class OrderBy[OwnerT]:
     """SQL ordering expression for one table model.
 

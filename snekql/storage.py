@@ -16,7 +16,7 @@ from snekql.errors import (
     QueryConstructionError,
     SnekqlError,
 )
-from snekql.expressions import Assignment, OrderBy, Predicate
+from snekql.expressions import Assignment, JoinOn, OrderBy, Predicate
 
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
@@ -35,6 +35,7 @@ class AttrConfig:
     auto_increment: bool = False
     default: object = ...
     default_factory: Callable[[], object] | EllipsisType = ...
+    foreign_key: bool = False
     nullable: bool | None = None
     primary_key: bool = False
     server_default: object | None = None
@@ -84,7 +85,7 @@ def build_attr(config: AttrConfig) -> Any:
     change how declaration metadata becomes query/model behavior.
     """
 
-    return Attr[Any, Any, Any, Any, Any](config)
+    return FKAttr[Any, Any, Any, Any, Any, Any](config)
 
 
 class Integer:
@@ -99,6 +100,7 @@ class Integer:
         *,
         primary_key: bool = False,
         auto_increment: bool = False,
+        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -109,6 +111,7 @@ class Integer:
                 auto_increment=auto_increment,
                 default=default,
                 default_factory=default_factory,
+                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -125,10 +128,11 @@ class Real:
     ...     value: Reading.Col[float] = Real(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
+        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -138,6 +142,7 @@ class Real:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
+                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -154,10 +159,11 @@ class Text:
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
+        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -172,6 +178,7 @@ class Text:
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
+                foreign_key=foreign_key,
             ),
         )
 
@@ -183,10 +190,11 @@ class Blob:
     ...     content: File.Col[bytes] = Blob(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
+        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -196,6 +204,7 @@ class Blob:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
+                foreign_key=foreign_key,
                 nullable=nullable,
                 primary_key=primary_key,
                 unique=unique,
@@ -272,10 +281,11 @@ class DateTime:
     ...     )
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         server_default: object | None = None,
+        foreign_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -285,6 +295,7 @@ class DateTime:
             AttrConfig(
                 default=default,
                 default_factory=default_factory,
+                foreign_key=foreign_key,
                 nullable=nullable,
                 server_default=server_default,
                 unique=unique,
@@ -315,6 +326,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
         self.default_factory: Callable[[], object] | EllipsisType = (
             config.default_factory
         )
+        self.foreign_key: bool = config.foreign_key
         self.is_generated: bool = False
         self.name: str | None = None
         self.owner: type[object] | None = None
@@ -698,3 +710,36 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]:
 
     def to(self, value: ReadValueT) -> Assignment[OwnerT]:
         return Assignment(column=self, value=value)
+
+
+class FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, TargetOwnerT](
+    Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT],
+):
+    """Foreign-key column descriptor that declares the model it references.
+
+    `references` only accepts a column of the referenced model whose read type
+    matches this column's, so a join condition is provably between related
+    tables of compatible key type. Every runtime column is an `FKAttr`; only
+    columns annotated as `Model.FKCol[Target, T]` expose `references` to the
+    type checker, which is what makes `.references` on a plain column a typing
+    error while still resolving at runtime.
+    """
+
+    # Class access must keep the FKAttr type (not widen to Attr) so `references`
+    # stays visible; the value overloads mirror the base descriptor protocol.
+    @overload
+    def __get__(self, instance: None, owner: type[Any]) -> Self: ...
+    @overload
+    def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
+    @overload
+    def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
+    def __get__(self, instance: object | None, owner: type[Any]) -> object:
+        return cast("object", super().__get__(cast("Any", instance), owner))
+
+    def references(
+        self,
+        other: Attr[Any, Any, TargetOwnerT, Any, ReadValueT],
+    ) -> JoinOn[OwnerT, TargetOwnerT]:
+        """Build a join condition between this FK column and its target."""
+
+        return JoinOn(left_column=self, right_column=other)
