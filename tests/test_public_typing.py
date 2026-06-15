@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, assert_type
+from typing import TYPE_CHECKING, Any, Literal, assert_type
 
 from snekql import (
     MISSING,
@@ -23,14 +23,18 @@ from snekql import (
     OrderBy,
     Pending,
     Predicate,
+    Scalar,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
     Text,
     Transaction,
     UpdateQuery,
+    exists,
     insert,
     mariadb,
+    not_exists,
+    scalar,
     select,
     sqlite,
     update,
@@ -240,6 +244,26 @@ if TYPE_CHECKING:
     )
     _ = assert_type(User.email.like("%@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.not_like("%@example.com"), Predicate[User[Pending]])
+    # Subqueries: a column-vs-column comparison keeps the left column's owner; a
+    # single-column subquery types in_subquery; exists() carries no outer column;
+    # scalar() carries the projected value type for projections and comparisons.
+    _ = assert_type(Order.user_id.eq_col(User.id), Predicate[Order[Pending]])
+    _ = assert_type(
+        User.id.in_subquery(select(Order.user_id).where(Order.user_id.gt(0))),
+        Predicate[User[Pending]],
+    )
+    _ = assert_type(exists(select(Order.id).all()), Predicate[Any])
+    _ = assert_type(not_exists(select(Order.id).all()), Predicate[Any])
+    _ = assert_type(
+        scalar(select(Order.user_id).where(Order.user_id.eq_col(User.id))),
+        Scalar[Any, int],
+    )
+    _ = assert_type(
+        User.id.gt_col(scalar(select(Order.user_id).all())),
+        Predicate[User[Pending]],
+    )
+    # A multi-column IN subquery is rejected: in_subquery wants a single column.
+    _ = User.id.in_subquery(select(Order.id, Order.user_id))  # type: ignore[arg-type]
     _ = assert_type(
         User.email.eq("alice@example.com") & User.status.eq("active"),
         Predicate[User[Pending]],

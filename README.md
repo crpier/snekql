@@ -199,6 +199,38 @@ of `.where(...)` or `.all()` before execution. Predicates use methods such as
 `.gt(...)`/`.gte(...)`/`.lt(...)`/`.lte(...)`, and `.between(low, high)`; Python
 comparison operators are not part of the v1 API.
 
+A select can be nested inside another query as a subquery:
+
+```python
+from snekql import exists, not_exists, scalar, select
+
+# IN / NOT IN against a single-column subquery
+select(User).where(
+    User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
+)
+
+# EXISTS / NOT EXISTS, correlated to the outer row via a column comparison
+select(User).where(
+    exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
+)
+select(User).where(
+    not_exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
+)
+
+# A scalar subquery used in a projection (or as a comparison operand)
+select(
+    User.id,
+    scalar(select(Order.amount.sum()).where(Order.user_id.eq_col(User.id))),
+).all()
+```
+
+`in_subquery`/`not_in_subquery` and `scalar(...)` require a single-column
+select; `exists`/`not_exists` accept any select. The `*_col` comparisons
+(`.eq_col`, `.ne_col`, `.gt_col`, `.gte_col`, `.lt_col`, `.lte_col`) compare a
+column against another column or a scalar subquery, which is how a correlated
+subquery references the outer query. A reference to a table in neither the
+subquery nor an enclosing query is rejected when the query compiles.
+
 ## Runtime
 
 `Database.initialize(..., logger=logger)` is the only public construction path.

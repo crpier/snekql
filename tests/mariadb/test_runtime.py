@@ -22,8 +22,10 @@ from snekql import (
     Pending,
     PoolTimeoutError,
     delete,
+    exists,
     insert,
     mariadb,
+    scalar,
     select,
     update,
 )
@@ -440,3 +442,78 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
 
     assert_eq(rows, [("east", 7)])
     assert all(isinstance(total, int) for _, total in rows)
+
+
+@test(mark="medium")
+async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
+    """Correlated EXISTS and a scalar subquery keep inner/outer params aligned."""
+
+    class Customer[S = Pending](mariadb.Model[S, "Customer[Fetched]"]):
+        """Outer table for MariaDB subquery coverage."""
+
+        __tablename__ = "issue118_customer"
+
+        id: Customer.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        country: Customer.Col[str] = mariadb.Text(nullable=False)
+
+    class Purchase[S = Pending](mariadb.Model[S, "Purchase[Fetched]"]):
+        """Inner table with a foreign key back to ``Customer``."""
+
+        __tablename__ = "issue118_purchase"
+
+        id: Purchase.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        customer_id: Purchase.FKCol[Customer, int] = mariadb.ForeignKey(Customer.id)
+        amount: Purchase.Col[int] = mariadb.Integer(nullable=False)
+
+    database = await load_fixture(database_session([Customer, Purchase]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(Customer(country="us")))
+        await tx.execute(insert(Customer(country="ca")))
+        await tx.execute(insert(Purchase(customer_id=1, amount=30)))
+        await tx.execute(insert(Purchase(customer_id=1, amount=40)))
+
+        in_rows = await tx.fetch_all(
+            select(Customer.id)
+            .where(
+                Customer.id.in_subquery(
+                    select(Purchase.customer_id).where(Purchase.amount.gt(25)),
+                ),
+            )
+            .order_by(Customer.id.asc()),
+        )
+        exists_rows = await tx.fetch_all(
+            select(Customer.id)
+            .where(
+                exists(
+                    select(Purchase.id).where(
+                        Purchase.customer_id.eq_col(Customer.id),
+                    ),
+                ),
+            )
+            .order_by(Customer.id.asc()),
+        )
+        totals = await tx.fetch_all(
+            select(
+                Customer.id,
+                scalar(
+                    select(Purchase.amount.sum()).where(
+                        Purchase.customer_id.eq_col(Customer.id),
+                    ),
+                ),
+            )
+            .all()
+            .order_by(Customer.id.asc()),
+        )
+
+    assert_eq(in_rows, [1])
+    assert_eq(exists_rows, [1])
+    assert_eq(totals, [(1, 70), (2, None)])

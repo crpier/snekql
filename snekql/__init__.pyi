@@ -20,7 +20,14 @@ from snekql.errors import (
     SnekqlError,
     TransactionClosedError,
 )
-from snekql.expressions import Aggregate, Assignment, JoinOn, OrderBy, Predicate
+from snekql.expressions import (
+    Aggregate,
+    Assignment,
+    JoinOn,
+    OrderBy,
+    Predicate,
+    Scalar,
+)
 from snekql.indexes import Index
 from snekql.model import (
     Col,
@@ -41,7 +48,10 @@ from snekql.query import (
     SelectValueQuery,
     UpdateQuery,
     delete,
+    exists,
     insert,
+    not_exists,
+    scalar,
     select,
     update,
 )
@@ -108,6 +118,7 @@ __all__ = [
     "QueryConstructionError",
     "QueryError",
     "Real",
+    "Scalar",
     "SchemaError",
     "SchemaPolicy",
     "SchemaVerificationError",
@@ -122,8 +133,11 @@ __all__ = [
     "TransactionClosedError",
     "UpdateQuery",
     "delete",
+    "exists",
     "insert",
     "mariadb",
+    "not_exists",
+    "scalar",
     "select",
     "sqlite",
     "update",
