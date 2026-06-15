@@ -66,6 +66,24 @@ class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
+class _InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
+    """Structural type for pending model instances accepted by `insert(row)`.
+
+    A pending model instance exposes its own writable owner type and the fetched
+    read type its class declares, so `insert` can thread both through the query:
+    the owner anchors backend validation, and the read type is what a
+    `.returning()` write yields. The protocol matches an instance (not a class),
+    so a `User[Pending]` value binds owner to `User[Pending]` and read to
+    `User[Fetched]`.
+    """
+
+    @classmethod
+    def __owner_type__(cls) -> type[SelectableOwnerT_co]: ...
+
+    @classmethod
+    def __read_type__(cls) -> type[SelectableReadT_co]: ...
+
+
 type JoinType = Literal["INNER", "LEFT"]
 
 
@@ -474,13 +492,77 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         )
 
 
-class InsertQuery[ModelT: Table[Any]]:
+@dataclass(frozen=True)
+class _InsertState:
+    """Immutable insert-statement state shared by every insert query variant.
+
+    ``rows`` holds the pending model instances to persist (one for a single
+    insert, many for a bulk insert). ``returning`` records whether the write
+    should yield Fetched models via ``RETURNING``; ``multi`` records whether the
+    builder was created from a sequence, so an empty bulk batch stays typed and
+    executable as a no-op even though it carries no rows to read a model from.
+    """
+
+    rows: tuple[Table[Any], ...]
+    returning: bool = False
+    multi: bool = False
+
+    def model(self) -> type[Table[Any]] | None:
+        """Return the inserted model class, or None for an empty bulk batch."""
+
+        if not self.rows:
+            return None
+        return type(self.rows[0])
+
+
+class _BaseInsertQuery:
+    """Immutable insert-state plumbing shared by every insert query variant."""
+
+    state: _InsertState
+
+    def __init__(self, state: _InsertState) -> None:
+        self.state = state
+
+
+class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
     """Immutable insert statement for one pending table model instance."""
 
-    row: ModelT
+    def returning(self) -> InsertReturningQuery[OwnerT, ReadT]:
+        """Return the inserted row as a Fetched model via ``RETURNING``."""
 
-    def __init__(self, row: ModelT) -> None:
-        self.row: ModelT = row
+        return InsertReturningQuery[OwnerT, ReadT](
+            replace(self.state, returning=True),
+        )
+
+
+class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
+    """Immutable bulk insert statement for several pending model instances."""
+
+    def returning(self) -> InsertManyReturningQuery[OwnerT, ReadT]:
+        """Return each inserted row as a Fetched model via ``RETURNING``."""
+
+        return InsertManyReturningQuery[OwnerT, ReadT](
+            replace(self.state, returning=True),
+        )
+
+
+class InsertReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
+    """Single insert whose execution yields the Fetched model it produced."""
+
+
+class InsertManyReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
+    """Bulk insert whose execution yields the Fetched models it produced."""
+
+
+type AnyInsertQuery = (
+    InsertQuery[Any, Any]
+    | InsertManyQuery[Any, Any]
+    | InsertReturningQuery[Any, Any]
+    | InsertManyReturningQuery[Any, Any]
+)
+
+
+type AnyWriteQuery = AnyInsertQuery | UpdateQuery[Any] | DeleteQuery[Any]
 
 
 class UpdateQuery[ModelT: Table[Any]]:
@@ -1091,33 +1173,69 @@ def _require_insert_model(row: object) -> type[Table[Any]]:
 
 
 def _encode_insert_row(
-    query: InsertQuery[Any],
+    row: object,
+    model_class: type[Table[Any]],
     dialect: QueryDialect,
-) -> tuple[type[Table[Any]], dict[str, object]]:
-    model_class = _require_insert_model(query.row)
+) -> dict[str, object]:
+    row_model = _require_insert_model(row)
+    if row_model is not model_class:
+        msg = "bulk insert rows must be instances of the same model"
+        raise QueryCompilationError(msg)
     row_values: dict[str, object] = {}
     for name, column in require_model_columns(model_class).items():
-        value = getattr(query.row, name)
+        value = getattr(row, name)
         if value is MISSING:
             continue
         row_values[name] = dialect.encode_column_value(column, value)
-    return model_class, row_values
+    return row_values
+
+
+def _insert_returning_clause(
+    model_class: type[Table[Any]],
+    dialect: QueryDialect,
+) -> str:
+    columns = require_model_columns(model_class)
+    rendered = ", ".join(dialect.quote_identifier(name) for name in columns)
+    return f" RETURNING {rendered}"
 
 
 def _compile_insert_sql(
-    query: InsertQuery[Any],
+    query: _BaseInsertQuery,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
-    model_class, row_values = _encode_insert_row(query, dialect)
+    state = query.state
+    model_class = state.model()
+    if model_class is None:
+        msg = "insert requires at least one row"
+        raise QueryCompilationError(msg)
+    encoded_rows = [_encode_insert_row(row, model_class, dialect) for row in state.rows]
+    # Every row in a bulk insert shares one VALUES list, so the present-column
+    # set must be identical across rows; otherwise the flattened parameters
+    # would not line up with a single column list.
+    names = tuple(encoded_rows[0])
+    for row_values in encoded_rows[1:]:
+        if tuple(row_values) != names:
+            msg = "bulk insert rows must set the same columns"
+            raise QueryCompilationError(msg)
     table_name = require_model_table_name(model_class)
     quoted_table = dialect.quote_identifier(table_name)
-    if not row_values:
-        return dialect.empty_insert_sql(quoted_table), ()
-    names = tuple(row_values)
+    returning = (
+        _insert_returning_clause(model_class, dialect) if state.returning else ""
+    )
+    if not names:
+        if len(encoded_rows) > 1:
+            msg = "bulk insert requires at least one explicit column"
+            raise QueryCompilationError(msg)
+        return dialect.empty_insert_sql(quoted_table) + returning, ()
     quoted_columns = ", ".join(dialect.quote_identifier(name) for name in names)
-    placeholders = ", ".join(dialect.placeholder for _ in names)
-    sql = "INSERT INTO " + quoted_table + f" ({quoted_columns}) VALUES ({placeholders})"  # noqa: S608
-    params = tuple(row_values[name] for name in names)
+    row_placeholder = "(" + ", ".join(dialect.placeholder for _ in names) + ")"
+    values_clause = ", ".join(row_placeholder for _ in encoded_rows)
+    sql = (
+        "INSERT INTO "  # noqa: S608
+        + quoted_table
+        + f" ({quoted_columns}) VALUES {values_clause}{returning}"
+    )
+    params = tuple(row_values[name] for row_values in encoded_rows for name in names)
     return sql, params
 
 
@@ -1759,14 +1877,49 @@ def materialize_select_row_for_backend(
     return decoded_values
 
 
+def materialize_insert_returning_rows_for_backend(
+    query: object,
+    rows: Sequence[Sequence[object]],
+    *,
+    backend: StorageBackend,
+    validate: bool = True,
+) -> list[object]:
+    """Materialize ``RETURNING`` rows from an insert into Fetched models.
+
+    The ``RETURNING`` clause projects every column in model declaration order
+    (see :func:`_insert_returning_clause`), so each database row decodes through
+    the full model exactly like a model select, yielding generated values
+    (auto-increment keys, server defaults) as a Fetched Model.
+    """
+
+    if not isinstance(query, _BaseInsertQuery):
+        msg = "materialize requires an insert query"
+        raise QueryCompilationError(msg)
+    model_class = query.state.model()
+    if model_class is None:
+        return []
+    columns = require_model_columns(model_class)
+    names = tuple(columns)
+    materialized: list[object] = []
+    for row in rows:
+        assert len(row) == len(names), (  # noqa: S101
+            "returning row shape did not match the inserted model"
+        )
+        values = {name: row[index] for index, name in enumerate(names)}
+        materialized.append(
+            decode_model_row(model_class, values, backend=backend, validate=validate),
+        )
+    return materialized
+
+
 def compile_write_sql_for_dialect(
     query: object,
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a write query into backend Dialect SQL."""
 
-    if isinstance(query, InsertQuery):
-        return _compile_insert_sql(cast("InsertQuery[Any]", query), dialect)
+    if isinstance(query, _BaseInsertQuery):
+        return _compile_insert_sql(query, dialect)
     if isinstance(query, UpdateQuery):
         return _compile_update_sql(cast("UpdateQuery[Any]", query), dialect)
     if isinstance(query, DeleteQuery):
@@ -1921,8 +2074,38 @@ def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T]:
     return Scalar(subquery=subquery)
 
 
-def insert[ModelT: Table[Any]](row: ModelT, /) -> InsertQuery[ModelT]:
-    return InsertQuery(row)
+@overload
+def insert[OwnerT: Table[Any], ReadT: Table[Any]](
+    row: _InsertableModel[OwnerT, ReadT],
+    /,
+) -> InsertQuery[OwnerT, ReadT]: ...
+
+
+@overload
+def insert[OwnerT: Table[Any], ReadT: Table[Any]](
+    rows: Sequence[_InsertableModel[OwnerT, ReadT]],
+    /,
+) -> InsertManyQuery[OwnerT, ReadT]: ...
+
+
+def insert(row_or_rows: object, /) -> object:
+    """Build an insert from a single pending model or a sequence of them.
+
+    A single model compiles to one ``INSERT ... VALUES (...)``; a sequence
+    compiles to one multi-row ``INSERT ... VALUES (...), (...)`` and is a no-op
+    when empty. Call ``.returning()`` on either to get the Fetched model(s) the
+    database produced (generated keys, server defaults) back from the write.
+    """
+
+    if isinstance(row_or_rows, Sequence):
+        rows = tuple(cast("Sequence[Table[Any]]", row_or_rows))
+        for row in rows:
+            _ = _require_insert_model(row)
+        return InsertManyQuery[Any, Any](_InsertState(rows=rows, multi=True))
+    _ = _require_insert_model(row_or_rows)
+    return InsertQuery[Any, Any](
+        _InsertState(rows=(cast("Table[Any]", row_or_rows),)),
+    )
 
 
 def update[ModelT: Table[Any]](model: type[ModelT], /) -> UpdateQuery[ModelT]:

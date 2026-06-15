@@ -46,7 +46,10 @@ from snekql.model import (
 )
 from snekql.query import (
     DeleteQuery,
+    InsertManyQuery,
+    InsertManyReturningQuery,
     InsertQuery,
+    InsertReturningQuery,
     JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
@@ -103,7 +106,10 @@ __all__ = [
     "FrozenModelError",
     "GenCol",
     "Index",
+    "InsertManyQuery",
+    "InsertManyReturningQuery",
     "InsertQuery",
+    "InsertReturningQuery",
     "Integer",
     "JoinModelQuery",
     "JoinOn",

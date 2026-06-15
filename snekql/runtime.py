@@ -38,8 +38,12 @@ from snekql.model import (
 )
 from snekql.query import (
     AnySelectQuery,
+    AnyWriteQuery,
     DeleteQuery,
+    InsertManyQuery,
+    InsertManyReturningQuery,
     InsertQuery,
+    InsertReturningQuery,
     JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
@@ -124,6 +128,14 @@ class RuntimeBackend(Protocol):
         *,
         validate: bool = True,
     ) -> object: ...
+
+    def materialize_write_rows(
+        self,
+        query: object,
+        rows: Sequence[Sequence[object]],
+        *,
+        validate: bool = True,
+    ) -> list[object]: ...
 
 
 class Transaction:
@@ -358,19 +370,61 @@ class Transaction:
                 select_query, tuple(row), validate=validate
             )
 
+    @overload
     async def execute(
-        self, query: InsertQuery[Any] | UpdateQuery[Any] | DeleteQuery[Any]
-    ) -> None:
-        """Execute a write query inside this transaction."""
+        self,
+        query: InsertReturningQuery[OwnerT, ReadModelT],
+        *,
+        validate: bool = True,
+    ) -> ReadModelT: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertManyReturningQuery[OwnerT, ReadModelT],
+        *,
+        validate: bool = True,
+    ) -> list[ReadModelT]: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertQuery[Any, Any]
+        | InsertManyQuery[Any, Any]
+        | UpdateQuery[Any]
+        | DeleteQuery[Any],
+        *,
+        validate: bool = True,
+    ) -> None: ...
+    async def execute(self, query: object, *, validate: bool = True) -> object:
+        """Execute a write query inside this transaction.
 
+        A plain insert/update/delete returns ``None``. An insert built with
+        ``.returning()`` yields the Fetched model the database produced (the row
+        for a single insert, a list for a bulk insert), materialized through the
+        same decode path as a select. An empty bulk batch issues no SQL and
+        returns ``None`` (or ``[]`` when returning).
+        """
+
+        write_query = cast("AnyWriteQuery", query)
+        returning = isinstance(
+            write_query,
+            (InsertReturningQuery, InsertManyReturningQuery),
+        )
+        is_many = isinstance(
+            write_query,
+            (InsertManyQuery, InsertManyReturningQuery),
+        )
         async with self._lock:
             connection = self.require_connection()
-            self._validate_query_backend(query)
-            sql, params = self.runtime.compile_write_sql(query)
+            if is_many and not self._insert_rows(write_query):
+                return [] if returning else None
+            self._validate_query_backend(write_query)
+            sql, params = self.runtime.compile_write_sql(write_query)
+            returned_rows: list[tuple[object, ...]] = []
             try:
                 cursor = await connection.execute(sql, params)
                 try:
-                    pass
+                    if returning:
+                        returned_rows = [tuple(row) for row in await cursor.fetchall()]
                 finally:
                     await cursor.close()
             except Exception as error:
@@ -391,6 +445,30 @@ class Transaction:
                 params=params,
                 sql=sql,
             )
+            if not returning:
+                return None
+            models = self.runtime.materialize_write_rows(
+                write_query,
+                returned_rows,
+                validate=validate,
+            )
+            if is_many:
+                return models
+            return models[0]
+
+    @staticmethod
+    def _insert_rows(query: object) -> tuple[Table[Any], ...]:
+        if isinstance(
+            query,
+            (
+                InsertQuery,
+                InsertManyQuery,
+                InsertReturningQuery,
+                InsertManyReturningQuery,
+            ),
+        ):
+            return query.state.rows
+        return ()
 
     def require_connection(self) -> RuntimeConnection:
         """Return the active transaction connection or reject use-after-close."""
@@ -415,9 +493,18 @@ class Transaction:
 
     @staticmethod
     def _query_model(query: object) -> type[Table[Any]]:
-        if isinstance(query, InsertQuery):
-            insert_query = cast("InsertQuery[Any]", query)
-            return cast("type[Table[Any]]", type(insert_query.row))
+        if isinstance(
+            query,
+            InsertQuery
+            | InsertManyQuery
+            | InsertReturningQuery
+            | InsertManyReturningQuery,
+        ):
+            model = query.state.model()
+            if model is None:
+                msg = "an empty bulk insert has no model to validate"
+                raise QueryCompilationError(msg)
+            return model
         if isinstance(
             query,
             SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,

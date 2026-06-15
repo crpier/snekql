@@ -24,6 +24,7 @@ from snekql.mariadb.query import (
     compile_mariadb_select_sql,
     compile_mariadb_write_sql,
     materialize_mariadb_select_row,
+    materialize_mariadb_write_rows,
 )
 from snekql.mariadb.schema import initialize_mariadb_schema
 from snekql.mariadb.settings import configure_mariadb_connection
@@ -258,6 +259,15 @@ class MariaDBRuntime:
         validate: bool = True,
     ) -> object:
         return materialize_mariadb_select_row(query, row, validate=validate)
+
+    def materialize_write_rows(
+        self,
+        query: object,
+        rows: Sequence[Sequence[object]],
+        *,
+        validate: bool = True,
+    ) -> list[object]:
+        return materialize_mariadb_write_rows(query, rows, validate=validate)
 
 
 async def initialize_runtime(
