@@ -19,6 +19,7 @@ from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
 from snekql.query import AnySelectQuery
 from snekql.sqlite.config import Config
+from snekql.sqlite.migrations import apply_sqlite_migrations
 from snekql.sqlite.query import (
     compile_sqlite_select_sql,
     compile_sqlite_write_sql,
@@ -143,8 +144,9 @@ async def initialize_runtime(
     schema_policy: SchemaPolicy,
     *,
     logger: ResolvedStructuredLogger,
+    migrations: dict[str, str] | None = None,
 ) -> SQLiteRuntime:
-    """Initialize SQLite connectivity, schema startup, and pool lifecycle."""
+    """Initialize SQLite connectivity, migrations, schema startup, and pool."""
 
     validate_schema_policy(schema_policy)
     validate_schema_models(models)
@@ -152,11 +154,14 @@ async def initialize_runtime(
     logger.debug("sqlite connection opening", database_path=database_path)
     connection = await open_sqlite_connection(database_path)
     try:
+        if migrations:
+            await apply_sqlite_migrations(connection, migrations, logger=logger)
         await initialize_sqlite_schema(
             connection,
             models,
             schema_policy,
             logger=logger,
+            create_missing=not migrations,
         )
     except Exception:
         await close_sqlite_connection(connection)

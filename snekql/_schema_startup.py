@@ -109,8 +109,15 @@ async def initialize_schema(
     schema_policy: SchemaPolicy,
     *,
     logger: ResolvedStructuredLogger,
+    create_missing: bool = True,
 ) -> None:
-    """Create or verify all configured tables through one schema backend."""
+    """Create or verify all configured tables through one schema backend.
+
+    When `create_missing` is False, Migrations are the sole schema-creation
+    authority: a missing table is reported as Schema Drift instead of being
+    created, so the models stay the enforced contract the migration list must
+    converge to.
+    """
 
     validate_schema_policy(schema_policy)
     plan = build_schema_plan(models)
@@ -120,6 +127,11 @@ async def initialize_schema(
     async with backend.startup_transaction():
         for planned_model in plan.models:
             if not await backend.table_exists(planned_model.table_name):
+                if not create_missing:
+                    _report_schema_drift(
+                        schema_policy, planned_model.table_name, logger=logger
+                    )
+                    continue
                 await _create_model_schema(backend, planned_model, logger)
                 continue
             await _verify_model_schema(backend, planned_model, schema_policy, logger)

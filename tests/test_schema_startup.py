@@ -191,6 +191,43 @@ async def matching_schema_is_verified_without_mutation() -> None:
 
 
 @test(mark="fast")
+async def verify_only_startup_reports_missing_table_as_drift() -> None:
+    """With create_missing=False a missing table is drift, not auto-created."""
+
+    backend = _FakeSchemaBackend()
+    logger = _RecordingStructuredLogger()
+
+    with assert_raises(SchemaVerificationError):
+        await initialize_schema(
+            backend, [User], "strict", logger=logger, create_missing=False
+        )
+
+    call_names = [name for name, _ in backend.calls]
+    assert_true("create_table" not in call_names)
+
+
+@test(mark="fast")
+async def verify_only_startup_verifies_existing_table_without_creating() -> None:
+    """With create_missing=False an existing matching table is verified, never created."""
+
+    backend = _FakeSchemaBackend(
+        existing_tables={"user"},
+        matching_tables={"user"},
+        matching_indexes={"user"},
+    )
+    logger = _RecordingStructuredLogger()
+
+    await initialize_schema(
+        backend, [User], "strict", logger=logger, create_missing=False
+    )
+
+    call_names = [name for name, _ in backend.calls]
+    assert_true("create_table" not in call_names)
+    verified_events = [event for _, event, _ in logger.events]
+    assert_true("schema table verified" in verified_events)
+
+
+@test(mark="fast")
 async def empty_model_list_skips_schema_startup() -> None:
     """Schema startup with no models performs no backend work."""
 

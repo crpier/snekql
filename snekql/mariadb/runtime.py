@@ -16,6 +16,7 @@ from snekql.errors import (
     PoolTimeoutError,
 )
 from snekql.mariadb.config import Config
+from snekql.mariadb.migrations import apply_mariadb_migrations
 from snekql.mariadb.query import (
     compile_mariadb_select_sql,
     compile_mariadb_write_sql,
@@ -262,8 +263,9 @@ async def initialize_runtime(
     schema_policy: SchemaPolicy,
     *,
     logger: ResolvedStructuredLogger,
+    migrations: dict[str, str] | None = None,
 ) -> MariaDBRuntime:
-    """Initialize MariaDB connectivity, schema startup, and pool lifecycle."""
+    """Initialize MariaDB connectivity, migrations, schema startup, and pool."""
 
     aiomysql = _import_aiomysql()
     logger.debug("mariadb pool opening", host=config.host, port=config.port)
@@ -283,11 +285,14 @@ async def initialize_runtime(
     connection_pool = MariaDBConnectionPool(pool, logger=logger)
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
+        if migrations:
+            await apply_mariadb_migrations(connection, migrations, logger=logger)
         await initialize_mariadb_schema(
             connection,
             models,
             schema_policy,
             logger=logger,
+            create_missing=not migrations,
         )
     except Exception:
         await connection_pool.release(connection)
