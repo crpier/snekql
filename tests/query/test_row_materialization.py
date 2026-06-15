@@ -12,7 +12,7 @@ from typing import cast
 from snektest import assert_eq, assert_raises, test
 
 from snekql import MISSING, Boolean, Fetched, Pending, Text, select, sqlite
-from snekql.query import materialize_select_row_for_backend
+from snekql._query_materialize import materialize_select_row_for_backend
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
@@ -53,7 +53,7 @@ def model_select_materializes_a_fetched_model() -> None:
 
     fetched = cast(
         "Widget[Fetched]",
-        materialize_select_row_for_backend(query, ("hi", 0), backend="sqlite"),
+        materialize_select_row_for_backend(query.state, ("hi", 0), backend="sqlite"),
     )
 
     assert_eq(fetched.label, "hi")
@@ -66,7 +66,7 @@ def single_value_select_unwraps_to_one_decoded_scalar() -> None:
 
     query = select(Widget.enabled).all()
 
-    value = materialize_select_row_for_backend(query, (1,), backend="sqlite")
+    value = materialize_select_row_for_backend(query.state, (1,), backend="sqlite")
 
     assert_eq(value, True)
 
@@ -77,7 +77,9 @@ def multi_value_select_returns_a_decoded_tuple() -> None:
 
     query = select(Widget.label, Widget.enabled).all()
 
-    values = materialize_select_row_for_backend(query, ("hi", 1), backend="sqlite")
+    values = materialize_select_row_for_backend(
+        query.state, ("hi", 1), backend="sqlite"
+    )
 
     assert_eq(values, ("hi", True))
 
@@ -95,7 +97,7 @@ def inner_join_materializes_a_tuple_of_fetched_models() -> None:
     result = cast(
         "tuple[JoinUser[Fetched], JoinOrder[Fetched]]",
         materialize_select_row_for_backend(
-            query,
+            query.state,
             (1, "a@b.c", 10, 1, "hello"),
             backend="sqlite",
         ),
@@ -121,7 +123,7 @@ def left_join_yields_none_when_the_right_side_is_all_null() -> None:
     result = cast(
         "tuple[JoinUser[Fetched], JoinOrder[Fetched] | None]",
         materialize_select_row_for_backend(
-            query,
+            query.state,
             (1, "a@b.c", None, None, None),
             backend="sqlite",
         ),
@@ -142,7 +144,7 @@ def projection_join_materializes_a_tuple_of_scalars() -> None:
     )
 
     values = materialize_select_row_for_backend(
-        query,
+        query.state,
         ("a@b.c", "hello"),
         backend="sqlite",
     )
@@ -160,7 +162,9 @@ def single_column_projection_join_unwraps_to_one_scalar() -> None:
         .where(JoinOrder.note.eq("x"))
     )
 
-    value = materialize_select_row_for_backend(query, ("a@b.c",), backend="sqlite")
+    value = materialize_select_row_for_backend(
+        query.state, ("a@b.c",), backend="sqlite"
+    )
 
     assert_eq(value, "a@b.c")
 
@@ -172,4 +176,4 @@ def row_shape_mismatch_is_an_invariant_failure() -> None:
     query = select(Widget.label, Widget.enabled).all()
 
     with assert_raises(AssertionError):
-        _ = materialize_select_row_for_backend(query, ("hi",), backend="sqlite")
+        _ = materialize_select_row_for_backend(query.state, ("hi",), backend="sqlite")

@@ -1,18 +1,37 @@
-"""Query Builder objects and factory functions."""
+"""Query Builder objects and factory functions.
+
+The Query Builder produces immutable query state (see :mod:`snekql._query_state`).
+Query Compilation (:mod:`snekql._query_compile`) lowers that state to backend
+Dialect SQL, and Materialization (:mod:`snekql._query_materialize`) decodes
+result rows; this module owns only the typed construction surface.
+"""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
-from typing import Any, Literal, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
+from collections.abc import Sequence
+from dataclasses import replace
+from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
 
-from snekql._model_materialization import decode_model_row
-from snekql._query_dialect import QueryDialect
-from snekql.errors import (
-    ModelDeclarationError,
-    QueryCompilationError,
-    QueryConstructionError,
+from snekql._query_state import (
+    DeleteState,
+    InsertState,
+    JoinSpec,
+    JoinType,
+    SelectState,
+    UpdateState,
+    ensure_assignment_targets_model,
+    ensure_having_targets,
+    ensure_ordering_targets_models,
+    ensure_predicate_targets_models,
+    require_column_model,
+    require_field,
+    require_insert_model,
+    require_selectable,
+    require_single_column_subquery,
+    require_subquery_state,
+    selectable_owner_model,
 )
+from snekql.errors import ModelDeclarationError, QueryConstructionError
 from snekql.expressions import (
     Aggregate,
     Assignment,
@@ -21,13 +40,8 @@ from snekql.expressions import (
     Predicate,
     Scalar,
 )
-from snekql.model import (
-    Model,
-    Table,
-    require_model_columns,
-    require_model_table_name,
-)
-from snekql.storage import MISSING, Attr, StorageBackend
+from snekql.model import Table, require_model_columns
+from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -41,15 +55,6 @@ T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
 Ts = TypeVarTuple("Ts")
-
-_BINARY_PREDICATE_CHILD_COUNT = 2
-_UNARY_PREDICATE_CHILD_COUNT = 1
-
-# A projectable expression: a column, an aggregate over a column, or a scalar
-# subquery standing in for a single value.
-type _Selectable = (
-    Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any] | Scalar[Any, Any]
-)
 
 
 class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
@@ -84,55 +89,6 @@ class _InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
-type JoinType = Literal["INNER", "LEFT"]
-
-
-@dataclass(frozen=True)
-class _JoinSpec:
-    """One joined table and the equality condition that brings it into scope."""
-
-    model: type[Table[Any]]
-    join_type: JoinType
-    left_column: Attr[Any, Any, Any, Any, Any]
-    right_column: Attr[Any, Any, Any, Any, Any]
-
-
-@dataclass(frozen=True)
-class _SelectState:
-    model: type[Table[Any]]
-    fields: tuple[_Selectable, ...]
-    returns_model: bool = False
-    explicit_all: bool = False
-    distinct: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
-    groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
-    having: tuple[Predicate[Any], ...] = ()
-    orderings: tuple[OrderBy[Any], ...] = ()
-    limit_value: int | None = None
-    offset_value: int | None = None
-    joins: tuple[_JoinSpec, ...] = ()
-
-    def result_models(self) -> tuple[type[Table[Any]], ...]:
-        """Return the base model followed by each joined model, in join order."""
-
-        return (self.model, *(join.model for join in self.joins))
-
-
-@dataclass(frozen=True)
-class _UpdateState:
-    model: type[Table[Any]]
-    assignments: tuple[Assignment[Any], ...] = ()
-    explicit_all: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
-
-
-@dataclass(frozen=True)
-class _DeleteState:
-    model: type[Table[Any]]
-    explicit_all: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
-
-
 class _BaseSelectQuery:
     """Immutable select-state plumbing shared by every select query.
 
@@ -141,14 +97,14 @@ class _BaseSelectQuery:
     (`where`/`order_by`/`join`) whose return types depend on their parameters.
     """
 
-    state: _SelectState
+    state: SelectState
 
-    def __init__(self, state: _SelectState | None = None) -> None:
+    def __init__(self, state: SelectState | None = None) -> None:
         if state is None:
             state = _empty_select_state()
         self.state = state
 
-    def _replace_state(self, state: _SelectState) -> Self:
+    def _replace_state(self, state: SelectState) -> Self:
         return type(self)(state)
 
     def all(self) -> Self:
@@ -492,35 +448,12 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         )
 
 
-@dataclass(frozen=True)
-class _InsertState:
-    """Immutable insert-statement state shared by every insert query variant.
-
-    ``rows`` holds the pending model instances to persist (one for a single
-    insert, many for a bulk insert). ``returning`` records whether the write
-    should yield Fetched models via ``RETURNING``; ``multi`` records whether the
-    builder was created from a sequence, so an empty bulk batch stays typed and
-    executable as a no-op even though it carries no rows to read a model from.
-    """
-
-    rows: tuple[Table[Any], ...]
-    returning: bool = False
-    multi: bool = False
-
-    def model(self) -> type[Table[Any]] | None:
-        """Return the inserted model class, or None for an empty bulk batch."""
-
-        if not self.rows:
-            return None
-        return type(self.rows[0])
-
-
 class _BaseInsertQuery:
     """Immutable insert-state plumbing shared by every insert query variant."""
 
-    state: _InsertState
+    state: InsertState
 
-    def __init__(self, state: _InsertState) -> None:
+    def __init__(self, state: InsertState) -> None:
         self.state = state
 
 
@@ -568,12 +501,12 @@ type AnyWriteQuery = AnyInsertQuery | UpdateQuery[Any] | DeleteQuery[Any]
 class UpdateQuery[ModelT: Table[Any]]:
     """Immutable update statement for one table model."""
 
-    state: _UpdateState
+    state: UpdateState
 
-    def __init__(self, state: _UpdateState | None = None) -> None:
+    def __init__(self, state: UpdateState | None = None) -> None:
         if state is None:
-            state = _UpdateState(model=Table[Any])
-        self.state: _UpdateState = state
+            state = UpdateState(model=Table[Any])
+        self.state: UpdateState = state
 
     def all(self) -> Self:
         state = _update_all(self.state)
@@ -593,12 +526,12 @@ class UpdateQuery[ModelT: Table[Any]]:
 class DeleteQuery[ModelT: Table[Any]]:
     """Immutable delete statement for one table model."""
 
-    state: _DeleteState
+    state: DeleteState
 
-    def __init__(self, state: _DeleteState | None = None) -> None:
+    def __init__(self, state: DeleteState | None = None) -> None:
         if state is None:
-            state = _DeleteState(model=Table[Any])
-        self.state: _DeleteState = state
+            state = DeleteState(model=Table[Any])
+        self.state: DeleteState = state
 
     def all(self) -> Self:
         state = _delete_all(self.state)
@@ -619,11 +552,11 @@ type AnySelectQuery = (
 )
 
 
-def _empty_select_state() -> _SelectState:
-    return _SelectState(model=Table[Any], fields=())
+def _empty_select_state() -> SelectState:
+    return SelectState(model=Table[Any], fields=())
 
 
-def _select_all(state: _SelectState) -> _SelectState:
+def _select_all(state: SelectState) -> SelectState:
     if state.predicates:
         msg = "all() cannot be combined with where()"
         raise QueryConstructionError(msg)
@@ -632,16 +565,16 @@ def _select_all(state: _SelectState) -> _SelectState:
     return replace(state, explicit_all=True)
 
 
-def _select_distinct(state: _SelectState) -> _SelectState:
+def _select_distinct(state: SelectState) -> SelectState:
     if state.distinct:
         return state
     return replace(state, distinct=True)
 
 
 def _select_where(
-    state: _SelectState,
+    state: SelectState,
     predicates: tuple[Predicate[Any], ...],
-) -> _SelectState:
+) -> SelectState:
     if not predicates:
         msg = "where() requires at least one predicate"
         raise QueryConstructionError(msg)
@@ -649,58 +582,58 @@ def _select_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_models(predicate, state.result_models())
+        ensure_predicate_targets_models(predicate, state.result_models())
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
 def _select_order_by(
-    state: _SelectState,
+    state: SelectState,
     orderings: tuple[OrderBy[Any], ...],
-) -> _SelectState:
+) -> SelectState:
     if not orderings:
         msg = "order_by() requires at least one ordering"
         raise QueryConstructionError(msg)
     for ordering in orderings:
-        _ensure_ordering_targets_models(ordering, state.result_models())
+        ensure_ordering_targets_models(ordering, state.result_models())
     return replace(state, orderings=(*state.orderings, *orderings))
 
 
 def _select_group_by(
-    state: _SelectState,
+    state: SelectState,
     columns: tuple[Attr[Any, Any, Any, Any, Any], ...],
-) -> _SelectState:
+) -> SelectState:
     if not columns:
         msg = "group_by() requires at least one column"
         raise QueryConstructionError(msg)
-    grouped = tuple(_require_field(column) for column in columns)
+    grouped = tuple(require_field(column) for column in columns)
     models = state.result_models()
     for column in grouped:
-        if _require_column_model(column) not in models:
+        if require_column_model(column) not in models:
             msg = "group_by references a table that is not in the query"
             raise QueryConstructionError(msg)
     return replace(state, groupings=(*state.groupings, *grouped))
 
 
 def _select_having(
-    state: _SelectState,
+    state: SelectState,
     predicates: tuple[Predicate[Any], ...],
-) -> _SelectState:
+) -> SelectState:
     if not predicates:
         msg = "having() requires at least one predicate"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_having_targets(predicate, state)
+        ensure_having_targets(predicate, state)
     return replace(state, having=(*state.having, *predicates))
 
 
 def _select_join(
-    state: _SelectState,
+    state: SelectState,
     model: object,
     on: object,
     join_type: JoinType,
     *,
     project: bool = False,
-) -> _SelectState:
+) -> SelectState:
     if not isinstance(model, type):
         msg = "join requires a table model"
         raise QueryConstructionError(msg)
@@ -714,9 +647,9 @@ def _select_join(
         msg = "join requires an on= condition built from references()"
         raise QueryConstructionError(msg)
     condition = cast("JoinOn[Any, Any]", on)
-    left_column = _require_field(condition.left_column)
-    right_column = _require_field(condition.right_column)
-    related = {_require_column_model(left_column), _require_column_model(right_column)}
+    left_column = require_field(condition.left_column)
+    right_column = require_field(condition.right_column)
+    related = {require_column_model(left_column), require_column_model(right_column)}
     if table_model not in related:
         msg = "join condition must reference the joined table"
         raise QueryConstructionError(msg)
@@ -727,7 +660,7 @@ def _select_join(
     if not (related - {table_model}) <= already_joined:
         msg = "join condition must relate the joined table to an already-joined table"
         raise QueryConstructionError(msg)
-    spec = _JoinSpec(
+    spec = JoinSpec(
         model=table_model,
         join_type=join_type,
         left_column=left_column,
@@ -745,15 +678,15 @@ def _select_join(
     )
 
 
-def _select_limit(state: _SelectState, value: NonNegativeInt) -> _SelectState:
+def _select_limit(state: SelectState, value: NonNegativeInt) -> SelectState:
     return replace(state, limit_value=value)
 
 
-def _select_offset(state: _SelectState, value: NonNegativeInt) -> _SelectState:
+def _select_offset(state: SelectState, value: NonNegativeInt) -> SelectState:
     return replace(state, offset_value=value)
 
 
-def _update_all(state: _UpdateState) -> _UpdateState:
+def _update_all(state: UpdateState) -> UpdateState:
     if state.predicates:
         msg = "all() cannot be combined with where()"
         raise QueryConstructionError(msg)
@@ -763,21 +696,21 @@ def _update_all(state: _UpdateState) -> _UpdateState:
 
 
 def _update_set(
-    state: _UpdateState,
+    state: UpdateState,
     assignments: tuple[Assignment[Any], ...],
-) -> _UpdateState:
+) -> UpdateState:
     if not assignments:
         msg = "set() requires at least one assignment"
         raise QueryConstructionError(msg)
     for assignment in assignments:
-        _ensure_assignment_targets_model(assignment, state.model)
+        ensure_assignment_targets_model(assignment, state.model)
     return replace(state, assignments=(*state.assignments, *assignments))
 
 
 def _update_where(
-    state: _UpdateState,
+    state: UpdateState,
     predicates: tuple[Predicate[Any], ...],
-) -> _UpdateState:
+) -> UpdateState:
     if not predicates:
         msg = "where() requires at least one predicate"
         raise QueryConstructionError(msg)
@@ -785,11 +718,11 @@ def _update_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_models(predicate, (state.model,))
+        ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
-def _delete_all(state: _DeleteState) -> _DeleteState:
+def _delete_all(state: DeleteState) -> DeleteState:
     if state.predicates:
         msg = "all() cannot be combined with where()"
         raise QueryConstructionError(msg)
@@ -799,9 +732,9 @@ def _delete_all(state: _DeleteState) -> _DeleteState:
 
 
 def _delete_where(
-    state: _DeleteState,
+    state: DeleteState,
     predicates: tuple[Predicate[Any], ...],
-) -> _DeleteState:
+) -> DeleteState:
     if not predicates:
         msg = "where() requires at least one predicate"
         raise QueryConstructionError(msg)
@@ -809,1123 +742,8 @@ def _delete_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     for predicate in predicates:
-        _ensure_predicate_targets_models(predicate, (state.model,))
+        ensure_predicate_targets_models(predicate, (state.model,))
     return replace(state, predicates=(*state.predicates, *predicates))
-
-
-def _require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
-    if not isinstance(value, Attr):
-        msg = "select requires a model or field"
-        raise QueryConstructionError(msg)
-    return cast("Attr[Any, Any, Any, Any, Any]", value)
-
-
-def _require_selectable(value: object) -> _Selectable:
-    if isinstance(value, Aggregate):
-        return cast("Aggregate[Any, Any]", value)
-    if isinstance(value, Scalar):
-        return cast("Scalar[Any, Any]", value)
-    return _require_field(value)
-
-
-def _require_subquery_state(subquery: object) -> _SelectState:
-    """Return a nested query's compiled state, rejecting non-select operands."""
-
-    state = getattr(subquery, "state", None)
-    if not isinstance(state, _SelectState):
-        msg = "a subquery requires a select query"
-        raise QueryConstructionError(msg)
-    return state
-
-
-def _require_single_column_subquery(subquery: object) -> _SelectState:
-    """Return a nested query's state, requiring it to project exactly one column.
-
-    ``IN (subquery)`` and scalar subqueries are only meaningful against a
-    single-column select; a model select (every column) or a multi-column tuple
-    select is rejected at construction.
-    """
-
-    state = _require_subquery_state(subquery)
-    if state.returns_model or len(state.fields) != 1:
-        msg = "a subquery value set must select exactly one column"
-        raise QueryConstructionError(msg)
-    return state
-
-
-def _require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
-    if column.name is None:
-        msg = "field is not bound to a model"
-        raise QueryConstructionError(msg)
-    return column.name
-
-
-def _render_column_ref(
-    column: Attr[Any, Any, Any, Any, Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool = False,
-) -> str:
-    """Render a column as the SQL reference used in compiled statements.
-
-    Every column-name emission (predicates, orderings, assignments, and the
-    select list) routes through this single seam so the qualification strategy
-    lives in one place. Single-table statements render a bare dialect-quoted
-    column name; joined statements qualify it with the owning table so columns
-    from different tables never collide.
-    """
-
-    quoted_name = dialect.quote_identifier(_require_column_name(column))
-    if not qualified:
-        return quoted_name
-    table_name = require_model_table_name(_require_column_model(column))
-    return f"{dialect.quote_identifier(table_name)}.{quoted_name}"
-
-
-def _require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
-    owner = column.owner
-    if owner is None:
-        msg = "field is not bound to a model"
-        raise QueryConstructionError(msg)
-    model = cast("type[Table[Any]]", owner)
-    try:
-        _ = require_model_columns(model)
-    except ModelDeclarationError as error:
-        msg = "field is not bound to a table model"
-        raise QueryConstructionError(msg) from error
-    return model
-
-
-def _selectable_owner_model(field: _Selectable) -> type[Table[Any]]:
-    """Return the table model owning a selectable (column or aggregate).
-
-    An aggregate carries its owner directly (the wrapped column's table, or the
-    model for ``COUNT(*)``), so the scope check can treat columns and aggregates
-    uniformly. A scalar subquery has no single owning table -- it correlates to
-    whatever enclosing scope it references -- so it is not a valid argument here;
-    callers handle scalar fields before reaching this seam.
-    """
-
-    if isinstance(field, Scalar):
-        msg = "a scalar subquery has no single owning table"
-        raise QueryConstructionError(msg)
-    if isinstance(field, Aggregate):
-        owner = field.owner
-        if owner is None:
-            msg = "aggregate is not bound to a table model"
-            raise QueryConstructionError(msg)
-        model = cast("type[Table[Any]]", owner)
-        try:
-            _ = require_model_columns(model)
-        except ModelDeclarationError as error:
-            msg = "aggregate is not bound to a table model"
-            raise QueryConstructionError(msg) from error
-        return model
-    return _require_column_model(field)
-
-
-def _render_aggregate(
-    aggregate: Aggregate[Any, Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-) -> str:
-    """Render an aggregate as ``FUNC(col)`` or ``COUNT(*)`` for the select list."""
-
-    column = aggregate.column
-    if column is None:
-        return f"{aggregate.func}(*)"
-    column_ref = _render_column_ref(
-        _require_field(column),
-        dialect,
-        qualified=qualified,
-    )
-    return f"{aggregate.func}({column_ref})"
-
-
-def _render_selectable(
-    field: _Selectable,
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-) -> str:
-    if isinstance(field, Scalar):
-        # Scalar subqueries carry nested parameters, so the select-list compiler
-        # renders them through `_compile_scalar_sql`; they never reach here.
-        msg = "scalar subqueries cannot be rendered without their parameters"
-        raise QueryCompilationError(msg)
-    if isinstance(field, Aggregate):
-        return _render_aggregate(field, dialect, qualified=qualified)
-    return _render_column_ref(field, dialect, qualified=qualified)
-
-
-def _compile_scalar_sql(
-    scalar_subquery: Scalar[Any, Any],
-    dialect: QueryDialect,
-    *,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a scalar subquery as a parenthesized correlated select."""
-
-    state = _require_single_column_subquery(scalar_subquery.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
-    return f"({sub_sql})", sub_params
-
-
-def _decode_aggregate(
-    aggregate: Aggregate[Any, Any],
-    value: object,
-    *,
-    backend: StorageBackend,
-) -> object:
-    """Decode an aggregate value, normalizing across backends.
-
-    Aggregates are not real columns: ``COUNT`` is always an ``int``; ``AVG`` is a
-    ``float``; ``SUM`` mirrors the wrapped column's logical type (so MariaDB's
-    ``DECIMAL`` and SQLite's integer agree); ``MIN``/``MAX`` reuse the column's
-    wire decode but skip per-row logical validation, since an aggregate value
-    need not satisfy the column's declared constraints. ``NULL`` over an empty
-    set decodes to ``None`` for everything but ``COUNT``.
-    """
-
-    if value is None:
-        return None
-    if aggregate.func == "COUNT":
-        return int(cast("int", value))
-    if aggregate.func == "AVG":
-        return float(cast("float", value))
-    column = _require_field(aggregate.column)
-    if aggregate.func == "SUM":
-        return _normalize_sum(column, value)
-    return column.decode(value, backend=backend, validate=False)
-
-
-def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
-    """Normalize ``SUM`` to the wrapped column's logical type across backends.
-
-    SQLite returns an integer for an integer-column sum; MariaDB returns
-    ``DECIMAL``. Mirroring the column's storage type makes both agree.
-    """
-
-    if column.storage_type_name == "Integer":
-        return int(cast("int", value))
-    if column.storage_type_name == "Real":
-        return float(cast("float", value))
-    return value
-
-
-def _decode_selectable(
-    field: _Selectable,
-    value: object,
-    *,
-    backend: StorageBackend,
-    validate: bool,
-) -> object:
-    if isinstance(field, Scalar):
-        # A scalar subquery decodes through its single projected selectable, so
-        # an inner SUM/COUNT/column normalizes exactly as it would standalone.
-        inner = _require_single_column_subquery(field.subquery)
-        return _decode_selectable(
-            inner.fields[0],
-            value,
-            backend=backend,
-            validate=validate,
-        )
-    if isinstance(field, Aggregate):
-        return _decode_aggregate(field, value, backend=backend)
-    return field.decode(value, backend=backend, validate=validate)
-
-
-_SUBQUERY_PREDICATE_KINDS = {"in_subquery", "not_in_subquery"}
-_EXISTENCE_PREDICATE_KINDS = {"exists", "not_exists"}
-
-
-def _ensure_predicate_targets_models(
-    predicate: Predicate[Any],
-    models: tuple[type[Table[Any]], ...],
-) -> None:
-    if predicate.kind == "":
-        msg = "where predicates must be built from columns"
-        raise QueryConstructionError(msg)
-    if predicate.kind in _EXISTENCE_PREDICATE_KINDS:
-        # EXISTS carries no outer column; correlation to the outer scope is
-        # resolved when the subquery compiles, not at construction.
-        _ = _require_subquery_state(predicate.subquery)
-        return
-    if predicate.kind in _SUBQUERY_PREDICATE_KINDS:
-        _ = _require_single_column_subquery(predicate.subquery)
-    if predicate.column is not None:
-        if isinstance(predicate.column, Aggregate):
-            msg = "aggregates cannot appear in where(); use having()"
-            raise QueryConstructionError(msg)
-        column = _require_field(predicate.column)
-        if _require_column_model(column) not in models:
-            msg = "predicate references a table that is not in the query"
-            raise QueryConstructionError(msg)
-    for child in predicate.children:
-        _ensure_predicate_targets_models(child, models)
-
-
-def _ensure_having_targets(
-    predicate: Predicate[Any],
-    state: _SelectState,
-) -> None:
-    """Validate that a HAVING predicate targets only aggregates or grouped columns.
-
-    SQL allows ``HAVING`` to reference the per-group aggregates and the grouping
-    keys, never an ungrouped bare column. Aggregates carry their owner directly;
-    a plain column must appear in ``group_by`` (and, like ``where``, name a table
-    already in scope).
-    """
-
-    if predicate.kind == "":
-        msg = "having predicates must be built from columns or aggregates"
-        raise QueryConstructionError(msg)
-    if predicate.column is not None:
-        _ensure_having_selectable(predicate.column, state)
-    for child in predicate.children:
-        _ensure_having_targets(child, state)
-
-
-def _ensure_having_selectable(column: object, state: _SelectState) -> None:
-    selectable = _require_selectable(column)
-    models = state.result_models()
-    if _selectable_owner_model(selectable) not in models:
-        msg = "having references a table that is not in the query"
-        raise QueryConstructionError(msg)
-    if isinstance(selectable, Aggregate):
-        return
-    bare_column = _require_field(column)
-    grouped_keys = {
-        (_require_column_model(grouped), _require_column_name(grouped))
-        for grouped in state.groupings
-    }
-    key = (_require_column_model(bare_column), _require_column_name(bare_column))
-    if key not in grouped_keys:
-        msg = "having references a column that is not grouped or aggregated"
-        raise QueryConstructionError(msg)
-
-
-def _ensure_ordering_targets_models(
-    ordering: OrderBy[Any],
-    models: tuple[type[Table[Any]], ...],
-) -> None:
-    if ordering.column is None or ordering.direction not in {"ASC", "DESC"}:
-        msg = "orderings must be built from columns"
-        raise QueryConstructionError(msg)
-    selectable = _require_selectable(ordering.column)
-    if _selectable_owner_model(selectable) not in models:
-        msg = "ordering references a table that is not in the query"
-        raise QueryConstructionError(msg)
-
-
-def _ensure_grouping_covers_projection(state: _SelectState) -> None:
-    """Reject an aggregated projection that selects an ungrouped bare column.
-
-    A query is aggregated when it projects an aggregate or carries a
-    ``group_by``; in either case SQL requires every non-aggregate projected
-    column to appear in the ``GROUP BY`` list. ``COUNT(*)``-style aggregates have
-    no column, so they never need grouping.
-    """
-
-    has_aggregate = any(isinstance(field, Aggregate) for field in state.fields)
-    if not (has_aggregate or state.groupings):
-        return
-    grouped_keys = {
-        (_require_column_model(column), _require_column_name(column))
-        for column in state.groupings
-    }
-    for field in state.fields:
-        if isinstance(field, (Aggregate, Scalar)):
-            continue
-        key = (_require_column_model(field), _require_column_name(field))
-        if key not in grouped_keys:
-            msg = "non-aggregated column in an aggregated select must appear in group_by()"
-            raise QueryCompilationError(msg)
-
-
-def _ensure_assignment_targets_model(
-    assignment: Assignment[Any],
-    model: type[Table[Any]],
-) -> None:
-    if assignment.column is None:
-        msg = "assignments must be built from columns"
-        raise QueryConstructionError(msg)
-    column = _require_field(assignment.column)
-    if _require_column_model(column) is not model:
-        msg = "assignment references a table that is not in the query"
-        raise QueryConstructionError(msg)
-    if column.is_generated or column.primary_key:
-        msg = "generated and primary key columns cannot update"
-        raise QueryConstructionError(msg)
-
-
-def _require_insert_model(row: object) -> type[Table[Any]]:
-    if not isinstance(row, Model):
-        msg = "insert requires a snekql model instance"
-        raise QueryConstructionError(msg)
-    model_row = cast("Model[Any, Any]", row)
-    return cast("type[Table[Any]]", model_row.__class__)
-
-
-def _encode_insert_row(
-    row: object,
-    model_class: type[Table[Any]],
-    dialect: QueryDialect,
-) -> dict[str, object]:
-    row_model = _require_insert_model(row)
-    if row_model is not model_class:
-        msg = "bulk insert rows must be instances of the same model"
-        raise QueryCompilationError(msg)
-    row_values: dict[str, object] = {}
-    for name, column in require_model_columns(model_class).items():
-        value = getattr(row, name)
-        if value is MISSING:
-            continue
-        row_values[name] = dialect.encode_column_value(column, value)
-    return row_values
-
-
-def _insert_returning_clause(
-    model_class: type[Table[Any]],
-    dialect: QueryDialect,
-) -> str:
-    columns = require_model_columns(model_class)
-    rendered = ", ".join(dialect.quote_identifier(name) for name in columns)
-    return f" RETURNING {rendered}"
-
-
-def _compile_insert_sql(
-    query: _BaseInsertQuery,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    state = query.state
-    model_class = state.model()
-    if model_class is None:
-        msg = "insert requires at least one row"
-        raise QueryCompilationError(msg)
-    encoded_rows = [_encode_insert_row(row, model_class, dialect) for row in state.rows]
-    # Every row in a bulk insert shares one VALUES list, so the present-column
-    # set must be identical across rows; otherwise the flattened parameters
-    # would not line up with a single column list.
-    names = tuple(encoded_rows[0])
-    for row_values in encoded_rows[1:]:
-        if tuple(row_values) != names:
-            msg = "bulk insert rows must set the same columns"
-            raise QueryCompilationError(msg)
-    table_name = require_model_table_name(model_class)
-    quoted_table = dialect.quote_identifier(table_name)
-    returning = (
-        _insert_returning_clause(model_class, dialect) if state.returning else ""
-    )
-    if not names:
-        if len(encoded_rows) > 1:
-            msg = "bulk insert requires at least one explicit column"
-            raise QueryCompilationError(msg)
-        return dialect.empty_insert_sql(quoted_table) + returning, ()
-    quoted_columns = ", ".join(dialect.quote_identifier(name) for name in names)
-    row_placeholder = "(" + ", ".join(dialect.placeholder for _ in names) + ")"
-    values_clause = ", ".join(row_placeholder for _ in encoded_rows)
-    sql = (
-        "INSERT INTO "  # noqa: S608
-        + quoted_table
-        + f" ({quoted_columns}) VALUES {values_clause}{returning}"
-    )
-    params = tuple(row_values[name] for row_values in encoded_rows for name in names)
-    return sql, params
-
-
-def _compile_compound_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
-        msg = "compound predicate is malformed"
-        raise QueryCompilationError(msg)
-    left_sql, left_params = _compile_predicate_sql(
-        predicate.children[0],
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
-    right_sql, right_params = _compile_predicate_sql(
-        predicate.children[1],
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
-    operator = "AND" if predicate.kind == "and" else "OR"
-    return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
-
-
-def _compile_negated_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
-        msg = "negated predicate is malformed"
-        raise QueryCompilationError(msg)
-    child_sql, child_params = _compile_predicate_sql(
-        predicate.children[0],
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
-    return f"NOT ({child_sql})", child_params
-
-
-def _compile_equality_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if predicate.value is None:
-        msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
-        if predicate.kind == "eq":
-            msg = "eq(None) is invalid; use is_null()"
-        raise QueryCompilationError(msg)
-    operator = "=" if predicate.kind == "eq" else "!="
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (encode(predicate.value),),
-    )
-
-
-_COMPARISON_OPERATORS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<="}
-
-
-def _compile_comparison_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if predicate.value is None:
-        msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
-        raise QueryCompilationError(msg)
-    operator = _COMPARISON_OPERATORS[predicate.kind]
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (encode(predicate.value),),
-    )
-
-
-def _compile_between_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.values) != 2:  # noqa: PLR2004
-        msg = "between() requires exactly two bounds"
-        raise QueryCompilationError(msg)
-    if any(bound is None for bound in predicate.values):
-        msg = "between() bounds cannot be None; use is_null()/is_not_null()"
-        raise QueryCompilationError(msg)
-    params = tuple(encode(bound) for bound in predicate.values)
-    return (
-        f"{column_name} BETWEEN {dialect.placeholder} AND {dialect.placeholder}",
-        params,
-    )
-
-
-def _compile_membership_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if not predicate.values:
-        msg = "IN predicates require at least one value"
-        raise QueryCompilationError(msg)
-    if any(value is None for value in predicate.values):
-        msg = "IN predicate values cannot be None"
-        raise QueryCompilationError(msg)
-    placeholders = ", ".join(dialect.placeholder for _ in predicate.values)
-    operator = "IN" if predicate.kind == "in" else "NOT IN"
-    params = tuple(encode(value) for value in predicate.values)
-    return f"{column_name} {operator} ({placeholders})", params
-
-
-def _compile_like_predicate_sql(
-    predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if column.storage_type_name != "Text":
-        msg = f"{predicate.kind}() is only valid for text columns"
-        raise QueryCompilationError(msg)
-    operator = "LIKE" if predicate.kind == "like" else "NOT LIKE"
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (dialect.encode_column_value(column, predicate.value),),
-    )
-
-
-def _predicate_value_encoder(
-    selectable: _Selectable,
-    dialect: QueryDialect,
-) -> Callable[[object], object]:
-    """Build the value encoder for a predicate operand.
-
-    A column encodes comparison values through its own logical codec. An
-    aggregate's comparison value follows its result type: ``COUNT``/``AVG``
-    compare against a plain ``int``/``float`` and pass through unencoded, while
-    ``SUM``/``MIN``/``MAX`` share the wrapped column's type and reuse its encoder
-    (so e.g. a ``datetime`` ``MIN`` bound is serialized correctly).
-    """
-
-    if isinstance(selectable, Scalar):
-        msg = "a scalar subquery is not a value-encoding operand"
-        raise QueryCompilationError(msg)
-    if isinstance(selectable, Aggregate):
-        if selectable.func in {"COUNT", "AVG"}:
-            return lambda value: value
-        wrapped = _require_field(selectable.column)
-        return lambda value: dialect.encode_column_value(wrapped, value)
-    column = selectable
-    return lambda value: dialect.encode_column_value(column, value)
-
-
-_COLUMN_COMPARISON_OPERATORS = {
-    "eq_col": "=",
-    "ne_col": "!=",
-    "gt_col": ">",
-    "gte_col": ">=",
-    "lt_col": "<",
-    "lte_col": "<=",
-}
-
-
-def _compile_column_comparison_sql(
-    predicate: Predicate[Any],
-    column_name: str,
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a comparison whose right side is a column or a scalar subquery.
-
-    A scalar-subquery operand renders as a parenthesized correlated select; a
-    column operand renders as a qualified column reference whose table must be
-    reachable in the current scope (its own tables plus any enclosing query the
-    subquery correlates to), else the reference is rejected at compile time.
-    """
-
-    operator = _COLUMN_COMPARISON_OPERATORS[predicate.kind]
-    operand = predicate.value
-    if isinstance(operand, Scalar):
-        operand_sql, operand_params = _compile_scalar_sql(
-            cast("Scalar[Any, Any]", operand),
-            dialect,
-            scope_models=scope_models,
-        )
-        return f"{column_name} {operator} {operand_sql}", operand_params
-    other = _require_field(operand)
-    if _require_column_model(other) not in scope_models:
-        msg = "comparison references a table that is not in the query"
-        raise QueryCompilationError(msg)
-    other_ref = _render_column_ref(other, dialect, qualified=qualified)
-    return f"{column_name} {operator} {other_ref}", ()
-
-
-def _compile_subquery_membership_sql(
-    predicate: Predicate[Any],
-    column_name: str,
-    dialect: QueryDialect,
-    *,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    """Compile ``col IN (subquery)`` / ``col NOT IN (subquery)``."""
-
-    state = _require_single_column_subquery(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
-    operator = "IN" if predicate.kind == "in_subquery" else "NOT IN"
-    return f"{column_name} {operator} ({sub_sql})", sub_params
-
-
-def _compile_exists_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    """Compile ``EXISTS (subquery)`` / ``NOT EXISTS (subquery)``."""
-
-    state = _require_subquery_state(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
-    keyword = "EXISTS" if predicate.kind == "exists" else "NOT EXISTS"
-    return f"{keyword} ({sub_sql})", sub_params
-
-
-def _compile_value_predicate_sql(
-    predicate: Predicate[Any],
-    selectable: _Selectable,
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a predicate whose right side is a literal value (or none)."""
-
-    encode = _predicate_value_encoder(selectable, dialect)
-    if predicate.kind in {"eq", "ne"}:
-        return _compile_equality_predicate_sql(predicate, encode, column_name, dialect)
-    if predicate.kind in {"is_null", "is_not_null"}:
-        operator = "IS NULL" if predicate.kind == "is_null" else "IS NOT NULL"
-        return f"{column_name} {operator}", ()
-    if predicate.kind in {"in", "not_in"}:
-        return _compile_membership_predicate_sql(
-            predicate,
-            encode,
-            column_name,
-            dialect,
-        )
-    if predicate.kind in {"like", "not_like"}:
-        return _compile_like_predicate_sql(
-            predicate,
-            _require_field(predicate.column),
-            column_name,
-            dialect,
-        )
-    if predicate.kind in _COMPARISON_OPERATORS:
-        return _compile_comparison_predicate_sql(
-            predicate, encode, column_name, dialect
-        )
-    if predicate.kind == "between":
-        return _compile_between_predicate_sql(predicate, encode, column_name, dialect)
-    msg = "unknown predicate kind"
-    raise QueryCompilationError(msg)
-
-
-def _compile_column_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    selectable = _require_selectable(predicate.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
-    if predicate.kind in _COLUMN_COMPARISON_OPERATORS:
-        return _compile_column_comparison_sql(
-            predicate,
-            column_name,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-    if predicate.kind in _SUBQUERY_PREDICATE_KINDS:
-        return _compile_subquery_membership_sql(
-            predicate,
-            column_name,
-            dialect,
-            scope_models=scope_models,
-        )
-    return _compile_value_predicate_sql(predicate, selectable, column_name, dialect)
-
-
-def _compile_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-    if predicate.kind == "not":
-        return _compile_negated_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-    if predicate.kind in _EXISTENCE_PREDICATE_KINDS:
-        return _compile_exists_sql(predicate, dialect, scope_models=scope_models)
-    return _compile_column_predicate_sql(
-        predicate,
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
-
-
-def _compile_group_by_sql(
-    state: _SelectState,
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-) -> str:
-    group_by = ", ".join(
-        _render_column_ref(column, dialect, qualified=qualified)
-        for column in state.groupings
-    )
-    return f"GROUP BY {group_by}"
-
-
-def _compile_ordering_sql(
-    ordering: OrderBy[Any],
-    models: tuple[type[Table[Any]], ...],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-) -> str:
-    _ensure_ordering_targets_models(ordering, models)
-    selectable = _require_selectable(ordering.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
-    return f"{column_name} {ordering.direction}"
-
-
-def _compile_predicates_sql(
-    predicates: tuple[Predicate[Any], ...],
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    predicate_sql_parts: list[str] = []
-    predicate_params: list[object] = []
-    for predicate in predicates:
-        predicate_sql, compiled_params = _compile_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-        predicate_sql_parts.append(f"({predicate_sql})")
-        predicate_params.extend(compiled_params)
-    return " AND ".join(predicate_sql_parts), tuple(predicate_params)
-
-
-def _compile_update_sql(
-    query: UpdateQuery[Any],
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    state = query.state
-    if not state.assignments:
-        msg = "update requires set() before execution"
-        raise QueryCompilationError(msg)
-    if not state.explicit_all and not state.predicates:
-        msg = "update requires all() or where() before execution"
-        raise QueryCompilationError(msg)
-    table_name = require_model_table_name(state.model)
-    set_sql_parts: list[str] = []
-    params: tuple[object, ...] = ()
-    for assignment in state.assignments:
-        _ensure_assignment_targets_model(assignment, state.model)
-        column = _require_field(assignment.column)
-        column_name = _render_column_ref(column, dialect)
-        set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
-        params = (*params, dialect.encode_column_value(column, assignment.value))
-    sql_parts = [
-        "UPDATE " + dialect.quote_identifier(table_name) + " SET ",  # noqa: S608
-        ", ".join(set_sql_parts),
-    ]
-    if state.predicates:
-        predicate_sql, predicate_params = _compile_predicates_sql(
-            state.predicates,
-            dialect,
-            qualified=False,
-            scope_models=(state.model,),
-        )
-        sql_parts.append(f" WHERE {predicate_sql}")
-        params = (*params, *predicate_params)
-    return "".join(sql_parts), params
-
-
-def _compile_delete_sql(
-    query: DeleteQuery[Any],
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    state = query.state
-    if not state.explicit_all and not state.predicates:
-        msg = "delete requires all() or where() before execution"
-        raise QueryCompilationError(msg)
-    table_name = require_model_table_name(state.model)
-    sql = "DELETE FROM " + dialect.quote_identifier(table_name)  # noqa: S608
-    params: tuple[object, ...] = ()
-    if state.predicates:
-        predicate_sql, params = _compile_predicates_sql(
-            state.predicates,
-            dialect,
-            qualified=False,
-            scope_models=(state.model,),
-        )
-        sql = f"{sql} WHERE {predicate_sql}"
-    return sql, params
-
-
-def _compile_select_list(
-    state: _SelectState,
-    dialect: QueryDialect,
-    *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
-) -> tuple[str, tuple[object, ...]]:
-    """Render the projected columns, collecting any scalar-subquery parameters.
-
-    A scalar subquery in the select list carries its own placeholders, so the
-    list -- not just the ``WHERE`` clause -- can contribute parameters; they come
-    first in textual order, which is exactly the order returned here.
-    """
-
-    parts: list[str] = []
-    params: tuple[object, ...] = ()
-    for field in state.fields:
-        if isinstance(field, Scalar):
-            scalar_sql, scalar_params = _compile_scalar_sql(
-                field,
-                dialect,
-                scope_models=scope_models,
-            )
-            parts.append(scalar_sql)
-            params = (*params, *scalar_params)
-            continue
-        parts.append(_render_selectable(field, dialect, qualified=qualified))
-    return ", ".join(parts), params
-
-
-def _compile_select_state(
-    state: _SelectState,
-    dialect: QueryDialect,
-    *,
-    outer_models: tuple[type[Table[Any]], ...] = (),
-) -> tuple[str, tuple[object, ...]]:
-    if not state.explicit_all and not state.predicates:
-        msg = "select requires all() or where() before execution"
-        raise QueryCompilationError(msg)
-    own_models = state.result_models()
-    # A subquery (compiled with an enclosing scope) qualifies every column so an
-    # inner reference never collides with an identically named outer column;
-    # correlated references resolve against the enclosing scope.
-    qualified = bool(state.joins) or bool(outer_models)
-    scope_models = (*own_models, *outer_models)
-    for column in state.fields:
-        if isinstance(column, Scalar):
-            continue
-        if _selectable_owner_model(column) not in own_models:
-            msg = "select references a table that is not in the query"
-            raise QueryCompilationError(msg)
-    _ensure_grouping_covers_projection(state)
-    table_name = require_model_table_name(state.model)
-    quoted_columns, params = _compile_select_list(
-        state,
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
-    select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
-    quoted_table = dialect.quote_identifier(table_name)
-    sql_parts = [
-        f"{select_keyword} {quoted_columns} FROM {quoted_table}",
-    ]
-    for join in state.joins:
-        join_table = dialect.quote_identifier(require_model_table_name(join.model))
-        left_ref = _render_column_ref(join.left_column, dialect, qualified=True)
-        right_ref = _render_column_ref(join.right_column, dialect, qualified=True)
-        sql_parts.append(
-            f"{join.join_type} JOIN {join_table} ON {left_ref} = {right_ref}"
-        )
-    if state.predicates:
-        predicate_sql, predicate_params = _compile_predicates_sql(
-            state.predicates,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-        sql_parts.append(f"WHERE {predicate_sql}")
-        params = (*params, *predicate_params)
-    if state.groupings:
-        sql_parts.append(_compile_group_by_sql(state, dialect, qualified=qualified))
-    if state.having:
-        having_sql, having_params = _compile_predicates_sql(
-            state.having,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
-        sql_parts.append(f"HAVING {having_sql}")
-        params = (*params, *having_params)
-    if state.orderings:
-        order_by = ", ".join(
-            _compile_ordering_sql(ordering, own_models, dialect, qualified=qualified)
-            for ordering in state.orderings
-        )
-        sql_parts.append(f"ORDER BY {order_by}")
-    limit_parts, limit_params = _compile_limit_offset_sql(state, dialect)
-    sql_parts.extend(limit_parts)
-    params = (*params, *limit_params)
-    return " ".join(sql_parts), params
-
-
-def _compile_limit_offset_sql(
-    state: _SelectState,
-    dialect: QueryDialect,
-) -> tuple[list[str], tuple[object, ...]]:
-    parts: list[str] = []
-    params: tuple[object, ...] = ()
-    if state.limit_value is not None:
-        parts.append(f"LIMIT {dialect.placeholder}")
-        params = (*params, state.limit_value)
-    if state.offset_value is not None:
-        if state.limit_value is None:
-            parts.append("LIMIT -1")
-        parts.append(f"OFFSET {dialect.placeholder}")
-        params = (*params, state.offset_value)
-    return parts, params
-
-
-def compile_select_sql_for_dialect(
-    query: AnySelectQuery,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a select query into backend Dialect SQL."""
-
-    return _compile_select_state(query.state, dialect)
-
-
-def _materialize_join_row(
-    state: _SelectState,
-    row: Sequence[object],
-    *,
-    backend: StorageBackend,
-    validate: bool,
-) -> tuple[object, ...]:
-    """Split one joined row into a Fetched model per table, in join order.
-
-    A left-joined table whose columns are all NULL produced no matching row, so
-    its tuple slot is materialized as None rather than a model.
-    """
-
-    elements: list[object] = []
-    offset = 0
-    for index, model in enumerate(state.result_models()):
-        columns = require_model_columns(model)
-        width = len(columns)
-        chunk = row[offset : offset + width]
-        offset += width
-        is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
-        if is_left_join and all(value is None for value in chunk):
-            elements.append(None)
-            continue
-        values = {name: chunk[position] for position, name in enumerate(columns)}
-        elements.append(
-            decode_model_row(model, values, backend=backend, validate=validate),
-        )
-    return tuple(elements)
-
-
-def materialize_select_row_for_backend(
-    query: AnySelectQuery,
-    row: Sequence[object],
-    *,
-    backend: StorageBackend,
-    validate: bool = True,
-) -> object:
-    """Materialize one database row into the select query's result shape.
-
-    Shared by every backend: a join select decodes the row into a tuple of
-    Fetched models (one per joined table), a model select decodes the whole row
-    into a Fetched Model, a single-column select returns one decoded scalar, and
-    a multi-column select returns a tuple of decoded scalars in order.
-    """
-
-    state = query.state
-    assert len(row) == len(state.fields), (  # noqa: S101
-        "database row shape did not match select query"
-    )
-    if state.joins and state.returns_model:
-        return _materialize_join_row(state, row, backend=backend, validate=validate)
-    if state.returns_model:
-        # Model selects only ever project real columns, never aggregates.
-        values = {
-            _require_column_name(_require_field(column)): row[index]
-            for index, column in enumerate(state.fields)
-        }
-        return decode_model_row(state.model, values, backend=backend, validate=validate)
-    decoded_values = tuple(
-        _decode_selectable(column, row[index], backend=backend, validate=validate)
-        for index, column in enumerate(state.fields)
-    )
-    if len(decoded_values) == 1:
-        return decoded_values[0]
-    return decoded_values
-
-
-def materialize_insert_returning_rows_for_backend(
-    query: object,
-    rows: Sequence[Sequence[object]],
-    *,
-    backend: StorageBackend,
-    validate: bool = True,
-) -> list[object]:
-    """Materialize ``RETURNING`` rows from an insert into Fetched models.
-
-    The ``RETURNING`` clause projects every column in model declaration order
-    (see :func:`_insert_returning_clause`), so each database row decodes through
-    the full model exactly like a model select, yielding generated values
-    (auto-increment keys, server defaults) as a Fetched Model.
-    """
-
-    if not isinstance(query, _BaseInsertQuery):
-        msg = "materialize requires an insert query"
-        raise QueryCompilationError(msg)
-    model_class = query.state.model()
-    if model_class is None:
-        return []
-    columns = require_model_columns(model_class)
-    names = tuple(columns)
-    materialized: list[object] = []
-    for row in rows:
-        assert len(row) == len(names), (  # noqa: S101
-            "returning row shape did not match the inserted model"
-        )
-        values = {name: row[index] for index, name in enumerate(names)}
-        materialized.append(
-            decode_model_row(model_class, values, backend=backend, validate=validate),
-        )
-    return materialized
-
-
-def compile_write_sql_for_dialect(
-    query: object,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a write query into backend Dialect SQL."""
-
-    if isinstance(query, _BaseInsertQuery):
-        return _compile_insert_sql(query, dialect)
-    if isinstance(query, UpdateQuery):
-        return _compile_update_sql(cast("UpdateQuery[Any]", query), dialect)
-    if isinstance(query, DeleteQuery):
-        return _compile_delete_sql(cast("DeleteQuery[Any]", query), dialect)
-    msg = "execute requires a write query"
-    raise QueryCompilationError(msg)
 
 
 @overload
@@ -2017,13 +835,13 @@ def select(*args: object) -> object:
         except ModelDeclarationError as error:
             msg = "select requires a table model"
             raise QueryConstructionError(msg) from error
-        state = _SelectState(
+        state = SelectState(
             model=model,
             fields=tuple(columns.values()),
             returns_model=True,
         )
         return SelectModelQuery[Any, Any](state)
-    fields = tuple(_require_selectable(argument) for argument in args)
+    fields = tuple(require_selectable(argument) for argument in args)
     # The first projected column/aggregate's table is the implicit FROM anchor;
     # columns from other tables must be brought into scope with
     # join()/left_join(), which the dual-union scope check enforces statically. A
@@ -2035,8 +853,8 @@ def select(*args: object) -> object:
     if anchor is None:
         msg = "a projection must select at least one column or aggregate"
         raise QueryConstructionError(msg)
-    model = _selectable_owner_model(anchor)
-    state = _SelectState(model=model, fields=fields)
+    model = selectable_owner_model(anchor)
+    state = SelectState(model=model, fields=fields)
     if len(fields) == 1:
         return SelectValueQuery[Any, Any, Any](state)
     return SelectTupleQuery[Any, Any, *tuple[Any, ...]](state)
@@ -2051,14 +869,14 @@ def exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
     that correlation is resolved when the enclosing query compiles.
     """
 
-    _ = _require_subquery_state(subquery)
+    _ = require_subquery_state(subquery)
     return Predicate(kind="exists", subquery=subquery)
 
 
 def not_exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
     """Build a ``NOT EXISTS (subquery)`` predicate (see :func:`exists`)."""
 
-    _ = _require_subquery_state(subquery)
+    _ = require_subquery_state(subquery)
     return Predicate(kind="not_exists", subquery=subquery)
 
 
@@ -2070,7 +888,7 @@ def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T]:
     exactly one column and is expected to yield at most one row per evaluation.
     """
 
-    _ = _require_single_column_subquery(subquery)
+    _ = require_single_column_subquery(subquery)
     return Scalar(subquery=subquery)
 
 
@@ -2100,11 +918,11 @@ def insert(row_or_rows: object, /) -> object:
     if isinstance(row_or_rows, Sequence):
         rows = tuple(cast("Sequence[Table[Any]]", row_or_rows))
         for row in rows:
-            _ = _require_insert_model(row)
-        return InsertManyQuery[Any, Any](_InsertState(rows=rows, multi=True))
-    _ = _require_insert_model(row_or_rows)
+            _ = require_insert_model(row)
+        return InsertManyQuery[Any, Any](InsertState(rows=rows, multi=True))
+    _ = require_insert_model(row_or_rows)
     return InsertQuery[Any, Any](
-        _InsertState(rows=(cast("Table[Any]", row_or_rows),)),
+        InsertState(rows=(cast("Table[Any]", row_or_rows),)),
     )
 
 
@@ -2114,7 +932,7 @@ def update[ModelT: Table[Any]](model: type[ModelT], /) -> UpdateQuery[ModelT]:
     except ModelDeclarationError as error:
         msg = "update requires a table model"
         raise QueryConstructionError(msg) from error
-    return UpdateQuery(_UpdateState(model=cast("type[Table[Any]]", model)))
+    return UpdateQuery(UpdateState(model=cast("type[Table[Any]]", model)))
 
 
 def delete[ModelT: Table[Any]](model: type[ModelT], /) -> DeleteQuery[ModelT]:
@@ -2123,4 +941,4 @@ def delete[ModelT: Table[Any]](model: type[ModelT], /) -> DeleteQuery[ModelT]:
     except ModelDeclarationError as error:
         msg = "delete requires a table model"
         raise QueryConstructionError(msg) from error
-    return DeleteQuery(_DeleteState(model=cast("type[Table[Any]]", model)))
+    return DeleteQuery(DeleteState(model=cast("type[Table[Any]]", model)))
