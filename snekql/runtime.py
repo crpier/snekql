@@ -541,6 +541,79 @@ class Database:
         database_instance.runtime = runtime
         return database_instance
 
+    @overload
+    @classmethod
+    async def migrate(
+        cls,
+        backend: RuntimeConfig,
+        *,
+        logger: StructuredLogger,
+        migrations: dict[str, str],
+    ) -> None: ...
+
+    @overload
+    @classmethod
+    async def migrate(
+        cls,
+        *,
+        logger: StructuredLogger,
+        database: Path | Literal[":memory:"],
+        migrations: dict[str, str],
+        pool_size: PositiveInt = 5,
+        acquire_timeout: NonNegativeFloat = 30.0,
+    ) -> None: ...
+
+    @classmethod
+    async def migrate(  # noqa: PLR0913
+        cls,
+        backend: object | None = None,
+        *,
+        logger: StructuredLogger,
+        database: Path | Literal[":memory:"] | None = None,
+        migrations: dict[str, str],
+        pool_size: PositiveInt = 5,
+        acquire_timeout: NonNegativeFloat = 30.0,
+    ) -> None:
+        """Apply pending migrations from a dedicated deploy step.
+
+        This is the recommended single place to run migrations (see
+        `docs/migrations.md`). It shares the exact apply runner and idempotency
+        semantics as `initialize(migrations=...)` — each migration runs exactly
+        once and is recorded in the Migration History — but skips schema startup
+        and drift verification and leaves nothing open: no models, no pool, no
+        returned `Database`.
+        """
+
+        structured_logger = resolve_structured_logger(logger=logger)
+        try:
+            runtime_config = resolve_runtime_config(
+                backend=backend,
+                database=database,
+                pool_size=pool_size,
+                acquire_timeout=acquire_timeout,
+            )
+            backend_family = runtime_config.backend_family
+            structured_logger.info(
+                "database migrate started",
+                backend=backend_family,
+                migration_count=len(migrations),
+            )
+            await runtime_config.apply_migrations(
+                migrations,
+                logger=structured_logger,
+            )
+            structured_logger.info(
+                "database migrate completed",
+                backend=backend_family,
+                migration_count=len(migrations),
+            )
+        except Exception as error:
+            structured_logger.error(  # noqa: TRY400
+                "database migrate failed",
+                error_type=type(error).__name__,
+            )
+            raise
+
     @validate_boundary(error_type=DatabaseRuntimeError)
     def transaction(self, *, timeout: NonNegativeFloat | None = None) -> Transaction:
         """Create a transaction context manager using the runtime backend."""

@@ -35,6 +35,35 @@ When `migrations` is provided, snekql:
 Omitting `migrations` preserves the prior behavior exactly: snekql auto-creates
 missing tables from `models` and verifies the rest.
 
+## Applying migrations from a dedicated deploy step
+
+`Database.initialize(migrations=...)` applies migrations as a side effect of
+booting the app. For a release/deploy pipeline you usually want a step that
+*only* applies migrations, without standing up the full runtime. Use
+`Database.migrate(...)`:
+
+```python
+await Database.migrate(
+    logger=logger,
+    database=Path("app.db"),
+    migrations={
+        "001_create_user": 'CREATE TABLE "user" (...) STRICT',
+        "002_add_user_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
+    },
+)
+```
+
+`Database.migrate` shares the exact apply runner and idempotency semantics as the
+`initialize` path — it ensures the Migration History, computes the pending set,
+runs each pending body once in insertion order, and records each success — but it
+takes **no `models`**, runs **no schema startup or drift verification**, opens no
+connection pool, and returns nothing. It applies migrations and exits. Drift
+verification stays with `initialize`, where the `models` are available to verify
+against.
+
+It accepts the same backend selection as `initialize` (a `database=` path for
+SQLite, or a backend `Config` as the first argument).
+
 ## Migrations are the sole schema-creation authority
 
 When you pass `migrations`, snekql no longer auto-creates tables from `models`.
@@ -71,8 +100,10 @@ transaction — you own any transaction control inside your SQL. As a result:
 ## Concurrency
 
 v1 does not coordinate concurrent migration runs across instances. Run migrations
-from a single place; concurrent `initialize(migrations=...)` against the same
-MariaDB database is undefined in v1.
+from a single place — a dedicated deploy step calling
+[`Database.migrate(...)`](#applying-migrations-from-a-dedicated-deploy-step) — so
+no two app instances race them at boot. Concurrent `initialize(migrations=...)`
+against the same MariaDB database is undefined in v1.
 
 ## Raw SQL only
 

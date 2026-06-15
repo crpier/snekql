@@ -83,6 +83,20 @@ async def reinitializing_does_not_reapply_recorded_migration() -> None:
 
 
 @test(mark="medium")
+async def standalone_migrate_applies_without_full_initialize() -> None:
+    """Database.migrate applies a pending body and records history without initialize."""
+
+    server = await load_fixture(mariadb_server())
+    await Database.migrate(
+        server.config(),
+        logger=NULL_LOGGER,
+        migrations={"mig_standalone": _create_user_table_sql("mig_standalone_t4")},
+    )
+
+    assert_true("mig_standalone" in await _fetch_applied_names(server))
+
+
+@test(mark="medium")
 async def models_verify_against_migration_created_schema() -> None:
     """Drift verification still runs after migrations and passes on a matching schema."""
 

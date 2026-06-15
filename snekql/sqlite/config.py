@@ -103,3 +103,28 @@ class Config:
             logger=logger,
             migrations=migrations,
         )
+
+    async def apply_migrations(
+        self,
+        migrations: dict[str, str],
+        *,
+        logger: ResolvedStructuredLogger,
+    ) -> None:
+        """Apply pending migrations on a migrate-only SQLite connection."""
+
+        try:
+            runtime_module = import_module("snekql.sqlite.runtime")
+        except ModuleNotFoundError as error:
+            if error.name == "aiosqlite":
+                msg = (
+                    "SQLite runtime requires the aiosqlite extra; "
+                    "install with snekql[aiosqlite]"
+                )
+                raise DatabaseRuntimeError(msg) from error
+            raise
+
+        await cast("Any", runtime_module).migrate_runtime(
+            self,
+            migrations,
+            logger=logger,
+        )
