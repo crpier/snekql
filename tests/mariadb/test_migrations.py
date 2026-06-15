@@ -7,6 +7,7 @@ Migration History rows, never the full set.
 
 from __future__ import annotations
 
+import anyio
 from snektest import AsyncFixture, assert_eq, assert_true, load_fixture, test
 
 from snekql import (
@@ -80,6 +81,31 @@ async def reinitializing_does_not_reapply_recorded_migration() -> None:
 
     applied = await _fetch_applied_names(server)
     assert_eq(applied.count("mig_audit_idem"), 1)
+
+
+@test(mark="medium")
+async def concurrent_initialize_applies_each_migration_once() -> None:
+    """Two instances initializing concurrently apply a non-idempotent body once.
+
+    The create-table body is not idempotent: absent the migration advisory lock,
+    the loser would re-run it and raise a duplicate-table error. The lock makes
+    the loser wait, observe the recorded history, and apply nothing.
+    """
+
+    server = await load_fixture(mariadb_server())
+    migrations = {"mig_concurrent": _create_user_table_sql("mig_concurrent_t5")}
+
+    async def _initialize_and_close() -> None:
+        database = await Database.initialize(
+            server.config(), logger=NULL_LOGGER, migrations=migrations
+        )
+        await database.close()
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(_initialize_and_close)
+        task_group.start_soon(_initialize_and_close)
+
+    assert_eq((await _fetch_applied_names(server)).count("mig_concurrent"), 1)
 
 
 @test(mark="medium")

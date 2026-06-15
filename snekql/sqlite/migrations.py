@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import AbstractAsyncContextManager, nullcontext
 from typing import TYPE_CHECKING
 
 from aiosqlite import Connection
@@ -49,6 +50,18 @@ class SQLiteMigrationBackend:
 
     def __init__(self, connection: Connection) -> None:
         self.connection: Connection = connection
+
+    def migration_lock(self) -> AbstractAsyncContextManager[None]:
+        """SQLite has no advisory lock; rely on write serialization (ADR 0002).
+
+        Concurrent runs against one database file serialize their writes through
+        SQLite's single-writer file lock, and `busy_timeout` makes a losing
+        writer wait rather than raise "database is locked". The seam is a no-op:
+        there is no cross-connection lock to acquire, so run migrations from a
+        single place (`Database.migrate`) for a strong guarantee.
+        """
+
+        return nullcontext()
 
     async def ensure_history_table(self) -> None:
         await _execute(self.connection, _CREATE_HISTORY_SQL, ())

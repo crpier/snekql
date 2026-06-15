@@ -99,11 +99,34 @@ transaction — you own any transaction control inside your SQL. As a result:
 
 ## Concurrency
 
-v1 does not coordinate concurrent migration runs across instances. Run migrations
-from a single place — a dedicated deploy step calling
-[`Database.migrate(...)`](#applying-migrations-from-a-dedicated-deploy-step) — so
-no two app instances race them at boot. Concurrent `initialize(migrations=...)`
-against the same MariaDB database is undefined in v1.
+snekql coordinates concurrent migration runs so that several instances calling
+`initialize(migrations=...)` (or `migrate(...)`) at once are safe. Coordination is
+always on whenever migrations are provided — there is nothing to opt into.
+
+The whole apply flow — ensure history, read applied, run pending, record — runs
+while holding a backend advisory lock. The instance that wins the race applies the
+pending migrations; the instances that lose **wait** for it, then re-read the now
+complete Migration History and apply only what is still pending. No migration is
+applied twice across instances.
+
+**MariaDB** uses a connection-scoped named advisory lock (`GET_LOCK` /
+`RELEASE_LOCK`). This is what makes concurrent `initialize(migrations=...)` against
+one MariaDB database safe: without it, two instances could read the same empty
+history and both apply the same migration, causing duplicate-DDL or double-data
+errors. The lock name is namespaced per database, so migrations on unrelated
+databases sharing a server do not block each other. A loser waits up to the
+backend's `acquire_timeout`; if the holder never finishes within that window the
+loser raises `MigrationLockTimeoutError` having applied nothing — a retry once the
+holder is done observes the completed history. Because the lock is connection
+scoped, it is released on success, on failure, and on disconnect (a crashed
+instance frees it server-side).
+
+**SQLite** has no advisory-lock primitive. Concurrent runs against one database
+file instead serialize through SQLite's single-writer file lock, and the
+configured `busy_timeout` makes a losing writer wait rather than immediately raise
+"database is locked". This serialization is the de facto coordination on SQLite;
+for a strong single-applier guarantee, still prefer running migrations from one
+place with [`Database.migrate(...)`](#applying-migrations-from-a-dedicated-deploy-step).
 
 ## Raw SQL only
 
