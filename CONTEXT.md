@@ -5,12 +5,16 @@ snekql is a library for declaring relational data contracts and executing typed 
 ## Language
 
 **Query Builder**:
-The layer that declares relational data contracts and builds typed SQL-shaped operations.
+The layer that declares relational data contracts and builds typed query state — the immutable description of a SQL-shaped operation, lowered to SQL separately by Query Compilation.
 _Avoid_: ORM, repository
 
 **Query Runtime**:
 The layer that executes built queries against a database and owns connection acquisition, transaction lifecycle, and result materialization.
 _Avoid_: ORM session, persistence layer
+
+**Query Compilation**:
+The conversion of built query state into parameterized backend Dialect SQL — the write/emit counterpart to Materialization. Operates purely on query state plus a Dialect; the Query Builder produces the state, Query Compilation lowers it.
+_Avoid_: query generation, SQL rendering, codegen
 
 **Materialization**:
 The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Fetched Model; for scalar or tuple selects, it produces decoded Python values.
@@ -29,7 +33,7 @@ A Python class that declares a table's row contract and serves as an ergonomic f
 _Avoid_: Entity, ORM model
 
 **Dialect**:
-The database-specific SQL compilation behavior — parameter placeholders, identifier quoting, and value encoding — targeted by the Query Builder when compiling queries.
+The database-specific SQL compilation behavior — parameter placeholders, identifier quoting, and value encoding — targeted by Query Compilation when lowering query state to SQL.
 _Avoid_: Driver, runtime
 
 **Schema Drift**:
