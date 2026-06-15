@@ -5,10 +5,13 @@ snekql has two complementary startup mechanisms: **startup schema management**
 ordered changes). See [migrations.md](migrations.md) for the migration model.
 
 When `Database.initialize(..., logger=logger, models=[...])` runs, snekql creates missing tables
-and verifies existing tables and indexes against backend metadata generated
-from the table models. SQLite compares deterministic DDL stored by SQLite;
-MariaDB compares normalized `INFORMATION_SCHEMA` table, column, and index
-metadata.
+and verifies existing tables and indexes against the shape generated from the
+table models. Verification is *semantic*: each backend reads its own catalog
+into a shared schema shape (SQLite via `PRAGMA`, MariaDB via
+`INFORMATION_SCHEMA`) and compares that shape to the one the models expect, so a
+table is recognized as matching whenever it is semantically equal — regardless
+of cosmetic DDL differences such as identifier quoting, whitespace, type-keyword
+case, or column and index ordering.
 
 When you pass `migrations={...}`, migrations become the sole schema-creation
 authority: snekql no longer auto-creates tables from `models`, but it still
@@ -36,18 +39,29 @@ snekql will:
 
 ## Drift detection strategy
 
-V1 keeps drift detection deliberately simple:
+Drift detection compares semantic shapes, not rendered DDL:
 
-1. Generate the expected backend table and index shape for the model.
-2. Read existing table and index metadata from the selected backend.
-3. Normalize only formatting or metadata details controlled by snekql.
-4. Compare the generated shape with the stored backend metadata.
-5. Treat mismatch as schema drift.
+1. Generate the expected table shape (columns, indexes, foreign keys, and
+   table-level storage options) for each model.
+2. Read the live table shape from the selected backend's catalog.
+3. Diff the two shapes. Columns and indexes match by name independent of
+   declaration order; only the facts snekql controls are compared.
+4. Report each divergence, naming the specific table, column, index, or foreign
+   key, and treat any divergence as schema drift.
 
-Because generated SQLite table DDL always includes `STRICT`, existing SQLite
-non-`STRICT` tables are schema drift. MariaDB drift is detected from normalized
-column and index metadata. Extra, missing, renamed, reordered, or uniqueness-
-changed indexes on managed tables are also schema drift.
+A table legitimately created or evolved by migrations is therefore recognized
+as matching whenever it is semantically equal to the model, so cosmetic
+differences do not produce false-positive drift. Genuine divergence — a model
+column, index, or foreign key with no corresponding schema change — is reported
+precisely.
+
+Because generated SQLite tables are always `STRICT`, an existing SQLite
+non-`STRICT` table is reported as a storage-option divergence; MariaDB likewise
+requires the `InnoDB` engine. Extra, missing, renamed, or uniqueness-changed
+indexes on managed tables are also schema drift. SQLite verifies foreign-key
+constraints against the model; MariaDB foreign keys are created with the table
+but not verified, because MariaDB auto-creates a backing index for each
+constraint.
 
 ## Policies
 
@@ -86,7 +100,6 @@ On its own (without `migrations=...`), startup schema management does not:
 
 - alter existing tables;
 - generate migration files;
-- compare semantic schema differences beyond deterministic DDL equality;
 - preserve or transform data during schema changes.
 
 To evolve an existing table, write a [migration](migrations.md) and pass it to

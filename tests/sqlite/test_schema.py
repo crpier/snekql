@@ -484,6 +484,92 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
 
 
 @test(mark="medium")
+async def cosmetically_different_ddl_verifies_semantically() -> None:
+    """Unquoted identifiers, lowercase types, and reordered columns are not drift."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model verified against a table whose DDL differs only cosmetically."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=MISSING
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        # Reordered columns, no identifier quoting, lowercase type tokens: a
+        # migration author's hand-written DDL that is semantically identical.
+        existing_sql = (
+            "CREATE TABLE user (email text NOT NULL, "
+            "id integer PRIMARY KEY AUTOINCREMENT) STRICT"
+        )
+        _execute_sql(database_path, existing_sql)
+
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        await database.close()
+
+
+@test(mark="medium")
+async def model_matching_migration_evolved_table_verifies_clean() -> None:
+    """A model matches a table evolved by ALTER regardless of column order."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model whose age column was appended to the table by a later ALTER."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=MISSING
+        )
+        age: User.Col[int] = Integer(nullable=True)
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        existing_sql = (
+            'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"email" TEXT NOT NULL) STRICT'
+        )
+        _execute_sql(database_path, existing_sql)
+        _execute_sql(database_path, 'ALTER TABLE "user" ADD COLUMN "age" INTEGER')
+
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        await database.close()
+
+
+@test(mark="medium")
+async def strict_drift_error_names_the_divergent_column() -> None:
+    """A column whose nullability diverges is named precisely in the error."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model whose email is NOT NULL while the live column is nullable."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=MISSING
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        existing_sql = (
+            'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"email" TEXT) STRICT'
+        )
+        _execute_sql(database_path, existing_sql)
+
+        with assert_raises(SchemaVerificationError) as raised:
+            _ = await Database.initialize(
+                logger=NULL_LOGGER, database=database_path, models=[User]
+            )
+
+    message = str(raised.exception)
+    assert_true("'email'" in message)
+    assert_true("nullable" in message)
+
+
+@test(mark="medium")
 async def strict_schema_policy_raises_on_index_drift() -> None:
     """Strict schema verification rejects missing managed indexes."""
 
