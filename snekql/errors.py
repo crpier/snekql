@@ -104,3 +104,12 @@ class MigrationError(SnekqlError):
     The message names the failing migration; previously-applied migrations stay
     recorded in the Migration History so a fixed retry resumes from the failure.
     """
+
+
+class MigrationLockTimeoutError(SnekqlError):
+    """Raised when the migration advisory lock cannot be acquired in time.
+
+    A concurrent instance held the lock for the full acquire timeout. The losing
+    instance applied nothing; retrying after the holder finishes observes the
+    completed Migration History and applies only what is still pending.
+    """

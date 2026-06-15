@@ -16,7 +16,10 @@ from snekql.errors import (
     PoolTimeoutError,
 )
 from snekql.mariadb.config import Config
-from snekql.mariadb.migrations import apply_mariadb_migrations
+from snekql.mariadb.migrations import (
+    apply_mariadb_migrations,
+    build_migration_lock_name,
+)
 from snekql.mariadb.query import (
     compile_mariadb_select_sql,
     compile_mariadb_write_sql,
@@ -286,7 +289,13 @@ async def initialize_runtime(
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
         if migrations:
-            await apply_mariadb_migrations(connection, migrations, logger=logger)
+            await apply_mariadb_migrations(
+                connection,
+                migrations,
+                lock_name=build_migration_lock_name(config.database),
+                lock_timeout=config.acquire_timeout,
+                logger=logger,
+            )
         await initialize_mariadb_schema(
             connection,
             models,
@@ -337,7 +346,13 @@ async def migrate_runtime(
     connection_pool = MariaDBConnectionPool(pool, logger=logger)
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
-        await apply_mariadb_migrations(connection, migrations, logger=logger)
+        await apply_mariadb_migrations(
+            connection,
+            migrations,
+            lock_name=build_migration_lock_name(config.database),
+            lock_timeout=config.acquire_timeout,
+            logger=logger,
+        )
     finally:
         await connection_pool.release(connection)
         await connection_pool.close(config.acquire_timeout)
