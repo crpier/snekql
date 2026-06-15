@@ -26,6 +26,12 @@
 - `Model.construct(**values)` classmethod that builds a Pending Model while skipping per-column logical validation, for values already known to satisfy their declared types. Defaults, missing/unknown-field structural checks, and freezing still apply.
 - `validate: bool = True` keyword on `Transaction.fetch_one` and `Transaction.fetch_all` (threaded through row materialization) to skip read-side logical validation for trusted result sets while keeping wire decoding.
 - `Json` columns now serialize and decode through the same per-column pydantic `TypeAdapter` that drives validation (`dump_json` / `validate_json`), making the codec symmetric. Any type the `Col[T]` annotation can validate -- `datetime`, pydantic models, `list[Model]`, and so on -- now round-trips, rather than only `dict`/`list`/primitives. Native payloads keep the same compact, byte-stable text as before. A `validate=False` decode still returns the raw `json.loads` value with no type coercion.
+- Subquery support: a select can now be nested inside another query.
+  - `column.in_subquery(select(...))` / `column.not_in_subquery(select(...))` test membership against a single-column subquery (`IN (SELECT ...)` / `NOT IN (...)`). The subquery must project exactly one column whose value type matches the column's, enforced both in the typed surface and at construction.
+  - `exists(select(...))` / `not_exists(select(...))` package-root predicates compile to `EXISTS (...)` / `NOT EXISTS (...)` and accept any select (the projection is irrelevant to existence).
+  - Column-to-column comparisons `.eq_col(...)`, `.ne_col(...)`, `.gt_col(...)`, `.gte_col(...)`, `.lt_col(...)`, `.lte_col(...)` compare a column against another column or a scalar subquery. A column operand on the inner side referencing the outer query is how a **correlated** subquery relates its row to the outer row; correlation is scope-checked when the query compiles.
+  - `scalar(select(...))` wraps a single-column select as a value usable in a projection (`select(User.id, scalar(...))`) or as a `*_col` comparison operand, decoding through the subquery's projected column or aggregate.
+  - Nesting is arbitrary-depth; inner and outer placeholders stay aligned in textual order across SQLite and MariaDB. An out-of-scope correlation (a referenced table in neither the subquery nor any enclosing query) is a `QueryCompilationError`, and a multi-column `in_subquery`/`scalar` subquery is a `QueryConstructionError`.
 
 ### Notes
 

@@ -911,6 +911,16 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
     def to(self, value: ReadValueT) -> Assignment[OwnerT]:
         return Assignment(column=self, value=value)
 
+    def __column_value_type__(self) -> ReadValueT:
+        """Typing-only witness of this column's read value type.
+
+        Lets a column satisfy the ``_ColumnRef`` protocol the comparison surface
+        uses to type ``column.eq_col(other_column)`` without importing storage
+        into the expressions layer. Never called at runtime.
+        """
+
+        raise NotImplementedError
+
 
 class FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, TargetOwnerT](
     Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT],

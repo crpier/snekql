@@ -3,8 +3,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, Protocol
 
 from snekql.errors import QueryConstructionError
+
+
+class _ColumnRef[T_co](Protocol):
+    """Structural view of a column descriptor's read value type.
+
+    Implemented by ``Attr`` (via a typing-only witness). Declared here so the
+    column-vs-column comparison surface can be typed without importing the
+    storage layer, which would form an import cycle.
+    """
+
+    def __column_value_type__(self) -> T_co: ...
+
+
+class _ColumnSubquery[T_co](Protocol):
+    """Structural view of a single-column subquery's projected value type.
+
+    Implemented by ``SelectValueQuery`` (via a typing-only witness). Declared
+    here so ``in_subquery``/``not_in_subquery`` can be typed without importing
+    the query layer, which would form an import cycle.
+    """
+
+    def __subquery_value_type__(self) -> T_co: ...
 
 
 @dataclass(frozen=True)
@@ -22,6 +45,10 @@ class Predicate[OwnerT]:
     # Type-erased so the recursive field does not pin OwnerT to invariant; this
     # is what makes `Predicate` covariant in its owner type (see proto_c).
     children: tuple[Predicate[object], ...] = field(default_factory=tuple)
+    # A nested select carried by membership/existence predicates
+    # (`in_subquery`, `not_in_subquery`, `exists`, `not_exists`). Type-erased to
+    # avoid importing the query layer here; the compiler reads its `.state`.
+    subquery: object | None = None
 
     def __and__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
         return Predicate(kind="and", children=(self, other))
@@ -35,6 +62,22 @@ class Predicate[OwnerT]:
     def __bool__(self) -> bool:
         msg = "predicates cannot be used as booleans"
         raise QueryConstructionError(msg)
+
+
+@dataclass(frozen=True)
+class Scalar[OwnerT, T]:
+    """A scalar subquery: a single-column, single-value SELECT used as a value.
+
+    Produced by the top-level ``scalar(...)`` factory wrapping a one-column
+    select. It is a selectable (usable in a projection, like :class:`Aggregate`)
+    and a comparison operand (the right side of a ``*_col`` comparison). ``T`` is
+    the decoded result type carried for the projection's result shape. The
+    wrapped query is type-erased as ``subquery`` to avoid importing the query
+    layer here; the compiler reads its ``.state`` and decodes through its single
+    projected selectable.
+    """
+
+    subquery: object | None = None
 
 
 class Comparable[OwnerT, ValueT]:
@@ -118,6 +161,68 @@ class Comparable[OwnerT, ValueT]:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="between", column=self, values=(low, high))
+
+    # Comparisons against another expression (a column or a scalar subquery)
+    # rather than a literal value. A column operand on the other side is what a
+    # correlated subquery uses to relate its inner row to the outer row; a
+    # scalar-subquery operand compares against the subquery's single value. A
+    # column operand's value type must match this column's; a scalar operand is
+    # accepted regardless of value type, since aggregate scalars are commonly
+    # nullable (``AVG`` -> ``float | None``). Whether the operand's table is in
+    # scope is checked when the query compiles (an out-of-scope reference is a
+    # compilation error unless it correlates to an enclosing query).
+
+    def eq_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="eq_col", column=self, value=other)
+
+    def ne_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="ne_col", column=self, value=other)
+
+    def gt_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="gt_col", column=self, value=other)
+
+    def gte_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="gte_col", column=self, value=other)
+
+    def lt_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="lt_col", column=self, value=other)
+
+    def lte_col(
+        self,
+        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+    ) -> Predicate[OwnerT]:
+        return Predicate(kind="lte_col", column=self, value=other)
+
+    def in_subquery(
+        self,
+        subquery: _ColumnSubquery[ValueT],
+    ) -> Predicate[OwnerT]:
+        """Test membership against a single-column subquery (``IN (SELECT ...)``)."""
+
+        return Predicate(kind="in_subquery", column=self, subquery=subquery)
+
+    def not_in_subquery(
+        self,
+        subquery: _ColumnSubquery[ValueT],
+    ) -> Predicate[OwnerT]:
+        """Negated membership against a single-column subquery (``NOT IN``)."""
+
+        return Predicate(kind="not_in_subquery", column=self, subquery=subquery)
 
 
 @dataclass(frozen=True)
