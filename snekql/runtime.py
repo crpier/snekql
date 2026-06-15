@@ -460,6 +460,7 @@ class Database:
         logger: StructuredLogger,
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
+        migrations: dict[str, str] | None = None,
     ) -> Self: ...
 
     @overload
@@ -471,6 +472,7 @@ class Database:
         database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
+        migrations: dict[str, str] | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self: ...
@@ -484,10 +486,11 @@ class Database:
         database: Path | Literal[":memory:"] | None = None,
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
+        migrations: dict[str, str] | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self:
-        """Initialize connectivity, schema startup, and runtime lifecycle."""
+        """Initialize connectivity, migrations, schema startup, and lifecycle."""
 
         structured_logger = resolve_structured_logger(logger=logger)
         try:
@@ -519,6 +522,7 @@ class Database:
                     models,
                     schema_policy,
                     logger=structured_logger,
+                    migrations=migrations,
                 ),
             )
             structured_logger.info(

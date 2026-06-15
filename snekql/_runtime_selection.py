@@ -36,6 +36,7 @@ class RuntimeConfig(Protocol):
         schema_policy: SchemaPolicy,
         *,
         logger: ResolvedStructuredLogger,
+        migrations: dict[str, str] | None = None,
     ) -> object: ...
 
 

@@ -1,12 +1,19 @@
 # Schema startup and drift
 
-snekql v1 has startup schema management, not migrations.
+snekql has two complementary startup mechanisms: **startup schema management**
+(create missing tables, verify the rest) and **migrations** (apply hand-authored
+ordered changes). See [migrations.md](migrations.md) for the migration model.
 
 When `Database.initialize(..., logger=logger, models=[...])` runs, snekql creates missing tables
 and verifies existing tables and indexes against backend metadata generated
 from the table models. SQLite compares deterministic DDL stored by SQLite;
 MariaDB compares normalized `INFORMATION_SCHEMA` table, column, and index
 metadata.
+
+When you pass `migrations={...}`, migrations become the sole schema-creation
+authority: snekql no longer auto-creates tables from `models`, but it still
+verifies them afterward, so a model with no matching migration is reported as
+drift. See [migrations.md](migrations.md).
 
 ## What happens at startup
 
@@ -73,14 +80,15 @@ await Database.initialize(
 Use `warn` when adopting snekql in an environment where you want observability
 before enforcing drift failures.
 
-## What snekql does not do
+## What startup schema management does not do
 
-snekql v1 does not:
+On its own (without `migrations=...`), startup schema management does not:
 
 - alter existing tables;
 - generate migration files;
 - compare semantic schema differences beyond deterministic DDL equality;
 - preserve or transform data during schema changes.
 
-If a table drifts, write and run an application-owned migration, then start the
-runtime again under `strict`.
+To evolve an existing table, write a [migration](migrations.md) and pass it to
+`Database.initialize(migrations={...})`; the models are then verified against the
+post-migration schema under `strict`.

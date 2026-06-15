@@ -91,6 +91,7 @@ class Config:
         schema_policy: SchemaPolicy,
         *,
         logger: ResolvedStructuredLogger,
+        migrations: dict[str, str] | None = None,
     ) -> object:
         """Import and initialize the MariaDB Backend Runtime Adapter lazily."""
 
@@ -100,4 +101,5 @@ class Config:
             models,
             schema_policy,
             logger=logger,
+            migrations=migrations,
         )

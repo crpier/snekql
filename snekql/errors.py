@@ -96,3 +96,11 @@ class SchemaError(SnekqlError):
 
 class SchemaVerificationError(SchemaError):
     """Raised when an existing database table drifts from model DDL."""
+
+
+class MigrationError(SnekqlError):
+    """Raised when a hand-authored migration body fails to apply.
+
+    The message names the failing migration; previously-applied migrations stay
+    recorded in the Migration History so a fixed retry resumes from the failure.
+    """

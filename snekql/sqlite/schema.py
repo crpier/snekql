@@ -213,6 +213,8 @@ async def initialize_sqlite_schema(
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
+    *,
+    create_missing: bool = True,
 ) -> None:
     """Create or verify all configured SQLite tables transactionally."""
 
@@ -221,4 +223,5 @@ async def initialize_sqlite_schema(
         models,
         schema_policy,
         logger=logger,
+        create_missing=create_missing,
     )
