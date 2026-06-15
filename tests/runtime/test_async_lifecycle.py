@@ -153,6 +153,18 @@ class _FakeRuntime:
         _ = validate
         return object()
 
+    def materialize_write_rows(
+        self,
+        query: object,
+        rows: Sequence[Sequence[object]],
+        *,
+        validate: bool = True,
+    ) -> list[object]:
+        _ = query
+        _ = rows
+        _ = validate
+        return []
+
 
 class _NeverClosingPool:
     """aiomysql-like pool fake whose close wait times out."""

@@ -15,7 +15,10 @@ from snekql import (
     Fetched,
     ForeignKey,
     Index,
+    InsertManyQuery,
+    InsertManyReturningQuery,
     InsertQuery,
+    InsertReturningQuery,
     Integer,
     JoinModelQuery,
     Missing,
@@ -356,11 +359,43 @@ if TYPE_CHECKING:
     )
     _ = assert_type(Index(User.email), Index[User[Pending]])
     _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
-    _ = assert_type(insert(pending_user), InsertQuery[User[Pending]])
+    _ = assert_type(
+        insert(pending_user),
+        InsertQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        insert([pending_user, pending_user]),
+        InsertManyQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        insert(pending_user).returning(),
+        InsertReturningQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        insert([pending_user]).returning(),
+        InsertManyReturningQuery[User[Pending], User[Fetched]],
+    )
     _ = assert_type(
         update(User).set(User.email.to("new@example.com")),
         UpdateQuery[User[Pending]],
     )
+
+    async def check_write_types(transaction: Transaction) -> None:
+        """Runtime write overloads type returning inserts as Fetched models."""
+
+        _ = assert_type(await transaction.execute(insert(pending_user)), None)
+        _ = assert_type(
+            await transaction.execute(insert([pending_user])),
+            None,
+        )
+        _ = assert_type(
+            await transaction.execute(insert(pending_user).returning()),
+            User[Fetched],
+        )
+        _ = assert_type(
+            await transaction.execute(insert([pending_user]).returning()),
+            list[User[Fetched]],
+        )
 
     async def check_fetch_types(transaction: Transaction) -> None:
         """Runtime fetch overloads preserve selected result shapes."""

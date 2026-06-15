@@ -24,6 +24,7 @@ from snekql.sqlite.query import (
     compile_sqlite_select_sql,
     compile_sqlite_write_sql,
     materialize_sqlite_select_row,
+    materialize_sqlite_write_rows,
 )
 from snekql.sqlite.schema import initialize_sqlite_schema
 from snekql.storage import SchemaPolicy
@@ -136,6 +137,15 @@ class SQLiteRuntime:
         validate: bool = True,
     ) -> object:
         return materialize_sqlite_select_row(query, row, validate=validate)
+
+    def materialize_write_rows(
+        self,
+        query: object,
+        rows: Sequence[Sequence[object]],
+        *,
+        validate: bool = True,
+    ) -> list[object]:
+        return materialize_sqlite_write_rows(query, rows, validate=validate)
 
 
 async def initialize_runtime(

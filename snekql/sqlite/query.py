@@ -10,6 +10,7 @@ from snekql.query import (
     AnySelectQuery,
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
+    materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
 )
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
@@ -60,6 +61,22 @@ def materialize_sqlite_select_row(
     return materialize_select_row_for_backend(
         query,
         row,
+        backend="sqlite",
+        validate=validate,
+    )
+
+
+def materialize_sqlite_write_rows(
+    query: object,
+    rows: Sequence[Sequence[object]],
+    *,
+    validate: bool = True,
+) -> list[object]:
+    """Decode SQLite ``RETURNING`` rows from an insert into Fetched models."""
+
+    return materialize_insert_returning_rows_for_backend(
+        query,
+        rows,
         backend="sqlite",
         validate=validate,
     )
