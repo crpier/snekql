@@ -10,6 +10,7 @@ from snekql._schema_plan import (
 from snekql._schema_plan import (
     validate_schema_policy as validate_planned_schema_policy,
 )
+from snekql._schema_shape import diff_table_shapes
 from snekql.errors import SchemaVerificationError
 
 if TYPE_CHECKING:
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
     from contextlib import AbstractAsyncContextManager
 
     from snekql._schema_plan import PlannedModel
+    from snekql._schema_shape import TableShape
     from snekql.indexes import NormalizedIndex
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
@@ -26,19 +28,18 @@ if TYPE_CHECKING:
 class SchemaBackend(Protocol):
     """Backend seam for schema DDL execution and live-schema inspection.
 
-    The startup flow — verify-or-create per table, Schema Drift reporting
-    under the active Schema Policy — lives in this module; backends only
-    answer what exists, whether it matches, and how to create what is
-    missing.
+    The startup flow — verify-or-create per table, semantic Schema Drift
+    reporting under the active Schema Policy — lives in this module. Backends
+    answer only with the shape a model expects, the shape a live table actually
+    has, and how to create what is missing; the shared flow diffs the two and
+    names each divergence.
     """
 
     def startup_transaction(self) -> AbstractAsyncContextManager[None]: ...
 
-    async def table_exists(self, table_name: str) -> bool: ...
+    def expected_shape(self, planned_model: PlannedModel) -> TableShape: ...
 
-    async def table_matches(self, planned_model: PlannedModel) -> bool: ...
-
-    async def indexes_match(self, planned_model: PlannedModel) -> bool: ...
+    async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None: ...
 
     async def create_table(self, planned_model: PlannedModel) -> None: ...
 
@@ -60,14 +61,17 @@ def validate_schema_policy(schema_policy: SchemaPolicy) -> None:
 def _report_schema_drift(
     schema_policy: SchemaPolicy,
     table_name: str,
+    issues: Sequence[str],
     logger: ResolvedStructuredLogger,
 ) -> None:
-    message = f"schema drift detected for table {table_name!r}"
+    detail = "; ".join(issues)
+    message = f"schema drift detected for table {table_name!r}: {detail}"
     if schema_policy == "strict":
         raise SchemaVerificationError(message)
     logger.warning(
         "schema drift detected",
         table_name=table_name,
+        issues=list(issues),
     )
 
 
@@ -90,16 +94,18 @@ async def _create_model_schema(
 async def _verify_model_schema(
     backend: SchemaBackend,
     planned_model: PlannedModel,
+    actual_shape: TableShape,
     schema_policy: SchemaPolicy,
     logger: ResolvedStructuredLogger,
 ) -> None:
-    if not await backend.table_matches(planned_model):
-        _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
+    expected_shape = backend.expected_shape(planned_model)
+    issues = diff_table_shapes(expected_shape, actual_shape)
+    if issues:
+        _report_schema_drift(
+            schema_policy, planned_model.table_name, issues, logger=logger
+        )
         return
     logger.debug("schema table verified", table_name=planned_model.table_name)
-    if not await backend.indexes_match(planned_model):
-        _report_schema_drift(schema_policy, planned_model.table_name, logger=logger)
-        return
     logger.debug("schema indexes verified", table_name=planned_model.table_name)
 
 
@@ -126,13 +132,19 @@ async def initialize_schema(
     logger.debug("schema startup started", model_count=len(plan.models))
     async with backend.startup_transaction():
         for planned_model in plan.models:
-            if not await backend.table_exists(planned_model.table_name):
+            actual_shape = await backend.inspect_shape(planned_model)
+            if actual_shape is None:
                 if not create_missing:
                     _report_schema_drift(
-                        schema_policy, planned_model.table_name, logger=logger
+                        schema_policy,
+                        planned_model.table_name,
+                        ("table is missing from the database",),
+                        logger=logger,
                     )
                     continue
                 await _create_model_schema(backend, planned_model, logger)
                 continue
-            await _verify_model_schema(backend, planned_model, schema_policy, logger)
+            await _verify_model_schema(
+                backend, planned_model, actual_shape, schema_policy, logger
+            )
     logger.debug("schema startup completed", model_count=len(plan.models))

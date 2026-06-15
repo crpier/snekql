@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from typing import Any, cast
 
 from snekql._schema_plan import PlannedColumn, PlannedForeignKey, PlannedModel
+from snekql._schema_shape import ColumnShape, IndexShape, TableShape
 from snekql._schema_startup import initialize_schema
 from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
@@ -15,29 +15,6 @@ from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 from snekql.structured_logging import ResolvedStructuredLogger
-
-
-@dataclass(frozen=True)
-class _ColumnSignature:
-    """Normalized MariaDB column metadata used for drift verification."""
-
-    auto_increment: bool
-    collation: str | None
-    data_type: str
-    max_length: int | None
-    name: str
-    nullable: bool
-    primary_key: bool
-
-
-@dataclass(frozen=True)
-class _IndexSignature:
-    """Normalized MariaDB index metadata used for drift verification."""
-
-    column_names: tuple[str, ...]
-    name: str
-    unique: bool
-
 
 # Case-sensitive, byte-ordered collation chosen so MariaDB string equality and
 # UNIQUE constraints match SQLite's default BINARY collation instead of the
@@ -97,16 +74,30 @@ def _column_collation(column: Attr[Any, Any, Any, Any, Any]) -> str | None:
     return None
 
 
-def _expected_column_signature(planned_column: PlannedColumn) -> _ColumnSignature:
+def _format_storage_type(data_type: str, max_length: int | None) -> str:
+    """Fold a column's length into its type token (e.g. ``varchar(255)``).
+
+    Only variable-length string types carry a meaningful declared length here,
+    so the length is appended for ``varchar`` and ignored for fixed-width types.
+    """
+
+    if data_type == "varchar" and max_length is not None:
+        return f"varchar({max_length})"
+    return data_type
+
+
+def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     column = planned_column.column
-    return _ColumnSignature(
-        auto_increment=column.auto_increment,
-        collation=_column_collation(column),
-        data_type=_column_data_type(column),
-        max_length=_column_max_length(column),
+    return ColumnShape(
         name=planned_column.name,
+        storage_type=_format_storage_type(
+            _column_data_type(column), _column_max_length(column)
+        ),
         nullable=column.nullable is not False and not column.primary_key,
         primary_key=column.primary_key,
+        auto_increment=column.auto_increment,
+        has_server_default=isinstance(column.server_default, CurrentTimestamp),
+        collation=_column_collation(column),
     )
 
 
@@ -165,15 +156,32 @@ def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
     )
 
 
-def _expected_index_signatures(planned_model: PlannedModel) -> list[_IndexSignature]:
-    return [
-        _IndexSignature(
-            column_names=index.column_names,
-            name=index.name,
-            unique=index.unique,
-        )
-        for index in planned_model.indexes
-    ]
+def _expected_table_shape(planned_model: PlannedModel) -> TableShape:
+    """Build the semantic shape a model expects from a live MariaDB table.
+
+    Foreign keys are not part of the MariaDB shape: MariaDB auto-creates a
+    backing index for each enforced constraint, so verifying foreign keys here
+    would require modeling those implicit indexes. The constraints are still
+    created with the table; verifying them is intentionally out of scope.
+    """
+
+    return TableShape(
+        table_name=planned_model.table_name,
+        columns=tuple(
+            _expected_column_shape(planned_column)
+            for planned_column in planned_model.columns
+        ),
+        indexes=tuple(
+            IndexShape(
+                name=index.name,
+                column_names=index.column_names,
+                unique=index.unique,
+            )
+            for index in planned_model.indexes
+        ),
+        foreign_keys=(),
+        storage_options=("ENGINE=InnoDB",),
+    )
 
 
 async def _close_cursor(cursor: object) -> None:
@@ -242,15 +250,15 @@ async def _table_uses_innodb(connection: object, table_name: str) -> bool:
     return str(rows[0][0]).lower() == "innodb"
 
 
-async def _fetch_existing_column_signatures(
+async def _fetch_existing_column_shapes(
     connection: object,
     table_name: str,
-) -> list[_ColumnSignature]:
+) -> tuple[ColumnShape, ...]:
     rows = await _fetchall(
         connection,
         """
         SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE,
-               COLUMN_KEY, EXTRA, COLLATION_NAME
+               COLUMN_KEY, EXTRA, COLLATION_NAME, COLUMN_DEFAULT
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = %s
@@ -258,34 +266,35 @@ async def _fetch_existing_column_signatures(
         """,
         (table_name,),
     )
-    signatures: list[_ColumnSignature] = []
+    shapes: list[ColumnShape] = []
     for row in rows:
-        name, data_type, max_length, nullable, column_key, extra, collation = row
+        name, data_type, max_length, nullable, column_key, extra, collation = row[:7]
+        default = row[7]
         parsed_max_length = (
             int(max_length) if isinstance(max_length, int | str) else None
         )
-        signatures.append(
-            _ColumnSignature(
+        shapes.append(
+            ColumnShape(
+                name=str(name),
+                storage_type=_format_storage_type(str(data_type), parsed_max_length),
+                nullable=nullable == "YES",
+                primary_key=column_key == "PRI",
                 auto_increment="auto_increment" in str(extra),
+                has_server_default=default is not None,
                 collation=(
                     str(collation)
                     if str(data_type) == "varchar" and collation
                     else None
                 ),
-                data_type=str(data_type),
-                max_length=parsed_max_length,
-                name=str(name),
-                nullable=nullable == "YES",
-                primary_key=column_key == "PRI",
             )
         )
-    return signatures
+    return tuple(shapes)
 
 
-async def _fetch_existing_index_signatures(
+async def _fetch_existing_index_shapes(
     connection: object,
     table_name: str,
-) -> list[_IndexSignature]:
+) -> tuple[IndexShape, ...]:
     rows = await _fetchall(
         connection,
         """
@@ -300,17 +309,14 @@ async def _fetch_existing_index_signatures(
         """,
         (table_name,),
     )
-    indexes: list[_IndexSignature] = []
-    for row in rows:
-        name, non_unique, column_csv = row
-        indexes.append(
-            _IndexSignature(
-                column_names=tuple(str(column_csv).split(",")),
-                name=str(name),
-                unique=non_unique == 0,
-            )
+    return tuple(
+        IndexShape(
+            name=str(name),
+            column_names=tuple(str(column_csv).split(",")),
+            unique=non_unique == 0,
         )
-    return indexes
+        for name, non_unique, column_csv in rows
+    )
 
 
 class MariaDBSchemaBackend:
@@ -325,31 +331,21 @@ class MariaDBSchemaBackend:
 
         yield
 
-    async def table_exists(self, table_name: str) -> bool:
-        return await _table_exists(self.connection, table_name)
+    def expected_shape(self, planned_model: PlannedModel) -> TableShape:
+        return _expected_table_shape(planned_model)
 
-    async def table_matches(self, planned_model: PlannedModel) -> bool:
-        if not await _table_uses_innodb(self.connection, planned_model.table_name):
-            return False
-        expected_columns = [
-            _expected_column_signature(planned_column)
-            for planned_column in planned_model.columns
-        ]
-        existing_columns = await _fetch_existing_column_signatures(
-            self.connection,
-            planned_model.table_name,
+    async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
+        table_name = planned_model.table_name
+        if not await _table_exists(self.connection, table_name):
+            return None
+        engine_innodb = await _table_uses_innodb(self.connection, table_name)
+        return TableShape(
+            table_name=table_name,
+            columns=await _fetch_existing_column_shapes(self.connection, table_name),
+            indexes=await _fetch_existing_index_shapes(self.connection, table_name),
+            foreign_keys=(),
+            storage_options=("ENGINE=InnoDB",) if engine_innodb else (),
         )
-        return existing_columns == expected_columns
-
-    async def indexes_match(self, planned_model: PlannedModel) -> bool:
-        expected_indexes = sorted(
-            _expected_index_signatures(planned_model), key=lambda index: index.name
-        )
-        existing_indexes = await _fetch_existing_index_signatures(
-            self.connection,
-            planned_model.table_name,
-        )
-        return existing_indexes == expected_indexes
 
     async def create_table(self, planned_model: PlannedModel) -> None:
         await _execute(self.connection, _compile_create_table_sql(planned_model))

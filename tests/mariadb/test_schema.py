@@ -6,7 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
-from snektest import AsyncFixture, assert_eq, assert_raises, load_fixture, test
+from snektest import (
+    AsyncFixture,
+    assert_eq,
+    assert_raises,
+    assert_true,
+    load_fixture,
+    test,
+)
 
 from snekql import (
     MISSING,
@@ -268,3 +275,68 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
     ]
     assert_eq(len(warnings), 1)
     assert_eq(warnings[0]["table_name"], "issue39_warn_drift")
+
+
+@test(mark="medium")
+async def mariadb_reordered_columns_verify_semantically() -> None:
+    """A live table whose columns are in a different order is not drift."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Model verified against a semantically equal, reordered live table."""
+
+        __tablename__ = "issue119_reordered"
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    # Columns declared in the opposite order to the model: semantically identical.
+    create_sql = (
+        "CREATE TABLE issue119_reordered ("
+        "`email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, "
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        ") ENGINE=InnoDB"
+    )
+    session = await load_fixture(database_session([User], setup_sql=[create_sql]))
+
+    assert_eq(
+        await _fetch_index_rows(session.server, "issue119_reordered"),
+        [],
+    )
+
+
+@test(mark="medium")
+async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
+    """A column whose nullability diverges is named precisely in the error."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Model whose email is NOT NULL while the live column is nullable."""
+
+        __tablename__ = "issue119_column_drift"
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=MISSING,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    create_sql = (
+        "CREATE TABLE issue119_column_drift ("
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+        "`email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"
+        ") ENGINE=InnoDB"
+    )
+    _ = await server.run_sql(create_sql)
+
+    with assert_raises(SchemaVerificationError) as raised:
+        _ = await Database.initialize(
+            server.config(), logger=NULL_LOGGER, models=[User]
+        )
+
+    message = str(raised.exception)
+    assert_true("'email'" in message)
+    assert_true("nullable" in message)
