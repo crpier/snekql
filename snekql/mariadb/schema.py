@@ -6,7 +6,13 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from snekql._schema_plan import PlannedColumn, PlannedForeignKey, PlannedModel
+from snekql._schema_compile import (
+    compile_create_index_sql,
+    compile_create_table_sql,
+    expected_table_shape,
+)
+from snekql._schema_dialect import SchemaDialect
+from snekql._schema_plan import PlannedColumn, PlannedModel
 from snekql._schema_shape import ColumnShape, IndexShape, TableShape
 from snekql._schema_startup import initialize_schema
 from snekql.errors import SchemaError
@@ -86,6 +92,12 @@ def _format_storage_type(data_type: str, max_length: int | None) -> str:
     return data_type
 
 
+def _requires_not_null(column: Attr[Any, Any, Any, Any, Any]) -> bool:
+    # MariaDB requires NOT NULL on every primary-key part, so the column DDL and
+    # the expected shape share this one predicate to stay in lockstep.
+    return column.nullable is False or column.primary_key
+
+
 def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     column = planned_column.column
     return ColumnShape(
@@ -93,7 +105,7 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         storage_type=_format_storage_type(
             _column_data_type(column), _column_max_length(column)
         ),
-        nullable=column.nullable is not False and not column.primary_key,
+        nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
         has_server_default=isinstance(column.server_default, CurrentTimestamp),
@@ -101,12 +113,10 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     )
 
 
-def _compile_column_definition(
-    name: str,
-    column: Attr[Any, Any, Any, Any, Any],
-) -> str:
-    parts = [quote_identifier(name), _compile_column_type(column)]
-    if column.nullable is False or column.primary_key:
+def _compile_column_definition(planned_column: PlannedColumn) -> str:
+    column = planned_column.column
+    parts = [quote_identifier(planned_column.name), _compile_column_type(column)]
+    if _requires_not_null(column):
         parts.append("NOT NULL")
     if column.auto_increment:
         parts.append("AUTO_INCREMENT")
@@ -117,71 +127,17 @@ def _compile_column_definition(
     return " ".join(parts)
 
 
-def _compile_planned_column_definition(planned_column: PlannedColumn) -> str:
-    return _compile_column_definition(planned_column.name, planned_column.column)
-
-
-def _compile_foreign_key_constraint(foreign_key: PlannedForeignKey) -> str:
-    return (
-        f"FOREIGN KEY ({quote_identifier(foreign_key.column_name)}) "
-        f"REFERENCES {quote_identifier(foreign_key.target_table)} "
-        f"({quote_identifier(foreign_key.target_column)})"
-    )
-
-
-def _compile_create_table_sql(planned_model: PlannedModel) -> str:
-    definitions = [
-        _compile_planned_column_definition(planned_column)
-        for planned_column in planned_model.columns
-    ]
-    definitions.extend(
-        _compile_foreign_key_constraint(foreign_key)
-        for foreign_key in planned_model.foreign_keys
-    )
-    table_body = ", ".join(definitions)
-    return (
-        f"CREATE TABLE {quote_identifier(planned_model.table_name)} "
-        f"({table_body}) ENGINE=InnoDB"
-    )
-
-
-def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
-    unique_sql = "UNIQUE " if index.unique else ""
-    column_sql = ", ".join(
-        quote_identifier(column_name) for column_name in index.column_names
-    )
-    return (
-        f"CREATE {unique_sql}INDEX {quote_identifier(index.name)} "
-        f"ON {quote_identifier(table_name)} ({column_sql})"
-    )
-
-
-def _expected_table_shape(planned_model: PlannedModel) -> TableShape:
-    """Build the semantic shape a model expects from a live MariaDB table.
-
-    Foreign keys are not part of the MariaDB shape: MariaDB auto-creates a
-    backing index for each enforced constraint, so verifying foreign keys here
-    would require modeling those implicit indexes. The constraints are still
-    created with the table; verifying them is intentionally out of scope.
-    """
-
-    return TableShape(
-        table_name=planned_model.table_name,
-        columns=tuple(
-            _expected_column_shape(planned_column)
-            for planned_column in planned_model.columns
-        ),
-        indexes=tuple(
-            IndexShape(
-                name=index.name,
-                column_names=index.column_names,
-                unique=index.unique,
-            )
-            for index in planned_model.indexes
-        ),
-        foreign_keys=(),
-        storage_options=("ENGINE=InnoDB",),
-    )
+# Foreign keys are not part of the MariaDB shape: MariaDB auto-creates a backing
+# index for each enforced constraint, so verifying foreign keys here would
+# require modeling those implicit indexes. The constraints are still created with
+# the table; verifying them is intentionally out of scope.
+_SCHEMA_DIALECT = SchemaDialect(
+    quote_identifier=quote_identifier,
+    compile_column_definition=_compile_column_definition,
+    expected_column_shape=_expected_column_shape,
+    table_suffix="ENGINE=InnoDB",
+    verifies_foreign_keys=False,
+)
 
 
 async def _close_cursor(cursor: object) -> None:
@@ -332,7 +288,7 @@ class MariaDBSchemaBackend:
         yield
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
-        return _expected_table_shape(planned_model)
+        return expected_table_shape(planned_model, _SCHEMA_DIALECT)
 
     async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
         table_name = planned_model.table_name
@@ -348,10 +304,13 @@ class MariaDBSchemaBackend:
         )
 
     async def create_table(self, planned_model: PlannedModel) -> None:
-        await _execute(self.connection, _compile_create_table_sql(planned_model))
+        await _execute(
+            self.connection,
+            compile_create_table_sql(planned_model, _SCHEMA_DIALECT),
+        )
 
     async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
-        sql = _compile_create_index_sql(table_name, index)
+        sql = compile_create_index_sql(table_name, index, _SCHEMA_DIALECT)
         await _execute(self.connection, sql)
         return sql
 
