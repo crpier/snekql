@@ -39,6 +39,13 @@ class RuntimeConfig(Protocol):
         migrations: dict[str, str] | None = None,
     ) -> object: ...
 
+    async def apply_migrations(
+        self,
+        migrations: dict[str, str],
+        *,
+        logger: ResolvedStructuredLogger,
+    ) -> None: ...
+
 
 @validate_boundary(error_type=DatabaseRuntimeError)
 def _build_legacy_sqlite_config(

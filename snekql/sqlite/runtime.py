@@ -178,9 +178,32 @@ async def initialize_runtime(
     )
 
 
+async def migrate_runtime(
+    config: Config,
+    migrations: dict[str, str],
+    *,
+    logger: ResolvedStructuredLogger,
+) -> None:
+    """Apply pending migrations on a throwaway SQLite connection, no pool or schema.
+
+    The migrate-only path shares the apply runner with initialize() but skips
+    schema startup and drift verification: it is the dedicated deploy step, not
+    an application boot.
+    """
+
+    database_path = normalize_sqlite_database(config.database)
+    logger.debug("sqlite migrate connection opening", database_path=database_path)
+    connection = await open_sqlite_connection(database_path)
+    try:
+        await apply_sqlite_migrations(connection, migrations, logger=logger)
+    finally:
+        await close_sqlite_connection(connection)
+
+
 __all__ = [
     "SQLiteConnectionAdapter",
     "SQLiteCursorAdapter",
     "SQLiteRuntime",
     "initialize_runtime",
+    "migrate_runtime",
 ]

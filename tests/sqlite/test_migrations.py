@@ -139,6 +139,68 @@ async def models_verify_against_migration_created_schema() -> None:
 
 
 @test(mark="medium")
+async def standalone_migrate_applies_without_full_initialize() -> None:
+    """Database.migrate applies pending bodies and records history with no models."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        await Database.migrate(
+            logger=NULL_LOGGER,
+            database=database_path,
+            migrations={"001_create_user": _CREATE_USER_MIGRATION},
+        )
+
+        assert_true(_table_exists(database_path, "user"))
+        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
+
+
+@test(mark="medium")
+async def standalone_migrate_is_idempotent() -> None:
+    """A second standalone migrate of the same name neither re-runs nor re-records it."""
+
+    migrations = {"001_create_user": _CREATE_USER_MIGRATION}
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        await Database.migrate(
+            logger=NULL_LOGGER, database=database_path, migrations=migrations
+        )
+        await Database.migrate(
+            logger=NULL_LOGGER, database=database_path, migrations=migrations
+        )
+
+        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
+
+
+@test(mark="medium")
+async def initialize_does_not_reapply_standalone_migration() -> None:
+    """A migration applied standalone is recorded once and verified by a later initialize."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model whose DDL matches the create-user migration body."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=MISSING
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    migrations = {"001_create_user": _CREATE_USER_MIGRATION}
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        await Database.migrate(
+            logger=NULL_LOGGER, database=database_path, migrations=migrations
+        )
+        database = await Database.initialize(
+            logger=NULL_LOGGER,
+            database=database_path,
+            models=[User],
+            migrations=migrations,
+        )
+        await database.close()
+
+        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
+
+
+@test(mark="medium")
 async def model_without_matching_migration_fails_strict() -> None:
     """Under strict, a model whose table no migration created is reported as drift."""
 

@@ -103,3 +103,18 @@ class Config:
             logger=logger,
             migrations=migrations,
         )
+
+    async def apply_migrations(
+        self,
+        migrations: dict[str, str],
+        *,
+        logger: ResolvedStructuredLogger,
+    ) -> None:
+        """Apply pending migrations on a migrate-only MariaDB connection."""
+
+        runtime_module = import_module("snekql.mariadb.runtime")
+        await cast("Any", runtime_module).migrate_runtime(
+            self,
+            migrations,
+            logger=logger,
+        )

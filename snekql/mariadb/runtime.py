@@ -306,10 +306,48 @@ async def initialize_runtime(
     )
 
 
+async def migrate_runtime(
+    config: Config,
+    migrations: dict[str, str],
+    *,
+    logger: ResolvedStructuredLogger,
+) -> None:
+    """Apply pending migrations on a short-lived MariaDB pool, no schema startup.
+
+    The migrate-only path shares the apply runner with initialize() but skips
+    schema startup and drift verification: it is the dedicated deploy step, not
+    an application boot.
+    """
+
+    aiomysql = _import_aiomysql()
+    logger.debug("mariadb migrate pool opening", host=config.host, port=config.port)
+    pool = await aiomysql.create_pool(
+        autocommit=False,
+        charset=config.charset,
+        connect_timeout=config.acquire_timeout,
+        db=config.database,
+        host=config.host,
+        maxsize=config.pool_size,
+        minsize=1,
+        password=config.password,
+        port=config.port,
+        unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
+        user=config.user,
+    )
+    connection_pool = MariaDBConnectionPool(pool, logger=logger)
+    connection = await connection_pool.acquire(config.acquire_timeout)
+    try:
+        await apply_mariadb_migrations(connection, migrations, logger=logger)
+    finally:
+        await connection_pool.release(connection)
+        await connection_pool.close(config.acquire_timeout)
+
+
 __all__ = [
     "MariaDBConnectionAdapter",
     "MariaDBConnectionPool",
     "MariaDBCursorAdapter",
     "MariaDBRuntime",
     "initialize_runtime",
+    "migrate_runtime",
 ]
