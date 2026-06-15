@@ -5,14 +5,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from snekql._query_dialect import QueryDialect
-from snekql.query import (
-    AnySelectQuery,
+from snekql._query_compile import (
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
+)
+from snekql._query_dialect import QueryDialect
+from snekql._query_materialize import (
     materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
 )
+from snekql.query import AnySelectQuery
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
 from snekql.storage import Attr
 
@@ -41,7 +43,7 @@ def compile_sqlite_select_sql(
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a select query into parameterized SQLite SQL."""
 
-    return compile_select_sql_for_dialect(query, _SQLITE_QUERY_DIALECT)
+    return compile_select_sql_for_dialect(query.state, _SQLITE_QUERY_DIALECT)
 
 
 def compile_sqlite_write_sql(query: object) -> tuple[str, tuple[object, ...]]:
@@ -59,7 +61,7 @@ def materialize_sqlite_select_row(
     """Decode one SQLite result row according to a select query."""
 
     return materialize_select_row_for_backend(
-        query,
+        query.state,
         row,
         backend="sqlite",
         validate=validate,
