@@ -44,6 +44,23 @@ type StorageBackend = Literal["mariadb", "sqlite"]
 
 
 @dataclass(frozen=True, kw_only=True)
+class _BackendCodec:
+    """The small set of wire-format decisions that vary between backends.
+
+    Everything else about value encoding -- Boolean as ``0``/``1``, Json through
+    the column's pydantic adapter, scalar pass-through -- is backend-independent
+    and lives once on :class:`Attr`. Only these points differ, so they are the
+    whole per-backend surface. This stays private: promote it to a public seam
+    only when a third backend needs materially different wire semantics.
+    """
+
+    datetime_encode_format: str
+    datetime_encode_suffix: str
+    decode_datetime: Callable[[object, str], datetime]
+    json_accepts_bytes: bool
+
+
+@dataclass(frozen=True, kw_only=True)
 class AttrConfig:
     """Constructor bundle for column descriptors.
 
@@ -597,13 +614,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         column's declared type runs unless ``validate`` is disabled.
         """
 
+        codec = _BACKEND_CODECS[backend]
         try:
             if self.storage_type_name == "Json":
-                return self._decode_json(value, backend=backend, validate=validate)
-            if backend == "mariadb":
-                decoded_value = self._decode_mariadb(value)
-            else:
-                decoded_value = self._decode_sqlite(value)
+                return self._decode_json(value, codec=codec, validate=validate)
+            decoded_value = self._decode_value(value, codec=codec)
             if not validate:
                 return decoded_value
             return self._validate_logical_value(decoded_value, fetched=True)
@@ -626,9 +641,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         try:
             if value is MISSING:
                 return MISSING
-            if backend == "mariadb":
-                return self._encode_mariadb(value)
-            return self._encode_sqlite(value)
+            return self._encode_value(value, codec=_BACKEND_CODECS[backend])
         except SnekqlError:
             raise
         except Exception as error:
@@ -700,7 +713,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         self,
         value: object,
         *,
-        backend: StorageBackend,
+        codec: _BackendCodec,
         validate: bool,
     ) -> object:
         """Decode a Json column value, symmetric with :meth:`_encode_json`.
@@ -715,7 +728,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
             if validate:
                 self._coerce_null_value()
             return None
-        text = self._json_text(value, backend=backend)
+        text = self._json_text(value, json_accepts_bytes=codec.json_accepts_bytes)
         if not validate:
             try:
                 return loads(text)
@@ -728,55 +741,36 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
             msg = f"{self._require_name()!r} failed type validation: {error}"
             raise ModelValidationError(msg) from error
 
-    def _json_text(self, value: object, *, backend: StorageBackend) -> str:
-        """Extract raw JSON text from a backend value, before parsing."""
+    def _json_text(self, value: object, *, json_accepts_bytes: bool) -> str:
+        """Extract raw JSON text from a backend value, before parsing.
 
-        if backend == "mariadb":
-            if not isinstance(value, str | bytes | bytearray):
-                msg = f"{self._require_name()!r} database value must be JSON text"
-                raise ModelValidationError(msg)
-            if isinstance(value, bytes | bytearray):
-                return value.decode()
+        SQLite returns JSON columns as ``str``; the MariaDB driver may hand them
+        back as ``bytes``. Backends that tolerate ``bytes`` decode it to text.
+        """
+
+        if json_accepts_bytes and isinstance(value, bytes | bytearray):
+            return value.decode()
+        if isinstance(value, str):
             return value
-        if not isinstance(value, str):
-            msg = f"{self._require_name()!r} database value must be JSON text"
-            raise ModelValidationError(msg)
-        return value
+        msg = f"{self._require_name()!r} database value must be JSON text"
+        raise ModelValidationError(msg)
 
-    def _decode_sqlite(self, value: object) -> object:
+    def _decode_value(self, value: object, *, codec: _BackendCodec) -> object:
+        """Wire-decode a non-Json column value (Layer 1) for a backend.
+
+        Boolean and scalar pass-through are backend-independent; only the
+        ``DateTime`` strategy varies, so it dispatches through ``codec``.
+        """
+
         if value is None:
             return None
         if self.storage_type_name == "Boolean":
-            if value == 0:
-                return False
-            if value == 1:
-                return True
-            msg = f"{self._require_name()!r} database value must be 0 or 1"
-            raise ModelValidationError(
-                msg,
-            )
+            return self._decode_boolean(value)
         if self.storage_type_name == "DateTime":
-            if not isinstance(value, str):
-                msg = f"{self._require_name()!r} database value must be timestamp text"
-                raise ModelValidationError(
-                    msg,
-                )
-            return self._decode_datetime_text(value)
+            return codec.decode_datetime(value, self._require_name())
         return value
 
-    def _decode_mariadb(self, value: object) -> object:
-        if value is None:
-            return None
-        decoders: dict[str, Callable[[object], object]] = {
-            "Boolean": self._decode_mariadb_boolean,
-            "DateTime": self._decode_mariadb_datetime,
-        }
-        decoder = decoders.get(self.storage_type_name)
-        if decoder is None:
-            return value
-        return decoder(value)
-
-    def _decode_mariadb_boolean(self, value: object) -> bool:
+    def _decode_boolean(self, value: object) -> bool:
         if value == 0:
             return False
         if value == 1:
@@ -784,42 +778,13 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         msg = f"{self._require_name()!r} database value must be 0 or 1"
         raise ModelValidationError(msg)
 
-    def _decode_mariadb_datetime(self, value: object) -> datetime:
-        if isinstance(value, datetime):
-            if value.tzinfo is None:
-                return value.replace(tzinfo=UTC)
-            return value
-        if isinstance(value, str):
-            return self._decode_mariadb_datetime_text(value)
-        msg = f"{self._require_name()!r} database value must be a datetime"
-        raise ModelValidationError(msg)
+    def _encode_value(self, value: object, *, codec: _BackendCodec) -> object:
+        """Wire-encode a logical value (Layer 1) for a backend.
 
-    def _decode_datetime_text(self, value: str) -> datetime:
-        if not value.endswith("Z"):
-            msg = f"{self._require_name()!r} timestamp must end with Z"
-            raise ModelValidationError(
-                msg,
-            )
-        try:
-            parsed = datetime.fromisoformat(f"{value[:-1]}+00:00")
-        except ValueError as error:
-            msg = f"{self._require_name()!r} timestamp is not valid ISO text"
-            raise ModelValidationError(
-                msg,
-            ) from error
-        return parsed
+        Json and Boolean encoding are backend-independent; only the ``DateTime``
+        text format and trailing suffix vary, supplied by ``codec``.
+        """
 
-    def _decode_mariadb_datetime_text(self, value: str) -> datetime:
-        try:
-            parsed = datetime.fromisoformat(value.replace(" ", "T"))
-        except ValueError as error:
-            msg = f"{self._require_name()!r} timestamp is not valid MariaDB text"
-            raise ModelValidationError(msg) from error
-        if parsed.tzinfo is None:
-            return parsed.replace(tzinfo=UTC)
-        return parsed
-
-    def _encode_sqlite(self, value: object) -> object:
         if value is None:
             return None
         if self.storage_type_name == "Json":
@@ -829,23 +794,9 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         if self.storage_type_name == "DateTime":
             timestamp = cast("datetime", value).astimezone(UTC)
             return (
-                timestamp.strftime("%Y-%m-%dT%H:%M:%S.")
-                + f"{timestamp.microsecond // 1000:03d}Z"
-            )
-        return value
-
-    def _encode_mariadb(self, value: object) -> object:
-        if value is None:
-            return None
-        if self.storage_type_name == "Json":
-            return self._encode_json(value)
-        if self.storage_type_name == "Boolean":
-            return 1 if value else 0
-        if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value).astimezone(UTC)
-            return (
-                timestamp.strftime("%Y-%m-%d %H:%M:%S.")
+                timestamp.strftime(codec.datetime_encode_format)
                 + f"{timestamp.microsecond // 1000:03d}"
+                + codec.datetime_encode_suffix
             )
         return value
 
@@ -953,3 +904,57 @@ class FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, TargetOwnerT
         """Build a join condition between this FK column and its target."""
 
         return JoinOn(left_column=self, right_column=other)
+
+
+def _decode_sqlite_datetime(value: object, name: str) -> datetime:
+    """SQLite stores timestamps as ISO ``...Z`` text; non-text is a bug."""
+
+    if not isinstance(value, str):
+        msg = f"{name!r} database value must be timestamp text"
+        raise ModelValidationError(msg)
+    if not value.endswith("Z"):
+        msg = f"{name!r} timestamp must end with Z"
+        raise ModelValidationError(msg)
+    try:
+        return datetime.fromisoformat(f"{value[:-1]}+00:00")
+    except ValueError as error:
+        msg = f"{name!r} timestamp is not valid ISO text"
+        raise ModelValidationError(msg) from error
+
+
+def _decode_mariadb_datetime(value: object, name: str) -> datetime:
+    """The MariaDB driver returns DATETIME columns as ``datetime`` (or text)."""
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+    if not isinstance(value, str):
+        msg = f"{name!r} database value must be a datetime"
+        raise ModelValidationError(msg)
+    try:
+        parsed = datetime.fromisoformat(value.replace(" ", "T"))
+    except ValueError as error:
+        msg = f"{name!r} timestamp is not valid MariaDB text"
+        raise ModelValidationError(msg) from error
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+_SQLITE_CODEC = _BackendCodec(
+    datetime_encode_format="%Y-%m-%dT%H:%M:%S.",
+    datetime_encode_suffix="Z",
+    decode_datetime=_decode_sqlite_datetime,
+    json_accepts_bytes=False,
+)
+_MARIADB_CODEC = _BackendCodec(
+    datetime_encode_format="%Y-%m-%d %H:%M:%S.",
+    datetime_encode_suffix="",
+    decode_datetime=_decode_mariadb_datetime,
+    json_accepts_bytes=True,
+)
+_BACKEND_CODECS: dict[StorageBackend, _BackendCodec] = {
+    "sqlite": _SQLITE_CODEC,
+    "mariadb": _MARIADB_CODEC,
+}

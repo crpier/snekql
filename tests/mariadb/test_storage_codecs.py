@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel
@@ -76,6 +76,28 @@ def mariadb_json_codec_round_trips_rich_annotated_types() -> None:
         RichEvent.payload.decode(b'{"x":1}', backend="mariadb", validate=False),
         {"x": 1},
     )
+
+
+@test()
+def mariadb_datetime_codec_decodes_native_driver_datetimes() -> None:
+    """The MariaDB driver hands DATETIME columns back as ``datetime`` objects,
+    not text; the codec normalizes naive values to UTC and leaves aware ones."""
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """Model binding a MariaDB DateTime descriptor for direct codec checks."""
+
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+
+    naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
+    assert_eq(
+        Event.happened_at.decode(naive, backend="mariadb"),
+        datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
+    )
+
+    aware = datetime(
+        2026, 1, 2, 3, 4, 5, 678000, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
+    assert_eq(Event.happened_at.decode(aware, backend="mariadb"), aware)
 
 
 @test()
