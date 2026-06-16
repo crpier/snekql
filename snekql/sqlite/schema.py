@@ -8,13 +8,14 @@ from typing import Any
 
 from aiosqlite import Connection, Error
 
-from snekql._schema_plan import PlannedColumn, PlannedForeignKey, PlannedModel
-from snekql._schema_shape import (
-    ColumnShape,
-    ForeignKeyShape,
-    IndexShape,
-    TableShape,
+from snekql._schema_compile import (
+    compile_create_index_sql,
+    compile_create_table_sql,
+    expected_table_shape,
 )
+from snekql._schema_dialect import SchemaDialect
+from snekql._schema_plan import PlannedColumn, PlannedModel
+from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
 from snekql._schema_startup import initialize_schema
 from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
@@ -24,70 +25,33 @@ from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 from snekql.structured_logging import ResolvedStructuredLogger
 
 
-def _compile_column_definition(
-    name: str,
-    column: Attr[Any, Any, Any, Any, Any],
-) -> str:
-    parts = [quote_identifier(name), column.sqlite_storage_class]
+def _requires_not_null(column: Attr[Any, Any, Any, Any, Any]) -> bool:
+    # SQLite records no NOT NULL constraint for a primary-key column (the rowid
+    # alias cannot be null on its own), so the column DDL and the expected shape
+    # share this one predicate to stay in lockstep.
+    return column.nullable is False and not column.primary_key
+
+
+def _compile_column_definition(planned_column: PlannedColumn) -> str:
+    column = planned_column.column
+    parts = [quote_identifier(planned_column.name), column.sqlite_storage_class]
     if column.primary_key:
         parts.append("PRIMARY KEY")
     if column.auto_increment:
         parts.append("AUTOINCREMENT")
-    if column.nullable is False and not column.primary_key:
+    if _requires_not_null(column):
         parts.append("NOT NULL")
     if isinstance(column.server_default, CurrentTimestamp):
         parts.append("DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
     return " ".join(parts)
 
 
-def _compile_planned_column_definition(planned_column: PlannedColumn) -> str:
-    return _compile_column_definition(planned_column.name, planned_column.column)
-
-
-def _compile_foreign_key_constraint(foreign_key: PlannedForeignKey) -> str:
-    return (
-        f"FOREIGN KEY ({quote_identifier(foreign_key.column_name)}) "
-        f"REFERENCES {quote_identifier(foreign_key.target_table)} "
-        f"({quote_identifier(foreign_key.target_column)})"
-    )
-
-
-def _compile_create_table_sql(planned_model: PlannedModel) -> str:
-    definitions = [
-        _compile_planned_column_definition(planned_column)
-        for planned_column in planned_model.columns
-    ]
-    definitions.extend(
-        _compile_foreign_key_constraint(foreign_key)
-        for foreign_key in planned_model.foreign_keys
-    )
-    table_body = ", ".join(definitions)
-    return (
-        f"CREATE TABLE {quote_identifier(planned_model.table_name)} "
-        f"({table_body}) STRICT"
-    )
-
-
-def _compile_create_index_sql(table_name: str, index: NormalizedIndex) -> str:
-    unique_sql = "UNIQUE " if index.unique else ""
-    column_sql = ", ".join(
-        quote_identifier(column_name) for column_name in index.column_names
-    )
-    return (
-        f"CREATE {unique_sql}INDEX {quote_identifier(index.name)} "
-        f"ON {quote_identifier(table_name)} ({column_sql})"
-    )
-
-
 def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     column = planned_column.column
-    # SQLite records no NOT NULL constraint for a primary-key column (the rowid
-    # alias cannot be null on its own), mirroring `_compile_column_definition`.
-    has_not_null = column.nullable is False and not column.primary_key
     return ColumnShape(
         name=planned_column.name,
         storage_type=column.sqlite_storage_class,
-        nullable=not has_not_null,
+        nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
         has_server_default=isinstance(column.server_default, CurrentTimestamp),
@@ -95,31 +59,13 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     )
 
 
-def _expected_table_shape(planned_model: PlannedModel) -> TableShape:
-    return TableShape(
-        table_name=planned_model.table_name,
-        columns=tuple(
-            _expected_column_shape(planned_column)
-            for planned_column in planned_model.columns
-        ),
-        indexes=tuple(
-            IndexShape(
-                name=index.name,
-                column_names=index.column_names,
-                unique=index.unique,
-            )
-            for index in planned_model.indexes
-        ),
-        foreign_keys=tuple(
-            ForeignKeyShape(
-                column_name=foreign_key.column_name,
-                target_table=foreign_key.target_table,
-                target_column=foreign_key.target_column,
-            )
-            for foreign_key in planned_model.foreign_keys
-        ),
-        storage_options=("STRICT",),
-    )
+_SCHEMA_DIALECT = SchemaDialect(
+    quote_identifier=quote_identifier,
+    compile_column_definition=_compile_column_definition,
+    expected_column_shape=_expected_column_shape,
+    table_suffix="STRICT",
+    verifies_foreign_keys=True,
+)
 
 
 async def _execute_schema_sql(
@@ -290,7 +236,7 @@ class SQLiteSchemaBackend:
             raise
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
-        return _expected_table_shape(planned_model)
+        return expected_table_shape(planned_model, _SCHEMA_DIALECT)
 
     async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
         table_name = planned_model.table_name
@@ -319,11 +265,11 @@ class SQLiteSchemaBackend:
     async def create_table(self, planned_model: PlannedModel) -> None:
         await _execute_schema_sql(
             self.connection,
-            _compile_create_table_sql(planned_model),
+            compile_create_table_sql(planned_model, _SCHEMA_DIALECT),
         )
 
     async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
-        sql = _compile_create_index_sql(table_name, index)
+        sql = compile_create_index_sql(table_name, index, _SCHEMA_DIALECT)
         await _execute_schema_sql(self.connection, sql)
         return sql
 
