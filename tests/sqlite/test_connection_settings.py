@@ -19,7 +19,7 @@ from snekql import (
     Pending,
     insert,
 )
-from snekql._pool import close_sqlite_connection, open_sqlite_connection
+from snekql.sqlite.pool import close_sqlite_connection, open_sqlite_connection
 from snekql.sqlite.settings import SQLITE_BUSY_TIMEOUT_MS
 from tests.helpers import NULL_LOGGER
 

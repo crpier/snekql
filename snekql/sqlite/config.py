@@ -7,12 +7,14 @@ from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from snekql._runtime_selection import register_default_backend_factory
 from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from snekql._runtime_selection import RuntimeConfig
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
     from snekql.structured_logging import ResolvedStructuredLogger
@@ -128,3 +130,24 @@ class Config:
             migrations,
             logger=logger,
         )
+
+
+def _build_default_config(
+    *,
+    acquire_timeout: NonNegativeFloat,
+    database: Path | Literal[":memory:"],
+    pool_size: PositiveInt,
+) -> RuntimeConfig:
+    """Build a SQLite config for the legacy ``database=`` initializer shape."""
+
+    return Config(
+        acquire_timeout=acquire_timeout,
+        database=database,
+        pool_size=pool_size,
+    )
+
+
+# SQLite is the default backend for the bare ``Database.initialize(database=...)``
+# shape. Registering here keeps the core dialect-blind: it resolves ``database=``
+# through this callback rather than importing the SQLite Config (ADR 0004).
+register_default_backend_factory(_build_default_config)

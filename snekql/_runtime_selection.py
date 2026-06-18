@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import require_model_backend
-from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,22 +47,37 @@ class RuntimeConfig(Protocol):
     ) -> None: ...
 
 
-@validate_boundary(error_type=DatabaseRuntimeError)
-def _build_legacy_sqlite_config(
-    *,
-    acquire_timeout: NonNegativeFloat,
-    database: Path | Literal[":memory:"],
-    pool_size: PositiveInt,
-) -> RuntimeConfig:
-    """Build an explicit SQLite config for the legacy initializer shape."""
+@runtime_checkable
+class DefaultBackendFactory(Protocol):
+    """Builds the backend config for the legacy ``database=`` initializer shape.
 
-    from snekql.sqlite.config import Config as SQLiteConfig  # noqa: PLC0415
+    The core stays dialect-blind: it never names a Backend Namespace. A backend
+    registers itself as the default at the edge (on import) via
+    ``register_default_backend_factory``, so the core resolves ``database=``
+    through this injected callback instead of importing a backend config.
+    """
 
-    return SQLiteConfig(
-        acquire_timeout=acquire_timeout,
-        database=database,
-        pool_size=pool_size,
-    )
+    def __call__(
+        self,
+        *,
+        acquire_timeout: NonNegativeFloat,
+        database: Path | Literal[":memory:"],
+        pool_size: PositiveInt,
+    ) -> RuntimeConfig: ...
+
+
+_default_backend_factory: DefaultBackendFactory | None = None
+
+
+def register_default_backend_factory(factory: DefaultBackendFactory) -> None:
+    """Register the backend that handles the legacy ``database=`` shape.
+
+    Called from a Backend Namespace at import time. This is the injection seam
+    that lets the core resolve ``database=`` without importing any backend.
+    """
+
+    global _default_backend_factory  # noqa: PLW0603
+    _default_backend_factory = factory
 
 
 def validate_model_backends(
@@ -101,7 +116,10 @@ def resolve_runtime_config(
     if database is None:
         msg = "Database.initialize requires a backend config or database"
         raise DatabaseRuntimeError(msg)
-    return _build_legacy_sqlite_config(
+    if _default_backend_factory is None:
+        msg = "no default backend is registered for the database= initializer shape"
+        raise DatabaseRuntimeError(msg)
+    return _default_backend_factory(
         acquire_timeout=acquire_timeout,
         database=database,
         pool_size=pool_size,
