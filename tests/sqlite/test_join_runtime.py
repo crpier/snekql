@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     Database,
     Fetched,

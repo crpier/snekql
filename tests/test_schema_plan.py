@@ -6,7 +6,8 @@ from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import (
+from snekql._schema_plan import PlannedForeignKey, build_schema_plan
+from snekql.sqlite import (
     MISSING,
     Fetched,
     ForeignKey,
@@ -17,7 +18,6 @@ from snekql import (
     SchemaError,
     Text,
 )
-from snekql._schema_plan import PlannedForeignKey, build_schema_plan
 
 
 @test(mark="fast")

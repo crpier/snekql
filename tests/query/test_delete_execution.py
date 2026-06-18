@@ -14,7 +14,7 @@ from snektest import (
     test,
 )
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     Database,
     Fetched,

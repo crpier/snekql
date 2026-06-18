@@ -5,7 +5,7 @@ Application boundaries can catch `SnekqlError` for all expected snekql failures
 and let unrelated programming errors continue to surface normally.
 
 ```python
-from snekql import SnekqlError
+from snekql.sqlite import SnekqlError
 
 try:
     async with db.transaction() as tx:

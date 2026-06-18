@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from snektest import assert_eq, assert_false, assert_raises, assert_true, test
 
 import snekql
-from snekql import (
+from snekql._model_materialization import decode_model_row, encode_model_row
+from snekql.sqlite import (
     MISSING,
     Blob,
     Boolean,
@@ -25,7 +26,6 @@ from snekql import (
     Real,
     Text,
 )
-from snekql._model_materialization import decode_model_row, encode_model_row
 
 
 @test()

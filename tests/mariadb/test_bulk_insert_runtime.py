@@ -8,14 +8,14 @@ from typing import Any
 
 from snektest import AsyncFixture, assert_eq, assert_is_none, load_fixture, test
 
-from snekql import (
+from snekql import mariadb
+from snekql.mariadb import (
     MISSING,
     CurrentTimestamp,
     Database,
     Fetched,
     Pending,
     insert,
-    mariadb,
     select,
 )
 from snekql.model import Table

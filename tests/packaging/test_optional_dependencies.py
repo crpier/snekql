@@ -81,8 +81,8 @@ from __future__ import annotations
 import asyncio
 import builtins
 
-import snekql
-from snekql import Database, sqlite
+from snekql import sqlite
+from snekql.sqlite import Database
 from tests.helpers import NULL_LOGGER
 
 original_import = builtins.__import__
@@ -99,7 +99,7 @@ async def main() -> None:
     try:
         try:
             _ = await Database.initialize(sqlite.Config(database=":memory:"), logger=NULL_LOGGER)
-        except snekql.DatabaseRuntimeError as error:
+        except sqlite.DatabaseRuntimeError as error:
             print(error)
             return
         raise AssertionError("SQLite initialization unexpectedly succeeded")

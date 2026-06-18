@@ -11,8 +11,9 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import MISSING, Boolean, Fetched, Pending, Text, select, sqlite
+from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
+from snekql.sqlite import MISSING, Boolean, Fetched, Pending, Text, select
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):

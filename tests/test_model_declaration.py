@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import BaseModel, PositiveInt
 from snektest import (
@@ -17,11 +17,12 @@ from snektest import (
     test,
 )
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     Blob,
     Boolean,
     DateTime,
+    Fetched,
     ForeignKey,
     FrozenModelError,
     Index,
@@ -34,9 +35,6 @@ from snekql import (
     Real,
     Text,
 )
-
-if TYPE_CHECKING:
-    from snekql import Fetched
 
 
 @test(mark="fast")

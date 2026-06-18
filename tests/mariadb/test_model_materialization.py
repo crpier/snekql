@@ -7,8 +7,9 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import Fetched, Pending, mariadb, select
+from snekql import mariadb
 from snekql._model_materialization import decode_model_row, encode_model_row
+from snekql.mariadb import Fetched, Pending, select
 from snekql.mariadb.query import materialize_mariadb_select_row
 
 

@@ -8,7 +8,8 @@ from typing import Any
 from pydantic import BaseModel
 from snektest import assert_eq, assert_isinstance, assert_raises, load_fixture, test
 
-from snekql import (
+from snekql import mariadb
+from snekql.mariadb import (
     MISSING,
     CurrentTimestamp,
     Database,
@@ -16,7 +17,6 @@ from snekql import (
     ModelDeclarationError,
     Pending,
     insert,
-    mariadb,
     select,
 )
 from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server

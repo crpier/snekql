@@ -9,8 +9,9 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import DatabaseRuntimeError, mariadb, sqlite
+from snekql import mariadb, sqlite
 from snekql._runtime_selection import resolve_runtime_config
+from snekql.sqlite import DatabaseRuntimeError
 
 
 @test(mark="fast")

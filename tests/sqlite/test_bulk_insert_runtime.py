@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 
 from snektest import assert_eq, assert_is_none, test
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     CurrentTimestamp,
     Database,

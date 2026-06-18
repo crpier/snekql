@@ -74,7 +74,8 @@ ignore = [
 
 [tool.ruff.lint.pyflakes]
 allowed-unused-imports = [
-  "snekql.Fetched",
+  "snekql.sqlite.Fetched",
+  "snekql.mariadb.Fetched",
 ]
 
 [tool.ruff.lint.per-file-ignores]

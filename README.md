@@ -26,14 +26,14 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     Database,
     Fetched,
     Pending,
     StructuredLogger,
     insert,
     select,
-    sqlite,
 )
 
 
@@ -83,7 +83,8 @@ Table models are declared through a backend namespace such as `sqlite` or
 ```python
 from datetime import datetime
 
-from snekql import Fetched, Pending, sqlite
+from snekql import sqlite
+from snekql.sqlite import Fetched, Pending
 
 
 class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
@@ -121,7 +122,8 @@ allow that import in Ruff:
 ```toml
 [tool.ruff.lint.pyflakes]
 allowed-unused-imports = [
-  "snekql.Fetched",
+  "snekql.sqlite.Fetched",
+  "snekql.mariadb.Fetched",
 ]
 ```
 
@@ -154,7 +156,8 @@ server defaults and are valid only on `DateTime` `GenCol` fields.
 Use the backend namespace `Index(...)` in `__indexes__` for table-level indexes:
 
 ```python
-from snekql import Fetched, Pending, sqlite
+from snekql import sqlite
+from snekql.sqlite import Fetched, Pending
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -177,7 +180,7 @@ Index declarations accept column descriptors only. Names are inferred as
 Queries are immutable. Chaining returns new query objects.
 
 ```python
-from snekql import delete, insert, select, update
+from snekql.sqlite import delete, insert, select, update
 
 select(User).all()
 select(User.email).where(User.status.eq("active"))
@@ -202,7 +205,7 @@ comparison operators are not part of the v1 API.
 A select can be nested inside another query as a subquery:
 
 ```python
-from snekql import exists, not_exists, scalar, select
+from snekql.sqlite import exists, not_exists, scalar, select
 
 # IN / NOT IN against a single-column subquery
 select(User).where(
@@ -240,7 +243,8 @@ remains supported for compatibility, but new code should use `sqlite.Config`.
 ```python
 from pathlib import Path
 
-from snekql import Database, sqlite
+from snekql import sqlite
+from snekql.sqlite import Database
 
 
 db = await Database.initialize(
@@ -298,7 +302,8 @@ MariaDB models should use the MariaDB namespace so backend-specific columns and
 runtime checks agree:
 
 ```python
-from snekql import Database, Fetched, Pending, insert, mariadb, select
+from snekql import mariadb
+from snekql.mariadb import Database, Fetched, Pending, insert, select
 
 
 class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
@@ -396,8 +401,13 @@ Temporary MariaDB Test Server through `snekql.testing.mariadb`, so `mariadbd`,
 
 ## Public API
 
-The package root is the public import surface. Prefer `from snekql import ...`
-over importing from internal modules.
+The backend namespaces are the public import surface. Pick `snekql.sqlite` or
+`snekql.mariadb` and import the whole surface from it -- the dialect-neutral
+verbs and builders as well as that backend's `Model` and column constructors.
+There is no flat `snekql.<symbol>` surface; the package root only exposes the
+`sqlite` and `mariadb` namespace handles. This keeps SQLite-only and
+MariaDB-only symbols from colliding and stops auto-imports from landing on the
+wrong backend.
 
 Agent navigation map:
 

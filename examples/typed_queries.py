@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, assert_type
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     Fetched,
     InsertQuery,
     Missing,
@@ -18,7 +19,6 @@ from snekql import (
     UpdateQuery,
     insert,
     select,
-    sqlite,
     update,
 )
 

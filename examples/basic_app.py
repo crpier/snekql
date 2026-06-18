@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     Database,
     Fetched,
     Pending,
@@ -18,7 +19,6 @@ from snekql import (
     delete,
     insert,
     select,
-    sqlite,
     update,
 )
 

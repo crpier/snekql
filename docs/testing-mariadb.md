@@ -5,7 +5,7 @@
 ## Python API
 
 ```python
-from snekql import Database
+from snekql.mariadb import Database
 from snekql.testing.mariadb import temporary_mariadb_server
 
 async with temporary_mariadb_server() as server:

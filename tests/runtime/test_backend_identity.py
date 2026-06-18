@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from snektest import assert_in, assert_raises, load_fixture, test
 
-from snekql import (
+from snekql import mariadb, sqlite
+from snekql.sqlite import (
     Database,
     DatabaseRuntimeError,
     Fetched,
     Model,
     Pending,
     Text,
-    mariadb,
     select,
-    sqlite,
 )
 from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
 

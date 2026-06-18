@@ -13,7 +13,8 @@ from snektest import (
     test,
 )
 
-from snekql import (
+from snekql import mariadb
+from snekql.mariadb import (
     MISSING,
     Database,
     DatabaseClosedError,
@@ -24,7 +25,6 @@ from snekql import (
     delete,
     exists,
     insert,
-    mariadb,
     scalar,
     select,
     update,

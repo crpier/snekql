@@ -9,7 +9,8 @@ from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     MISSING,
     Database,
     DatabaseRuntimeError,
@@ -22,7 +23,6 @@ from snekql import (
     SchemaError,
     SchemaVerificationError,
     Text,
-    sqlite,
 )
 from snekql.sqlite.schema import initialize_sqlite_schema
 from tests.helpers import NULL_LOGGER

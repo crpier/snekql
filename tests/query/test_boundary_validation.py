@@ -8,7 +8,7 @@ from typing import cast
 from pydantic import ValidationError
 from snektest import assert_in, assert_isinstance, assert_raises, test
 
-from snekql import (
+from snekql.sqlite import (
     Database,
     DatabaseRuntimeError,
     Fetched,
