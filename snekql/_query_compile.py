@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, cast
 
+from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._query_dialect import QueryDialect
 from snekql._query_state import (
     EXISTENCE_PREDICATE_KINDS,
@@ -82,11 +83,31 @@ def _render_aggregate(
     return f"{aggregate.func}({column_ref})"
 
 
+def _make_compile_ctx(dialect: QueryDialect, *, qualified: bool) -> CompileCtx:
+    """Build the facts a dialect expression renders itself against.
+
+    ``render_column`` closes over the enclosing statement's qualification so an
+    expression's owned columns quote and qualify exactly like every other column
+    reference, without the leaf reimplementing that strategy.
+    """
+
+    return CompileCtx(
+        placeholder=dialect.placeholder,
+        quote_identifier=dialect.quote_identifier,
+        render_column=lambda column: _render_column_ref(
+            column,
+            dialect,
+            qualified=qualified,
+        ),
+    )
+
+
 def _render_selectable(
     field: Selectable,
     dialect: QueryDialect,
     *,
     qualified: bool,
+    projection: bool = False,
 ) -> str:
     if isinstance(field, Scalar):
         # Scalar subqueries carry nested parameters, so the select-list compiler
@@ -95,6 +116,14 @@ def _render_selectable(
         raise QueryCompilationError(msg)
     if isinstance(field, Aggregate):
         return _render_aggregate(field, dialect, qualified=qualified)
+    if isinstance(field, SqlCompilable):
+        # Open-AST dialect expression: the core renders it structurally through
+        # the protocol, never naming the leaf. A projection uses the select seam
+        # (`__compile_select_sql__`); an operand uses the operand seam.
+        ctx = _make_compile_ctx(dialect, qualified=qualified)
+        if projection and isinstance(field, DialectSelectable):
+            return field.__compile_select_sql__(ctx)
+        return field.__compile_sql__(ctx)
     return _render_column_ref(field, dialect, qualified=qualified)
 
 
@@ -266,6 +295,11 @@ def _predicate_value_encoder(
     if isinstance(selectable, Scalar):
         msg = "a scalar subquery is not a value-encoding operand"
         raise QueryCompilationError(msg)
+    if isinstance(selectable, SqlCompilable):
+        # A dialect expression owns its own value type (its `__decode__`), so its
+        # comparison value passes through unencoded; the leaf, not a column codec,
+        # defines what that operand compares against.
+        return lambda value: value
     if isinstance(selectable, Aggregate):
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
@@ -646,7 +680,9 @@ def _compile_select_list(
             parts.append(scalar_sql)
             params = (*params, *scalar_params)
             continue
-        parts.append(_render_selectable(field, dialect, qualified=qualified))
+        parts.append(
+            _render_selectable(field, dialect, qualified=qualified, projection=True),
+        )
     return ", ".join(parts), params
 
 

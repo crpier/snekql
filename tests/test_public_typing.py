@@ -99,6 +99,7 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
         default=MISSING,
     )
     email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
+    profile: MariadbUser.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
 
 
 if TYPE_CHECKING:
@@ -153,6 +154,22 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(MariadbUser),
         SelectModelQuery[MariadbUser[Pending], MariadbUser[Fetched]],
+    )
+
+    # Open-AST dialect operator (ADR 0004): the MariaDB JSON path operator is a
+    # typed `int` operand and projection, and the result type flows through the
+    # `select` overloads without the core naming the leaf expression.
+    _ = assert_type(
+        MariadbUser.profile.json_extract_int("$.age").gt(18),
+        Predicate[MariadbUser[Pending]],
+    )
+    _ = assert_type(
+        select(MariadbUser.profile.json_extract_int("$.age")),
+        SelectValueQuery[Any, Any, int],
+    )
+    _ = assert_type(
+        select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),
+        SelectTupleQuery[MariadbUser[Pending], MariadbUser[Pending], str, int],
     )
 
     pending_user = User(email="alice@example.com")
