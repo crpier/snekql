@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, cast
 
+from snekql._dialect_expr import DialectSelectable
 from snekql._model_materialization import decode_model_row
 from snekql._query_state import (
     InsertState,
@@ -86,7 +87,16 @@ def _decode_selectable(
         )
     if isinstance(field, Aggregate):
         return _decode_aggregate(field, value, backend=backend)
-    return field.decode(value, backend=backend, validate=validate)
+    if isinstance(field, DialectSelectable):
+        # Open-AST dialect expression: decode through the leaf's own seam, so the
+        # raw driver value becomes the typed value the projection promised without
+        # the core knowing the leaf. The decoded type is the leaf's `T`; this seam
+        # is type-erased (the result shape flows through the `select` overloads).
+        return cast("object", field.__decode__(value))
+    if isinstance(field, Attr):
+        return field.decode(value, backend=backend, validate=validate)
+    msg = "a non-projectable operand cannot be materialized"
+    raise QueryCompilationError(msg)
 
 
 def _materialize_join_row(

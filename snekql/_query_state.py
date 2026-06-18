@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
+from snekql._dialect_expr import SqlCompilable
 from snekql.errors import (
     ModelDeclarationError,
     QueryCompilationError,
@@ -31,9 +32,15 @@ from snekql.model import (
 )
 from snekql.storage import Attr
 
-# A projectable expression: a column, an aggregate over a column, or a scalar
-# subquery standing in for a single value.
-type Selectable = Attr[Any, Any, Any, Any, Any] | Aggregate[Any, Any] | Scalar[Any, Any]
+# A projectable expression: a column, an aggregate over a column, a scalar
+# subquery standing in for a single value, or an open-AST dialect expression
+# (e.g. a MariaDB JSON path operator) the core renders/decodes structurally.
+type Selectable = (
+    Attr[Any, Any, Any, Any, Any]
+    | Aggregate[Any, Any]
+    | Scalar[Any, Any]
+    | SqlCompilable
+)
 
 
 type JoinType = Literal["INNER", "LEFT"]
@@ -120,6 +127,8 @@ def require_selectable(value: object) -> Selectable:
         return cast("Aggregate[Any, Any]", value)
     if isinstance(value, Scalar):
         return cast("Scalar[Any, Any]", value)
+    if isinstance(value, SqlCompilable):
+        return value
     return require_field(value)
 
 
@@ -182,6 +191,10 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
     if isinstance(field, Scalar):
         msg = "a scalar subquery has no single owning table"
         raise QueryConstructionError(msg)
+    if isinstance(field, SqlCompilable):
+        # A dialect expression names its own owning table; the core scope-checks
+        # it through this seam without knowing the concrete leaf type.
+        return field.__owner_model__()
     if isinstance(field, Aggregate):
         owner = field.owner
         if owner is None:
@@ -227,10 +240,15 @@ def ensure_predicate_targets_models(
         if isinstance(predicate.column, Aggregate):
             msg = "aggregates cannot appear in where(); use having()"
             raise QueryConstructionError(msg)
-        column = require_field(predicate.column)
-        if require_column_model(column) not in models:
-            msg = "predicate references a table that is not in the query"
-            raise QueryConstructionError(msg)
+        if isinstance(predicate.column, SqlCompilable):
+            if predicate.column.__owner_model__() not in models:
+                msg = "predicate references a table that is not in the query"
+                raise QueryConstructionError(msg)
+        else:
+            column = require_field(predicate.column)
+            if require_column_model(column) not in models:
+                msg = "predicate references a table that is not in the query"
+                raise QueryConstructionError(msg)
     for child in predicate.children:
         ensure_predicate_targets_models(child, models)
 
@@ -305,7 +323,9 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
         for column in state.groupings
     }
     for field in state.fields:
-        if isinstance(field, (Aggregate, Scalar)):
+        # Only a bare column must appear in GROUP BY; aggregates, scalar
+        # subqueries, and open-AST dialect expressions are not plain columns.
+        if not isinstance(field, Attr):
             continue
         key = (require_column_model(field), require_column_name(field))
         if key not in grouped_keys:
