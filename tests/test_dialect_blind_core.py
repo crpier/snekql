@@ -19,10 +19,17 @@ _NAMED_CORE_MODULES = ("runtime.py", "query.py", "model.py", "storage.py")
 
 
 def _core_module_paths() -> list[Path]:
-    """Resolve the core modules the dialect-blindness invariant covers."""
+    """Resolve the core modules the dialect-blindness invariant covers.
+
+    The package root ``__init__.py`` is excluded: it is the namespace exposer
+    whose whole job is to re-export the backend namespaces, so it references
+    both by design and is not core logic.
+    """
 
     package_dir = Path(snekql.__file__).parent
-    underscore_modules = sorted(package_dir.glob("_*.py"))
+    underscore_modules = sorted(
+        path for path in package_dir.glob("_*.py") if path.name != "__init__.py"
+    )
     named_modules = [package_dir / name for name in _NAMED_CORE_MODULES]
     return [*underscore_modules, *named_modules]
 

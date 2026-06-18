@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import MISSING, Fetched, ForeignKey, Integer, Model, Pending, Text
 from snekql._schema_compile import (
     compile_create_index_sql,
     compile_create_table_sql,
@@ -14,6 +13,7 @@ from snekql._schema_compile import (
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_plan import PlannedColumn, PlannedModel, build_schema_plan
 from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
+from snekql.sqlite import MISSING, Fetched, ForeignKey, Integer, Model, Pending, Text
 
 
 class _Author[S = Pending](Model[S, "_Author[Fetched]"]):

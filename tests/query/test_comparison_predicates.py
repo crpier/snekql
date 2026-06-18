@@ -12,7 +12,8 @@ from typing import cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     MISSING,
     Database,
     Fetched,
@@ -24,7 +25,6 @@ from snekql import (
     QueryConstructionError,
     insert,
     select,
-    sqlite,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
 from tests.helpers import NULL_LOGGER

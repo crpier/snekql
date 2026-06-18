@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import MISSING, Fetched, ForeignKey, Pending, sqlite
+from snekql import sqlite
 from snekql.expressions import JoinOn
+from snekql.sqlite import MISSING, Fetched, ForeignKey, Pending
 
 
 @test(mark="fast")

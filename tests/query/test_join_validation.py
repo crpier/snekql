@@ -12,7 +12,8 @@ from typing import Any, cast
 
 from snektest import assert_raises, test
 
-from snekql import MISSING, Fetched, Pending, QueryConstructionError, select, sqlite
+from snekql import sqlite
+from snekql.sqlite import MISSING, Fetched, Pending, QueryConstructionError, select
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):

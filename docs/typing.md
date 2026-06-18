@@ -190,11 +190,13 @@ relationship available for joins without enforcing referential integrity.
 
 ## Backend namespaces
 
-SQLite compatibility aliases remain available at the package root, but new code
-should prefer explicit backend namespaces:
+Every public symbol is imported from a backend namespace. Pick `snekql.sqlite`
+or `snekql.mariadb` and import the whole surface from it -- the dialect-neutral
+verbs as well as that backend's `Model` and column declarations:
 
 ```python
-from snekql import Database, Fetched, MISSING, Pending, mariadb, sqlite
+from snekql import mariadb, sqlite
+from snekql.sqlite import MISSING, Database, Fetched, Pending
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
@@ -225,19 +227,20 @@ query built from another backend's model before SQL is executed.
 
 Pyright can see the backend namespace types where they are explicit, and runtime
 checks cover the remaining cases that Python's type system cannot express yet.
-Top-level `Model`, `Integer`, `Text`, and related compatibility aliases continue
-to behave as SQLite declarations.
 
 ## Import path
 
-Prefer importing public symbols from the package root:
+There is no flat `snekql.<symbol>` surface. Import every public symbol from a
+backend namespace; the package root only exposes the `sqlite` and `mariadb`
+namespace handles:
 
 ```python
-from snekql import Database, Pending, Text, select, sqlite
+from snekql.sqlite import Database, Pending, Text, select
 ```
 
-The root exports are curated in `snekql.__all__` and mirrored by
-`snekql/__init__.pyi`.
+Each namespace's exports are curated in its own `__all__`, and the package
+root's `__all__` lists only `mariadb` and `sqlite`. Keeping the dialects in
+separate namespaces stops auto-imports from landing on the wrong backend.
 
 ## Type-checkable examples
 

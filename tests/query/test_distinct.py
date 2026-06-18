@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import (
+from snekql import sqlite
+from snekql.sqlite import (
     MISSING,
     Database,
     Fetched,
@@ -19,7 +20,6 @@ from snekql import (
     Text,
     insert,
     select,
-    sqlite,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
 from tests.helpers import NULL_LOGGER

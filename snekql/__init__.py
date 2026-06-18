@@ -1,156 +1,19 @@
-"""Public API surface for snekql."""
+"""snekql: an async typed query builder and runtime for SQLite and MariaDB.
+
+snekql has no flat top-level API. Pick a backend namespace and import the whole
+surface -- the dialect-neutral verbs and builders as well as the backend's
+``Model`` base and column constructors -- from it::
+
+    from snekql.sqlite import Model, Text, select
+    from snekql.mariadb import Model, Json, select
+
+This keeps SQLite-only and MariaDB-only symbols from colliding in one namespace
+and stops auto-imports from landing on the wrong backend (see ADR 0004).
+"""
 
 from __future__ import annotations
 
 from snekql import mariadb as mariadb
 from snekql import sqlite as sqlite
-from snekql.errors import (
-    DatabaseClosedError,
-    DatabaseCloseTimeoutError,
-    DatabaseClosingError,
-    DatabaseRuntimeError,
-    ExecutionError,
-    FrozenModelError,
-    MigrationError,
-    MigrationLockTimeoutError,
-    ModelDeclarationError,
-    ModelError,
-    ModelValidationError,
-    PoolTimeoutError,
-    QueryCompilationError,
-    QueryConstructionError,
-    QueryError,
-    SchemaError,
-    SchemaVerificationError,
-    SnekqlError,
-    TransactionClosedError,
-)
-from snekql.expressions import (
-    Aggregate,
-    Assignment,
-    JoinOn,
-    OrderBy,
-    Predicate,
-    Scalar,
-)
-from snekql.indexes import Index
-from snekql.model import (
-    Col,
-    Fetched,
-    FKCol,
-    GenCol,
-    Model,
-    ModelMeta,
-    Pending,
-    Table,
-)
-from snekql.query import (
-    DeleteQuery,
-    InsertManyQuery,
-    InsertManyReturningQuery,
-    InsertQuery,
-    InsertReturningQuery,
-    JoinModelQuery,
-    SelectModelQuery,
-    SelectTupleQuery,
-    SelectValueQuery,
-    UpdateQuery,
-    delete,
-    exists,
-    insert,
-    not_exists,
-    scalar,
-    select,
-    update,
-)
-from snekql.runtime import Database, Transaction
-from snekql.storage import (
-    MISSING,
-    Attr,
-    Blob,
-    Boolean,
-    CurrentTimestamp,
-    DateTime,
-    FKAttr,
-    ForeignKey,
-    Integer,
-    Json,
-    Missing,
-    Real,
-    SchemaPolicy,
-    Text,
-)
-from snekql.structured_logging import StructuredLogger
 
-__all__ = [
-    "MISSING",
-    "Aggregate",
-    "Assignment",
-    "Attr",
-    "Blob",
-    "Boolean",
-    "Col",
-    "CurrentTimestamp",
-    "Database",
-    "DatabaseCloseTimeoutError",
-    "DatabaseClosedError",
-    "DatabaseClosingError",
-    "DatabaseRuntimeError",
-    "DateTime",
-    "DeleteQuery",
-    "ExecutionError",
-    "FKAttr",
-    "FKCol",
-    "Fetched",
-    "ForeignKey",
-    "FrozenModelError",
-    "GenCol",
-    "Index",
-    "InsertManyQuery",
-    "InsertManyReturningQuery",
-    "InsertQuery",
-    "InsertReturningQuery",
-    "Integer",
-    "JoinModelQuery",
-    "JoinOn",
-    "Json",
-    "MigrationError",
-    "MigrationLockTimeoutError",
-    "Missing",
-    "Model",
-    "ModelDeclarationError",
-    "ModelError",
-    "ModelMeta",
-    "ModelValidationError",
-    "OrderBy",
-    "Pending",
-    "PoolTimeoutError",
-    "Predicate",
-    "QueryCompilationError",
-    "QueryConstructionError",
-    "QueryError",
-    "Real",
-    "Scalar",
-    "SchemaError",
-    "SchemaPolicy",
-    "SchemaVerificationError",
-    "SelectModelQuery",
-    "SelectTupleQuery",
-    "SelectValueQuery",
-    "SnekqlError",
-    "StructuredLogger",
-    "Table",
-    "Text",
-    "Transaction",
-    "TransactionClosedError",
-    "UpdateQuery",
-    "delete",
-    "exists",
-    "insert",
-    "mariadb",
-    "not_exists",
-    "scalar",
-    "select",
-    "sqlite",
-    "update",
-]
+__all__ = ["mariadb", "sqlite"]

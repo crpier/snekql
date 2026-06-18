@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from snektest import assert_eq, assert_raises, assert_true, load_fixture, test
 
-from snekql import (
+from snekql import mariadb
+from snekql.mariadb import (
     MISSING,
     Database,
     ExecutionError,
@@ -13,7 +14,6 @@ from snekql import (
     Pending,
     SchemaVerificationError,
     insert,
-    mariadb,
 )
 from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
 

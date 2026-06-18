@@ -1,4 +1,10 @@
-"""Public API contract tests for snekql."""
+"""Public API contract tests for snekql.
+
+snekql has no flat top-level surface: the package root only re-exports the two
+backend namespace handles, and every symbol -- the dialect-neutral verbs as well
+as each backend's ``Model`` and column constructors -- is imported from
+``snekql.sqlite`` or ``snekql.mariadb`` (see ADR 0004 / issue #138).
+"""
 
 from __future__ import annotations
 
@@ -12,51 +18,31 @@ from snektest.assertions import (
     assert_is,
     assert_isinstance,
     assert_ne,
+    assert_not_in,
 )
 
 import snekql
+from snekql import mariadb, sqlite
 from snekql.testing import mariadb as testing_mariadb
 
-
-def _assert_has_specific_docstring(value: object) -> None:
-    docstring = getattr(value, "__doc__", None)
-    assert_ne(docstring, None)
-    assert_ne(docstring, "")
-    assert_ne(docstring, object.__doc__)
-
-
-def _catch_as_snekql_error(error: snekql.SnekqlError) -> None:
-    try:
-        raise error
-    except snekql.SnekqlError as caught_error:
-        assert_is(caught_error, error)
-
-
-@test()
-def public_contract_exports_canonical_names() -> None:
-    """The package root explicitly curates canonical PRD names."""
-
-    expected_names = (
+# The dialect-neutral symbols every backend namespace re-exports identically.
+_COMMON_NAMES = frozenset(
+    {
         "MISSING",
         "Aggregate",
         "Assignment",
         "Attr",
-        "Blob",
-        "Boolean",
         "Col",
-        "CurrentTimestamp",
         "Database",
         "DatabaseCloseTimeoutError",
         "DatabaseClosedError",
         "DatabaseClosingError",
         "DatabaseRuntimeError",
-        "DateTime",
         "DeleteQuery",
         "ExecutionError",
         "FKAttr",
         "FKCol",
         "Fetched",
-        "ForeignKey",
         "FrozenModelError",
         "GenCol",
         "Index",
@@ -64,14 +50,11 @@ def public_contract_exports_canonical_names() -> None:
         "InsertManyReturningQuery",
         "InsertQuery",
         "InsertReturningQuery",
-        "Integer",
         "JoinModelQuery",
         "JoinOn",
-        "Json",
         "MigrationError",
         "MigrationLockTimeoutError",
         "Missing",
-        "Model",
         "ModelDeclarationError",
         "ModelError",
         "ModelMeta",
@@ -83,7 +66,6 @@ def public_contract_exports_canonical_names() -> None:
         "QueryCompilationError",
         "QueryConstructionError",
         "QueryError",
-        "Real",
         "Scalar",
         "SchemaError",
         "SchemaPolicy",
@@ -94,25 +76,74 @@ def public_contract_exports_canonical_names() -> None:
         "SnekqlError",
         "StructuredLogger",
         "Table",
-        "Text",
         "Transaction",
         "TransactionClosedError",
         "UpdateQuery",
         "delete",
         "exists",
         "insert",
-        "mariadb",
         "not_exists",
         "scalar",
         "select",
-        "sqlite",
         "update",
-    )
+    },
+)
+# Dialect-specific symbols: each backend's ``Model`` base, ``Config``, and column
+# constructors. MariaDB additionally exposes the JSON column attribute type.
+_DIALECT_NAMES = frozenset(
+    {
+        "Blob",
+        "Boolean",
+        "Config",
+        "CurrentTimestamp",
+        "DateTime",
+        "ForeignKey",
+        "Integer",
+        "Json",
+        "Model",
+        "Real",
+        "Text",
+    },
+)
+_SQLITE_EXPECTED = _COMMON_NAMES | _DIALECT_NAMES
+_MARIADB_EXPECTED = _SQLITE_EXPECTED | {"JsonAttr"}
 
-    assert_eq(tuple(snekql.__all__), expected_names)
-    for name in expected_names:
-        assert_in(name, snekql.__all__)
-        assert_eq(getattr(snekql, name), getattr(snekql, name))
+
+def _assert_has_specific_docstring(value: object) -> None:
+    docstring = getattr(value, "__doc__", None)
+    assert_ne(docstring, None)
+    assert_ne(docstring, "")
+    assert_ne(docstring, object.__doc__)
+
+
+def _catch_as_snekql_error(error: sqlite.SnekqlError) -> None:
+    try:
+        raise error
+    except sqlite.SnekqlError as caught_error:
+        assert_is(caught_error, error)
+
+
+@test()
+def package_root_only_exposes_backend_namespaces() -> None:
+    """The package root carries no flat surface, only the namespace handles."""
+
+    assert_eq(tuple(snekql.__all__), ("mariadb", "sqlite"))
+    assert_not_in("select", snekql.__all__)
+    assert not hasattr(snekql, "select")
+    assert not hasattr(snekql, "Model")
+
+
+@test()
+def backend_namespaces_export_canonical_names() -> None:
+    """Each backend namespace curates the neutral plus its dialect-specific names."""
+
+    assert_eq(frozenset(sqlite.__all__), _SQLITE_EXPECTED)
+    assert_eq(frozenset(mariadb.__all__), _MARIADB_EXPECTED)
+    for name in sqlite.__all__:
+        assert_in(name, sqlite.__all__)
+        assert_is(getattr(sqlite, name), getattr(sqlite, name))
+    for name in mariadb.__all__:
+        assert_is(getattr(mariadb, name), getattr(mariadb, name))
 
 
 @test()
@@ -134,7 +165,7 @@ def testing_mariadb_namespace_exports_test_server_names() -> None:
     assert_in("temporary_mariadb_server", testing_mariadb.__all__)
     assert_isinstance(
         testing_mariadb.TemporaryMariaDBServerError("failure"),
-        snekql.SnekqlError,
+        sqlite.SnekqlError,
     )
     assert "testing" not in snekql.__all__
 
@@ -143,11 +174,11 @@ def testing_mariadb_namespace_exports_test_server_names() -> None:
 def query_factory_functions_reject_empty_selects() -> None:
     """Selecting no model or fields is package-originated query misuse."""
 
-    select_fn = cast("Callable[..., object]", snekql.select)
+    select_fn = cast("Callable[..., object]", sqlite.select)
 
     try:
         _ = select_fn()
-    except snekql.QueryConstructionError:
+    except sqlite.QueryConstructionError:
         return
 
     msg = "select() should reject empty selection"
@@ -158,86 +189,91 @@ def query_factory_functions_reject_empty_selects() -> None:
 def column_declarations_produce_query_attributes() -> None:
     """Column declarations leave public descriptors on table model classes."""
 
-    class AttributeUser(snekql.Model[snekql.Pending, "AttributeUser[snekql.Fetched]"]):
+    class AttributeUser(sqlite.Model[sqlite.Pending, "AttributeUser[sqlite.Fetched]"]):
         """Table model for descriptor smoke checks."""
 
-        email: AttributeUser.Col[str] = snekql.Text(nullable=False)
+        email: AttributeUser.Col[str] = sqlite.Text(nullable=False)
 
-    assert_isinstance(AttributeUser.email, snekql.Attr)
-    assert_isinstance(AttributeUser.email.eq("alice@example.com"), snekql.Predicate)
-    assert_isinstance(AttributeUser.email.asc(), snekql.OrderBy)
-    assert_isinstance(AttributeUser.email.to("new@example.com"), snekql.Assignment)
+    assert_isinstance(AttributeUser.email, sqlite.Attr)
+    assert_isinstance(AttributeUser.email.eq("alice@example.com"), sqlite.Predicate)
+    assert_isinstance(AttributeUser.email.asc(), sqlite.OrderBy)
+    assert_isinstance(AttributeUser.email.to("new@example.com"), sqlite.Assignment)
 
 
 @test()
-def sqlite_namespace_exports_backend_specific_names() -> None:
-    """The SQLite namespace exposes the future backend-specific model shape."""
+def backend_namespaces_diverge_on_dialect_specific_names() -> None:
+    """The two namespaces share neutral symbols but own distinct dialect ones."""
 
-    assert_is(snekql.sqlite.Model, snekql.Model)
-    assert_is(snekql.sqlite.Index, snekql.Index)
-    assert_is(snekql.sqlite.Integer, snekql.Integer)
-    assert_is(snekql.sqlite.Text, snekql.Text)
-    assert_in("Config", snekql.sqlite.__all__)
+    # Neutral symbols are the very same objects in both namespaces.
+    assert_is(sqlite.select, mariadb.select)
+    assert_is(sqlite.Attr, mariadb.Attr)
+    assert_is(sqlite.Predicate, mariadb.Predicate)
 
-    class SqliteUser(snekql.sqlite.Model[snekql.Pending, "SqliteUser[snekql.Fetched]"]):
+    # The Model base and JSON column differ per backend.
+    assert sqlite.Model is not mariadb.Model
+    assert sqlite.Json is not mariadb.Json
+    assert_in("JsonAttr", mariadb.__all__)
+    assert_not_in("JsonAttr", sqlite.__all__)
+
+    class SqliteUser(sqlite.Model[sqlite.Pending, "SqliteUser[sqlite.Fetched]"]):
         """SQLite table model declared through the SQLite namespace."""
 
-        email: SqliteUser.Col[str] = snekql.sqlite.Text(nullable=False)
+        email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
 
-    assert_isinstance(SqliteUser.email, snekql.sqlite.Attr)
-    assert_isinstance(SqliteUser.email.eq("alice@example.com"), snekql.Predicate)
+    assert_isinstance(SqliteUser.email, sqlite.Attr)
+    assert_isinstance(SqliteUser.email.eq("alice@example.com"), sqlite.Predicate)
 
 
 @test()
 def mutation_query_chain_methods_return_query_objects() -> None:
     """Public update/delete chain methods keep returning mutation query objects."""
 
-    class MutationUser(snekql.Model[snekql.Pending, "MutationUser[snekql.Fetched]"]):
+    class MutationUser(sqlite.Model[sqlite.Pending, "MutationUser[sqlite.Fetched]"]):
         """Table model for mutation chain smoke checks."""
 
-        email: MutationUser.Col[str] = snekql.Text(nullable=False)
-        status: MutationUser.Col[str] = snekql.Text(nullable=False)
+        email: MutationUser.Col[str] = sqlite.Text(nullable=False)
+        status: MutationUser.Col[str] = sqlite.Text(nullable=False)
 
     assignment = MutationUser.status.to("disabled")
     predicate = MutationUser.email.eq("alice@example.com")
 
-    update_query = snekql.update(MutationUser)
-    delete_query = snekql.delete(MutationUser)
+    update_query = sqlite.update(MutationUser)
+    delete_query = sqlite.delete(MutationUser)
 
-    assert_isinstance(update_query.set(assignment), snekql.UpdateQuery)
-    assert_isinstance(update_query.where(predicate), snekql.UpdateQuery)
-    assert_isinstance(update_query.all(), snekql.UpdateQuery)
-    assert_isinstance(delete_query.where(predicate), snekql.DeleteQuery)
-    assert_isinstance(delete_query.all(), snekql.DeleteQuery)
+    assert_isinstance(update_query.set(assignment), sqlite.UpdateQuery)
+    assert_isinstance(update_query.where(predicate), sqlite.UpdateQuery)
+    assert_isinstance(update_query.all(), sqlite.UpdateQuery)
+    assert_isinstance(delete_query.where(predicate), sqlite.DeleteQuery)
+    assert_isinstance(delete_query.all(), sqlite.DeleteQuery)
 
 
 @test()
 def select_query_chain_methods_return_query_objects() -> None:
     """Public select chain methods keep returning select query objects."""
 
-    class ChainUser(snekql.Model[snekql.Pending, "ChainUser[snekql.Fetched]"]):
+    class ChainUser(sqlite.Model[sqlite.Pending, "ChainUser[sqlite.Fetched]"]):
         """Table model for select chain smoke checks."""
 
-    query = snekql.select(ChainUser)
+    query = sqlite.select(ChainUser)
 
-    assert_isinstance(query.all(), snekql.SelectModelQuery)
-    assert_isinstance(query.limit(10), snekql.SelectModelQuery)
-    assert_isinstance(query.offset(5), snekql.SelectModelQuery)
+    assert_isinstance(query.all(), sqlite.SelectModelQuery)
+    assert_isinstance(query.limit(10), sqlite.SelectModelQuery)
+    assert_isinstance(query.offset(5), sqlite.SelectModelQuery)
 
 
 @test()
 def query_factory_functions_return_public_query_objects() -> None:
     """Query builder entry points return stable public query classes."""
 
-    class QueryUser(snekql.Model[snekql.Pending, "QueryUser[snekql.Fetched]"]):
+    class QueryUser(sqlite.Model[sqlite.Pending, "QueryUser[sqlite.Fetched]"]):
         """Table model for query factory smoke checks."""
 
     row = object.__new__(QueryUser)
 
-    assert_isinstance(snekql.select(QueryUser), snekql.SelectModelQuery)
-    assert_isinstance(snekql.insert(row), snekql.InsertQuery)
-    assert_isinstance(snekql.update(QueryUser), snekql.UpdateQuery)
-    assert_isinstance(snekql.delete(QueryUser), snekql.DeleteQuery)
+    assert_isinstance(sqlite.select(QueryUser), sqlite.SelectModelQuery)
+    assert_isinstance(sqlite.insert(row), sqlite.InsertQuery)
+    assert_isinstance(sqlite.update(QueryUser), sqlite.UpdateQuery)
+    assert_isinstance(sqlite.delete(QueryUser), sqlite.DeleteQuery)
 
 
 @test()
@@ -245,52 +281,52 @@ def public_classes_have_specific_docstrings() -> None:
     """Public marker, error, column, query, and runtime classes explain intent."""
 
     documented_classes = (
-        snekql.Assignment,
-        snekql.Attr,
-        snekql.Blob,
-        snekql.Boolean,
-        snekql.CurrentTimestamp,
-        snekql.Database,
-        snekql.DatabaseClosedError,
-        snekql.DatabaseCloseTimeoutError,
-        snekql.DatabaseClosingError,
-        snekql.DatabaseRuntimeError,
-        snekql.DateTime,
-        snekql.DeleteQuery,
-        snekql.ExecutionError,
-        snekql.Fetched,
-        snekql.FrozenModelError,
-        snekql.Index,
-        snekql.InsertQuery,
-        snekql.Integer,
-        snekql.Json,
-        snekql.MigrationError,
-        snekql.MigrationLockTimeoutError,
-        snekql.Missing,
-        snekql.Model,
-        snekql.ModelDeclarationError,
-        snekql.ModelError,
-        snekql.ModelMeta,
-        snekql.ModelValidationError,
-        snekql.OrderBy,
-        snekql.Pending,
-        snekql.PoolTimeoutError,
-        snekql.Predicate,
-        snekql.QueryCompilationError,
-        snekql.QueryConstructionError,
-        snekql.QueryError,
-        snekql.Real,
-        snekql.SchemaError,
-        snekql.SchemaVerificationError,
-        snekql.SelectModelQuery,
-        snekql.SelectTupleQuery,
-        snekql.SelectValueQuery,
-        snekql.SnekqlError,
-        snekql.Table,
-        snekql.Text,
-        snekql.Transaction,
-        snekql.TransactionClosedError,
-        snekql.UpdateQuery,
+        sqlite.Assignment,
+        sqlite.Attr,
+        sqlite.Blob,
+        sqlite.Boolean,
+        sqlite.CurrentTimestamp,
+        sqlite.Database,
+        sqlite.DatabaseClosedError,
+        sqlite.DatabaseCloseTimeoutError,
+        sqlite.DatabaseClosingError,
+        sqlite.DatabaseRuntimeError,
+        sqlite.DateTime,
+        sqlite.DeleteQuery,
+        sqlite.ExecutionError,
+        sqlite.Fetched,
+        sqlite.FrozenModelError,
+        sqlite.Index,
+        sqlite.InsertQuery,
+        sqlite.Integer,
+        sqlite.Json,
+        sqlite.MigrationError,
+        sqlite.MigrationLockTimeoutError,
+        sqlite.Missing,
+        sqlite.Model,
+        sqlite.ModelDeclarationError,
+        sqlite.ModelError,
+        sqlite.ModelMeta,
+        sqlite.ModelValidationError,
+        sqlite.OrderBy,
+        sqlite.Pending,
+        sqlite.PoolTimeoutError,
+        sqlite.Predicate,
+        sqlite.QueryCompilationError,
+        sqlite.QueryConstructionError,
+        sqlite.QueryError,
+        sqlite.Real,
+        sqlite.SchemaError,
+        sqlite.SchemaVerificationError,
+        sqlite.SelectModelQuery,
+        sqlite.SelectTupleQuery,
+        sqlite.SelectValueQuery,
+        sqlite.SnekqlError,
+        sqlite.Table,
+        sqlite.Text,
+        sqlite.Transaction,
+        sqlite.TransactionClosedError,
+        sqlite.UpdateQuery,
     )
 
     for documented_class in documented_classes:
@@ -301,8 +337,8 @@ def public_classes_have_specific_docstrings() -> None:
 def missing_sentinel_has_stable_singleton_behavior() -> None:
     """MISSING is the only Missing value applications need to compare with."""
 
-    assert_is(snekql.Missing(), snekql.MISSING)
-    assert_eq(repr(snekql.MISSING), "MISSING")
+    assert_is(sqlite.Missing(), sqlite.MISSING)
+    assert_eq(repr(sqlite.MISSING), "MISSING")
 
 
 @test()
@@ -310,24 +346,24 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
     """All intentional public errors can be caught as SnekqlError."""
 
     errors = (
-        snekql.DatabaseClosedError("package-originated failure"),
-        snekql.DatabaseCloseTimeoutError("package-originated failure"),
-        snekql.DatabaseClosingError("package-originated failure"),
-        snekql.ExecutionError(
+        sqlite.DatabaseClosedError("package-originated failure"),
+        sqlite.DatabaseCloseTimeoutError("package-originated failure"),
+        sqlite.DatabaseClosingError("package-originated failure"),
+        sqlite.ExecutionError(
             "package-originated failure",
             sql="SELECT ?",
             params=(1,),
         ),
-        snekql.FrozenModelError("package-originated failure"),
-        snekql.MigrationError("package-originated failure"),
-        snekql.MigrationLockTimeoutError("package-originated failure"),
-        snekql.ModelDeclarationError("package-originated failure"),
-        snekql.ModelValidationError("package-originated failure"),
-        snekql.PoolTimeoutError("package-originated failure"),
-        snekql.QueryCompilationError("package-originated failure"),
-        snekql.QueryConstructionError("package-originated failure"),
-        snekql.SchemaVerificationError("package-originated failure"),
-        snekql.TransactionClosedError("package-originated failure"),
+        sqlite.FrozenModelError("package-originated failure"),
+        sqlite.MigrationError("package-originated failure"),
+        sqlite.MigrationLockTimeoutError("package-originated failure"),
+        sqlite.ModelDeclarationError("package-originated failure"),
+        sqlite.ModelValidationError("package-originated failure"),
+        sqlite.PoolTimeoutError("package-originated failure"),
+        sqlite.QueryCompilationError("package-originated failure"),
+        sqlite.QueryConstructionError("package-originated failure"),
+        sqlite.SchemaVerificationError("package-originated failure"),
+        sqlite.TransactionClosedError("package-originated failure"),
     )
 
     catches: tuple[Callable[[], None], ...] = tuple(
@@ -342,7 +378,7 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
 def execution_error_preserves_sql_and_params() -> None:
     """Execution failures expose query context through the public exception."""
 
-    error = snekql.ExecutionError(
+    error = sqlite.ExecutionError(
         "insert failed",
         sql='INSERT INTO "user" ("email") VALUES (?)',
         params=("alice@example.com",),

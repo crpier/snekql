@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
-from snekql import (
+from snekql._schema_shape import ColumnShape, IndexShape, TableShape
+from snekql._schema_startup import initialize_schema
+from snekql.sqlite import (
     Fetched,
     Index,
     Integer,
@@ -16,8 +18,6 @@ from snekql import (
     SchemaVerificationError,
     Text,
 )
-from snekql._schema_shape import ColumnShape, IndexShape, TableShape
-from snekql._schema_startup import initialize_schema
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

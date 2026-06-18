@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from snektest import assert_eq, test
 
-from snekql import Fetched, Pending, mariadb, select
+from snekql import mariadb
+from snekql.mariadb import Fetched, Pending, select
 from snekql.mariadb.query import (
     compile_mariadb_select_sql,
     materialize_mariadb_select_row,

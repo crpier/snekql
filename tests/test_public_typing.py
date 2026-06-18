@@ -7,7 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_type
 
-from snekql import (
+from snekql import mariadb, sqlite
+from snekql.sqlite import (
     MISSING,
     Aggregate,
     CurrentTimestamp,
@@ -35,11 +36,9 @@ from snekql import (
     UpdateQuery,
     exists,
     insert,
-    mariadb,
     not_exists,
     scalar,
     select,
-    sqlite,
     update,
 )
 from snekql.testing import mariadb as testing_mariadb

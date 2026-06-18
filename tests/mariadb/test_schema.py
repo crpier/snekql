@@ -15,7 +15,8 @@ from snektest import (
     test,
 )
 
-from snekql import (
+from snekql import mariadb
+from snekql.mariadb import (
     MISSING,
     Database,
     Fetched,
@@ -25,7 +26,6 @@ from snekql import (
     SchemaPolicy,
     SchemaVerificationError,
     StructuredLogger,
-    mariadb,
 )
 from snekql.model import Table
 from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server

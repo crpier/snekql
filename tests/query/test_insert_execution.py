@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 from snektest import assert_eq, assert_in, assert_is_none, assert_raises, test
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     Database,
     ExecutionError,

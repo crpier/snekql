@@ -10,7 +10,7 @@ from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, test
 
-from snekql import (
+from snekql.sqlite import (
     MISSING,
     Boolean,
     Database,

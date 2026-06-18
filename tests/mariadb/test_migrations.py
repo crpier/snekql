@@ -10,13 +10,8 @@ from __future__ import annotations
 import anyio
 from snektest import AsyncFixture, assert_eq, assert_true, load_fixture, test
 
-from snekql import (
-    MISSING,
-    Database,
-    Fetched,
-    Pending,
-    mariadb,
-)
+from snekql import mariadb
+from snekql.mariadb import MISSING, Database, Fetched, Pending
 from snekql.testing.mariadb import TemporaryMariaDBServer
 from tests.helpers import NULL_LOGGER, provide_mariadb_server
 

@@ -8,7 +8,11 @@ import anyio
 import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
-from snekql import (
+from snekql.mariadb.runtime import MariaDBConnectionPool
+from snekql.model import BackendFamily
+from snekql.query import AnySelectQuery
+from snekql.runtime import RuntimeConnection
+from snekql.sqlite import (
     MISSING,
     Database,
     DatabaseCloseTimeoutError,
@@ -22,10 +26,6 @@ from snekql import (
     insert,
     select,
 )
-from snekql.mariadb.runtime import MariaDBConnectionPool
-from snekql.model import BackendFamily
-from snekql.query import AnySelectQuery
-from snekql.runtime import RuntimeConnection
 from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
 from tests.helpers import NULL_LOGGER

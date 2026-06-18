@@ -8,7 +8,8 @@ from typing import cast
 from pydantic import PositiveInt
 from snektest import assert_eq, assert_raises, test
 
-from snekql import (
+from snekql._model_materialization import decode_model_row, encode_model_row
+from snekql.sqlite import (
     Boolean,
     DateTime,
     Fetched,
@@ -18,7 +19,6 @@ from snekql import (
     ModelValidationError,
     Pending,
 )
-from snekql._model_materialization import decode_model_row, encode_model_row
 
 
 @test(mark="fast")
