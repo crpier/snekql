@@ -8,18 +8,18 @@ from typing import Any, Literal, cast
 import anyio
 from aiosqlite import Connection, Cursor
 
-from snekql._pool import (
-    SQLiteConnectionPool,
-    close_sqlite_connection,
-    normalize_sqlite_database,
-    open_sqlite_connection,
-)
 from snekql._schema_startup import validate_schema_models, validate_schema_policy
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
 from snekql.query import AnySelectQuery
 from snekql.sqlite.config import Config
 from snekql.sqlite.migrations import apply_sqlite_migrations
+from snekql.sqlite.pool import (
+    SQLiteConnectionPool,
+    close_sqlite_connection,
+    normalize_sqlite_database,
+    open_sqlite_connection,
+)
 from snekql.sqlite.query import (
     compile_sqlite_select_sql,
     compile_sqlite_write_sql,
