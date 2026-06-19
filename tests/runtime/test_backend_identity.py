@@ -14,7 +14,7 @@ from snekql.sqlite import (
     Text,
     select,
 )
-from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import TemporaryMariaDBServer, provide_mariadb_server
 
 
 class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[Fetched]"]):
@@ -48,9 +48,7 @@ async def sqlite_initialization_rejects_mariadb_models() -> None:
     """SQLite Database startup rejects MariaDB Table Models."""
 
     with assert_raises(DatabaseRuntimeError) as error:
-        _ = await Database.initialize(
-            logger=NULL_LOGGER, database=":memory:", models=[MariadbIdentityUser]
-        )
+        _ = await Database.initialize(database=":memory:", models=[MariadbIdentityUser])
 
     assert_in("expected sqlite", str(error.exception))
     assert_in("received mariadb", str(error.exception))
@@ -63,7 +61,6 @@ async def mariadb_initialization_rejects_sqlite_models() -> None:
     with assert_raises(DatabaseRuntimeError) as error:
         _ = await Database.initialize(
             mariadb.Config(database="app", user="snekql"),
-            logger=NULL_LOGGER,
             models=[SqliteIdentityUser],
         )
 
@@ -75,7 +72,7 @@ async def mariadb_initialization_rejects_sqlite_models() -> None:
 async def sqlite_transaction_rejects_mariadb_queries() -> None:
     """SQLite Transactions reject MariaDB queries."""
 
-    sqlite_database = await Database.initialize(logger=NULL_LOGGER, database=":memory:")
+    sqlite_database = await Database.initialize(database=":memory:")
     try:
         async with sqlite_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
@@ -93,9 +90,7 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    mariadb_database = await Database.initialize(
-        _config_from_server(server), logger=NULL_LOGGER
-    )
+    mariadb_database = await Database.initialize(_config_from_server(server))
     try:
         async with mariadb_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:

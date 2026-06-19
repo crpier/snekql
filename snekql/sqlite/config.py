@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from snekql._runtime_selection import RuntimeConfig
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
-    from snekql.structured_logging import ResolvedStructuredLogger
 
 
 def _resolve_pool_size(
@@ -82,7 +81,6 @@ class Config:
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
         *,
-        logger: ResolvedStructuredLogger,
         migrations: dict[str, str] | None = None,
     ) -> object:
         """Import and initialize the SQLite Backend Runtime Adapter lazily."""
@@ -102,15 +100,12 @@ class Config:
             self,
             models,
             schema_policy,
-            logger=logger,
             migrations=migrations,
         )
 
     async def apply_migrations(
         self,
         migrations: dict[str, str],
-        *,
-        logger: ResolvedStructuredLogger,
     ) -> None:
         """Apply pending migrations on a migrate-only SQLite connection."""
 
@@ -128,7 +123,6 @@ class Config:
         await cast("Any", runtime_module).migrate_runtime(
             self,
             migrations,
-            logger=logger,
         )
 
 

@@ -27,7 +27,6 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import NULL_LOGGER
 
 
 class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
@@ -144,9 +143,7 @@ def comparison_predicates_reject_none_arguments() -> None:
 async def comparison_predicates_filter_rows_end_to_end() -> None:
     """A BETWEEN filter selects only the in-range rows through the runtime."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[Reading]
-    )
+    database = await Database.initialize(database=":memory:", models=[Reading])
     try:
         async with database.transaction() as tx:
             for amount in (1, 5, 10, 15):

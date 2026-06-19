@@ -1,7 +1,15 @@
-"""SQLite Query Runtime structured logging tests."""
+"""SQLite Query Runtime stdlib logging tests.
+
+snekql logs through the stdlib ``logging`` hierarchy rooted at the ``snekql``
+logger. These tests attach a recording handler to that logger and assert on the
+rendered messages and levels, mirroring how an application consumes snekql logs.
+"""
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
@@ -24,40 +32,52 @@ from snekql.sqlite import (
 )
 
 
-class _RecordingStructuredLogger:
-    """Structured logger fake that records event calls for assertions."""
+class _RecordingHandler(logging.Handler):
+    """Logging handler that keeps every record for assertions."""
 
     def __init__(self) -> None:
-        self.events: list[tuple[str, str, dict[str, object]]] = []
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
 
-    def debug(self, event: str, **fields: object) -> None:
-        self.events.append(("debug", event, fields))
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
 
-    def info(self, event: str, **fields: object) -> None:
-        self.events.append(("info", event, fields))
+    def messages(self, level: int) -> list[str]:
+        """Return rendered messages recorded at exactly the given level."""
 
-    def warning(self, event: str, **fields: object) -> None:
-        self.events.append(("warning", event, fields))
+        return [
+            record.getMessage() for record in self.records if record.levelno == level
+        ]
 
-    def error(self, event: str, **fields: object) -> None:
-        self.events.append(("error", event, fields))
+    def has(self, level: int, fragment: str) -> bool:
+        """Return whether a record at the level contains the fragment."""
 
-    def find(self, event: str) -> dict[str, object]:
-        """Return the first recorded event fields for the named event."""
+        return any(fragment in message for message in self.messages(level))
 
-        for _level, recorded_event, fields in self.events:
-            if recorded_event == event:
-                return fields
-        msg = f"event not recorded: {event}"
+    def find(self, level: int, fragment: str) -> str:
+        """Return the first rendered message at the level containing fragment."""
+
+        for message in self.messages(level):
+            if fragment in message:
+                return message
+        msg = f"no {logging.getLevelName(level)} message contained {fragment!r}"
         raise AssertionError(msg)
 
-    def has(self, level: str, event: str) -> bool:
-        """Return whether a level/event pair was recorded."""
 
-        return any(
-            recorded_level == level and recorded_event == event
-            for recorded_level, recorded_event, _fields in self.events
-        )
+@contextmanager
+def _capture_snekql_logs() -> Generator[_RecordingHandler]:
+    """Capture all ``snekql`` log records at DEBUG for the block's duration."""
+
+    logger = logging.getLogger("snekql")
+    handler = _RecordingHandler()
+    previous_level = logger.level
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    try:
+        yield handler
+    finally:
+        logger.setLevel(previous_level)
+        logger.removeHandler(handler)
 
 
 def _execute_sql(database_path: Path, sql: str) -> None:
@@ -70,20 +90,17 @@ def _execute_sql(database_path: Path, sql: str) -> None:
 
 
 @test()
-def database_initialization_requires_a_logger() -> None:
-    """The public initialization path requires explicit structured logging."""
+def database_initialization_takes_no_logger() -> None:
+    """The public initialization path no longer accepts a logger argument."""
 
     initialize = cast("Any", Database.initialize)
 
     with assert_raises(TypeError):
-        _ = initialize(database=":memory:")
-
-    with assert_raises(TypeError):
-        _ = initialize(_RecordingStructuredLogger(), database=":memory:")
+        _ = initialize(database=":memory:", logger=object())
 
 
 @test(mark="medium")
-async def database_initialization_emits_structured_events() -> None:
+async def database_initialization_emits_events() -> None:
     """Database initialization logs backend and schema startup context."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -96,58 +113,50 @@ async def database_initialization_emits_structured_events() -> None:
         )
         email: User.Col[str] = Text(nullable=False)
 
-    logger = _RecordingStructuredLogger()
-    with TemporaryDirectory() as directory:
+    with _capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=logger,
             database=database_path,
             models=[User],
         )
         await database.close()
 
-    started = logger.find("database initialization started")
-    completed = logger.find("database initialization completed")
-    created = logger.find("schema table created")
+    started = logs.find(logging.INFO, "database initialization started")
+    completed = logs.find(logging.INFO, "database initialization completed")
+    created = logs.find(logging.DEBUG, "schema table")
 
-    assert_eq(started["backend"], "sqlite")
-    assert_eq(started["model_count"], 1)
-    assert_eq(started["table_names"], ("user",))
-    assert_eq(completed["backend"], "sqlite")
-    assert_eq(created["table_name"], "user")
-    assert_true(logger.has("info", "database initialization started"))
-    assert_true(logger.has("info", "database initialization completed"))
+    assert_true("sqlite" in started)
+    assert_true("'user'" in started)
+    assert_true("sqlite" in completed)
+    assert_true("'user'" in created and "created" in created)
 
 
 @test(mark="medium")
-async def warn_schema_policy_uses_injected_structured_logger() -> None:
-    """Warn schema verification reports drift through the supplied logger."""
+async def warn_schema_policy_logs_drift() -> None:
+    """Warn schema verification reports drift as a warning record."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift logging."""
 
         email: User.Col[str] = Text(nullable=False)
 
-    logger = _RecordingStructuredLogger()
-    with TemporaryDirectory() as directory:
+    with _capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
         database = await Database.initialize(
-            logger=logger,
             database=database_path,
             models=[User],
             schema_policy="warn",
         )
         await database.close()
 
-    drift = logger.find("schema drift detected")
-    assert_eq(drift["table_name"], "user")
-    assert_true(logger.has("warning", "schema drift detected"))
+    drift = logs.find(logging.WARNING, "schema drift detected")
+    assert_true("'user'" in drift)
 
 
 @test(mark="medium")
-async def transaction_execution_emits_query_context() -> None:
+async def transaction_execution_logs_query_context() -> None:
     """Transaction logging includes SQL and params without redaction."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -160,41 +169,31 @@ async def transaction_execution_emits_query_context() -> None:
         )
         email: User.Col[str] = Text(nullable=False)
 
-    logger = _RecordingStructuredLogger()
-    database = await Database.initialize(
-        logger=logger,
-        database=":memory:",
-        models=[User],
-    )
-    try:
-        async with database.transaction() as tx:
-            await tx.execute(insert(User(email="secret@example.com")))
-            row = await tx.fetch_one(
-                select(User.email).where(User.email.eq("secret@example.com"))
-            )
-    finally:
-        await database.close()
+    with _capture_snekql_logs() as logs:
+        database = await Database.initialize(
+            database=":memory:",
+            models=[User],
+        )
+        try:
+            async with database.transaction() as tx:
+                await tx.execute(insert(User(email="secret@example.com")))
+                row = await tx.fetch_one(
+                    select(User.email).where(User.email.eq("secret@example.com"))
+                )
+        finally:
+            await database.close()
 
     assert_eq(row, "secret@example.com")
-    write = next(
-        fields
-        for _level, event, fields in logger.events
-        if event == "query executed" and fields["operation"] == "write"
-    )
-    select_event = next(
-        fields
-        for _level, event, fields in logger.events
-        if event == "query executed" and fields["operation"] == "fetch_one"
-    )
-
-    assert_eq(write["params"], ("secret@example.com",))
-    assert_eq(select_event["params"], ("secret@example.com",))
-    assert_true(logger.has("debug", "transaction begin"))
-    assert_true(logger.has("debug", "transaction commit"))
+    write = logs.find(logging.DEBUG, "write executed")
+    fetched = logs.find(logging.DEBUG, "fetch_one executed")
+    assert_true("secret@example.com" in write)
+    assert_true("secret@example.com" in fetched)
+    assert_true(logs.has(logging.DEBUG, "transaction begin"))
+    assert_true(logs.has(logging.DEBUG, "transaction commit"))
 
 
 @test(mark="medium")
-async def query_failure_emits_structured_error_context() -> None:
+async def query_failure_logs_error_context() -> None:
     """Execution failures log SQL and params before raising ExecutionError."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -202,46 +201,40 @@ async def query_failure_emits_structured_error_context() -> None:
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    logger = _RecordingStructuredLogger()
-    database = await Database.initialize(
-        logger=logger,
-        database=":memory:",
-        models=[User],
-    )
-    try:
-        async with database.transaction() as tx:
-            await tx.execute(insert(User(email="duplicate@example.com")))
-            with assert_raises(ExecutionError):
+    with _capture_snekql_logs() as logs:
+        database = await Database.initialize(
+            database=":memory:",
+            models=[User],
+        )
+        try:
+            async with database.transaction() as tx:
                 await tx.execute(insert(User(email="duplicate@example.com")))
-    finally:
-        await database.close()
+                with assert_raises(ExecutionError):
+                    await tx.execute(insert(User(email="duplicate@example.com")))
+        finally:
+            await database.close()
 
-    failure = logger.find("query failed")
-    assert_eq(failure["operation"], "write")
-    assert_eq(failure["params"], ("duplicate@example.com",))
-    assert_true(logger.has("error", "query failed"))
+    failure = logs.find(logging.ERROR, "write query failed")
+    assert_true("duplicate@example.com" in failure)
 
 
 @test(mark="medium")
-async def pool_timeout_emits_structured_warning() -> None:
+async def pool_timeout_logs_warning() -> None:
     """Pool acquisition timeouts are logged while preserving the public error."""
 
-    logger = _RecordingStructuredLogger()
-    database = await Database.initialize(
-        logger=logger,
-        database=":memory:",
-        acquire_timeout=0.0,
-        pool_size=1,
-    )
-    try:
-        async with database.transaction():
-            with assert_raises(PoolTimeoutError):
-                async with database.transaction(timeout=0.0):
-                    pass
-    finally:
-        await database.close()
+    with _capture_snekql_logs() as logs:
+        database = await Database.initialize(
+            database=":memory:",
+            acquire_timeout=0.0,
+            pool_size=1,
+        )
+        try:
+            async with database.transaction():
+                with assert_raises(PoolTimeoutError):
+                    async with database.transaction(timeout=0.0):
+                        pass
+        finally:
+            await database.close()
 
-    timeout = logger.find("connection acquisition timed out")
-    assert_eq(timeout["backend"], "sqlite")
-    assert_eq(timeout["timeout"], 0.0)
-    assert_true(logger.has("warning", "connection acquisition timed out"))
+    timeout = logs.find(logging.WARNING, "connection acquisition timed out")
+    assert_true("sqlite" in timeout)

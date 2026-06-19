@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 from types import TracebackType
@@ -55,12 +56,9 @@ from snekql.query import (
     UpdateQuery,
 )
 from snekql.storage import SchemaPolicy
-from snekql.structured_logging import (
-    ResolvedStructuredLogger,
-    StructuredLogger,
-    resolve_structured_logger,
-)
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+
+logger = logging.getLogger(__name__)
 
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
@@ -105,7 +103,6 @@ class RuntimeBackend(Protocol):
 
     acquire_timeout: NonNegativeFloat
     backend_family: BackendFamily
-    logger: ResolvedStructuredLogger
 
     async def acquire(
         self,
@@ -168,29 +165,22 @@ class Transaction:
         if self.closed or self.connection is not None:
             msg = "transaction is closed"
             raise TransactionClosedError(msg)
-        self.runtime.logger.debug(
-            "transaction acquiring connection",
-            backend=self.runtime.backend_family,
-            timeout=self.timeout,
+        logger.debug(
+            "%s transaction acquiring connection (timeout=%s)",
+            self.runtime.backend_family,
+            self.timeout,
         )
         connection = await self.runtime.acquire(self.timeout)
         try:
             await connection.begin()
         except Exception as error:
-            self.runtime.logger.error(  # noqa: TRY400
-                "transaction begin failed",
-                backend=self.runtime.backend_family,
-                error_type=type(error).__name__,
-            )
+            logger.exception("%s transaction begin failed", self.runtime.backend_family)
             with anyio.CancelScope(shield=True):
                 await self.runtime.release(connection)
             msg = "could not begin transaction"
             raise DatabaseRuntimeError(msg) from error
         self.connection = connection
-        self.runtime.logger.debug(
-            "transaction begin",
-            backend=self.runtime.backend_family,
-        )
+        logger.debug("%s transaction begin", self.runtime.backend_family)
         return self
 
     async def __aexit__(
@@ -212,32 +202,26 @@ class Transaction:
                 try:
                     if exc_type is None:
                         await connection.commit()
-                        self.runtime.logger.debug(
-                            "transaction commit",
-                            backend=self.runtime.backend_family,
+                        logger.debug(
+                            "%s transaction commit", self.runtime.backend_family
                         )
                     else:
                         await connection.rollback()
-                        self.runtime.logger.debug(
-                            "transaction rollback",
-                            backend=self.runtime.backend_family,
-                            exception_type=exc_type.__name__,
+                        logger.debug(
+                            "%s transaction rollback (%s)",
+                            self.runtime.backend_family,
+                            exc_type.__name__,
                         )
                 except Exception as error:
-                    self.runtime.logger.error(  # noqa: TRY400
-                        "transaction close failed",
-                        backend=self.runtime.backend_family,
-                        error_type=type(error).__name__,
+                    logger.exception(
+                        "%s transaction close failed", self.runtime.backend_family
                     )
                     if exc_type is None:
                         msg = "could not close transaction"
                         raise DatabaseRuntimeError(msg) from error
                 finally:
                     await self.runtime.release(connection)
-                    self.runtime.logger.debug(
-                        "transaction released",
-                        backend=self.runtime.backend_family,
-                    )
+                    logger.debug("%s transaction released", self.runtime.backend_family)
 
     @overload
     async def fetch_all(
@@ -282,23 +266,20 @@ class Transaction:
                 finally:
                     await cursor.close()
             except Exception as error:
-                self.runtime.logger.error(  # noqa: TRY400
-                    "query failed",
-                    backend=self.runtime.backend_family,
-                    error_type=type(error).__name__,
-                    operation="fetch_all",
-                    params=params,
-                    sql=sql,
+                logger.exception(
+                    "%s fetch_all query failed: %s params=%r",
+                    self.runtime.backend_family,
+                    sql,
+                    params,
                 )
                 msg = "select failed"
                 raise ExecutionError(msg, sql=sql, params=params) from error
-            self.runtime.logger.debug(
-                "query executed",
-                backend=self.runtime.backend_family,
-                operation="fetch_all",
-                params=params,
-                row_count=len(rows),
-                sql=sql,
+            logger.debug(
+                "%s fetch_all executed: %s params=%r rows=%d",
+                self.runtime.backend_family,
+                sql,
+                params,
+                len(rows),
             )
             return [
                 self.runtime.materialize_select_row(
@@ -350,23 +331,20 @@ class Transaction:
                 finally:
                     await cursor.close()
             except Exception as error:
-                self.runtime.logger.error(  # noqa: TRY400
-                    "query failed",
-                    backend=self.runtime.backend_family,
-                    error_type=type(error).__name__,
-                    operation="fetch_one",
-                    params=params,
-                    sql=sql,
+                logger.exception(
+                    "%s fetch_one query failed: %s params=%r",
+                    self.runtime.backend_family,
+                    sql,
+                    params,
                 )
                 msg = "select failed"
                 raise ExecutionError(msg, sql=sql, params=params) from error
-            self.runtime.logger.debug(
-                "query executed",
-                backend=self.runtime.backend_family,
-                operation="fetch_one",
-                params=params,
-                row_found=row is not None,
-                sql=sql,
+            logger.debug(
+                "%s fetch_one executed: %s params=%r found=%s",
+                self.runtime.backend_family,
+                sql,
+                params,
+                row is not None,
             )
             if row is None:
                 return None
@@ -472,22 +450,19 @@ class Transaction:
                 finally:
                     await cursor.close()
             except Exception as error:
-                self.runtime.logger.error(  # noqa: TRY400
-                    "query failed",
-                    backend=self.runtime.backend_family,
-                    error_type=type(error).__name__,
-                    operation="write",
-                    params=params,
-                    sql=sql,
+                logger.exception(
+                    "%s write query failed: %s params=%r",
+                    self.runtime.backend_family,
+                    sql,
+                    params,
                 )
                 msg = "write failed"
                 raise ExecutionError(msg, sql=sql, params=params) from error
-            self.runtime.logger.debug(
-                "query executed",
-                backend=self.runtime.backend_family,
-                operation="write",
-                params=params,
-                sql=sql,
+            logger.debug(
+                "%s write executed: %s params=%r",
+                self.runtime.backend_family,
+                sql,
+                params,
             )
             if not returning:
                 return None
@@ -587,7 +562,7 @@ class Database:
 
     def __init__(self, _initialized: Never, /) -> None:
         self.runtime = cast("RuntimeBackend", None)
-        msg = "use Database.initialize(..., logger=logger) to create a Database"
+        msg = "use Database.initialize(...) to create a Database"
         raise DatabaseRuntimeError(msg)
 
     @overload
@@ -596,7 +571,6 @@ class Database:
         cls,
         backend: RuntimeConfig,
         *,
-        logger: StructuredLogger,
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
         migrations: dict[str, str] | None = None,
@@ -607,7 +581,6 @@ class Database:
     async def initialize(
         cls,
         *,
-        logger: StructuredLogger,
         database: Path | Literal[":memory:"],
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
@@ -621,7 +594,6 @@ class Database:
         cls,
         backend: object | None = None,
         *,
-        logger: StructuredLogger,
         database: Path | Literal[":memory:"] | None = None,
         models: Sequence[type[Table[Any]]] = (),
         schema_policy: SchemaPolicy = "strict",
@@ -631,7 +603,6 @@ class Database:
     ) -> Self:
         """Initialize connectivity, migrations, schema startup, and lifecycle."""
 
-        structured_logger = resolve_structured_logger(logger=logger)
         try:
             runtime_config = resolve_runtime_config(
                 backend=backend,
@@ -642,39 +613,35 @@ class Database:
             backend_family = runtime_config.backend_family
             validate_model_backends(backend_family, models)
             table_names = tuple(require_model_table_name(model) for model in models)
-            structured_logger.info(
-                "database initialization started",
-                backend=backend_family,
-                model_count=len(models),
-                schema_policy=schema_policy,
-                table_names=table_names,
+            logger.info(
+                "%s database initialization started: %d model(s) %r, policy=%s",
+                backend_family,
+                len(models),
+                table_names,
+                schema_policy,
             )
-            structured_logger.debug(
-                "database backend selected",
-                backend=backend_family,
-                acquire_timeout=runtime_config.acquire_timeout,
-                pool_size=runtime_config.pool_size,
+            logger.debug(
+                "%s backend selected (pool_size=%s, acquire_timeout=%s)",
+                backend_family,
+                runtime_config.pool_size,
+                runtime_config.acquire_timeout,
             )
             runtime = cast(
                 "RuntimeBackend",
                 await runtime_config.initialize_runtime(
                     models,
                     schema_policy,
-                    logger=structured_logger,
                     migrations=migrations,
                 ),
             )
-            structured_logger.info(
-                "database initialization completed",
-                backend=backend_family,
-                model_count=len(models),
-                table_names=table_names,
+            logger.info(
+                "%s database initialization completed: %d model(s) %r",
+                backend_family,
+                len(models),
+                table_names,
             )
-        except Exception as error:
-            structured_logger.error(  # noqa: TRY400
-                "database initialization failed",
-                error_type=type(error).__name__,
-            )
+        except Exception:
+            logger.exception("database initialization failed")
             raise
         database_instance = cls.__new__(cls)
         database_instance.runtime = runtime
@@ -686,7 +653,6 @@ class Database:
         cls,
         backend: RuntimeConfig,
         *,
-        logger: StructuredLogger,
         migrations: dict[str, str],
     ) -> None: ...
 
@@ -695,7 +661,6 @@ class Database:
     async def migrate(
         cls,
         *,
-        logger: StructuredLogger,
         database: Path | Literal[":memory:"],
         migrations: dict[str, str],
         pool_size: PositiveInt = 5,
@@ -703,11 +668,10 @@ class Database:
     ) -> None: ...
 
     @classmethod
-    async def migrate(  # noqa: PLR0913
+    async def migrate(
         cls,
         backend: object | None = None,
         *,
-        logger: StructuredLogger,
         database: Path | Literal[":memory:"] | None = None,
         migrations: dict[str, str],
         pool_size: PositiveInt = 5,
@@ -723,7 +687,6 @@ class Database:
         returned `Database`.
         """
 
-        structured_logger = resolve_structured_logger(logger=logger)
         try:
             runtime_config = resolve_runtime_config(
                 backend=backend,
@@ -732,25 +695,19 @@ class Database:
                 acquire_timeout=acquire_timeout,
             )
             backend_family = runtime_config.backend_family
-            structured_logger.info(
-                "database migrate started",
-                backend=backend_family,
-                migration_count=len(migrations),
+            logger.info(
+                "%s database migrate started: %d migration(s)",
+                backend_family,
+                len(migrations),
             )
-            await runtime_config.apply_migrations(
-                migrations,
-                logger=structured_logger,
+            await runtime_config.apply_migrations(migrations)
+            logger.info(
+                "%s database migrate completed: %d migration(s)",
+                backend_family,
+                len(migrations),
             )
-            structured_logger.info(
-                "database migrate completed",
-                backend=backend_family,
-                migration_count=len(migrations),
-            )
-        except Exception as error:
-            structured_logger.error(  # noqa: TRY400
-                "database migrate failed",
-                error_type=type(error).__name__,
-            )
+        except Exception:
+            logger.exception("database migrate failed")
             raise
 
     @validate_boundary(error_type=DatabaseRuntimeError)

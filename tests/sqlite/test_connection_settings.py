@@ -21,7 +21,6 @@ from snekql.sqlite import (
 )
 from snekql.sqlite.pool import close_sqlite_connection, open_sqlite_connection
 from snekql.sqlite.settings import SQLITE_BUSY_TIMEOUT_MS
-from tests.helpers import NULL_LOGGER
 
 
 async def _pragma_value(connection: Connection, pragma: str) -> object:
@@ -76,7 +75,6 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             models=[Parent, Child],
         )

@@ -8,6 +8,7 @@ Run from the repository root with:
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime
 
 from snekql import sqlite
@@ -15,28 +16,11 @@ from snekql.sqlite import (
     Database,
     Fetched,
     Pending,
-    StructuredLogger,
     delete,
     insert,
     select,
     update,
 )
-
-
-class ExampleLogger:
-    """Tiny structured logger for the runnable example."""
-
-    def debug(self, event: str, **fields: object) -> None:
-        print("debug", event, fields)
-
-    def info(self, event: str, **fields: object) -> None:
-        print("info", event, fields)
-
-    def warning(self, event: str, **fields: object) -> None:
-        print("warning", event, fields)
-
-    def error(self, event: str, **fields: object) -> None:
-        print("error", event, fields)
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -55,12 +39,11 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     )
 
 
-async def main(*, logger: StructuredLogger) -> None:
+async def main() -> None:
     """Exercise v1 create, read, update, and delete behavior."""
 
     db = await Database.initialize(
         sqlite.Config(database=":memory:", pool_size=1),
-        logger=logger,
         models=[User],
     )
     try:
@@ -96,4 +79,9 @@ async def main(*, logger: StructuredLogger) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main(logger=ExampleLogger()))
+    # snekql logs through the stdlib ``snekql`` logger; the application decides
+    # where those records go. Configure logging before running, and tune snekql's
+    # verbosity from its one parent logger.
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger("snekql").setLevel(logging.DEBUG)
+    asyncio.run(main())

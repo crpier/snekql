@@ -19,7 +19,7 @@ from snekql.mariadb import (
     select,
 )
 from snekql.model import Table
-from tests.helpers import NULL_LOGGER, provide_mariadb_server
+from tests.helpers import provide_mariadb_server
 
 
 class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
@@ -46,9 +46,7 @@ async def database_session(
     """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())
-    database = await Database.initialize(
-        server.config(pool_size=1), logger=NULL_LOGGER, models=models
-    )
+    database = await Database.initialize(server.config(pool_size=1), models=models)
     try:
         yield database
     finally:

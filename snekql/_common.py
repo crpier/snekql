@@ -83,7 +83,6 @@ from snekql.storage import (
     Missing,
     SchemaPolicy,
 )
-from snekql.structured_logging import StructuredLogger
 
 __all__ = [
     "MISSING",
@@ -136,7 +135,6 @@ __all__ = [
     "SelectTupleQuery",
     "SelectValueQuery",
     "SnekqlError",
-    "StructuredLogger",
     "Table",
     "Transaction",
     "TransactionClosedError",

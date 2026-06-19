@@ -19,13 +19,13 @@ pending, never re-running an already-applied migration.
 
 from __future__ import annotations
 
+import logging
 from contextlib import AbstractAsyncContextManager
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
 from snekql.errors import MigrationError
 
-if TYPE_CHECKING:
-    from snekql.structured_logging import ResolvedStructuredLogger
+logger = logging.getLogger(__name__)
 
 
 class MigrationBackend(Protocol):
@@ -51,8 +51,6 @@ class MigrationBackend(Protocol):
 async def run_migrations(
     backend: MigrationBackend,
     migrations: dict[str, str],
-    *,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     """Apply each pending migration exactly once in mapping insertion order.
 
@@ -72,12 +70,8 @@ async def run_migrations(
             try:
                 await backend.execute_migration_body(sql)
             except Exception as error:
-                logger.error(  # noqa: TRY400
-                    "migration failed",
-                    migration_name=name,
-                    error_type=type(error).__name__,
-                )
+                logger.exception("migration %r failed", name)
                 msg = f"migration {name!r} failed"
                 raise MigrationError(msg) from error
             await backend.record_applied(name)
-            logger.debug("migration applied", migration_name=name)
+            logger.debug("migration %r applied", name)

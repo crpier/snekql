@@ -13,7 +13,15 @@ and stops auto-imports from landing on the wrong backend (see ADR 0004).
 
 from __future__ import annotations
 
+import logging
+
 from snekql import mariadb as mariadb
 from snekql import sqlite as sqlite
+
+# Library logging hygiene: attach a do-nothing handler to the package's
+# top-level logger so snekql emits nothing unless the application configures
+# logging. Apps silence or route every snekql submodule via this one logger
+# (e.g. ``logging.getLogger("snekql").setLevel(...)``).
+logging.getLogger("snekql").addHandler(logging.NullHandler())
 
 __all__ = ["mariadb", "sqlite"]

@@ -51,14 +51,12 @@ try:
     await tx.execute(statement)
 except ExecutionError as error:
     logger.warning(
-        "snekql execution failed",
-        sql=error.sql,
-        params=error.params,
+        "snekql execution failed: %s params=%r", error.sql, error.params
     )
 ```
 
-`str(error)` includes SQL and parameter reprs for debugging. Runtime structured
-logs may also include SQL and params exactly as supplied to the database driver.
+`str(error)` includes SQL and parameter reprs for debugging. snekql's own
+runtime logs may also include SQL and params exactly as supplied to the driver.
 snekql does not redact secrets; applications should encrypt or safely represent
 private values before they reach the Query Runtime.
 

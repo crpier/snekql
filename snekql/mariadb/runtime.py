@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
 from typing import Any, Literal, cast
@@ -31,8 +32,9 @@ from snekql.mariadb.settings import configure_mariadb_connection
 from snekql.model import Table
 from snekql.query import AnySelectQuery
 from snekql.storage import SchemaPolicy
-from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
+
+logger = logging.getLogger(__name__)
 
 
 def _import_aiomysql() -> Any:
@@ -106,27 +108,20 @@ class MariaDBConnectionPool:
     def __init__(
         self,
         pool: object,
-        *,
-        logger: ResolvedStructuredLogger,
     ) -> None:
         self.closed: bool = False
         self.closing: bool = False
-        self.logger: ResolvedStructuredLogger = logger
         self.pool: object = pool
 
     def check_accepting_work(self) -> None:
         """Reject new work when closed or temporarily closing."""
 
         if self.closed:
-            self.logger.warning(
-                "database rejected work", backend="mariadb", reason="closed"
-            )
+            logger.warning("mariadb database rejected work: closed")
             msg = "database is closed"
             raise DatabaseClosedError(msg)
         if self.closing:
-            self.logger.warning(
-                "database rejected work", backend="mariadb", reason="closing"
-            )
+            logger.warning("mariadb database rejected work: closing")
             msg = "database is closing"
             raise DatabaseClosingError(msg)
 
@@ -134,10 +129,8 @@ class MariaDBConnectionPool:
         """Acquire a MariaDB connection within the requested timeout."""
 
         self.check_accepting_work()
-        self.logger.debug(
-            "connection acquisition started",
-            backend="mariadb",
-            timeout=acquisition_timeout,
+        logger.debug(
+            "mariadb connection acquisition started (timeout=%s)", acquisition_timeout
         )
         try:
             pool = cast("Any", self.pool)
@@ -145,15 +138,14 @@ class MariaDBConnectionPool:
             with anyio.fail_after(acquisition_timeout):
                 connection = await acquire()
         except TimeoutError as error:
-            self.logger.warning(
-                "connection acquisition timed out",
-                backend="mariadb",
-                timeout=acquisition_timeout,
+            logger.warning(
+                "mariadb connection acquisition timed out (timeout=%s)",
+                acquisition_timeout,
             )
             msg = "timed out acquiring database connection"
             raise PoolTimeoutError(msg) from error
         await self._ensure_configured(connection)
-        self.logger.debug("connection acquired", backend="mariadb")
+        logger.debug("mariadb connection acquired")
         return connection
 
     async def _ensure_configured(self, connection: object) -> None:
@@ -170,23 +162,21 @@ class MariaDBConnectionPool:
         try:
             connection._snekql_configured = True  # type: ignore[attr-defined]  # noqa: SLF001
         except AttributeError:
-            self.logger.debug(
-                "connection configuration marker unavailable", backend="mariadb"
-            )
+            logger.debug("mariadb connection configuration marker unavailable")
 
     async def release(self, connection: object) -> None:
         """Return a connection to the underlying aiomysql pool."""
 
         release = cast("Any", self.pool).release
         _ = release(connection)
-        self.logger.debug("connection released", backend="mariadb", closed=False)
+        logger.debug("mariadb connection released")
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         """Close the underlying aiomysql pool and wait for connections."""
 
-        self.logger.debug("database close started", backend="mariadb")
+        logger.debug("mariadb database close started")
         if self.closed:
-            self.logger.debug("database close skipped", backend="mariadb")
+            logger.debug("mariadb database close skipped: already closed")
             return
         self.closing = True
         try:
@@ -196,13 +186,13 @@ class MariaDBConnectionPool:
             with anyio.fail_after(close_timeout):
                 await wait_closed()
         except TimeoutError as error:
-            self.logger.warning("database close timed out", backend="mariadb")
+            logger.warning("mariadb database close timed out")
             msg = "timed out closing database"
             raise DatabaseCloseTimeoutError(msg) from error
         else:
             self.closed = True
             self.closing = False
-            self.logger.debug("database close completed", backend="mariadb")
+            logger.debug("mariadb database close completed")
 
 
 class MariaDBRuntime:
@@ -213,13 +203,11 @@ class MariaDBRuntime:
     def __init__(
         self,
         *,
-        logger: ResolvedStructuredLogger,
         acquire_timeout: NonNegativeFloat,
         connection_pool: MariaDBConnectionPool,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: MariaDBConnectionPool = connection_pool
-        self.logger: ResolvedStructuredLogger = logger
 
     async def acquire(
         self,
@@ -275,13 +263,12 @@ async def initialize_runtime(
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
     *,
-    logger: ResolvedStructuredLogger,
     migrations: dict[str, str] | None = None,
 ) -> MariaDBRuntime:
     """Initialize MariaDB connectivity, migrations, schema startup, and pool."""
 
     aiomysql = _import_aiomysql()
-    logger.debug("mariadb pool opening", host=config.host, port=config.port)
+    logger.debug("mariadb pool opening: %s:%s", config.host, config.port)
     pool = await aiomysql.create_pool(
         autocommit=False,
         charset=config.charset,
@@ -295,7 +282,7 @@ async def initialize_runtime(
         unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
         user=config.user,
     )
-    connection_pool = MariaDBConnectionPool(pool, logger=logger)
+    connection_pool = MariaDBConnectionPool(pool)
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
         if migrations:
@@ -304,13 +291,11 @@ async def initialize_runtime(
                 migrations,
                 lock_name=build_migration_lock_name(config.database),
                 lock_timeout=config.acquire_timeout,
-                logger=logger,
             )
         await initialize_mariadb_schema(
             connection,
             models,
             schema_policy,
-            logger=logger,
             create_missing=not migrations,
         )
     except Exception:
@@ -319,7 +304,6 @@ async def initialize_runtime(
         raise
     await connection_pool.release(connection)
     return MariaDBRuntime(
-        logger=logger,
         acquire_timeout=config.acquire_timeout,
         connection_pool=connection_pool,
     )
@@ -328,8 +312,6 @@ async def initialize_runtime(
 async def migrate_runtime(
     config: Config,
     migrations: dict[str, str],
-    *,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     """Apply pending migrations on a short-lived MariaDB pool, no schema startup.
 
@@ -339,7 +321,7 @@ async def migrate_runtime(
     """
 
     aiomysql = _import_aiomysql()
-    logger.debug("mariadb migrate pool opening", host=config.host, port=config.port)
+    logger.debug("mariadb migrate pool opening: %s:%s", config.host, config.port)
     pool = await aiomysql.create_pool(
         autocommit=False,
         charset=config.charset,
@@ -353,7 +335,7 @@ async def migrate_runtime(
         unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
         user=config.user,
     )
-    connection_pool = MariaDBConnectionPool(pool, logger=logger)
+    connection_pool = MariaDBConnectionPool(pool)
     connection = await connection_pool.acquire(config.acquire_timeout)
     try:
         await apply_mariadb_migrations(
@@ -361,7 +343,6 @@ async def migrate_runtime(
             migrations,
             lock_name=build_migration_lock_name(config.database),
             lock_timeout=config.acquire_timeout,
-            logger=logger,
         )
     finally:
         await connection_pool.release(connection)

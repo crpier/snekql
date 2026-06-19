@@ -26,7 +26,6 @@ from snekql.sqlite import (
     update,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql, compile_sqlite_write_sql
-from tests.helpers import NULL_LOGGER
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -218,9 +217,7 @@ async def update_and_delete_execute_against_sqlite() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            logger=NULL_LOGGER, database=database_path, models=[User]
-        )
+        database = await Database.initialize(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 await tx.execute(insert(User(email="a@example.com")))

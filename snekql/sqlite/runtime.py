@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
@@ -28,8 +29,9 @@ from snekql.sqlite.query import (
 )
 from snekql.sqlite.schema import initialize_sqlite_schema
 from snekql.storage import SchemaPolicy
-from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
+
+logger = logging.getLogger(__name__)
 
 
 class SQLiteCursorAdapter:
@@ -91,13 +93,11 @@ class SQLiteRuntime:
     def __init__(
         self,
         *,
-        logger: ResolvedStructuredLogger,
         acquire_timeout: NonNegativeFloat,
         connection_pool: SQLiteConnectionPool,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: SQLiteConnectionPool = connection_pool
-        self.logger: ResolvedStructuredLogger = logger
 
     async def acquire(
         self,
@@ -153,7 +153,6 @@ async def initialize_runtime(
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
     *,
-    logger: ResolvedStructuredLogger,
     migrations: dict[str, str] | None = None,
 ) -> SQLiteRuntime:
     """Initialize SQLite connectivity, migrations, schema startup, and pool."""
@@ -161,26 +160,23 @@ async def initialize_runtime(
     validate_schema_policy(schema_policy)
     validate_schema_models(models)
     database_path = normalize_sqlite_database(config.database)
-    logger.debug("sqlite connection opening", database_path=database_path)
+    logger.debug("sqlite connection opening: %s", database_path)
     connection = await open_sqlite_connection(database_path)
     try:
         if migrations:
-            await apply_sqlite_migrations(connection, migrations, logger=logger)
+            await apply_sqlite_migrations(connection, migrations)
         await initialize_sqlite_schema(
             connection,
             models,
             schema_policy,
-            logger=logger,
             create_missing=not migrations,
         )
     except Exception:
         await close_sqlite_connection(connection)
         raise
     return SQLiteRuntime(
-        logger=logger,
         acquire_timeout=config.acquire_timeout,
         connection_pool=SQLiteConnectionPool(
-            logger=logger,
             database_path=database_path,
             initial_connection=connection,
             pool_size=config.pool_size,
@@ -191,8 +187,6 @@ async def initialize_runtime(
 async def migrate_runtime(
     config: Config,
     migrations: dict[str, str],
-    *,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     """Apply pending migrations on a throwaway SQLite connection, no pool or schema.
 
@@ -202,10 +196,10 @@ async def migrate_runtime(
     """
 
     database_path = normalize_sqlite_database(config.database)
-    logger.debug("sqlite migrate connection opening", database_path=database_path)
+    logger.debug("sqlite migrate connection opening: %s", database_path)
     connection = await open_sqlite_connection(database_path)
     try:
-        await apply_sqlite_migrations(connection, migrations, logger=logger)
+        await apply_sqlite_migrations(connection, migrations)
     finally:
         await close_sqlite_connection(connection)
 
