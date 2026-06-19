@@ -27,6 +27,7 @@ from snekql._query_state import (
     require_column_model,
     require_field,
     require_insert_model,
+    require_returning_fields,
     require_selectable,
     require_single_column_subquery,
     require_subquery_state,
@@ -461,22 +462,86 @@ class _BaseInsertQuery:
 class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
     """Immutable insert statement for one pending table model instance."""
 
-    def returning(self) -> InsertReturningQuery[OwnerT, ReadT]:
-        """Return the inserted row as a Fetched model via ``RETURNING``."""
+    @overload
+    def returning(self) -> InsertReturningQuery[OwnerT, ReadT]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        /,
+    ) -> InsertReturningValueQuery[OwnerT, T1]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        /,
+    ) -> InsertReturningTupleQuery[OwnerT, T1, T2]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        field3: Attr[Any, Any, Any, Any, T3],
+        /,
+    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3]: ...
+    def returning(self, *fields: object) -> object:
+        """Recover columns the database produced for the inserted row.
 
-        return InsertReturningQuery[OwnerT, ReadT](
-            replace(self.state, returning=True),
+        With no arguments the inserted row comes back as a Fetched model. Naming
+        columns instead projects only those: one column yields its decoded scalar,
+        several yield a tuple in the order given.
+        """
+
+        return _insert_returning(
+            self.state,
+            fields,
+            model_query=InsertReturningQuery[OwnerT, ReadT],
+            value_query=InsertReturningValueQuery[Any, Any],
+            tuple_query=InsertReturningTupleQuery[Any, *tuple[Any, ...]],
         )
 
 
 class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
     """Immutable bulk insert statement for several pending model instances."""
 
-    def returning(self) -> InsertManyReturningQuery[OwnerT, ReadT]:
-        """Return each inserted row as a Fetched model via ``RETURNING``."""
+    @overload
+    def returning(self) -> InsertManyReturningQuery[OwnerT, ReadT]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        /,
+    ) -> InsertManyReturningValueQuery[OwnerT, T1]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        /,
+    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        field3: Attr[Any, Any, Any, Any, T3],
+        /,
+    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3]: ...
+    def returning(self, *fields: object) -> object:
+        """Recover columns the database produced for each inserted row.
 
-        return InsertManyReturningQuery[OwnerT, ReadT](
-            replace(self.state, returning=True),
+        With no arguments each inserted row comes back as a Fetched model. Naming
+        columns instead projects only those: one column yields a list of decoded
+        scalars, several yield a list of tuples in the order given.
+        """
+
+        return _insert_returning(
+            self.state,
+            fields,
+            model_query=InsertManyReturningQuery[OwnerT, ReadT],
+            value_query=InsertManyReturningValueQuery[Any, Any],
+            tuple_query=InsertManyReturningTupleQuery[Any, *tuple[Any, ...]],
         )
 
 
@@ -488,11 +553,55 @@ class InsertManyReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInser
     """Bulk insert whose execution yields the Fetched models it produced."""
 
 
+class InsertReturningValueQuery[OwnerT: Table[Any], T](_BaseInsertQuery):
+    """Single insert whose execution yields one decoded RETURNING column."""
+
+
+class InsertReturningTupleQuery[OwnerT: Table[Any], *Ts](_BaseInsertQuery):
+    """Single insert whose execution yields a tuple of RETURNING columns."""
+
+
+class InsertManyReturningValueQuery[OwnerT: Table[Any], T](_BaseInsertQuery):
+    """Bulk insert whose execution yields one decoded RETURNING column per row."""
+
+
+class InsertManyReturningTupleQuery[OwnerT: Table[Any], *Ts](_BaseInsertQuery):
+    """Bulk insert whose execution yields a tuple of RETURNING columns per row."""
+
+
+def _insert_returning(
+    state: InsertState,
+    fields: tuple[object, ...],
+    *,
+    model_query: type[_BaseInsertQuery],
+    value_query: type[_BaseInsertQuery],
+    tuple_query: type[_BaseInsertQuery],
+) -> object:
+    """Build the right returning query for a (possibly empty) column projection.
+
+    No columns keeps the whole-row model projection; a single column becomes a
+    value query, several columns a tuple query. The query classes are passed in
+    so the single-insert and bulk builders share one transition.
+    """
+
+    if not fields:
+        return model_query(replace(state, returning=True))
+    selectables = require_returning_fields(state, fields)
+    projected = replace(state, returning=True, returning_fields=selectables)
+    if len(selectables) == 1:
+        return value_query(projected)
+    return tuple_query(projected)
+
+
 type AnyInsertQuery = (
     InsertQuery[Any, Any]
     | InsertManyQuery[Any, Any]
     | InsertReturningQuery[Any, Any]
     | InsertManyReturningQuery[Any, Any]
+    | InsertReturningValueQuery[Any, Any]
+    | InsertReturningTupleQuery[Any, *tuple[Any, ...]]
+    | InsertManyReturningValueQuery[Any, Any]
+    | InsertManyReturningTupleQuery[Any, *tuple[Any, ...]]
 )
 
 

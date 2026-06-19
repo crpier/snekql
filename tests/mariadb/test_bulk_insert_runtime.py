@@ -116,6 +116,57 @@ async def mariadb_bulk_returning_yields_one_model_per_row() -> None:
 
 
 @test(mark="medium")
+async def mariadb_single_returning_columns_yields_scalar_and_tuple() -> None:
+    """A MariaDB returning projection yields a scalar for one column, a tuple for several."""
+
+    database = await load_fixture(database_session([_BulkUser]))
+    async with database.transaction() as tx:
+        new_id = await tx.execute(
+            insert(_BulkUser(email="a@example.com")).returning(_BulkUser.id)
+        )
+        row = await tx.execute(
+            insert(_BulkUser(email="b@example.com")).returning(
+                _BulkUser.id, _BulkUser.email
+            )
+        )
+
+    assert new_id >= 1
+    assert_eq(row[1], "b@example.com")
+    assert row[0] > new_id
+
+
+@test(mark="medium")
+async def mariadb_bulk_returning_columns_yields_projection_per_row() -> None:
+    """A MariaDB bulk returning projection yields one scalar/tuple per row."""
+
+    database = await load_fixture(database_session([_BulkUser]))
+    async with database.transaction() as tx:
+        ids = await tx.execute(
+            insert(
+                [
+                    _BulkUser(email="a@example.com"),
+                    _BulkUser(email="b@example.com"),
+                ]
+            ).returning(_BulkUser.id)
+        )
+        rows = await tx.execute(
+            insert(
+                [
+                    _BulkUser(email="c@example.com"),
+                    _BulkUser(email="d@example.com"),
+                ]
+            ).returning(_BulkUser.id, _BulkUser.email)
+        )
+
+    assert_eq(len(ids), 2)
+    assert all(isinstance(value, int) for value in ids)
+    assert_eq(
+        sorted(email for _, email in rows),
+        ["c@example.com", "d@example.com"],
+    )
+
+
+@test(mark="medium")
 async def mariadb_empty_bulk_insert_is_a_no_op() -> None:
     """A zero-row MariaDB bulk insert issues no SQL and writes nothing."""
 

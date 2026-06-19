@@ -18,8 +18,12 @@ from snekql.sqlite import (
     Index,
     InsertManyQuery,
     InsertManyReturningQuery,
+    InsertManyReturningTupleQuery,
+    InsertManyReturningValueQuery,
     InsertQuery,
     InsertReturningQuery,
+    InsertReturningTupleQuery,
+    InsertReturningValueQuery,
     Integer,
     JoinModelQuery,
     Missing,
@@ -392,6 +396,22 @@ if TYPE_CHECKING:
         InsertManyReturningQuery[User[Pending], User[Fetched]],
     )
     _ = assert_type(
+        insert(pending_user).returning(User.id),
+        InsertReturningValueQuery[User[Pending], int],
+    )
+    _ = assert_type(
+        insert(pending_user).returning(User.id, User.email),
+        InsertReturningTupleQuery[User[Pending], int, str],
+    )
+    _ = assert_type(
+        insert([pending_user]).returning(User.id),
+        InsertManyReturningValueQuery[User[Pending], int],
+    )
+    _ = assert_type(
+        insert([pending_user]).returning(User.id, User.email),
+        InsertManyReturningTupleQuery[User[Pending], int, str],
+    )
+    _ = assert_type(
         update(User).set(User.email.to("new@example.com")),
         UpdateQuery[User[Pending]],
     )
@@ -411,6 +431,26 @@ if TYPE_CHECKING:
         _ = assert_type(
             await transaction.execute(insert([pending_user]).returning()),
             list[User[Fetched]],
+        )
+        _ = assert_type(
+            await transaction.execute(insert(pending_user).returning(User.id)),
+            int,
+        )
+        _ = assert_type(
+            await transaction.execute(
+                insert(pending_user).returning(User.id, User.email)
+            ),
+            tuple[int, str],
+        )
+        _ = assert_type(
+            await transaction.execute(insert([pending_user]).returning(User.id)),
+            list[int],
+        )
+        _ = assert_type(
+            await transaction.execute(
+                insert([pending_user]).returning(User.id, User.email)
+            ),
+            list[tuple[int, str]],
         )
 
     async def check_fetch_types(transaction: Transaction) -> None:

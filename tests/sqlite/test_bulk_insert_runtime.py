@@ -120,6 +120,115 @@ async def single_returning_yields_generated_values() -> None:
 
 
 @test(mark="medium")
+async def single_returning_one_column_yields_scalar() -> None:
+    """returning(col) on a single insert yields just that column's value."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        try:
+            async with database.transaction() as tx:
+                new_id = await tx.execute(
+                    insert(User(email="a@example.com")).returning(User.id)
+                )
+        finally:
+            await database.close()
+
+    assert_eq(new_id, 1)
+
+
+@test(mark="medium")
+async def single_returning_several_columns_yields_tuple() -> None:
+    """returning(col, col) on a single insert yields a tuple in the given order."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        try:
+            async with database.transaction() as tx:
+                row = await tx.execute(
+                    insert(User(email="a@example.com")).returning(User.id, User.email)
+                )
+        finally:
+            await database.close()
+
+    assert_eq(row, (1, "a@example.com"))
+
+
+@test(mark="medium")
+async def bulk_returning_one_column_yields_scalar_list() -> None:
+    """returning(col) on a bulk insert yields one decoded scalar per row."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        try:
+            async with database.transaction() as tx:
+                ids = await tx.execute(
+                    insert(
+                        [
+                            User(email="a@example.com"),
+                            User(email="b@example.com"),
+                        ]
+                    ).returning(User.id)
+                )
+        finally:
+            await database.close()
+
+    assert_eq(ids, [1, 2])
+
+
+@test(mark="medium")
+async def bulk_returning_several_columns_yields_tuple_list() -> None:
+    """returning(col, col) on a bulk insert yields one tuple per row in order."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        try:
+            async with database.transaction() as tx:
+                rows = await tx.execute(
+                    insert(
+                        [
+                            User(email="a@example.com"),
+                            User(email="b@example.com"),
+                        ]
+                    ).returning(User.id, User.email)
+                )
+        finally:
+            await database.close()
+
+    assert_eq(rows, [(1, "a@example.com"), (2, "b@example.com")])
+
+
+@test(mark="medium")
+async def empty_bulk_returning_columns_yields_empty_list() -> None:
+    """A zero-row bulk insert with a column projection yields [] without SQL."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(
+            logger=NULL_LOGGER, database=database_path, models=[User]
+        )
+        try:
+            async with database.transaction() as tx:
+                no_rows: list[User[Pending]] = []
+                rows = await tx.execute(insert(no_rows).returning(User.id))
+        finally:
+            await database.close()
+
+    assert_eq(rows, [])
+
+
+@test(mark="medium")
 async def bulk_returning_yields_one_fetched_model_per_row() -> None:
     """A bulk returning insert recovers a Fetched model for every row in order."""
 

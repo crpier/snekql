@@ -11,6 +11,7 @@ from snekql.sqlite import (
     Model,
     Pending,
     QueryCompilationError,
+    QueryConstructionError,
     Text,
     insert,
 )
@@ -27,6 +28,15 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     status: User.Col[str] = Text(nullable=False, default="active")
 
 
+class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    """Unrelated table model, used to test cross-model returning rejection."""
+
+    id: Account.GenCol[int] = Integer(
+        primary_key=True, auto_increment=True, default=MISSING
+    )
+    name: Account.Col[str] = Text(nullable=False)
+
+
 @test(mark="fast")
 def single_returning_appends_all_columns_in_declaration_order() -> None:
     """A single insert with returning() lists every column after RETURNING."""
@@ -39,6 +49,46 @@ def single_returning_appends_all_columns_in_declaration_order() -> None:
     expected += ' RETURNING "id", "email", "status"'
     assert_eq(sql, expected)
     assert_eq(params, ("a@example.com", "active"))
+
+
+@test(mark="fast")
+def single_returning_columns_lists_only_named_columns() -> None:
+    """returning(col, col) lists just those columns after RETURNING, in order."""
+
+    sql, params = compile_sqlite_write_sql(
+        insert(User(email="a@example.com")).returning(User.id, User.email)
+    )
+
+    expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?)'
+    expected += ' RETURNING "id", "email"'
+    assert_eq(sql, expected)
+    assert_eq(params, ("a@example.com", "active"))
+
+
+@test(mark="fast")
+def bulk_returning_columns_lists_only_named_columns_once() -> None:
+    """A bulk returning projection appends one RETURNING clause for the batch."""
+
+    sql, _ = compile_sqlite_write_sql(
+        insert(
+            [
+                User(email="a@example.com"),
+                User(email="b@example.com"),
+            ]
+        ).returning(User.id)
+    )
+
+    expected = 'INSERT INTO "user" ("email", "status") VALUES (?, ?), (?, ?)'
+    expected += ' RETURNING "id"'
+    assert_eq(sql, expected)
+
+
+@test(mark="fast")
+def returning_rejects_a_column_from_another_model() -> None:
+    """A returning projection must name columns of the inserted model."""
+
+    with assert_raises(QueryConstructionError):
+        _ = insert(User(email="a@example.com")).returning(Account.name)
 
 
 @test(mark="fast")

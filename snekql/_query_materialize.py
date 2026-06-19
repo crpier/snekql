@@ -166,6 +166,32 @@ def materialize_select_row_for_backend(
     return decoded_values
 
 
+def _materialize_insert_returning_fields(
+    fields: tuple[Selectable, ...],
+    rows: Sequence[Sequence[object]],
+    *,
+    backend: StorageBackend,
+    validate: bool,
+) -> list[object]:
+    """Decode RETURNING rows for an explicit column projection.
+
+    Mirrors a projection select: one projected column yields a decoded scalar per
+    row, several yield a tuple per row, both through the shared selectable decode.
+    """
+
+    materialized: list[object] = []
+    for row in rows:
+        assert len(row) == len(fields), (  # noqa: S101
+            "returning row shape did not match the projection"
+        )
+        decoded = tuple(
+            _decode_selectable(field, row[index], backend=backend, validate=validate)
+            for index, field in enumerate(fields)
+        )
+        materialized.append(decoded[0] if len(decoded) == 1 else decoded)
+    return materialized
+
+
 def materialize_insert_returning_rows_for_backend(
     query: object,
     rows: Sequence[Sequence[object]],
@@ -189,6 +215,10 @@ def materialize_insert_returning_rows_for_backend(
     if not isinstance(state, InsertState):
         msg = "materialize requires an insert query"
         raise QueryCompilationError(msg)
+    if state.returning_fields:
+        return _materialize_insert_returning_fields(
+            state.returning_fields, rows, backend=backend, validate=validate
+        )
     model_class = state.model()
     if model_class is None:
         return []

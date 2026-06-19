@@ -98,13 +98,16 @@ class InsertState:
 
     ``rows`` holds the pending model instances to persist (one for a single
     insert, many for a bulk insert). ``returning`` records whether the write
-    should yield Fetched models via ``RETURNING``; ``multi`` records whether the
-    builder was created from a sequence, so an empty bulk batch stays typed and
+    should yield rows via ``RETURNING``; ``returning_fields`` records an explicit
+    column projection for that clause (empty means project every column and
+    decode each row into a Fetched model). ``multi`` records whether the builder
+    was created from a sequence, so an empty bulk batch stays typed and
     executable as a no-op even though it carries no rows to read a model from.
     """
 
     rows: tuple[Table[Any], ...]
     returning: bool = False
+    returning_fields: tuple[Selectable, ...] = ()
     multi: bool = False
 
     def model(self) -> type[Table[Any]] | None:
@@ -208,6 +211,32 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
             raise QueryConstructionError(msg) from error
         return model
     return require_column_model(field)
+
+
+def require_returning_fields(
+    state: InsertState,
+    fields: tuple[object, ...],
+) -> tuple[Selectable, ...]:
+    """Validate an explicit ``returning()`` projection against the inserted model.
+
+    Each field must be a plain column bound to a table model; when the batch has
+    rows (so the inserted model is known) it must be a column of that model. An
+    empty bulk batch has no model to compare against, so each field is only
+    checked for being a bound table column -- it carries its own owner.
+    """
+
+    model_class = state.model()
+    columns = require_model_columns(model_class) if model_class is not None else None
+    selectables: list[Selectable] = []
+    for field in fields:
+        column = require_field(field)
+        name = require_column_name(column)
+        owner = require_column_model(column)
+        if columns is not None and (name not in columns or owner is not model_class):
+            msg = "returning() column must belong to the inserted model"
+            raise QueryConstructionError(msg)
+        selectables.append(column)
+    return tuple(selectables)
 
 
 def require_insert_model(row: object) -> type[Table[Any]]:
