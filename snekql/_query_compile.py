@@ -552,10 +552,19 @@ def _encode_insert_row(
 
 def _insert_returning_clause(
     model_class: type[Table[Any]],
+    state: InsertState,
     dialect: QueryDialect,
 ) -> str:
-    columns = require_model_columns(model_class)
-    rendered = ", ".join(dialect.quote_identifier(name) for name in columns)
+    # An explicit projection lists only the named columns; otherwise RETURNING
+    # spans every column so the row decodes back into a full Fetched model.
+    if state.returning_fields:
+        names: tuple[str, ...] = tuple(
+            require_column_name(require_field(field))
+            for field in state.returning_fields
+        )
+    else:
+        names = tuple(require_model_columns(model_class))
+    rendered = ", ".join(dialect.quote_identifier(name) for name in names)
     return f" RETURNING {rendered}"
 
 
@@ -579,7 +588,7 @@ def _compile_insert_sql(
     table_name = require_model_table_name(model_class)
     quoted_table = dialect.quote_identifier(table_name)
     returning = (
-        _insert_returning_clause(model_class, dialect) if state.returning else ""
+        _insert_returning_clause(model_class, state, dialect) if state.returning else ""
     )
     if not names:
         if len(encoded_rows) > 1:

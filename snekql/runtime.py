@@ -42,8 +42,12 @@ from snekql.query import (
     DeleteQuery,
     InsertManyQuery,
     InsertManyReturningQuery,
+    InsertManyReturningTupleQuery,
+    InsertManyReturningValueQuery,
     InsertQuery,
     InsertReturningQuery,
+    InsertReturningTupleQuery,
+    InsertReturningValueQuery,
     JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
@@ -387,6 +391,34 @@ class Transaction:
     @overload
     async def execute(
         self,
+        query: InsertReturningValueQuery[OwnerT, T],
+        *,
+        validate: bool = True,
+    ) -> T: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertReturningTupleQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
+    ) -> tuple[*Ts]: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertManyReturningValueQuery[OwnerT, T],
+        *,
+        validate: bool = True,
+    ) -> list[T]: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertManyReturningTupleQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
+    ) -> list[tuple[*Ts]]: ...
+    @overload
+    async def execute(
+        self,
         query: InsertQuery[Any, Any]
         | InsertManyQuery[Any, Any]
         | UpdateQuery[Any]
@@ -407,11 +439,23 @@ class Transaction:
         write_query = cast("AnyWriteQuery", query)
         returning = isinstance(
             write_query,
-            (InsertReturningQuery, InsertManyReturningQuery),
+            (
+                InsertReturningQuery,
+                InsertManyReturningQuery,
+                InsertReturningValueQuery,
+                InsertReturningTupleQuery,
+                InsertManyReturningValueQuery,
+                InsertManyReturningTupleQuery,
+            ),
         )
         is_many = isinstance(
             write_query,
-            (InsertManyQuery, InsertManyReturningQuery),
+            (
+                InsertManyQuery,
+                InsertManyReturningQuery,
+                InsertManyReturningValueQuery,
+                InsertManyReturningTupleQuery,
+            ),
         )
         async with self._lock:
             connection = self.require_connection()
@@ -465,6 +509,10 @@ class Transaction:
                 InsertManyQuery,
                 InsertReturningQuery,
                 InsertManyReturningQuery,
+                InsertReturningValueQuery,
+                InsertReturningTupleQuery,
+                InsertManyReturningValueQuery,
+                InsertManyReturningTupleQuery,
             ),
         ):
             return query.state.rows
@@ -498,7 +546,11 @@ class Transaction:
             InsertQuery
             | InsertManyQuery
             | InsertReturningQuery
-            | InsertManyReturningQuery,
+            | InsertManyReturningQuery
+            | InsertReturningValueQuery
+            | InsertReturningTupleQuery
+            | InsertManyReturningValueQuery
+            | InsertManyReturningTupleQuery,
         ):
             model = query.state.model()
             if model is None:
