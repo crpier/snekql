@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
     from snekql.model import BackendFamily, Table
     from snekql.storage import SchemaPolicy
-    from snekql.structured_logging import ResolvedStructuredLogger
 
 
 @runtime_checkable
@@ -35,15 +34,12 @@ class RuntimeConfig(Protocol):
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
         *,
-        logger: ResolvedStructuredLogger,
         migrations: dict[str, str] | None = None,
     ) -> object: ...
 
     async def apply_migrations(
         self,
         migrations: dict[str, str],
-        *,
-        logger: ResolvedStructuredLogger,
     ) -> None: ...
 
 

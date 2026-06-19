@@ -30,7 +30,7 @@ from snekql.mariadb import (
     update,
 )
 from snekql.model import Table
-from tests.helpers import NULL_LOGGER, provide_mariadb_server
+from tests.helpers import provide_mariadb_server
 
 
 class _RollbackSentinelError(Exception):
@@ -60,7 +60,7 @@ async def database_session(
 
     server = await load_fixture(provide_mariadb_server())
     database = await Database.initialize(
-        server.config(pool_size=pool_size), logger=NULL_LOGGER, models=models
+        server.config(pool_size=pool_size), models=models
     )
     try:
         yield database

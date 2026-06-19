@@ -18,7 +18,6 @@ from snekql.sqlite import (
     SchemaVerificationError,
     Text,
 )
-from tests.helpers import NULL_LOGGER
 
 _CREATE_USER_MIGRATION = (
     'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
@@ -54,7 +53,6 @@ async def migration_creates_table_and_records_history() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             migrations={"001_create_user": _CREATE_USER_MIGRATION},
         )
@@ -71,13 +69,11 @@ async def reinitializing_does_not_reapply_recorded_migration() -> None:
     migrations = {"001_create_user": _CREATE_USER_MIGRATION}
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        first = await Database.initialize(
-            logger=NULL_LOGGER, database=database_path, migrations=migrations
-        )
+        first = await Database.initialize(database=database_path, migrations=migrations)
         await first.close()
 
         second = await Database.initialize(
-            logger=NULL_LOGGER, database=database_path, migrations=migrations
+            database=database_path, migrations=migrations
         )
         await second.close()
 
@@ -91,14 +87,12 @@ async def new_pending_migration_applies_only_itself() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         first = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             migrations={"001_create_user": _CREATE_USER_MIGRATION},
         )
         await first.close()
 
         second = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             migrations={
                 "001_create_user": _CREATE_USER_MIGRATION,
@@ -128,7 +122,6 @@ async def models_verify_against_migration_created_schema() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             models=[User],
             migrations={"001_create_user": _CREATE_USER_MIGRATION},
@@ -145,7 +138,6 @@ async def standalone_migrate_applies_without_full_initialize() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         await Database.migrate(
-            logger=NULL_LOGGER,
             database=database_path,
             migrations={"001_create_user": _CREATE_USER_MIGRATION},
         )
@@ -161,12 +153,8 @@ async def standalone_migrate_is_idempotent() -> None:
     migrations = {"001_create_user": _CREATE_USER_MIGRATION}
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        await Database.migrate(
-            logger=NULL_LOGGER, database=database_path, migrations=migrations
-        )
-        await Database.migrate(
-            logger=NULL_LOGGER, database=database_path, migrations=migrations
-        )
+        await Database.migrate(database=database_path, migrations=migrations)
+        await Database.migrate(database=database_path, migrations=migrations)
 
         assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
 
@@ -186,11 +174,8 @@ async def initialize_does_not_reapply_standalone_migration() -> None:
     migrations = {"001_create_user": _CREATE_USER_MIGRATION}
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        await Database.migrate(
-            logger=NULL_LOGGER, database=database_path, migrations=migrations
-        )
+        await Database.migrate(database=database_path, migrations=migrations)
         database = await Database.initialize(
-            logger=NULL_LOGGER,
             database=database_path,
             models=[User],
             migrations=migrations,
@@ -217,7 +202,6 @@ async def model_without_matching_migration_fails_strict() -> None:
         database_path = Path(directory) / "app.db"
         with assert_raises(SchemaVerificationError):
             _ = await Database.initialize(
-                logger=NULL_LOGGER,
                 database=database_path,
                 models=[User],
                 migrations={"001_other": create_other},

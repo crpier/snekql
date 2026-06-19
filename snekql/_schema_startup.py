@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
 from snekql._schema_plan import (
@@ -22,7 +23,8 @@ if TYPE_CHECKING:
     from snekql.indexes import NormalizedIndex
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
-    from snekql.structured_logging import ResolvedStructuredLogger
+
+logger = logging.getLogger(__name__)
 
 
 class SchemaBackend(Protocol):
@@ -62,33 +64,23 @@ def _report_schema_drift(
     schema_policy: SchemaPolicy,
     table_name: str,
     issues: Sequence[str],
-    logger: ResolvedStructuredLogger,
 ) -> None:
     detail = "; ".join(issues)
     message = f"schema drift detected for table {table_name!r}: {detail}"
     if schema_policy == "strict":
         raise SchemaVerificationError(message)
-    logger.warning(
-        "schema drift detected",
-        table_name=table_name,
-        issues=list(issues),
-    )
+    logger.warning("%s", message)
 
 
 async def _create_model_schema(
     backend: SchemaBackend,
     planned_model: PlannedModel,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     await backend.create_table(planned_model)
-    logger.debug("schema table created", table_name=planned_model.table_name)
+    logger.debug("schema table %r created", planned_model.table_name)
     for index in planned_model.indexes:
         sql = await backend.create_index(planned_model.table_name, index)
-        logger.debug(
-            "schema index created",
-            table_name=planned_model.table_name,
-            sql=sql,
-        )
+        logger.debug("schema index created on %r: %s", planned_model.table_name, sql)
 
 
 async def _verify_model_schema(
@@ -96,17 +88,13 @@ async def _verify_model_schema(
     planned_model: PlannedModel,
     actual_shape: TableShape,
     schema_policy: SchemaPolicy,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     expected_shape = backend.expected_shape(planned_model)
     issues = diff_table_shapes(expected_shape, actual_shape)
     if issues:
-        _report_schema_drift(
-            schema_policy, planned_model.table_name, issues, logger=logger
-        )
+        _report_schema_drift(schema_policy, planned_model.table_name, issues)
         return
-    logger.debug("schema table verified", table_name=planned_model.table_name)
-    logger.debug("schema indexes verified", table_name=planned_model.table_name)
+    logger.debug("schema table and indexes for %r verified", planned_model.table_name)
 
 
 async def initialize_schema(
@@ -114,7 +102,6 @@ async def initialize_schema(
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
     *,
-    logger: ResolvedStructuredLogger,
     create_missing: bool = True,
 ) -> None:
     """Create or verify all configured tables through one schema backend.
@@ -129,7 +116,7 @@ async def initialize_schema(
     plan = build_schema_plan(models)
     if not plan.models:
         return
-    logger.debug("schema startup started", model_count=len(plan.models))
+    logger.debug("schema startup started for %d model(s)", len(plan.models))
     async with backend.startup_transaction():
         for planned_model in plan.models:
             actual_shape = await backend.inspect_shape(planned_model)
@@ -139,12 +126,11 @@ async def initialize_schema(
                         schema_policy,
                         planned_model.table_name,
                         ("table is missing from the database",),
-                        logger=logger,
                     )
                     continue
-                await _create_model_schema(backend, planned_model, logger)
+                await _create_model_schema(backend, planned_model)
                 continue
             await _verify_model_schema(
-                backend, planned_model, actual_shape, schema_policy, logger
+                backend, planned_model, actual_shape, schema_policy
             )
-    logger.debug("schema startup completed", model_count=len(plan.models))
+    logger.debug("schema startup completed for %d model(s)", len(plan.models))

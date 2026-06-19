@@ -13,7 +13,7 @@ from snektest import AsyncFixture, assert_eq, assert_true, load_fixture, test
 from snekql import mariadb
 from snekql.mariadb import MISSING, Database, Fetched, Pending
 from snekql.testing.mariadb import TemporaryMariaDBServer
-from tests.helpers import NULL_LOGGER, provide_mariadb_server
+from tests.helpers import provide_mariadb_server
 
 
 def _create_user_table_sql(table_name: str) -> str:
@@ -45,7 +45,6 @@ async def migration_creates_table_and_records_history() -> None:
     server = await load_fixture(mariadb_server())
     database = await Database.initialize(
         server.config(),
-        logger=NULL_LOGGER,
         migrations={"mig_create_users": _create_user_table_sql("mig_users_t1")},
     )
     await database.close()
@@ -65,13 +64,9 @@ async def reinitializing_does_not_reapply_recorded_migration() -> None:
     migrations = {"mig_audit_idem": create_audit}
     server = await load_fixture(mariadb_server())
 
-    first = await Database.initialize(
-        server.config(), logger=NULL_LOGGER, migrations=migrations
-    )
+    first = await Database.initialize(server.config(), migrations=migrations)
     await first.close()
-    second = await Database.initialize(
-        server.config(), logger=NULL_LOGGER, migrations=migrations
-    )
+    second = await Database.initialize(server.config(), migrations=migrations)
     await second.close()
 
     applied = await _fetch_applied_names(server)
@@ -91,9 +86,7 @@ async def concurrent_initialize_applies_each_migration_once() -> None:
     migrations = {"mig_concurrent": _create_user_table_sql("mig_concurrent_t5")}
 
     async def _initialize_and_close() -> None:
-        database = await Database.initialize(
-            server.config(), logger=NULL_LOGGER, migrations=migrations
-        )
+        database = await Database.initialize(server.config(), migrations=migrations)
         await database.close()
 
     async with anyio.create_task_group() as task_group:
@@ -110,7 +103,6 @@ async def standalone_migrate_applies_without_full_initialize() -> None:
     server = await load_fixture(mariadb_server())
     await Database.migrate(
         server.config(),
-        logger=NULL_LOGGER,
         migrations={"mig_standalone": _create_user_table_sql("mig_standalone_t4")},
     )
 
@@ -134,7 +126,6 @@ async def models_verify_against_migration_created_schema() -> None:
     server = await load_fixture(mariadb_server())
     database = await Database.initialize(
         server.config(),
-        logger=NULL_LOGGER,
         models=[MigUser],
         migrations={"mig_verify_users": _create_user_table_sql("mig_verify_t3")},
     )

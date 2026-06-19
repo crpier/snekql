@@ -28,7 +28,6 @@ from snekql.sqlite import (
     Integer,
     Model,
     Pending,
-    StructuredLogger,
     Text,
     insert,
     select,
@@ -48,16 +47,8 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
 
 
-class SmokeLogger:
-    def debug(self, event: str, **fields: object) -> None: ...
-    def info(self, event: str, **fields: object) -> None: ...
-    def warning(self, event: str, **fields: object) -> None: ...
-    def error(self, event: str, **fields: object) -> None: ...
-
-
-async def main(*, logger: StructuredLogger) -> None:
+async def main() -> None:
     db = await Database.initialize(
-        logger=logger,
         database=":memory:",
         models=[User],
         pool_size=1,
@@ -71,7 +62,7 @@ async def main(*, logger: StructuredLogger) -> None:
         await db.close()
 
 
-asyncio.run(main(logger=SmokeLogger()))
+asyncio.run(main())
 PY
 uv run python smoke.py
 uv add --dev pyright

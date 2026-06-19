@@ -22,7 +22,6 @@ from snekql.indexes import NormalizedIndex
 from snekql.model import Table
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
-from snekql.structured_logging import ResolvedStructuredLogger
 
 
 def _requires_not_null(column: Attr[Any, Any, Any, Any, Any]) -> bool:
@@ -278,7 +277,6 @@ async def initialize_sqlite_schema(
     connection: Connection,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-    logger: ResolvedStructuredLogger,
     *,
     create_missing: bool = True,
 ) -> None:
@@ -288,6 +286,5 @@ async def initialize_sqlite_schema(
         SQLiteSchemaBackend(connection),
         models,
         schema_policy,
-        logger=logger,
         create_missing=create_missing,
     )

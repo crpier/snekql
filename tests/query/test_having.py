@@ -23,7 +23,6 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import NULL_LOGGER
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -171,9 +170,7 @@ def aggregates_are_rejected_in_where() -> None:
 async def having_filters_groups_at_runtime() -> None:
     """HAVING keeps only the groups whose aggregate satisfies the predicate."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User]
-    )
+    database = await Database.initialize(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))
@@ -196,9 +193,7 @@ async def having_filters_groups_at_runtime() -> None:
 async def having_over_a_sum_filters_per_group() -> None:
     """A HAVING over SUM compares the per-group total decoded to int."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User, Order]
-    )
+    database = await Database.initialize(database=":memory:", models=[User, Order])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))

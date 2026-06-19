@@ -18,7 +18,6 @@ from snekql.sqlite import (
     Text,
     select,
 )
-from tests.helpers import NULL_LOGGER
 
 
 class BoundaryUser[S = Pending](Model[S, "BoundaryUser[Fetched]"]):
@@ -67,9 +66,9 @@ async def database_numeric_configuration_rejects_invalid_values_at_boundary() ->
     initialize_fn = cast("Callable[..., Awaitable[object]]", Database.initialize)
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await initialize_fn(logger=NULL_LOGGER, database=":memory:", pool_size=True)
+        _ = await initialize_fn(database=":memory:", pool_size=True)
 
-    database = await Database.initialize(logger=NULL_LOGGER, database=":memory:")
+    database = await Database.initialize(database=":memory:")
     try:
         transaction_fn = cast("Callable[..., object]", database.transaction)
         with assert_raises(DatabaseRuntimeError):

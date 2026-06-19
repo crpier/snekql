@@ -32,7 +32,6 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import NULL_LOGGER
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -282,9 +281,7 @@ def subqueries_are_backend_portable() -> None:
 async def in_subquery_filters_rows_at_runtime() -> None:
     """IN against a subquery keeps only the correlated outer rows."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User, Order]
-    )
+    database = await Database.initialize(database=":memory:", models=[User, Order])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))
@@ -309,9 +306,7 @@ async def in_subquery_filters_rows_at_runtime() -> None:
 async def correlated_exists_filters_rows_at_runtime() -> None:
     """A correlated EXISTS keeps outer rows that have a matching inner row."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User, Order]
-    )
+    database = await Database.initialize(database=":memory:", models=[User, Order])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))
@@ -336,9 +331,7 @@ async def correlated_exists_filters_rows_at_runtime() -> None:
 async def scalar_subquery_projects_per_row_value() -> None:
     """A correlated scalar subquery projects a per-outer-row aggregate."""
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User, Order]
-    )
+    database = await Database.initialize(database=":memory:", models=[User, Order])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))

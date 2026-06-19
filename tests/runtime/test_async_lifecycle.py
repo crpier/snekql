@@ -26,9 +26,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.structured_logging import ResolvedStructuredLogger
 from snekql.validation import NonNegativeFloat
-from tests.helpers import NULL_LOGGER
 
 
 class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
@@ -106,7 +104,6 @@ class _FakeRuntime:
     def __init__(self, connection: RuntimeConnection) -> None:
         self.acquire_timeout: NonNegativeFloat = 1.0
         self.connection: RuntimeConnection = connection
-        self.logger: ResolvedStructuredLogger = NULL_LOGGER
         self.release_allowed: anyio.Event = anyio.Event()
         self.release_started: anyio.Event = anyio.Event()
         self.released: bool = False
@@ -190,7 +187,6 @@ async def sqlite_memory_database_serializes_concurrent_work_on_one_connection() 
     """Exact ':memory:' databases do not lazily open independent schemas."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[_AsyncUser],
         pool_size=5,
@@ -273,7 +269,7 @@ async def transaction_cleanup_release_is_shielded_from_cancellation() -> None:
 async def mariadb_close_timeout_keeps_pool_rejecting_new_work() -> None:
     """A timed-out MariaDB close cannot re-admit work after pool.close()."""
 
-    pool = MariaDBConnectionPool(_NeverClosingPool(), logger=NULL_LOGGER)
+    pool = MariaDBConnectionPool(_NeverClosingPool())
 
     with assert_raises(DatabaseCloseTimeoutError):
         await pool.close(0.0)

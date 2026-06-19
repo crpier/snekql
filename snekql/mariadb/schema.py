@@ -20,7 +20,6 @@ from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
-from snekql.structured_logging import ResolvedStructuredLogger
 
 # Case-sensitive, byte-ordered collation chosen so MariaDB string equality and
 # UNIQUE constraints match SQLite's default BINARY collation instead of the
@@ -319,7 +318,6 @@ async def initialize_mariadb_schema(
     connection: object,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-    logger: ResolvedStructuredLogger,
     *,
     create_missing: bool = True,
 ) -> None:
@@ -329,6 +327,5 @@ async def initialize_mariadb_schema(
         MariaDBSchemaBackend(connection),
         models,
         schema_policy,
-        logger=logger,
         create_missing=create_missing,
     )

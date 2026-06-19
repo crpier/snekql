@@ -20,7 +20,6 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from tests.helpers import NULL_LOGGER
 
 
 class JoinUser[S = Pending](Model[S, "JoinUser[Fetched]"]):
@@ -51,7 +50,6 @@ async def inner_join_fetches_tuples_of_fetched_models() -> None:
     """An inner join returns one (user, order) tuple per matching row."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[JoinUser, JoinOrder],
     )
@@ -84,7 +82,6 @@ async def left_join_yields_none_for_unmatched_right_rows() -> None:
     """A left join keeps the left row and materializes a missing right as None."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[JoinUser, JoinOrder],
     )
@@ -116,7 +113,6 @@ async def projection_join_fetches_tuples_of_scalars() -> None:
     """A projection join returns the projected (email, note) columns per row."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[JoinUser, JoinOrder],
     )
@@ -149,7 +145,6 @@ async def projection_join_filters_on_a_table_it_does_not_project() -> None:
     """A single-column projection can filter a joined but unprojected table."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[JoinUser, JoinOrder],
     )

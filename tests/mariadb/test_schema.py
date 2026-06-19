@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
@@ -25,10 +26,13 @@ from snekql.mariadb import (
     SchemaError,
     SchemaPolicy,
     SchemaVerificationError,
-    StructuredLogger,
 )
 from snekql.model import Table
-from tests.helpers import NULL_LOGGER, TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import (
+    TemporaryMariaDBServer,
+    capture_snekql_logs,
+    provide_mariadb_server,
+)
 
 
 @dataclass(frozen=True)
@@ -37,25 +41,6 @@ class _DatabaseSession:
 
     database: Database
     server: TemporaryMariaDBServer
-
-
-class _RecordingStructuredLogger:
-    """Structured logger fake that stores event calls for assertions."""
-
-    def __init__(self) -> None:
-        self.events: list[tuple[str, str, dict[str, object]]] = []
-
-    def debug(self, event: str, **fields: object) -> None:
-        self.events.append(("debug", event, fields))
-
-    def info(self, event: str, **fields: object) -> None:
-        self.events.append(("info", event, fields))
-
-    def warning(self, event: str, **fields: object) -> None:
-        self.events.append(("warning", event, fields))
-
-    def error(self, event: str, **fields: object) -> None:
-        self.events.append(("error", event, fields))
 
 
 async def _fetch_index_rows(
@@ -81,7 +66,6 @@ async def _fetch_index_rows(
 async def database_session(
     models: Sequence[type[Table[Any]]] = (),
     *,
-    logger: StructuredLogger = NULL_LOGGER,
     schema_policy: SchemaPolicy = "strict",
     setup_sql: Sequence[str] = (),
 ) -> AsyncFixture[_DatabaseSession]:
@@ -92,7 +76,6 @@ async def database_session(
         _ = await server.run_sql(sql)
     database = await Database.initialize(
         server.config(),
-        logger=logger,
         models=models,
         schema_policy=schema_policy,
     )
@@ -181,9 +164,7 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
         __indexes__: ClassVar[list[Index[Any]]] = [Index(name, name="ix_duplicate")]
 
     with assert_raises(SchemaError):
-        _ = await Database.initialize(
-            server.config(), logger=NULL_LOGGER, models=[User, Org]
-        )
+        _ = await Database.initialize(server.config(), models=[User, Org])
 
     result = await server.run_sql(
         """
@@ -216,9 +197,7 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
     _ = await server.run_sql("CREATE TABLE issue39_table_drift (`email` VARCHAR(255))")
 
     with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(
-            server.config(), logger=NULL_LOGGER, models=[User]
-        )
+        _ = await Database.initialize(server.config(), models=[User])
 
 
 @test(mark="medium")
@@ -238,9 +217,7 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
     )
 
     with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(
-            server.config(), logger=NULL_LOGGER, models=[User]
-        )
+        _ = await Database.initialize(server.config(), models=[User])
 
 
 @test(mark="medium")
@@ -258,23 +235,22 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    logger = _RecordingStructuredLogger()
-    _session = await load_fixture(
-        database_session(
-            [User],
-            logger=logger,
-            schema_policy="warn",
-            setup_sql=["CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))"],
+    with capture_snekql_logs() as logs:
+        _session = await load_fixture(
+            database_session(
+                [User],
+                schema_policy="warn",
+                setup_sql=["CREATE TABLE issue39_warn_drift (`email` VARCHAR(255))"],
+            )
         )
-    )
 
-    warnings = [
-        fields
-        for level, event, fields in logger.events
-        if level == "warning" and event == "schema drift detected"
+    drift_warnings = [
+        message
+        for message in logs.messages(logging.WARNING)
+        if "schema drift detected" in message
     ]
-    assert_eq(len(warnings), 1)
-    assert_eq(warnings[0]["table_name"], "issue39_warn_drift")
+    assert_eq(len(drift_warnings), 1)
+    assert_true("issue39_warn_drift" in drift_warnings[0])
 
 
 @test(mark="medium")
@@ -333,9 +309,7 @@ async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
     _ = await server.run_sql(create_sql)
 
     with assert_raises(SchemaVerificationError) as raised:
-        _ = await Database.initialize(
-            server.config(), logger=NULL_LOGGER, models=[User]
-        )
+        _ = await Database.initialize(server.config(), models=[User])
 
     message = str(raised.exception)
     assert_true("'email'" in message)

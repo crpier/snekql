@@ -21,7 +21,6 @@ from snekql.sqlite import (
     update,
 )
 from snekql.sqlite.query import compile_sqlite_write_sql
-from tests.helpers import NULL_LOGGER
 
 
 @test(mark="fast")
@@ -100,9 +99,7 @@ async def update_execute_returns_none_and_supports_explicit_all() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", models=[User]
-    )
+    database = await Database.initialize(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))

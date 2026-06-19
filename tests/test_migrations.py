@@ -11,25 +11,6 @@ from snekql._migrations import run_migrations
 from snekql.errors import MigrationError
 
 
-class _RecordingStructuredLogger:
-    """Structured logger fake that stores event calls for assertions."""
-
-    def __init__(self) -> None:
-        self.events: list[tuple[str, str, dict[str, object]]] = []
-
-    def debug(self, event: str, **fields: object) -> None:
-        self.events.append(("debug", event, fields))
-
-    def info(self, event: str, **fields: object) -> None:
-        self.events.append(("info", event, fields))
-
-    def warning(self, event: str, **fields: object) -> None:
-        self.events.append(("warning", event, fields))
-
-    def error(self, event: str, **fields: object) -> None:
-        self.events.append(("error", event, fields))
-
-
 class _MigrationBodyError(Exception):
     """Raised by the fake backend to simulate a failing migration body."""
 
@@ -82,15 +63,12 @@ async def pending_migrations_apply_in_insertion_order() -> None:
     """The runner ensures history, reads applied, then applies pending bodies in order."""
 
     backend = _FakeMigrationBackend()
-    logger = _RecordingStructuredLogger()
-
     await run_migrations(
         backend,
         {
             "001_create_users": "CREATE TABLE users (id INTEGER)",
             "002_add_email": "ALTER TABLE users ADD COLUMN email TEXT",
         },
-        logger=logger,
     )
 
     assert_eq(
@@ -113,15 +91,12 @@ async def already_applied_migrations_are_skipped() -> None:
     """A migration whose name is already in history is neither run nor re-recorded."""
 
     backend = _FakeMigrationBackend(applied={"001_create_users"})
-    logger = _RecordingStructuredLogger()
-
     await run_migrations(
         backend,
         {
             "001_create_users": "CREATE TABLE users (id INTEGER)",
             "002_add_email": "ALTER TABLE users ADD COLUMN email TEXT",
         },
-        logger=logger,
     )
 
     assert_true(
@@ -145,9 +120,7 @@ async def empty_migration_mapping_performs_no_backend_work() -> None:
     """An empty migration mapping touches the Migration History backend not at all."""
 
     backend = _FakeMigrationBackend()
-    logger = _RecordingStructuredLogger()
-
-    await run_migrations(backend, {}, logger=logger)
+    await run_migrations(backend, {})
 
     assert_eq(backend.calls, [])
 
@@ -158,8 +131,6 @@ async def failing_migration_halts_and_keeps_prior_successes_recorded() -> None:
 
     failing_body = "ALTER TABLE users ADD COLUMN broken"
     backend = _FakeMigrationBackend(failing_body=failing_body)
-    logger = _RecordingStructuredLogger()
-
     with assert_raises(MigrationError):
         await run_migrations(
             backend,
@@ -168,7 +139,6 @@ async def failing_migration_halts_and_keeps_prior_successes_recorded() -> None:
                 "002_break": failing_body,
                 "003_after": "CREATE TABLE later (id INTEGER)",
             },
-            logger=logger,
         )
 
     assert_true(("record_applied", "001_create_users") in backend.calls)
@@ -184,12 +154,9 @@ async def apply_flow_runs_inside_the_advisory_lock() -> None:
     """The lock is entered before any history work and exited only after the last."""
 
     backend = _FakeMigrationBackend()
-    logger = _RecordingStructuredLogger()
-
     await run_migrations(
         backend,
         {"001_create_users": "CREATE TABLE users (id INTEGER)"},
-        logger=logger,
     )
 
     assert_eq(backend.calls[0], ("migration_lock_enter", None))
@@ -205,9 +172,7 @@ async def failing_migration_still_releases_the_advisory_lock() -> None:
 
     failing_body = "ALTER TABLE users ADD COLUMN broken"
     backend = _FakeMigrationBackend(failing_body=failing_body)
-    logger = _RecordingStructuredLogger()
-
     with assert_raises(MigrationError):
-        await run_migrations(backend, {"001_break": failing_body}, logger=logger)
+        await run_migrations(backend, {"001_break": failing_body})
 
     assert_eq(backend.calls[-1], ("migration_lock_exit", None))

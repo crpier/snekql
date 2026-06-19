@@ -4,7 +4,7 @@ snekql has two complementary startup mechanisms: **startup schema management**
 (create missing tables, verify the rest) and **migrations** (apply hand-authored
 ordered changes). See [migrations.md](migrations.md) for the migration model.
 
-When `Database.initialize(..., logger=logger, models=[...])` runs, snekql creates missing tables
+When `Database.initialize(..., models=[...])` runs, snekql creates missing tables
 and verifies existing tables and indexes against the shape generated from the
 table models. Verification is *semantic*: each backend reads its own catalog
 into a shared schema shape (SQLite via `PRAGMA`, MariaDB via
@@ -22,7 +22,6 @@ drift. See [migrations.md](migrations.md).
 
 ```python
 db = await Database.initialize(
-    logger=logger,
     database=Path("app.db"),
     models=[User, AuditLog],
     schema_policy="strict",
@@ -73,7 +72,6 @@ cleaning up or applying an application-owned migration.
 
 ```python
 await Database.initialize(
-    logger=logger,
     database=Path("app.db"),
     models=[User],
     schema_policy="strict",
@@ -84,7 +82,6 @@ await Database.initialize(
 
 ```python
 await Database.initialize(
-    logger=logger,
     database=Path("app.db"),
     models=[User],
     schema_policy="warn",

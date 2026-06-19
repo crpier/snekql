@@ -83,7 +83,6 @@ import builtins
 
 from snekql import sqlite
 from snekql.sqlite import Database
-from tests.helpers import NULL_LOGGER
 
 original_import = builtins.__import__
 
@@ -98,7 +97,7 @@ async def main() -> None:
     builtins.__import__ = block_aiosqlite
     try:
         try:
-            _ = await Database.initialize(sqlite.Config(database=":memory:"), logger=NULL_LOGGER)
+            _ = await Database.initialize(sqlite.Config(database=":memory:"))
         except sqlite.DatabaseRuntimeError as error:
             print(error)
             return

@@ -78,7 +78,6 @@ _COMMON_NAMES = frozenset(
         "SelectTupleQuery",
         "SelectValueQuery",
         "SnekqlError",
-        "StructuredLogger",
         "Table",
         "Transaction",
         "TransactionClosedError",

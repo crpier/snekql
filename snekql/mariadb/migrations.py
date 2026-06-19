@@ -15,8 +15,6 @@ from snekql.validation import NonNegativeFloat
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from snekql.structured_logging import ResolvedStructuredLogger
-
 _HISTORY_TABLE = "snekql_migrations"
 
 # MariaDB `GET_LOCK` names are server-wide (not per-schema), so the lock name is
@@ -178,7 +176,6 @@ async def apply_mariadb_migrations(
     *,
     lock_name: str,
     lock_timeout: NonNegativeFloat,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     """Apply pending MariaDB migrations through the backend-neutral runner."""
 
@@ -187,5 +184,4 @@ async def apply_mariadb_migrations(
             connection, lock_name=lock_name, lock_timeout=lock_timeout
         ),
         migrations,
-        logger=logger,
     )

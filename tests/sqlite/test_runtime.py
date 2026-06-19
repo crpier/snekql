@@ -28,7 +28,6 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from tests.helpers import NULL_LOGGER
 
 
 class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
@@ -71,7 +70,7 @@ async def successful_transaction_commits() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=NULL_LOGGER, database=database_path, models=[RuntimeUser]
+            database=database_path, models=[RuntimeUser]
         )
         try:
             async with database.transaction() as tx:
@@ -89,7 +88,7 @@ async def exceptional_transaction_rolls_back() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(
-            logger=NULL_LOGGER, database=database_path, models=[RuntimeUser]
+            database=database_path, models=[RuntimeUser]
         )
         try:
             with assert_raises(ValueError):
@@ -110,7 +109,6 @@ async def pool_exhaustion_raises_pool_timeout() -> None:
     """A checkout beyond pool_size waits only up to the transaction timeout."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         pool_size=1,
         acquire_timeout=0.0,
@@ -129,18 +127,12 @@ async def pool_configuration_rejects_invalid_bounds() -> None:
     """Pool size and acquisition timeout validate their documented lower bounds."""
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(
-            logger=NULL_LOGGER, database=":memory:", pool_size=0
-        )
+        _ = await Database.initialize(database=":memory:", pool_size=0)
 
     with assert_raises(DatabaseRuntimeError):
-        _ = await Database.initialize(
-            logger=NULL_LOGGER, database=":memory:", acquire_timeout=-0.1
-        )
+        _ = await Database.initialize(database=":memory:", acquire_timeout=-0.1)
 
-    database = await Database.initialize(
-        logger=NULL_LOGGER, database=":memory:", pool_size=5
-    )
+    database = await Database.initialize(database=":memory:", pool_size=5)
     await database.close()
 
 
@@ -149,7 +141,6 @@ async def close_rejects_new_transactions_while_waiting_for_checkouts() -> None:
     """Closing temporarily rejects new transactions until checked-out work exits."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         pool_size=1,
         acquire_timeout=1.0,
@@ -173,7 +164,6 @@ async def timed_out_close_keeps_database_retryable() -> None:
     """A close timeout leaves the database open once checked-out work returns."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         pool_size=1,
         acquire_timeout=0.0,
@@ -198,7 +188,6 @@ async def fetch_validates_logical_types_and_can_skip_validation() -> None:
     """fetch_all validates rows by default and skips checks when validate=False."""
 
     database = await Database.initialize(
-        logger=NULL_LOGGER,
         database=":memory:",
         models=[RuntimeReceipt],
     )

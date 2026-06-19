@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
-    from snekql.structured_logging import ResolvedStructuredLogger
 
 _MAX_TCP_PORT = 65535
 
@@ -90,7 +89,6 @@ class Config:
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
         *,
-        logger: ResolvedStructuredLogger,
         migrations: dict[str, str] | None = None,
     ) -> object:
         """Import and initialize the MariaDB Backend Runtime Adapter lazily."""
@@ -100,15 +98,12 @@ class Config:
             self,
             models,
             schema_policy,
-            logger=logger,
             migrations=migrations,
         )
 
     async def apply_migrations(
         self,
         migrations: dict[str, str],
-        *,
-        logger: ResolvedStructuredLogger,
     ) -> None:
         """Apply pending migrations on a migrate-only MariaDB connection."""
 
@@ -116,5 +111,4 @@ class Config:
         await cast("Any", runtime_module).migrate_runtime(
             self,
             migrations,
-            logger=logger,
         )

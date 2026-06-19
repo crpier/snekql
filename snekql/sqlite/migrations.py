@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager, nullcontext
-from typing import TYPE_CHECKING
 
 from aiosqlite import Connection
 
 from snekql._migrations import run_migrations
 from snekql.sqlite.identifiers import quote_identifier
-
-if TYPE_CHECKING:
-    from snekql.structured_logging import ResolvedStructuredLogger
 
 _HISTORY_TABLE = "snekql_migrations"
 
@@ -84,13 +80,10 @@ class SQLiteMigrationBackend:
 async def apply_sqlite_migrations(
     connection: Connection,
     migrations: dict[str, str],
-    *,
-    logger: ResolvedStructuredLogger,
 ) -> None:
     """Apply pending SQLite migrations through the backend-neutral runner."""
 
     await run_migrations(
         SQLiteMigrationBackend(connection),
         migrations,
-        logger=logger,
     )

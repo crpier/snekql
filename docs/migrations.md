@@ -10,7 +10,6 @@ order.
 
 ```python
 db = await Database.initialize(
-    logger=logger,
     database=Path("app.db"),
     models=[User, AuditLog],
     migrations={
@@ -44,7 +43,6 @@ booting the app. For a release/deploy pipeline you usually want a step that
 
 ```python
 await Database.migrate(
-    logger=logger,
     database=Path("app.db"),
     migrations={
         "001_create_user": 'CREATE TABLE "user" (...) STRICT',
