@@ -13,14 +13,14 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
-from snekql.sqlite import MISSING, Boolean, Fetched, Pending, Text, select
+from snekql.sqlite import MISSING, Fetched, Integer, Pending, Text, select
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
     """Model exposing columns whose codecs make decoding observable."""
 
     label: Widget.Col[str] = Text(nullable=False)
-    enabled: Widget.Col[bool] = Boolean(nullable=False)
+    enabled: Widget.Col[bool] = Integer(nullable=False)
 
 
 class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):

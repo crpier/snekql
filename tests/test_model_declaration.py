@@ -7,7 +7,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any, ClassVar, cast
 
-from pydantic import BaseModel, PositiveInt
+from pydantic import BaseModel, Json, PositiveInt
 from snektest import (
     assert_eq,
     assert_false,
@@ -20,14 +20,11 @@ from snektest import (
 from snekql.sqlite import (
     MISSING,
     Blob,
-    Boolean,
-    DateTime,
     Fetched,
     ForeignKey,
     FrozenModelError,
     Index,
     Integer,
-    Json,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -80,7 +77,7 @@ def model_construction_calls_default_factories_per_instance() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with a default factory."""
 
-        tags: Event.Col[list[str]] = Json(default_factory=list)
+        tags: Event.Col[Json[list[str]]] = Text(default_factory=list)
 
     first = Event()
     second = Event()
@@ -318,7 +315,7 @@ def json_columns_validate_annotated_shape() -> None:
     class Settings[S = Pending](Model[S, "Settings[Fetched]"]):
         """Table model with a typed JSON column."""
 
-        options: Settings.Col[dict[str, int]] = Json(nullable=False)
+        options: Settings.Col[Json[dict[str, int]]] = Text(nullable=False)
 
     settings = Settings(options={"retries": 3})
 
@@ -329,23 +326,25 @@ def json_columns_validate_annotated_shape() -> None:
 
 
 @test(mark="fast")
-def compatible_annotations_and_storage_are_accepted() -> None:
-    """Each scalar storage type accepts its matching logical annotation."""
+def storage_classes_pair_with_their_logical_types() -> None:
+    """A Column Type pairs with whatever Logical Type the annotation names; the
+    constructor records only the SQLite storage class."""
 
     class Sample[S = Pending](Model[S, "Sample[Fetched]"]):
-        """Table model exercising every checked storage/annotation pair."""
+        """Table model pairing storage classes with their logical types."""
 
         count: Sample.Col[int] = Integer(nullable=False)
         amount: Sample.Col[float] = Real(nullable=False)
         label: Sample.Col[str] = Text(nullable=False)
         payload: Sample.Col[bytes] = Blob(nullable=False)
-        enabled: Sample.Col[bool] = Boolean(nullable=False)
-        created_at: Sample.Col[datetime] = DateTime(nullable=False)
+        enabled: Sample.Col[bool] = Integer(nullable=False)
+        created_at: Sample.Col[datetime] = Text(nullable=False)
         optional_count: Sample.Col[int | None] = Integer(nullable=True)
         constrained: Sample.Col[Annotated[int, "meta"]] = Integer(nullable=False)
 
     assert_eq(Sample.__snekql_columns__["count"].storage_type_name, "Integer")
-    assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "DateTime")
+    assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "Text")
+    assert_eq(Sample.__snekql_columns__["created_at"].sqlite_storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -366,67 +365,51 @@ def foreign_key_annotation_storage_pairs_are_accepted() -> None:
 
 
 @test(mark="fast")
-def column_annotation_incompatible_with_storage_raises() -> None:
-    """Declaration rejects unambiguous logical/storage scalar mismatches."""
+def storage_logical_pairs_are_not_constrained_at_declaration() -> None:
+    """There is no declaration-time storage/logical compatibility guard: the
+    annotation is the single source of truth and any pairing declares, with
+    errors deferred to pydantic at encode/decode (ADR 0005)."""
 
-    with assert_raises(ModelDeclarationError):
+    class Wide[S = Pending](Model[S, "Wide[Fetched]"]):
+        """Pairings the old exact-pair guard would have rejected."""
 
-        class FloatInInteger[S = Pending](Model[S, "FloatInInteger[Fetched]"]):
-            """Integer storage cannot hold a float logical type."""
+        ratio: Wide.Col[float] = Integer(nullable=False)
+        flag: Wide.Col[bool] = Integer(nullable=False)
+        label: Wide.Col[str] = Text(nullable=False)
+        maybe_count: Wide.Col[int | None] = Text(nullable=True)
 
-            value: FloatInInteger.Col[float] = Integer(nullable=False)
-
-    with assert_raises(ModelDeclarationError):
-
-        class IntInBoolean[S = Pending](Model[S, "IntInBoolean[Fetched]"]):
-            """Boolean storage silently corrupts arbitrary ints (issue #101)."""
-
-            value: IntInBoolean.Col[int] = Boolean(nullable=False)
-
-    with assert_raises(ModelDeclarationError):
-
-        class BoolInInteger[S = Pending](Model[S, "BoolInInteger[Fetched]"]):
-            """``bool`` is not ``int`` under the exact-pair matrix."""
-
-            value: BoolInInteger.Col[bool] = Integer(nullable=False)
-
-    with assert_raises(ModelDeclarationError):
-
-        class StrInDateTime[S = Pending](Model[S, "StrInDateTime[Fetched]"]):
-            """DateTime storage demands a ``datetime`` annotation."""
-
-            value: StrInDateTime.Col[str] = DateTime(nullable=False)
-
-    with assert_raises(ModelDeclarationError):
-
-        class IntInText[S = Pending](Model[S, "IntInText[Fetched]"]):
-            """Text storage cannot hold an int logical type, even optional."""
-
-            value: IntInText.Col[int | None] = Text(nullable=True)
+    columns = Wide.__snekql_columns__
+    assert_eq(columns["ratio"].sqlite_storage_class, "INTEGER")
+    assert_eq(columns["flag"].sqlite_storage_class, "INTEGER")
+    assert_eq(columns["maybe_count"].sqlite_storage_class, "TEXT")
 
 
 @test(mark="fast")
-def json_columns_skip_annotation_storage_compat() -> None:
-    """Json has no single base type, so the compat check leaves it alone."""
+def json_marker_columns_accept_any_payload_type() -> None:
+    """The ``pydantic.Json[T]`` marker opts a ``Text()`` column into JSON storage
+    for any payload type, resolved through the column's logical adapter."""
 
     class Document[S = Pending](Model[S, "Document[Fetched]"]):
-        """Json columns accept any logical annotation at declaration time."""
+        """Json marker columns accept any payload annotation."""
 
-        when: Document.Col[datetime] = Json(nullable=False)
-        items: Document.Col[list[int]] = Json(nullable=False)
+        when: Document.Col[Json[datetime]] = Text(nullable=False)
+        items: Document.Col[Json[list[int]]] = Text(nullable=False)
 
-    assert_eq(Document.__snekql_columns__["when"].storage_type_name, "Json")
+    columns = Document.__snekql_columns__
+    assert_eq(columns["when"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["items"].sqlite_storage_class, "TEXT")
 
 
 @test(mark="fast")
-def annotation_storage_compat_is_best_effort() -> None:
-    """Unresolvable and multi-type annotations are skipped, scalars still checked."""
+def forward_ref_json_payload_does_not_block_declaration() -> None:
+    """A forward-referenced JSON payload type binds without resolving it eagerly
+    at declaration time."""
 
     class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
         """A forward-ref Json sibling must not block binding the scalar column."""
 
         count: Mixed.Col[int] = Integer(nullable=False)
-        blob: Mixed.Col[Payload] = Json(nullable=False)
+        blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
         either: Mixed.Col[int | str] = Integer(nullable=False)
 
     class Payload(BaseModel):
@@ -435,7 +418,6 @@ def annotation_storage_compat_is_best_effort() -> None:
         x: int
 
     assert_eq(Mixed.__snekql_columns__["count"].storage_type_name, "Integer")
-    """Real columns accept int and widen it to float, matching pydantic defaults."""
 
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
         """Table model with a real column."""

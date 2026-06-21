@@ -27,18 +27,14 @@ from snekql.storage import (
     MISSING,
     Attr,
     Blob,
-    Boolean,
     CurrentTimestamp,
-    DateTime,
     FKAttr,
     ForeignKey,
     Integer,
-    Json,
     Missing,
     Real,
     StorageBackend,
     Text,
-    check_column_storage_compatibility,
 )
 
 type BackendFamily = StorageBackend
@@ -147,7 +143,7 @@ type FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = _FKCol[
 
 
 @dataclass_transform(
-    field_specifiers=(Integer, Real, Text, Blob, Json, Boolean, DateTime, ForeignKey),
+    field_specifiers=(Integer, Real, Text, Blob, ForeignKey),
     kw_only_default=True,
 )
 class ModelMeta(type):
@@ -190,8 +186,6 @@ class ModelMeta(type):
         model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
             is_model_base=is_model_base,
         )
-        if not is_model_base:
-            check_column_storage_compatibility(model_class, columns, annotations)
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -416,11 +410,6 @@ class ModelMeta(type):
             return
         if not isinstance(column.server_default, CurrentTimestamp):
             msg = f"unsupported server default for {name!r}"
-            raise ModelDeclarationError(
-                msg,
-            )
-        if column.storage_type_name != "DateTime":
-            msg = f"CurrentTimestamp requires a DateTime column: {name!r}"
             raise ModelDeclarationError(
                 msg,
             )

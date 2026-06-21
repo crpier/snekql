@@ -75,12 +75,9 @@ from snekql.model import Model
 from snekql.sqlite.config import Config
 from snekql.storage import (
     Blob,
-    Boolean,
     CurrentTimestamp,
-    DateTime,
     ForeignKey,
     Integer,
-    Json,
     Real,
     Text,
 )
@@ -91,7 +88,6 @@ __all__ = [
     "Assignment",
     "Attr",
     "Blob",
-    "Boolean",
     "Col",
     "Config",
     "CurrentTimestamp",
@@ -100,7 +96,6 @@ __all__ = [
     "DatabaseClosedError",
     "DatabaseClosingError",
     "DatabaseRuntimeError",
-    "DateTime",
     "DeleteQuery",
     "ExecutionError",
     "FKAttr",
@@ -121,7 +116,6 @@ __all__ = [
     "Integer",
     "JoinModelQuery",
     "JoinOn",
-    "Json",
     "MigrationError",
     "MigrationLockTimeoutError",
     "Missing",

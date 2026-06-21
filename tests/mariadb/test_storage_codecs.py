@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
@@ -79,6 +80,21 @@ def mariadb_json_codec_round_trips_rich_annotated_types() -> None:
 
 
 @test()
+def mariadb_uuid_codec_round_trips_through_the_pydantic_scalar_path() -> None:
+    """The native ``Uuid`` Column Type has no dedicated codec: it round-trips
+    ``uuid.UUID`` through the shared pydantic scalar path (string on the wire)."""
+
+    class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
+        """Model binding a native MariaDB Uuid descriptor."""
+
+        account_id: Account.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
+
+    value = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    assert_eq(Account.account_id.encode(value, backend="mariadb"), str(value))
+    assert_eq(Account.account_id.decode(str(value), backend="mariadb"), value)
+
+
+@test()
 def mariadb_datetime_codec_decodes_native_driver_datetimes() -> None:
     """The MariaDB driver hands DATETIME columns back as ``datetime`` objects,
     not text; the codec normalizes naive values to UTC and leaves aware ones."""
@@ -137,6 +153,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
             auto_increment=True,
             default=MISSING,
         )
+        account_id: Event.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
         amount: Event.Col[float] = mariadb.Real(nullable=False)
         content: Event.Col[bytes] = mariadb.Blob(nullable=False)
         created_at: Event.GenCol[datetime] = mariadb.DateTime(
@@ -150,11 +167,13 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
 
     database = await Database.initialize(_config_from_server(server), models=[Event])
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+    account_id = uuid.uuid4()
     try:
         async with database.transaction() as tx:
             await tx.execute(
                 insert(
                     Event(
+                        account_id=account_id,
                         amount=12.5,
                         content=b"hello",
                         enabled=True,
@@ -170,6 +189,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
 
     assert event is not None
     assert_isinstance(event.id, int)
+    assert_eq(event.account_id, account_id)
     assert_eq(event.amount, 12.5)
     assert_eq(event.content, b"hello")
     assert_isinstance(event.created_at, datetime)

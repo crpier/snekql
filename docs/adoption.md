@@ -23,7 +23,6 @@ from snekql.sqlite import (
     MISSING,
     CurrentTimestamp,
     Database,
-    DateTime,
     Fetched,
     Integer,
     Model,
@@ -41,7 +40,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
         default=MISSING,
     )
     email: User.Col[str] = Text(nullable=False)
-    created_at: User.GenCol[datetime] = DateTime(
+    created_at: User.GenCol[datetime] = Text(
         server_default=CurrentTimestamp(),
         default=MISSING,
     )

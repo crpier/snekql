@@ -12,7 +12,6 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     MISSING,
-    Boolean,
     Database,
     Fetched,
     Integer,
@@ -209,10 +208,10 @@ async def fetch_all_validates_decoded_database_values() -> None:
     """Fetched rows are decoded and validated before model materialization."""
 
     class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
-        """Table model with a logical Boolean SQLite encoding."""
+        """Table model with a ``bool`` logical type stored as INTEGER."""
 
         id: FeatureFlag.GenCol[int] = Integer(primary_key=True, default=MISSING)
-        enabled: FeatureFlag.Col[bool] = Boolean(nullable=False)
+        enabled: FeatureFlag.Col[bool] = Integer(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"

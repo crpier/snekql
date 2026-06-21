@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Json
 from snektest import assert_eq, assert_false, assert_raises, assert_true, test
 
 import snekql
@@ -13,16 +14,14 @@ from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
     MISSING,
     Blob,
-    Boolean,
     CurrentTimestamp,
-    DateTime,
     Fetched,
     Integer,
-    Json,
     Model,
     ModelDeclarationError,
     ModelValidationError,
     Pending,
+    QueryConstructionError,
     Real,
     Text,
 )
@@ -39,18 +38,19 @@ def v1_exposes_only_sqlite_first_storage_classes() -> None:
 
 @test()
 def storage_classes_expose_sqlite_metadata() -> None:
-    """V1 columns record the SQLite storage class used for schema generation."""
+    """Column Types map to the four SQLite storage classes; the Logical Type
+    (the annotation) decides the Python value, not the constructor."""
 
     class StorageExample[S = Pending](Model[S, "StorageExample[Fetched]"]):
-        """Table model using every v1 storage class."""
+        """Table model pairing each storage class with a logical type."""
 
         integer_value: StorageExample.Col[int] = Integer(nullable=False)
         real_value: StorageExample.Col[float] = Real(nullable=False)
         text_value: StorageExample.Col[str] = Text(nullable=False)
         blob_value: StorageExample.Col[bytes] = Blob(nullable=False)
-        json_value: StorageExample.Col[dict[str, object]] = Json(nullable=False)
-        boolean_value: StorageExample.Col[bool] = Boolean(nullable=False)
-        datetime_value: StorageExample.Col[datetime] = DateTime(nullable=False)
+        json_value: StorageExample.Col[Json[dict[str, object]]] = Text(nullable=False)
+        boolean_value: StorageExample.Col[bool] = Integer(nullable=False)
+        datetime_value: StorageExample.Col[datetime] = Text(nullable=False)
 
     columns = StorageExample.__snekql_columns__
 
@@ -64,13 +64,13 @@ def storage_classes_expose_sqlite_metadata() -> None:
 
 
 @test()
-def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
-    """Boolean columns use INTEGER storage while models expose bools."""
+def bool_logical_type_encodes_to_integer_and_decodes_before_validation() -> None:
+    """A ``Col[bool]`` over ``Integer()`` stores 0/1 while the model holds bools."""
 
     class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
-        """Table model with a boolean flag."""
+        """Table model with a boolean flag stored as INTEGER."""
 
-        enabled: FeatureFlag.Col[bool] = Boolean(nullable=False)
+        enabled: FeatureFlag.Col[bool] = Integer(nullable=False)
 
     enabled = FeatureFlag(enabled=True)
     disabled = cast(
@@ -79,6 +79,8 @@ def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
     )
     _, encoded_enabled = encode_model_row(enabled, backend="sqlite")
 
+    # pydantic serializes a bool as ``True``/``False``; SQLite's INTEGER affinity
+    # stores those as 1/0 (``True == 1``).
     assert_eq(encoded_enabled, {"enabled": 1})
     assert_false(disabled.enabled)
 
@@ -87,13 +89,15 @@ def boolean_values_encode_to_integer_and_decode_before_validation() -> None:
 
 
 @test()
-def json_values_encode_to_text_and_decode_before_validation() -> None:
-    """Json columns store JSON text and expose decoded Python values."""
+def json_marker_encodes_to_text_and_decodes_before_validation() -> None:
+    """A ``Col[Json[T]]`` over ``Text()`` stores JSON text and exposes decoded
+    Python values; the marker selects the JSON wire codec, ``T`` drives
+    validation."""
 
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
-        """Table model with a JSON payload."""
+        """Table model with a JSON payload stored as TEXT."""
 
-        payload: Event.Col[dict[str, object]] = Json(nullable=False)
+        payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
 
     event = Event(payload={"kind": "created", "count": 2})
     fetched = cast(
@@ -119,9 +123,9 @@ def json_values_encode_to_text_and_decode_before_validation() -> None:
 
 
 @test()
-def json_columns_round_trip_rich_annotated_types() -> None:
-    """Json encode/decode route through the column's pydantic adapter, so any
-    type the annotation can validate also serializes and round-trips."""
+def json_marker_round_trips_rich_annotated_types() -> None:
+    """``Json[T]`` encode/decode route through the column's pydantic adapter, so
+    any type the annotation can validate also serializes and round-trips."""
 
     class Inner(BaseModel):
         x: int
@@ -129,7 +133,7 @@ def json_columns_round_trip_rich_annotated_types() -> None:
     class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
         """Json column annotated with a pydantic model."""
 
-        payload: ModelEvent.Col[Inner] = Json(nullable=False)
+        payload: ModelEvent.Col[Json[Inner]] = Text(nullable=False)
 
     model_event = ModelEvent(payload=Inner(x=1))
     _, encoded_model = encode_model_row(model_event, backend="sqlite")
@@ -143,7 +147,7 @@ def json_columns_round_trip_rich_annotated_types() -> None:
     class WhenEvent[S = Pending](Model[S, "WhenEvent[Fetched]"]):
         """Json column annotated with a datetime."""
 
-        when: WhenEvent.Col[datetime] = Json(nullable=False)
+        when: WhenEvent.Col[Json[datetime]] = Text(nullable=False)
 
     moment = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
     when_event = WhenEvent(when=moment)
@@ -169,7 +173,7 @@ def json_decode_without_validation_returns_raw_decoded_value() -> None:
     class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
         """Json column annotated with a pydantic model."""
 
-        payload: ModelEvent.Col[Inner] = Json(nullable=False)
+        payload: ModelEvent.Col[Json[Inner]] = Text(nullable=False)
 
     raw = cast(
         "ModelEvent[Fetched]",
@@ -181,34 +185,68 @@ def json_decode_without_validation_returns_raw_decoded_value() -> None:
 
 
 @test()
-def datetime_values_are_utc_millisecond_text() -> None:
-    """DateTime keeps the raw aware value and canonicalizes only at the boundary."""
+def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
+    """A ``Col[datetime]`` over ``Text()`` delegates to pydantic: the value is
+    serialized in its own offset (no forced UTC) at microsecond precision, and
+    naive datetimes are allowed -- timezone policy is the user's logical type."""
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
-        """Table model with a timestamp."""
+        """Table model with a timestamp stored as ISO text."""
 
-        created_at: AuditLog.Col[datetime] = DateTime(nullable=False)
+        created_at: AuditLog.Col[datetime] = Text(nullable=False)
 
     source_timezone = timezone(timedelta(hours=5, minutes=30))
     source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
     audit_log = AuditLog(created_at=source)
+    _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
+
+    # The Pending Model holds the raw validated datetime; encoding preserves the
+    # offset and microseconds rather than canonicalizing to UTC milliseconds.
+    assert_eq(audit_log.created_at, source)
+    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T12:00:01.987654+05:30"})
+
     fetched = cast(
         "AuditLog[Fetched]",
         decode_model_row(
-            AuditLog, {"created_at": "2026-05-31T06:30:01.987Z"}, backend="sqlite"
+            AuditLog,
+            {"created_at": "2026-05-31T12:00:01.987654+05:30"},
+            backend="sqlite",
         ),
     )
-    _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
+    assert_eq(fetched.created_at, source)
 
-    canonical = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
-    # The Pending Model holds the raw validated datetime; UTC and millisecond
-    # canonicalization happen only when the value crosses the DB boundary.
-    assert_eq(audit_log.created_at, source)
-    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T06:30:01.987Z"})
-    assert_eq(fetched.created_at, canonical)
+    # No AwareDatetime injection: a naive datetime is accepted and round-trips
+    # naive (the user opts into awareness via the logical type).
+    naive = datetime(2026, 5, 31, 12, 0, 1)  # noqa: DTZ001
+    naive_log = AuditLog(created_at=naive)
+    _, encoded_naive = encode_model_row(naive_log, backend="sqlite")
+    assert_eq(encoded_naive, {"created_at": "2026-05-31T12:00:01"})
 
-    with assert_raises(ModelValidationError):
-        _ = AuditLog(created_at=datetime(2026, 5, 31, 12, 0, 1))  # noqa: DTZ001
+
+@test()
+def uuid_logical_type_round_trips_as_text_and_blocks_like() -> None:
+    """The ADR's first beneficiary: a ``Col[uuid.UUID]`` stored as ``Text()``
+    round-trips through pydantic (string on the wire) and exposes no ``like``
+    because its logical type is not ``str``."""
+
+    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+        """Table model with a client-generated UUID primary key."""
+
+        id: Account.Col[uuid.UUID] = Text(primary_key=True, default_factory=uuid.uuid4)
+
+    value = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    account = Account(id=value)
+    _, encoded = encode_model_row(account, backend="sqlite")
+    assert_eq(encoded, {"id": str(value)})
+
+    fetched = cast(
+        "Account[Fetched]",
+        decode_model_row(Account, {"id": str(value)}, backend="sqlite"),
+    )
+    assert_eq(fetched.id, value)
+
+    with assert_raises(QueryConstructionError):
+        _ = Account.id.like("1234%")
 
 
 @test()
@@ -222,20 +260,23 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
     class ExternalValue[S = Pending](Model[S, "ExternalValue[Fetched]"]):
         """Table model with an external default provider."""
 
-        payload: ExternalValue.Col[object] = Json(default_factory=broken_default)
+        payload: ExternalValue.Col[Json[dict[str, int]]] = Text(
+            default_factory=broken_default
+        )
 
     with assert_raises(ModelValidationError):
         _ = ExternalValue()
 
 
 @test()
-def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
-    """Server timestamp defaults are limited to generated DateTime fields."""
+def current_timestamp_is_valid_only_for_generated_columns() -> None:
+    """Server timestamp defaults require a generated column; the storage Column
+    Type is no longer constrained to a ``DateTime`` constructor."""
 
     class CreatedEvent[S = Pending](Model[S, "CreatedEvent[Fetched]"]):
-        """Valid generated timestamp column."""
+        """Valid generated timestamp column stored as TEXT."""
 
-        created_at: CreatedEvent.GenCol[datetime] = DateTime(
+        created_at: CreatedEvent.GenCol[datetime] = Text(
             server_default=CurrentTimestamp(),
             default=MISSING,
         )
@@ -254,19 +295,19 @@ def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
         ):
             """Invalid non-generated timestamp default."""
 
-            created_at: NonGeneratedTimestamp.Col[datetime] = DateTime(
+            created_at: NonGeneratedTimestamp.Col[datetime] = Text(
                 server_default=CurrentTimestamp(),
                 default=MISSING,
             )
 
     with assert_raises(ModelDeclarationError):
 
-        class NonDateTimeTimestamp[S = Pending](
-            Model[S, "NonDateTimeTimestamp[Fetched]"]
+        class CurrentTimestampAsPythonDefault[S = Pending](
+            Model[S, "CurrentTimestampAsPythonDefault[Fetched]"]
         ):
-            """Invalid CurrentTimestamp use outside a DateTime server default."""
+            """CurrentTimestamp is a server default, never a Python default."""
 
-            created_at: NonDateTimeTimestamp.GenCol[datetime] = Text(
+            created_at: CurrentTimestampAsPythonDefault.GenCol[datetime] = Text(
                 default=CurrentTimestamp(),
             )
 
@@ -277,7 +318,7 @@ def current_timestamp_is_valid_only_for_datetime_generated_columns() -> None:
         ):
             """Invalid server default paired with a Python default."""
 
-            created_at: TimestampWithPythonDefault.GenCol[datetime] = DateTime(
+            created_at: TimestampWithPythonDefault.GenCol[datetime] = Text(
                 server_default=CurrentTimestamp(),
                 default=datetime(2026, 5, 31, tzinfo=UTC),
             )

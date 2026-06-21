@@ -85,6 +85,7 @@ from snekql.mariadb.storage import (
     JsonAttr,
     Real,
     Text,
+    Uuid,
 )
 
 __all__ = [
@@ -154,6 +155,7 @@ __all__ = [
     "Transaction",
     "TransactionClosedError",
     "UpdateQuery",
+    "Uuid",
     "delete",
     "exists",
     "insert",

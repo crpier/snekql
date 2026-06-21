@@ -38,6 +38,7 @@ def _compile_column_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
         "Json": "JSON",
         "Real": "DOUBLE",
         "Text": f"VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {TEXT_COLLATION}",
+        "Uuid": "UUID",
     }
     try:
         return column_types[column.storage_type_name]
@@ -57,6 +58,7 @@ def _column_data_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
         "Json": "longtext",
         "Real": "double",
         "Text": "varchar",
+        "Uuid": "uuid",
     }
     try:
         return data_types[column.storage_type_name]
