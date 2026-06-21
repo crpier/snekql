@@ -76,6 +76,18 @@ _Avoid_: authentication policy, network service
 A database-supplied column value that is filled in by the database when an insert omits that column.
 _Avoid_: Python default, constructor default
 
+**Column Type**:
+The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, or `Uuid()`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
+_Avoid_: logical type, Python type, value type, storage class
+
+**Logical Type**:
+The Python type a column's values are, taken solely from the field annotation (`Col[datetime]`, `Col[uuid.UUID]`, `Col[pydantic.Json[T]]`). It is the single source of truth for the column's value and all validation, which is delegated to Pydantic. A column pairs exactly one Column Type with one Logical Type, read as a sentence: `created_at: Col[datetime] = Text()` is "a datetime, stored as text."
+_Avoid_: column type, storage class, storage type, wire type
+
+**Codec**:
+The wire encode/decode that bridges a column's Logical Type to its Column Type. It is *derived* from the (Column Type, Logical Type) pair, never named or chosen directly: Pydantic drives it for SQLite storage classes and the `pydantic.Json[T]` marker, while MariaDB native types keep dedicated codecs for their backend wire formats.
+_Avoid_: serializer, converter, ORM type, column type
+
 **Generated Column**:
 A column whose value the database produces (auto-increment or Server Default), declared with `GenCol`: its value may be Missing on a Pending Model but is always present on a Fetched Model.
 _Avoid_: computed property, Python default

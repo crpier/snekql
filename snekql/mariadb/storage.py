@@ -107,6 +107,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -117,6 +118,7 @@ class Integer:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
@@ -127,12 +129,13 @@ class Integer:
 class Real:
     """MariaDB real-number column declaration for float-like model values."""
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -142,6 +145,7 @@ class Real:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="REAL",
                 storage_type_name="Real",
@@ -152,12 +156,13 @@ class Real:
 class Text:
     """MariaDB text column declaration for string model values."""
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -167,6 +172,7 @@ class Text:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
@@ -177,12 +183,13 @@ class Text:
 class Blob:
     """MariaDB blob column declaration for bytes model values."""
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -192,6 +199,7 @@ class Blob:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="BLOB",
                 storage_type_name="Blob",
@@ -212,6 +220,7 @@ class Json:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -220,6 +229,7 @@ class Json:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Json",
@@ -235,6 +245,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -243,6 +254,7 @@ class Boolean:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Boolean",
@@ -275,6 +287,43 @@ class DateTime:
         )
 
 
+class Uuid:
+    """MariaDB native ``UUID`` column declaration for ``uuid.UUID`` values.
+
+    The native storage primitive for UUIDs (MariaDB 10.7+); the logical type is
+    the field annotation (``Col[uuid.UUID]``). The driver exchanges UUID values
+    as their string form, so encoding/decoding runs through the shared pydantic
+    scalar codec -- no dedicated native codec. To store a UUID as raw bytes
+    instead, use ``Blob()`` with a ``Col[uuid.UUID]`` annotation.
+
+    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
+    ...     id: User.Col[uuid.UUID] = Uuid(primary_key=True, default_factory=uuid4)
+    """
+
+    def __new__(  # noqa: PLR0913
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        server_default: object | None = None,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        return build_attr(
+            AttrConfig(
+                default=default,
+                default_factory=default_factory,
+                nullable=nullable,
+                primary_key=primary_key,
+                server_default=server_default,
+                unique=unique,
+                sqlite_storage_class="TEXT",
+                storage_type_name="Uuid",
+            ),
+        )
+
+
 __all__ = [
     "Blob",
     "Boolean",
@@ -286,4 +335,5 @@ __all__ = [
     "JsonAttr",
     "Real",
     "Text",
+    "Uuid",
 ]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +13,6 @@ from snekql.sqlite import (
     MISSING,
     Aggregate,
     CurrentTimestamp,
-    DateTime,
     Fetched,
     ForeignKey,
     Index,
@@ -58,7 +58,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = DateTime(
+    created_at: User.GenCol[datetime] = Text(
         server_default=CurrentTimestamp(),
         default=MISSING,
     )
@@ -91,6 +91,10 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
         default=MISSING,
     )
     email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
+    # UUID logical type stored as TEXT on SQLite (no native UUID storage class).
+    account_id: SqliteUser.Col[uuid.UUID] = sqlite.Text(
+        nullable=False, default_factory=uuid.uuid4
+    )
 
 
 class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
@@ -102,6 +106,10 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
         default=MISSING,
     )
     email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
+    # Native MariaDB UUID Column Type paired with the uuid.UUID logical type.
+    account_id: MariadbUser.Col[uuid.UUID] = mariadb.Uuid(
+        nullable=False, default_factory=uuid.uuid4
+    )
     profile: MariadbUser.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
 
 
@@ -112,6 +120,7 @@ if TYPE_CHECKING:
     _ = assert_type(sqlite_index, Index[SqliteUser[Pending]])
     sqlite_user = SqliteUser(email="alice@example.com")
     _ = assert_type(sqlite_user, SqliteUser[Pending])
+    _ = assert_type(sqlite_user.account_id, uuid.UUID)
     _ = assert_type(
         select(SqliteUser), SelectModelQuery[SqliteUser[Pending], SqliteUser[Fetched]]
     )
@@ -154,6 +163,7 @@ if TYPE_CHECKING:
     _ = assert_type(mariadb_index, Index[MariadbUser[Pending]])
     mariadb_user = MariadbUser(email="alice@example.com")
     _ = assert_type(mariadb_user, MariadbUser[Pending])
+    _ = assert_type(mariadb_user.account_id, uuid.UUID)
     _ = assert_type(
         select(MariadbUser),
         SelectModelQuery[MariadbUser[Pending], MariadbUser[Fetched]],

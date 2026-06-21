@@ -91,25 +91,28 @@ _COMMON_NAMES = frozenset(
         "update",
     },
 )
-# Dialect-specific symbols: each backend's ``Model`` base, ``Config``, and column
-# constructors. MariaDB additionally exposes the JSON column attribute type.
+# Dialect-specific symbols shared by both backends: each backend's ``Model``
+# base, ``Config``, and the four storage-primitive column constructors.
 _DIALECT_NAMES = frozenset(
     {
         "Blob",
-        "Boolean",
         "Config",
         "CurrentTimestamp",
-        "DateTime",
         "ForeignKey",
         "Integer",
-        "Json",
         "Model",
         "Real",
         "Text",
     },
 )
+# SQLite collapses to the four storage classes; MariaDB additionally exposes its
+# native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
+# column attribute type.
+_MARIADB_ONLY_NAMES = frozenset(
+    {"Boolean", "DateTime", "Json", "JsonAttr", "Uuid"},
+)
 _SQLITE_EXPECTED = _COMMON_NAMES | _DIALECT_NAMES
-_MARIADB_EXPECTED = _SQLITE_EXPECTED | {"JsonAttr"}
+_MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
 
 
 def _assert_has_specific_docstring(value: object) -> None:
@@ -212,9 +215,13 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     assert_is(sqlite.Attr, mariadb.Attr)
     assert_is(sqlite.Predicate, mariadb.Predicate)
 
-    # The Model base and JSON column differ per backend.
+    # The Model base differs per backend; the native MariaDB column types
+    # (JSON, Boolean, DateTime, Uuid) have no SQLite counterpart.
     assert sqlite.Model is not mariadb.Model
-    assert sqlite.Json is not mariadb.Json
+    assert_in("Json", mariadb.__all__)
+    assert_not_in("Json", sqlite.__all__)
+    assert_in("Uuid", mariadb.__all__)
+    assert_not_in("Uuid", sqlite.__all__)
     assert_in("JsonAttr", mariadb.__all__)
     assert_not_in("JsonAttr", sqlite.__all__)
 
@@ -287,14 +294,12 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Assignment,
         sqlite.Attr,
         sqlite.Blob,
-        sqlite.Boolean,
         sqlite.CurrentTimestamp,
         sqlite.Database,
         sqlite.DatabaseClosedError,
         sqlite.DatabaseCloseTimeoutError,
         sqlite.DatabaseClosingError,
         sqlite.DatabaseRuntimeError,
-        sqlite.DateTime,
         sqlite.DeleteQuery,
         sqlite.ExecutionError,
         sqlite.Fetched,
@@ -302,7 +307,6 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Index,
         sqlite.InsertQuery,
         sqlite.Integer,
-        sqlite.Json,
         sqlite.MigrationError,
         sqlite.MigrationLockTimeoutError,
         sqlite.Missing,

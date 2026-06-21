@@ -44,7 +44,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = sqlite.DateTime(
+    created_at: User.GenCol[datetime] = sqlite.Text(
         server_default=sqlite.CurrentTimestamp(),
         default=sqlite.MISSING,
     )
@@ -94,7 +94,7 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
         default=sqlite.MISSING,
     )
     message: AuditLog.Col[str] = sqlite.Text(nullable=False)
-    created_at: AuditLog.GenCol[datetime] = sqlite.DateTime(
+    created_at: AuditLog.GenCol[datetime] = sqlite.Text(
         server_default=sqlite.CurrentTimestamp(),
         default=sqlite.MISSING,
     )
@@ -125,29 +125,49 @@ allowed-unused-imports = [
 ]
 ```
 
-## Storage classes
+## Column types and logical types
 
-Use storage declarations from the same backend namespace as the model:
+A column is two coordinates (see ADR 0005):
 
-- `sqlite.Integer` / `mariadb.Integer`
-- `sqlite.Real` / `mariadb.Real`
-- `sqlite.Text` / `mariadb.Text`
-- `sqlite.Blob` / `mariadb.Blob`
-- `sqlite.Json` / `mariadb.Json` stores JSON text. Serialization and validation
-  both go through the column's annotated type, so any type Pydantic can validate
-  (`datetime`, Pydantic models, `list[Model]`, ...) round-trips, not just
-  `dict`/`list`/primitives.
-- `sqlite.Boolean` / `mariadb.Boolean` stores boolean values in
-  integer-compatible columns.
-- `sqlite.DateTime` / `mariadb.DateTime` stores UTC datetimes.
+- The **column type** is the constructor. It names a *storage primitive* of the
+  backend and decides where the value is physically stored — nothing else.
+- The **logical type** is the field annotation (`Col[T]`). It is the single
+  source of truth for the column's Python value and all validation, which is
+  delegated to Pydantic.
 
-All storage declarations accept `unique=True` for column-level unique indexes.
-SQLite allows multiple `NULL` values in a unique index, so use `nullable=False`
-when uniqueness should also require a value. Primary-key columns reject
-`unique=True` because it is redundant.
+Read a declaration as a sentence — `created_at: Col[datetime] = Text()` is "a
+datetime, stored as text." The codec that bridges the two is *derived* from the
+pair; you never name it.
+
+SQLite exposes exactly its four storage classes as column types:
+
+- `sqlite.Integer` — `INTEGER` storage. A `Col[bool]` stores as `0`/`1`.
+- `sqlite.Real` — `REAL` storage.
+- `sqlite.Text` — `TEXT` storage. Holds `Col[str]`, `Col[datetime]` (ISO text),
+  `Col[uuid.UUID]` (string form), or a `Col[pydantic.Json[T]]` payload.
+- `sqlite.Blob` — `BLOB` storage for `Col[bytes]`.
+
+JSON uses Pydantic's marker, not a snekql type: annotate
+`Col[pydantic.Json[T]] = Text()`. Serialization and validation both run through
+`T`, so any type Pydantic can validate (`datetime`, Pydantic models,
+`list[Model]`, ...) round-trips, not just `dict`/`list`/primitives.
+
+MariaDB additionally exposes its native types as column types — `mariadb.Json`,
+`mariadb.Boolean`, `mariadb.DateTime`, and `mariadb.Uuid` (native `UUID`). To
+store a UUID as raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
+
+There is no declaration-time storage/logical compatibility check: any pairing is
+allowed and an impossible one fails at encode/decode via a Pydantic error.
+Timezone policy is the logical type's job — a naive `datetime` round-trips
+naive; annotate `Col[AwareDatetime]` to require awareness.
+
+All column types accept `unique=True` for column-level unique indexes. SQLite
+allows multiple `NULL` values in a unique index, so use `nullable=False` when
+uniqueness should also require a value. Primary-key columns reject `unique=True`
+because it is redundant. Every column type also exposes `server_default`.
 
 `sqlite.CurrentTimestamp()` and `mariadb.CurrentTimestamp()` are the only v1
-server defaults and are valid only on `DateTime` `GenCol` fields.
+server defaults and are valid only on `GenCol` fields.
 
 ## Indexes
 

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from json import JSONDecodeError, loads
-from types import EllipsisType, UnionType
+from types import EllipsisType
 from typing import (
     Any,
     Literal,
@@ -20,7 +19,8 @@ from typing import (
     overload,
 )
 
-from pydantic import AwareDatetime, TypeAdapter, ValidationError
+from pydantic import Json as _PydanticJson
+from pydantic import TypeAdapter, ValidationError
 from pydantic_core import PydanticSerializationError
 
 from snekql.errors import (
@@ -41,6 +41,10 @@ from snekql.expressions import (
 
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
+
+# ``pydantic.Json`` is typed as a special form but is a real class at runtime;
+# bind the runtime class for ``isinstance`` marker detection.
+_JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -127,7 +131,11 @@ def build_attr(config: AttrConfig) -> Any:
 
 
 class Integer:
-    """SQLite INTEGER column declaration for table model fields.
+    """SQLite INTEGER storage primitive for table model fields.
+
+    The Python value type is the field annotation, not the constructor: an
+    ``Integer()`` column may hold an ``int`` or any pydantic type that encodes to
+    an integer (a ``bool`` as ``0``/``1``, a custom epoch ``datetime``).
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
     ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
@@ -140,6 +148,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -150,6 +159,7 @@ class Integer:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
@@ -158,18 +168,19 @@ class Integer:
 
 
 class Real:
-    """SQLite REAL column declaration for float-like model values.
+    """SQLite REAL storage primitive for float-like model values.
 
     >>> class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
     ...     value: Reading.Col[float] = Real(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -179,6 +190,7 @@ class Real:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="REAL",
                 storage_type_name="Real",
@@ -187,18 +199,23 @@ class Real:
 
 
 class Text:
-    """SQLite TEXT column declaration for string model values.
+    """SQLite TEXT storage primitive for string-encoded model values.
+
+    The Python value type is the annotation: ``Text()`` may hold a ``str``, a
+    ``datetime`` (ISO text), a ``uuid.UUID`` (its string form), or a
+    ``pydantic.Json[T]`` payload (serialized JSON text).
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -208,6 +225,7 @@ class Text:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
@@ -216,18 +234,19 @@ class Text:
 
 
 class Blob:
-    """SQLite BLOB column declaration for bytes model values.
+    """SQLite BLOB storage primitive for bytes-encoded model values.
 
     >>> class File[S = Pending](Model[S, "File[Fetched]"]):
     ...     content: File.Col[bytes] = Blob(nullable=False)
     """
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -237,6 +256,7 @@ class Blob:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="BLOB",
                 storage_type_name="Blob",
@@ -244,99 +264,13 @@ class Blob:
         )
 
 
-class Json:
-    """SQLite TEXT-backed JSON column declaration.
-
-    Values are serialized to JSON text before writes and decoded before fetched
-    model validation.
-
-    >>> class Event[S = Pending](Model[S, "Event[Fetched]"]):
-    ...     payload: Event.Col[dict[str, object]] = Json(nullable=False)
-    """
-
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Json",
-            ),
-        )
-
-
-class Boolean:
-    """SQLite INTEGER-backed boolean column declaration.
-
-    >>> class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
-    ...     enabled: FeatureFlag.Col[bool] = Boolean(default=False)
-    """
-
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                unique=unique,
-                sqlite_storage_class="INTEGER",
-                storage_type_name="Boolean",
-            ),
-        )
-
-
-class DateTime:
-    """SQLite TEXT-backed timezone-aware datetime column declaration.
-
-    >>> class Event[S = Pending](Model[S, "Event[Fetched]"]):
-    ...     created_at: Event.GenCol[datetime] = DateTime(
-    ...         server_default=CurrentTimestamp(),
-    ...         default=MISSING,
-    ...     )
-    """
-
-    def __new__(
-        cls,
-        *,
-        server_default: object | None = None,
-        nullable: bool | None = None,
-        unique: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                server_default=server_default,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="DateTime",
-            ),
-        )
-
-
 class CurrentTimestamp:
     """Server default marker for database-filled UTC timestamps.
 
-    >>> DateTime(server_default=CurrentTimestamp(), default=MISSING)
+    Pairs with any column whose logical type decodes the backend's timestamp
+    text; on SQLite that is a ``Col[datetime]`` stored as ``Text()``.
+
+    >>> Text(server_default=CurrentTimestamp(), default=MISSING)
     """
 
 
@@ -419,117 +353,36 @@ def _extract_logical_type(annotation: object, name: str) -> object:
     raise ModelDeclarationError(msg)
 
 
-# Storage types whose logical type is a single, unambiguous Python base. Json
-# (any JSON-serializable value) and other multi-type storage are deliberately
-# absent: they have no single base to compare an annotation against.
-_STORAGE_LOGICAL_TYPE: dict[str, type] = {
-    "Integer": int,
-    "Real": float,
-    "Text": str,
-    "Blob": bytes,
-    "Boolean": bool,
-    "DateTime": datetime,
-}
+def _carries_json_marker(annotation: object) -> bool:
+    """Whether a logical annotation is a ``pydantic.Json[T]`` payload.
 
-
-def check_column_storage_compatibility(
-    owner: type,
-    columns: dict[str, Attr[Any, Any, Any, Any, Any]],
-    raw_annotations: dict[str, object],
-) -> None:
-    """Reject columns whose logical annotation cannot match their storage.
-
-    A column has two independent sources of truth: the field annotation drives
-    pydantic validation, and the storage descriptor drives encode/decode.
-    Nothing else forces them to agree, so a mismatch like ``Col[int] = Boolean()``
-    silently corrupts data (``5`` stored as ``1``). This declaration-time guard
-    catches the unambiguous scalar mismatches.
-
-    The check is **best-effort**: storage types with no single logical base
-    (``Json``), annotations that do not reduce to one base type (unions of two
-    non-``None`` members, enums, pydantic models), and annotations that cannot
-    be resolved yet (forward references defined later in the module) are all let
-    through. Every checked base is a builtin that always resolves, so nothing in
-    scope is ever skipped for being unresolvable.
+    ``pydantic.Json[T]`` desugars to ``Annotated[T, pydantic.Json]``; the marker
+    is the ``Json`` class sitting in the annotation metadata. Detecting it is how
+    a plain ``Text()`` column opts into JSON serialization without a dedicated
+    ``Json`` constructor (SQLite has no native JSON storage class).
     """
 
-    for name, column in columns.items():
-        expected = _STORAGE_LOGICAL_TYPE.get(column.storage_type_name)
-        if expected is None:
-            continue
-        annotation = _resolve_annotation(owner, raw_annotations.get(name))
-        if annotation is None:
-            continue
-        logical = _logical_base_type(annotation, name)
-        if logical is None:
-            continue
-        if logical is not expected:
-            msg = (
-                f"column {name!r} annotated {logical.__name__!r} is incompatible "
-                f"with {column.storage_type_name} storage "
-                f"(expected {expected.__name__!r})"
-            )
-            raise ModelDeclarationError(msg)
-
-
-def _resolve_annotation(owner: type, raw: object) -> object:
-    """Resolve one column annotation in isolation, or ``None`` if it cannot be.
-
-    Annotations are strings under ``from __future__ import annotations``.
-    Resolving each column on its own -- rather than batch ``get_type_hints`` --
-    keeps one unresolvable forward reference from blocking the check on its
-    resolvable siblings.
-    """
-
-    if raw is None:
-        return None
-    if not isinstance(raw, str):
-        return raw
-    module = sys.modules.get(owner.__module__)
-    globalns = getattr(module, "__dict__", {})
-    captured = cast("dict[str, Any] | None", getattr(owner, "__snekql_localns__", None))
-    localns: dict[str, Any] = {**(captured or {}), owner.__name__: owner}
-    try:
-        return eval(raw, dict(globalns), localns)  # noqa: S307
-    except Exception:  # best-effort: any resolution failure means "skip".
-        return None
-
-
-def _logical_base_type(annotation: object, name: str) -> type | None:
-    """Reduce a column annotation to its single Python base type, if it has one.
-
-    Strips the column alias (``Col``/``GenCol``/``FKCol``), then ``Annotated``
-    metadata, then an optional ``| None``. Anything that does not bottom out in
-    a single concrete class -- a multi-member union, a parametrized generic, a
-    type variable -- returns ``None`` and is left for the caller to skip.
-    """
-
-    try:
-        logical = _extract_logical_type(annotation, name)
-    except ModelDeclarationError:
-        return None
-    logical = _strip_annotated(logical)
-    logical = _strip_optional(logical)
-    if isinstance(logical, type):
-        return logical
-    return None
-
-
-def _strip_annotated(annotation: object) -> object:
     metadata = getattr(annotation, "__metadata__", None)
-    if metadata is not None:
+    if not metadata:
+        return False
+    # ``pydantic.Json[T]`` puts a ``Json()`` instance in the metadata; a bare
+    # ``Json`` annotation would put the class itself.
+    return any(
+        item is _PydanticJson or isinstance(item, _JSON_MARKER_TYPE)
+        for item in metadata
+    )
+
+
+def _strip_json_marker(annotation: object) -> object:
+    """Drop the ``pydantic.Json`` marker, exposing the inner payload type.
+
+    The marker only selects the JSON wire codec; validation and serialization run
+    against the inner ``T`` (a ``dict``, a pydantic model, ...) through the same
+    adapter the MariaDB native ``Json`` column already uses.
+    """
+
+    if _carries_json_marker(annotation):
         return cast("Any", annotation).__origin__
-    return annotation
-
-
-def _strip_optional(annotation: object) -> object:
-    # Only PEP 604 ``X | None`` unions are unwrapped, matching house style; an
-    # old-style ``Optional[X]`` simply falls through as "not a single base type"
-    # and is left for the caller to skip rather than risk a false positive.
-    if get_origin(annotation) is UnionType:
-        non_none = [arg for arg in get_args(annotation) if arg is not type(None)]
-        if len(non_none) == 1:
-            return non_none[0]
     return annotation
 
 
@@ -563,6 +416,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         self.storage_type_name: str = config.storage_type_name
         self.unique: bool = config.unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
+        self._is_json_cache: bool | None = None
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name
@@ -609,19 +463,37 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
     ) -> object:
         """Decode a database value through this column's backend storage codec.
 
-        Layer 1 wire decoding (`0/1` -> bool, JSON text -> value, timestamp text
-        -> aware datetime) always runs. Layer 2 logical validation against the
-        column's declared type runs unless ``validate`` is disabled.
+        JSON columns and the MariaDB native ``Boolean`` / ``DateTime`` types keep
+        their dedicated wire codecs; every other column delegates the
+        wire-to-logical conversion to pydantic. Fetch decoding is **lax** -- the
+        driver hands back a primitive (`str`/`int`) that must coerce up to the
+        logical type (`str -> datetime`, `1 -> bool`, `str -> UUID`), which strict
+        validation rejects. ``validate=False`` is the raw escape hatch.
         """
 
         codec = _BACKEND_CODECS[backend]
         try:
-            if self.storage_type_name == "Json":
+            if self._is_json_column():
                 return self._decode_json(value, codec=codec, validate=validate)
-            decoded_value = self._decode_value(value, codec=codec)
+            if self.storage_type_name == "Boolean":
+                decoded: object = None if value is None else self._decode_boolean(value)
+            elif self.storage_type_name == "DateTime":
+                decoded = (
+                    None
+                    if value is None
+                    else codec.decode_datetime(value, self._require_name())
+                )
+            else:
+                if value is None:
+                    if validate:
+                        self._coerce_null_value()
+                    return None
+                if not validate:
+                    return value
+                return self._decode_primitive(value)
             if not validate:
-                return decoded_value
-            return self._validate_logical_value(decoded_value, fetched=True)
+                return decoded
+            return self._validate_logical_value(decoded, fetched=True)
         except SnekqlError:
             raise
         except Exception as error:
@@ -685,18 +557,44 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         if cached is not None:
             return cached
         name = self._require_name()
-        if self.storage_type_name == "DateTime":
-            validated_type: object = AwareDatetime
-        else:
-            owner = self.owner
-            if owner is None:
-                msg = "column descriptor is not bound"
-                raise ModelDeclarationError(msg)
-            annotation = _resolve_model_hints(owner).get(name)
-            validated_type = _extract_logical_type(annotation, name)
+        owner = self.owner
+        if owner is None:
+            msg = "column descriptor is not bound"
+            raise ModelDeclarationError(msg)
+        annotation = _resolve_model_hints(owner).get(name)
+        # The pydantic ``Json`` marker only selects the JSON wire codec; the
+        # adapter validates and serializes the inner payload type, the same way
+        # the MariaDB native ``Json`` column (a plain ``Col[T]`` annotation) does.
+        validated_type = _strip_json_marker(_extract_logical_type(annotation, name))
         adapter: TypeAdapter[Any] = TypeAdapter(validated_type)
         self._logical_adapter_cache = adapter
         return adapter
+
+    def _is_json_column(self) -> bool:
+        """Whether this column uses the JSON wire codec.
+
+        True for the MariaDB native ``Json`` storage type and for any column
+        whose annotation carries the ``pydantic.Json`` marker (how a SQLite
+        ``Text()`` column opts into JSON without a native JSON storage class).
+        """
+
+        cached = self._is_json_cache
+        if cached is not None:
+            return cached
+        if self.storage_type_name == "Json":
+            self._is_json_cache = True
+            return True
+        owner = self.owner
+        if owner is None:
+            return False
+        annotation = _resolve_model_hints(owner).get(self._require_name())
+        try:
+            logical = _extract_logical_type(annotation, self._require_name())
+        except ModelDeclarationError:
+            logical = None
+        result = _carries_json_marker(logical)
+        self._is_json_cache = result
+        return result
 
     def _coerce_missing_value(self, *, fetched: bool) -> Missing:
         if self.is_generated and not fetched:
@@ -755,20 +653,24 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         msg = f"{self._require_name()!r} database value must be JSON text"
         raise ModelValidationError(msg)
 
-    def _decode_value(self, value: object, *, codec: _BackendCodec) -> object:
-        """Wire-decode a non-Json column value (Layer 1) for a backend.
+    def _decode_primitive(self, value: object) -> object:
+        """Lax-decode a primitive-storage value into its logical type via pydantic.
 
-        Boolean and scalar pass-through are backend-independent; only the
-        ``DateTime`` strategy varies, so it dispatches through ``codec``.
+        The driver returns a storage primitive (`str`/`int`/`float`/`bytes`); lax
+        validation coerces it up to the annotated type (`str -> datetime`,
+        `str -> UUID`, `1 -> bool`). BLOB values may arrive as ``memoryview`` /
+        ``bytearray`` and are normalized to ``bytes`` first.
         """
 
-        if value is None:
-            return None
-        if self.storage_type_name == "Boolean":
-            return self._decode_boolean(value)
-        if self.storage_type_name == "DateTime":
-            return codec.decode_datetime(value, self._require_name())
-        return value
+        if self.sqlite_storage_class == "BLOB" and isinstance(
+            value, memoryview | bytearray
+        ):
+            value = bytes(cast("Any", value))
+        try:
+            return self._logical_adapter().validate_python(value)
+        except ValidationError as error:
+            msg = f"{self._require_name()!r} failed type validation: {error}"
+            raise ModelValidationError(msg) from error
 
     def _decode_boolean(self, value: object) -> bool:
         if value == 0:
@@ -787,7 +689,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
 
         if value is None:
             return None
-        if self.storage_type_name == "Json":
+        if self._is_json_column():
             return self._encode_json(value)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
@@ -798,7 +700,20 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
                 + f"{timestamp.microsecond // 1000:03d}"
                 + codec.datetime_encode_suffix
             )
-        return value
+        return self._encode_primitive(value)
+
+    def _encode_primitive(self, value: object) -> object:
+        """Wire-encode a primitive-storage value through pydantic serialization.
+
+        ``mode="json"`` turns datetimes/UUIDs into bare strings and passes
+        ints/floats/bools through; BLOB storage uses ``mode="python"`` because
+        json-mode would base64- or utf-8-mangle raw bytes.
+        """
+
+        adapter = self._logical_adapter()
+        if self.sqlite_storage_class == "BLOB":
+            return adapter.dump_python(value, mode="python")
+        return adapter.dump_python(value, mode="json")
 
     def _encode_json(self, value: object) -> str:
         """Serialize a Json column value through its logical pydantic adapter.
@@ -817,16 +732,42 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
             raise ModelValidationError(msg) from error
 
     def like(self, pattern: str) -> Predicate[OwnerT]:
-        if self.storage_type_name != "Text":
+        if not self._is_str_logical():
             msg = "like() is only valid for text columns"
             raise QueryConstructionError(msg)
         return Predicate(kind="like", column=self, value=pattern)
 
     def not_like(self, pattern: str) -> Predicate[OwnerT]:
-        if self.storage_type_name != "Text":
+        if not self._is_str_logical():
             msg = "not_like() is only valid for text columns"
             raise QueryConstructionError(msg)
         return Predicate(kind="not_like", column=self, value=pattern)
+
+    def _is_str_logical(self) -> bool:
+        """Whether the column's logical type is ``str`` (gates ``like``).
+
+        Keyed on the logical type rather than TEXT storage, so a
+        ``Col[uuid.UUID] = Text()`` or ``Col[datetime] = Text()`` column does not
+        expose string pattern matching.
+        """
+
+        owner = self.owner
+        if owner is None:
+            return False
+        annotation = _resolve_model_hints(owner).get(self._require_name())
+        try:
+            logical = _strip_json_marker(
+                _extract_logical_type(annotation, self._require_name())
+            )
+        except ModelDeclarationError:
+            return False
+        metadata = getattr(logical, "__metadata__", None)
+        if metadata is not None:
+            logical = cast("Any", logical).__origin__
+        non_none = [arg for arg in get_args(logical) if arg is not type(None)]
+        if len(non_none) == 1:
+            logical = non_none[0]
+        return isinstance(logical, type) and issubclass(logical, str)
 
     def count(self) -> Aggregate[OwnerT, int]:
         """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
