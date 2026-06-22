@@ -17,6 +17,8 @@ from snekql.sqlite import (
     Integer,
     Model,
     ModelValidationError,
+    MultipleResultsError,
+    NoResultError,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
@@ -172,35 +174,152 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
         _ = compile_sqlite_select_sql(query)
 
 
+class _Person[S = Pending](Model[S, "_Person[Fetched]"]):
+    """Table model with a nullable column for fetch cardinality tests."""
+
+    id: _Person.GenCol[int] = Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=MISSING,
+    )
+    email: _Person.Col[str] = Text(nullable=False)
+    nickname: _Person.Col[str | None] = Text(nullable=True, default=None)
+
+
 @test(mark="medium")
-async def fetch_one_returns_first_row_or_none_without_cardinality_checks() -> None:
-    """fetch_one returns the first selected row and treats empty results as None."""
+async def fetch_one_returns_the_single_matching_row() -> None:
+    """fetch_one returns the one matching row for an exactly-one select."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
-        """Table model selected through fetch_one."""
-
-        id: User.GenCol[int] = Integer(
-            primary_key=True,
-            auto_increment=True,
-            default=MISSING,
-        )
-        email: User.Col[str] = Text(nullable=False)
-
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await Database.initialize(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
-            await tx.execute(insert(User(email="a@example.com")))
-            await tx.execute(insert(User(email="b@example.com")))
+            await tx.execute(insert(_Person(email="a@example.com")))
 
-            first_email = await tx.fetch_one(
-                select(User.email).all().order_by(User.id.asc()),
+            email = await tx.fetch_one(
+                select(_Person.email).where(_Person.email.eq("a@example.com")),
             )
-            no_email = await tx.fetch_one(select(User.email).all().limit(0))
+            person = await tx.fetch_one(
+                select(_Person).where(_Person.email.eq("a@example.com")),
+            )
     finally:
         await database.close()
 
-    assert_eq(first_email, "a@example.com")
-    assert_eq(no_email, None)
+    assert_eq(email, "a@example.com")
+    assert_eq(person.email, "a@example.com")
+
+
+@test(mark="medium")
+async def fetch_one_raises_when_no_row_matches() -> None:
+    """fetch_one raises NoResultError rather than returning None for no row."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            with assert_raises(NoResultError):
+                _ = await tx.fetch_one(
+                    select(_Person.email).where(_Person.email.eq("missing")),
+                )
+    finally:
+        await database.close()
+
+
+@test(mark="medium")
+async def fetch_one_raises_when_more_than_one_row_matches() -> None:
+    """fetch_one raises MultipleResultsError when the select matches many rows."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(_Person(email="a@example.com")))
+            await tx.execute(insert(_Person(email="b@example.com")))
+
+            with assert_raises(MultipleResultsError):
+                _ = await tx.fetch_one(select(_Person.email).all())
+
+            # "first of N" is opt-in through an explicit limit.
+            first = await tx.fetch_one(
+                select(_Person.email).all().order_by(_Person.id.asc()).limit(1),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(first, "a@example.com")
+
+
+@test(mark="medium")
+async def fetch_one_distinguishes_sql_null_from_a_missing_row() -> None:
+    """A returned None from a single-value fetch_one means SQL NULL, not no row."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(_Person(email="a@example.com", nickname=None)))
+
+            nickname = await tx.fetch_one(
+                select(_Person.nickname).where(_Person.email.eq("a@example.com")),
+            )
+            with assert_raises(NoResultError):
+                _ = await tx.fetch_one(
+                    select(_Person.nickname).where(_Person.email.eq("missing")),
+                )
+    finally:
+        await database.close()
+
+    # The row exists; its nickname is SQL NULL, surfaced unambiguously as None.
+    assert_eq(nickname, None)
+
+
+@test(mark="medium")
+async def fetch_one_or_none_returns_none_for_a_missing_row() -> None:
+    """fetch_one_or_none yields None for no row and the row when exactly one."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            missing = await tx.fetch_one_or_none(
+                select(_Person).where(_Person.email.eq("missing")),
+            )
+            await tx.execute(insert(_Person(email="a@example.com")))
+            found = await tx.fetch_one_or_none(
+                select(_Person).where(_Person.email.eq("a@example.com")),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(missing, None)
+    assert found is not None
+    assert_eq(found.email, "a@example.com")
+
+
+@test(mark="medium")
+async def fetch_one_or_none_raises_when_more_than_one_row_matches() -> None:
+    """fetch_one_or_none caps cardinality at one like fetch_one does."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(_Person(email="a@example.com")))
+            await tx.execute(insert(_Person(email="b@example.com")))
+
+            with assert_raises(MultipleResultsError):
+                _ = await tx.fetch_one_or_none(select(_Person).all())
+    finally:
+        await database.close()
+
+
+@test(mark="fast")
+async def fetch_one_or_none_rejects_single_value_selects() -> None:
+    """fetch_one_or_none refuses the shape whose None would be ambiguous."""
+
+    database = await Database.initialize(database=":memory:", models=[_Person])
+    try:
+        async with database.transaction() as tx:
+            with assert_raises(QueryConstructionError):
+                _ = await tx.fetch_one_or_none(
+                    cast("Any", select(_Person.nickname).all()),
+                )
+    finally:
+        await database.close()
 
 
 @test(mark="medium")

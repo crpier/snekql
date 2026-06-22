@@ -63,6 +63,24 @@ class DatabaseClosingError(DatabaseRuntimeError):
     """Raised when new work starts while Database.close is in progress."""
 
 
+class NoResultError(DatabaseRuntimeError):
+    """Raised when ``fetch_one`` finds no row for a select that must match one.
+
+    ``fetch_one`` carries an exactly-one contract; absence is an error rather
+    than a ``None`` return, which keeps a returned ``None`` for a single-value
+    select unambiguously meaning SQL ``NULL``. Use ``fetch_at_most_one`` (model,
+    tuple, and join selects) when a missing row is expected.
+    """
+
+
+class MultipleResultsError(DatabaseRuntimeError):
+    """Raised when ``fetch_one``/``fetch_at_most_one`` match more than one row.
+
+    Both methods cap cardinality at one. Select ``first of N`` explicitly with
+    ``.limit(1)`` when more than one row is acceptable.
+    """
+
+
 class ExecutionError(DatabaseRuntimeError):
     """Database execution failure with query context.
 

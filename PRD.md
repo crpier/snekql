@@ -363,10 +363,11 @@ Requirements:
 - `fetch_all(select(User))` returns `list[User[Fetched]]` after query completeness validation.
 - `fetch_all(select(User.email))` returns `list[str]` for this example.
 - `fetch_all(select(User.email, User.status))` returns `list[tuple[str, str]]`.
-- `fetch_one(...)` returns the first row or `None`.
-- `fetch_one(...)` does not validate cardinality, does not inject `LIMIT`, and does not warn if the query has no limit.
-- `fetch_one(...)` closes/discards cursor resources promptly after reading the first row.
-- `fetch_one(...limit(0))` returns `None`.
+- `fetch_one(...)` carries an exactly-one contract: it returns the single matching row in the selected shape, raises `NoResultError` when no row matches, and raises `MultipleResultsError` when more than one matches. The single-value result keeps the column read type (no `| None`), so a `None` there means a SQL `NULL` value, not a missing row.
+- `fetch_one(...)`/`fetch_one_or_none(...)` validate cardinality by fetching at most two rows (telling `0`/`1`/`many` apart) and do not inject `LIMIT`; take the first of several rows on purpose with an explicit `.limit(1)`.
+- `fetch_one(...)`/`fetch_one_or_none(...)` close/discard cursor resources promptly after reading.
+- `fetch_one_or_none(...)` returns the matching row or `None` (zero-or-one), still raising `MultipleResultsError` on more than one row. It is offered only for model, tuple, and join selects; single-value selects are rejected (a `QueryConstructionError`) because their `None` would conflate a missing row with a SQL `NULL` value.
+- `fetch_one(...limit(0))` raises `NoResultError`; `fetch_one_or_none(...limit(0))` returns `None`.
 - `execute(...)` accepts only insert/update/delete statements.
 - `execute(...)` does not accept selects.
 - `execute(...)` returns `None` in v1.
@@ -468,6 +469,6 @@ Execution failures must preserve query context:
 - Model tests must cover declaration rules, table-name inference, invalid annotations, defaults, `Missing`, immutability, equality, and `repr`.
 - Storage type tests must cover SQLite type generation, DateTime encoding/decoding, Boolean encoding/decoding, JSON encoding/decoding, and invalid generated/server-default combinations.
 - Query builder tests must cover generated SQL, parameter order, `.all()`/`.where()` completeness, update/delete full-table opt-in, predicate composition, invalid predicate usage, and immutable builder behavior.
-- Runtime tests must cover `Database.initialize`, pool acquisition timeout, transaction begin/commit/rollback, fetch result conversion, `fetch_one` first-row behavior, `execute` returning `None`, close semantics, and wrapped execution errors.
+- Runtime tests must cover `Database.initialize`, pool acquisition timeout, transaction begin/commit/rollback, fetch result conversion, `fetch_one` exactly-one behavior (`NoResultError`/`MultipleResultsError`) and `fetch_one_or_none` zero-or-one behavior, `execute` returning `None`, close semantics, and wrapped execution errors.
 - Schema tests must cover create missing tables, verify existing tables, strict/warn drift policy, duplicate table names, non-`STRICT` drift, and generated SQL comparison.
 - Integration tests should run against a real SQLite `Path` database and `database=":memory:"`.

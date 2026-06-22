@@ -187,7 +187,6 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
     finally:
         await database.close()
 
-    assert event is not None
     assert_isinstance(event.id, int)
     assert_eq(event.account_id, account_id)
     assert_eq(event.amount, 12.5)

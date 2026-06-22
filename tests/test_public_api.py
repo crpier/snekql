@@ -63,6 +63,8 @@ _COMMON_NAMES = frozenset(
         "ModelError",
         "ModelMeta",
         "ModelValidationError",
+        "MultipleResultsError",
+        "NoResultError",
         "OrderBy",
         "Pending",
         "PoolTimeoutError",
