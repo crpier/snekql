@@ -15,6 +15,7 @@ from snekql._query_materialize import (
     materialize_select_row_for_backend,
 )
 from snekql.query import AnySelectQuery
+from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite_identifier
 from snekql.storage import Attr
 
@@ -31,6 +32,7 @@ def _encode_sqlite_column_value(
 
 
 _SQLITE_QUERY_DIALECT = QueryDialect(
+    current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_sqlite_empty_insert_sql,
     encode_column_value=_encode_sqlite_column_value,
     placeholder="?",

@@ -17,6 +17,7 @@ from snekql._schema_shape import ColumnShape, IndexShape, TableShape
 from snekql._schema_startup import initialize_schema
 from snekql.errors import SchemaError
 from snekql.indexes import NormalizedIndex
+from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
@@ -124,7 +125,7 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
     if column.primary_key:
         parts.append("PRIMARY KEY")
     if column.server_default is CurrentTimestamp:
-        parts.append("DEFAULT CURRENT_TIMESTAMP(3)")
+        parts.append(f"DEFAULT {CURRENT_TIMESTAMP_SQL}")
     return " ".join(parts)
 
 

@@ -16,6 +16,7 @@ type QueryValueEncoder = Callable[[QueryColumn, object], object]
 class QueryDialect:
     """Small Dialect seam for compiling shared query state into backend SQL."""
 
+    current_timestamp_sql: str
     empty_insert_sql: Callable[[str], str]
     encode_column_value: QueryValueEncoder
     placeholder: str

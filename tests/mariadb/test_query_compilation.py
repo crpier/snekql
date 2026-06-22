@@ -5,7 +5,7 @@ from __future__ import annotations
 from snektest import assert_eq, test
 
 from snekql import mariadb
-from snekql.mariadb import Fetched, Pending, insert, select, update
+from snekql.mariadb import CurrentTimestamp, Fetched, Pending, insert, select, update
 from snekql.mariadb.query import compile_mariadb_select_sql, compile_mariadb_write_sql
 
 
@@ -97,6 +97,30 @@ def mariadb_update_compilation_renders_predicated_assignments() -> None:
 
     assert_eq(update_sql, "UPDATE `user` SET `enabled` = %s WHERE (`status` != %s)")
     assert_eq(update_params, (0, "old"))
+
+
+@test(mark="fast")
+def mariadb_update_compilation_renders_current_timestamp_expression() -> None:
+    """A CurrentTimestamp assignment renders MariaDB's clock with no param."""
+
+    class Doc[S = Pending](mariadb.Model[S, "Doc[Fetched]"]):
+        """Model with a column refreshed to the server clock on update."""
+
+        title: Doc.Col[str] = mariadb.Text(nullable=False)
+        edited_at: Doc.Col[str] = mariadb.Text(nullable=False)
+
+    update_sql, update_params = compile_mariadb_write_sql(
+        update(Doc)
+        .set(Doc.edited_at.to(CurrentTimestamp), Doc.title.to("new"))
+        .where(Doc.title.ne("old")),
+    )
+
+    expected_sql = (
+        "UPDATE `doc` SET `edited_at` = CURRENT_TIMESTAMP(3), `title` = %s "
+        "WHERE (`title` != %s)"
+    )
+    assert_eq(update_sql, expected_sql)
+    assert_eq(update_params, ("new", "old"))
 
 
 @test(mark="fast")

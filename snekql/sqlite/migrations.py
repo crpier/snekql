@@ -7,6 +7,7 @@ from contextlib import AbstractAsyncContextManager, nullcontext
 from aiosqlite import Connection
 
 from snekql._migrations import run_migrations
+from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.sqlite.identifiers import quote_identifier
 
 _HISTORY_TABLE = "snekql_migrations"
@@ -23,7 +24,7 @@ _SELECT_APPLIED_SQL = f"SELECT name FROM {quote_identifier(_HISTORY_TABLE)}"  # 
 # so applied_at needs no client datetime conversion. It is observability only.
 _INSERT_APPLIED_SQL = (
     f"INSERT INTO {quote_identifier(_HISTORY_TABLE)} (name, applied_at) "  # noqa: S608
-    "VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+    f"VALUES (?, {CURRENT_TIMESTAMP_SQL})"
 )
 
 

@@ -9,6 +9,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     MISSING,
+    CurrentTimestamp,
     Database,
     Fetched,
     Integer,
@@ -48,6 +49,33 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
     expected_sql = 'UPDATE "select" SET "where" = ?, "status" = ? WHERE ("where" != ?)'
     assert_eq(sql, expected_sql)
     assert_eq(params, ("new", "done", "old"))
+
+
+@test(mark="fast")
+def update_set_current_timestamp_renders_server_expression() -> None:
+    """A CurrentTimestamp assignment renders inline server SQL with no param."""
+
+    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+        """Table model with a column refreshed to the server clock on update."""
+
+        title: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[str] = Text(nullable=False)
+
+    query = (
+        update(Doc)
+        .set(Doc.edited_at.to(CurrentTimestamp), Doc.title.to("new"))
+        .where(Doc.title.ne("old"))
+    )
+
+    sql, params = compile_sqlite_write_sql(query)
+
+    expected_sql = (
+        'UPDATE "doc" SET '
+        "\"edited_at\" = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), "
+        '"title" = ? WHERE ("title" != ?)'
+    )
+    assert_eq(sql, expected_sql)
+    assert_eq(params, ("new", "old"))
 
 
 @test(mark="fast")
@@ -128,3 +156,32 @@ async def update_execute_returns_affected_row_count() -> None:
     assert_eq(filtered_count, 1)
     assert_eq(no_match_count, 0)
     assert_eq(statuses, ["active", "disabled"])
+
+
+@test(mark="medium")
+async def update_to_current_timestamp_refreshes_value_from_server_clock() -> None:
+    """set(col.to(CurrentTimestamp)) refreshes the column from the database clock."""
+
+    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+        """Table model whose edited_at refreshes to the server clock on update."""
+
+        id: Doc.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        title: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[str] = Text(nullable=False)
+
+    database = await Database.initialize(database=":memory:", models=[Doc])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(
+                insert(Doc(title="draft", edited_at="2000-01-01T00:00:00.000Z")),
+            )
+            _ = await tx.execute(
+                update(Doc).set(Doc.edited_at.to(CurrentTimestamp)).all(),
+            )
+            refreshed = await tx.fetch_one(select(Doc.edited_at).all())
+    finally:
+        await database.close()
+
+    # Server-filled ISO-8601 UTC sorts lexicographically, so a refreshed value is
+    # strictly greater than the explicit epoch-era value written on insert.
+    assert_eq(refreshed > "2000-01-01T00:00:00.000Z", True)
