@@ -177,6 +177,13 @@ because it is redundant. Every column type also exposes `server_default`.
 `sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1
 server defaults and are valid only on `GenCol` fields.
 
+To refresh a column to the server clock on *update*, pass the same marker to an
+update assignment: `update(Doc).set(Doc.edited_at.to(CurrentTimestamp))`. It
+renders the backend's current-timestamp SQL inline (no bound parameter) and is
+identical on SQLite and MariaDB. SQLite has no native `ON UPDATE`, so this keeps
+the refresh explicit at the call site -- include it in each update that should
+bump the timestamp.
+
 ## Indexes
 
 Use the backend namespace `Index(...)` in `__indexes__` for table-level indexes:

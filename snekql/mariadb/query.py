@@ -14,6 +14,7 @@ from snekql._query_materialize import (
     materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
 )
+from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb_identifier
 from snekql.query import AnySelectQuery
 from snekql.storage import Attr
@@ -31,6 +32,7 @@ def _encode_mariadb_column_value(
 
 
 _MARIADB_QUERY_DIALECT = QueryDialect(
+    current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_mariadb_empty_insert_sql,
     encode_column_value=_encode_mariadb_column_value,
     placeholder="%s",

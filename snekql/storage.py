@@ -273,6 +273,10 @@ class CurrentTimestamp:
     stored as ``Text()``.
 
     >>> Text(server_default=CurrentTimestamp, default=MISSING)
+
+    Also accepted by ``column.to(CurrentTimestamp)`` in an update assignment to
+    refresh a column to the server clock on update (rendered inline, no bound
+    parameter), the on-update counterpart to filling it on insert.
     """
 
 
@@ -802,7 +806,20 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
     def desc(self) -> OrderBy[OwnerT]:
         return OrderBy(column=self, direction="DESC")
 
-    def to(self, value: ReadValueT) -> Assignment[OwnerT]:
+    @overload
+    def to(self, value: type[CurrentTimestamp]) -> Assignment[OwnerT]: ...
+    @overload
+    def to(self, value: ReadValueT) -> Assignment[OwnerT]: ...
+    def to(self, value: ReadValueT | type[CurrentTimestamp]) -> Assignment[OwnerT]:
+        """Assign a Python value, or ``CurrentTimestamp`` for the server clock.
+
+        Passing ``CurrentTimestamp`` renders the backend's current-timestamp SQL
+        inline in the ``UPDATE`` (no bound parameter), so a column refreshes to
+        the database clock on each update the way ``server_default`` fills it on
+        insert. SQLite has no native ``ON UPDATE``; this keeps the refresh
+        explicit at the call site and identical across backends.
+        """
+
         return Assignment(column=self, value=value)
 
     def __column_value_type__(self) -> ReadValueT:

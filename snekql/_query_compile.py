@@ -36,7 +36,7 @@ from snekql._query_state import (
 from snekql.errors import QueryCompilationError
 from snekql.expressions import Aggregate, OrderBy, Predicate, Scalar
 from snekql.model import Table, require_model_columns, require_model_table_name
-from snekql.storage import MISSING, Attr
+from snekql.storage import MISSING, Attr, CurrentTimestamp
 
 _BINARY_PREDICATE_CHILD_COUNT = 2
 _UNARY_PREDICATE_CHILD_COUNT = 1
@@ -624,6 +624,9 @@ def _compile_update_sql(
         ensure_assignment_targets_model(assignment, state.model)
         column = require_field(assignment.column)
         column_name = _render_column_ref(column, dialect)
+        if assignment.value is CurrentTimestamp:
+            set_sql_parts.append(f"{column_name} = {dialect.current_timestamp_sql}")
+            continue
         set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
         params = (*params, dialect.encode_column_value(column, assignment.value))
     sql_parts = [
