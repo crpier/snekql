@@ -161,6 +161,16 @@ allowed and an impossible one fails at encode/decode via a Pydantic error.
 Timezone policy is the logical type's job — a naive `datetime` round-trips
 naive; annotate `Col[AwareDatetime]` to require awareness.
 
+Because the logical type is whatever Pydantic can validate, the UUID-version
+aliases work as drop-in logical types and add version validation for free:
+`Col[pydantic.UUID4] = Text()`, or `Col[pydantic.UUID7] = mariadb.Uuid()`.
+Pydantic ships `UUID1`/`UUID3`/`UUID4`/`UUID5`/`UUID6`/`UUID7`/`UUID8`; all of
+them store the same as a plain `Col[uuid.UUID]` and round-trip through both
+`Text` and MariaDB's native `Uuid`. Pair the annotation with a matching factory
+(`Col[pydantic.UUID7] = mariadb.Uuid(default_factory=uuid.uuid7)`) — nothing
+forces the factory and the annotation to agree, so a mismatched version fails
+construct-time validation.
+
 All column types accept `unique=True` for column-level unique indexes. SQLite
 allows multiple `NULL` values in a unique index, so use `nullable=False` when
 uniqueness should also require a value. Primary-key columns reject `unique=True`
@@ -219,6 +229,25 @@ of `.where(...)` or `.all()` before execution. Predicates use methods such as
 `.eq(...)`, `.ne(...)`, `.is_null()`, `.in_(...)`, `.like(...)`,
 `.gt(...)`/`.gte(...)`/`.lt(...)`/`.lte(...)`, and `.between(low, high)`; Python
 comparison operators are not part of the v1 API.
+
+Combine predicates with `|` (OR), `&` (AND), and `~` (NOT); use parentheses to
+group. Repeated `.where(...)` calls AND together, so `&` is mainly useful inside
+an OR. Python's `and`/`or`/`not` keywords are rejected — a predicate raises if
+used as a boolean.
+
+```python
+# WHERE status = 'active' OR status = 'trialing'
+select(User).where(User.status.eq("active") | User.status.eq("trialing"))
+
+# WHERE tenant_id = 1 AND (status = 'active' OR email LIKE '%@vip.com')
+select(User).where(
+    User.tenant_id.eq(1)
+    & (User.status.eq("active") | User.email.like("%@vip.com")),
+)
+
+# WHERE NOT (status = 'disabled')
+select(User).where(~User.status.eq("disabled"))
+```
 
 A select can be nested inside another query as a subquery:
 
