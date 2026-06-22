@@ -106,7 +106,6 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
             select(User).where(User.email.eq("alice@example.com")),
         )
 
-    assert fetched_user is not None
     assert_eq(fetched_user.email, "alice@example.com")
     assert isinstance(fetched_user.id, int)
 
@@ -135,7 +134,7 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
         pass
 
     async with database.transaction() as tx:
-        rolled_back_user = await tx.fetch_one(
+        rolled_back_user = await tx.fetch_one_or_none(
             select(User).where(User.email.eq("rolled-back@example.com")),
         )
 

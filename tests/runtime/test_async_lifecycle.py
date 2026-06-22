@@ -50,6 +50,10 @@ class _FakeCursor:
     async def fetchone(self) -> Sequence[object] | None:
         return None
 
+    async def fetchmany(self, size: int = 1) -> Sequence[Sequence[object]]:
+        del size
+        return []
+
     async def fetchall(self) -> Sequence[Sequence[object]]:
         return []
 

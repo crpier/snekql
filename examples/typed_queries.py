@@ -88,7 +88,15 @@ if TYPE_CHECKING:
             await transaction.fetch_all(select(Account.email, Account.status).all()),
             list[tuple[str, str]],
         )
+        # fetch_one is exactly-one (raises on zero or many rows), so the value
+        # is never absent: a single-value result keeps the column read type.
         _ = assert_type(
             await transaction.fetch_one(select(Account.email).all()),
-            str | None,
+            str,
+        )
+        # fetch_one_or_none is zero-or-one for model/tuple/join selects, where a
+        # None result can only mean a missing row.
+        _ = assert_type(
+            await transaction.fetch_one_or_none(select(Account).all()),
+            Account[Fetched] | None,
         )

@@ -478,9 +478,25 @@ if TYPE_CHECKING:
             await transaction.fetch_all(select(User.email, User.status).all()),
             list[tuple[str, str]],
         )
+        # fetch_one is exactly-one: a returned value is never absent, so the
+        # single-value result keeps the column read type without ``| None``.
         _ = assert_type(
             await transaction.fetch_one(select(User.email).all()),
-            str | None,
+            str,
+        )
+        _ = assert_type(
+            await transaction.fetch_one(select(User).all()),
+            User[Fetched],
+        )
+        # fetch_one_or_none is zero-or-one for model/tuple/join selects, where
+        # ``None`` can only mean a missing row.
+        _ = assert_type(
+            await transaction.fetch_one_or_none(select(User).all()),
+            User[Fetched] | None,
+        )
+        _ = assert_type(
+            await transaction.fetch_one_or_none(select(User.email, User.status).all()),
+            tuple[str, str] | None,
         )
         # Projection join: the result tuple comes from the projected columns.
         _ = assert_type(

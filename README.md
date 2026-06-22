@@ -63,11 +63,12 @@ async def main() -> None:
     try:
         async with db.transaction(timeout=5.0) as tx:
             await tx.execute(insert(User(email="alice@example.com")))
+            # fetch_one is exactly-one: it raises NoResultError if the row is
+            # absent, so the result is never None.
             user = await tx.fetch_one(
                 select(User).where(User.email.eq("alice@example.com")),
             )
-            if user is not None:
-                print(user.email)
+            print(user.email)
     finally:
         await db.close()
 ```
@@ -363,14 +364,20 @@ Use transactions for all work:
 ```python
 async with db.transaction() as tx:
     rows = await tx.fetch_all(select(User).all())
-    first_email = await tx.fetch_one(select(User.email).all())
+    first_email = await tx.fetch_one(
+        select(User.email).all().order_by(User.id.asc()).limit(1)
+    )
     await tx.execute(update(User).set(User.status.to("inactive")).all())
 ```
 
 Runtime methods:
 
 - `fetch_all(select(...))` returns all result rows.
-- `fetch_one(select(...))` returns the first row or `None`.
+- `fetch_one(select(...))` returns the single matching row (exactly-one
+  contract); it raises `NoResultError` for no row and `MultipleResultsError` for
+  more than one. A `None` from a single-value `fetch_one` means SQL `NULL`.
+- `fetch_one_or_none(select(...))` returns the row or `None` for the zero-or-one
+  case (model, tuple, and join selects), still raising on more than one row.
 - `execute(insert(...))` returns `None`; `execute(update/delete)` returns the
   affected-row count. SQLite counts matched rows; MariaDB counts only rows an
   `UPDATE` actually changed.
@@ -448,5 +455,4 @@ Agent navigation map:
 - `snekql/schema.py`: `STRICT` DDL generation and schema verification.
 - `snekql/errors.py`: public exception hierarchy.
 - `tests/test_public_typing.py`: type-checker prototypes for the public API.
-- `PRD.md`: full v1 product contract.
 - `CONTEXT.md`: project language and terminology.

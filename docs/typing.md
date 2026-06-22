@@ -76,12 +76,39 @@ await tx.fetch_all(select(User.email, User.status).all())
 # list[tuple[str, str]]
 ```
 
-`fetch_one(...)` returns the first row or `None` with the same selected shape:
+`fetch_one(...)` carries an **exactly-one** contract: it returns the single
+matching row in the selected shape, and raises `NoResultError` when no row
+matches or `MultipleResultsError` when more than one does. Because absence is an
+error rather than a `None` return, a single-value result keeps the column read
+type — and a returned `None` there can only mean SQL `NULL`:
 
 ```python
 await tx.fetch_one(select(User.email).all())
-# str | None
+# str            (raises NoResultError / MultipleResultsError on 0 / >1 rows)
+
+await tx.fetch_one(select(User).all())
+# User[Fetched]
 ```
+
+`fetch_one_or_none(...)` is the **zero-or-one** variant: it returns the row or
+`None` when none matches, still raising `MultipleResultsError` on more than one.
+It is offered only for model, tuple, and join selects, where `None` can only
+mean a missing row:
+
+```python
+await tx.fetch_one_or_none(select(User).all())
+# User[Fetched] | None
+
+await tx.fetch_one_or_none(select(User.email, User.status).all())
+# tuple[str, str] | None
+```
+
+Single-value selects are deliberately rejected by `fetch_one_or_none` (a type
+error, and a `QueryConstructionError` at runtime): their `None` would
+conflate a missing row with a SQL `NULL` value. For a zero-or-one single value,
+use `fetch_all(...)` (the list is the presence channel: `[]` vs `[None]`) or
+project a tuple that includes a non-nullable column. To take the first of
+several rows on purpose, add `.limit(1)` and use `fetch_one`/`fetch_one_or_none`.
 
 ## Joins
 

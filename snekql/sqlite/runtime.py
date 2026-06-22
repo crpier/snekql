@@ -50,6 +50,10 @@ class SQLiteCursorAdapter:
             return None
         return cast("Sequence[object]", row)
 
+    async def fetchmany(self, size: int = 1) -> Sequence[Sequence[object]]:
+        rows = await self.cursor.fetchmany(size)
+        return [cast("Sequence[object]", row) for row in rows]
+
     async def fetchall(self) -> Sequence[Sequence[object]]:
         rows = await self.cursor.fetchall()
         return [cast("Sequence[object]", row) for row in rows]

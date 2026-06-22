@@ -28,7 +28,10 @@ from snekql._runtime_selection import (
 from snekql.errors import (
     DatabaseRuntimeError,
     ExecutionError,
+    MultipleResultsError,
+    NoResultError,
     QueryCompilationError,
+    QueryConstructionError,
     TransactionClosedError,
 )
 from snekql.model import (
@@ -79,6 +82,8 @@ class RuntimeCursor(Protocol):
     def rowcount(self) -> int: ...
 
     async def fetchone(self) -> Sequence[object] | None: ...
+
+    async def fetchmany(self, size: int = ...) -> Sequence[Sequence[object]]: ...
 
     async def fetchall(self) -> Sequence[Sequence[object]]: ...
 
@@ -291,69 +296,153 @@ class Transaction:
                 for row in rows
             ]
 
+    async def _fetch_capped_rows(
+        self, query: object, *, method: str
+    ) -> tuple[AnySelectQuery, list[tuple[object, ...]]]:
+        """Run a select and fetch at most two rows for a cardinality-capped read.
+
+        Both ``fetch_one`` and ``fetch_one_or_none`` cap result cardinality at
+        one. Fetching two rows is the cheapest way to tell ``0`` from ``1`` from
+        ``many`` without materializing an unbounded result set; the caller maps
+        the row count onto its own contract. Runs under the held connection
+        lock acquired by the caller.
+        """
+
+        connection = self.require_connection()
+        select_query = self._require_select_query(query)
+        self._validate_query_backend(select_query)
+        sql, params = self.runtime.compile_select_sql(select_query)
+        try:
+            cursor = await connection.execute(sql, params)
+            try:
+                rows = await cursor.fetchmany(2)
+            finally:
+                await cursor.close()
+        except Exception as error:
+            logger.exception(
+                "%s %s query failed: %s params=%r",
+                self.runtime.backend_family,
+                method,
+                sql,
+                params,
+            )
+            msg = "select failed"
+            raise ExecutionError(msg, sql=sql, params=params) from error
+        logger.debug(
+            "%s %s executed: %s params=%r rows=%d",
+            self.runtime.backend_family,
+            method,
+            sql,
+            params,
+            len(rows),
+        )
+        return select_query, [tuple(row) for row in rows]
+
     @overload
     async def fetch_one(
         self,
         query: SelectModelQuery[SelectOwnerT, ReadModelT],
         *,
         validate: bool = True,
-    ) -> ReadModelT | None: ...
+    ) -> ReadModelT: ...
     @overload
     async def fetch_one(
         self,
         query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
         *,
         validate: bool = True,
-    ) -> T | None: ...
+    ) -> T: ...
     @overload
     async def fetch_one(
         self,
         query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
         *,
         validate: bool = True,
-    ) -> tuple[*Ts] | None: ...
+    ) -> tuple[*Ts]: ...
     @overload
     async def fetch_one(
         self,
         query: JoinModelQuery[OwnerT, *Ts],
         *,
         validate: bool = True,
-    ) -> tuple[*Ts] | None: ...
+    ) -> tuple[*Ts]: ...
     async def fetch_one(self, query: object, *, validate: bool = True) -> object:
-        """Fetch one row for a select query."""
+        """Fetch the single row a select must match (exactly-one contract).
+
+        Raises ``NoResultError`` when no row matches and ``MultipleResultsError``
+        when more than one does. Because absence raises, a returned ``None`` for
+        a single-value select unambiguously means SQL ``NULL`` rather than a
+        missing row. Use ``fetch_one_or_none`` when a missing row is expected,
+        and ``.limit(1)`` to take the first of several rows on purpose.
+        """
 
         async with self._lock:
-            connection = self.require_connection()
-            select_query = self._require_select_query(query)
-            self._validate_query_backend(select_query)
-            sql, params = self.runtime.compile_select_sql(select_query)
-            try:
-                cursor = await connection.execute(sql, params)
-                try:
-                    row = await cursor.fetchone()
-                finally:
-                    await cursor.close()
-            except Exception as error:
-                logger.exception(
-                    "%s fetch_one query failed: %s params=%r",
-                    self.runtime.backend_family,
-                    sql,
-                    params,
-                )
-                msg = "select failed"
-                raise ExecutionError(msg, sql=sql, params=params) from error
-            logger.debug(
-                "%s fetch_one executed: %s params=%r found=%s",
-                self.runtime.backend_family,
-                sql,
-                params,
-                row is not None,
+            select_query, rows = await self._fetch_capped_rows(
+                query, method="fetch_one"
             )
-            if row is None:
-                return None
-            return self.runtime.materialize_select_row(
-                select_query, tuple(row), validate=validate
+        if not rows:
+            msg = "fetch_one found no row"
+            raise NoResultError(msg)
+        if len(rows) > 1:
+            msg = "fetch_one found more than one row"
+            raise MultipleResultsError(msg)
+        return self.runtime.materialize_select_row(
+            select_query, rows[0], validate=validate
+        )
+
+    @overload
+    async def fetch_one_or_none(
+        self,
+        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        *,
+        validate: bool = True,
+    ) -> ReadModelT | None: ...
+    @overload
+    async def fetch_one_or_none(
+        self,
+        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
+        *,
+        validate: bool = True,
+    ) -> tuple[*Ts] | None: ...
+    @overload
+    async def fetch_one_or_none(
+        self,
+        query: JoinModelQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
+    ) -> tuple[*Ts] | None: ...
+    async def fetch_one_or_none(
+        self, query: object, *, validate: bool = True
+    ) -> object:
+        """Fetch zero or one row, returning ``None`` when none matches.
+
+        Raises ``MultipleResultsError`` when more than one row matches. Only
+        model, tuple, and join selects are accepted: for these ``None`` can only
+        mean a missing row. Single-value selects are rejected because their
+        ``None`` would also mean SQL ``NULL`` -- reach for ``fetch_one``, or for
+        the zero-or-one case ``fetch_all`` or a tuple select that includes a
+        non-nullable column.
+        """
+
+        if isinstance(query, SelectValueQuery):
+            msg = (
+                "fetch_one_or_none cannot disambiguate a missing row from a SQL "
+                "NULL value for a single-value select; use fetch_one, or "
+                "fetch_all / a tuple select including a non-nullable column"
             )
+            raise QueryConstructionError(msg)
+        async with self._lock:
+            select_query, rows = await self._fetch_capped_rows(
+                query, method="fetch_one_or_none"
+            )
+        if not rows:
+            return None
+        if len(rows) > 1:
+            msg = "fetch_one_or_none found more than one row"
+            raise MultipleResultsError(msg)
+        return self.runtime.materialize_select_row(
+            select_query, rows[0], validate=validate
+        )
 
     @overload
     async def execute(
