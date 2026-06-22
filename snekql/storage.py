@@ -267,10 +267,12 @@ class Blob:
 class CurrentTimestamp:
     """Server default marker for database-filled UTC timestamps.
 
-    Pairs with any column whose logical type decodes the backend's timestamp
-    text; on SQLite that is a ``Col[datetime]`` stored as ``Text()``.
+    Used as a bare class object, not an instance: pass ``CurrentTimestamp``
+    itself as the ``server_default``. Pairs with any column whose logical type
+    decodes the backend's timestamp text; on SQLite that is a ``Col[datetime]``
+    stored as ``Text()``.
 
-    >>> Text(server_default=CurrentTimestamp(), default=MISSING)
+    >>> Text(server_default=CurrentTimestamp, default=MISSING)
     """
 
 

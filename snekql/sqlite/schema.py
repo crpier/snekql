@@ -40,7 +40,7 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
         parts.append("AUTOINCREMENT")
     if _requires_not_null(column):
         parts.append("NOT NULL")
-    if isinstance(column.server_default, CurrentTimestamp):
+    if column.server_default is CurrentTimestamp:
         parts.append("DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))")
     return " ".join(parts)
 
@@ -53,7 +53,7 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
-        has_server_default=isinstance(column.server_default, CurrentTimestamp),
+        has_server_default=column.server_default is CurrentTimestamp,
         collation=None,
     )
 

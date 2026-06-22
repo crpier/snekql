@@ -34,7 +34,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
     created_at: User.GenCol[datetime] = sqlite.Text(
-        server_default=sqlite.CurrentTimestamp(),
+        server_default=sqlite.CurrentTimestamp,
         default=sqlite.MISSING,
     )
 

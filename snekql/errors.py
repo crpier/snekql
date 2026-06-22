@@ -87,6 +87,10 @@ class ExecutionError(DatabaseRuntimeError):
     >>> error = ExecutionError("failed", sql="SELECT ?", params=(1,))
     >>> error.sql
     'SELECT ?'
+
+    When raised with ``raise ExecutionError(...) from cause`` the underlying
+    error is folded into ``str()`` so the cause is visible without inspecting
+    ``__cause__`` or the traceback.
     """
 
     sql: str
@@ -105,7 +109,11 @@ class ExecutionError(DatabaseRuntimeError):
 
     def __str__(self) -> str:
         message = super().__str__()
-        return f"{message} sql={self.sql!r} params={self.params!r}"
+        text = f"{message} sql={self.sql!r} params={self.params!r}"
+        cause = self.__cause__
+        if cause is not None:
+            text += f" cause={type(cause).__name__}: {cause}"
+        return text
 
 
 class SchemaError(SnekqlError):

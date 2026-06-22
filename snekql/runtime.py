@@ -664,8 +664,10 @@ class Transaction:
 class Database:
     """Initialized snekql runtime service for database-backed execution.
 
-    `Database.initialize(..., logger=logger)` is the only public construction
-    path. A Database owns connectivity, schema startup work, and transaction entry.
+    `Database.initialize(...)` is the only public construction path. A Database
+    owns connectivity, schema startup work, and transaction entry. It is an async
+    context manager: `async with await Database.initialize(...) as db:` closes the
+    runtime on block exit; `close()` can also be called directly.
     """
 
     def __init__(self, _initialized: Never, /) -> None:
@@ -836,3 +838,24 @@ class Database:
 
         with anyio.CancelScope(shield=True):
             await self.runtime.close(self.runtime.acquire_timeout)
+
+    async def __aenter__(self) -> Self:
+        """Enter an `async with` block over an already-initialized Database.
+
+        Use as `async with await Database.initialize(...) as db:`; the matching
+        `__aexit__` calls `close()`, so the runtime is shut down even when the
+        block raises.
+        """
+
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        _ = exc_type
+        _ = exc_value
+        _ = traceback
+        await self.close()

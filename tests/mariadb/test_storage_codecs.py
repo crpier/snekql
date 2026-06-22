@@ -126,7 +126,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
             """Invalid MariaDB model using a server default on a normal column."""
 
             created_at: BadEvent.Col[datetime] = mariadb.DateTime(
-                server_default=CurrentTimestamp(),
+                server_default=CurrentTimestamp,
             )
 
     with assert_raises(ModelDeclarationError):
@@ -157,7 +157,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         amount: Event.Col[float] = mariadb.Real(nullable=False)
         content: Event.Col[bytes] = mariadb.Blob(nullable=False)
         created_at: Event.GenCol[datetime] = mariadb.DateTime(
-            server_default=CurrentTimestamp(),
+            server_default=CurrentTimestamp,
             default=MISSING,
         )
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)

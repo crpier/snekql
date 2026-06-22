@@ -59,7 +59,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
     created_at: User.GenCol[datetime] = Text(
-        server_default=CurrentTimestamp(),
+        server_default=CurrentTimestamp,
         default=MISSING,
     )
 
