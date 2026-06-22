@@ -74,6 +74,10 @@ from snekql._common import (
     select,
     update,
 )
+
+# Importing the query module registers the MariaDB query Dialect so a built
+# MariaDB query can render its own SQL for inspection (see _query_dialect).
+from snekql.mariadb import query as query
 from snekql.mariadb.config import Config
 from snekql.mariadb.model import Model
 from snekql.mariadb.storage import (

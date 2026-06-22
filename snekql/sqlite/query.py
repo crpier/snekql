@@ -9,7 +9,7 @@ from snekql._query_compile import (
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
 )
-from snekql._query_dialect import QueryDialect
+from snekql._query_dialect import QueryDialect, register_query_dialect
 from snekql._query_materialize import (
     materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
@@ -38,6 +38,8 @@ _SQLITE_QUERY_DIALECT = QueryDialect(
     placeholder="?",
     quote_identifier=quote_sqlite_identifier,
 )
+
+register_query_dialect("sqlite", _SQLITE_QUERY_DIALECT)
 
 
 def compile_sqlite_select_sql(

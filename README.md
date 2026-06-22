@@ -286,6 +286,37 @@ column against another column or a scalar subquery, which is how a correlated
 subquery references the outer query. A reference to a table in neither the
 subquery nor an enclosing query is rejected when the query compiles.
 
+### Inspecting the generated SQL
+
+Any query object renders its own SQL through `repr()` and `str()`, resolving the
+dialect from its model's backend — no `Database` or transaction needed. Because
+queries are immutable, the object you hold after composing (`query =
+query.where(...)`) already carries the full state, so inspecting it shows the
+final SQL.
+
+```python
+query = select(User).where(User.status.eq("active"))
+query = query.where(User.email.like("%@example.com"))
+
+repr(query)
+# <SelectModelQuery: SELECT ... FROM "user"
+#  WHERE ("status" = ?) AND ("email" LIKE ?) | params=('active', '%@example.com')>
+
+print(query)  # str(): the parameterized form plus an inlined-literals form
+# -- parameterized (executes):
+# SELECT ... WHERE ("status" = ?) AND ("email" LIKE ?)
+# -- params: ('active', '%@example.com')
+#
+# -- inlined literals (approximate, not executed):
+# SELECT ... WHERE ("status" = 'active') AND ("email" LIKE '%@example.com')
+```
+
+The parameterized form is what executes. The inlined form substitutes the
+encoded parameters as SQL literals for pasting into a database console; it is
+approximate and must not be executed. A query that has not yet chosen
+`.where(...)`/`.all()` renders as `<SelectModelQuery incomplete: ...>` rather
+than raising, so it is always safe to `repr` a query in a debugger.
+
 ## Runtime
 
 `Database.initialize(...)` is the only public construction path. Select the

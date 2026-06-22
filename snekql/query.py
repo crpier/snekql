@@ -10,7 +10,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
-from typing import Any, Protocol, Self, TypeVar, TypeVarTuple, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Protocol,
+    Self,
+    TypeVar,
+    TypeVarTuple,
+    cast,
+    overload,
+)
 
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_state import (
@@ -33,7 +42,11 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
-from snekql.errors import ModelDeclarationError, QueryConstructionError
+from snekql.errors import (
+    ModelDeclarationError,
+    QueryCompilationError,
+    QueryConstructionError,
+)
 from snekql.expressions import (
     Aggregate,
     Assignment,
@@ -45,6 +58,9 @@ from snekql.expressions import (
 from snekql.model import Table, require_model_columns
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
+
+if TYPE_CHECKING:
+    from snekql._query_compile import InspectedQuery
 
 ModelT = TypeVar("ModelT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
@@ -91,7 +107,54 @@ class _InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
-class _BaseSelectQuery:
+class _SqlInspectionMixin:
+    """`repr`/`str` that render a built query's own backend Dialect SQL.
+
+    Resolves the Dialect from the query's model backend (see
+    :func:`snekql._query_compile.inspect_query_sql`), so a query renders its SQL
+    for debugging with no Database. Because immutable builder transitions return
+    a fresh query carrying the full accumulated state, ``repr(query)`` of a
+    composed ``query = query.where(...)`` shows the final SQL.
+
+    Neither hook raises: a query that is not yet compilable (e.g. a select
+    missing ``all()``/``where()``) renders as ``<ClassName incomplete: reason>``.
+    The compile helper is imported lazily so this module keeps no load-time
+    dependency on Query Compilation (the dependency stays builder -> state <-
+    compilation).
+    """
+
+    def _inspected_sql(self) -> InspectedQuery:
+        # Lazy import so this module carries no load-time dependency on Query
+        # Compilation; the dependency stays builder -> state <- compilation.
+        from snekql._query_compile import inspect_query_sql  # noqa: PLC0415
+
+        return inspect_query_sql(self)
+
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        try:
+            inspected = self._inspected_sql()
+        except QueryCompilationError as reason:
+            return f"<{name} incomplete: {reason}>"
+        return f"<{name}: {inspected.sql} | params={inspected.params!r}>"
+
+    def __str__(self) -> str:
+        name = type(self).__name__
+        try:
+            inspected = self._inspected_sql()
+        except QueryCompilationError as reason:
+            return f"<{name} incomplete: {reason}>"
+        return (
+            "-- parameterized (executes):\n"
+            f"{inspected.sql}\n"
+            f"-- params: {inspected.params!r}\n"
+            "\n"
+            "-- inlined literals (approximate, not executed):\n"
+            f"{inspected.inlined_sql}"
+        )
+
+
+class _BaseSelectQuery(_SqlInspectionMixin):
     """Immutable select-state plumbing shared by every select query.
 
     Holds the state object and the transitions that never change a query's
@@ -450,7 +513,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](_BaseSelectQue
         )
 
 
-class _BaseInsertQuery:
+class _BaseInsertQuery(_SqlInspectionMixin):
     """Immutable insert-state plumbing shared by every insert query variant."""
 
     state: InsertState
@@ -608,7 +671,7 @@ type AnyInsertQuery = (
 type AnyWriteQuery = AnyInsertQuery | UpdateQuery[Any] | DeleteQuery[Any]
 
 
-class UpdateQuery[ModelT: Table[Any]]:
+class UpdateQuery[ModelT: Table[Any]](_SqlInspectionMixin):
     """Immutable update statement for one table model."""
 
     state: UpdateState
@@ -633,7 +696,7 @@ class UpdateQuery[ModelT: Table[Any]]:
         return cast("Self", UpdateQuery[ModelT](state))
 
 
-class DeleteQuery[ModelT: Table[Any]]:
+class DeleteQuery[ModelT: Table[Any]](_SqlInspectionMixin):
     """Immutable delete statement for one table model."""
 
     state: DeleteState
