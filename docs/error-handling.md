@@ -25,7 +25,8 @@ Model errors:
 Query errors:
 
 - `QueryConstructionError`: invalid builder method call, such as
-  `where()` with no predicates.
+  `where()` with no predicates, or passing a single-value select to
+  `fetch_one_or_none` (whose `None` would be ambiguous).
 - `QueryCompilationError`: a built query cannot compile to valid v1 SQLite SQL,
   such as executing a select without `.where(...)` or `.all()`.
 
@@ -36,6 +37,9 @@ Runtime errors:
 - `DatabaseCloseTimeoutError`: close timed out waiting for checked-out work.
 - `PoolTimeoutError`: no connection became available before acquisition timeout.
 - `TransactionClosedError`: a transaction was used after it closed.
+- `NoResultError`: `fetch_one` found no row for its exactly-one contract.
+- `MultipleResultsError`: `fetch_one`/`fetch_one_or_none` matched more than one
+  row.
 - `ExecutionError`: SQLite execution failed and query context is available.
 
 Schema errors:

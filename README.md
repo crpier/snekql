@@ -455,5 +455,4 @@ Agent navigation map:
 - `snekql/schema.py`: `STRICT` DDL generation and schema verification.
 - `snekql/errors.py`: public exception hierarchy.
 - `tests/test_public_typing.py`: type-checker prototypes for the public API.
-- `PRD.md`: full v1 product contract.
 - `CONTEXT.md`: project language and terminology.
