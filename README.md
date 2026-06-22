@@ -371,7 +371,9 @@ Runtime methods:
 
 - `fetch_all(select(...))` returns all result rows.
 - `fetch_one(select(...))` returns the first row or `None`.
-- `execute(insert/update/delete)` returns `None`.
+- `execute(insert(...))` returns `None`; `execute(update/delete)` returns the
+  affected-row count. SQLite counts matched rows; MariaDB counts only rows an
+  `UPDATE` actually changed.
 - `close()` is async and idempotent after a successful close.
 
 ## Schema startup

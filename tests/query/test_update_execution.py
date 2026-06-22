@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast
 
-from snektest import assert_eq, assert_is_none, assert_raises, test
+from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     MISSING,
@@ -89,8 +89,8 @@ def update_rejects_generated_and_primary_key_assignments() -> None:
 
 
 @test(mark="medium")
-async def update_execute_returns_none_and_supports_explicit_all() -> None:
-    """tx.execute(update(...).all()) returns None after full-table update."""
+async def update_execute_returns_affected_row_count() -> None:
+    """tx.execute(update(...)) returns the count of rows the statement changed."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through the async runtime."""
@@ -105,8 +105,18 @@ async def update_execute_returns_none_and_supports_explicit_all() -> None:
             await tx.execute(insert(User(email="a@example.com")))
             await tx.execute(insert(User(email="b@example.com")))
 
-            result = await tx.execute(
+            all_count = await tx.execute(
                 update(User).set(User.status.to("disabled")).all(),
+            )
+            filtered_count = await tx.execute(
+                update(User)
+                .set(User.status.to("active"))
+                .where(User.email.eq("a@example.com")),
+            )
+            no_match_count = await tx.execute(
+                update(User)
+                .set(User.status.to("archived"))
+                .where(User.email.eq("missing@example.com")),
             )
             statuses = await tx.fetch_all(
                 select(User.status).all().order_by(User.id.asc()),
@@ -114,5 +124,7 @@ async def update_execute_returns_none_and_supports_explicit_all() -> None:
     finally:
         await database.close()
 
-    assert_is_none(result)
-    assert_eq(statuses, ["disabled", "disabled"])
+    assert_eq(all_count, 2)
+    assert_eq(filtered_count, 1)
+    assert_eq(no_match_count, 0)
+    assert_eq(statuses, ["active", "disabled"])

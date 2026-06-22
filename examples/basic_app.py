@@ -60,20 +60,22 @@ async def main() -> None:
             )
             print("active users:", active_emails)
 
-            await tx.execute(
+            disabled_count = await tx.execute(
                 update(User)
                 .set(User.status.to("disabled"))
                 .where(User.email.eq("bob@example.com")),
             )
+            print("rows disabled:", disabled_count)
 
             disabled_user = await tx.fetch_one(
                 select(User).where(User.status.eq("disabled")),
             )
             print("disabled user:", disabled_user)
 
-            await tx.execute(
+            deleted_count = await tx.execute(
                 delete(User).where(User.email.eq("alice@example.com")),
             )
+            print("rows deleted:", deleted_count)
     finally:
         await db.close()
 
