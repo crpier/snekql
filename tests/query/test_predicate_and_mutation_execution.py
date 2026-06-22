@@ -222,12 +222,12 @@ async def update_and_delete_execute_against_sqlite() -> None:
             async with database.transaction() as tx:
                 await tx.execute(insert(User(email="a@example.com")))
                 await tx.execute(insert(User(email="b@example.com")))
-                await tx.execute(
+                _ = await tx.execute(
                     update(User)
                     .set(User.status.to("disabled"))
                     .where(User.email.eq("a@example.com")),
                 )
-                await tx.execute(
+                _ = await tx.execute(
                     delete(User).where(User.status.eq("active")),
                 )
         finally:

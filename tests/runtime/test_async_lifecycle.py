@@ -43,6 +43,10 @@ class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
 class _FakeCursor:
     """Minimal runtime cursor for fake transaction connections."""
 
+    @property
+    def rowcount(self) -> int:
+        return 0
+
     async def fetchone(self) -> Sequence[object] | None:
         return None
 

@@ -13,6 +13,7 @@
 - SQLite connections now enforce foreign keys (`PRAGMA foreign_keys = ON`), so previously inert `FOREIGN KEY` constraints are now enforced on every write. MariaDB tables are created with `ENGINE=InnoDB` and enforce foreign keys via `foreign_key_checks`. Databases with pre-existing referential-integrity violations may surface errors on writes that touch the dangling rows; see [docs/engine-settings.md](./docs/engine-settings.md).
 - MariaDB text columns are now created as `VARCHAR(255) ... COLLATE utf8mb4_bin` (case-sensitive) to match SQLite's default `BINARY` collation. Existing tables using the default case-insensitive collation are reported as schema drift.
 - MariaDB runtime now requires MariaDB **>= 12.2**; older or non-MariaDB servers are rejected at initialization.
+- `Transaction.execute(update(...))` and `Transaction.execute(delete(...))` now return the affected-row count (`int`) instead of `None`. The count is the driver's own `rowcount` for the statement: SQLite counts every row the `WHERE` clause matched, while MariaDB (via aiomysql, without `CLIENT_FOUND_ROWS`) counts only rows an `UPDATE` actually changed, so updating a row to its current value does not increment the count there. A plain `insert(...)` still returns `None`.
 
 ### Added
 

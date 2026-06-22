@@ -8,7 +8,6 @@ from typing import cast
 from snektest import (
     assert_eq,
     assert_is,
-    assert_is_none,
     assert_ne,
     assert_raises,
     test,
@@ -107,8 +106,8 @@ def delete_requires_exactly_one_filter_intent() -> None:
 
 
 @test(mark="medium")
-async def delete_execute_returns_none_for_filtered_and_explicit_all_forms() -> None:
-    """tx.execute(delete(...)) returns None for filtered and full-table deletes."""
+async def delete_execute_returns_affected_row_count() -> None:
+    """tx.execute(delete(...)) returns the count of rows deleted."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through the async runtime."""
@@ -125,18 +124,22 @@ async def delete_execute_returns_none_for_filtered_and_explicit_all_forms() -> N
                 insert(User(email="b@example.com", status="disabled")),
             )
 
-            filtered_result = await tx.execute(
+            no_match_count = await tx.execute(
+                delete(User).where(User.status.eq("archived")),
+            )
+            filtered_count = await tx.execute(
                 delete(User).where(User.status.eq("disabled")),
             )
             remaining_after_filtered = await tx.fetch_all(
                 select(User.email).all().order_by(User.email.asc()),
             )
-            all_result = await tx.execute(delete(User).all())
+            all_count = await tx.execute(delete(User).all())
             remaining_after_all = await tx.fetch_all(select(User.email).all())
     finally:
         await database.close()
 
-    assert_is_none(filtered_result)
+    assert_eq(no_match_count, 0)
+    assert_eq(filtered_count, 1)
     assert_eq(remaining_after_filtered, ["a@example.com"])
-    assert_is_none(all_result)
+    assert_eq(all_count, 1)
     assert_eq(remaining_after_all, [])

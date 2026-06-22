@@ -75,6 +75,9 @@ Ts = TypeVarTuple("Ts")
 class RuntimeCursor(Protocol):
     """Cursor behavior required by backend-neutral transaction execution."""
 
+    @property
+    def rowcount(self) -> int: ...
+
     async def fetchone(self) -> Sequence[object] | None: ...
 
     async def fetchall(self) -> Sequence[Sequence[object]]: ...
@@ -397,21 +400,32 @@ class Transaction:
     @overload
     async def execute(
         self,
-        query: InsertQuery[Any, Any]
-        | InsertManyQuery[Any, Any]
-        | UpdateQuery[Any]
-        | DeleteQuery[Any],
+        query: UpdateQuery[Any] | DeleteQuery[Any],
+        *,
+        validate: bool = True,
+    ) -> int: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertQuery[Any, Any] | InsertManyQuery[Any, Any],
         *,
         validate: bool = True,
     ) -> None: ...
     async def execute(self, query: object, *, validate: bool = True) -> object:
         """Execute a write query inside this transaction.
 
-        A plain insert/update/delete returns ``None``. An insert built with
+        A plain insert returns ``None``; a plain update/delete returns the
+        affected-row count the driver reports. An insert built with
         ``.returning()`` yields the Fetched model the database produced (the row
         for a single insert, a list for a bulk insert), materialized through the
-        same decode path as a select. An empty bulk batch issues no SQL and
+        same decode path as a select. An empty bulk insert issues no SQL and
         returns ``None`` (or ``[]`` when returning).
+
+        The affected-row count is the driver's own ``rowcount`` for the
+        statement. SQLite counts every row the ``WHERE`` clause matched; MariaDB
+        (via aiomysql, without ``CLIENT_FOUND_ROWS``) counts only rows an
+        ``UPDATE`` actually changed, so updating a row to its current value does
+        not increment the count there.
         """
 
         write_query = cast("AnyWriteQuery", query)
@@ -435,6 +449,7 @@ class Transaction:
                 InsertManyReturningTupleQuery,
             ),
         )
+        affects_rows = isinstance(write_query, (UpdateQuery, DeleteQuery))
         async with self._lock:
             connection = self.require_connection()
             if is_many and not self._insert_rows(write_query):
@@ -442,11 +457,13 @@ class Transaction:
             self._validate_query_backend(write_query)
             sql, params = self.runtime.compile_write_sql(write_query)
             returned_rows: list[tuple[object, ...]] = []
+            affected_rows = 0
             try:
                 cursor = await connection.execute(sql, params)
                 try:
                     if returning:
                         returned_rows = [tuple(row) for row in await cursor.fetchall()]
+                    affected_rows = cursor.rowcount
                 finally:
                     await cursor.close()
             except Exception as error:
@@ -464,6 +481,8 @@ class Transaction:
                 sql,
                 params,
             )
+            if affects_rows:
+                return affected_rows
             if not returning:
                 return None
             models = self.runtime.materialize_write_rows(

@@ -55,6 +55,10 @@ class MariaDBCursorAdapter:
     def __init__(self, cursor: object) -> None:
         self.cursor: object = cursor
 
+    @property
+    def rowcount(self) -> int:
+        return cast("int", cast("Any", self.cursor).rowcount)
+
     async def fetchone(self) -> Sequence[object] | None:
         row = await cast("Any", self.cursor).fetchone()
         if row is None:

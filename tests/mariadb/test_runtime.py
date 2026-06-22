@@ -223,10 +223,15 @@ async def mariadb_runtime_updates_matching_rows() -> None:
     database = await load_fixture(database_with_update_users())
 
     async with database.transaction() as tx:
-        await tx.execute(
+        affected = await tx.execute(
             update(_UpdateUser)
             .set(_UpdateUser.status.to("disabled"))
             .where(_UpdateUser.email.eq("bob@example.com")),
+        )
+        no_match = await tx.execute(
+            update(_UpdateUser)
+            .set(_UpdateUser.status.to("archived"))
+            .where(_UpdateUser.email.eq("missing@example.com")),
         )
 
     async with database.transaction() as tx:
@@ -234,6 +239,8 @@ async def mariadb_runtime_updates_matching_rows() -> None:
             select(_UpdateUser.email, _UpdateUser.status).all()
         )
 
+    assert_eq(affected, 1)
+    assert_eq(no_match, 0)
     assert_eq(
         sorted(statuses),
         [
@@ -266,9 +273,10 @@ async def mariadb_runtime_deletes_filtered_rows() -> None:
         await tx.execute(insert(User(email="alice@example.com", status="active")))
         await tx.execute(insert(User(email="bob@example.com", status="inactive")))
 
-        await tx.execute(delete(User).where(User.status.eq("inactive")))
+        deleted = await tx.execute(delete(User).where(User.status.eq("inactive")))
         remaining_emails = await tx.fetch_all(select(User.email).all())
 
+    assert_eq(deleted, 1)
     assert_eq(remaining_emails, ["alice@example.com"])
 
 
@@ -294,9 +302,10 @@ async def mariadb_runtime_deletes_all_rows() -> None:
         await tx.execute(insert(User(email="alice@example.com")))
         await tx.execute(insert(User(email="bob@example.com")))
 
-        await tx.execute(delete(User).all())
+        deleted = await tx.execute(delete(User).all())
         remaining_users = await tx.fetch_all(select(User).all())
 
+    assert_eq(deleted, 2)
     assert_eq(remaining_users, [])
 
 

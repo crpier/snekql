@@ -40,6 +40,10 @@ class SQLiteCursorAdapter:
     def __init__(self, cursor: Cursor) -> None:
         self.cursor: Cursor = cursor
 
+    @property
+    def rowcount(self) -> int:
+        return self.cursor.rowcount
+
     async def fetchone(self) -> Sequence[object] | None:
         row = await self.cursor.fetchone()
         if row is None:
