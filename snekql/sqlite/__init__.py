@@ -74,6 +74,10 @@ from snekql._common import (
     update,
 )
 from snekql.model import Model
+
+# Importing the query module registers the SQLite query Dialect so a built
+# SQLite query can render its own SQL for inspection (see _query_dialect).
+from snekql.sqlite import query as query
 from snekql.sqlite.config import Config
 from snekql.storage import (
     Blob,

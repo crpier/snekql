@@ -9,10 +9,11 @@ compilation).
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, cast
 
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
-from snekql._query_dialect import QueryDialect
+from snekql._query_dialect import QueryDialect, query_dialect_for_backend
 from snekql._query_state import (
     EXISTENCE_PREDICATE_KINDS,
     SUBQUERY_PREDICATE_KINDS,
@@ -35,7 +36,12 @@ from snekql._query_state import (
 )
 from snekql.errors import QueryCompilationError
 from snekql.expressions import Aggregate, OrderBy, Predicate, Scalar
-from snekql.model import Table, require_model_columns, require_model_table_name
+from snekql.model import (
+    Table,
+    require_model_backend,
+    require_model_columns,
+    require_model_table_name,
+)
 from snekql.storage import MISSING, Attr, CurrentTimestamp
 
 _BINARY_PREDICATE_CHILD_COUNT = 2
@@ -817,3 +823,97 @@ def compile_write_sql_for_dialect(
         return _compile_delete_sql(state, dialect)
     msg = "execute requires a write query"
     raise QueryCompilationError(msg)
+
+
+@dataclass(frozen=True)
+class InspectedQuery:
+    """A built query lowered to SQL for human inspection.
+
+    ``sql``/``params`` are the parameterized form that actually executes;
+    ``inlined_sql`` is a best-effort rendering with the (already dialect-encoded)
+    parameters substituted as SQL literals, for pasting into a database console.
+    The inlined form is approximate and must never be executed.
+    """
+
+    sql: str
+    params: tuple[object, ...]
+    inlined_sql: str
+
+
+def _query_dialect_for_model(model: type[Table[Any]]) -> QueryDialect:
+    return query_dialect_for_backend(require_model_backend(model))
+
+
+def _compile_state_for_inspection(
+    state: object,
+) -> tuple[str, tuple[object, ...], QueryDialect]:
+    if isinstance(state, SelectState):
+        dialect = _query_dialect_for_model(state.model)
+        return (*_compile_select_state(state, dialect), dialect)
+    if isinstance(state, UpdateState):
+        dialect = _query_dialect_for_model(state.model)
+        return (*_compile_update_sql(state, dialect), dialect)
+    if isinstance(state, DeleteState):
+        dialect = _query_dialect_for_model(state.model)
+        return (*_compile_delete_sql(state, dialect), dialect)
+    if isinstance(state, InsertState):
+        model = state.model()
+        if model is None:
+            msg = "an empty bulk insert has no SQL to compile"
+            raise QueryCompilationError(msg)
+        dialect = _query_dialect_for_model(model)
+        return (*_compile_insert_sql(state, dialect), dialect)
+    msg = "SQL inspection requires a snekql query"
+    raise QueryCompilationError(msg)
+
+
+def _render_sql_literal(value: object) -> str:
+    """Render an already-encoded parameter as an approximate SQL literal."""
+
+    if value is None:
+        return "NULL"
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    if isinstance(value, bytes):
+        return "x'" + value.hex() + "'"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _inline_sql_params(
+    sql: str,
+    params: tuple[object, ...],
+    placeholder: str,
+) -> str:
+    """Substitute encoded params for placeholders in compiled SQL.
+
+    Compiled SQL contains no string literals -- every value is a placeholder and
+    every identifier is dialect-quoted -- so splitting on the placeholder token
+    is unambiguous. A count mismatch (which should not happen) falls back to the
+    parameterized SQL unchanged.
+    """
+
+    parts = sql.split(placeholder)
+    if len(parts) - 1 != len(params):
+        return sql
+    rendered: list[str] = []
+    for part, value in zip(parts, params, strict=False):
+        rendered.append(part)
+        rendered.append(_render_sql_literal(value))
+    rendered.append(parts[-1])
+    return "".join(rendered)
+
+
+def inspect_query_sql(query: object) -> InspectedQuery:
+    """Lower any built query to its backend Dialect SQL for inspection.
+
+    Resolves the Dialect from the query's own model backend, so no Database is
+    required. Raises ``QueryCompilationError`` when the query is not yet
+    compilable (e.g. a select missing ``all()``/``where()``); callers that must
+    not raise -- like ``repr`` -- catch that and report the reason.
+    """
+
+    sql, params, dialect = _compile_state_for_inspection(getattr(query, "state", None))
+    inlined = _inline_sql_params(sql, params, dialect.placeholder)
+    return InspectedQuery(sql=sql, params=params, inlined_sql=inlined)
