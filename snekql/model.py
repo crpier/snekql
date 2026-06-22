@@ -393,7 +393,7 @@ class ModelMeta(type):
         name: str,
         column: Attr[Any, Any, Any, Any, Any],
     ) -> None:
-        if isinstance(column.default, CurrentTimestamp):
+        if column.default is CurrentTimestamp:
             msg = f"CurrentTimestamp cannot be a Python default for {name!r}"
             raise ModelDeclarationError(
                 msg,
@@ -408,7 +408,7 @@ class ModelMeta(type):
             raise ModelDeclarationError(msg)
         if column.server_default is None:
             return
-        if not isinstance(column.server_default, CurrentTimestamp):
+        if column.server_default is not CurrentTimestamp:
             msg = f"unsupported server default for {name!r}"
             raise ModelDeclarationError(
                 msg,

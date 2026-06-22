@@ -277,15 +277,13 @@ def current_timestamp_is_valid_only_for_generated_columns() -> None:
         """Valid generated timestamp column stored as TEXT."""
 
         created_at: CreatedEvent.GenCol[datetime] = Text(
-            server_default=CurrentTimestamp(),
+            server_default=CurrentTimestamp,
             default=MISSING,
         )
 
     assert_true(
-        isinstance(
-            CreatedEvent.__snekql_columns__["created_at"].server_default,
-            CurrentTimestamp,
-        ),
+        CreatedEvent.__snekql_columns__["created_at"].server_default
+        is CurrentTimestamp,
     )
 
     with assert_raises(ModelDeclarationError):
@@ -296,7 +294,7 @@ def current_timestamp_is_valid_only_for_generated_columns() -> None:
             """Invalid non-generated timestamp default."""
 
             created_at: NonGeneratedTimestamp.Col[datetime] = Text(
-                server_default=CurrentTimestamp(),
+                server_default=CurrentTimestamp,
                 default=MISSING,
             )
 
@@ -308,7 +306,7 @@ def current_timestamp_is_valid_only_for_generated_columns() -> None:
             """CurrentTimestamp is a server default, never a Python default."""
 
             created_at: CurrentTimestampAsPythonDefault.GenCol[datetime] = Text(
-                default=CurrentTimestamp(),
+                default=CurrentTimestamp,
             )
 
     with assert_raises(ModelDeclarationError):
@@ -319,6 +317,6 @@ def current_timestamp_is_valid_only_for_generated_columns() -> None:
             """Invalid server default paired with a Python default."""
 
             created_at: TimestampWithPythonDefault.GenCol[datetime] = Text(
-                server_default=CurrentTimestamp(),
+                server_default=CurrentTimestamp,
                 default=datetime(2026, 5, 31, tzinfo=UTC),
             )

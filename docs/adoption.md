@@ -41,24 +41,21 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = Text(nullable=False)
     created_at: User.GenCol[datetime] = Text(
-        server_default=CurrentTimestamp(),
+        server_default=CurrentTimestamp,
         default=MISSING,
     )
 
 
 async def main() -> None:
-    db = await Database.initialize(
+    async with await Database.initialize(
         database=":memory:",
         models=[User],
         pool_size=1,
-    )
-    try:
+    ) as db:
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
             email = await tx.fetch_one(select(User.email).all())
             assert email == "alice@example.com"
-    finally:
-        await db.close()
 
 
 asyncio.run(main())

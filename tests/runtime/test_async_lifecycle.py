@@ -15,6 +15,7 @@ from snekql.runtime import RuntimeConnection
 from snekql.sqlite import (
     MISSING,
     Database,
+    DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
     Fetched,
@@ -289,3 +290,35 @@ async def mariadb_close_timeout_keeps_pool_rejecting_new_work() -> None:
 async def _insert_async_user(database: Database, email: str) -> None:
     async with database.transaction(timeout=1.0) as tx:
         await tx.execute(insert(_AsyncUser(email=email)))
+
+
+@test(mark="medium")
+async def database_async_with_closes_on_block_exit() -> None:
+    """`async with await Database.initialize(...)` closes the runtime on exit."""
+
+    async with (
+        await Database.initialize(
+            database=":memory:",
+            models=[_AsyncUser],
+        ) as database,
+        database.transaction() as tx,
+    ):
+        await tx.execute(insert(_AsyncUser(email="alice@example.com")))
+
+    with assert_raises(DatabaseClosedError):
+        _ = database.transaction()
+
+
+@test(mark="medium")
+async def database_async_with_closes_when_block_raises() -> None:
+    """The runtime is closed even when the `async with` body raises."""
+
+    sentinel = RuntimeError("boom")
+    database = await Database.initialize(database=":memory:", models=[_AsyncUser])
+
+    with assert_raises(RuntimeError):
+        async with database:
+            raise sentinel
+
+    with assert_raises(DatabaseClosedError):
+        _ = database.transaction()

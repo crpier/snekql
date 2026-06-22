@@ -45,13 +45,13 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
     created_at: User.GenCol[datetime] = sqlite.Text(
-        server_default=sqlite.CurrentTimestamp(),
+        server_default=sqlite.CurrentTimestamp,
         default=sqlite.MISSING,
     )
 
 
 async def main() -> None:
-    db = await Database.initialize(
+    async with await Database.initialize(
         sqlite.Config(
             database=Path("app.db"),
             pool_size=5,
@@ -59,8 +59,7 @@ async def main() -> None:
         ),
         models=[User],
         schema_policy="strict",
-    )
-    try:
+    ) as db:
         async with db.transaction(timeout=5.0) as tx:
             await tx.execute(insert(User(email="alice@example.com")))
             # fetch_one is exactly-one: it raises NoResultError if the row is
@@ -69,8 +68,6 @@ async def main() -> None:
                 select(User).where(User.email.eq("alice@example.com")),
             )
             print(user.email)
-    finally:
-        await db.close()
 ```
 
 ## Model declaration
@@ -96,7 +93,7 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
     )
     message: AuditLog.Col[str] = sqlite.Text(nullable=False)
     created_at: AuditLog.GenCol[datetime] = sqlite.Text(
-        server_default=sqlite.CurrentTimestamp(),
+        server_default=sqlite.CurrentTimestamp,
         default=sqlite.MISSING,
     )
 ```
@@ -177,7 +174,7 @@ allows multiple `NULL` values in a unique index, so use `nullable=False` when
 uniqueness should also require a value. Primary-key columns reject `unique=True`
 because it is redundant. Every column type also exposes `server_default`.
 
-`sqlite.CurrentTimestamp()` and `mariadb.CurrentTimestamp()` are the only v1
+`sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1
 server defaults and are valid only on `GenCol` fields.
 
 ## Indexes
@@ -304,6 +301,11 @@ memory_db = await Database.initialize(
 )
 ```
 
+A `Database` is an async context manager, so the runtime is closed for you on
+block exit (including when the body raises) — `async with await
+Database.initialize(...) as db:`. Call `await db.close()` directly only when you
+manage the lifecycle by hand.
+
 snekql logs through the standard library `logging` module. Every snekql logger
 is a child of the `snekql` logger (`snekql.runtime`, `snekql.sqlite.runtime`,
 …), so an application controls all snekql output from one place:
@@ -348,15 +350,12 @@ config = mariadb.Config(
     password="secret",
 )
 
-db = await Database.initialize(config, models=[Account])
-try:
+async with await Database.initialize(config, models=[Account]) as db:
     async with db.transaction() as tx:
         await tx.execute(insert(Account(email="alice@example.com")))
         account = await tx.fetch_one(
             select(Account).where(Account.email.eq("alice@example.com")),
         )
-finally:
-    await db.close()
 ```
 
 Use transactions for all work:

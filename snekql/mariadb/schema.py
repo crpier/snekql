@@ -109,7 +109,7 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
-        has_server_default=isinstance(column.server_default, CurrentTimestamp),
+        has_server_default=column.server_default is CurrentTimestamp,
         collation=_column_collation(column),
     )
 
@@ -123,7 +123,7 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
         parts.append("AUTO_INCREMENT")
     if column.primary_key:
         parts.append("PRIMARY KEY")
-    if isinstance(column.server_default, CurrentTimestamp):
+    if column.server_default is CurrentTimestamp:
         parts.append("DEFAULT CURRENT_TIMESTAMP(3)")
     return " ".join(parts)
 

@@ -398,3 +398,30 @@ def execution_error_preserves_sql_and_params() -> None:
     assert_in("insert failed", str(error))
     assert_in('INSERT INTO "user"', str(error))
     assert_in("alice@example.com", str(error))
+
+
+@test()
+def execution_error_folds_cause_into_str() -> None:
+    """A chained cause is visible in ``str()`` without inspecting __cause__."""
+
+    error = sqlite.ExecutionError(
+        "write failed",
+        sql="INSERT INTO memories DEFAULT VALUES",
+        params=(),
+    )
+    # ``raise ExecutionError(...) from cause`` sets ``__cause__`` to exactly this.
+    error.__cause__ = ValueError("no such table: memories")
+
+    rendered = str(error)
+
+    assert_in("write failed", rendered)
+    assert_in("cause=ValueError: no such table: memories", rendered)
+
+
+@test()
+def execution_error_without_cause_omits_cause_text() -> None:
+    """A bare ExecutionError renders no cause fragment."""
+
+    error = sqlite.ExecutionError("write failed", sql="SELECT 1", params=())
+
+    assert_not_in("cause=", str(error))
