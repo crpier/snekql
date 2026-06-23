@@ -373,6 +373,3 @@ def ensure_assignment_targets_model(
     if require_column_model(column) is not model:
         msg = "assignment references a table that is not in the query"
         raise QueryConstructionError(msg)
-    if column.is_generated or column.primary_key:
-        msg = "generated and primary key columns cannot update"
-        raise QueryConstructionError(msg)

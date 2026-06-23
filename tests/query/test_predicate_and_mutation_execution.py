@@ -142,9 +142,6 @@ def update_compilation_requires_set_and_filter_intent() -> None:
     with assert_raises(QueryConstructionError):
         _ = filtered_query.all()
 
-    with assert_raises(QueryConstructionError):
-        _ = update(User).set(User.id.to(2))
-
     all_query = set_query.all()
     assert_is(all_query.all(), all_query)
     assert_eq(
