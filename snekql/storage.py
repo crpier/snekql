@@ -148,7 +148,6 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -159,7 +158,6 @@ class Integer:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
-                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
@@ -174,13 +172,12 @@ class Real:
     ...     value: Reading.Col[float] = Real(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -190,7 +187,6 @@ class Real:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
-                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="REAL",
                 storage_type_name="Real",
@@ -209,13 +205,12 @@ class Text:
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -225,7 +220,6 @@ class Text:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
-                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
@@ -240,13 +234,12 @@ class Blob:
     ...     content: File.Col[bytes] = Blob(nullable=False)
     """
 
-    def __new__(  # noqa: PLR0913
+    def __new__(
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        server_default: object | None = None,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -256,7 +249,6 @@ class Blob:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
-                server_default=server_default,
                 unique=unique,
                 sqlite_storage_class="BLOB",
                 storage_type_name="Blob",
@@ -267,12 +259,13 @@ class Blob:
 class CurrentTimestamp:
     """Server default marker for database-filled UTC timestamps.
 
-    Used as a bare class object, not an instance: pass ``CurrentTimestamp``
-    itself as the ``server_default``. Pairs with any column whose logical type
-    decodes the backend's timestamp text; on SQLite that is a ``Col[datetime]``
-    stored as ``Text()``.
+    Used as a bare class object, not an instance: pass ``CurrentTimestamp`` itself
+    as a column's ``default``. The database computes the value, so the column must
+    be a Generated Column and is omittable at construction (Missing until filled).
+    Pairs with any column whose logical type decodes the backend's timestamp text;
+    on SQLite that is a ``GenCol[datetime]`` stored as ``Text()``.
 
-    >>> Text(server_default=CurrentTimestamp, default=MISSING)
+    >>> Text(default=CurrentTimestamp)
 
     Also accepted by ``column.to(CurrentTimestamp)`` in an update assignment to
     refresh a column to the server clock on update (rendered inline, no bound

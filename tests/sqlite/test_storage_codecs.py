@@ -269,54 +269,53 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
 
 
 @test()
-def current_timestamp_is_valid_only_for_generated_columns() -> None:
-    """Server timestamp defaults require a generated column; the storage Column
-    Type is no longer constrained to a ``DateTime`` constructor."""
+def current_timestamp_default_declares_a_server_filled_generated_column() -> None:
+    """``default=CurrentTimestamp`` is the server-default declaration.
+
+    The marker routes to an internal Server Default: the column is omittable at
+    construction (Missing until the database fills it) without writing
+    ``default=MISSING``, yet an explicit value is still accepted. It must be a
+    Generated Column and cannot also carry a Python factory.
+    """
 
     class CreatedEvent[S = Pending](Model[S, "CreatedEvent[Fetched]"]):
-        """Valid generated timestamp column stored as TEXT."""
+        """Valid server-filled timestamp column stored as TEXT."""
 
-        created_at: CreatedEvent.GenCol[datetime] = Text(
-            server_default=CurrentTimestamp,
-            default=MISSING,
-        )
+        created_at: CreatedEvent.GenCol[datetime] = Text(default=CurrentTimestamp)
+        name: CreatedEvent.Col[str] = Text(nullable=False)
 
-    assert_true(
-        CreatedEvent.__snekql_columns__["created_at"].server_default
-        is CurrentTimestamp,
-    )
+    column = CreatedEvent.__snekql_columns__["created_at"]
+    assert_true(column.server_default is CurrentTimestamp)
+    assert_true(column.default is MISSING)
+
+    # Omittable at construction: the database supplies the value.
+    pending = CreatedEvent(name="first")
+    assert_true(pending.created_at is MISSING)
+
+    # An explicit value is still accepted.
+    fixed = datetime(2020, 1, 1, tzinfo=UTC)
+    explicit = CreatedEvent(name="second", created_at=fixed)
+    assert_eq(explicit.created_at, fixed)
 
     with assert_raises(ModelDeclarationError):
 
         class NonGeneratedTimestamp[S = Pending](
             Model[S, "NonGeneratedTimestamp[Fetched]"]
         ):
-            """Invalid non-generated timestamp default."""
+            """A server default requires a generated (GenCol) column."""
 
             created_at: NonGeneratedTimestamp.Col[datetime] = Text(
-                server_default=CurrentTimestamp,
-                default=MISSING,
-            )
-
-    with assert_raises(ModelDeclarationError):
-
-        class CurrentTimestampAsPythonDefault[S = Pending](
-            Model[S, "CurrentTimestampAsPythonDefault[Fetched]"]
-        ):
-            """CurrentTimestamp is a server default, never a Python default."""
-
-            created_at: CurrentTimestampAsPythonDefault.GenCol[datetime] = Text(
                 default=CurrentTimestamp,
             )
 
     with assert_raises(ModelDeclarationError):
 
-        class TimestampWithPythonDefault[S = Pending](
-            Model[S, "TimestampWithPythonDefault[Fetched]"],
+        class TimestampWithFactory[S = Pending](
+            Model[S, "TimestampWithFactory[Fetched]"],
         ):
-            """Invalid server default paired with a Python default."""
+            """CurrentTimestamp cannot be combined with a Python factory."""
 
-            created_at: TimestampWithPythonDefault.GenCol[datetime] = Text(
-                server_default=CurrentTimestamp,
-                default=datetime(2026, 5, 31, tzinfo=UTC),
+            created_at: TimestampWithFactory.GenCol[datetime] = Text(
+                default=CurrentTimestamp,
+                default_factory=lambda: datetime(2026, 5, 31, tzinfo=UTC),
             )

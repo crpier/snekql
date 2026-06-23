@@ -393,11 +393,6 @@ class ModelMeta(type):
         name: str,
         column: Attr[Any, Any, Any, Any, Any],
     ) -> None:
-        if column.default is CurrentTimestamp:
-            msg = f"CurrentTimestamp cannot be a Python default for {name!r}"
-            raise ModelDeclarationError(
-                msg,
-            )
         if column.unique and column.primary_key:
             msg = f"primary-key columns cannot be unique: {name!r}"
             raise ModelDeclarationError(msg)
@@ -406,30 +401,22 @@ class ModelMeta(type):
         ):
             msg = f"auto-increment requires an integer primary-key column: {name!r}"
             raise ModelDeclarationError(msg)
-        if column.server_default is None:
+        if column.default is not CurrentTimestamp:
             return
-        if column.server_default is not CurrentTimestamp:
-            msg = f"unsupported server default for {name!r}"
-            raise ModelDeclarationError(
-                msg,
-            )
+        # `default=CurrentTimestamp` is a Server Default: the database computes the
+        # value. It must be a Generated Column -- its Pending value may be Missing
+        # until the database fills it -- and cannot also carry a Python factory.
         if not column.is_generated:
-            msg = f"CurrentTimestamp requires a generated column: {name!r}"
-            raise ModelDeclarationError(
-                msg,
-            )
-        if column.default is not MISSING:
-            msg = (
-                f"CurrentTimestamp generated columns must default to MISSING: {name!r}"
-            )
-            raise ModelDeclarationError(
-                msg,
-            )
+            msg = f"CurrentTimestamp requires a generated (GenCol) column: {name!r}"
+            raise ModelDeclarationError(msg)
         if not isinstance(column.default_factory, EllipsisType):
-            msg = f"CurrentTimestamp generated columns cannot use default_factory: {name!r}"
-            raise ModelDeclarationError(
-                msg,
-            )
+            msg = f"CurrentTimestamp cannot be combined with default_factory: {name!r}"
+            raise ModelDeclarationError(msg)
+        # Route the marker to the internal server default and leave the column
+        # omittable: construction yields Missing, and the insert omits it so the
+        # database supplies the value.
+        column.server_default = CurrentTimestamp
+        column.default = MISSING
 
     @staticmethod
     def _infer_table_name(class_name: str) -> str:
