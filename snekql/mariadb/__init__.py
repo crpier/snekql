@@ -1,10 +1,10 @@
 """MariaDB backend namespace for snekql.
 
-Import the whole MariaDB surface from here: the dialect-neutral verbs, builders,
-predicates, runtime, and type helpers (shared via ``snekql._common``) plus
-MariaDB's ``Model`` base and column constructors (including the JSON column and
-its path operators). There is no flat ``snekql.*`` surface; pick a backend
-namespace and import everything from it.
+Import the whole MariaDB surface from here: dialect-neutral builders,
+predicates, runtime, and type helpers (shared via ``snekql._common``), plus
+MariaDB's write verbs, ``Model`` base, and column constructors (including the
+JSON column and its path operators). There is no flat ``snekql.*`` surface; pick
+a backend namespace and import everything from it.
 """
 
 from __future__ import annotations
@@ -66,13 +66,10 @@ from snekql._common import (
     Transaction,
     TransactionClosedError,
     UpdateQuery,
-    delete,
     exists,
-    insert,
     not_exists,
     scalar,
     select,
-    update,
 )
 
 # Importing the query module registers the MariaDB query Dialect so a built
@@ -93,6 +90,7 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
+from snekql.mariadb.verbs import delete, insert, update
 
 __all__ = [
     "MISSING",
