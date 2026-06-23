@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import cast
 
 from snektest import assert_eq, assert_raises, test
@@ -99,21 +100,27 @@ def update_assignments_must_belong_to_target_model() -> None:
 
 
 @test(mark="fast")
-def update_rejects_generated_and_primary_key_assignments() -> None:
-    """Generated and primary key columns are not update-assignable."""
+def update_accepts_generated_and_primary_key_assignments() -> None:
+    """Generated and primary key columns are update-assignable (no immutability).
+
+    snekql models no immutable columns (ADR 0006): the update builder guards only
+    that an assignment targets the queried model, so both a generated column and a
+    primary key compile into ``SET`` like any other column.
+    """
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
-        """Table model with both protected and updateable columns."""
+        """Table model with a primary key and a generated column."""
 
-        account_id: User.Col[int] = Integer(primary_key=True)
+        account_id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
         email: User.Col[str] = Text(nullable=False)
         revision: User.GenCol[int] = Integer(default=MISSING)
 
-    with assert_raises(QueryConstructionError):
-        _ = update(User).set(User.revision.to(2))
+    query = update(User).set(User.account_id.to(2), User.revision.to(3)).all()
 
-    with assert_raises(QueryConstructionError):
-        _ = update(User).set(User.account_id.to(2))
+    sql, params = compile_sqlite_write_sql(query)
+
+    assert_eq(sql, 'UPDATE "user" SET "account_id" = ?, "revision" = ?')
+    assert_eq(params, (2, 3))
 
 
 @test(mark="medium")
@@ -185,3 +192,51 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
     # Server-filled ISO-8601 UTC sorts lexicographically, so a refreshed value is
     # strictly greater than the explicit epoch-era value written on insert.
     assert_eq(refreshed > "2000-01-01T00:00:00.000Z", True)
+
+
+@test(mark="medium")
+async def update_writes_a_server_default_generated_timestamp() -> None:
+    """One GenCol fills from the server clock on insert and is writable on update.
+
+    The managed-timestamp use case (ADR 0006): ``updated_at`` is omitted on insert
+    so the database fills it via ``server_default=CurrentTimestamp``, then the same
+    generated column accepts both an explicit value and a ``CurrentTimestamp``
+    refresh on update -- assignments the old immutability guard rejected.
+    """
+
+    class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
+        """Table model whose updated_at is server-filled yet update-writable."""
+
+        id: Memory.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        content: Memory.Col[str] = Text(nullable=False)
+        updated_at: Memory.GenCol[datetime] = Text(
+            server_default=CurrentTimestamp,
+            default=MISSING,
+        )
+
+    explicit = datetime(2000, 1, 1, tzinfo=UTC)
+    database = await Database.initialize(database=":memory:", models=[Memory])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(Memory(content="first")))
+            filled = await tx.fetch_one(select(Memory.updated_at).all())
+
+            _ = await tx.execute(
+                update(Memory).set(Memory.updated_at.to(explicit)).all(),
+            )
+            overwritten = await tx.fetch_one(select(Memory.updated_at).all())
+
+            _ = await tx.execute(
+                update(Memory).set(Memory.updated_at.to(CurrentTimestamp)).all(),
+            )
+            refreshed = await tx.fetch_one(select(Memory.updated_at).all())
+    finally:
+        await database.close()
+
+    # Insert omitted the column, so the database supplied the value.
+    assert isinstance(filled, datetime)
+    # A generated column now accepts an explicit update value...
+    assert_eq(overwritten, explicit)
+    # ...and a server-clock refresh, which lands past the epoch-era value.
+    assert isinstance(refreshed, datetime)
+    assert_eq(refreshed > explicit, True)
