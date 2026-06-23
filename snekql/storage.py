@@ -141,6 +141,73 @@ class Integer:
     ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
     """
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(  # noqa: PLR0913
         cls,
         *,
@@ -171,6 +238,67 @@ class Real:
     >>> class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
     ...     value: Reading.Col[float] = Real(nullable=False)
     """
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
 
     def __new__(
         cls,
@@ -205,6 +333,67 @@ class Text:
     ...     email: User.Col[str] = Text(nullable=False)
     """
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(
         cls,
         *,
@@ -233,6 +422,67 @@ class Blob:
     >>> class File[S = Pending](Model[S, "File[Fetched]"]):
     ...     content: File.Col[bytes] = Blob(nullable=False)
     """
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
 
     def __new__(
         cls,
@@ -288,6 +538,25 @@ class ForeignKey:
     ...         User.email, nullable=False
     ...     )
     """
+
+    @overload
+    def __new__[Target, T](
+        cls,
+        references: Attr[Any, Any, Target, Any, T],
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> FKAttr[Any, Any, Any, T, T, Target, object]: ...
+
+    @overload
+    def __new__[Target, T](
+        cls,
+        references: Attr[Any, Any, Target, Any, T],
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+    ) -> FKAttr[Any, Any, Any, T, T, Target]: ...
 
     def __new__[Target, T](
         cls,
@@ -385,7 +654,7 @@ def _strip_json_marker(annotation: object) -> object:
     return annotation
 
 
-class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
+class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = WriteT](
     Comparable[OwnerT, ReadValueT],
 ):
     """Typed model column descriptor used for fields and query construction.
@@ -424,7 +693,14 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
     @overload
     def __get__(
         self, instance: None, owner: type[Any]
-    ) -> Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT]: ...
+    ) -> Attr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        OwnerT,
+        WriteT,
+        ReadValueT,
+        SetValueT,
+    ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
     @overload
@@ -438,7 +714,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         )
         return storage[self._require_name()]
 
-    def __set__(self, instance: object, value: WriteT) -> None:
+    def __set__(self, instance: object, value: SetValueT) -> None:
         if getattr(instance, "_snekql_frozen", False):
             msg = "table models are immutable"
             raise FrozenModelError(msg)
@@ -826,8 +1102,16 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
         raise NotImplementedError
 
 
-class FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, TargetOwnerT](
-    Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT],
+class FKAttr[
+    WriteOwnerT,
+    LoadedOwnerT,
+    OwnerT,
+    WriteT,
+    ReadValueT,
+    TargetOwnerT,
+    SetValueT = WriteT,
+](
+    Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT],
 ):
     """Foreign-key column descriptor that declares the model it references.
 

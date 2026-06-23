@@ -111,6 +111,39 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
 
 
 if TYPE_CHECKING:
+
+    class InvalidSqliteDefaults[S = Pending](
+        Model[S, "InvalidSqliteDefaults[Fetched]"]
+    ):
+        """Invalid default declarations rejected by static typing."""
+
+        text_default: InvalidSqliteDefaults.Col[int] = Text(default="nan")  # pyright: ignore[reportAssignmentType]
+        factory_default: InvalidSqliteDefaults.Col[int] = Integer(
+            default_factory=lambda: "nan"
+        )  # pyright: ignore[reportAssignmentType]
+        missing_default: InvalidSqliteDefaults.Col[int] = Integer(default=MISSING)  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        server_default: InvalidSqliteDefaults.Col[datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            default=CurrentTimestamp
+        )
+
+    class InvalidOrderDefaults[S = Pending](Model[S, "InvalidOrderDefaults[Fetched]"]):
+        """Invalid foreign-key default declarations rejected by static typing."""
+
+        user_id: InvalidOrderDefaults.FKCol[User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType]
+            User.id,
+            default="nan",  # pyright: ignore[reportArgumentType]
+        )
+
+    class InvalidMariadbDefaults[S = Pending](
+        mariadb.Model[S, "InvalidMariadbDefaults[Fetched]"]
+    ):
+        """Invalid MariaDB default declarations rejected by static typing."""
+
+        text_default: InvalidMariadbDefaults.Col[int] = mariadb.Text(default="nan")  # pyright: ignore[reportAssignmentType]
+        factory_default: InvalidMariadbDefaults.Col[int] = mariadb.Uuid(
+            default_factory=lambda: "nan"
+        )  # pyright: ignore[reportAssignmentType]
+
     sqlite_config = sqlite.Config(database=Path("app.db"))
     _ = assert_type(sqlite_config, sqlite.Config)
     sqlite_index = sqlite.Index(SqliteUser.email)

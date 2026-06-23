@@ -74,10 +74,13 @@ def model_construction_rejects_missing_and_unknown_values() -> None:
 def model_construction_calls_default_factories_per_instance() -> None:
     """Default factories create real values independently for each model."""
 
+    def new_tags() -> Json[list[str]]:
+        return []
+
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with a default factory."""
 
-        tags: Event.Col[Json[list[str]]] = Text(default_factory=list)
+        tags: Event.Col[Json[list[str]]] = Text(default_factory=new_tags)
 
     first = Event()
     second = Event()
