@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import EllipsisType
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, overload
 
 from snekql._query_state import require_column_model
 from snekql.expressions import Comparable
@@ -15,6 +15,7 @@ from snekql.storage import (
     CurrentTimestamp,
     FKAttr,
     ForeignKey,
+    Missing,
     build_attr,
 )
 
@@ -70,8 +71,15 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, int]):
         return int(cast("str | int | float", raw))
 
 
-class JsonAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT](
-    FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, Any],
+class JsonAttr[
+    WriteOwnerT,
+    LoadedOwnerT,
+    OwnerT,
+    WriteT,
+    ReadValueT,
+    SetValueT = WriteT,
+](
+    FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, Any, SetValueT],
 ):
     """MariaDB JSON column descriptor carrying the JSON path operators.
 
@@ -100,6 +108,73 @@ class Integer:
     ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
     """
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        auto_increment: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(  # noqa: PLR0913
         cls,
         *,
@@ -127,6 +202,67 @@ class Integer:
 class Real:
     """MariaDB real-number column declaration for float-like model values."""
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(
         cls,
         *,
@@ -152,6 +288,67 @@ class Real:
 class Text:
     """MariaDB text column declaration for string model values."""
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(
         cls,
         *,
@@ -176,6 +373,67 @@ class Text:
 
 class Blob:
     """MariaDB blob column declaration for bytes model values."""
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
 
     def __new__(
         cls,
@@ -207,6 +465,34 @@ class Json:
     type checker on JSON columns only.
     """
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(
         cls,
         *,
@@ -230,6 +516,61 @@ class Json:
 class Boolean:
     """MariaDB boolean column declaration for bool model values."""
 
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
     def __new__(
         cls,
         *,
@@ -252,6 +593,61 @@ class Boolean:
 
 class DateTime:
     """MariaDB datetime column declaration for timezone-aware datetimes."""
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
 
     def __new__(
         cls,
@@ -285,6 +681,67 @@ class Uuid:
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
     ...     id: User.Col[uuid.UUID] = Uuid(primary_key=True, default_factory=uuid4)
     """
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: Missing,
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: type[CurrentTimestamp],
+    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
 
     def __new__(
         cls,

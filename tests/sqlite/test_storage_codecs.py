@@ -253,7 +253,7 @@ def uuid_logical_type_round_trips_as_text_and_blocks_like() -> None:
 def external_value_failures_are_wrapped_in_model_validation_error() -> None:
     """Default factories and codecs do not leak third-party exceptions."""
 
-    def broken_default() -> object:
+    def broken_default() -> Json[dict[str, int]]:
         msg = "outside validation failure"
         raise ValueError(msg)
 
@@ -304,7 +304,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """A server default requires a generated (GenCol) column."""
 
-            created_at: NonGeneratedTimestamp.Col[datetime] = Text(
+            created_at: NonGeneratedTimestamp.Col[datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
                 default=CurrentTimestamp,
             )
 

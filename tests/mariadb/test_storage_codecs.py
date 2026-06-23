@@ -125,7 +125,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
         class BadEvent[S = Pending](mariadb.Model[S, "BadEvent[Fetched]"]):
             """Invalid MariaDB model using a server default on a normal column."""
 
-            created_at: BadEvent.Col[datetime] = mariadb.DateTime(
+            created_at: BadEvent.Col[datetime] = mariadb.DateTime(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
                 default=CurrentTimestamp,
             )
 
