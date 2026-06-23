@@ -40,10 +40,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
         default=MISSING,
     )
     email: User.Col[str] = Text(nullable=False)
-    created_at: User.GenCol[datetime] = Text(
-        server_default=CurrentTimestamp,
-        default=MISSING,
-    )
+    created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
 
 
 async def main() -> None:

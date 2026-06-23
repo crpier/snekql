@@ -30,10 +30,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = Text(
-        server_default=CurrentTimestamp,
-        default=MISSING,
-    )
+    created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
 
 
 def _count_rows(database_path: Path) -> int:

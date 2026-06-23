@@ -35,8 +35,7 @@ class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
     email: _BulkUser.Col[str] = mariadb.Text(nullable=False)
     status: _BulkUser.Col[str] = mariadb.Text(nullable=False, default="active")
     created_at: _BulkUser.GenCol[datetime] = mariadb.DateTime(
-        server_default=CurrentTimestamp,
-        default=MISSING,
+        default=CurrentTimestamp,
     )
 
 

@@ -44,10 +44,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = sqlite.Text(
-        server_default=sqlite.CurrentTimestamp,
-        default=sqlite.MISSING,
-    )
+    created_at: User.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
 
 
 async def main() -> None:
@@ -93,8 +90,7 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
     )
     message: AuditLog.Col[str] = sqlite.Text(nullable=False)
     created_at: AuditLog.GenCol[datetime] = sqlite.Text(
-        server_default=sqlite.CurrentTimestamp,
-        default=sqlite.MISSING,
+        default=sqlite.CurrentTimestamp,
     )
 ```
 
@@ -172,10 +168,13 @@ construct-time validation.
 All column types accept `unique=True` for column-level unique indexes. SQLite
 allows multiple `NULL` values in a unique index, so use `nullable=False` when
 uniqueness should also require a value. Primary-key columns reject `unique=True`
-because it is redundant. Every column type also exposes `server_default`.
+because it is redundant.
 
-`sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1
-server defaults and are valid only on `GenCol` fields.
+A *server default* is declared by passing a marker as the column's `default`:
+`sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1 server
+defaults. The marker means the database computes the value, so the field is
+valid only on `GenCol` columns, is omittable at construction (it is `MISSING`
+until the database fills it), and accepts an explicit value when you pass one.
 
 To refresh a column to the server clock on *update*, pass the same marker to an
 update assignment: `update(Doc).set(Doc.edited_at.to(CurrentTimestamp))`. It

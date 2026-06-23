@@ -199,7 +199,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
     """One GenCol fills from the server clock on insert and is writable on update.
 
     The managed-timestamp use case (ADR 0006): ``updated_at`` is omitted on insert
-    so the database fills it via ``server_default=CurrentTimestamp``, then the same
+    so the database fills it via ``default=CurrentTimestamp``, then the same
     generated column accepts both an explicit value and a ``CurrentTimestamp``
     refresh on update -- assignments the old immutability guard rejected.
     """
@@ -209,10 +209,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
 
         id: Memory.GenCol[int] = Integer(primary_key=True, default=MISSING)
         content: Memory.Col[str] = Text(nullable=False)
-        updated_at: Memory.GenCol[datetime] = Text(
-            server_default=CurrentTimestamp,
-            default=MISSING,
-        )
+        updated_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)
 
     explicit = datetime(2000, 1, 1, tzinfo=UTC)
     database = await Database.initialize(database=":memory:", models=[Memory])
