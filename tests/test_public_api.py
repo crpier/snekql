@@ -26,7 +26,7 @@ from snekql import mariadb, sqlite
 from snekql.testing import mariadb as testing_mariadb
 
 # The dialect-neutral symbols every backend namespace re-exports identically.
-_COMMON_NAMES = frozenset(
+_NEUTRAL_NAMES = frozenset(
     {
         "MISSING",
         "Aggregate",
@@ -84,15 +84,15 @@ _COMMON_NAMES = frozenset(
         "Transaction",
         "TransactionClosedError",
         "UpdateQuery",
-        "delete",
         "exists",
-        "insert",
         "not_exists",
         "scalar",
         "select",
-        "update",
     },
 )
+# Write verbs are owned by each backend namespace so their docstrings can
+# describe driver-specific write semantics while preserving the same query API.
+_WRITE_VERB_NAMES = frozenset({"delete", "insert", "update"})
 # Dialect-specific symbols shared by both backends: each backend's ``Model``
 # base, ``Config``, and the four storage-primitive column constructors.
 _DIALECT_NAMES = frozenset(
@@ -113,7 +113,7 @@ _DIALECT_NAMES = frozenset(
 _MARIADB_ONLY_NAMES = frozenset(
     {"Boolean", "DateTime", "Json", "JsonAttr", "Uuid"},
 )
-_SQLITE_EXPECTED = _COMMON_NAMES | _DIALECT_NAMES
+_SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
 
 
@@ -286,6 +286,47 @@ def query_factory_functions_return_public_query_objects() -> None:
     assert_isinstance(sqlite.insert(row), sqlite.InsertQuery)
     assert_isinstance(sqlite.update(QueryUser), sqlite.UpdateQuery)
     assert_isinstance(sqlite.delete(QueryUser), sqlite.DeleteQuery)
+
+
+@test()
+def write_verbs_diverge_with_backend_specific_docstrings() -> None:
+    """insert/update/delete are per-backend verbs that document each driver's writes."""
+
+    class SqliteVerbUser(
+        sqlite.Model[sqlite.Pending, "SqliteVerbUser[sqlite.Fetched]"],
+    ):
+        """SQLite table model for per-backend verb smoke checks."""
+
+        email: SqliteVerbUser.Col[str] = sqlite.Text(nullable=False)
+
+    class MariaDBVerbUser(
+        mariadb.Model[mariadb.Pending, "MariaDBVerbUser[mariadb.Fetched]"],
+    ):
+        """MariaDB table model for per-backend verb smoke checks."""
+
+        email: MariaDBVerbUser.Col[str] = mariadb.Text(nullable=False)
+
+    # The write verbs are distinct objects per backend, unlike neutral ``select``.
+    assert sqlite.insert is not mariadb.insert
+    assert sqlite.update is not mariadb.update
+    assert sqlite.delete is not mariadb.delete
+    assert_is(sqlite.select, mariadb.select)
+
+    # Each backend verb still builds the same public query type.
+    sqlite_row = object.__new__(SqliteVerbUser)
+    mariadb_row = object.__new__(MariaDBVerbUser)
+    assert_isinstance(sqlite.insert(sqlite_row), sqlite.InsertQuery)
+    assert_isinstance(sqlite.update(SqliteVerbUser), sqlite.UpdateQuery)
+    assert_isinstance(sqlite.delete(SqliteVerbUser), sqlite.DeleteQuery)
+    assert_isinstance(mariadb.insert(mariadb_row), mariadb.InsertQuery)
+    assert_isinstance(mariadb.update(MariaDBVerbUser), mariadb.UpdateQuery)
+    assert_isinstance(mariadb.delete(MariaDBVerbUser), mariadb.DeleteQuery)
+
+    # The docstrings name the backend and explain its affected-row count.
+    assert_in("SQLite", sqlite.insert.__doc__ or "")
+    assert_in("MariaDB", mariadb.insert.__doc__ or "")
+    assert_in("matched", sqlite.update.__doc__ or "")
+    assert_in("CLIENT_FOUND_ROWS", mariadb.update.__doc__ or "")
 
 
 @test()

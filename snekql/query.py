@@ -89,7 +89,7 @@ class _SelectableModelClass(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
-class _InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
+class InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     """Structural type for pending model instances accepted by `insert(row)`.
 
     A pending model instance exposes its own writable owner type and the fetched
@@ -1082,14 +1082,14 @@ def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T]:
 
 @overload
 def insert[OwnerT: Table[Any], ReadT: Table[Any]](
-    row: _InsertableModel[OwnerT, ReadT],
+    row: InsertableModel[OwnerT, ReadT],
     /,
 ) -> InsertQuery[OwnerT, ReadT]: ...
 
 
 @overload
 def insert[OwnerT: Table[Any], ReadT: Table[Any]](
-    rows: Sequence[_InsertableModel[OwnerT, ReadT]],
+    rows: Sequence[InsertableModel[OwnerT, ReadT]],
     /,
 ) -> InsertManyQuery[OwnerT, ReadT]: ...
 
@@ -1101,7 +1101,16 @@ def insert(row_or_rows: object, /) -> object:
     compiles to one multi-row ``INSERT ... VALUES (...), (...)`` and is a no-op
     when empty. Call ``.returning()`` on either to get the Fetched model(s) the
     database produced (generated keys, server defaults) back from the write.
+
+    Backend namespaces wrap this dialect-blind builder with their own
+    ``insert`` that documents the driver's write behavior.
     """
+
+    return build_insert(row_or_rows)
+
+
+def build_insert(row_or_rows: object, /) -> object:
+    """Build an insert query without overload narrowing, for backend wrappers."""
 
     if isinstance(row_or_rows, Sequence):
         rows = tuple(cast("Sequence[Table[Any]]", row_or_rows))

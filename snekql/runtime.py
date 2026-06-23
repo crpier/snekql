@@ -503,18 +503,8 @@ class Transaction:
     async def execute(self, query: object, *, validate: bool = True) -> object:
         """Execute a write query inside this transaction.
 
-        A plain insert returns ``None``; a plain update/delete returns the
-        affected-row count the driver reports. An insert built with
-        ``.returning()`` yields the Fetched model the database produced (the row
-        for a single insert, a list for a bulk insert), materialized through the
-        same decode path as a select. An empty bulk insert issues no SQL and
-        returns ``None`` (or ``[]`` when returning).
-
-        The affected-row count is the driver's own ``rowcount`` for the
-        statement. SQLite counts every row the ``WHERE`` clause matched; MariaDB
-        (via aiomysql, without ``CLIENT_FOUND_ROWS``) counts only rows an
-        ``UPDATE`` actually changed, so updating a row to its current value does
-        not increment the count there.
+        The result depends on the query shape; see ``insert`` / ``update`` /
+        ``delete`` for return-value details.
         """
 
         write_query = cast("AnyWriteQuery", query)

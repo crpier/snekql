@@ -1,9 +1,9 @@
 """SQLite backend namespace for snekql.
 
-Import the whole SQLite surface from here: the dialect-neutral verbs, builders,
-predicates, runtime, and type helpers (shared via ``snekql._common``) plus
-SQLite's ``Model`` base and column constructors. There is no flat ``snekql.*``
-surface; pick a backend namespace and import everything from it.
+Import the whole SQLite surface from here: dialect-neutral builders,
+predicates, runtime, and type helpers (shared via ``snekql._common``), plus
+SQLite's write verbs, ``Model`` base, and column constructors. There is no flat
+``snekql.*`` surface; pick a backend namespace and import everything from it.
 """
 
 from __future__ import annotations
@@ -65,13 +65,10 @@ from snekql._common import (
     Transaction,
     TransactionClosedError,
     UpdateQuery,
-    delete,
     exists,
-    insert,
     not_exists,
     scalar,
     select,
-    update,
 )
 from snekql.model import Model
 
@@ -79,6 +76,7 @@ from snekql.model import Model
 # SQLite query can render its own SQL for inspection (see _query_dialect).
 from snekql.sqlite import query as query
 from snekql.sqlite.config import Config
+from snekql.sqlite.verbs import delete, insert, update
 from snekql.storage import (
     Blob,
     CurrentTimestamp,
