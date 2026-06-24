@@ -11,8 +11,8 @@ from snekql._query_compile import (
 )
 from snekql._query_dialect import QueryDialect, register_query_dialect
 from snekql._query_materialize import (
-    materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
+    materialize_write_returning_rows_for_backend,
 )
 from snekql.query import AnySelectQuery
 from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
@@ -37,6 +37,8 @@ _SQLITE_QUERY_DIALECT = QueryDialect(
     encode_column_value=_encode_sqlite_column_value,
     placeholder="?",
     quote_identifier=quote_sqlite_identifier,
+    supports_delete_returning=True,
+    supports_update_returning=True,
 )
 
 register_query_dialect("sqlite", _SQLITE_QUERY_DIALECT)
@@ -78,9 +80,9 @@ def materialize_sqlite_write_rows(
     *,
     validate: bool = True,
 ) -> list[object]:
-    """Decode SQLite ``RETURNING`` rows from an insert into Fetched models."""
+    """Decode SQLite ``RETURNING`` rows from a write query."""
 
-    return materialize_insert_returning_rows_for_backend(
+    return materialize_write_returning_rows_for_backend(
         query,
         rows,
         backend="sqlite",

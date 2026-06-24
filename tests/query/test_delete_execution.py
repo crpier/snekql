@@ -54,6 +54,33 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
 
 
 @test(mark="fast")
+def delete_returning_appends_projected_columns() -> None:
+    """SQLite delete returning(col, col) appends the projected columns."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model deleted through RETURNING."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
+
+    query = (
+        delete(User)
+        .where(User.status.eq("disabled"))
+        .returning(
+            User.id,
+            User.email,
+        )
+    )
+
+    sql, params = compile_sqlite_write_sql(query)
+
+    expected = 'DELETE FROM "user" WHERE ("status" = ?) RETURNING "id", "email"'
+    assert_eq(sql, expected)
+    assert_eq(params, ("disabled",))
+
+
+@test(mark="fast")
 def delete_predicates_must_belong_to_target_model() -> None:
     """Delete where() rejects predicates built from another table model."""
 
@@ -103,6 +130,34 @@ def delete_requires_exactly_one_filter_intent() -> None:
         _ = compile_sqlite_write_sql(base_query)
 
     assert_eq(compile_sqlite_write_sql(all_query), ('DELETE FROM "user"', ()))
+
+
+@test(mark="medium")
+async def delete_returning_yields_deleted_projection() -> None:
+    """SQLite delete returning(col) yields one decoded value per deleted row."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model deleted through RETURNING execution."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
+
+    database = await Database.initialize(database=":memory:", models=[User])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(insert(User(email="b@example.com", status="disabled")))
+
+            deleted = await tx.execute(
+                delete(User).where(User.status.eq("disabled")).returning(User.email),
+            )
+            remaining = await tx.fetch_all(select(User.email).all())
+    finally:
+        await database.close()
+
+    assert_eq(deleted, ["b@example.com"])
+    assert_eq(remaining, ["a@example.com"])
 
 
 @test(mark="medium")

@@ -83,6 +83,8 @@ class UpdateState:
     assignments: tuple[Assignment[Any], ...] = ()
     explicit_all: bool = False
     predicates: tuple[Predicate[Any], ...] = ()
+    returning: bool = False
+    returning_fields: tuple[Selectable, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,8 @@ class DeleteState:
     model: type[Table[Any]]
     explicit_all: bool = False
     predicates: tuple[Predicate[Any], ...] = ()
+    returning: bool = False
+    returning_fields: tuple[Selectable, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -213,19 +217,18 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
     return require_column_model(field)
 
 
-def require_returning_fields(
-    state: InsertState,
+def require_model_returning_fields(
+    model_class: type[Table[Any]] | None,
     fields: tuple[object, ...],
 ) -> tuple[Selectable, ...]:
-    """Validate an explicit ``returning()`` projection against the inserted model.
+    """Validate an explicit ``returning()`` projection against a written model.
 
-    Each field must be a plain column bound to a table model; when the batch has
-    rows (so the inserted model is known) it must be a column of that model. An
-    empty bulk batch has no model to compare against, so each field is only
-    checked for being a bound table column -- it carries its own owner.
+    Each field must be a plain column bound to a table model; when the model is
+    known it must be a column of that model. An empty bulk insert has no model to
+    compare against, so each field is only checked for being a bound table column
+    -- it carries its own owner.
     """
 
-    model_class = state.model()
     columns = require_model_columns(model_class) if model_class is not None else None
     selectables: list[Selectable] = []
     for field in fields:
@@ -233,10 +236,19 @@ def require_returning_fields(
         name = require_column_name(column)
         owner = require_column_model(column)
         if columns is not None and (name not in columns or owner is not model_class):
-            msg = "returning() column must belong to the inserted model"
+            msg = "returning() column must belong to the written model"
             raise QueryConstructionError(msg)
         selectables.append(column)
     return tuple(selectables)
+
+
+def require_returning_fields(
+    state: InsertState,
+    fields: tuple[object, ...],
+) -> tuple[Selectable, ...]:
+    """Validate an insert ``returning()`` projection against inserted rows."""
+
+    return require_model_returning_fields(state.model(), fields)
 
 
 def require_insert_model(row: object) -> type[Table[Any]]:

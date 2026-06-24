@@ -44,6 +44,9 @@ from snekql.query import (
     AnySelectQuery,
     AnyWriteQuery,
     DeleteQuery,
+    DeleteReturningQuery,
+    DeleteReturningTupleQuery,
+    DeleteReturningValueQuery,
     InsertManyQuery,
     InsertManyReturningQuery,
     InsertManyReturningTupleQuery,
@@ -57,6 +60,9 @@ from snekql.query import (
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    UpdateReturningQuery,
+    UpdateReturningTupleQuery,
+    UpdateReturningValueQuery,
 )
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
@@ -489,6 +495,29 @@ class Transaction:
     @overload
     async def execute(
         self,
+        query: UpdateReturningQuery[OwnerT] | DeleteReturningQuery[OwnerT],
+        *,
+        validate: bool = True,
+    ) -> list[OwnerT]: ...
+    @overload
+    async def execute(
+        self,
+        query: UpdateReturningValueQuery[OwnerT, T]
+        | DeleteReturningValueQuery[OwnerT, T],
+        *,
+        validate: bool = True,
+    ) -> list[T]: ...
+    @overload
+    async def execute(
+        self,
+        query: UpdateReturningTupleQuery[OwnerT, *Ts]
+        | DeleteReturningTupleQuery[OwnerT, *Ts],
+        *,
+        validate: bool = True,
+    ) -> list[tuple[*Ts]]: ...
+    @overload
+    async def execute(
+        self,
         query: UpdateQuery[Any] | DeleteQuery[Any],
         *,
         validate: bool = True,
@@ -507,7 +536,7 @@ class Transaction:
         ``delete`` for return-value details.
         """
 
-        write_query = cast("AnyWriteQuery", query)
+        write_query: AnyWriteQuery = cast("AnyWriteQuery", query)
         returning = isinstance(
             write_query,
             (
@@ -517,6 +546,12 @@ class Transaction:
                 InsertReturningTupleQuery,
                 InsertManyReturningValueQuery,
                 InsertManyReturningTupleQuery,
+                UpdateReturningQuery,
+                UpdateReturningValueQuery,
+                UpdateReturningTupleQuery,
+                DeleteReturningQuery,
+                DeleteReturningValueQuery,
+                DeleteReturningTupleQuery,
             ),
         )
         is_many = isinstance(
@@ -528,13 +563,15 @@ class Transaction:
                 InsertManyReturningTupleQuery,
             ),
         )
-        affects_rows = isinstance(write_query, (UpdateQuery, DeleteQuery))
+        affects_rows = (
+            isinstance(write_query, (UpdateQuery, DeleteQuery)) and not returning
+        )
         async with self._lock:
             connection = self.require_connection()
             if is_many and not self._insert_rows(write_query):
                 return [] if returning else None
-            self._validate_query_backend(write_query)
-            sql, params = self.runtime.compile_write_sql(write_query)
+            self._validate_query_backend(cast("object", write_query))
+            sql, params = self.runtime.compile_write_sql(cast("object", write_query))
             returned_rows: list[tuple[object, ...]] = []
             affected_rows = 0
             try:
@@ -565,11 +602,11 @@ class Transaction:
             if not returning:
                 return None
             models = self.runtime.materialize_write_rows(
-                write_query,
+                cast("object", write_query),
                 returned_rows,
                 validate=validate,
             )
-            if is_many:
+            if is_many or isinstance(write_query, (UpdateQuery, DeleteQuery)):
                 return models
             return models[0]
 

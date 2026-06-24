@@ -11,8 +11,8 @@ from snekql._query_compile import (
 )
 from snekql._query_dialect import QueryDialect, register_query_dialect
 from snekql._query_materialize import (
-    materialize_insert_returning_rows_for_backend,
     materialize_select_row_for_backend,
+    materialize_write_returning_rows_for_backend,
 )
 from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb_identifier
@@ -78,9 +78,9 @@ def materialize_mariadb_write_rows(
     *,
     validate: bool = True,
 ) -> list[object]:
-    """Decode MariaDB ``RETURNING`` rows from an insert into Fetched models."""
+    """Decode MariaDB ``RETURNING`` rows from a write query."""
 
-    return materialize_insert_returning_rows_for_backend(
+    return materialize_write_returning_rows_for_backend(
         query,
         rows,
         backend="mariadb",
