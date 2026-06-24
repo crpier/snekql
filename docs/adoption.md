@@ -20,7 +20,7 @@ import asyncio
 from datetime import datetime
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     CurrentTimestamp,
     Database,
     Fetched,
@@ -37,7 +37,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = Text(nullable=False)
     created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)

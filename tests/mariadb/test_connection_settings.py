@@ -6,7 +6,7 @@ from snektest import assert_eq, assert_raises, assert_true, load_fixture, test
 
 from snekql import mariadb
 from snekql.mariadb import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     ExecutionError,
     Fetched,
@@ -38,7 +38,7 @@ async def created_tables_use_innodb_and_binary_text_collation() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -80,7 +80,7 @@ async def unique_text_columns_compare_case_sensitively() -> None:
         id: Account.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         name: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
 
@@ -112,7 +112,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
         id: Parent.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
 
     class Child[S = Pending](mariadb.Model[S, "Child[Fetched]"]):
@@ -123,7 +123,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
         id: Child.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         parent_id: Child.FKCol[Parent, int] = ForeignKey(Parent.id, nullable=False)
 
@@ -149,7 +149,7 @@ async def strict_policy_rejects_a_non_innodb_existing_table() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
 
     server = await load_fixture(provide_mariadb_server())
@@ -175,7 +175,7 @@ async def reinitialization_verifies_managed_tables_without_drift() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 

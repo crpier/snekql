@@ -13,7 +13,15 @@ from snekql._schema_compile import (
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_plan import PlannedColumn, PlannedModel, build_schema_plan
 from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
-from snekql.sqlite import MISSING, Fetched, ForeignKey, Integer, Model, Pending, Text
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Fetched,
+    ForeignKey,
+    Integer,
+    Model,
+    Pending,
+    Text,
+)
 
 
 class _Author[S = Pending](Model[S, "_Author[Fetched]"]):
@@ -22,7 +30,7 @@ class _Author[S = Pending](Model[S, "_Author[Fetched]"]):
     __tablename__ = "author"
 
     id: _Author.GenCol[int] = Integer(
-        primary_key=True, auto_increment=True, default=MISSING
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
     email: _Author.Col[str] = Text(nullable=False, unique=True)
 
@@ -33,7 +41,7 @@ class _Book[S = Pending](Model[S, "_Book[Fetched]"]):
     __tablename__ = "book"
 
     id: _Book.GenCol[int] = Integer(
-        primary_key=True, auto_increment=True, default=MISSING
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
     isbn: _Book.Col[str] = Text(nullable=False, unique=True)
     author_id: _Book.FKCol[_Author, int] = ForeignKey(_Author.id)

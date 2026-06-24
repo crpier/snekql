@@ -24,14 +24,14 @@ from snekql.errors import (
 from snekql.expressions import Aggregate
 from snekql.indexes import NormalizedIndex, require_index_declaration
 from snekql.storage import (
-    MISSING,
+    PENDING_GENERATION,
     Attr,
     Blob,
     CurrentTimestamp,
     FKAttr,
     ForeignKey,
     Integer,
-    Missing,
+    PendingGeneration,
     Real,
     StorageBackend,
     Text,
@@ -56,8 +56,8 @@ class Pending:
 class Fetched:
     """Marker state for table models materialized by the Query Runtime.
 
-    A generated column may be `T | Missing` on `Pending` instances but `T` on
-    `Fetched` instances.
+    A generated column may be `T | PendingGeneration` on `Pending` instances but
+    `T` on `Fetched` instances.
 
     >>> state: type[Fetched] = Fetched
     >>> state.__name__
@@ -98,12 +98,12 @@ type _Col[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
     T,
 ]
 
-# Private generated-column alias used to model pending Missing vs fetched T.
+# Private generated-column alias models pending-generation marker vs fetched T.
 type _GenCol[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
     WriteModelT,
     FetchedModelT,
     WriteModelT,
-    T | Missing,
+    T | PendingGeneration,
     T,
 ]
 
@@ -404,7 +404,8 @@ class ModelMeta(type):
         if column.default is not CurrentTimestamp:
             return
         # `default=CurrentTimestamp` is a Server Default: the database computes the
-        # value. It must be a Generated Column -- its Pending value may be Missing
+        # value. It must be a Generated Column -- its Pending value may be
+        # PendingGeneration.
         # until the database fills it -- and cannot also carry a Python factory.
         if not column.is_generated:
             msg = f"CurrentTimestamp requires a generated (GenCol) column: {name!r}"
@@ -413,10 +414,10 @@ class ModelMeta(type):
             msg = f"CurrentTimestamp cannot be combined with default_factory: {name!r}"
             raise ModelDeclarationError(msg)
         # Route the marker to the internal server default and leave the column
-        # omittable: construction yields Missing, and the insert omits it so the
+        # omittable: construction yields PendingGeneration, and the insert omits it so the
         # database supplies the value.
         column.server_default = CurrentTimestamp
-        column.default = MISSING
+        column.default = PENDING_GENERATION
 
     @staticmethod
     def _infer_table_name(class_name: str) -> str:
@@ -461,7 +462,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     # Normal persisted-column alias scoped to the declaring model class.
     type Col[T] = Attr[Self, ReadModelT, Self, T, T]
     # Generated/server-filled column alias scoped to the declaring model class.
-    type GenCol[T] = Attr[Self, ReadModelT, Self, T | Missing, T]
+    type GenCol[T] = Attr[Self, ReadModelT, Self, T | PendingGeneration, T]
     # Foreign-key column alias; Target is the *Pending* owner of the referenced
     # model (`Order.FKCol[User, int]`). PEP 696 resolves the bare `User` to
     # `User[Pending]`, so no `[Pending]` suffix is required.
@@ -535,7 +536,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
         field_reprs: list[str] = []
         for name in self.__class__.__snekql_columns__:
             value = getattr(self, name)
-            if value is MISSING:
+            if value is PENDING_GENERATION:
                 continue
             field_reprs.append(f"{name}={value!r}")
         fields = ", ".join(field_reprs)

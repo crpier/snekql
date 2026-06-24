@@ -12,7 +12,7 @@ from snektest import assert_eq, assert_false, assert_raises, assert_true, test
 import snekql
 from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Blob,
     CurrentTimestamp,
     Fetched,
@@ -273,8 +273,8 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
     """``default=CurrentTimestamp`` is the server-default declaration.
 
     The marker routes to an internal Server Default: the column is omittable at
-    construction (Missing until the database fills it) without writing
-    ``default=MISSING``, yet an explicit value is still accepted. It must be a
+    construction (PendingGeneration until the database fills it) without writing
+    ``default=PENDING_GENERATION``, yet an explicit value is still accepted. It must be a
     Generated Column and cannot also carry a Python factory.
     """
 
@@ -286,11 +286,11 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
 
     column = CreatedEvent.__snekql_columns__["created_at"]
     assert_true(column.server_default is CurrentTimestamp)
-    assert_true(column.default is MISSING)
+    assert_true(column.default is PENDING_GENERATION)
 
     # Omittable at construction: the database supplies the value.
     pending = CreatedEvent(name="first")
-    assert_true(pending.created_at is MISSING)
+    assert_true(pending.created_at is PENDING_GENERATION)
 
     # An explicit value is still accepted.
     fixed = datetime(2020, 1, 1, tzinfo=UTC)

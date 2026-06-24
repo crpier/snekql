@@ -12,10 +12,10 @@ violations surface at the database rather than be pre-empted by a library guard.
 ## Context
 
 `GenCol` was introduced to model a *shape* difference for the type checker: a
-column the database fills may be `Missing` on a Pending Model (`T | Missing`)
+column the database fills may be `PendingGeneration` on a Pending Model (`T | PendingGeneration`)
 but is always present on a Fetched Model (`T`). That is its only purpose. The
 runtime `is_generated` flag carries the shape semantics
-(`Attr._coerce_missing_value`: `Missing` is allowed on Pending, an error on
+(`Attr._coerce_pending_generation`: `PendingGeneration` is allowed on Pending, an error on
 Fetched) and gates `server_default=CurrentTimestamp` to a column whose shape can
 actually be omitted at construction.
 
@@ -29,7 +29,7 @@ The conflation made the canonical "managed timestamp" unreachable. The two
 `CurrentTimestamp` features lived on mutually exclusive column kinds:
 
 - `server_default=CurrentTimestamp` (fill on insert from the DB clock) requires a
-  generated column — it is only reachable on the omittable `T | Missing` shape;
+  generated column — it is only reachable on the omittable `T | PendingGeneration` shape;
 - `.to(CurrentTimestamp)` (refresh on update from the DB clock) was *forbidden*
   on generated columns by the guard.
 
@@ -47,7 +47,7 @@ change:
   SQL; foreign-key breakage or constraint violations surface as database errors
   at execution, consistent with ADR 0005.
 - `is_generated` retains exactly two jobs, neither of which is write-permission:
-  the Pending/Fetched `Missing` coercion, and gating `server_default` to an
+  the Pending/Fetched `PendingGeneration` coercion, and gating `server_default` to an
   omittable shape.
 
 The canonical managed timestamp becomes a single column:
@@ -55,7 +55,7 @@ The canonical managed timestamp becomes a single column:
 ```python
 updated_at: Memory.GenCol[datetime] = Text(
     server_default=CurrentTimestamp,
-    default=MISSING,
+    default=PENDING_GENERATION,
 )
 ```
 

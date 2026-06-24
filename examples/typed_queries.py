@@ -9,8 +9,8 @@ from snekql import sqlite
 from snekql.sqlite import (
     Fetched,
     InsertQuery,
-    Missing,
     Pending,
+    PendingGeneration,
     Predicate,
     SelectModelQuery,
     SelectTupleQuery,
@@ -29,7 +29,7 @@ class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
     id: Account.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=sqlite.MISSING,
+        default=sqlite.PENDING_GENERATION,
     )
     email: Account.Col[str] = sqlite.Text(nullable=False)
     status: Account.Col[str] = sqlite.Text(nullable=False, default="active")
@@ -51,8 +51,8 @@ class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
 if TYPE_CHECKING:
     pending_account = Account(email="alice@example.com")
     _ = assert_type(pending_account, Account[Pending])
-    _ = assert_type(pending_account.id, int | Missing)
-    _ = assert_type(pending_account.created_at, datetime | Missing)
+    _ = assert_type(pending_account.id, int | PendingGeneration)
+    _ = assert_type(pending_account.created_at, datetime | PendingGeneration)
     _ = assert_type(pending_account.insert_payload(), dict[str, str])
 
     def check_fetched_account(fetched_account: Account[Fetched]) -> None:

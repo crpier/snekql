@@ -8,7 +8,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql._schema_plan import PlannedForeignKey, build_schema_plan
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Fetched,
     ForeignKey,
     Index,
@@ -97,7 +97,7 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -107,7 +107,7 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
         id: Order.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         soft_user_id: Order.FKCol[User, int] = Integer()
@@ -135,7 +135,7 @@ def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table whose unique email is a non-PK target."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False, unique=True)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
@@ -164,7 +164,7 @@ def schema_plan_rejects_a_foreign_key_to_a_non_unique_target_column() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table whose name column is neither PK nor unique."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         name: User.Col[str] = Text(nullable=False)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):

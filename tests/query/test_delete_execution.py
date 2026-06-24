@@ -14,7 +14,7 @@ from snektest import (
 )
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -112,7 +112,7 @@ async def delete_execute_returns_affected_row_count() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through the async runtime."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 

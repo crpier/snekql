@@ -12,7 +12,7 @@ from pydantic import PositiveInt
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -36,7 +36,7 @@ class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
     id: RuntimeUser.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: RuntimeUser.Col[str] = Text(nullable=False)
 
@@ -47,7 +47,7 @@ class RuntimeReceipt[S = Pending](Model[S, "RuntimeReceipt[Fetched]"]):
     id: RuntimeReceipt.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     amount: RuntimeReceipt.Col[PositiveInt] = Integer(nullable=False)
 

@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_in, assert_is_none, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     ExecutionError,
     Fetched,
@@ -32,14 +32,14 @@ def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
 
 
 @test(mark="fast")
-def insert_compilation_omits_missing_and_quotes_identifiers() -> None:
-    """Compiled insert SQL targets the model table and omits MISSING fields."""
+def insert_compilation_omits_pending_generation_and_quotes_identifiers() -> None:
+    """Compiled insert SQL targets the table and omits PENDING_GENERATION fields."""
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table model with identifiers that must be quoted."""
 
         __tablename__ = "select"
-        id: Order.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         where: Order.Col[str] = Text(nullable=False)
 
     sql, params = compile_sqlite_write_sql(insert(Order(where="x")))
@@ -49,13 +49,13 @@ def insert_compilation_omits_missing_and_quotes_identifiers() -> None:
 
 
 @test(mark="fast")
-def insert_compilation_uses_default_values_when_every_field_is_missing() -> None:
+def insert_compilation_uses_default_values_when_all_fields_are_pending() -> None:
     """An all-generated model compiles to SQLite DEFAULT VALUES."""
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with no explicit insertable values."""
 
-        id: AuditLog.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: AuditLog.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
     sql, params = compile_sqlite_write_sql(insert(AuditLog()))
 
@@ -70,7 +70,7 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with explicit, default, and generated fields."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         label: User.Col[str] = Text(nullable=False, default_factory=lambda: "fresh")
         status: User.Col[str] = Text(nullable=False, default="active")
@@ -100,7 +100,7 @@ async def execution_errors_preserve_insert_sql_and_params() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to trigger a duplicate primary key failure."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:

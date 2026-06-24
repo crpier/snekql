@@ -11,7 +11,7 @@ from typing import cast
 from snektest import assert_eq, assert_is, assert_ne, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -122,7 +122,7 @@ def update_compilation_requires_set_and_filter_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by update compilation checks."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)
 
@@ -208,7 +208,7 @@ async def update_and_delete_execute_against_sqlite() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by mutation execution checks."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 

@@ -18,7 +18,7 @@ from typing import Any, cast
 from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     ExecutionError,
     Fetched,
@@ -109,7 +109,7 @@ async def database_initialization_emits_events() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -165,7 +165,7 @@ async def transaction_execution_logs_query_context() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 

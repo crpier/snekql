@@ -11,7 +11,7 @@ from snektest import assert_eq, test
 
 from snekql import sqlite
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -30,7 +30,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -41,7 +41,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     note: Order.Col[str] = sqlite.Text(nullable=False)
@@ -155,7 +155,7 @@ async def distinct_collapses_duplicate_rows_at_runtime() -> None:
         id: Visit.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         status: Visit.Col[str] = Text(nullable=False)
 

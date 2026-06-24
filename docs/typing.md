@@ -12,7 +12,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = Text(nullable=False)
 ```
@@ -38,7 +38,7 @@ method works for both `User[Pending]` and `User[Fetched]`.
 
 ```python
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+    id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     email: User.Col[str] = Text(nullable=False)
 
     def insert_payload(self: User[Pending]) -> dict[str, str]:
@@ -70,17 +70,17 @@ Use `Col[T]` for normal persisted values. The pending and fetched value type is
 `T`.
 
 Use `GenCol[T]` for server-filled/generated values. Pending instances may have
-`T | Missing`; fetched instances have `T`.
+`T | PendingGeneration`; fetched instances have `T`.
 
 ```python
 pending_user = User(email="alice@example.com")
-pending_user.id      # int | Missing
+pending_user.id      # int | PendingGeneration
 
 fetched_user: User[Fetched]
 fetched_user.id      # int
 ```
 
-`MISSING` is the singleton sentinel value for generated pending values that have
+`PENDING_GENERATION` is the singleton sentinel value for generated pending values that have
 not been filled by the database yet.
 
 ## Query result shapes
@@ -143,7 +143,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = Text(nullable=False)
 
@@ -152,7 +152,7 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = ForeignKey(User.id)
     note: Order.Col[str] = Text(nullable=False)
@@ -245,14 +245,14 @@ verbs as well as that backend's `Model` and column declarations:
 
 ```python
 from snekql import mariadb, sqlite
-from snekql.sqlite import MISSING, Database, Fetched, Pending
+from snekql.sqlite import PENDING_GENERATION, Database, Fetched, Pending
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     id: SqliteUser.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
 
 
@@ -260,7 +260,7 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
     id: MariadbUser.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
 ```
 

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, assert_type
 
 from snekql import mariadb, sqlite
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Aggregate,
     CurrentTimestamp,
     Fetched,
@@ -26,10 +26,10 @@ from snekql.sqlite import (
     InsertReturningValueQuery,
     Integer,
     JoinModelQuery,
-    Missing,
     Model,
     OrderBy,
     Pending,
+    PendingGeneration,
     Predicate,
     Scalar,
     SelectModelQuery,
@@ -54,7 +54,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
@@ -67,7 +67,7 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = ForeignKey(User.id)
     note: Order.Col[str] = Text(nullable=False)
@@ -85,7 +85,7 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     id: SqliteUser.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
     # UUID logical type stored as TEXT on SQLite (no native UUID storage class).
@@ -100,7 +100,7 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
     id: MariadbUser.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
     # Native MariaDB UUID Column Type paired with the uuid.UUID logical type.
@@ -121,7 +121,9 @@ if TYPE_CHECKING:
         factory_default: InvalidSqliteDefaults.Col[int] = Integer(
             default_factory=lambda: "nan"
         )  # pyright: ignore[reportAssignmentType]
-        missing_default: InvalidSqliteDefaults.Col[int] = Integer(default=MISSING)  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        pending_generation_default: InvalidSqliteDefaults.Col[int] = Integer(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            default=PENDING_GENERATION
+        )
         server_default: InvalidSqliteDefaults.Col[datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
             default=CurrentTimestamp
         )
@@ -217,9 +219,9 @@ if TYPE_CHECKING:
 
     pending_user = User(email="alice@example.com")
     _ = assert_type(pending_user, User[Pending])
-    _ = assert_type(pending_user.id, int | Missing)
+    _ = assert_type(pending_user.id, int | PendingGeneration)
     _ = assert_type(pending_user.email, str)
-    _ = assert_type(pending_user.created_at, datetime | Missing)
+    _ = assert_type(pending_user.created_at, datetime | PendingGeneration)
 
     def check_fetched_user(fetched_user: User[Fetched]) -> None:
         """Fetched-state generated values are narrowed by descriptor overloads."""

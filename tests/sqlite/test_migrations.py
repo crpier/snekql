@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -115,7 +115,7 @@ async def models_verify_against_migration_created_schema() -> None:
         """Model whose DDL matches the create-user migration body."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -167,7 +167,7 @@ async def initialize_does_not_reapply_standalone_migration() -> None:
         """Model whose DDL matches the create-user migration body."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -193,7 +193,7 @@ async def model_without_matching_migration_fails_strict() -> None:
         """Model whose table is never created because migrations own creation."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = Text(nullable=False)
 

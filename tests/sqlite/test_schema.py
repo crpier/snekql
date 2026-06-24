@@ -12,7 +12,7 @@ from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql import sqlite
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     DatabaseRuntimeError,
     Fetched,
@@ -134,7 +134,7 @@ async def initialize_creates_missing_strict_tables() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -162,7 +162,7 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -172,7 +172,7 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
         id: Order.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         soft_user_id: Order.FKCol[User, int] = Integer(nullable=False)
@@ -206,7 +206,7 @@ async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> N
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False, unique=True)
 
@@ -216,7 +216,7 @@ async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> N
         id: Order.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
 
@@ -249,7 +249,7 @@ async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing()
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
@@ -258,7 +258,7 @@ async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing()
         id: Order.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
 
@@ -288,7 +288,7 @@ async def initialize_accepts_sqlite_config_object() -> None:
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -425,7 +425,7 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -455,7 +455,7 @@ async def cosmetically_different_ddl_verifies_semantically() -> None:
         """Model verified against a table whose DDL differs only cosmetically."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = Text(nullable=False)
 
@@ -481,7 +481,7 @@ async def model_matching_migration_evolved_table_verifies_clean() -> None:
         """Model whose age column was appended to the table by a later ALTER."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         age: User.Col[int] = Integer(nullable=True)
         email: User.Col[str] = Text(nullable=False)
@@ -507,7 +507,7 @@ async def strict_drift_error_names_the_divergent_column() -> None:
         """Model whose email is NOT NULL while the live column is nullable."""
 
         id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = Text(nullable=False)
 

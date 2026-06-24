@@ -91,13 +91,13 @@ WriteT = TypeVar("WriteT")
 ReadValueT = TypeVar("ReadValueT")
 
 
-class Missing:
+class PendingGeneration:
     """Sentinel type for generated values that are not available yet.
 
-    >>> MISSING is Missing()
+    >>> PENDING_GENERATION is PendingGeneration()
     True
-    >>> repr(MISSING)
-    'MISSING'
+    >>> repr(PENDING_GENERATION)
+    'PENDING_GENERATION'
     """
 
     _instance: Self | None = None
@@ -108,10 +108,10 @@ class Missing:
         return cls._instance
 
     def __repr__(self) -> str:
-        return "MISSING"
+        return "PENDING_GENERATION"
 
 
-MISSING = Missing()
+PENDING_GENERATION = PendingGeneration()
 
 
 # Startup schema verification behavior: strict raises on drift, warn logs and
@@ -138,7 +138,7 @@ class Integer:
     an integer (a ``bool`` as ``0``/``1``, a custom epoch ``datetime``).
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+    ...     id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     """
 
     @overload
@@ -149,8 +149,8 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -161,7 +161,7 @@ class Integer:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -246,8 +246,8 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -257,7 +257,7 @@ class Real:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -340,8 +340,8 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -351,7 +351,7 @@ class Text:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -430,8 +430,8 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -441,7 +441,7 @@ class Blob:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -511,7 +511,7 @@ class CurrentTimestamp:
 
     Used as a bare class object, not an instance: pass ``CurrentTimestamp`` itself
     as a column's ``default``. The database computes the value, so the column must
-    be a Generated Column and is omittable at construction (Missing until filled).
+    be a Generated Column and is omittable at construction until filled.
     Pairs with any column whose logical type decodes the backend's timestamp text;
     on SQLite that is a ``GenCol[datetime]`` stored as ``Text()``.
 
@@ -786,8 +786,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         """
 
         try:
-            if value is MISSING:
-                return MISSING
+            if value is PENDING_GENERATION:
+                return PENDING_GENERATION
             return self._encode_value(value, codec=_BACKEND_CODECS[backend])
         except SnekqlError:
             raise
@@ -817,8 +817,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         return self.name
 
     def _validate_logical_value(self, value: object, *, fetched: bool) -> object:
-        if value is MISSING:
-            return self._coerce_missing_value(fetched=fetched)
+        if value is PENDING_GENERATION:
+            return self._coerce_pending_generation(fetched=fetched)
         if value is None:
             return self._coerce_null_value()
         try:
@@ -871,10 +871,10 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self._is_json_cache = result
         return result
 
-    def _coerce_missing_value(self, *, fetched: bool) -> Missing:
+    def _coerce_pending_generation(self, *, fetched: bool) -> PendingGeneration:
         if self.is_generated and not fetched:
-            return MISSING
-        msg = f"missing generated value for {self._require_name()!r}"
+            return PENDING_GENERATION
+        msg = f"pending generated value for {self._require_name()!r}"
         raise ModelValidationError(msg)
 
     def _coerce_null_value(self) -> None:

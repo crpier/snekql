@@ -15,7 +15,7 @@ from snektest import (
 
 from snekql import mariadb
 from snekql.mariadb import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     DatabaseClosedError,
     ExecutionError,
@@ -45,7 +45,7 @@ class _UpdateUser[S = Pending](mariadb.Model[S, "_UpdateUser[Fetched]"]):
     id: _UpdateUser.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
     status: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
@@ -92,7 +92,7 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -120,7 +120,7 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -176,7 +176,7 @@ async def mariadb_runtime_fetches_scalar_rows() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -201,7 +201,7 @@ async def mariadb_runtime_fetches_tuple_rows() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
@@ -261,7 +261,7 @@ async def mariadb_runtime_deletes_filtered_rows() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
@@ -291,7 +291,7 @@ async def mariadb_runtime_deletes_all_rows() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -353,7 +353,7 @@ async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
         id: Sale.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         amount: Sale.Col[int] = mariadb.Integer(nullable=False)
 
@@ -391,7 +391,7 @@ async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
         id: Sale.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         region: Sale.Col[str] = mariadb.Text(nullable=False)
         amount: Sale.Col[int] = mariadb.Integer(nullable=False)
@@ -429,7 +429,7 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
         id: Sale.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         region: Sale.Col[str] = mariadb.Text(nullable=False)
         amount: Sale.Col[int] = mariadb.Integer(nullable=False)
@@ -464,7 +464,7 @@ async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
         id: Customer.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         country: Customer.Col[str] = mariadb.Text(nullable=False)
 
@@ -476,7 +476,7 @@ async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
         id: Purchase.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         customer_id: Purchase.FKCol[Customer, int] = mariadb.ForeignKey(Customer.id)
         amount: Purchase.Col[int] = mariadb.Integer(nullable=False)

@@ -13,7 +13,13 @@ from typing import Any, cast
 from snektest import assert_raises, test
 
 from snekql import sqlite
-from snekql.sqlite import MISSING, Fetched, Pending, QueryConstructionError, select
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Fetched,
+    Pending,
+    QueryConstructionError,
+    select,
+)
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -22,7 +28,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -33,7 +39,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     note: Order.Col[str] = sqlite.Text(nullable=False)
@@ -45,7 +51,7 @@ class Item[S = Pending](sqlite.Model[S, "Item[Fetched]"]):
     id: Item.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     order_id: Item.FKCol[Order, int] = sqlite.ForeignKey(Order.id)
 

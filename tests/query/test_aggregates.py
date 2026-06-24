@@ -14,7 +14,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql import sqlite
 from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -35,7 +35,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -46,7 +46,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     amount: Order.Col[int] = sqlite.Integer(nullable=False)
@@ -142,7 +142,7 @@ async def sum_normalizes_to_int_for_integer_column() -> None:
         id: Sale.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         amount: Sale.Col[int] = Integer(nullable=False)
 
@@ -179,7 +179,7 @@ async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
         id: Label.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         name: Label.Col[str] = Text(nullable=False)
 
@@ -210,7 +210,7 @@ async def avg_decodes_to_float_and_none_over_empty() -> None:
         id: Reading.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         value: Reading.Col[float] = Real(nullable=False)
 

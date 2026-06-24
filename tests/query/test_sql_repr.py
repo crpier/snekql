@@ -11,7 +11,7 @@ from __future__ import annotations
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Fetched,
     Integer,
     Model,
@@ -31,7 +31,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: User.Col[str] = Text(nullable=False)
     age: User.Col[int] = Integer(nullable=False)

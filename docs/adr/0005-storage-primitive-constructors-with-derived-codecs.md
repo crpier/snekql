@@ -156,10 +156,10 @@ For everything the new codec does own, empirically (pydantic 2.x):
   defaults warrant a guard is left open and currently answered "no." The
   `CurrentTimestamp`-requires-a-`DateTime`-column declaration check is dropped on
   SQLite (which no longer has a `DateTime` storage type); the structural rules
-  (generated column, `MISSING` default) remain.
+  (generated column, `PENDING_GENERATION` default) remain.
 
   **Resolved by [ADR 0007](0007-server-defaults-as-default-markers.md):** the
   `server_default` parameter is removed. A server default is now declared as a
   marker value of `default` (`default=CurrentTimestamp`), which the metaclass
-  routes to the internal server default and an omittable `MISSING` construction
+  routes to the internal server default and an omittable `PENDING_GENERATION` construction
   default.

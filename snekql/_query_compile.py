@@ -42,7 +42,7 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import MISSING, Attr, CurrentTimestamp
+from snekql.storage import PENDING_GENERATION, Attr, CurrentTimestamp
 
 _BINARY_PREDICATE_CHILD_COUNT = 2
 _UNARY_PREDICATE_CHILD_COUNT = 1
@@ -550,7 +550,7 @@ def _encode_insert_row(
     row_values: dict[str, object] = {}
     for name, column in require_model_columns(model_class).items():
         value = getattr(row, name)
-        if value is MISSING:
+        if value is PENDING_GENERATION:
             continue
         row_values[name] = dialect.encode_column_value(column, value)
     return row_values

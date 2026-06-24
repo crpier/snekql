@@ -13,7 +13,7 @@ from snekql.model import BackendFamily
 from snekql.query import AnySelectQuery
 from snekql.runtime import RuntimeConnection
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -36,7 +36,7 @@ class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
     id: _AsyncUser.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: _AsyncUser.Col[str] = Text(nullable=False)
 

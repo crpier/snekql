@@ -11,7 +11,7 @@ from snektest import assert_eq, assert_isinstance, assert_raises, load_fixture, 
 
 from snekql import mariadb
 from snekql.mariadb import (
-    MISSING,
+    PENDING_GENERATION,
     CurrentTimestamp,
     Database,
     Fetched,
@@ -151,7 +151,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         id: Event.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         account_id: Event.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
         amount: Event.Col[float] = mariadb.Real(nullable=False)

@@ -14,20 +14,20 @@ constructor on both backends.
 
 Constructors exposed a `server_default` parameter whose only legal value was
 `CurrentTimestamp`, and every such column also had to be written with
-`default=MISSING`:
+`default=PENDING_GENERATION`:
 
 ```python
-created_at: GenCol[datetime] = Text(server_default=CurrentTimestamp, default=MISSING)
+created_at: GenCol[datetime] = Text(server_default=CurrentTimestamp, default=PENDING_GENERATION)
 ```
 
-The `default=MISSING` looked like redundant boilerplate, but it is **load-bearing
+The `default=PENDING_GENERATION` looked like redundant boilerplate, but it is **load-bearing
 for the type checker**. Under PEP 681, pyright treats a dataclass-transform field
 as optional in `__init__` *only* when the field-specifier call passes one of
 `default` / `default_factory` / `factory`. We verified empirically that nothing
 else works: a field-specifier whose `default` parameter merely *defaults* to a
 non-`...` value still produces a required field, and overloads selected by
 `server_default=` do not change it. So `server_default=` alone can never make a
-field optional -- the `default=MISSING` was the actual optionality signal, and
+field optional -- the `default=PENDING_GENERATION` was the actual optionality signal, and
 omitting it left the field required (a `Memory(...)` call error) even though the
 database supplies the value.
 
@@ -44,7 +44,7 @@ created_at: GenCol[datetime] = Text(default=CurrentTimestamp)
 ```
 
 The metaclass detects `default is CurrentTimestamp`, sets the internal
-`Attr.server_default`, and resets the construction default to `MISSING` -- so the
+`Attr.server_default`, and resets the construction default to `PENDING_GENERATION` -- so the
 field is optional for the type checker, omittable at runtime (the database fills
 it), and still accepts an explicit value. The internal `server_default` attribute
 that schema DDL and compilation read is unchanged.
@@ -55,8 +55,8 @@ factory, and a distinguished marker is a server default. It reverses the prior
 guard that forbade `default=CurrentTimestamp`.
 
 Rules retained: a server-default column must be a Generated Column (`GenCol`) --
-its Pending value may be `Missing` -- and cannot also carry a `default_factory`.
-`auto_increment` is unchanged and still pairs with `default=MISSING` (it has no
+its Pending value may be `PendingGeneration` -- and cannot also carry a `default_factory`.
+`auto_increment` is unchanged and still pairs with `default=PENDING_GENERATION` (it has no
 value-marker).
 
 ## Considered Options
@@ -65,7 +65,7 @@ value-marker).
   infeasible. PEP 681 keys field optionality off the `default`/`default_factory`/
   `factory` arguments in the field-specifier call; parameter defaults and
   overloads do not change it (verified against pyright).
-- **Keep `server_default=` and `default=MISSING`.** Rejected: the redundancy is
+- **Keep `server_default=` and `default=PENDING_GENERATION`.** Rejected: the redundancy is
   load-bearing but reads as boilerplate, and the two-channel split is exactly what
   blocked a single-kwarg server-default declaration.
 - **Markers passed to `default` (chosen).** One recognized channel for every kind
