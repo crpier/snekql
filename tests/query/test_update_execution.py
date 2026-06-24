@@ -53,6 +53,32 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
 
 
 @test(mark="fast")
+def update_returning_appends_model_columns_in_declaration_order() -> None:
+    """SQLite update returning() lists every column after RETURNING."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model updated through RETURNING."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
+
+    query = (
+        update(User)
+        .set(User.status.to("disabled"))
+        .where(User.email.eq("a@example.com"))
+        .returning()
+    )
+
+    sql, params = compile_sqlite_write_sql(query)
+
+    expected = 'UPDATE "user" SET "status" = ? WHERE ("email" = ?)'
+    expected += ' RETURNING "id", "email", "status"'
+    assert_eq(sql, expected)
+    assert_eq(params, ("disabled", "a@example.com"))
+
+
+@test(mark="fast")
 def update_set_current_timestamp_renders_server_expression() -> None:
     """A CurrentTimestamp assignment renders inline server SQL with no param."""
 
@@ -123,6 +149,36 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
 
     assert_eq(sql, 'UPDATE "user" SET "account_id" = ?, "revision" = ?')
     assert_eq(params, (2, 3))
+
+
+@test(mark="medium")
+async def update_returning_yields_updated_models() -> None:
+    """SQLite update returning() yields one Fetched model per updated row."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model updated through RETURNING execution."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
+
+    database = await Database.initialize(database=":memory:", models=[User])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(email="a@example.com")))
+            await tx.execute(insert(User(email="b@example.com")))
+
+            updated = await tx.execute(
+                update(User)
+                .set(User.status.to("disabled"))
+                .where(User.email.eq("b@example.com"))
+                .returning(),
+            )
+    finally:
+        await database.close()
+
+    assert_eq([user.email for user in updated], ["b@example.com"])
+    assert_eq([user.status for user in updated], ["disabled"])
 
 
 @test(mark="medium")

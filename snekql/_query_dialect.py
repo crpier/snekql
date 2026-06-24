@@ -22,6 +22,8 @@ class QueryDialect:
     encode_column_value: QueryValueEncoder
     placeholder: str
     quote_identifier: Callable[[str], str]
+    supports_delete_returning: bool = False
+    supports_update_returning: bool = False
 
 
 # Backend-family -> Dialect registry. The core stays dialect-blind (ADR 0004):

@@ -36,6 +36,7 @@ from snekql._query_state import (
     require_column_model,
     require_field,
     require_insert_model,
+    require_model_returning_fields,
     require_returning_fields,
     require_selectable,
     require_single_column_subquery,
@@ -685,15 +686,55 @@ class UpdateQuery[ModelT: Table[Any]](_SqlInspectionMixin):
         state = _update_all(self.state)
         if state is self.state:
             return self
-        return cast("Self", UpdateQuery[ModelT](state))
+        return type(self)(state)
+
+    @overload
+    def returning(self) -> UpdateReturningQuery[ModelT]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        /,
+    ) -> UpdateReturningValueQuery[ModelT, T1]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        /,
+    ) -> UpdateReturningTupleQuery[ModelT, T1, T2]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        field3: Attr[Any, Any, Any, Any, T3],
+        /,
+    ) -> UpdateReturningTupleQuery[ModelT, T1, T2, T3]: ...
+    def returning(self, *fields: object) -> object:
+        """Return rows produced by SQLite ``UPDATE ... RETURNING``."""
+
+        return _update_returning(self.state, fields)
 
     def set(self, *assignments: Assignment[ModelT]) -> Self:
         state = _update_set(self.state, assignments)
-        return cast("Self", UpdateQuery[ModelT](state))
+        return type(self)(state)
 
     def where(self, *predicates: Predicate[ModelT]) -> Self:
         state = _update_where(self.state, predicates)
-        return cast("Self", UpdateQuery[ModelT](state))
+        return type(self)(state)
+
+
+class UpdateReturningQuery[ModelT: Table[Any]](UpdateQuery[ModelT]):
+    """Update whose execution yields a Fetched model for each returned row."""
+
+
+class UpdateReturningValueQuery[ModelT: Table[Any], T](UpdateQuery[ModelT]):
+    """Update whose execution yields one decoded RETURNING column per row."""
+
+
+class UpdateReturningTupleQuery[ModelT: Table[Any], *Ts](UpdateQuery[ModelT]):
+    """Update whose execution yields a tuple of RETURNING columns per row."""
 
 
 class DeleteQuery[ModelT: Table[Any]](_SqlInspectionMixin):
@@ -710,11 +751,51 @@ class DeleteQuery[ModelT: Table[Any]](_SqlInspectionMixin):
         state = _delete_all(self.state)
         if state is self.state:
             return self
-        return cast("Self", DeleteQuery[ModelT](state))
+        return type(self)(state)
+
+    @overload
+    def returning(self) -> DeleteReturningQuery[ModelT]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        /,
+    ) -> DeleteReturningValueQuery[ModelT, T1]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        /,
+    ) -> DeleteReturningTupleQuery[ModelT, T1, T2]: ...
+    @overload
+    def returning(
+        self,
+        field1: Attr[Any, Any, Any, Any, T1],
+        field2: Attr[Any, Any, Any, Any, T2],
+        field3: Attr[Any, Any, Any, Any, T3],
+        /,
+    ) -> DeleteReturningTupleQuery[ModelT, T1, T2, T3]: ...
+    def returning(self, *fields: object) -> object:
+        """Return rows produced by SQLite ``DELETE ... RETURNING``."""
+
+        return _delete_returning(self.state, fields)
 
     def where(self, *predicates: Predicate[ModelT]) -> Self:
         state = _delete_where(self.state, predicates)
-        return cast("Self", DeleteQuery[ModelT](state))
+        return type(self)(state)
+
+
+class DeleteReturningQuery[ModelT: Table[Any]](DeleteQuery[ModelT]):
+    """Delete whose execution yields a Fetched model for each returned row."""
+
+
+class DeleteReturningValueQuery[ModelT: Table[Any], T](DeleteQuery[ModelT]):
+    """Delete whose execution yields one decoded RETURNING column per row."""
+
+
+class DeleteReturningTupleQuery[ModelT: Table[Any], *Ts](DeleteQuery[ModelT]):
+    """Delete whose execution yields a tuple of RETURNING columns per row."""
 
 
 type AnySelectQuery = (
@@ -857,6 +938,30 @@ def _select_limit(state: SelectState, value: NonNegativeInt) -> SelectState:
 
 def _select_offset(state: SelectState, value: NonNegativeInt) -> SelectState:
     return replace(state, offset_value=value)
+
+
+def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
+    """Build the right returning query for an update statement."""
+
+    if not fields:
+        return UpdateReturningQuery[Any](replace(state, returning=True))
+    selectables = require_model_returning_fields(state.model, fields)
+    projected = replace(state, returning=True, returning_fields=selectables)
+    if len(selectables) == 1:
+        return UpdateReturningValueQuery[Any, Any](projected)
+    return UpdateReturningTupleQuery[Any, *tuple[Any, ...]](projected)
+
+
+def _delete_returning(state: DeleteState, fields: tuple[object, ...]) -> object:
+    """Build the right returning query for a delete statement."""
+
+    if not fields:
+        return DeleteReturningQuery[Any](replace(state, returning=True))
+    selectables = require_model_returning_fields(state.model, fields)
+    projected = replace(state, returning=True, returning_fields=selectables)
+    if len(selectables) == 1:
+        return DeleteReturningValueQuery[Any, Any](projected)
+    return DeleteReturningTupleQuery[Any, *tuple[Any, ...]](projected)
 
 
 def _update_all(state: UpdateState) -> UpdateState:

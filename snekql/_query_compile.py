@@ -556,17 +556,16 @@ def _encode_insert_row(
     return row_values
 
 
-def _insert_returning_clause(
+def _returning_clause(
     model_class: type[Table[Any]],
-    state: InsertState,
+    fields: tuple[Selectable, ...],
     dialect: QueryDialect,
 ) -> str:
     # An explicit projection lists only the named columns; otherwise RETURNING
     # spans every column so the row decodes back into a full Fetched model.
-    if state.returning_fields:
+    if fields:
         names: tuple[str, ...] = tuple(
-            require_column_name(require_field(field))
-            for field in state.returning_fields
+            require_column_name(require_field(field)) for field in fields
         )
     else:
         names = tuple(require_model_columns(model_class))
@@ -594,7 +593,9 @@ def _compile_insert_sql(
     table_name = require_model_table_name(model_class)
     quoted_table = dialect.quote_identifier(table_name)
     returning = (
-        _insert_returning_clause(model_class, state, dialect) if state.returning else ""
+        _returning_clause(model_class, state.returning_fields, dialect)
+        if state.returning
+        else ""
     )
     if not names:
         if len(encoded_rows) > 1:
@@ -648,6 +649,13 @@ def _compile_update_sql(
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
+    if state.returning:
+        if not dialect.supports_update_returning:
+            msg = "backend does not support UPDATE RETURNING"
+            raise QueryCompilationError(msg)
+        sql_parts.append(
+            _returning_clause(state.model, state.returning_fields, dialect)
+        )
     return "".join(sql_parts), params
 
 
@@ -669,6 +677,11 @@ def _compile_delete_sql(
             scope_models=(state.model,),
         )
         sql = f"{sql} WHERE {predicate_sql}"
+    if state.returning:
+        if not dialect.supports_delete_returning:
+            msg = "backend does not support DELETE RETURNING"
+            raise QueryCompilationError(msg)
+        sql = f"{sql}{_returning_clause(state.model, state.returning_fields, dialect)}"
     return sql, params
 
 

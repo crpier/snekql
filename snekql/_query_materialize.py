@@ -13,9 +13,11 @@ from typing import Any, cast
 from snekql._dialect_expr import DialectSelectable
 from snekql._model_materialization import decode_model_row
 from snekql._query_state import (
+    DeleteState,
     InsertState,
     Selectable,
     SelectState,
+    UpdateState,
     require_column_name,
     require_field,
     require_single_column_subquery,
@@ -192,34 +194,34 @@ def _materialize_insert_returning_fields(
     return materialized
 
 
-def materialize_insert_returning_rows_for_backend(
+def materialize_write_returning_rows_for_backend(
     query: object,
     rows: Sequence[Sequence[object]],
     *,
     backend: StorageBackend,
     validate: bool = True,
 ) -> list[object]:
-    """Materialize ``RETURNING`` rows from an insert into Fetched models.
+    """Materialize ``RETURNING`` rows from a write into the query result shape.
 
-    The ``RETURNING`` clause projects every column in model declaration order
-    (see ``_insert_returning_clause``), so each database row decodes through the
-    full model exactly like a model select, yielding generated values
-    (auto-increment keys, server defaults) as a Fetched Model.
-
-    Insert queries are typed as ``object`` in the Query Runtime, so this seam
-    narrows from the query object to its state rather than importing the Query
-    Builder classes.
+    A whole-row ``returning()`` projects every column in model declaration order,
+    so each database row decodes through the full model exactly like a model
+    select. An explicit projection mirrors a projection select.
     """
 
     state = getattr(query, "state", None)
-    if not isinstance(state, InsertState):
-        msg = "materialize requires an insert query"
+    if isinstance(state, InsertState):
+        model_class = state.model()
+        returning_fields = state.returning_fields
+    elif isinstance(state, UpdateState | DeleteState):
+        model_class = state.model
+        returning_fields = state.returning_fields
+    else:
+        msg = "materialize requires a returning write query"
         raise QueryCompilationError(msg)
-    if state.returning_fields:
+    if returning_fields:
         return _materialize_insert_returning_fields(
-            state.returning_fields, rows, backend=backend, validate=validate
+            returning_fields, rows, backend=backend, validate=validate
         )
-    model_class = state.model()
     if model_class is None:
         return []
     columns = require_model_columns(model_class)
@@ -227,10 +229,31 @@ def materialize_insert_returning_rows_for_backend(
     materialized: list[object] = []
     for row in rows:
         assert len(row) == len(names), (  # noqa: S101
-            "returning row shape did not match the inserted model"
+            "returning row shape did not match the written model"
         )
         values = {name: row[index] for index, name in enumerate(names)}
         materialized.append(
             decode_model_row(model_class, values, backend=backend, validate=validate),
         )
     return materialized
+
+
+def materialize_insert_returning_rows_for_backend(
+    query: object,
+    rows: Sequence[Sequence[object]],
+    *,
+    backend: StorageBackend,
+    validate: bool = True,
+) -> list[object]:
+    """Materialize ``RETURNING`` rows from an insert into Fetched models."""
+
+    state = getattr(query, "state", None)
+    if not isinstance(state, InsertState):
+        msg = "materialize requires an insert query"
+        raise QueryCompilationError(msg)
+    return materialize_write_returning_rows_for_backend(
+        query,
+        rows,
+        backend=backend,
+        validate=validate,
+    )
