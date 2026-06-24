@@ -50,6 +50,18 @@ async def open_connection_applies_required_pragmas() -> None:
 
 
 @test(mark="medium")
+async def file_connection_uses_wal_journal_mode() -> None:
+    """Every opened file-backed connection uses WAL journal mode."""
+
+    with TemporaryDirectory() as directory:
+        connection = await open_sqlite_connection(str(Path(directory) / "app.db"))
+        try:
+            assert_eq(await _pragma_value(connection, "journal_mode"), "wal")
+        finally:
+            await close_sqlite_connection(connection)
+
+
+@test(mark="medium")
 async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     """Emitted FK constraints are enforced now that foreign_keys is ON."""
 

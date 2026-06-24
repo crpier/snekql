@@ -45,7 +45,10 @@ async def open_sqlite_connection(database_path: str) -> Connection:
             _ = await cursor.fetchone()
         finally:
             await cursor.close()
-        await apply_sqlite_connection_settings(connection)
+        await apply_sqlite_connection_settings(
+            connection,
+            file_backed=database_path != ":memory:",
+        )
     except Error as error:
         msg = "could not initialize SQLite connection"
         raise DatabaseRuntimeError(msg) from error
