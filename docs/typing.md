@@ -30,6 +30,28 @@ fetched_user = await tx.fetch_one(select(User).where(User.email.eq("x")))
 # fetched_user: User[Fetched] | None
 ```
 
+### Instance methods and `self`
+
+Model classes are generic in their lifecycle state, so methods that assume a
+specific state must say so on `self`. Leave `self` unannotated only when the
+method works for both `User[Pending]` and `User[Fetched]`.
+
+```python
+class User[S = Pending](Model[S, "User[Fetched]"]):
+    id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+    email: User.Col[str] = Text(nullable=False)
+
+    def insert_payload(self: User[Pending]) -> dict[str, str]:
+        return {"email": self.email}
+
+    def cache_key(self: User[Fetched]) -> str:
+        return f"user:{self.id}"
+```
+
+A bare `User` means the default state, `User[Pending]`; spell `User[Fetched]`
+when a method requires a database-materialized row. The state annotation is for
+static typing only — it does not add a runtime guard.
+
 Because `Fetched` is used in string forward references such as
 `Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
 as used. Projects that lint model declarations with Ruff should allow the
