@@ -102,6 +102,28 @@ Rules to remember:
 - If `__tablename__` is omitted, class names become snake_case table names.
 - Models are immutable after construction/materialization.
 - Fetched models are produced by database reads only.
+- Instance methods that assume a state should annotate `self`, e.g.
+  `self: User[Pending]` or `self: User[Fetched]`.
+
+### State-specific instance methods
+
+Model classes are generic in state. If a method uses pending-only or
+fetched-only assumptions, write that state on `self`:
+
+```python
+class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=sqlite.MISSING)
+    email: User.Col[str] = sqlite.Text(nullable=False)
+
+    def insert_payload(self: User[Pending]) -> dict[str, str]:
+        return {"email": self.email}
+
+    def cache_key(self: User[Fetched]) -> str:
+        return f"user:{self.id}"
+```
+
+A bare `User` means `User[Pending]`; spell `User[Fetched]` for methods that
+require a materialized row.
 
 ### Ruff/Pyflakes unused-import note
 

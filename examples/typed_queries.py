@@ -37,18 +37,30 @@ class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
         default=sqlite.CurrentTimestamp,
     )
 
+    def insert_payload(self: Account[Pending]) -> dict[str, str]:
+        """Pending-state helper for writes."""
+
+        return {"email": self.email, "status": self.status}
+
+    def cache_key(self: Account[Fetched]) -> str:
+        """Fetched-state helper that can rely on generated ids."""
+
+        return f"account:{self.id}"
+
 
 if TYPE_CHECKING:
     pending_account = Account(email="alice@example.com")
     _ = assert_type(pending_account, Account[Pending])
     _ = assert_type(pending_account.id, int | Missing)
     _ = assert_type(pending_account.created_at, datetime | Missing)
+    _ = assert_type(pending_account.insert_payload(), dict[str, str])
 
     def check_fetched_account(fetched_account: Account[Fetched]) -> None:
         """Fetched generated columns are narrowed to concrete values."""
 
         _ = assert_type(fetched_account.id, int)
         _ = assert_type(fetched_account.created_at, datetime)
+        _ = assert_type(fetched_account.cache_key(), str)
 
     _ = assert_type(
         select(Account),
