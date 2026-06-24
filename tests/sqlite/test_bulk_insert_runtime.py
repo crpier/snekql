@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 from snektest import assert_eq, assert_is_none, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     CurrentTimestamp,
     Database,
     Fetched,
@@ -26,7 +26,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with an auto-increment key and a server-default timestamp."""
 
     id: User.GenCol[int] = Integer(
-        primary_key=True, auto_increment=True, default=MISSING
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")

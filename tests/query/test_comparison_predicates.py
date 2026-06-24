@@ -14,7 +14,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -32,7 +32,7 @@ from snekql.sqlite.query import compile_sqlite_select_sql
 class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
     """Single table used by comparison compilation checks."""
 
-    id: Reading.GenCol[int] = Integer(primary_key=True, default=MISSING)
+    id: Reading.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     value: Reading.Col[int] = Integer(nullable=False)
 
 
@@ -90,12 +90,16 @@ def comparison_predicates_qualify_columns_across_joins() -> None:
     class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Referenced table."""
 
-        id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = sqlite.Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
 
     class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
         """Table with a foreign key to ``User`` and a numeric column."""
 
-        id: Order.GenCol[int] = sqlite.Integer(primary_key=True, default=MISSING)
+        id: Order.GenCol[int] = sqlite.Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
         user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
         total: Order.Col[int] = sqlite.Integer(nullable=False)
 

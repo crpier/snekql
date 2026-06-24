@@ -11,7 +11,7 @@ from typing import Any, cast
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Integer,
@@ -42,7 +42,7 @@ async def fetch_all_materializes_model_rows() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
@@ -79,7 +79,7 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
@@ -112,7 +112,7 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
@@ -180,7 +180,7 @@ class _Person[S = Pending](Model[S, "_Person[Fetched]"]):
     id: _Person.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: _Person.Col[str] = Text(nullable=False)
     nickname: _Person.Col[str | None] = Text(nullable=True, default=None)
@@ -329,7 +329,9 @@ async def fetch_all_validates_decoded_database_values() -> None:
     class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
         """Table model with a ``bool`` logical type stored as INTEGER."""
 
-        id: FeatureFlag.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: FeatureFlag.GenCol[int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
         enabled: FeatureFlag.Col[bool] = Integer(nullable=False)
 
     with TemporaryDirectory() as directory:

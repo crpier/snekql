@@ -9,7 +9,7 @@ SQLite's write verbs, ``Model`` base, and column constructors. There is no flat
 from __future__ import annotations
 
 from snekql._common import (
-    MISSING,
+    PENDING_GENERATION,
     Aggregate,
     Assignment,
     Attr,
@@ -39,7 +39,6 @@ from snekql._common import (
     JoinOn,
     MigrationError,
     MigrationLockTimeoutError,
-    Missing,
     ModelDeclarationError,
     ModelError,
     ModelMeta,
@@ -48,6 +47,7 @@ from snekql._common import (
     NoResultError,
     OrderBy,
     Pending,
+    PendingGeneration,
     PoolTimeoutError,
     Predicate,
     QueryCompilationError,
@@ -87,7 +87,7 @@ from snekql.storage import (
 )
 
 __all__ = [
-    "MISSING",
+    "PENDING_GENERATION",
     "Aggregate",
     "Assignment",
     "Attr",
@@ -122,7 +122,6 @@ __all__ = [
     "JoinOn",
     "MigrationError",
     "MigrationLockTimeoutError",
-    "Missing",
     "Model",
     "ModelDeclarationError",
     "ModelError",
@@ -132,6 +131,7 @@ __all__ = [
     "NoResultError",
     "OrderBy",
     "Pending",
+    "PendingGeneration",
     "PoolTimeoutError",
     "Predicate",
     "QueryCompilationError",

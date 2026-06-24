@@ -11,7 +11,7 @@ import anyio
 from snektest import AsyncFixture, assert_eq, assert_true, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import MISSING, Database, Fetched, Pending
+from snekql.mariadb import PENDING_GENERATION, Database, Fetched, Pending
 from snekql.testing.mariadb import TemporaryMariaDBServer
 from tests.helpers import provide_mariadb_server
 
@@ -119,7 +119,7 @@ async def models_verify_against_migration_created_schema() -> None:
         __tablename__ = "mig_verify_t3"
 
         id: MigUser.GenCol[int] = mariadb.Integer(
-            primary_key=True, auto_increment=True, default=MISSING
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
         email: MigUser.Col[str] = mariadb.Text(nullable=False)
 

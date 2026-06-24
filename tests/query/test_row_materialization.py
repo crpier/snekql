@@ -13,7 +13,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
-from snekql.sqlite import MISSING, Fetched, Integer, Pending, Text, select
+from snekql.sqlite import PENDING_GENERATION, Fetched, Integer, Pending, Text, select
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
@@ -29,7 +29,7 @@ class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
     id: JoinUser.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: JoinUser.Col[str] = Text(nullable=False)
 
@@ -40,7 +40,7 @@ class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
     id: JoinOrder.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
     note: JoinOrder.Col[str] = Text(nullable=False)

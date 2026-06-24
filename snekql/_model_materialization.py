@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from snekql.errors import ModelDeclarationError, QueryConstructionError
-from snekql.storage import MISSING, Attr, StorageBackend
+from snekql.storage import PENDING_GENERATION, Attr, StorageBackend
 
 
 def _require_model_columns(
@@ -40,7 +40,7 @@ def encode_model_row(
     encoded_row: dict[str, object] = {}
     for name, column in _require_model_columns(model_class).items():
         value = getattr(row, name)
-        if value is MISSING:
+        if value is PENDING_GENERATION:
             continue
         encoded_row[name] = column.encode(value, backend=backend)
     return model_class, encoded_row

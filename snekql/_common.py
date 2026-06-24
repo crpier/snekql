@@ -77,15 +77,15 @@ from snekql.query import (
 )
 from snekql.runtime import Database, Transaction
 from snekql.storage import (
-    MISSING,
+    PENDING_GENERATION,
     Attr,
     FKAttr,
-    Missing,
+    PendingGeneration,
     SchemaPolicy,
 )
 
 __all__ = [
-    "MISSING",
+    "PENDING_GENERATION",
     "Aggregate",
     "Assignment",
     "Attr",
@@ -115,7 +115,6 @@ __all__ = [
     "JoinOn",
     "MigrationError",
     "MigrationLockTimeoutError",
-    "Missing",
     "ModelDeclarationError",
     "ModelError",
     "ModelMeta",
@@ -124,6 +123,7 @@ __all__ = [
     "NoResultError",
     "OrderBy",
     "Pending",
+    "PendingGeneration",
     "PoolTimeoutError",
     "Predicate",
     "QueryCompilationError",

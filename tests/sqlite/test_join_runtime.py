@@ -9,7 +9,7 @@ from __future__ import annotations
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     ForeignKey,
@@ -28,7 +28,7 @@ class JoinUser[S = Pending](Model[S, "JoinUser[Fetched]"]):
     id: JoinUser.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: JoinUser.Col[str] = Text(nullable=False)
 
@@ -39,7 +39,7 @@ class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
     id: JoinOrder.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: JoinOrder.FKCol[JoinUser, int] = ForeignKey(JoinUser.id)
     note: JoinOrder.Col[str] = Text(nullable=False)

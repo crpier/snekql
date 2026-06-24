@@ -18,7 +18,7 @@ from snektest import (
 
 from snekql import mariadb
 from snekql.mariadb import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Index,
@@ -97,7 +97,7 @@ async def mariadb_schema_creates_column_unique_indexes() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 
@@ -121,7 +121,7 @@ async def mariadb_schema_creates_table_indexes() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
@@ -190,7 +190,7 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -231,7 +231,7 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -264,7 +264,7 @@ async def mariadb_reordered_columns_verify_semantically() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -296,7 +296,7 @@ async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
         id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = mariadb.Text(nullable=False)
 

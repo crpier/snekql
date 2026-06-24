@@ -89,15 +89,15 @@ The wire encode/decode that bridges a column's Logical Type to its Column Type. 
 _Avoid_: serializer, converter, ORM type, column type
 
 **Generated Column**:
-A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be Missing on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
+A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
 _Avoid_: computed property, Python default, immutable column
 
 **Foreign-Key Column**:
 A column that references a target column on another Table Model. Declared with `ForeignKey`, it names the exact target column — a primary key or unique column — derives its storage from that target, and emits a `FOREIGN KEY` constraint; a typed-only reference (the same annotation with a plain column declaration) keeps the relationship available for typed joins without enforcing referential integrity.
 _Avoid_: association, ORM relation, relationship object
 
-**Missing**:
-The sentinel marking a Generated Column value that is not available yet on a Pending Model; inserts omit Missing values so the database can fill them.
+**PendingGeneration**:
+The sentinel marking a Generated Column value that is not available yet on a Pending Model; inserts omit PendingGeneration values so the database can fill them.
 _Avoid_: None, NULL, empty value
 
 **Pending Model**:

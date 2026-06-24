@@ -10,7 +10,7 @@ from snektest import AsyncFixture, assert_eq, assert_is_none, load_fixture, test
 
 from snekql import mariadb
 from snekql.mariadb import (
-    MISSING,
+    PENDING_GENERATION,
     CurrentTimestamp,
     Database,
     Fetched,
@@ -30,7 +30,7 @@ class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
     id: _BulkUser.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     email: _BulkUser.Col[str] = mariadb.Text(nullable=False)
     status: _BulkUser.Col[str] = mariadb.Text(nullable=False, default="active")

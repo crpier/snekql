@@ -28,7 +28,7 @@ from snekql.testing import mariadb as testing_mariadb
 # The dialect-neutral symbols every backend namespace re-exports identically.
 _NEUTRAL_NAMES = frozenset(
     {
-        "MISSING",
+        "PENDING_GENERATION",
         "Aggregate",
         "Assignment",
         "Attr",
@@ -58,7 +58,7 @@ _NEUTRAL_NAMES = frozenset(
         "JoinOn",
         "MigrationError",
         "MigrationLockTimeoutError",
-        "Missing",
+        "PendingGeneration",
         "ModelDeclarationError",
         "ModelError",
         "ModelMeta",
@@ -352,7 +352,7 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Integer,
         sqlite.MigrationError,
         sqlite.MigrationLockTimeoutError,
-        sqlite.Missing,
+        sqlite.PendingGeneration,
         sqlite.Model,
         sqlite.ModelDeclarationError,
         sqlite.ModelError,
@@ -384,11 +384,11 @@ def public_classes_have_specific_docstrings() -> None:
 
 
 @test()
-def missing_sentinel_has_stable_singleton_behavior() -> None:
-    """MISSING is the only Missing value applications need to compare with."""
+def pending_generation_sentinel_has_stable_singleton_behavior() -> None:
+    """PENDING_GENERATION is the only pending value apps compare with."""
 
-    assert_is(sqlite.Missing(), sqlite.MISSING)
-    assert_eq(repr(sqlite.MISSING), "MISSING")
+    assert_is(sqlite.PendingGeneration(), sqlite.PENDING_GENERATION)
+    assert_eq(repr(sqlite.PENDING_GENERATION), "PENDING_GENERATION")
 
 
 @test()

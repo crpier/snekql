@@ -10,7 +10,7 @@ a backend namespace and import everything from it.
 from __future__ import annotations
 
 from snekql._common import (
-    MISSING,
+    PENDING_GENERATION,
     Aggregate,
     Assignment,
     Attr,
@@ -40,7 +40,6 @@ from snekql._common import (
     JoinOn,
     MigrationError,
     MigrationLockTimeoutError,
-    Missing,
     ModelDeclarationError,
     ModelError,
     ModelMeta,
@@ -49,6 +48,7 @@ from snekql._common import (
     NoResultError,
     OrderBy,
     Pending,
+    PendingGeneration,
     PoolTimeoutError,
     Predicate,
     QueryCompilationError,
@@ -93,7 +93,7 @@ from snekql.mariadb.storage import (
 from snekql.mariadb.verbs import delete, insert, update
 
 __all__ = [
-    "MISSING",
+    "PENDING_GENERATION",
     "Aggregate",
     "Assignment",
     "Attr",
@@ -132,7 +132,6 @@ __all__ = [
     "JsonAttr",
     "MigrationError",
     "MigrationLockTimeoutError",
-    "Missing",
     "Model",
     "ModelDeclarationError",
     "ModelError",
@@ -142,6 +141,7 @@ __all__ = [
     "NoResultError",
     "OrderBy",
     "Pending",
+    "PendingGeneration",
     "PoolTimeoutError",
     "Predicate",
     "QueryCompilationError",

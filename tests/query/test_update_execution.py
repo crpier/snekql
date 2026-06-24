@@ -9,7 +9,7 @@ from typing import cast
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     CurrentTimestamp,
     Database,
     Fetched,
@@ -111,9 +111,11 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a primary key and a generated column."""
 
-        account_id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        account_id: User.GenCol[int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
         email: User.Col[str] = Text(nullable=False)
-        revision: User.GenCol[int] = Integer(default=MISSING)
+        revision: User.GenCol[int] = Integer(default=PENDING_GENERATION)
 
     query = update(User).set(User.account_id.to(2), User.revision.to(3)).all()
 
@@ -130,7 +132,7 @@ async def update_execute_returns_affected_row_count() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through the async runtime."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
@@ -172,7 +174,7 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
     class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
         """Table model whose edited_at refreshes to the server clock on update."""
 
-        id: Doc.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: Doc.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         title: Doc.Col[str] = Text(nullable=False)
         edited_at: Doc.Col[str] = Text(nullable=False)
 
@@ -207,7 +209,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
     class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
         """Table model whose updated_at is server-filled yet update-writable."""
 
-        id: Memory.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: Memory.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         content: Memory.Col[str] = Text(nullable=False)
         updated_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)
 

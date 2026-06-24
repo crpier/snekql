@@ -13,7 +13,7 @@ from snektest import assert_eq, test
 
 from snekql import sqlite
 from snekql.expressions import JoinOn
-from snekql.sqlite import MISSING, Fetched, ForeignKey, Pending
+from snekql.sqlite import PENDING_GENERATION, Fetched, ForeignKey, Pending
 
 
 @test(mark="fast")
@@ -26,7 +26,7 @@ def references_builds_join_condition() -> None:
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         email: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -36,7 +36,7 @@ def references_builds_join_condition() -> None:
         id: Order.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         note: Order.Col[str] = sqlite.Text(nullable=False)
@@ -58,7 +58,7 @@ def foreign_key_records_its_target_column_on_the_descriptor() -> None:
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
 
     class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
@@ -78,7 +78,9 @@ def foreign_key_derives_its_storage_class_from_the_target_column() -> None:
     class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Referenced table whose unique email is a non-PK target."""
 
-        id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = sqlite.Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
         email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
 
     class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):

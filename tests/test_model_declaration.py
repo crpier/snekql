@@ -18,7 +18,7 @@ from snektest import (
 )
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Blob,
     Fetched,
     ForeignKey,
@@ -35,25 +35,25 @@ from snekql.sqlite import (
 
 
 @test(mark="fast")
-def pending_model_construction_applies_defaults_and_missing() -> None:
-    """Constructed table models expose provided values, defaults, and MISSING."""
+def pending_model_construction_applies_defaults_and_pending_generation() -> None:
+    """Constructed models expose values, defaults, and PENDING_GENERATION."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with normal and generated columns."""
 
-        id: User.GenCol[int] = Integer(default=MISSING)
+        id: User.GenCol[int] = Integer(default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(default="active")
 
     user = User(email="alice@example.com")
 
-    assert_is(user.id, MISSING)
+    assert_is(user.id, PENDING_GENERATION)
     assert_eq(user.email, "alice@example.com")
     assert_eq(user.status, "active")
 
 
 @test(mark="fast")
-def model_construction_rejects_missing_and_unknown_values() -> None:
+def model_construction_rejects_absent_and_unknown_values() -> None:
     """Constructing pending models validates constructor field names."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -111,12 +111,12 @@ def model_instances_are_frozen_after_construction() -> None:
 
 @test(mark="fast")
 def model_repr_equality_and_hashing_are_value_based() -> None:
-    """Models compare by field values, omit MISSING in repr, and are unhashable."""
+    """Models compare by field values, omit PENDING_GENERATION in repr, and are unhashable."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model for deterministic value semantics."""
 
-        id: User.GenCol[int] = Integer(default=MISSING)
+        id: User.GenCol[int] = Integer(default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
 
     first = User(email="alice@example.com")
@@ -220,7 +220,7 @@ def index_declarations_are_validated_in_model_bodies() -> None:
             id: PrimaryKeyUnique.GenCol[int] = Integer(
                 primary_key=True,
                 unique=True,
-                default=MISSING,
+                default=PENDING_GENERATION,
             )
 
     with assert_raises(ModelDeclarationError):
@@ -357,7 +357,7 @@ def foreign_key_annotation_storage_pairs_are_accepted() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table with an integer primary key."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table carrying an integer foreign key to ``User``."""

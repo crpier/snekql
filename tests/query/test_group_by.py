@@ -14,7 +14,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql import sqlite
 from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     Fetched,
     Pending,
@@ -32,7 +32,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     country: User.Col[str] = sqlite.Text(nullable=False)
 
@@ -43,7 +43,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=MISSING,
+        default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
     amount: Order.Col[int] = sqlite.Integer(nullable=False)

@@ -15,7 +15,7 @@ from snekql.storage import (
     CurrentTimestamp,
     FKAttr,
     ForeignKey,
-    Missing,
+    PendingGeneration,
     build_attr,
 )
 
@@ -105,7 +105,7 @@ class Integer:
     """MariaDB integer column declaration for table model fields.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: User.GenCol[int] = Integer(primary_key=True, default=MISSING)
+    ...     id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     """
 
     @overload
@@ -116,8 +116,8 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -128,7 +128,7 @@ class Integer:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -209,8 +209,8 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -220,7 +220,7 @@ class Real:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -295,8 +295,8 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -306,7 +306,7 @@ class Text:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -381,8 +381,8 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -392,7 +392,7 @@ class Blob:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -522,8 +522,8 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -532,7 +532,7 @@ class Boolean:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -600,8 +600,8 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -610,7 +610,7 @@ class DateTime:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -689,8 +689,8 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
-        default: Missing,
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](
@@ -700,7 +700,7 @@ class Uuid:
         nullable: bool | None = None,
         unique: bool = False,
         default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | Missing, T]: ...
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
     @overload
     def __new__[T](

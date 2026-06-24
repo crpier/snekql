@@ -40,7 +40,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=sqlite.MISSING,
+        default=sqlite.PENDING_GENERATION,
     )
     email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
@@ -86,7 +86,7 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
     id: AuditLog.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=sqlite.MISSING,
+        default=sqlite.PENDING_GENERATION,
     )
     message: AuditLog.Col[str] = sqlite.Text(nullable=False)
     created_at: AuditLog.GenCol[datetime] = sqlite.Text(
@@ -97,7 +97,7 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
 Rules to remember:
 
 - `Col[T]` is a normal persisted column.
-- `GenCol[T]` is server/generated; pending values may be `MISSING`, fetched
+- `GenCol[T]` is server/generated; pending values may be `PENDING_GENERATION`, fetched
   values are `T`.
 - If `__tablename__` is omitted, class names become snake_case table names.
 - Models are immutable after construction/materialization.
@@ -112,7 +112,7 @@ fetched-only assumptions, write that state on `self`:
 
 ```python
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=sqlite.MISSING)
+    id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=sqlite.PENDING_GENERATION)
     email: User.Col[str] = sqlite.Text(nullable=False)
 
     def insert_payload(self: User[Pending]) -> dict[str, str]:
@@ -195,7 +195,7 @@ because it is redundant.
 A *server default* is declared by passing a marker as the column's `default`:
 `sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1 server
 defaults. The marker means the database computes the value, so the field is
-valid only on `GenCol` columns, is omittable at construction (it is `MISSING`
+valid only on `GenCol` columns, is omittable at construction (it is `PENDING_GENERATION`
 until the database fills it), and accepts an explicit value when you pass one.
 
 To refresh a column to the server clock on *update*, pass the same marker to an
@@ -396,7 +396,7 @@ class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
     id: Account.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
-        default=mariadb.MISSING,
+        default=mariadb.PENDING_GENERATION,
     )
     email: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
 

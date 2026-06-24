@@ -5,7 +5,7 @@ from __future__ import annotations
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Fetched,
     Integer,
     Model,
@@ -22,7 +22,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with a generated primary key and explicit columns."""
 
     id: User.GenCol[int] = Integer(
-        primary_key=True, auto_increment=True, default=MISSING
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
@@ -32,7 +32,7 @@ class Account[S = Pending](Model[S, "Account[Fetched]"]):
     """Unrelated table model, used to test cross-model returning rejection."""
 
     id: Account.GenCol[int] = Integer(
-        primary_key=True, auto_increment=True, default=MISSING
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
     name: Account.Col[str] = Text(nullable=False)
 

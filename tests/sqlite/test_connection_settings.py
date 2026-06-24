@@ -9,7 +9,7 @@ from aiosqlite import Connection
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    MISSING,
+    PENDING_GENERATION,
     Database,
     ExecutionError,
     Fetched,
@@ -71,7 +71,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
         id: Parent.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
 
     class Child[S = Pending](Model[S, "Child[Fetched]"]):
@@ -80,7 +80,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
         id: Child.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
-            default=MISSING,
+            default=PENDING_GENERATION,
         )
         parent_id: Child.FKCol[Parent, int] = ForeignKey(Parent.id, nullable=False)
 

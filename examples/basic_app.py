@@ -29,7 +29,7 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
-        default=sqlite.MISSING,
+        default=sqlite.PENDING_GENERATION,
     )
     email: User.Col[str] = sqlite.Text(nullable=False)
     status: User.Col[str] = sqlite.Text(nullable=False, default="active")
