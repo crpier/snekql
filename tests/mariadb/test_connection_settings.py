@@ -15,7 +15,11 @@ from snekql.mariadb import (
     SchemaVerificationError,
     insert,
 )
-from tests.helpers import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import (
+    TemporaryMariaDBServer,
+    initialized_database,
+    provide_mariadb_server,
+)
 
 
 async def _scalar(server: TemporaryMariaDBServer, sql: str) -> str:
@@ -43,7 +47,7 @@ async def created_tables_use_innodb_and_binary_text_collation() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     server = await load_fixture(provide_mariadb_server())
-    database = await Database.initialize(server.config(), models=[User])
+    database = await initialized_database(server.config(), models=[User])
     await database.close()
 
     engine = await _scalar(
@@ -85,7 +89,7 @@ async def unique_text_columns_compare_case_sensitively() -> None:
         name: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
 
     server = await load_fixture(provide_mariadb_server())
-    database = await Database.initialize(server.config(), models=[Account])
+    database = await initialized_database(server.config(), models=[Account])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(Account(name="Alice")))
@@ -128,7 +132,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
         parent_id: Child.FKCol[Parent, int] = ForeignKey(Parent.id, nullable=False)
 
     server = await load_fixture(provide_mariadb_server())
-    database = await Database.initialize(server.config(), models=[Parent, Child])
+    database = await initialized_database(server.config(), models=[Parent, Child])
     try:
         with assert_raises(ExecutionError):
             async with database.transaction() as tx:
@@ -159,8 +163,12 @@ async def strict_policy_rejects_a_non_innodb_existing_table() -> None:
     )
     _ = await server.run_sql(create_myisam_sql)
 
-    with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(server.config(), models=[User])
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError):
+            await database.verify([User])
+    finally:
+        await database.close()
 
 
 @test(mark="medium")
@@ -181,12 +189,12 @@ async def reinitialization_verifies_managed_tables_without_drift() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    first = await Database.initialize(server.config(), models=[User])
+    first = await initialized_database(server.config(), models=[User])
     await first.close()
 
     # A clean strict re-verification proves the InnoDB + utf8mb4_bin signature
     # round-trips through information_schema without false drift.
-    second = await Database.initialize(server.config(), models=[User])
+    second = await initialized_database(server.config(), models=[User], verify=True)
     await second.close()
 
     assert_true(True)

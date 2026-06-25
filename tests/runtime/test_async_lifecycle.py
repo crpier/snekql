@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import anyio
 import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
 from snekql.mariadb.runtime import MariaDBConnectionPool
-from snekql.model import BackendFamily
+from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
 from snekql.runtime import RuntimeConnection
 from snekql.sqlite import (
@@ -22,12 +23,14 @@ from snekql.sqlite import (
     Integer,
     Model,
     Pending,
+    SchemaPolicy,
     Text,
     Transaction,
     insert,
     select,
 )
 from snekql.validation import NonNegativeFloat
+from tests.helpers import initialized_database
 
 
 class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
@@ -136,6 +139,17 @@ class _FakeRuntime:
     def check_accepting_work(self) -> None:
         return None
 
+    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+        _ = migrations
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None:
+        _ = models
+        _ = schema_policy
+
     def compile_select_sql(
         self,
         query: AnySelectQuery,
@@ -195,7 +209,7 @@ class _NeverClosingPool:
 async def sqlite_memory_database_serializes_concurrent_work_on_one_connection() -> None:
     """Exact ':memory:' databases do not lazily open independent schemas."""
 
-    database = await Database.initialize(
+    database = await initialized_database(
         database=":memory:",
         models=[_AsyncUser],
         pool_size=5,
@@ -297,7 +311,7 @@ async def database_async_with_closes_on_block_exit() -> None:
     """`async with await Database.initialize(...)` closes the runtime on exit."""
 
     async with (
-        await Database.initialize(
+        await initialized_database(
             database=":memory:",
             models=[_AsyncUser],
         ) as database,
@@ -314,7 +328,7 @@ async def database_async_with_closes_when_block_raises() -> None:
     """The runtime is closed even when the `async with` body raises."""
 
     sentinel = RuntimeError("boom")
-    database = await Database.initialize(database=":memory:", models=[_AsyncUser])
+    database = await initialized_database(database=":memory:", models=[_AsyncUser])
 
     with assert_raises(RuntimeError):
         async with database:

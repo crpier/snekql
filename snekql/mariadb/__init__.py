@@ -83,6 +83,7 @@ from snekql._common import (
 from snekql.mariadb import query as query
 from snekql.mariadb.config import Config
 from snekql.mariadb.model import Model
+from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
 from snekql.mariadb.storage import (
     Blob,
     Boolean,
@@ -178,6 +179,7 @@ __all__ = [
     "exists",
     "insert",
     "not_exists",
+    "scaffold",
     "scalar",
     "select",
     "update",

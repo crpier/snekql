@@ -31,6 +31,7 @@ from snekql.model import Table
 from tests.helpers import (
     TemporaryMariaDBServer,
     capture_snekql_logs,
+    migrate_models,
     provide_mariadb_server,
 )
 
@@ -74,12 +75,14 @@ async def database_session(
     server = await load_fixture(provide_mariadb_server())
     for sql in setup_sql:
         _ = await server.run_sql(sql)
-    database = await Database.initialize(
-        server.config(),
-        models=models,
-        schema_policy=schema_policy,
-    )
+    database = await Database.initialize(server.config())
     try:
+        if setup_sql:
+            # The table already exists: verify the live schema against the models.
+            await database.verify(models, policy=schema_policy)
+        elif models:
+            # Build the schema by replaying the scaffolded migration chain.
+            await migrate_models(database, models)
         yield _DatabaseSession(database=database, server=server)
     finally:
         await database.close()
@@ -163,8 +166,12 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
         name: Org.Col[str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(name, name="ix_duplicate")]
 
-    with assert_raises(SchemaError):
-        _ = await Database.initialize(server.config(), models=[User, Org])
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaError):
+            await database.verify([User, Org])
+    finally:
+        await database.close()
 
     result = await server.run_sql(
         """
@@ -196,8 +203,12 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 
     _ = await server.run_sql("CREATE TABLE issue39_table_drift (`email` VARCHAR(255))")
 
-    with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(server.config(), models=[User])
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError):
+            await database.verify([User])
+    finally:
+        await database.close()
 
 
 @test(mark="medium")
@@ -216,8 +227,12 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
         "CREATE TABLE issue39_index_drift (`email` VARCHAR(255) NOT NULL)"
     )
 
-    with assert_raises(SchemaVerificationError):
-        _ = await Database.initialize(server.config(), models=[User])
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError):
+            await database.verify([User])
+    finally:
+        await database.close()
 
 
 @test(mark="medium")
@@ -236,7 +251,7 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     with capture_snekql_logs() as logs:
-        _session = await load_fixture(
+        _ = await load_fixture(
             database_session(
                 [User],
                 schema_policy="warn",
@@ -308,8 +323,12 @@ async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
     )
     _ = await server.run_sql(create_sql)
 
-    with assert_raises(SchemaVerificationError) as raised:
-        _ = await Database.initialize(server.config(), models=[User])
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([User])
+    finally:
+        await database.close()
 
     message = str(raised.exception)
     assert_true("'email'" in message)

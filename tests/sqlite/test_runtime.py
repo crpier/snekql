@@ -28,6 +28,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
+from tests.helpers import initialized_database
 
 
 class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
@@ -69,7 +70,7 @@ async def successful_transaction_commits() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
+        database = await initialized_database(
             database=database_path, models=[RuntimeUser]
         )
         try:
@@ -87,7 +88,7 @@ async def exceptional_transaction_rolls_back() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
+        database = await initialized_database(
             database=database_path, models=[RuntimeUser]
         )
         try:
@@ -187,7 +188,7 @@ async def timed_out_close_keeps_database_retryable() -> None:
 async def fetch_validates_logical_types_and_can_skip_validation() -> None:
     """fetch_all validates rows by default and skips checks when validate=False."""
 
-    database = await Database.initialize(
+    database = await initialized_database(
         database=":memory:",
         models=[RuntimeReceipt],
     )

@@ -15,7 +15,6 @@ from snekql import sqlite
 from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -27,6 +26,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
+from tests.helpers import initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -120,7 +120,7 @@ def count_star_is_backend_portable() -> None:
 async def count_returns_row_count_at_runtime() -> None:
     """An ungrouped COUNT(*) fetches as a plain int scalar."""
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -146,7 +146,7 @@ async def sum_normalizes_to_int_for_integer_column() -> None:
         )
         amount: Sale.Col[int] = Integer(nullable=False)
 
-    database = await Database.initialize(database=":memory:", models=[Sale])
+    database = await initialized_database(database=":memory:", models=[Sale])
     try:
         async with database.transaction() as tx:
             empty = await tx.fetch_one(select(Sale.amount.sum()).all())
@@ -183,7 +183,7 @@ async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
         )
         name: Label.Col[str] = Text(nullable=False)
 
-    database = await Database.initialize(database=":memory:", models=[Label])
+    database = await initialized_database(database=":memory:", models=[Label])
     try:
         async with database.transaction() as tx:
             empty = await tx.fetch_one(select(Label.name.min()).all())
@@ -214,7 +214,7 @@ async def avg_decodes_to_float_and_none_over_empty() -> None:
         )
         value: Reading.Col[float] = Real(nullable=False)
 
-    database = await Database.initialize(database=":memory:", models=[Reading])
+    database = await initialized_database(database=":memory:", models=[Reading])
     try:
         async with database.transaction() as tx:
             empty = await tx.fetch_one(select(Reading.value.avg()).all())

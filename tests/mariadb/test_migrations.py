@@ -1,4 +1,4 @@
-"""MariaDB migration apply, history recording, and idempotent re-run tests.
+"""MariaDB imperative migrate/verify, history recording, and idempotent re-run tests.
 
 The MariaDB server fixture is shared across the session, so each test uses
 globally-unique migration names and table names and asserts only its own
@@ -39,13 +39,13 @@ async def mariadb_server() -> AsyncFixture[TemporaryMariaDBServer]:
 
 
 @test(mark="medium")
-async def migration_creates_table_and_records_history() -> None:
+async def migrate_creates_table_and_records_history() -> None:
     """A migration body runs against MariaDB and its name is recorded in history."""
 
     server = await load_fixture(mariadb_server())
-    database = await Database.initialize(
-        server.config(),
-        migrations={"mig_create_users": _create_user_table_sql("mig_users_t1")},
+    database = await Database.initialize(server.config())
+    await database.migrate(
+        {"mig_create_users": _create_user_table_sql("mig_users_t1")},
     )
     await database.close()
 
@@ -53,7 +53,7 @@ async def migration_creates_table_and_records_history() -> None:
 
 
 @test(mark="medium")
-async def reinitializing_does_not_reapply_recorded_migration() -> None:
+async def re_migrating_does_not_reapply_recorded_migration() -> None:
     """Re-running an already-applied migration records it exactly once."""
 
     create_audit = (
@@ -64,18 +64,18 @@ async def reinitializing_does_not_reapply_recorded_migration() -> None:
     migrations = {"mig_audit_idem": create_audit}
     server = await load_fixture(mariadb_server())
 
-    first = await Database.initialize(server.config(), migrations=migrations)
-    await first.close()
-    second = await Database.initialize(server.config(), migrations=migrations)
-    await second.close()
+    database = await Database.initialize(server.config())
+    await database.migrate(migrations)
+    await database.migrate(migrations)
+    await database.close()
 
     applied = await _fetch_applied_names(server)
     assert_eq(applied.count("mig_audit_idem"), 1)
 
 
 @test(mark="medium")
-async def concurrent_initialize_applies_each_migration_once() -> None:
-    """Two instances initializing concurrently apply a non-idempotent body once.
+async def concurrent_migrate_applies_each_migration_once() -> None:
+    """Two instances migrating concurrently apply a non-idempotent body once.
 
     The create-table body is not idempotent: absent the migration advisory lock,
     the loser would re-run it and raise a duplicate-table error. The lock makes
@@ -85,33 +85,21 @@ async def concurrent_initialize_applies_each_migration_once() -> None:
     server = await load_fixture(mariadb_server())
     migrations = {"mig_concurrent": _create_user_table_sql("mig_concurrent_t5")}
 
-    async def _initialize_and_close() -> None:
-        database = await Database.initialize(server.config(), migrations=migrations)
+    async def _migrate_and_close() -> None:
+        database = await Database.initialize(server.config())
+        await database.migrate(migrations)
         await database.close()
 
     async with anyio.create_task_group() as task_group:
-        task_group.start_soon(_initialize_and_close)
-        task_group.start_soon(_initialize_and_close)
+        task_group.start_soon(_migrate_and_close)
+        task_group.start_soon(_migrate_and_close)
 
     assert_eq((await _fetch_applied_names(server)).count("mig_concurrent"), 1)
 
 
 @test(mark="medium")
-async def standalone_migrate_applies_without_full_initialize() -> None:
-    """Database.migrate applies a pending body and records history without initialize."""
-
-    server = await load_fixture(mariadb_server())
-    await Database.migrate(
-        server.config(),
-        migrations={"mig_standalone": _create_user_table_sql("mig_standalone_t4")},
-    )
-
-    assert_true("mig_standalone" in await _fetch_applied_names(server))
-
-
-@test(mark="medium")
-async def models_verify_against_migration_created_schema() -> None:
-    """Drift verification still runs after migrations and passes on a matching schema."""
+async def verify_passes_against_migration_created_schema() -> None:
+    """Verification runs after migration and passes on a matching schema."""
 
     class MigUser[S = Pending](mariadb.Model[S, "MigUser[Fetched]"]):
         """Model whose DDL matches the create-user migration body."""
@@ -124,11 +112,11 @@ async def models_verify_against_migration_created_schema() -> None:
         email: MigUser.Col[str] = mariadb.Text(nullable=False)
 
     server = await load_fixture(mariadb_server())
-    database = await Database.initialize(
-        server.config(),
-        models=[MigUser],
-        migrations={"mig_verify_users": _create_user_table_sql("mig_verify_t3")},
+    database = await Database.initialize(server.config())
+    await database.migrate(
+        {"mig_verify_users": _create_user_table_sql("mig_verify_t3")},
     )
+    await database.verify([MigUser])
     await database.close()
 
     assert_true("mig_verify_users" in await _fetch_applied_names(server))

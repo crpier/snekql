@@ -129,6 +129,14 @@ class RuntimeBackend(Protocol):
 
     def check_accepting_work(self) -> None: ...
 
+    async def apply_migrations(self, migrations: dict[str, str]) -> None: ...
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None: ...
+
     def compile_select_sql(
         self,
         query: AnySelectQuery,
@@ -689,12 +697,16 @@ class Transaction:
 
 
 class Database:
-    """Initialized snekql runtime service for database-backed execution.
+    """Connected snekql runtime service for database-backed execution.
 
-    `Database.initialize(...)` is the only public construction path. A Database
-    owns connectivity, schema startup work, and transaction entry. It is an async
-    context manager: `async with await Database.initialize(...) as db:` closes the
-    runtime on block exit; `close()` can also be called directly.
+    `Database.initialize(...)` is the only public construction path and is
+    **connect-only**: it opens connectivity and a connection pool and hands out
+    Transactions, and does no schema work at all (see ADR 0007). Schema comes
+    into existence only by applying Migrations with `db.migrate(...)`; the
+    resulting schema is checked against Table Models with `db.verify(...)`.
+
+    It is an async context manager: `async with await Database.initialize(...) as
+    db:` closes the runtime on block exit; `close()` can also be called directly.
     """
 
     def __init__(self, _initialized: Never, /) -> None:
@@ -707,10 +719,6 @@ class Database:
     async def initialize(
         cls,
         backend: RuntimeConfig,
-        *,
-        models: Sequence[type[Table[Any]]] = (),
-        schema_policy: SchemaPolicy = "strict",
-        migrations: dict[str, str] | None = None,
     ) -> Self: ...
 
     @overload
@@ -719,109 +727,25 @@ class Database:
         cls,
         *,
         database: Path | Literal[":memory:"],
-        models: Sequence[type[Table[Any]]] = (),
-        schema_policy: SchemaPolicy = "strict",
-        migrations: dict[str, str] | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self: ...
 
     @classmethod
-    async def initialize(  # noqa: PLR0913
+    async def initialize(
         cls,
         backend: object | None = None,
         *,
         database: Path | Literal[":memory:"] | None = None,
-        models: Sequence[type[Table[Any]]] = (),
-        schema_policy: SchemaPolicy = "strict",
-        migrations: dict[str, str] | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
     ) -> Self:
-        """Initialize connectivity, migrations, schema startup, and lifecycle."""
+        """Open connectivity and a connection pool; do no schema work.
 
-        try:
-            runtime_config = resolve_runtime_config(
-                backend=backend,
-                database=database,
-                pool_size=pool_size,
-                acquire_timeout=acquire_timeout,
-            )
-            backend_family = runtime_config.backend_family
-            validate_model_backends(backend_family, models)
-            table_names = tuple(require_model_table_name(model) for model in models)
-            logger.info(
-                "%s database initialization started: %d model(s) %r, policy=%s",
-                backend_family,
-                len(models),
-                table_names,
-                schema_policy,
-            )
-            logger.debug(
-                "%s backend selected (pool_size=%s, acquire_timeout=%s)",
-                backend_family,
-                runtime_config.pool_size,
-                runtime_config.acquire_timeout,
-            )
-            runtime = cast(
-                "RuntimeBackend",
-                await runtime_config.initialize_runtime(
-                    models,
-                    schema_policy,
-                    migrations=migrations,
-                ),
-            )
-            logger.info(
-                "%s database initialization completed: %d model(s) %r",
-                backend_family,
-                len(models),
-                table_names,
-            )
-        except Exception:
-            logger.exception("database initialization failed")
-            raise
-        database_instance = cls.__new__(cls)
-        database_instance.runtime = runtime
-        return database_instance
-
-    @overload
-    @classmethod
-    async def migrate(
-        cls,
-        backend: RuntimeConfig,
-        *,
-        migrations: dict[str, str],
-    ) -> None: ...
-
-    @overload
-    @classmethod
-    async def migrate(
-        cls,
-        *,
-        database: Path | Literal[":memory:"],
-        migrations: dict[str, str],
-        pool_size: PositiveInt = 5,
-        acquire_timeout: NonNegativeFloat = 30.0,
-    ) -> None: ...
-
-    @classmethod
-    async def migrate(
-        cls,
-        backend: object | None = None,
-        *,
-        database: Path | Literal[":memory:"] | None = None,
-        migrations: dict[str, str],
-        pool_size: PositiveInt = 5,
-        acquire_timeout: NonNegativeFloat = 30.0,
-    ) -> None:
-        """Apply pending migrations from a dedicated deploy step.
-
-        This is the recommended single place to run migrations (see
-        `docs/migrations.md`). It shares the exact apply runner and idempotency
-        semantics as `initialize(migrations=...)` — each migration runs exactly
-        once and is recorded in the Migration History — but skips schema startup
-        and drift verification and leaves nothing open: no models, no pool, no
-        returned `Database`.
+        Initialization only proves it can connect and returns a live Database.
+        Apply Migrations with `db.migrate(...)` and verify the schema against
+        Table Models with `db.verify(...)`; a wrong-backend deploy is caught at
+        the first `verify` or query, not here.
         """
 
         try:
@@ -832,12 +756,43 @@ class Database:
                 acquire_timeout=acquire_timeout,
             )
             backend_family = runtime_config.backend_family
+            logger.info("%s database initialization started", backend_family)
+            logger.debug(
+                "%s backend selected (pool_size=%s, acquire_timeout=%s)",
+                backend_family,
+                runtime_config.pool_size,
+                runtime_config.acquire_timeout,
+            )
+            runtime = cast(
+                "RuntimeBackend",
+                await runtime_config.initialize_runtime(),
+            )
+            logger.info("%s database initialization completed", backend_family)
+        except Exception:
+            logger.exception("database initialization failed")
+            raise
+        database_instance = cls.__new__(cls)
+        database_instance.runtime = runtime
+        return database_instance
+
+    async def migrate(self, migrations: dict[str, str]) -> None:
+        """Apply pending Migrations imperatively against this live Database.
+
+        Runs the backend-neutral apply runner: holds the advisory lock, ensures
+        the Migration History, applies each pending body exactly once in declared
+        order, and records each success (ADR 0001, ADR 0002). Migrations are the
+        sole schema-creation authority; a fresh database is built by replaying
+        the whole chain. Pair with `verify(...)`.
+        """
+
+        backend_family = self.runtime.backend_family
+        try:
             logger.info(
                 "%s database migrate started: %d migration(s)",
                 backend_family,
                 len(migrations),
             )
-            await runtime_config.apply_migrations(migrations)
+            await self.runtime.apply_migrations(migrations)
             logger.info(
                 "%s database migrate completed: %d migration(s)",
                 backend_family,
@@ -845,6 +800,44 @@ class Database:
             )
         except Exception:
             logger.exception("database migrate failed")
+            raise
+
+    async def verify(
+        self,
+        models: Sequence[type[Table[Any]]],
+        *,
+        policy: SchemaPolicy = "strict",
+    ) -> None:
+        """Verify the live schema against Table Models, a partial structural check.
+
+        Inspects each model's live table and reports Schema Drift under the
+        Schema Policy (`strict` raises `SchemaVerificationError`, `warn` logs).
+        It is the only feedback loop tying the hand-written Migration chain back
+        to the models; it never creates anything. Verification is deliberately
+        partial and structural -- see ADR 0008 and `docs/schema-drift.md` for what
+        it cannot see (default values, CHECK constraints, triggers, and more).
+        """
+
+        backend_family = self.runtime.backend_family
+        try:
+            validate_model_backends(backend_family, models)
+            table_names = tuple(require_model_table_name(model) for model in models)
+            logger.info(
+                "%s database verify started: %d model(s) %r, policy=%s",
+                backend_family,
+                len(models),
+                table_names,
+                policy,
+            )
+            await self.runtime.verify_schema(models, policy)
+            logger.info(
+                "%s database verify completed: %d model(s) %r",
+                backend_family,
+                len(models),
+                table_names,
+            )
+        except Exception:
+            logger.exception("database verify failed")
             raise
 
     @validate_boundary(error_type=DatabaseRuntimeError)

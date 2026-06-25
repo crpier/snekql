@@ -1,58 +1,65 @@
-# Schema startup and drift
+# Schema verification and drift
 
-snekql has two complementary startup mechanisms: **startup schema management**
-(create missing tables, verify the rest) and **migrations** (apply hand-authored
-ordered changes). See [migrations.md](migrations.md) for the migration model.
+`db.verify(models, *, policy=...)` checks the live schema against your Table
+Models. It is the **only** feedback loop tying the hand-written migration chain
+back to the models — it catches "you changed the model but not the migration" and
+"you rolled the app forward past the migration that feeds it". Verification never
+creates anything: [migrations](migrations.md) are the sole schema-creation
+authority.
 
-When `Database.initialize(..., models=[...])` runs, snekql creates missing tables
-and verifies existing tables and indexes against the shape generated from the
-table models. Verification is *semantic*: each backend reads its own catalog
-into a shared schema shape (SQLite via `PRAGMA`, MariaDB via
-`INFORMATION_SCHEMA`) and compares that shape to the one the models expect, so a
-table is recognized as matching whenever it is semantically equal — regardless
-of cosmetic DDL differences such as identifier quoting, whitespace, type-keyword
-case, or column and index ordering.
-
-When you pass `migrations={...}`, migrations become the sole schema-creation
-authority: snekql no longer auto-creates tables from `models`, but it still
-verifies them afterward, so a model with no matching migration is reported as
-drift. See [migrations.md](migrations.md).
-
-## What happens at startup
+Run `verify` after `migrate`, and show them together — forgetting `verify`
+silently drops the migration↔model net:
 
 ```python
-db = await Database.initialize(
-    database=Path("app.db"),
-    models=[User, AuditLog],
-    schema_policy="strict",
-)
+db = await Database.initialize(database=Path("app.db"))
+await db.migrate({"001_create_user": 'CREATE TABLE "user" (...) STRICT'})
+await db.verify([User, AuditLog])
 ```
 
-snekql will:
+## Verification is a partial, structural check
 
-1. Preserve the order of the `models` sequence.
-2. Reject duplicate resolved table and index names.
-3. Create missing tables and indexes.
-4. Verify existing tables and exact index sets.
-5. Skip verification for objects created during the same initialization pass.
+`verify` is a **semantic, structural tripwire, not a proof of schema equality**.
+It compares only the facts snekql controls — the table shape — and is
+deliberately blind to everything else. Comparison is semantic: columns and
+indexes match by name regardless of declaration order, and cosmetic DDL
+differences (identifier quoting, whitespace, type-keyword case, column/index
+ordering) are ignored. A table legitimately built or evolved by migrations is
+recognized as matching whenever it is semantically equal to the model.
 
-## Drift detection strategy
+`verify` **does** compare:
 
-Drift detection compares semantic shapes, not rendered DDL:
+- table presence;
+- per column: name, storage type / affinity-class, nullability, primary-key,
+  auto-increment, *whether* a server default exists, collation;
+- per index: name, columns, uniqueness;
+- per foreign key: local column → target table/column;
+- table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).
+
+`verify` **does not**, and across backends *cannot*, see:
+
+- default **values** — only *whether* a default exists, so a changed default
+  value passes;
+- `CHECK` constraints;
+- generated-column expressions;
+- triggers and views;
+- exact SQLite types (affinity collapses `VARCHAR(255)` and `TEXT`);
+- data.
+
+A migration that sets a wrong default value, adds a `CHECK`, or installs a
+trigger therefore **passes** verification. This is a bound of each backend's
+catalog introspection, documented and deliberate — not a bug. Treat `verify` as a
+structural net for the drift that breaks queries, not a behavioral guarantee.
+
+## How drift is detected
 
 1. Generate the expected table shape (columns, indexes, foreign keys, and
    table-level storage options) for each model.
-2. Read the live table shape from the selected backend's catalog.
+2. Read the live table shape from the selected backend's catalog (SQLite via
+   `PRAGMA`, MariaDB via `INFORMATION_SCHEMA`).
 3. Diff the two shapes. Columns and indexes match by name independent of
    declaration order; only the facts snekql controls are compared.
 4. Report each divergence, naming the specific table, column, index, or foreign
-   key, and treat any divergence as schema drift.
-
-A table legitimately created or evolved by migrations is therefore recognized
-as matching whenever it is semantically equal to the model, so cosmetic
-differences do not produce false-positive drift. Genuine divergence — a model
-column, index, or foreign key with no corresponding schema change — is reported
-precisely.
+   key, and treat any divergence — including a missing table — as schema drift.
 
 Because generated SQLite tables are always `STRICT`, an existing SQLite
 non-`STRICT` table is reported as a storage-option divergence; MariaDB likewise
@@ -62,43 +69,47 @@ constraints against the model; MariaDB foreign keys are created with the table
 but not verified, because MariaDB auto-creates a backing index for each
 constraint.
 
-## Policies
+The Migration History table (`snekql_migrations`) is snekql-owned and is never
+verified; keep it out of the `models` you pass to `verify`.
 
-`schema_policy="strict"` is the default. Drift raises
-`SchemaVerificationError`. SQLite schema setup is transactional and rolls back
-created tables on startup failure. MariaDB DDL may auto-commit, so failed MariaDB
-startup can leave already-created schema objects in place; rerun startup after
-cleaning up or applying an application-owned migration.
+## Schema Policy
+
+The Schema Policy lives on `verify` — it is the choice of how the step that
+*detects* drift handles it.
+
+`policy="strict"` is the default. Drift raises `SchemaVerificationError`:
 
 ```python
-await Database.initialize(
-    database=Path("app.db"),
-    models=[User],
-    schema_policy="strict",
-)
+await db.verify([User], policy="strict")
 ```
 
-`schema_policy="warn"` logs drift and continues startup.
+`policy="warn"` logs each divergence and continues:
 
 ```python
-await Database.initialize(
-    database=Path("app.db"),
-    models=[User],
-    schema_policy="warn",
-)
+await db.verify([User], policy="warn")
 ```
 
 Use `warn` when adopting snekql in an environment where you want observability
 before enforcing drift failures.
 
-## What startup schema management does not do
+## Deploy and replica use
 
-On its own (without `migrations=...`), startup schema management does not:
+- A **deploy step** runs `initialize → migrate → verify`, applying the chain and
+  confirming it against the models before traffic.
+- An **app replica** runs `initialize → verify` (no migrate) to confirm the
+  already-migrated schema matches this build's models and fail fast on a
+  forgotten migration.
 
-- alter existing tables;
-- generate migration files;
-- preserve or transform data during schema changes.
+Both follow the caller's topology (see [migrations.md](migrations.md)).
 
-To evolve an existing table, write a [migration](migrations.md) and pass it to
-`Database.initialize(migrations={...})`; the models are then verified against the
-post-migration schema under `strict`.
+## What verification does not do
+
+`verify` does not:
+
+- create, alter, or drop anything;
+- generate migrations;
+- preserve or transform data.
+
+To evolve a table, write a [migration](migrations.md) and apply it with
+`db.migrate({...})`; then `db.verify` confirms the post-migration schema against
+your models.

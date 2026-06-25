@@ -40,3 +40,31 @@ consistent with the rest of the library.
 - Concurrent `initialize()` with pending migrations is undefined on MariaDB in
   v1; migrate from a single place.
 - `docs/schema-drift.md` must be updated when migrations ship.
+
+## Amendments
+
+The core of this ADR stands: migrations are hand-authored raw SQL, applied
+exactly once, recorded per name in the Migration History, with bodies and
+bookkeeping non-atomic (so bodies must be idempotent). Later ADRs change only
+*where and when* migrations run, and add a narrow generation affordance:
+
+- **Concurrency** — [ADR 0002](0002-advisory-locked-concurrent-migrations.md)
+  reverses the "concurrent runs are undefined; migrate from a single place"
+  boundary with an always-on advisory lock.
+- **Entry point and timing** — [ADR 0007](0007-imperative-migrations-connect-only-initialization.md)
+  removes migrations from `Database.initialize()`. They are now applied by an
+  explicit `migrate(...)` verb on a connect-only `Database`, and **automatic
+  table creation from models is removed entirely**: migrations become the
+  unconditional, sole schema-creation path (the "sole schema-creation authority
+  *while* drift verification stays on" framing above no longer has a second mode
+  to contrast with).
+- **Verification** — [ADR 0008](0008-separate-partial-schema-verification.md)
+  moves drift verification out of startup into an explicit `verify(...)` verb and
+  pins its scope as a partial, structural check.
+- **Scaffolding** — the "never generates" stance is narrowed: snekql never
+  **authors or applies** migrations autonomously, but it **may scaffold** the
+  initial `CREATE TABLE` DDL for a model as text the author then owns. The
+  scaffold output is hand-authored from the moment it is committed — append-only,
+  immutable, identical in status to any other body. snekql still refuses the
+  dangerous part it rejected here: model-vs-live **diffing** and the SQLite
+  rebuild-copy dance. No `ALTER`-generation, no autogenerate.

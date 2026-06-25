@@ -12,7 +12,6 @@ from snektest import assert_eq, assert_is_none, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     CurrentTimestamp,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -20,6 +19,7 @@ from snekql.sqlite import (
     Text,
     insert,
 )
+from tests.helpers import initialized_database
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -48,7 +48,7 @@ async def bulk_insert_persists_every_row_in_one_statement() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 result = await tx.execute(
@@ -74,7 +74,7 @@ async def empty_bulk_insert_is_a_no_op() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []
@@ -93,7 +93,7 @@ async def single_returning_yields_generated_values() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 created = await tx.execute(
@@ -114,7 +114,7 @@ async def single_returning_one_column_yields_scalar() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 new_id = await tx.execute(
@@ -132,7 +132,7 @@ async def single_returning_several_columns_yields_tuple() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 row = await tx.execute(
@@ -150,7 +150,7 @@ async def bulk_returning_one_column_yields_scalar_list() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 ids = await tx.execute(
@@ -173,7 +173,7 @@ async def bulk_returning_several_columns_yields_tuple_list() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 rows = await tx.execute(
@@ -196,7 +196,7 @@ async def empty_bulk_returning_columns_yields_empty_list() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []
@@ -213,7 +213,7 @@ async def bulk_returning_yields_one_fetched_model_per_row() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 created = await tx.execute(
@@ -238,7 +238,7 @@ async def empty_bulk_returning_yields_empty_list() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await initialized_database(database=database_path, models=[User])
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []

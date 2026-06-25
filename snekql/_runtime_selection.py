@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from snekql.model import BackendFamily, Table
-    from snekql.storage import SchemaPolicy
 
 
 @runtime_checkable
@@ -29,18 +28,7 @@ class RuntimeConfig(Protocol):
     @property
     def pool_size(self) -> PositiveInt: ...
 
-    async def initialize_runtime(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-        *,
-        migrations: dict[str, str] | None = None,
-    ) -> object: ...
-
-    async def apply_migrations(
-        self,
-        migrations: dict[str, str],
-    ) -> None: ...
+    async def initialize_runtime(self) -> object: ...
 
 
 @runtime_checkable

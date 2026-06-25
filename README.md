@@ -32,6 +32,7 @@ from snekql.sqlite import (
     Fetched,
     Pending,
     insert,
+    scaffold,
     select,
 )
 
@@ -48,15 +49,18 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
 
 
 async def main() -> None:
+    # initialize connects only; schema is built by applying migrations and
+    # then verified against the models. `scaffold` emits the initial CREATE
+    # TABLE DDL you own and paste into your migration set (inlined here).
     async with await Database.initialize(
         sqlite.Config(
             database=Path("app.db"),
             pool_size=5,
             acquire_timeout=30.0,
         ),
-        models=[User],
-        schema_policy="strict",
     ) as db:
+        await db.migrate({"0001_create_user": scaffold([User])})
+        await db.verify([User], policy="strict")
         async with db.transaction(timeout=5.0) as tx:
             await tx.execute(insert(User(email="alice@example.com")))
             # fetch_one is exactly-one: it raises NoResultError if the row is
@@ -340,21 +344,25 @@ than raising, so it is always safe to `repr` a query in a debugger.
 
 ## Runtime
 
-`Database.initialize(...)` is the only public construction path. Select the
-backend with its namespace config. The legacy SQLite keyword form remains
-supported for compatibility, but new code should use `sqlite.Config`.
+`Database.initialize(...)` is the only public construction path and is
+**connect-only**: it opens connectivity and a connection pool and does no schema
+work. Select the backend with its namespace config. The legacy SQLite keyword
+form remains supported for compatibility, but new code should use `sqlite.Config`.
 
 ```python
 from pathlib import Path
 
 from snekql import sqlite
-from snekql.sqlite import Database
+from snekql.sqlite import Database, scaffold
 
 
 db = await Database.initialize(
     sqlite.Config(database=Path("app.db"), pool_size=5),
-    models=[User],
 )
+# Build the schema by applying migrations, then verify it against the models.
+await db.migrate({"0001_create_user": scaffold([User])})
+await db.verify([User])
+
 memory_db = await Database.initialize(
     sqlite.Config(database=":memory:"),
 )
@@ -389,7 +397,7 @@ runtime checks agree:
 
 ```python
 from snekql import mariadb
-from snekql.mariadb import Database, Fetched, Pending, insert, select
+from snekql.mariadb import Database, Fetched, Pending, insert, scaffold, select
 
 
 class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
@@ -409,7 +417,9 @@ config = mariadb.Config(
     password="secret",
 )
 
-async with await Database.initialize(config, models=[Account]) as db:
+async with await Database.initialize(config) as db:
+    await db.migrate({"0001_create_account": scaffold([Account])})
+    await db.verify([Account])
     async with db.transaction() as tx:
         await tx.execute(insert(Account(email="alice@example.com")))
         account = await tx.fetch_one(
@@ -441,18 +451,38 @@ Runtime methods:
   `UPDATE` actually changed.
 - `close()` is async and idempotent after a successful close.
 
-## Schema startup
+## Migrations and verification
 
-When initialized with `models=[...]`, snekql:
+Initialization does no schema work. Schema is built by applying hand-authored
+migrations and checked against your models — two explicit verbs on a live
+Database, always shown together:
 
-1. Preserves model order.
-2. Rejects duplicate resolved table and index names.
-3. Creates missing backend tables and their indexes.
-4. Verifies existing tables and indexes with backend metadata: SQLite compares
-   deterministic `STRICT` DDL; MariaDB compares normalized `INFORMATION_SCHEMA`
-   metadata.
-5. Treats drift according to `schema_policy`: `"strict"` raises,
-   `"warn"` logs and continues.
+```python
+db = await Database.initialize(database=Path("app.db"))
+await db.migrate(
+    {
+        "0001_create_user": scaffold([User]),
+        "0002_add_user_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
+    },
+)
+await db.verify([User], policy="strict")
+```
+
+- `db.migrate(migrations)` applies an ordered `dict[str, str]` of name → raw SQL
+  body exactly once each, recording every success in a snekql-owned Migration
+  History. Migrations are the **sole schema-creation authority** — a fresh
+  database is built by replaying the whole chain. The dev-time `scaffold(...)`
+  helper emits the initial `CREATE TABLE` DDL so you do not hand-write it.
+- `db.verify(models, *, policy=...)` is a partial, structural check that reports
+  Schema Drift between the models and the live schema. `policy="strict"` raises
+  `SchemaVerificationError`; `policy="warn"` logs and continues. It compares
+  columns, indexes, foreign keys, and storage options by name and semantics, and
+  cannot see default values, `CHECK` constraints, triggers, or data.
+
+A deploy step runs `initialize → migrate → verify`; app replicas run
+`initialize → verify` to confirm an already-migrated schema. See
+[docs/migrations.md](./docs/migrations.md) and
+[docs/schema-drift.md](./docs/schema-drift.md).
 
 ## Error model
 

@@ -12,7 +12,6 @@ from snektest import assert_eq, test
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -22,6 +21,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
+from tests.helpers import initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -159,7 +159,7 @@ async def distinct_collapses_duplicate_rows_at_runtime() -> None:
         )
         status: Visit.Col[str] = Text(nullable=False)
 
-    database = await Database.initialize(database=":memory:", models=[Visit])
+    database = await initialized_database(database=":memory:", models=[Visit])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(Visit(status="active")))

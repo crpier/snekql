@@ -5,16 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import Any, Literal, cast
 
 from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from snekql.model import Table
-    from snekql.storage import SchemaPolicy
 
 _MAX_TCP_PORT = 65535
 
@@ -84,31 +78,8 @@ class Config:
 
         return "mariadb"
 
-    async def initialize_runtime(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-        *,
-        migrations: dict[str, str] | None = None,
-    ) -> object:
+    async def initialize_runtime(self) -> object:
         """Import and initialize the MariaDB Backend Runtime Adapter lazily."""
 
         runtime_module = import_module("snekql.mariadb.runtime")
-        return await cast("Any", runtime_module).initialize_runtime(
-            self,
-            models,
-            schema_policy,
-            migrations=migrations,
-        )
-
-    async def apply_migrations(
-        self,
-        migrations: dict[str, str],
-    ) -> None:
-        """Apply pending migrations on a migrate-only MariaDB connection."""
-
-        runtime_module = import_module("snekql.mariadb.runtime")
-        await cast("Any", runtime_module).migrate_runtime(
-            self,
-            migrations,
-        )
+        return await cast("Any", runtime_module).initialize_runtime(self)

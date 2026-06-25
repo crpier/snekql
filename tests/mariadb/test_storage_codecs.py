@@ -13,14 +13,17 @@ from snekql import mariadb
 from snekql.mariadb import (
     PENDING_GENERATION,
     CurrentTimestamp,
-    Database,
     Fetched,
     ModelDeclarationError,
     Pending,
     insert,
     select,
 )
-from tests.helpers import TemporaryMariaDBServer, provide_mariadb_server
+from tests.helpers import (
+    TemporaryMariaDBServer,
+    initialized_database,
+    provide_mariadb_server,
+)
 
 
 def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
@@ -164,7 +167,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         message: Event.Col[str] = mariadb.Text(nullable=False)
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
-    database = await Database.initialize(_config_from_server(server), models=[Event])
+    database = await initialized_database(_config_from_server(server), models=[Event])
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     account_id = uuid.uuid4()
     try:

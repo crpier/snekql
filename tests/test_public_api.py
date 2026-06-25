@@ -100,7 +100,8 @@ _NEUTRAL_NAMES = frozenset(
 # describe driver-specific write semantics while preserving the same query API.
 _WRITE_VERB_NAMES = frozenset({"delete", "insert", "update"})
 # Dialect-specific symbols shared by both backends: each backend's ``Model``
-# base, ``Config``, and the four storage-primitive column constructors.
+# base, ``Config``, ``scaffold`` (bound to that backend's DDL dialect), and the
+# four storage-primitive column constructors.
 _DIALECT_NAMES = frozenset(
     {
         "Blob",
@@ -111,6 +112,7 @@ _DIALECT_NAMES = frozenset(
         "Model",
         "Real",
         "Text",
+        "scaffold",
     },
 )
 # SQLite collapses to the four storage classes; MariaDB additionally exposes its

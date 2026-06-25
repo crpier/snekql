@@ -54,8 +54,8 @@ class SQLiteMigrationBackend:
         Concurrent runs against one database file serialize their writes through
         SQLite's single-writer file lock, and `busy_timeout` makes a losing
         writer wait rather than raise "database is locked". The seam is a no-op:
-        there is no cross-connection lock to acquire, so run migrations from a
-        single place (`Database.migrate`) for a strong guarantee.
+        there is no cross-connection lock to acquire, so run `db.migrate(...)`
+        from a single place for a strong guarantee.
         """
 
         return nullcontext()

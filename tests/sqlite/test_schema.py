@@ -1,4 +1,4 @@
-"""SQLite Database initialization and schema verification tests."""
+"""SQLite migrate-built schema DDL and verification tests."""
 
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ from snekql.sqlite import (
     SchemaVerificationError,
     Text,
 )
-from snekql.sqlite.schema import initialize_sqlite_schema
-from tests.helpers import capture_snekql_logs
+from snekql.sqlite.schema import verify_sqlite_schema
+from tests.helpers import capture_snekql_logs, migrate_models
 
 
 def _execute_sql(database_path: Path, sql: str) -> None:
@@ -75,20 +75,8 @@ def _fetch_create_indexes(database_path: Path, table_name: str) -> list[str]:
         connection.close()
 
 
-def _table_exists(database_path: Path, table_name: str) -> bool:
-    connection = connect(database_path)
-    try:
-        cursor = connection.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
-            (table_name,),
-        )
-        return cursor.fetchone() is not None
-    finally:
-        connection.close()
-
-
 class _SchemaCursor:
-    """Cursor fake that records whether schema startup closes it."""
+    """Cursor fake that records whether schema verification closes it."""
 
     def __init__(self, *, fetchone_row: tuple[object, ...] | None = None) -> None:
         self.closed: bool = False
@@ -115,18 +103,16 @@ class _SchemaConnection:
         sql: str,
         params: tuple[object, ...] = (),
     ) -> _SchemaCursor:
+        _ = sql
         _ = params
         cursor = _SchemaCursor()
         self.cursors.append(cursor)
-        if "sqlite_master WHERE type = 'table'" in sql:
-            cursor = _SchemaCursor(fetchone_row=None)
-            self.cursors[-1] = cursor
         return cursor
 
 
 @test(mark="medium")
-async def initialize_creates_missing_strict_tables() -> None:
-    """Initialization creates deterministic quoted STRICT tables."""
+async def migrate_builds_quoted_strict_tables() -> None:
+    """Scaffolded migrations build deterministic quoted STRICT tables."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for schema creation."""
@@ -140,7 +126,8 @@ async def initialize_creates_missing_strict_tables() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -153,7 +140,7 @@ async def initialize_creates_missing_strict_tables() -> None:
 
 
 @test(mark="medium")
-async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
+async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
     """`ForeignKey` renders a REFERENCES constraint; soft refs do not."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -180,9 +167,8 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            database=database_path, models=[User, Order]
-        )
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User, Order])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "order")
@@ -197,7 +183,7 @@ async def initialize_emits_foreign_key_constraints_only_when_enabled() -> None:
 
 
 @test(mark="medium")
-async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> None:
+async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None:
     """A `ForeignKey` to a unique non-PK column references that column by name."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -222,9 +208,8 @@ async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> N
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            database=database_path, models=[User, Order]
-        )
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User, Order])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "order")
@@ -238,9 +223,7 @@ async def initialize_emits_a_reference_to_a_non_primary_key_target_column() -> N
 
 
 @test(mark="medium")
-async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing() -> (
-    None
-):
+async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> None:
     """An existing table lacking a managed FK constraint is strict-policy drift."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -274,8 +257,12 @@ async def strict_schema_policy_raises_when_a_foreign_key_constraint_is_missing()
         )
         _execute_sql(database_path, order_sql)
 
-        with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[User, Order])
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User, Order])
+        finally:
+            await database.close()
 
 
 @test(mark="medium")
@@ -295,7 +282,8 @@ async def initialize_accepts_sqlite_config_object() -> None:
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
         config = sqlite.Config(database=database_path, pool_size=2)
-        database = await Database.initialize(config, models=[User])
+        database = await Database.initialize(config)
+        await migrate_models(database, [User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -322,8 +310,8 @@ async def initialize_rejects_mixed_sqlite_config_and_legacy_database() -> None:
 
 
 @test(mark="medium")
-async def initialize_creates_column_unique_indexes_after_tables() -> None:
-    """Column unique declarations create separate deterministic unique indexes."""
+async def migrate_builds_column_unique_indexes_after_tables() -> None:
+    """Column unique declarations build separate deterministic unique indexes."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique public identifier."""
@@ -333,7 +321,8 @@ async def initialize_creates_column_unique_indexes_after_tables() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User])
         await database.close()
 
         create_table = _fetch_create_table(database_path, "user")
@@ -350,8 +339,8 @@ async def initialize_creates_column_unique_indexes_after_tables() -> None:
 
 
 @test(mark="medium")
-async def initialize_creates_table_indexes_in_declaration_order() -> None:
-    """Table index declarations create deterministic index SQL after uniques."""
+async def migrate_builds_table_indexes_in_declaration_order() -> None:
+    """Table index declarations build deterministic index SQL after uniques."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with single and composite table indexes."""
@@ -368,7 +357,8 @@ async def initialize_creates_table_indexes_in_declaration_order() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User])
         await database.close()
 
         create_indexes = _fetch_create_indexes(database_path, "user")
@@ -416,7 +406,7 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
 
 
 @test(mark="medium")
-async def initialize_verifies_existing_tables_after_controlled_normalization() -> None:
+async def verify_accepts_existing_tables_after_controlled_normalization() -> None:
     """Equivalent snekql DDL with formatting differences verifies cleanly."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -439,12 +429,9 @@ async def initialize_verifies_existing_tables_after_controlled_normalization() -
         )
         _execute_sql(database_path, existing_sql)
 
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await database.verify([User])
         await database.close()
-
-        create_table = _fetch_create_table(database_path, "user")
-
-    assert_true("STRICT" in create_table)
 
 
 @test(mark="medium")
@@ -469,7 +456,8 @@ async def cosmetically_different_ddl_verifies_semantically() -> None:
         )
         _execute_sql(database_path, existing_sql)
 
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await database.verify([User])
         await database.close()
 
 
@@ -495,7 +483,8 @@ async def model_matching_migration_evolved_table_verifies_clean() -> None:
         _execute_sql(database_path, existing_sql)
         _execute_sql(database_path, 'ALTER TABLE "user" ADD COLUMN "age" INTEGER')
 
-        database = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        await database.verify([User])
         await database.close()
 
 
@@ -519,8 +508,12 @@ async def strict_drift_error_names_the_divergent_column() -> None:
         )
         _execute_sql(database_path, existing_sql)
 
-        with assert_raises(SchemaVerificationError) as raised:
-            _ = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([User])
+        finally:
+            await database.close()
 
     message = str(raised.exception)
     assert_true("'email'" in message)
@@ -528,7 +521,7 @@ async def strict_drift_error_names_the_divergent_column() -> None:
 
 
 @test(mark="medium")
-async def strict_schema_policy_raises_on_index_drift() -> None:
+async def strict_verify_raises_on_index_drift() -> None:
     """Strict schema verification rejects missing managed indexes."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -542,13 +535,17 @@ async def strict_schema_policy_raises_on_index_drift() -> None:
             database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL) STRICT'
         )
 
-        with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User])
+        finally:
+            await database.close()
 
 
 @test(mark="medium")
 async def duplicate_resolved_index_names_are_rejected() -> None:
-    """Initialization rejects duplicate index names across configured models."""
+    """Verification rejects duplicate index names across configured models."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """First model using an explicit index name."""
@@ -568,15 +565,16 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        with assert_raises(SchemaError):
-            _ = await Database.initialize(
-                database=database_path,
-                models=[User, Account],
-            )
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaError):
+                await database.verify([User, Account])
+        finally:
+            await database.close()
 
 
 @test(mark="medium")
-async def strict_schema_policy_raises_on_schema_drift() -> None:
+async def strict_verify_raises_on_schema_drift() -> None:
     """Strict schema verification rejects existing non-STRICT tables."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -588,13 +586,17 @@ async def strict_schema_policy_raises_on_schema_drift() -> None:
         database_path = Path(directory) / "app.db"
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
-        with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(database=database_path, models=[User])
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User])
+        finally:
+            await database.close()
 
 
 @test(mark="medium")
-async def warn_schema_policy_logs_drift_and_continues() -> None:
-    """Warn schema verification reports drift without blocking startup."""
+async def warn_verify_policy_logs_drift_and_continues() -> None:
+    """Warn schema verification reports drift without raising."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift detection."""
@@ -605,11 +607,8 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
         database_path = Path(directory) / "app.db"
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
-        database = await Database.initialize(
-            database=database_path,
-            models=[User],
-            schema_policy="warn",
-        )
+        database = await Database.initialize(database=database_path)
+        await database.verify([User], policy="warn")
         await database.close()
 
     assert_true(logs.has(logging.WARNING, "schema drift detected"))
@@ -617,7 +616,7 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
 
 @test(mark="medium")
 async def duplicate_resolved_table_names_are_rejected() -> None:
-    """Initialization rejects duplicate table names before schema setup."""
+    """Verification rejects duplicate table names before inspecting the schema."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """First model for duplicate table detection."""
@@ -632,58 +631,29 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        with assert_raises(SchemaError):
-            _ = await Database.initialize(
-                database=database_path,
-                models=[User, Account],
-            )
-
-
-@test(mark="medium")
-async def schema_setup_rolls_back_created_tables_on_strict_drift() -> None:
-    """Schema setup is transactional for create plus verification failure."""
-
-    class CreatedFirst[S = Pending](Model[S, "CreatedFirst[Fetched]"]):
-        """Missing table that should be rolled back."""
-
-        email: CreatedFirst.Col[str] = Text(nullable=False)
-
-    class ExistingDrift[S = Pending](Model[S, "ExistingDrift[Fetched]"]):
-        """Existing drift table that aborts initialization."""
-
-        email: ExistingDrift.Col[str] = Text(nullable=False)
-
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        _execute_sql(
-            database_path,
-            'CREATE TABLE "existing_drift" ("email" TEXT NOT NULL)',
-        )
-
-        with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(
-                database=database_path,
-                models=[CreatedFirst, ExistingDrift],
-            )
-
-        assert_true(not _table_exists(database_path, "created_first"))
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaError):
+                await database.verify([User, Account])
+        finally:
+            await database.close()
 
 
 @test(mark="fast")
-async def schema_startup_closes_ddl_and_control_cursors() -> None:
-    """SQLite schema startup closes cursors returned by DDL/control statements."""
+async def schema_verification_closes_control_cursors() -> None:
+    """SQLite schema verification closes cursors returned by control statements."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
-        """Model used to force BEGIN, DDL, metadata fetch, and COMMIT."""
+        """Model used to force BEGIN, metadata fetch, and COMMIT."""
 
         email: User.Col[str] = Text(nullable=False)
 
     connection = _SchemaConnection()
 
-    await initialize_sqlite_schema(
+    await verify_sqlite_schema(
         cast("Any", connection),
         [User],
-        "strict",
+        "warn",
     )
 
     assert connection.cursors

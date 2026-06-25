@@ -12,11 +12,7 @@ from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from snekql._runtime_selection import RuntimeConfig
-    from snekql.model import Table
-    from snekql.storage import SchemaPolicy
 
 
 def _resolve_pool_size(
@@ -76,13 +72,7 @@ class Config:
 
         return "sqlite"
 
-    async def initialize_runtime(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-        *,
-        migrations: dict[str, str] | None = None,
-    ) -> object:
+    async def initialize_runtime(self) -> object:
         """Import and initialize the SQLite Backend Runtime Adapter lazily."""
 
         try:
@@ -96,34 +86,7 @@ class Config:
                 raise DatabaseRuntimeError(msg) from error
             raise
 
-        return await cast("Any", runtime_module).initialize_runtime(
-            self,
-            models,
-            schema_policy,
-            migrations=migrations,
-        )
-
-    async def apply_migrations(
-        self,
-        migrations: dict[str, str],
-    ) -> None:
-        """Apply pending migrations on a migrate-only SQLite connection."""
-
-        try:
-            runtime_module = import_module("snekql.sqlite.runtime")
-        except ModuleNotFoundError as error:
-            if error.name == "aiosqlite":
-                msg = (
-                    "SQLite runtime requires the aiosqlite extra; "
-                    "install with snekql[aiosqlite]"
-                )
-                raise DatabaseRuntimeError(msg) from error
-            raise
-
-        await cast("Any", runtime_module).migrate_runtime(
-            self,
-            migrations,
-        )
+        return await cast("Any", runtime_module).initialize_runtime(self)
 
 
 def _build_default_config(
