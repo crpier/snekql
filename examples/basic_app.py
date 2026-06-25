@@ -18,6 +18,7 @@ from snekql.sqlite import (
     Pending,
     delete,
     insert,
+    scaffold,
     select,
     update,
 )
@@ -39,11 +40,15 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
 async def main() -> None:
     """Exercise v1 create, read, update, and delete behavior."""
 
+    # Initialization only connects; schema is built by applying migrations and
+    # then verified against the models. `scaffold` emits the initial CREATE
+    # TABLE DDL you own and paste into your migration set (here inlined).
     db = await Database.initialize(
         sqlite.Config(database=":memory:", pool_size=1),
-        models=[User],
     )
     try:
+        await db.migrate({"0001_create_user": scaffold([User])})
+        await db.verify([User])
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
             await tx.execute(insert(User(email="bob@example.com")))

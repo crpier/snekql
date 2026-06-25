@@ -1,4 +1,10 @@
-"""Backend-neutral schema startup flow shared by Backend Runtime Adapters."""
+"""Backend-neutral schema verification flow shared by Backend Runtime Adapters.
+
+Verification is an explicit, partial, structural check (see ADR 0008): it
+inspects the live shape of each Table Model's table and diffs it against the
+expected shape, reporting Schema Drift under the active Schema Policy. It never
+creates anything -- migrations are the sole schema-creation authority (ADR 0007).
+"""
 
 from __future__ import annotations
 
@@ -20,7 +26,6 @@ if TYPE_CHECKING:
 
     from snekql._schema_plan import PlannedModel
     from snekql._schema_shape import TableShape
-    from snekql.indexes import NormalizedIndex
     from snekql.model import Table
     from snekql.storage import SchemaPolicy
 
@@ -28,28 +33,24 @@ logger = logging.getLogger(__name__)
 
 
 class SchemaBackend(Protocol):
-    """Backend seam for schema DDL execution and live-schema inspection.
+    """Backend seam for live-schema inspection used by the verification flow.
 
-    The startup flow — verify-or-create per table, semantic Schema Drift
-    reporting under the active Schema Policy — lives in this module. Backends
-    answer only with the shape a model expects, the shape a live table actually
-    has, and how to create what is missing; the shared flow diffs the two and
-    names each divergence.
+    The verification flow -- diff each model's expected shape against the live
+    table and report semantic Schema Drift under the active Schema Policy --
+    lives in this module. Backends answer only with the shape a model expects
+    and the shape a live table actually has; the shared flow diffs the two and
+    names each divergence. No backend creates schema: migrations do.
     """
 
-    def startup_transaction(self) -> AbstractAsyncContextManager[None]: ...
+    def verification_transaction(self) -> AbstractAsyncContextManager[None]: ...
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape: ...
 
     async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None: ...
 
-    async def create_table(self, planned_model: PlannedModel) -> None: ...
-
-    async def create_index(self, table_name: str, index: NormalizedIndex) -> str: ...
-
 
 def validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
-    """Reject duplicate resolved table names before schema startup."""
+    """Reject duplicate resolved table names before schema verification."""
 
     _ = build_schema_plan(models)
 
@@ -72,17 +73,6 @@ def _report_schema_drift(
     logger.warning("%s", message)
 
 
-async def _create_model_schema(
-    backend: SchemaBackend,
-    planned_model: PlannedModel,
-) -> None:
-    await backend.create_table(planned_model)
-    logger.debug("schema table %r created", planned_model.table_name)
-    for index in planned_model.indexes:
-        sql = await backend.create_index(planned_model.table_name, index)
-        logger.debug("schema index created on %r: %s", planned_model.table_name, sql)
-
-
 async def _verify_model_schema(
     backend: SchemaBackend,
     planned_model: PlannedModel,
@@ -97,40 +87,34 @@ async def _verify_model_schema(
     logger.debug("schema table and indexes for %r verified", planned_model.table_name)
 
 
-async def initialize_schema(
+async def verify_schema(
     backend: SchemaBackend,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-    *,
-    create_missing: bool = True,
 ) -> None:
-    """Create or verify all configured tables through one schema backend.
+    """Verify all configured tables against the live schema through one backend.
 
-    When `create_missing` is False, Migrations are the sole schema-creation
-    authority: a missing table is reported as Schema Drift instead of being
-    created, so the models stay the enforced contract the migration list must
-    converge to.
+    Migrations are the sole schema-creation authority (ADR 0007): a missing
+    table is reported as Schema Drift, never created, so the models stay the
+    enforced contract the migration chain must converge to.
     """
 
     validate_schema_policy(schema_policy)
     plan = build_schema_plan(models)
     if not plan.models:
         return
-    logger.debug("schema startup started for %d model(s)", len(plan.models))
-    async with backend.startup_transaction():
+    logger.debug("schema verification started for %d model(s)", len(plan.models))
+    async with backend.verification_transaction():
         for planned_model in plan.models:
             actual_shape = await backend.inspect_shape(planned_model)
             if actual_shape is None:
-                if not create_missing:
-                    _report_schema_drift(
-                        schema_policy,
-                        planned_model.table_name,
-                        ("table is missing from the database",),
-                    )
-                    continue
-                await _create_model_schema(backend, planned_model)
+                _report_schema_drift(
+                    schema_policy,
+                    planned_model.table_name,
+                    ("table is missing from the database",),
+                )
                 continue
             await _verify_model_schema(
                 backend, planned_model, actual_shape, schema_policy
             )
-    logger.debug("schema startup completed for %d model(s)", len(plan.models))
+    logger.debug("schema verification completed for %d model(s)", len(plan.models))

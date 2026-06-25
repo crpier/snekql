@@ -1,4 +1,4 @@
-"""Backend-neutral schema startup flow tests using a fake schema backend."""
+"""Backend-neutral schema verification flow tests using a fake schema backend."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql._schema_shape import ColumnShape, IndexShape, TableShape
-from snekql._schema_startup import initialize_schema
+from snekql._schema_startup import verify_schema
 from snekql.sqlite import (
     Fetched,
     Index,
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from snekql._schema_plan import PlannedModel
-    from snekql.indexes import NormalizedIndex
 
 
 _USER_SHAPE = TableShape(
@@ -75,7 +74,7 @@ class _FakeSchemaBackend:
         self.transaction_events: list[str] = []
 
     @asynccontextmanager
-    async def startup_transaction(self) -> AsyncGenerator[None]:
+    async def verification_transaction(self) -> AsyncGenerator[None]:
         self.transaction_events.append("enter")
         try:
             yield
@@ -90,17 +89,9 @@ class _FakeSchemaBackend:
         self.calls.append(("inspect_shape", planned_model.table_name))
         return self.actual.get(planned_model.table_name)
 
-    async def create_table(self, planned_model: PlannedModel) -> None:
-        self.calls.append(("create_table", planned_model.table_name))
-
-    async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
-        _ = table_name
-        self.calls.append(("create_index", index.name))
-        return f"CREATE INDEX {index.name}"
-
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    """Table model with one index used by schema startup flow tests."""
+    """Table model with one index used by schema verification flow tests."""
 
     id: User.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     email: User.Col[str] = Text(nullable=False)
@@ -124,35 +115,46 @@ def _drifted_user_shape() -> TableShape:
 
 
 @test(mark="fast")
-async def missing_tables_are_created_with_their_indexes() -> None:
-    """Schema startup creates absent tables and their indexes inside the startup transaction."""
+async def missing_table_is_reported_as_drift() -> None:
+    """A model whose table is absent is drift under strict, never created."""
+
+    backend = _FakeSchemaBackend()
+
+    with assert_raises(SchemaVerificationError) as raised:
+        await verify_schema(backend, [User], "strict")
+
+    assert_eq(backend.transaction_events, ["enter", "exit"])
+    message = str(raised.exception)
+    assert_true("user" in message)
+    assert_true("missing" in message)
+
+
+@test(mark="fast")
+async def missing_table_under_warn_logs_drift_and_continues() -> None:
+    """A missing table under warn logs drift rather than raising."""
 
     backend = _FakeSchemaBackend()
 
     with capture_snekql_logs() as logs:
-        await initialize_schema(backend, [User], "strict")
+        await verify_schema(backend, [User], "warn")
 
-    assert_eq(
-        backend.calls,
-        [
-            ("inspect_shape", "user"),
-            ("create_table", "user"),
-            ("create_index", "ix_user_email"),
-        ],
-    )
-    assert_eq(backend.transaction_events, ["enter", "exit"])
-    assert_true(logs.has(logging.DEBUG, "schema table 'user' created"))
-    assert_true(logs.has(logging.DEBUG, "schema index created on 'user'"))
+    drift_warnings = [
+        message
+        for message in logs.messages(logging.WARNING)
+        if "schema drift detected" in message
+    ]
+    assert_eq(len(drift_warnings), 1)
+    assert_true("missing" in drift_warnings[0])
 
 
 @test(mark="fast")
 async def strict_schema_policy_raises_on_drift() -> None:
-    """A live shape that diverges from the model fails startup under strict policy."""
+    """A live shape that diverges from the model fails under strict policy."""
 
     backend = _FakeSchemaBackend(actual={"user": _drifted_user_shape()})
 
     with assert_raises(SchemaVerificationError):
-        await initialize_schema(backend, [User], "strict")
+        await verify_schema(backend, [User], "strict")
 
     assert_eq(backend.transaction_events, ["enter", "exit"])
 
@@ -164,7 +166,7 @@ async def strict_drift_error_names_the_divergent_index() -> None:
     backend = _FakeSchemaBackend(actual={"user": _drifted_user_shape()})
 
     with assert_raises(SchemaVerificationError) as raised:
-        await initialize_schema(backend, [User], "strict")
+        await verify_schema(backend, [User], "strict")
 
     message = str(raised.exception)
     assert_true("user" in message)
@@ -174,12 +176,12 @@ async def strict_drift_error_names_the_divergent_index() -> None:
 
 @test(mark="fast")
 async def warn_schema_policy_logs_drift_and_continues() -> None:
-    """Drift under the warn schema policy logs a warning with issues and completes startup."""
+    """Drift under the warn schema policy logs a warning with issues and completes."""
 
     backend = _FakeSchemaBackend(actual={"user": _drifted_user_shape()})
 
     with capture_snekql_logs() as logs:
-        await initialize_schema(backend, [User], "warn")
+        await verify_schema(backend, [User], "warn")
 
     drift_warnings = [
         message
@@ -188,59 +190,29 @@ async def warn_schema_policy_logs_drift_and_continues() -> None:
     ]
     assert_eq(len(drift_warnings), 1)
     assert_true("'user'" in drift_warnings[0])
-    assert_true(logs.has(logging.DEBUG, "schema startup completed"))
+    assert_true(logs.has(logging.DEBUG, "schema verification completed"))
 
 
 @test(mark="fast")
 async def matching_schema_is_verified_without_mutation() -> None:
-    """A fully matching live schema verifies tables and indexes without DDL."""
+    """A fully matching live schema verifies tables and indexes without any DDL."""
 
     backend = _FakeSchemaBackend(actual={"user": _USER_SHAPE})
 
     with capture_snekql_logs() as logs:
-        await initialize_schema(backend, [User], "strict")
+        await verify_schema(backend, [User], "strict")
 
-    call_names = [name for name, _ in backend.calls]
-    assert_true("create_table" not in call_names)
-    assert_true("create_index" not in call_names)
     assert_true(logs.has(logging.DEBUG, "schema table and indexes for 'user' verified"))
 
 
 @test(mark="fast")
-async def verify_only_startup_reports_missing_table_as_drift() -> None:
-    """With create_missing=False a missing table is drift, not auto-created."""
-
-    backend = _FakeSchemaBackend()
-
-    with assert_raises(SchemaVerificationError):
-        await initialize_schema(backend, [User], "strict", create_missing=False)
-
-    call_names = [name for name, _ in backend.calls]
-    assert_true("create_table" not in call_names)
-
-
-@test(mark="fast")
-async def verify_only_startup_verifies_existing_table_without_creating() -> None:
-    """With create_missing=False an existing matching table is verified, never created."""
-
-    backend = _FakeSchemaBackend(actual={"user": _USER_SHAPE})
-
-    with capture_snekql_logs() as logs:
-        await initialize_schema(backend, [User], "strict", create_missing=False)
-
-    call_names = [name for name, _ in backend.calls]
-    assert_true("create_table" not in call_names)
-    assert_true(logs.has(logging.DEBUG, "schema table and indexes for 'user' verified"))
-
-
-@test(mark="fast")
-async def empty_model_list_skips_schema_startup() -> None:
-    """Schema startup with no models performs no backend work."""
+async def empty_model_list_skips_schema_verification() -> None:
+    """Schema verification with no models performs no backend work."""
 
     backend = _FakeSchemaBackend()
 
     with capture_snekql_logs() as logs:
-        await initialize_schema(backend, [], "strict")
+        await verify_schema(backend, [], "strict")
 
     assert_eq(backend.calls, [])
     assert_eq(backend.transaction_events, [])

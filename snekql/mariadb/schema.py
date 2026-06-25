@@ -1,4 +1,4 @@
-"""MariaDB schema startup for snekql table models."""
+"""MariaDB schema verification and scaffold for snekql table models."""
 
 from __future__ import annotations
 
@@ -6,17 +6,15 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
+from snekql._scaffold import scaffold_ddl, scaffold_statements
 from snekql._schema_compile import (
-    compile_create_index_sql,
-    compile_create_table_sql,
     expected_table_shape,
 )
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_plan import PlannedColumn, PlannedModel
 from snekql._schema_shape import ColumnShape, IndexShape, TableShape
-from snekql._schema_startup import initialize_schema
+from snekql._schema_startup import verify_schema
 from snekql.errors import SchemaError
-from snekql.indexes import NormalizedIndex
 from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.model import Table
@@ -148,20 +146,6 @@ async def _close_cursor(cursor: object) -> None:
         _ = await close_result
 
 
-async def _execute(
-    connection: object,
-    sql: str,
-    params: tuple[object, ...] = (),
-) -> None:
-    """Execute one MariaDB schema statement with a dynamically imported driver."""
-
-    cursor = await cast("Any", connection).cursor()
-    try:
-        _ = await cursor.execute(sql, params)
-    finally:
-        await _close_cursor(cursor)
-
-
 async def _fetchall(
     connection: object,
     sql: str,
@@ -284,8 +268,8 @@ class MariaDBSchemaBackend:
         self.connection: object = connection
 
     @asynccontextmanager
-    async def startup_transaction(self) -> AsyncGenerator[None]:
-        """MariaDB DDL is not transactional; startup runs without one."""
+    async def verification_transaction(self) -> AsyncGenerator[None]:
+        """MariaDB schema verification reads the catalog without a transaction."""
 
         yield
 
@@ -305,30 +289,30 @@ class MariaDBSchemaBackend:
             storage_options=("ENGINE=InnoDB",) if engine_innodb else (),
         )
 
-    async def create_table(self, planned_model: PlannedModel) -> None:
-        await _execute(
-            self.connection,
-            compile_create_table_sql(planned_model, _SCHEMA_DIALECT),
-        )
 
-    async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
-        sql = compile_create_index_sql(table_name, index, _SCHEMA_DIALECT)
-        await _execute(self.connection, sql)
-        return sql
-
-
-async def initialize_mariadb_schema(
+async def verify_mariadb_schema(
     connection: object,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-    *,
-    create_missing: bool = True,
 ) -> None:
-    """Create or verify all configured MariaDB tables."""
+    """Verify all configured MariaDB tables against the live schema."""
 
-    await initialize_schema(
+    await verify_schema(
         MariaDBSchemaBackend(connection),
         models,
         schema_policy,
-        create_missing=create_missing,
     )
+
+
+def scaffold_mariadb_ddl(models: Sequence[type[Table[Any]]]) -> str:
+    """Emit the initial CREATE TABLE (and index) DDL for MariaDB models as text."""
+
+    return scaffold_ddl(models, _SCHEMA_DIALECT)
+
+
+def scaffold_mariadb_statements(
+    models: Sequence[type[Table[Any]]],
+) -> list[tuple[str, str]]:
+    """Return (label, DDL) statement pairs for MariaDB model creation."""
+
+    return scaffold_statements(models, _SCHEMA_DIALECT)

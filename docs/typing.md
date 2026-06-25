@@ -270,9 +270,11 @@ portable.
 
 ## Mixed-backend safety
 
-Table models carry backend identity. `Database.initialize(...)` rejects a model
-whose backend does not match the runtime config, and `Transaction` rejects a
-query built from another backend's model before SQL is executed.
+Table models carry backend identity. `db.verify(...)` rejects a model whose
+backend does not match the runtime config, and `Transaction` rejects a query
+built from another backend's model before SQL is executed. (Initialization is
+connect-only and takes no models, so a wrong-backend deploy is caught at the
+first `verify` or query, not at init.)
 
 Pyright can see the backend namespace types where they are explicit, and runtime
 checks cover the remaining cases that Python's type system cannot express yet.

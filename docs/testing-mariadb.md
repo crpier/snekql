@@ -5,12 +5,14 @@
 ## Python API
 
 ```python
-from snekql.mariadb import Database
+from snekql.mariadb import Database, scaffold
 from snekql.testing.mariadb import temporary_mariadb_server
 
 async with temporary_mariadb_server() as server:
     config = server.config()
-    database = await Database.initialize(config, models=[User])
+    database = await Database.initialize(config)
+    await database.migrate({"0001_create_user": scaffold([User])})
+    await database.verify([User])
 ```
 
 The context manager starts an unprivileged local `mariadbd`, waits until it is ready, creates the requested test database, yields connection details, and stops the server when the context exits.

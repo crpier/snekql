@@ -12,7 +12,6 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -30,6 +29,7 @@ from snekql.sqlite.query import (
     compile_sqlite_select_sql,
     materialize_sqlite_select_row,
 )
+from tests.helpers import initialized_database
 
 
 @test(mark="medium")
@@ -47,7 +47,7 @@ async def fetch_all_materializes_model_rows() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -84,7 +84,7 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -117,7 +117,7 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -190,7 +190,7 @@ class _Person[S = Pending](Model[S, "_Person[Fetched]"]):
 async def fetch_one_returns_the_single_matching_row() -> None:
     """fetch_one returns the one matching row for an exactly-one select."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(_Person(email="a@example.com")))
@@ -212,7 +212,7 @@ async def fetch_one_returns_the_single_matching_row() -> None:
 async def fetch_one_raises_when_no_row_matches() -> None:
     """fetch_one raises NoResultError rather than returning None for no row."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             with assert_raises(NoResultError):
@@ -227,7 +227,7 @@ async def fetch_one_raises_when_no_row_matches() -> None:
 async def fetch_one_raises_when_more_than_one_row_matches() -> None:
     """fetch_one raises MultipleResultsError when the select matches many rows."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(_Person(email="a@example.com")))
@@ -250,7 +250,7 @@ async def fetch_one_raises_when_more_than_one_row_matches() -> None:
 async def fetch_one_distinguishes_sql_null_from_a_missing_row() -> None:
     """A returned None from a single-value fetch_one means SQL NULL, not no row."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(_Person(email="a@example.com", nickname=None)))
@@ -273,7 +273,7 @@ async def fetch_one_distinguishes_sql_null_from_a_missing_row() -> None:
 async def fetch_one_or_none_returns_none_for_a_missing_row() -> None:
     """fetch_one_or_none yields None for no row and the row when exactly one."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             missing = await tx.fetch_one_or_none(
@@ -295,7 +295,7 @@ async def fetch_one_or_none_returns_none_for_a_missing_row() -> None:
 async def fetch_one_or_none_raises_when_more_than_one_row_matches() -> None:
     """fetch_one_or_none caps cardinality at one like fetch_one does."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(_Person(email="a@example.com")))
@@ -311,7 +311,7 @@ async def fetch_one_or_none_raises_when_more_than_one_row_matches() -> None:
 async def fetch_one_or_none_rejects_single_value_selects() -> None:
     """fetch_one_or_none refuses the shape whose None would be ambiguous."""
 
-    database = await Database.initialize(database=":memory:", models=[_Person])
+    database = await initialized_database(database=":memory:", models=[_Person])
     try:
         async with database.transaction() as tx:
             with assert_raises(QueryConstructionError):
@@ -336,7 +336,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
+        database = await initialized_database(
             database=database_path,
             models=[FeatureFlag],
         )
@@ -351,7 +351,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
         finally:
             connection.close()
 
-        database = await Database.initialize(
+        database = await initialized_database(
             database=database_path,
             models=[FeatureFlag],
         )

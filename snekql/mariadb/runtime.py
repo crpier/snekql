@@ -27,7 +27,7 @@ from snekql.mariadb.query import (
     materialize_mariadb_select_row,
     materialize_mariadb_write_rows,
 )
-from snekql.mariadb.schema import initialize_mariadb_schema
+from snekql.mariadb.schema import verify_mariadb_schema
 from snekql.mariadb.settings import configure_mariadb_connection
 from snekql.model import Table
 from snekql.query import AnySelectQuery
@@ -213,9 +213,11 @@ class MariaDBRuntime:
         *,
         acquire_timeout: NonNegativeFloat,
         connection_pool: MariaDBConnectionPool,
+        migration_lock_name: str,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: MariaDBConnectionPool = connection_pool
+        self.migration_lock_name: str = migration_lock_name
 
     async def acquire(
         self,
@@ -223,6 +225,33 @@ class MariaDBRuntime:
     ) -> MariaDBConnectionAdapter:
         connection = await self.connection_pool.acquire(acquisition_timeout)
         return MariaDBConnectionAdapter(connection)
+
+    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+        """Apply pending migrations on a pooled connection under the lock (ADR 0007)."""
+
+        connection = await self.connection_pool.acquire(self.acquire_timeout)
+        try:
+            await apply_mariadb_migrations(
+                connection,
+                migrations,
+                lock_name=self.migration_lock_name,
+                lock_timeout=self.acquire_timeout,
+            )
+        finally:
+            await self.connection_pool.release(connection)
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None:
+        """Verify the live schema against models on a pooled connection."""
+
+        connection = await self.connection_pool.acquire(self.acquire_timeout)
+        try:
+            await verify_mariadb_schema(connection, models, schema_policy)
+        finally:
+            await self.connection_pool.release(connection)
 
     async def release(self, connection: object) -> None:
         if not isinstance(connection, MariaDBConnectionAdapter):
@@ -266,14 +295,13 @@ class MariaDBRuntime:
         return materialize_mariadb_write_rows(query, rows, validate=validate)
 
 
-async def initialize_runtime(
-    config: Config,
-    models: Sequence[type[Table[Any]]],
-    schema_policy: SchemaPolicy,
-    *,
-    migrations: dict[str, str] | None = None,
-) -> MariaDBRuntime:
-    """Initialize MariaDB connectivity, migrations, schema startup, and pool."""
+async def initialize_runtime(config: Config) -> MariaDBRuntime:
+    """Open MariaDB connectivity and a connection pool; do no schema work.
+
+    Initialization is connect-only (ADR 0007): it opens the pool, proves it can
+    acquire and configure a connection, and returns a live runtime. Migrations
+    and verification are explicit verbs on the Database.
+    """
 
     aiomysql = _import_aiomysql()
     logger.debug("mariadb pool opening: %s:%s", config.host, config.port)
@@ -291,70 +319,14 @@ async def initialize_runtime(
         user=config.user,
     )
     connection_pool = MariaDBConnectionPool(pool)
+    # Prove connectivity (and apply session settings once) before returning.
     connection = await connection_pool.acquire(config.acquire_timeout)
-    try:
-        if migrations:
-            await apply_mariadb_migrations(
-                connection,
-                migrations,
-                lock_name=build_migration_lock_name(config.database),
-                lock_timeout=config.acquire_timeout,
-            )
-        await initialize_mariadb_schema(
-            connection,
-            models,
-            schema_policy,
-            create_missing=not migrations,
-        )
-    except Exception:
-        await connection_pool.release(connection)
-        await connection_pool.close(config.acquire_timeout)
-        raise
     await connection_pool.release(connection)
     return MariaDBRuntime(
         acquire_timeout=config.acquire_timeout,
         connection_pool=connection_pool,
+        migration_lock_name=build_migration_lock_name(config.database),
     )
-
-
-async def migrate_runtime(
-    config: Config,
-    migrations: dict[str, str],
-) -> None:
-    """Apply pending migrations on a short-lived MariaDB pool, no schema startup.
-
-    The migrate-only path shares the apply runner with initialize() but skips
-    schema startup and drift verification: it is the dedicated deploy step, not
-    an application boot.
-    """
-
-    aiomysql = _import_aiomysql()
-    logger.debug("mariadb migrate pool opening: %s:%s", config.host, config.port)
-    pool = await aiomysql.create_pool(
-        autocommit=False,
-        charset=config.charset,
-        connect_timeout=config.acquire_timeout,
-        db=config.database,
-        host=config.host,
-        maxsize=config.pool_size,
-        minsize=1,
-        password=config.password,
-        port=config.port,
-        unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
-        user=config.user,
-    )
-    connection_pool = MariaDBConnectionPool(pool)
-    connection = await connection_pool.acquire(config.acquire_timeout)
-    try:
-        await apply_mariadb_migrations(
-            connection,
-            migrations,
-            lock_name=build_migration_lock_name(config.database),
-            lock_timeout=config.acquire_timeout,
-        )
-    finally:
-        await connection_pool.release(connection)
-        await connection_pool.close(config.acquire_timeout)
 
 
 __all__ = [
@@ -363,5 +335,4 @@ __all__ = [
     "MariaDBCursorAdapter",
     "MariaDBRuntime",
     "initialize_runtime",
-    "migrate_runtime",
 ]

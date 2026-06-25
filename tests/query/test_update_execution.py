@@ -11,7 +11,6 @@ from snektest import assert_eq, assert_raises, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     CurrentTimestamp,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -23,6 +22,7 @@ from snekql.sqlite import (
     update,
 )
 from snekql.sqlite.query import compile_sqlite_write_sql
+from tests.helpers import initialized_database
 
 
 @test(mark="fast")
@@ -162,7 +162,7 @@ async def update_returning_yields_updated_models() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -192,7 +192,7 @@ async def update_execute_returns_affected_row_count() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -234,7 +234,7 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
         title: Doc.Col[str] = Text(nullable=False)
         edited_at: Doc.Col[str] = Text(nullable=False)
 
-    database = await Database.initialize(database=":memory:", models=[Doc])
+    database = await initialized_database(database=":memory:", models=[Doc])
     try:
         async with database.transaction() as tx:
             await tx.execute(
@@ -270,7 +270,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
         updated_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)
 
     explicit = datetime(2000, 1, 1, tzinfo=UTC)
-    database = await Database.initialize(database=":memory:", models=[Memory])
+    database = await initialized_database(database=":memory:", models=[Memory])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(Memory(content="first")))

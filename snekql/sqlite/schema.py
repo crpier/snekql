@@ -9,63 +9,16 @@ from typing import Any
 from aiosqlite import Connection, Error
 
 from snekql._schema_compile import (
-    compile_create_index_sql,
-    compile_create_table_sql,
     expected_table_shape,
 )
-from snekql._schema_dialect import SchemaDialect
-from snekql._schema_plan import PlannedColumn, PlannedModel
+from snekql._schema_plan import PlannedModel
 from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
-from snekql._schema_startup import initialize_schema
+from snekql._schema_startup import verify_schema
 from snekql.errors import SchemaError
-from snekql.indexes import NormalizedIndex
 from snekql.model import Table
-from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
+from snekql.sqlite._schema_ddl import SCHEMA_DIALECT
 from snekql.sqlite.identifiers import quote_identifier
-from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
-
-
-def _requires_not_null(column: Attr[Any, Any, Any, Any, Any]) -> bool:
-    # SQLite records no NOT NULL constraint for a primary-key column (the rowid
-    # alias cannot be null on its own), so the column DDL and the expected shape
-    # share this one predicate to stay in lockstep.
-    return column.nullable is False and not column.primary_key
-
-
-def _compile_column_definition(planned_column: PlannedColumn) -> str:
-    column = planned_column.column
-    parts = [quote_identifier(planned_column.name), column.sqlite_storage_class]
-    if column.primary_key:
-        parts.append("PRIMARY KEY")
-    if column.auto_increment:
-        parts.append("AUTOINCREMENT")
-    if _requires_not_null(column):
-        parts.append("NOT NULL")
-    if column.server_default is CurrentTimestamp:
-        parts.append(f"DEFAULT ({CURRENT_TIMESTAMP_SQL})")
-    return " ".join(parts)
-
-
-def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
-    column = planned_column.column
-    return ColumnShape(
-        name=planned_column.name,
-        storage_type=column.sqlite_storage_class,
-        nullable=not _requires_not_null(column),
-        primary_key=column.primary_key,
-        auto_increment=column.auto_increment,
-        has_server_default=column.server_default is CurrentTimestamp,
-        collation=None,
-    )
-
-
-_SCHEMA_DIALECT = SchemaDialect(
-    quote_identifier=quote_identifier,
-    compile_column_definition=_compile_column_definition,
-    expected_column_shape=_expected_column_shape,
-    table_suffix="STRICT",
-    verifies_foreign_keys=True,
-)
+from snekql.storage import SchemaPolicy
 
 
 async def _execute_schema_sql(
@@ -220,8 +173,8 @@ class SQLiteSchemaBackend:
         self.connection: Connection = connection
 
     @contextlib.asynccontextmanager
-    async def startup_transaction(self) -> AsyncGenerator[None]:
-        """Run schema startup transactionally, rolling back on any failure."""
+    async def verification_transaction(self) -> AsyncGenerator[None]:
+        """Run schema verification transactionally, rolling back on any failure."""
 
         await _execute_schema_sql(self.connection, "BEGIN")
         try:
@@ -229,14 +182,14 @@ class SQLiteSchemaBackend:
             await _execute_schema_sql(self.connection, "COMMIT")
         except Error as error:
             await _rollback_schema_setup(self.connection)
-            msg = "SQLite schema setup failed"
+            msg = "SQLite schema verification failed"
             raise SchemaError(msg) from error
         except Exception:
             await _rollback_schema_setup(self.connection)
             raise
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
-        return expected_table_shape(planned_model, _SCHEMA_DIALECT)
+        return expected_table_shape(planned_model, SCHEMA_DIALECT)
 
     async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
         table_name = planned_model.table_name
@@ -262,30 +215,16 @@ class SQLiteSchemaBackend:
             storage_options=storage_options,
         )
 
-    async def create_table(self, planned_model: PlannedModel) -> None:
-        await _execute_schema_sql(
-            self.connection,
-            compile_create_table_sql(planned_model, _SCHEMA_DIALECT),
-        )
 
-    async def create_index(self, table_name: str, index: NormalizedIndex) -> str:
-        sql = compile_create_index_sql(table_name, index, _SCHEMA_DIALECT)
-        await _execute_schema_sql(self.connection, sql)
-        return sql
-
-
-async def initialize_sqlite_schema(
+async def verify_sqlite_schema(
     connection: Connection,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-    *,
-    create_missing: bool = True,
 ) -> None:
-    """Create or verify all configured SQLite tables transactionally."""
+    """Verify all configured SQLite tables against the live schema."""
 
-    await initialize_schema(
+    await verify_schema(
         SQLiteSchemaBackend(connection),
         models,
         schema_policy,
-        create_missing=create_missing,
     )

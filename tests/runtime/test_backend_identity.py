@@ -44,25 +44,32 @@ def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
 
 
 @test(mark="medium")
-async def sqlite_initialization_rejects_mariadb_models() -> None:
-    """SQLite Database startup rejects MariaDB Table Models."""
+async def sqlite_verify_rejects_mariadb_models() -> None:
+    """SQLite Database verify rejects MariaDB Table Models."""
 
-    with assert_raises(DatabaseRuntimeError) as error:
-        _ = await Database.initialize(database=":memory:", models=[MariadbIdentityUser])
+    database = await Database.initialize(database=":memory:")
+    try:
+        with assert_raises(DatabaseRuntimeError) as error:
+            await database.verify([MariadbIdentityUser])
+    finally:
+        await database.close()
 
     assert_in("expected sqlite", str(error.exception))
     assert_in("received mariadb", str(error.exception))
 
 
 @test(mark="medium")
-async def mariadb_initialization_rejects_sqlite_models() -> None:
-    """MariaDB Database startup rejects SQLite Table Models."""
+async def mariadb_verify_rejects_sqlite_models() -> None:
+    """MariaDB Database verify rejects SQLite Table Models."""
 
-    with assert_raises(DatabaseRuntimeError) as error:
-        _ = await Database.initialize(
-            mariadb.Config(database="app", user="snekql"),
-            models=[SqliteIdentityUser],
-        )
+    server = await load_fixture(provide_mariadb_server())
+
+    database = await Database.initialize(_config_from_server(server))
+    try:
+        with assert_raises(DatabaseRuntimeError) as error:
+            await database.verify([SqliteIdentityUser])
+    finally:
+        await database.close()
 
     assert_in("expected mariadb", str(error.exception))
     assert_in("received sqlite", str(error.exception))

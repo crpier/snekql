@@ -1,4 +1,4 @@
-"""SQLite migration apply, history recording, and idempotent re-run tests."""
+"""SQLite imperative migrate/verify, history recording, and idempotent re-run tests."""
 
 from __future__ import annotations
 
@@ -47,15 +47,13 @@ def _table_exists(database_path: Path, table_name: str) -> bool:
 
 
 @test(mark="medium")
-async def migration_creates_table_and_records_history() -> None:
-    """A migration body runs against the database and its name is recorded."""
+async def migrate_creates_table_and_records_history() -> None:
+    """db.migrate runs a body against the database and records its name."""
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            database=database_path,
-            migrations={"001_create_user": _CREATE_USER_MIGRATION},
-        )
+        database = await Database.initialize(database=database_path)
+        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
         await database.close()
 
         assert_true(_table_exists(database_path, "user"))
@@ -63,43 +61,48 @@ async def migration_creates_table_and_records_history() -> None:
 
 
 @test(mark="medium")
-async def reinitializing_does_not_reapply_recorded_migration() -> None:
-    """Re-running an already-applied migration is skipped, not re-executed."""
+async def initialize_does_no_schema_work() -> None:
+    """Connect-only initialization creates neither tables nor the history table."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        await database.close()
+
+        assert_true(not _table_exists(database_path, "user"))
+        assert_true(not _table_exists(database_path, "snekql_migrations"))
+
+
+@test(mark="medium")
+async def re_migrating_does_not_reapply_recorded_migration() -> None:
+    """A second migrate of an already-applied name neither re-runs nor re-records it."""
 
     migrations = {"001_create_user": _CREATE_USER_MIGRATION}
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        first = await Database.initialize(database=database_path, migrations=migrations)
-        await first.close()
-
-        second = await Database.initialize(
-            database=database_path, migrations=migrations
-        )
-        await second.close()
+        database = await Database.initialize(database=database_path)
+        await database.migrate(migrations)
+        await database.migrate(migrations)
+        await database.close()
 
         assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
 
 
 @test(mark="medium")
 async def new_pending_migration_applies_only_itself() -> None:
-    """A migration appended on a later startup applies while earlier ones are skipped."""
+    """A migration appended on a later migrate applies while earlier ones are skipped."""
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        first = await Database.initialize(
-            database=database_path,
-            migrations={"001_create_user": _CREATE_USER_MIGRATION},
-        )
-        await first.close()
-
-        second = await Database.initialize(
-            database=database_path,
-            migrations={
+        database = await Database.initialize(database=database_path)
+        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+        await database.migrate(
+            {
                 "001_create_user": _CREATE_USER_MIGRATION,
                 "002_add_age": 'ALTER TABLE "user" ADD COLUMN "age" INTEGER',
             },
         )
-        await second.close()
+        await database.close()
 
         assert_eq(
             _fetch_applied_names(database_path),
@@ -108,8 +111,8 @@ async def new_pending_migration_applies_only_itself() -> None:
 
 
 @test(mark="medium")
-async def models_verify_against_migration_created_schema() -> None:
-    """Drift verification still runs after migrations and passes on a matching schema."""
+async def verify_passes_against_migration_created_schema() -> None:
+    """Verification passes when the migration-built schema matches the models."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose DDL matches the create-user migration body."""
@@ -121,72 +124,16 @@ async def models_verify_against_migration_created_schema() -> None:
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            database=database_path,
-            models=[User],
-            migrations={"001_create_user": _CREATE_USER_MIGRATION},
-        )
+        database = await Database.initialize(database=database_path)
+        await database.migrate({"001_create_user": _CREATE_USER_MIGRATION})
+        await database.verify([User])
         await database.close()
 
         assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
 
 
 @test(mark="medium")
-async def standalone_migrate_applies_without_full_initialize() -> None:
-    """Database.migrate applies pending bodies and records history with no models."""
-
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        await Database.migrate(
-            database=database_path,
-            migrations={"001_create_user": _CREATE_USER_MIGRATION},
-        )
-
-        assert_true(_table_exists(database_path, "user"))
-        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
-
-
-@test(mark="medium")
-async def standalone_migrate_is_idempotent() -> None:
-    """A second standalone migrate of the same name neither re-runs nor re-records it."""
-
-    migrations = {"001_create_user": _CREATE_USER_MIGRATION}
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        await Database.migrate(database=database_path, migrations=migrations)
-        await Database.migrate(database=database_path, migrations=migrations)
-
-        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
-
-
-@test(mark="medium")
-async def initialize_does_not_reapply_standalone_migration() -> None:
-    """A migration applied standalone is recorded once and verified by a later initialize."""
-
-    class User[S = Pending](Model[S, "User[Fetched]"]):
-        """Model whose DDL matches the create-user migration body."""
-
-        id: User.GenCol[int] = Integer(
-            primary_key=True, auto_increment=True, default=PENDING_GENERATION
-        )
-        email: User.Col[str] = Text(nullable=False)
-
-    migrations = {"001_create_user": _CREATE_USER_MIGRATION}
-    with TemporaryDirectory() as directory:
-        database_path = Path(directory) / "app.db"
-        await Database.migrate(database=database_path, migrations=migrations)
-        database = await Database.initialize(
-            database=database_path,
-            models=[User],
-            migrations=migrations,
-        )
-        await database.close()
-
-        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
-
-
-@test(mark="medium")
-async def model_without_matching_migration_fails_strict() -> None:
+async def verify_fails_when_a_model_has_no_migration() -> None:
     """Under strict, a model whose table no migration created is reported as drift."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -200,9 +147,33 @@ async def model_without_matching_migration_fails_strict() -> None:
     create_other = 'CREATE TABLE "other" ("id" INTEGER PRIMARY KEY) STRICT'
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        with assert_raises(SchemaVerificationError):
-            _ = await Database.initialize(
-                database=database_path,
-                models=[User],
-                migrations={"001_other": create_other},
-            )
+        database = await Database.initialize(database=database_path)
+        await database.migrate({"001_other": create_other})
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User])
+        finally:
+            await database.close()
+
+
+@test(mark="medium")
+async def replica_init_then_verify_catches_a_forgotten_migration() -> None:
+    """An init -> verify replica path fails fast when a migration was not applied."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model whose table the replica expects an earlier deploy to have created."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        # Replica boots against a database where the migration never ran.
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User])
+        finally:
+            await database.close()

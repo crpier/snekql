@@ -15,7 +15,6 @@ from snekql import sqlite
 from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Database,
     Fetched,
     Pending,
     QueryCompilationError,
@@ -24,6 +23,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_select_sql
+from tests.helpers import initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -157,7 +157,7 @@ def grouping_by_an_unjoined_table_is_a_construction_error() -> None:
 async def grouped_count_returns_a_count_per_group() -> None:
     """A grouped COUNT(*) fetches one (key, count) tuple per group."""
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))
@@ -179,7 +179,7 @@ async def grouped_count_returns_a_count_per_group() -> None:
 async def grouped_sum_normalizes_per_group() -> None:
     """A grouped SUM over an Integer column decodes to int per group."""
 
-    database = await Database.initialize(database=":memory:", models=[User, Order])
+    database = await initialized_database(database=":memory:", models=[User, Order])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(country="us")))

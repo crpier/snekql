@@ -30,7 +30,7 @@ from snekql.mariadb import (
     update,
 )
 from snekql.model import Table
-from tests.helpers import provide_mariadb_server
+from tests.helpers import initialized_database, provide_mariadb_server
 
 
 class _RollbackSentinelError(Exception):
@@ -59,7 +59,7 @@ async def database_session(
     """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())
-    database = await Database.initialize(
+    database = await initialized_database(
         server.config(pool_size=pool_size), models=models
     )
     try:

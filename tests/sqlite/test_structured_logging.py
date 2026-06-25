@@ -30,6 +30,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
+from tests.helpers import initialized_database, migrate_models
 
 
 class _RecordingHandler(logging.Handler):
@@ -100,11 +101,11 @@ def database_initialization_takes_no_logger() -> None:
 
 
 @test(mark="medium")
-async def database_initialization_emits_events() -> None:
-    """Database initialization logs backend and schema startup context."""
+async def lifecycle_verbs_emit_events() -> None:
+    """Initialization, migrate, and verify log backend and schema context."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
-        """Table model used to observe schema startup logging."""
+        """Table model used to observe lifecycle logging."""
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -115,25 +116,29 @@ async def database_initialization_emits_events() -> None:
 
     with _capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
-        database = await Database.initialize(
-            database=database_path,
-            models=[User],
-        )
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User])
+        await database.verify([User])
         await database.close()
 
-    started = logs.find(logging.INFO, "database initialization started")
-    completed = logs.find(logging.INFO, "database initialization completed")
-    created = logs.find(logging.DEBUG, "schema table")
+    init_started = logs.find(logging.INFO, "database initialization started")
+    migrate_started = logs.find(logging.INFO, "database migrate started")
+    migrate_completed = logs.find(logging.INFO, "database migrate completed")
+    applied = logs.find(logging.DEBUG, "applied")
+    verify_completed = logs.find(logging.INFO, "database verify completed")
+    verified = logs.find(logging.DEBUG, "verified")
 
-    assert_true("sqlite" in started)
-    assert_true("'user'" in started)
-    assert_true("sqlite" in completed)
-    assert_true("'user'" in created and "created" in created)
+    assert_true("sqlite" in init_started)
+    assert_true("sqlite" in migrate_started)
+    assert_true("migration(s)" in migrate_completed)
+    assert_true("migration" in applied and "applied" in applied)
+    assert_true("'user'" in verify_completed)
+    assert_true("'user'" in verified and "verified" in verified)
 
 
 @test(mark="medium")
-async def warn_schema_policy_logs_drift() -> None:
-    """Warn schema verification reports drift as a warning record."""
+async def warn_verify_policy_logs_drift() -> None:
+    """Verify under the warn policy reports drift as a warning record."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift logging."""
@@ -144,11 +149,8 @@ async def warn_schema_policy_logs_drift() -> None:
         database_path = Path(directory) / "app.db"
         _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT NOT NULL)')
 
-        database = await Database.initialize(
-            database=database_path,
-            models=[User],
-            schema_policy="warn",
-        )
+        database = await Database.initialize(database=database_path)
+        await database.verify([User], policy="warn")
         await database.close()
 
     drift = logs.find(logging.WARNING, "schema drift detected")
@@ -170,7 +172,7 @@ async def transaction_execution_logs_query_context() -> None:
         email: User.Col[str] = Text(nullable=False)
 
     with _capture_snekql_logs() as logs:
-        database = await Database.initialize(
+        database = await initialized_database(
             database=":memory:",
             models=[User],
         )
@@ -202,7 +204,7 @@ async def query_failure_logs_error_context() -> None:
         email: User.Col[str] = Text(nullable=False, unique=True)
 
     with _capture_snekql_logs() as logs:
-        database = await Database.initialize(
+        database = await initialized_database(
             database=":memory:",
             models=[User],
         )

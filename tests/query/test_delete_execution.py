@@ -15,7 +15,6 @@ from snektest import (
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Database,
     Fetched,
     Integer,
     Model,
@@ -28,6 +27,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.sqlite.query import compile_sqlite_write_sql
+from tests.helpers import initialized_database
 
 
 @test(mark="fast")
@@ -143,7 +143,7 @@ async def delete_returning_yields_deleted_projection() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
@@ -171,7 +171,7 @@ async def delete_execute_returns_affected_row_count() -> None:
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False, default="active")
 
-    database = await Database.initialize(database=":memory:", models=[User])
+    database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
