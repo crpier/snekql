@@ -1,0 +1,1 @@
+"""Bundled copyable snekql examples."""
