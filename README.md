@@ -18,6 +18,19 @@ extras. The base `snekql` install is enough for importing the Query Builder and
 backend namespaces, but runtime initialization requires the matching backend
 extra.
 
+## Bundled docs and examples
+
+Installed packages include copyable docs and examples:
+
+```sh
+snekql --agent-docs
+snekql --llms
+snekql --examples
+snekql --example basic
+snekql example typed_queries
+python -m snekql --agent-docs
+```
+
 ## Quick start
 
 ```python

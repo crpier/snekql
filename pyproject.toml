@@ -19,6 +19,7 @@ aiosqlite = [
 ]
 
 [project.scripts]
+snekql = "snekql.cli:main"
 snekql-mariadb-server = "snekql.testing.mariadb.cli:main"
 
 [project.urls]
