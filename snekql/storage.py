@@ -533,10 +533,6 @@ class ForeignKey:
     restated, so an FK to a `TEXT` column is itself `TEXT`. PK targets are named
     explicitly like any other (`ForeignKey(User.id)`).
 
-    Marking two or more foreign keys `primary_key=True` declares a composite
-    (multi-column) primary key, the natural shape for a pure join table whose
-    identity *is* the referenced column pair.
-
     >>> class Order[S = Pending](Model[S, "Order[Fetched]"]):
     ...     owner_email: Order.FKCol[User, str] = ForeignKey(
     ...         User.email, nullable=False
@@ -548,7 +544,6 @@ class ForeignKey:
         cls,
         references: Attr[Any, Any, Target, Any, T],
         *,
-        primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: T,
@@ -559,7 +554,6 @@ class ForeignKey:
         cls,
         references: Attr[Any, Any, Target, Any, T],
         *,
-        primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
     ) -> FKAttr[Any, Any, Any, T, T, Target]: ...
@@ -568,7 +562,6 @@ class ForeignKey:
         cls,
         references: Attr[Any, Any, Target, Any, T],
         *,
-        primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
         default: object = ...,
@@ -579,7 +572,6 @@ class ForeignKey:
                 default=default,
                 foreign_key_target=target_column,
                 nullable=nullable,
-                primary_key=primary_key,
                 sqlite_storage_class=target_column.sqlite_storage_class,
                 storage_type_name=target_column.storage_type_name,
                 unique=unique,
