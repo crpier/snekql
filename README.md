@@ -543,6 +543,17 @@ There is no flat `snekql.<symbol>` surface; the package root only exposes the
 MariaDB-only symbols from colliding and stops auto-imports from landing on the
 wrong backend.
 
+The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
+`snekql.testing.mariadb`, each curated in its own `__all__`. Underscored modules
+(`snekql._*`) and backend submodules (`snekql.sqlite.query`,
+`snekql.sqlite.config`, …) are implementation detail and not supported import
+paths — their public symbols are re-exported through the namespace top level.
+Query classes (`SelectModelQuery`, `InsertQuery`, …) are public as return and
+`isinstance` types but are built only through the `select`/`insert`/`update`/
+`delete` factory verbs, never instantiated directly. The catchable error
+contract is the `SnekqlError` hierarchy re-exported from each namespace. See
+[docs/typing.md](docs/typing.md#stability-contract) for the full contract.
+
 Agent navigation map:
 
 - `snekql/model.py`: model metaclass, table metadata, pending/fetched
@@ -552,8 +563,9 @@ Agent navigation map:
 - `snekql/expressions.py`: predicates, ordering, update assignments.
 - `snekql/query.py`: query builders and SQL compilation.
 - `snekql/runtime.py`: `Database`, `Transaction`, execution methods.
-- `snekql/_pool.py`: internal async SQLite connection pool.
-- `snekql/schema.py`: `STRICT` DDL generation and schema verification.
+- `snekql/sqlite/pool.py`: internal async SQLite connection pool.
+- `snekql/sqlite/schema.py`: scaffold DDL generation and schema verification
+  (dialect-blind pipeline in `snekql/_schema_*.py`).
 - `snekql/errors.py`: public exception hierarchy.
 - `tests/test_public_typing.py`: type-checker prototypes for the public API.
 - `CONTEXT.md`: project language and terminology.
