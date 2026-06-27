@@ -270,6 +270,87 @@ async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None
 
 
 @test(mark="medium")
+async def migrate_emits_and_verifies_referential_actions() -> None:
+    """`on_delete`/`on_update` render their clauses and verify clean afterwards."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table anchoring the cascading foreign key."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Owned table whose rows cascade on parent delete, restrict on update."""
+
+        id: Order.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+        user_id: Order.FKCol[User, int] = ForeignKey(
+            User.id, nullable=False, on_delete="CASCADE", on_update="RESTRICT"
+        )
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User, Order])
+
+        create_table = _fetch_create_table(database_path, "order")
+
+        # The live PRAGMA actions read back equal to the model, so verify passes.
+        await database.verify([User, Order])
+        await database.close()
+
+    expected_sql = (
+        'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"user_id" INTEGER NOT NULL, '
+        'FOREIGN KEY ("user_id") REFERENCES "user" ("id") '
+        "ON DELETE CASCADE ON UPDATE RESTRICT) STRICT"
+    )
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
+async def strict_verify_raises_on_referential_action_drift() -> None:
+    """A live FK whose ON DELETE action differs from the model is strict drift."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table for referential-action drift detection."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Model expecting ON DELETE CASCADE against an action-free live table."""
+
+        id: Order.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id, on_delete="CASCADE")
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        order_sql = (
+            'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"user_id" INTEGER, '
+            'FOREIGN KEY ("user_id") REFERENCES "user" ("id")) STRICT'
+        )
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT) STRICT',
+        )
+        _execute_sql(database_path, order_sql)
+
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError):
+                await database.verify([User, Order])
+        finally:
+            await database.close()
+
+
+@test(mark="medium")
 async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> None:
     """An existing table lacking a managed FK constraint is strict-policy drift."""
 

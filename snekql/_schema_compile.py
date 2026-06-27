@@ -28,14 +28,24 @@ def compile_foreign_key_constraint(
     foreign_key: PlannedForeignKey,
     dialect: SchemaDialect,
 ) -> str:
-    """Render a table-level FOREIGN KEY ... REFERENCES constraint."""
+    """Render a table-level FOREIGN KEY ... REFERENCES constraint.
+
+    A declared ``on_delete``/``on_update`` appends an ``ON DELETE``/``ON UPDATE``
+    clause verbatim; ``None`` renders no clause, leaving the database default
+    (``NO ACTION``) so existing scaffolds are byte-for-byte unchanged.
+    """
 
     quote = dialect.quote_identifier
-    return (
+    constraint = (
         f"FOREIGN KEY ({quote(foreign_key.column_name)}) "
         f"REFERENCES {quote(foreign_key.target_table)} "
         f"({quote(foreign_key.target_column)})"
     )
+    if foreign_key.on_delete is not None:
+        constraint += f" ON DELETE {foreign_key.on_delete}"
+    if foreign_key.on_update is not None:
+        constraint += f" ON UPDATE {foreign_key.on_update}"
+    return constraint
 
 
 def compile_create_table_sql(
@@ -103,6 +113,10 @@ def expected_table_shape(
                 column_name=foreign_key.column_name,
                 target_table=foreign_key.target_table,
                 target_column=foreign_key.target_column,
+                # An unset action defaults to the catalog's NO ACTION so the
+                # expected shape matches what the live PRAGMA reports.
+                on_delete=foreign_key.on_delete or "NO ACTION",
+                on_update=foreign_key.on_update or "NO ACTION",
             )
             for foreign_key in planned_model.foreign_keys
         )

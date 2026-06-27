@@ -255,6 +255,99 @@ def schema_plan_rejects_a_foreign_key_to_a_non_unique_target_column() -> None:
 
 
 @test(mark="fast")
+def schema_plan_records_referential_actions() -> None:
+    """`on_delete`/`on_update` on a `ForeignKey` are carried onto the plan."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table anchoring the cascading foreign key."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table whose owner reference cascades on delete, restricts on update."""
+
+        user_id: Order.FKCol[User, int] = ForeignKey(
+            User.id, on_delete="CASCADE", on_update="RESTRICT"
+        )
+
+    plan = build_schema_plan([User, Order])
+
+    assert_eq(
+        plan.models[1].foreign_keys,
+        (
+            PlannedForeignKey(
+                column_name="user_id",
+                target_table="user",
+                target_column="id",
+                on_delete="CASCADE",
+                on_update="RESTRICT",
+            ),
+        ),
+    )
+
+
+@test(mark="fast")
+def schema_plan_defaults_referential_actions_to_none() -> None:
+    """An FK without declared actions records no action (today's behavior)."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table anchoring an action-free foreign key."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table whose reference declares no referential action."""
+
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
+
+    plan = build_schema_plan([User, Order])
+
+    foreign_key = plan.models[1].foreign_keys[0]
+    assert_eq(foreign_key.on_delete, None)
+    assert_eq(foreign_key.on_update, None)
+
+
+@test(mark="fast")
+def schema_plan_rejects_set_null_on_a_non_nullable_foreign_key() -> None:
+    """`ON DELETE SET NULL` can never fire on a NOT NULL column, so it is rejected."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table for the rejected SET NULL action."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+        """Table pairing SET NULL with a non-nullable foreign-key column."""
+
+        user_id: Order.FKCol[User, int] = ForeignKey(
+            User.id, nullable=False, on_delete="SET NULL"
+        )
+
+    with assert_raises(ModelDeclarationError):
+        _ = build_schema_plan([User, Order])
+
+
+@test(mark="fast")
+def schema_plan_rejects_set_null_on_a_primary_key_foreign_key() -> None:
+    """A primary-key FK column is non-nullable, so SET NULL is rejected there too."""
+
+    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+        """Referenced table anchoring the join table's key column."""
+
+        id: Team.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class Membership[S = Pending](Model[S, "Membership[Fetched]"]):
+        """Join table whose key column cannot be set null."""
+
+        team_id: Membership.FKCol[Team, int] = ForeignKey(
+            Team.id, primary_key=True, on_update="SET NULL"
+        )
+
+    with assert_raises(ModelDeclarationError):
+        _ = build_schema_plan([Team, Membership])
+
+
+@test(mark="fast")
 def schema_plan_rejects_a_foreign_key_whose_target_is_not_on_the_annotated_model() -> (
     None
 ):

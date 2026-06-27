@@ -105,6 +105,37 @@ def foreign_key_constraint_is_rendered_with_quoting() -> None:
     assert_eq(constraint, 'FOREIGN KEY ("author_id") REFERENCES "author" ("id")')
 
 
+class _Loan[S = Pending](Model[S, "_Loan[Fetched]"]):
+    """Table whose author reference cascades on delete and restricts on update."""
+
+    __tablename__ = "loan"
+
+    id: _Loan.GenCol[int] = Integer(
+        primary_key=True, auto_increment=True, default=PENDING_GENERATION
+    )
+    author_id: _Loan.FKCol[_Author, int] = ForeignKey(
+        _Author.id, on_delete="CASCADE", on_update="RESTRICT"
+    )
+
+
+@test()
+def foreign_key_constraint_renders_referential_actions() -> None:
+    """Declared `on_delete`/`on_update` append ON DELETE / ON UPDATE clauses."""
+
+    plan = build_schema_plan([_Author, _Loan])
+    planned = next(p for p in plan.models if p.model is _Loan)
+
+    constraint = compile_foreign_key_constraint(
+        planned.foreign_keys[0], _dialect(verifies_foreign_keys=True)
+    )
+
+    expected_constraint = (
+        'FOREIGN KEY ("author_id") REFERENCES "author" ("id") '
+        "ON DELETE CASCADE ON UPDATE RESTRICT"
+    )
+    assert_eq(constraint, expected_constraint)
+
+
 @test()
 def create_index_renders_unique_columns_and_quoting() -> None:
     """A unique column index renders quoted UNIQUE INDEX SQL."""

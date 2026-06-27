@@ -6,6 +6,7 @@ from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_true, test
 
+from snekql.mariadb import scaffold as scaffold_mariadb
 from snekql.sqlite import (
     Fetched,
     ForeignKey,
@@ -77,6 +78,37 @@ def scaffold_emits_foreign_key_constraint() -> None:
 
     assert_true("FOREIGN KEY" in ddl)
     assert_true('REFERENCES "scaffold_user" ("id")' in ddl)
+
+
+class ScaffoldComment[S = Pending](Model[S, "ScaffoldComment[Fetched]"]):
+    """Owned model whose author reference declares referential actions."""
+
+    id: ScaffoldComment.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    author_id: ScaffoldComment.FKCol[ScaffoldUser, int] = ForeignKey(
+        ScaffoldUser.id, nullable=False, on_delete="CASCADE", on_update="RESTRICT"
+    )
+
+
+@test(mark="fast")
+def scaffold_emits_referential_actions() -> None:
+    """Declared `on_delete`/`on_update` render ON DELETE / ON UPDATE clauses."""
+
+    ddl = scaffold([ScaffoldComment])
+
+    assert_true(
+        'REFERENCES "scaffold_user" ("id") ON DELETE CASCADE ON UPDATE RESTRICT' in ddl
+    )
+
+
+@test(mark="fast")
+def mariadb_scaffold_emits_referential_actions() -> None:
+    """MariaDB renders the same referential-action clauses via the shared compiler."""
+
+    ddl = scaffold_mariadb([ScaffoldComment])
+
+    assert_true(
+        "REFERENCES `scaffold_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT" in ddl
+    )
 
 
 @test(mark="fast")

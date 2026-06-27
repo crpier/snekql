@@ -163,6 +163,53 @@ async def missing_foreign_key_is_named() -> None:
 
 
 @test(mark="fast")
+async def foreign_key_referential_action_drift_is_reported() -> None:
+    """A live FK whose ON DELETE action differs from the model is named as drift."""
+
+    expected = _table(
+        foreign_keys=(
+            ForeignKeyShape(
+                column_name="user_id",
+                target_table="user",
+                target_column="id",
+                on_delete="CASCADE",
+            ),
+        ),
+    )
+    actual = _table(
+        foreign_keys=(
+            ForeignKeyShape(
+                column_name="user_id",
+                target_table="user",
+                target_column="id",
+                on_delete="NO ACTION",
+            ),
+        ),
+    )
+
+    issues = diff_table_shapes(expected, actual)
+
+    assert_true(
+        any("user_id" in issue and "CASCADE" in issue for issue in issues),
+    )
+
+
+@test(mark="fast")
+async def matching_foreign_key_actions_report_no_drift() -> None:
+    """Equal actions on both sides (default NO ACTION) produce no FK drift."""
+
+    shape = _table(
+        foreign_keys=(
+            ForeignKeyShape(
+                column_name="user_id", target_table="user", target_column="id"
+            ),
+        ),
+    )
+
+    assert_eq(diff_table_shapes(shape, shape), ())
+
+
+@test(mark="fast")
 async def storage_option_drift_is_reported() -> None:
     """A live table missing a required storage option (e.g. STRICT) is drift."""
 
