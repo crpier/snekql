@@ -66,19 +66,29 @@ class SchemaPlan:
     models: tuple[PlannedModel, ...]
 
 
-def _column_unique_indexes(
+def _column_indexes(
     table_name: str,
     columns: tuple[PlannedColumn, ...],
 ) -> tuple[NormalizedIndex, ...]:
-    return tuple(
-        NormalizedIndex(
-            column_names=(planned_column.name,),
-            name=f"ux_{table_name}_{planned_column.name}",
-            unique=True,
-        )
-        for planned_column in columns
-        if planned_column.column.unique
-    )
+    indexes: list[NormalizedIndex] = []
+    for planned_column in columns:
+        if planned_column.column.unique:
+            indexes.append(
+                NormalizedIndex(
+                    column_names=(planned_column.name,),
+                    name=f"ux_{table_name}_{planned_column.name}",
+                    unique=True,
+                ),
+            )
+        elif planned_column.column.index:
+            indexes.append(
+                NormalizedIndex(
+                    column_names=(planned_column.name,),
+                    name=f"ix_{table_name}_{planned_column.name}",
+                    unique=False,
+                ),
+            )
+    return tuple(indexes)
 
 
 def _model_indexes(
@@ -87,7 +97,7 @@ def _model_indexes(
     columns: tuple[PlannedColumn, ...],
 ) -> tuple[NormalizedIndex, ...]:
     table_indexes = getattr(model, "__snekql_indexes__", ())
-    return (*_column_unique_indexes(table_name, columns), *table_indexes)
+    return (*_column_indexes(table_name, columns), *table_indexes)
 
 
 def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]]:

@@ -492,6 +492,33 @@ async def migrate_builds_column_unique_indexes_after_tables() -> None:
 
 
 @test(mark="medium")
+async def migrate_builds_column_non_unique_indexes() -> None:
+    """Column ``index=True`` declarations build non-unique ``ix_`` indexes."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model with a column-level non-unique index."""
+
+        email: User.Col[str] = Text(nullable=False, unique=True)
+        status: User.Col[str] = Text(nullable=False, index=True)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [User])
+        await database.close()
+
+        create_indexes = _fetch_create_indexes(database_path, "user")
+
+    assert_eq(
+        create_indexes,
+        [
+            'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")',
+            'CREATE INDEX "ix_user_status" ON "user" ("status")',
+        ],
+    )
+
+
+@test(mark="medium")
 async def migrate_builds_table_indexes_in_declaration_order() -> None:
     """Table index declarations build deterministic index SQL after uniques."""
 

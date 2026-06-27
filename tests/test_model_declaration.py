@@ -240,6 +240,36 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 
     with assert_raises(ModelDeclarationError):
 
+        class IndexUnique[S = Pending](Model[S, "IndexUnique[Fetched]"]):
+            """Invalid redundant column index and unique declaration."""
+
+            email: IndexUnique.Col[str] = Text(
+                nullable=False,
+                index=True,
+                unique=True,
+            )
+
+    with assert_raises(ModelDeclarationError):
+
+        class IndexPrimaryKey[S = Pending](Model[S, "IndexPrimaryKey[Fetched]"]):
+            """Invalid redundant column index on a primary key."""
+
+            id: IndexPrimaryKey.GenCol[int] = Integer(
+                primary_key=True,
+                index=True,
+                default=PENDING_GENERATION,
+            )
+
+    with assert_raises(ModelDeclarationError):
+
+        class IndexCollision[S = Pending](Model[S, "IndexCollision[Fetched]"]):
+            """Invalid duplicate of a column index and a table-level index."""
+
+            email: IndexCollision.Col[str] = Text(nullable=False, index=True)
+            __indexes__: ClassVar[list[Index[Any]]] = [Index(email)]
+
+    with assert_raises(ModelDeclarationError):
+
         class TupleIndexes[S = Pending](Model[S, "TupleIndexes[Fetched]"]):
             """Invalid tuple index collection."""
 

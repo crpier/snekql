@@ -113,6 +113,33 @@ async def mariadb_schema_creates_column_unique_indexes() -> None:
 
 
 @test(mark="medium")
+async def mariadb_schema_creates_column_non_unique_indexes() -> None:
+    """MariaDB startup creates column ``index=True`` non-unique indexes."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model with a MariaDB column non-unique index."""
+
+        __tablename__ = "issue146_user_column_non_unique_indexes"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        status: User.Col[str] = mariadb.Text(nullable=False, index=True)
+
+    session = await load_fixture(database_session([User]))
+
+    assert_eq(
+        await _fetch_index_rows(
+            session.server,
+            "issue146_user_column_non_unique_indexes",
+        ),
+        [("ix_issue146_user_column_non_unique_indexes_status", "1", "status")],
+    )
+
+
+@test(mark="medium")
 async def mariadb_schema_creates_table_indexes() -> None:
     """MariaDB startup creates declared table indexes."""
 
