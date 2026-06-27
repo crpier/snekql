@@ -338,6 +338,49 @@ Each namespace's exports are curated in its own `__all__`, and the package
 root's `__all__` lists only `mariadb` and `sqlite`. Keeping the dialects in
 separate namespaces stops auto-imports from landing on the wrong backend.
 
+## Stability contract
+
+The supported public API is intentionally small. Treat the following as the
+compatibility surface; everything else is an implementation detail that can
+change without notice.
+
+**Supported import surface:**
+
+- `snekql.sqlite` and `snekql.mariadb` — import every symbol from a namespace's
+  top level (e.g. `from snekql.sqlite import select, Text`). Each namespace's
+  `__all__` is the contract.
+- `snekql.testing.mariadb` — the Temporary MariaDB Test Server support, curated
+  in its own `__all__`.
+
+**Implementation detail (do not import, may change without notice):**
+
+- Any module or name beginning with an underscore (`snekql._common`,
+  `snekql._query_compile`, and the rest of the `snekql._*` modules).
+- Backend *submodules*, even though they are not underscored:
+  `snekql.sqlite.query`, `snekql.sqlite.config`, `snekql.sqlite.verbs`,
+  `snekql.sqlite.runtime`, and their MariaDB peers. Their public symbols are
+  re-exported through the namespace top level; the submodule paths are not a
+  supported import surface. (The `query` submodule is imported by each namespace
+  only to register its Dialect for SQL inspection — see
+  [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md) —
+  not to expose a `<namespace>.query` import path.)
+
+**Query classes are return types, not constructors.** The query classes
+(`SelectModelQuery`, `InsertQuery`, the `*Returning*` variants, and the rest)
+are public so you can name them in annotations and `isinstance` checks. Build
+them only through the factory verbs `select`, `insert`, `update`, and `delete`;
+do not instantiate the classes directly.
+
+**Error contract.** The exceptions in the `SnekqlError` hierarchy re-exported
+from each namespace are the catchable contract — catch `SnekqlError` for a
+catch-all, or a more specific subclass for targeted handling (see
+[error-handling.md](error-handling.md)). The hierarchy is defined in
+`snekql/errors.py`, but catch the names re-exported from the backend namespace.
+
+**Pre-1.0 note.** While snekql is on `0.x`, the namespace surface is the
+stability target but may still change between minor versions. Breaking changes
+are called out in `CHANGELOG.md`.
+
 ## Type-checkable examples
 
 The repository keeps a focused public typing example in:
