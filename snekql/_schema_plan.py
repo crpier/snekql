@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, cast, get_args, get_origin, get_type_hints
 
-from snekql.errors import SchemaError
+from snekql.errors import ModelDeclarationError, SchemaError
 from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.storage import Attr, SchemaPolicy
@@ -183,20 +183,26 @@ def _plan_columns(
     )
     composite = primary_key_count > 1
     if composite:
-        offending = next(
-            (
-                name
-                for name, column in model_columns.items()
-                if column.primary_key and column.auto_increment
-            ),
-            None,
-        )
-        if offending is not None:
-            msg = (
-                f"column {offending!r} cannot use auto_increment as part of a "
-                f"composite primary key on table {require_model_table_name(model)!r}"
-            )
-            raise SchemaError(msg)
+        table_name = require_model_table_name(model)
+        for name, column in model_columns.items():
+            if not column.primary_key:
+                continue
+            # AUTOINCREMENT requires a single INTEGER PRIMARY KEY, and a key column
+            # is unconditionally NOT NULL, so a declared nullable contradicts the
+            # emitted DDL. Reject both at declaration rather than emitting bad or
+            # misleading DDL.
+            if column.auto_increment:
+                msg = (
+                    f"column {name!r} cannot use auto_increment as part of a "
+                    f"composite primary key on table {table_name!r}"
+                )
+                raise ModelDeclarationError(msg)
+            if column.nullable is True:
+                msg = (
+                    f"column {name!r} cannot be nullable as part of a composite "
+                    f"primary key on table {table_name!r}"
+                )
+                raise ModelDeclarationError(msg)
     return tuple(
         PlannedColumn(
             column=column,

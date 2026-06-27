@@ -237,6 +237,25 @@ The target column may be any primary key or `unique=True` column. A typed-only
 reference (an `FKCol` annotation with a plain storage specifier) keeps the
 relationship available for joins without enforcing referential integrity.
 
+### Composite primary keys
+
+Marking more than one column `primary_key=True` declares a composite
+(multi-column) primary key — the natural shape for a pure join table whose
+identity *is* the referenced column pair:
+
+```python
+class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+    team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
+    user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
+    role: TeamMember.Col[str] = Text(nullable=False)
+```
+
+This emits a single table-level `PRIMARY KEY (team_id, user_id)` constraint in
+declaration order. Every column of a composite key is always `NOT NULL`, so
+declaring such a column `nullable=True` is rejected at declaration time, as is
+combining `auto_increment` with a composite key (`AUTOINCREMENT` requires a
+single `INTEGER PRIMARY KEY`).
+
 ## Backend namespaces
 
 Every public symbol is imported from a backend namespace. Pick `snekql.sqlite`

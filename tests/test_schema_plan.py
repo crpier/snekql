@@ -14,6 +14,7 @@ from snekql.sqlite import (
     Index,
     Integer,
     Model,
+    ModelDeclarationError,
     Pending,
     SchemaError,
     Text,
@@ -216,8 +217,22 @@ def schema_plan_rejects_auto_increment_on_a_composite_primary_key() -> None:
         )
         right: CompositeAutoIncrement.Col[int] = Integer(primary_key=True)
 
-    with assert_raises(SchemaError):
+    with assert_raises(ModelDeclarationError):
         _ = build_schema_plan([CompositeAutoIncrement])
+
+
+@test(mark="fast")
+def schema_plan_rejects_a_nullable_composite_primary_key_column() -> None:
+    """A composite-PK column is always NOT NULL, so declared nullable is invalid."""
+
+    class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
+        """Table illegally declaring a composite-PK column nullable."""
+
+        left: CompositeNullable.Col[int] = Integer(primary_key=True, nullable=True)
+        right: CompositeNullable.Col[int] = Integer(primary_key=True)
+
+    with assert_raises(ModelDeclarationError):
+        _ = build_schema_plan([CompositeNullable])
 
 
 @test(mark="fast")
