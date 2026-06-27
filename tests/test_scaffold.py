@@ -35,6 +35,24 @@ class ScaffoldPost[S = Pending](Model[S, "ScaffoldPost[Fetched]"]):
     author_id: ScaffoldPost.FKCol[ScaffoldUser, int] = ForeignKey(ScaffoldUser.id)
 
 
+class ScaffoldTeam[S = Pending](Model[S, "ScaffoldTeam[Fetched]"]):
+    """Referenced table anchoring the join table's foreign keys."""
+
+    id: ScaffoldTeam.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+
+
+class ScaffoldMember[S = Pending](Model[S, "ScaffoldMember[Fetched]"]):
+    """Join table whose identity is a (team, user) column pair."""
+
+    team_id: ScaffoldMember.FKCol[ScaffoldTeam, int] = ForeignKey(
+        ScaffoldTeam.id, primary_key=True
+    )
+    user_id: ScaffoldMember.FKCol[ScaffoldUser, int] = ForeignKey(
+        ScaffoldUser.id, primary_key=True
+    )
+    role: ScaffoldMember.Col[str] = Text(nullable=False)
+
+
 _EXPECTED_USER_DDL = (
     'CREATE TABLE "scaffold_user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
     '"email" TEXT NOT NULL) STRICT;\n'
@@ -59,6 +77,23 @@ def scaffold_emits_foreign_key_constraint() -> None:
 
     assert_true("FOREIGN KEY" in ddl)
     assert_true('REFERENCES "scaffold_user" ("id")' in ddl)
+
+
+@test(mark="fast")
+def scaffold_emits_table_level_composite_primary_key() -> None:
+    """Two PK columns render one table-level PRIMARY KEY, no inline PK clauses."""
+
+    ddl = scaffold([ScaffoldMember])
+
+    expected = (
+        'CREATE TABLE "scaffold_member" ('
+        '"team_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL, '
+        '"role" TEXT NOT NULL, '
+        'PRIMARY KEY ("team_id", "user_id"), '
+        'FOREIGN KEY ("team_id") REFERENCES "scaffold_team" ("id"), '
+        'FOREIGN KEY ("user_id") REFERENCES "scaffold_user" ("id")) STRICT;'
+    )
+    assert_eq(ddl, expected)
 
 
 @test(mark="fast")

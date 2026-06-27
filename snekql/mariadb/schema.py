@@ -120,7 +120,9 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
         parts.append("NOT NULL")
     if column.auto_increment:
         parts.append("AUTO_INCREMENT")
-    if column.primary_key:
+    # A composite primary key is rendered once as a table-level constraint, so its
+    # member columns must not also carry an inline PRIMARY KEY.
+    if column.primary_key and not planned_column.composite_pk:
         parts.append("PRIMARY KEY")
     if column.server_default is CurrentTimestamp:
         parts.append(f"DEFAULT {CURRENT_TIMESTAMP_SQL}")
