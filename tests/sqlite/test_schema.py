@@ -183,6 +183,53 @@ async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
 
 
 @test(mark="medium")
+async def migrate_builds_and_verifies_a_composite_primary_key() -> None:
+    """A join table keyed on a column pair builds valid DDL and verifies clean."""
+
+    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+        """Referenced table anchoring the join table's foreign keys."""
+
+        id: Team.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table anchoring the join table's foreign keys."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+
+    class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+        """Join table whose identity is the (team, user) column pair."""
+
+        team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
+        user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
+        role: TeamMember.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [Team, User, TeamMember])
+
+        create_table = _fetch_create_table(database_path, "team_member")
+
+        # No inline PRIMARY KEY; a single table-level constraint names both keys.
+        await database.verify([Team, User, TeamMember])
+        await database.close()
+
+    expected_sql = (
+        'CREATE TABLE "team_member" ('
+        '"team_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL, '
+        '"role" TEXT NOT NULL, '
+        'PRIMARY KEY ("team_id", "user_id"), '
+        'FOREIGN KEY ("team_id") REFERENCES "team" ("id"), '
+        'FOREIGN KEY ("user_id") REFERENCES "user" ("id")) STRICT'
+    )
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
 async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None:
     """A `ForeignKey` to a unique non-PK column references that column by name."""
 

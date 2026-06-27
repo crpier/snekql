@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, cast, get_args, get_origin, get_type_hints
 
-from snekql.errors import SchemaError
+from snekql.errors import ModelDeclarationError, SchemaError
 from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.storage import Attr, SchemaPolicy
@@ -14,10 +14,17 @@ from snekql.storage import Attr, SchemaPolicy
 
 @dataclass(frozen=True)
 class PlannedColumn:
-    """One model column resolved for schema startup."""
+    """One model column resolved for schema startup.
+
+    ``composite_pk`` is set when the column is one of several ``primary_key``
+    columns making up a multi-column primary key. The backends render such a key
+    as a single table-level ``PRIMARY KEY (...)`` constraint rather than an
+    inline per-column ``PRIMARY KEY``, so they need to tell the two cases apart.
+    """
 
     column: Attr[Any, Any, Any, Any, Any]
     name: str
+    composite_pk: bool = False
 
 
 @dataclass(frozen=True)
@@ -167,12 +174,48 @@ def _plan_foreign_keys(
     return tuple(foreign_keys)
 
 
+def _plan_columns(
+    model: type[Table[Any]],
+) -> tuple[PlannedColumn, ...]:
+    model_columns = require_model_columns(model)
+    primary_key_count = sum(
+        1 for column in model_columns.values() if column.primary_key
+    )
+    composite = primary_key_count > 1
+    if composite:
+        table_name = require_model_table_name(model)
+        for name, column in model_columns.items():
+            if not column.primary_key:
+                continue
+            # AUTOINCREMENT requires a single INTEGER PRIMARY KEY, and a key column
+            # is unconditionally NOT NULL, so a declared nullable contradicts the
+            # emitted DDL. Reject both at declaration rather than emitting bad or
+            # misleading DDL.
+            if column.auto_increment:
+                msg = (
+                    f"column {name!r} cannot use auto_increment as part of a "
+                    f"composite primary key on table {table_name!r}"
+                )
+                raise ModelDeclarationError(msg)
+            if column.nullable is True:
+                msg = (
+                    f"column {name!r} cannot be nullable as part of a composite "
+                    f"primary key on table {table_name!r}"
+                )
+                raise ModelDeclarationError(msg)
+    return tuple(
+        PlannedColumn(
+            column=column,
+            name=name,
+            composite_pk=composite and column.primary_key,
+        )
+        for name, column in model_columns.items()
+    )
+
+
 def _plan_model(model: type[Table[Any]]) -> PlannedModel:
     table_name = require_model_table_name(model)
-    columns = tuple(
-        PlannedColumn(column=column, name=name)
-        for name, column in require_model_columns(model).items()
-    )
+    columns = _plan_columns(model)
     return PlannedModel(
         columns=columns,
         foreign_keys=_plan_foreign_keys(model, columns),

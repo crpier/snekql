@@ -14,6 +14,7 @@ from snekql.sqlite import (
     Index,
     Integer,
     Model,
+    ModelDeclarationError,
     Pending,
     SchemaError,
     Text,
@@ -155,6 +156,83 @@ def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
             ),
         ),
     )
+
+
+@test(mark="fast")
+def schema_plan_marks_composite_primary_key_columns() -> None:
+    """Each PK column of a multi-column primary key is flagged ``composite_pk``."""
+
+    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+        """Referenced table anchoring the composite key's foreign keys."""
+
+        id: Team.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Referenced table anchoring the composite key's foreign keys."""
+
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+
+    class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+        """Join table whose identity is the (team, user) column pair."""
+
+        team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
+        user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
+        role: TeamMember.Col[str] = Text(nullable=False)
+
+    plan = build_schema_plan([Team, User, TeamMember])
+    member = next(model for model in plan.models if model.model is TeamMember)
+
+    flags = {column.name: column.composite_pk for column in member.columns}
+    assert_eq(flags, {"team_id": True, "user_id": True, "role": False})
+
+
+@test(mark="fast")
+def schema_plan_leaves_single_primary_key_columns_unflagged() -> None:
+    """A lone primary-key column is not treated as part of a composite key."""
+
+    class Widget[S = Pending](Model[S, "Widget[Fetched]"]):
+        """Table with a single-column primary key."""
+
+        id: Widget.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        name: Widget.Col[str] = Text(nullable=False)
+
+    plan = build_schema_plan([Widget])
+
+    assert_eq(
+        [column.composite_pk for column in plan.models[0].columns], [False, False]
+    )
+
+
+@test(mark="fast")
+def schema_plan_rejects_auto_increment_on_a_composite_primary_key() -> None:
+    """``auto_increment`` requires a single INTEGER PK and is invalid for a pair."""
+
+    class CompositeAutoIncrement[S = Pending](
+        Model[S, "CompositeAutoIncrement[Fetched]"]
+    ):
+        """Table illegally combining a composite key with auto-increment."""
+
+        left: CompositeAutoIncrement.Col[int] = Integer(
+            primary_key=True, auto_increment=True
+        )
+        right: CompositeAutoIncrement.Col[int] = Integer(primary_key=True)
+
+    with assert_raises(ModelDeclarationError):
+        _ = build_schema_plan([CompositeAutoIncrement])
+
+
+@test(mark="fast")
+def schema_plan_rejects_a_nullable_composite_primary_key_column() -> None:
+    """A composite-PK column is always NOT NULL, so declared nullable is invalid."""
+
+    class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
+        """Table illegally declaring a composite-PK column nullable."""
+
+        left: CompositeNullable.Col[int] = Integer(primary_key=True, nullable=True)
+        right: CompositeNullable.Col[int] = Integer(primary_key=True)
+
+    with assert_raises(ModelDeclarationError):
+        _ = build_schema_plan([CompositeNullable])
 
 
 @test(mark="fast")
