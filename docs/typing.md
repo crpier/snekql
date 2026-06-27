@@ -237,6 +237,32 @@ The target column may be any primary key or `unique=True` column. A typed-only
 reference (an `FKCol` annotation with a plain storage specifier) keeps the
 relationship available for joins without enforcing referential integrity.
 
+### Referential actions
+
+`ForeignKey(...)` takes optional `on_delete=` and `on_update=` referential
+actions, rendered verbatim as `ON DELETE`/`ON UPDATE` clauses on the constraint.
+The accepted actions are `"CASCADE"`, `"RESTRICT"`, `"SET NULL"`, and
+`"NO ACTION"`:
+
+```python
+# Owned rows that are meaningless once the parent is gone:
+job_id: Step.FKCol[Job, str] = ForeignKey(Job.id, nullable=False, on_delete="CASCADE")
+# Detach the child instead of deleting it:
+owner_id: Doc.FKCol[User, int] = ForeignKey(User.id, on_delete="SET NULL")
+```
+
+Because snekql enforces foreign keys, deleting a parent with no action declared
+fails while children still reference it; `on_delete="CASCADE"` lets a single
+`DELETE` remove the parent and its children. An action left unset renders no
+clause, leaving the database default (`NO ACTION`). Both backends render the
+same clauses.
+
+`SET DEFAULT` is intentionally unsupported: SQLite honors it but InnoDB silently
+ignores it, so it is not portable. `"SET NULL"` is rejected at declaration on a
+`NOT NULL` or primary-key foreign-key column, where the action could never fire.
+On SQLite, `verify(...)` compares the action and reports a model/live mismatch as
+drift; MariaDB does not verify foreign keys.
+
 ### Composite primary keys
 
 Marking more than one column `primary_key=True` declares a composite

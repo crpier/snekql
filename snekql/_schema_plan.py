@@ -35,11 +35,17 @@ class PlannedForeignKey:
     the target column is the one named explicitly by ``ForeignKey(Target.col)``,
     and the target model is cross-checked against the column's ``FKCol[Target, T]``
     annotation.
+
+    ``on_delete``/``on_update`` carry the optional referential action verbatim
+    (``"CASCADE"``, ``"SET NULL"``, ...); ``None`` means no action clause is
+    rendered, leaving the database default (``NO ACTION``).
     """
 
     column_name: str
     target_table: str
     target_column: str
+    on_delete: str | None = None
+    on_update: str | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +156,29 @@ def _resolve_target_column(
     return target_column_name
 
 
+def _validate_referential_actions(planned_column: PlannedColumn) -> None:
+    """Reject a ``SET NULL`` action on a column that can never hold NULL.
+
+    A primary-key foreign key, or one declared ``nullable=False``, is always
+    ``NOT NULL``; ``ON DELETE/UPDATE SET NULL`` could never fire there, so it is a
+    declaration mistake rather than a runtime no-op.
+    """
+
+    column = planned_column.column
+    if not (column.primary_key or column.nullable is False):
+        return
+    for clause, action in (
+        ("on_delete", column.on_delete),
+        ("on_update", column.on_update),
+    ):
+        if action == "SET NULL":
+            msg = (
+                f"column {planned_column.name!r} cannot use {clause}='SET NULL': "
+                "the foreign-key column is NOT NULL, so the action can never fire"
+            )
+            raise ModelDeclarationError(msg)
+
+
 def _plan_foreign_keys(
     model: type[Table[Any]],
     columns: tuple[PlannedColumn, ...],
@@ -159,6 +188,7 @@ def _plan_foreign_keys(
         target_column = planned_column.column.foreign_key_target
         if target_column is None:
             continue
+        _validate_referential_actions(planned_column)
         target_model = _resolve_target_model(model, planned_column.name)
         foreign_keys.append(
             PlannedForeignKey(
@@ -169,6 +199,8 @@ def _plan_foreign_keys(
                     planned_column.name,
                     target_column,
                 ),
+                on_delete=planned_column.column.on_delete,
+                on_update=planned_column.column.on_update,
             ),
         )
     return tuple(foreign_keys)

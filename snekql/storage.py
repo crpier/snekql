@@ -42,6 +42,10 @@ from snekql.expressions import (
 type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
 
+# Foreign-key referential actions. ``SET DEFAULT`` is intentionally omitted: SQLite
+# honors it but InnoDB silently ignores it, so a portable model cannot rely on it.
+type ReferentialAction = Literal["CASCADE", "RESTRICT", "SET NULL", "NO ACTION"]
+
 # ``pydantic.Json`` is typed as a special form but is a real class at runtime;
 # bind the runtime class for ``isinstance`` marker detection.
 _JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
@@ -79,6 +83,8 @@ class AttrConfig:
     default_factory: Callable[[], object] | EllipsisType = ...
     foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None
     nullable: bool | None = None
+    on_delete: ReferentialAction | None = None
+    on_update: ReferentialAction | None = None
     primary_key: bool = False
     server_default: object | None = None
     unique: bool = False
@@ -551,6 +557,8 @@ class ForeignKey:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        on_delete: ReferentialAction | None = None,
+        on_update: ReferentialAction | None = None,
         default: T,
     ) -> FKAttr[Any, Any, Any, T, T, Target, object]: ...
 
@@ -562,15 +570,19 @@ class ForeignKey:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        on_delete: ReferentialAction | None = None,
+        on_update: ReferentialAction | None = None,
     ) -> FKAttr[Any, Any, Any, T, T, Target]: ...
 
-    def __new__[Target, T](
+    def __new__[Target, T](  # noqa: PLR0913
         cls,
         references: Attr[Any, Any, Target, Any, T],
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        on_delete: ReferentialAction | None = None,
+        on_update: ReferentialAction | None = None,
         default: object = ...,
     ) -> FKAttr[Any, Any, Any, T, T, Target]:
         target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
@@ -579,6 +591,8 @@ class ForeignKey:
                 default=default,
                 foreign_key_target=target_column,
                 nullable=nullable,
+                on_delete=on_delete,
+                on_update=on_update,
                 primary_key=primary_key,
                 sqlite_storage_class=target_column.sqlite_storage_class,
                 storage_type_name=target_column.storage_type_name,
@@ -682,6 +696,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             config.foreign_key_target
         )
         self.foreign_key: bool = config.foreign_key_target is not None
+        self.on_delete: ReferentialAction | None = config.on_delete
+        self.on_update: ReferentialAction | None = config.on_update
         self.is_generated: bool = False
         self.name: str | None = None
         self.owner: type[object] | None = None

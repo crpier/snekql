@@ -42,11 +42,18 @@ class IndexShape:
 
 @dataclass(frozen=True)
 class ForeignKeyShape:
-    """Semantic foreign-key shape compared by local column and target."""
+    """Semantic foreign-key shape compared by local column, target, and actions.
+
+    ``on_delete``/``on_update`` hold the normalized referential action; an FK with
+    no declared action carries ``"NO ACTION"``, matching what the catalog reports,
+    so a missing action and an explicit ``NO ACTION`` compare equal.
+    """
 
     column_name: str
     target_table: str
     target_column: str
+    on_delete: str = "NO ACTION"
+    on_update: str = "NO ACTION"
 
 
 @dataclass(frozen=True)
@@ -180,7 +187,21 @@ def _diff_indexes(
 
 
 def _describe_foreign_key(foreign_key: ForeignKeyShape) -> str:
-    return f"{foreign_key.target_table}.{foreign_key.target_column}"
+    description = f"{foreign_key.target_table}.{foreign_key.target_column}"
+    if foreign_key.on_delete != "NO ACTION":
+        description += f" ON DELETE {foreign_key.on_delete}"
+    if foreign_key.on_update != "NO ACTION":
+        description += f" ON UPDATE {foreign_key.on_update}"
+    return description
+
+
+def _foreign_key_facts(foreign_key: ForeignKeyShape) -> tuple[str, str, str, str]:
+    return (
+        foreign_key.target_table,
+        foreign_key.target_column,
+        foreign_key.on_delete,
+        foreign_key.on_update,
+    )
 
 
 def _diff_foreign_keys(
@@ -199,10 +220,7 @@ def _diff_foreign_keys(
                 "database table"
             )
             issues.append(missing_message)
-        elif (actual_fk.target_table, actual_fk.target_column) != (
-            expected_fk.target_table,
-            expected_fk.target_column,
-        ):
+        elif _foreign_key_facts(actual_fk) != _foreign_key_facts(expected_fk):
             differs_message = (
                 f"foreign key on column {column_name!r} differs: "
                 f"expected -> {_describe_foreign_key(expected_fk)}, "

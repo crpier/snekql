@@ -151,11 +151,14 @@ async def _fetch_foreign_key_shapes(
         f"PRAGMA foreign_key_list({quote_identifier(table_name)})",
     )
     return tuple(
-        # PRAGMA foreign_key_list columns: id, seq, table, from, to, ...
+        # PRAGMA foreign_key_list columns:
+        # id, seq, table, from, to, on_update, on_delete, match.
         ForeignKeyShape(
             column_name=str(row[3]),
             target_table=str(row[2]),
             target_column=str(row[4]),
+            on_update=str(row[5]),
+            on_delete=str(row[6]),
         )
         for row in rows
     )
