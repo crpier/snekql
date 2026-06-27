@@ -49,6 +49,24 @@ def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
 
 
 @test(mark="fast")
+def schema_plan_emits_column_level_non_unique_indexes() -> None:
+    """``index=True`` on a column emits a non-unique ``ix_<table>_<col>``."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model with a column-level non-unique index."""
+
+        email: User.Col[str] = Text(nullable=False, unique=True)
+        status: User.Col[str] = Text(nullable=False, index=True)
+
+    plan = build_schema_plan([User])
+
+    assert_eq(
+        [(index.name, index.unique) for index in plan.models[0].indexes],
+        [("ux_user_email", True), ("ix_user_status", False)],
+    )
+
+
+@test(mark="fast")
 def schema_plan_rejects_duplicate_resolved_names() -> None:
     """Schema startup validates duplicate table and index names in one plan."""
 

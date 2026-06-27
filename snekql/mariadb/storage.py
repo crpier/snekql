@@ -116,6 +116,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -127,6 +128,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -138,6 +140,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -149,6 +152,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -160,6 +164,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -171,6 +176,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
@@ -182,6 +188,7 @@ class Integer:
         auto_increment: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -192,6 +199,7 @@ class Integer:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Integer",
@@ -209,6 +217,7 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -219,6 +228,7 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -229,6 +239,7 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -239,6 +250,7 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -249,6 +261,7 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -259,16 +272,18 @@ class Real:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -278,6 +293,7 @@ class Real:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="REAL",
                 storage_type_name="Real",
@@ -295,6 +311,7 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -305,6 +322,7 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -315,6 +333,7 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -325,6 +344,7 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -335,6 +355,7 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -345,16 +366,18 @@ class Text:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -364,6 +387,7 @@ class Text:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Text",
@@ -381,6 +405,7 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -391,6 +416,7 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -401,6 +427,7 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -411,6 +438,7 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -421,6 +449,7 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -431,16 +460,18 @@ class Blob:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -450,6 +481,7 @@ class Blob:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="BLOB",
                 storage_type_name="Blob",
@@ -471,6 +503,7 @@ class Json:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
 
@@ -480,6 +513,7 @@ class Json:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
 
@@ -489,6 +523,7 @@ class Json:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
@@ -498,6 +533,7 @@ class Json:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -506,6 +542,7 @@ class Json:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Json",
@@ -522,6 +559,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -531,6 +569,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -540,6 +579,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -549,6 +589,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -558,6 +599,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -567,6 +609,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
@@ -576,6 +619,7 @@ class Boolean:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -584,6 +628,7 @@ class Boolean:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="INTEGER",
                 storage_type_name="Boolean",
@@ -600,6 +645,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -609,6 +655,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -618,6 +665,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -627,6 +675,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -636,6 +685,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -645,6 +695,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
@@ -654,6 +705,7 @@ class DateTime:
         *,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -662,6 +714,7 @@ class DateTime:
                 default=default,
                 default_factory=default_factory,
                 nullable=nullable,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="DateTime",
@@ -689,6 +742,7 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: PendingGeneration,
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -699,6 +753,7 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: type[CurrentTimestamp],
     ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
 
@@ -709,6 +764,7 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: None,
     ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
 
@@ -719,6 +775,7 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -729,6 +786,7 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default_factory: Callable[[], T],
     ) -> Attr[Any, Any, Any, T, T, object]: ...
 
@@ -739,16 +797,18 @@ class Uuid:
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any: ...
 
-    def __new__(
+    def __new__(  # noqa: PLR0913
         cls,
         *,
         primary_key: bool = False,
         nullable: bool | None = None,
         unique: bool = False,
+        index: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
@@ -758,6 +818,7 @@ class Uuid:
                 default_factory=default_factory,
                 nullable=nullable,
                 primary_key=primary_key,
+                index=index,
                 unique=unique,
                 sqlite_storage_class="TEXT",
                 storage_type_name="Uuid",

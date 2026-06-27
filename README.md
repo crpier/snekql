@@ -209,6 +209,11 @@ allows multiple `NULL` values in a unique index, so use `nullable=False` when
 uniqueness should also require a value. Primary-key columns reject `unique=True`
 because it is redundant.
 
+For a plain non-unique single-column index, pass `index=True` instead — sugar
+for an `Index(col)` entry in `__indexes__` (named `ix_<table>_<col>`). It is
+rejected on primary-key columns and alongside `unique=True`, since both are
+already indexed.
+
 A *server default* is declared by passing a marker as the column's `default`:
 `sqlite.CurrentTimestamp` and `mariadb.CurrentTimestamp` are the only v1 server
 defaults. The marker means the database computes the value, so the field is
@@ -244,7 +249,9 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
 ```
 
 Index declarations accept column descriptors only. Names are inferred as
-`ix_<table>_<columns>` or `ux_<table>_<columns>` unless `name=` is supplied.
+`ix_<table>_<columns>` or `ux_<table>_<columns>` unless `name=` is supplied. A
+column-level `index=True` collides with an equivalent `Index(col)` here and is
+rejected as a duplicate.
 
 ## Queries
 

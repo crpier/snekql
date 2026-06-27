@@ -330,6 +330,15 @@ class ModelMeta(type):
             for column_name, column in columns.items()
             if column.unique
         ]
+        indexes.extend(
+            NormalizedIndex(
+                column_names=(column_name,),
+                name=f"ix_{table_name}_{column_name}",
+                unique=False,
+            )
+            for column_name, column in columns.items()
+            if column.index
+        )
         table_indexes: list[NormalizedIndex] = []
         for index_object in index_declarations:
             index = require_index_declaration(index_object)
@@ -411,6 +420,12 @@ class ModelMeta(type):
     ) -> None:
         if column.unique and column.primary_key:
             msg = f"primary-key columns cannot be unique: {name!r}"
+            raise ModelDeclarationError(msg)
+        if column.index and column.unique:
+            msg = f"unique columns are already indexed: {name!r}"
+            raise ModelDeclarationError(msg)
+        if column.index and column.primary_key:
+            msg = f"primary-key columns are already indexed: {name!r}"
             raise ModelDeclarationError(msg)
         if column.auto_increment and (
             not column.primary_key or column.storage_type_name != "Integer"
