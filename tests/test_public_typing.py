@@ -70,6 +70,11 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
         default=PENDING_GENERATION,
     )
     user_id: Order.FKCol[User, int] = ForeignKey(User.id)
+    # Nullable optional FK: ``default=None`` widens the value type and makes the
+    # field omittable, parallel to the plain column constructors.
+    reviewer_id: Order.FKCol[User, int | None] = ForeignKey(
+        User.id, nullable=True, default=None
+    )
     note: Order.Col[str] = Text(nullable=False)
 
 
@@ -131,7 +136,7 @@ if TYPE_CHECKING:
     class InvalidOrderDefaults[S = Pending](Model[S, "InvalidOrderDefaults[Fetched]"]):
         """Invalid foreign-key default declarations rejected by static typing."""
 
-        user_id: InvalidOrderDefaults.FKCol[User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType]
+        user_id: InvalidOrderDefaults.FKCol[User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType, reportCallIssue]
             User.id,
             default="nan",  # pyright: ignore[reportArgumentType]
         )

@@ -45,6 +45,21 @@ class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
     note: JoinOrder.Col[str] = Text(nullable=False)
 
 
+class Pipeline[S = Pending](Model[S, "Pipeline[Fetched]"]):
+    """Table keyed on an app-generated TEXT (UUID) primary key."""
+
+    id: Pipeline.Col[str] = Text(primary_key=True)
+
+
+class Secret[S = Pending](Model[S, "Secret[Fetched]"]):
+    """Row with a nullable optional foreign key to ``Pipeline``."""
+
+    id: Secret.Col[str] = Text(primary_key=True)
+    pipeline_id: Secret.FKCol[Pipeline, str | None] = ForeignKey(
+        Pipeline.id, nullable=True, default=None
+    )
+
+
 @test(mark="medium")
 async def inner_join_fetches_tuples_of_fetched_models() -> None:
     """An inner join returns one (user, order) tuple per matching row."""
@@ -163,3 +178,34 @@ async def projection_join_filters_on_a_table_it_does_not_project() -> None:
         await database.close()
 
     assert_eq(rows, ["alice@example.com"])
+
+
+@test(mark="medium")
+async def nullable_optional_foreign_key_round_trips_null() -> None:
+    """A TEXT-PK table verifies clean and its omittable FK stores/reads NULL."""
+
+    database = await initialized_database(
+        database=":memory:",
+        models=[Pipeline, Secret],
+        verify=True,
+    )
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(Pipeline(id="pipe-1")))
+            # Omitting pipeline_id falls back to default=None -> stored as NULL.
+            await tx.execute(insert(Secret(id="loose")))
+            await tx.execute(insert(Secret(id="bound", pipeline_id="pipe-1")))
+
+            rows = await tx.fetch_all(
+                select(Secret).order_by(Secret.id.asc()).all(),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(
+        [(row.id, row.pipeline_id) for row in rows],
+        [
+            ("bound", "pipe-1"),
+            ("loose", None),
+        ],
+    )

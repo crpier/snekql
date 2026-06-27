@@ -230,6 +230,31 @@ async def migrate_builds_and_verifies_a_composite_primary_key() -> None:
 
 
 @test(mark="medium")
+async def migrate_builds_and_verifies_a_text_primary_key() -> None:
+    """A non-INTEGER single-column PK is NOT NULL under STRICT and verifies clean."""
+
+    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+        """Table keyed on an app-generated TEXT (UUID) primary key."""
+
+        id: Doc.Col[str] = Text(primary_key=True)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        await migrate_models(database, [Doc])
+
+        create_table = _fetch_create_table(database_path, "doc")
+
+        # Under STRICT a TEXT PK is reported notnull=1; the DDL emits NOT NULL to
+        # match, so verification must not see drift.
+        await database.verify([Doc])
+        await database.close()
+
+    expected_sql = 'CREATE TABLE "doc" ("id" TEXT PRIMARY KEY NOT NULL) STRICT'
+    assert_eq(create_table, expected_sql)
+
+
+@test(mark="medium")
 async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None:
     """A `ForeignKey` to a unique non-PK column references that column by name."""
 
