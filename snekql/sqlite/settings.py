@@ -3,7 +3,9 @@
 These run for *every* connection the pool opens, not just the first, because
 most SQLite PRAGMAs apply per connection and database-level settings should be
 reasserted at the connection seam. ``journal_mode`` keeps file-backed databases
-in WAL mode, ``foreign_keys`` backs the FK constraints emitted in the schema
+in WAL mode and ``synchronous`` runs NORMAL there (safe under WAL: durable across
+application crashes, only risking the last transaction on OS crash or power
+loss), ``foreign_keys`` backs the FK constraints emitted in the schema
 layer (without it they are inert), ``busy_timeout`` keeps the multi-connection
 pool from raising spurious "database is locked" errors, and ``encoding`` is a
 build-time guard that text is stored as UTF-8.
@@ -29,6 +31,13 @@ SQLITE_FILE_CONNECTION_SETTINGS: tuple[ConnectionSetting, ...] = (
         probe_sql="PRAGMA journal_mode",
         expected_value="wal",
         expectation="'wal'",
+    ),
+    ConnectionSetting(
+        name="synchronous",
+        apply_statements=("PRAGMA synchronous = NORMAL",),
+        probe_sql="PRAGMA synchronous",
+        expected_value=1,
+        expectation="1 (NORMAL)",
     ),
 )
 
