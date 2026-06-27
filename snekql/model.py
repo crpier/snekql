@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import annotationlib
 import inspect
 from types import EllipsisType
 from typing import (
@@ -267,7 +268,22 @@ class ModelMeta(type):
 
     @staticmethod
     def _namespace_annotations(namespace: dict[str, object]) -> dict[str, object]:
-        annotations_object = namespace.get("__annotations__", {})
+        # Under PEP 649/749 (default in 3.14) the class namespace passed to the
+        # metaclass carries a deferred `__annotate__` function rather than a
+        # materialized `__annotations__` dict, unless the declaring module opted
+        # into stringized annotations via `from __future__ import annotations`.
+        # Resolve via the annotate function when present so generated-column
+        # detection works regardless of that opt-in import. STRING format keeps
+        # the existing string-matching approach and never evaluates the
+        # (possibly forward-referencing) annotations.
+        annotate = annotationlib.get_annotate_from_class_namespace(namespace)
+        if annotate is not None:
+            annotations_object = annotationlib.call_annotate_function(
+                annotate,
+                annotationlib.Format.STRING,
+            )
+        else:
+            annotations_object = namespace.get("__annotations__", {})
         if not isinstance(annotations_object, dict):
             return {}
         return cast("dict[str, object]", annotations_object)

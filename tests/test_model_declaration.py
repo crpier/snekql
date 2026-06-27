@@ -14,6 +14,7 @@ from snektest import (
     assert_is,
     assert_isinstance,
     assert_raises,
+    assert_true,
     test,
 )
 
@@ -32,6 +33,20 @@ from snekql.sqlite import (
     Real,
     Text,
 )
+from tests.fixtures.model_without_future_annotations import Memory
+
+
+@test(mark="fast")
+def generated_columns_detected_without_future_annotations_import() -> None:
+    """Generated-column detection works under PEP 649 deferred annotations.
+
+    The fixture module omits `from __future__ import annotations`, so its class
+    namespace carries a deferred `__annotate__` function rather than a
+    materialized `__annotations__` dict (issue #143). A `CurrentTimestamp`
+    server default must still be recognized as a generated column.
+    """
+
+    assert_true(Memory.__snekql_columns__["created_at"].is_generated)
 
 
 @test(mark="fast")
