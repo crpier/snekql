@@ -572,6 +572,19 @@ class ForeignKey:
         unique: bool = False,
         on_delete: ReferentialAction | None = None,
         on_update: ReferentialAction | None = None,
+        default: None,
+    ) -> FKAttr[Any, Any, Any, T | None, T | None, Target, object]: ...
+
+    @overload
+    def __new__[Target, T](
+        cls,
+        references: Attr[Any, Any, Target, Any, T],
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        on_delete: ReferentialAction | None = None,
+        on_update: ReferentialAction | None = None,
     ) -> FKAttr[Any, Any, Any, T, T, Target]: ...
 
     def __new__[Target, T](  # noqa: PLR0913
@@ -584,7 +597,7 @@ class ForeignKey:
         on_delete: ReferentialAction | None = None,
         on_update: ReferentialAction | None = None,
         default: object = ...,
-    ) -> FKAttr[Any, Any, Any, T, T, Target]:
+    ) -> Any:
         target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
         return build_attr(
             AttrConfig(

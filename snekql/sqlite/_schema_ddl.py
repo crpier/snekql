@@ -26,15 +26,20 @@ if TYPE_CHECKING:
 
 def _requires_not_null(planned_column: PlannedColumn) -> bool:
     column = planned_column.column
-    # SQLite records no NOT NULL constraint for a single-column primary key (the
-    # rowid alias cannot be null on its own). A table-level composite PRIMARY KEY
-    # is different: a STRICT table enforces NOT NULL on every key column and
-    # PRAGMA table_info reports it as notnull, so those columns are always
-    # non-nullable regardless of the declared nullability. The column DDL and the
-    # expected shape share this predicate to stay in lockstep.
+    # A table-level composite PRIMARY KEY is always NOT NULL: a STRICT table
+    # enforces it on every key column and PRAGMA table_info reports notnull, so
+    # those columns are non-nullable regardless of the declared nullability.
     if planned_column.composite_pk:
         return True
-    return column.nullable is False and not column.primary_key
+    # A single-column primary key is NOT NULL under STRICT unless it is the
+    # INTEGER rowid alias -- the one case SQLite leaves nullable on its own (and
+    # PRAGMA table_info reports notnull=0). Every other single-column PK (TEXT,
+    # BLOB, REAL) is reported notnull=1, so the DDL must emit NOT NULL to match.
+    if column.primary_key:
+        return column.sqlite_storage_class != "INTEGER"
+    # The column DDL and the expected shape share this predicate to stay in
+    # lockstep.
+    return column.nullable is False
 
 
 def _compile_column_definition(planned_column: PlannedColumn) -> str:
