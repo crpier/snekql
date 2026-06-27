@@ -48,16 +48,6 @@ def compile_create_table_sql(
         dialect.compile_column_definition(planned_column)
         for planned_column in planned_model.columns
     ]
-    composite_pk_columns = [
-        planned_column.name
-        for planned_column in planned_model.columns
-        if planned_column.composite_pk
-    ]
-    if composite_pk_columns:
-        quoted = ", ".join(
-            dialect.quote_identifier(name) for name in composite_pk_columns
-        )
-        definitions.append(f"PRIMARY KEY ({quoted})")
     definitions.extend(
         compile_foreign_key_constraint(foreign_key, dialect)
         for foreign_key in planned_model.foreign_keys
