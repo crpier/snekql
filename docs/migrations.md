@@ -129,19 +129,29 @@ a body in the chain fails:
 What differs between backends is only what a **single failing body** leaves
 behind, and that follows each engine's own DDL transaction semantics:
 
-- **SQLite** auto-commits per statement; a body executes exactly one statement,
-  so a failed body leaves no partial object from that body.
-- **MariaDB** auto-commits each DDL statement server-side and cannot roll DDL
-  back. snekql does **no** cleanup and tracks **no** managed objects — a body
-  that creates one object and then fails on a later statement can leave the
-  first object behind. This is why bodies must be idempotent (e.g.
+- **SQLite** runs each body through the driver's single-statement `execute`,
+  which **rejects** a body holding more than one statement (`aiosqlite` raises
+  "You can only execute one statement at a time" before anything runs). A body is
+  therefore structurally limited to one auto-committed statement, so a failed
+  body can never leave a partial object behind: the failure is all-or-nothing per
+  body by driver constraint, not by snekql wrapping it in a transaction.
+- **MariaDB** accepts a multi-statement body and auto-commits each DDL statement
+  server-side, and cannot roll DDL back. snekql does **no** cleanup and tracks
+  **no** managed objects — a body that creates one object and then fails on a
+  later statement leaves the first object behind (the earlier statements stay
+  committed while `migrate` still raises and records nothing). This is the one
+  partial-object outcome SQLite cannot produce, and it is why bodies must be
+  idempotent (e.g.
   `CREATE TABLE IF NOT EXISTS`, guarded `ALTER`): the resume re-runs the failed
   body verbatim, and idempotency is what makes that safe over whatever partial
   state remains.
 
-`verify` never participates in this: it only reads the live schema and creates
-nothing (see [schema-drift.md](schema-drift.md)), so a failed `verify` leaves no
-schema change on either backend.
+`initialize` and `verify` never participate in this. `initialize` is
+connect-only (it creates no schema, so a failed `initialize` leaves no partial
+schema state to reason about), and `verify` only reads the live schema and
+creates nothing (see [schema-drift.md](schema-drift.md)), so a failed `verify`
+leaves no schema change on either backend. Migration apply is the only place
+partial schema state can arise.
 
 ## Concurrency
 
