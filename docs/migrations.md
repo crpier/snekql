@@ -113,6 +113,46 @@ transaction — you own any transaction control inside your SQL. As a result:
 - On MariaDB, DDL auto-commits, so a multi-statement DDL body is not atomic;
   prefer single-statement or idempotent bodies.
 
+### Partial-failure guarantees (both backends)
+
+The apply flow gives the same chain-level guarantee on SQLite and MariaDB. When
+a body in the chain fails:
+
+- Every migration that ran **before** the failure stays applied and stays
+  recorded in the Migration History.
+- The failing migration is **not** recorded, and no later migration in the chain
+  runs.
+- A `migrate` with the failing body fixed re-runs only the still-pending bodies
+  (the failed one and everything after it), so the chain resumes from the
+  failure point rather than re-running the whole set.
+
+What differs between backends is only what a **single failing body** leaves
+behind, and that follows each engine's own DDL transaction semantics:
+
+- **SQLite** runs each body through the driver's single-statement `execute`,
+  which **rejects** a body holding more than one statement (`aiosqlite` raises
+  "You can only execute one statement at a time" before anything runs). A body is
+  therefore structurally limited to one auto-committed statement, so a failed
+  body can never leave a partial object behind: the failure is all-or-nothing per
+  body by driver constraint, not by snekql wrapping it in a transaction.
+- **MariaDB** accepts a multi-statement body and auto-commits each DDL statement
+  server-side, and cannot roll DDL back. snekql does **no** cleanup and tracks
+  **no** managed objects — a body that creates one object and then fails on a
+  later statement leaves the first object behind (the earlier statements stay
+  committed while `migrate` still raises and records nothing). This is the one
+  partial-object outcome SQLite cannot produce, and it is why bodies must be
+  idempotent (e.g.
+  `CREATE TABLE IF NOT EXISTS`, guarded `ALTER`): the resume re-runs the failed
+  body verbatim, and idempotency is what makes that safe over whatever partial
+  state remains.
+
+`initialize` and `verify` never participate in this. `initialize` is
+connect-only (it creates no schema, so a failed `initialize` leaves no partial
+schema state to reason about), and `verify` only reads the live schema and
+creates nothing (see [schema-drift.md](schema-drift.md)), so a failed `verify`
+leaves no schema change on either backend. Migration apply is the only place
+partial schema state can arise.
+
 ## Concurrency
 
 snekql coordinates concurrent migration runs so that several instances calling

@@ -46,6 +46,16 @@ Schema errors:
 
 - `SchemaVerificationError`: an existing table does not match generated DDL.
 
+Migration errors:
+
+- `MigrationError`: a hand-authored migration body failed to apply. The message
+  names the failing migration; previously-applied migrations stay recorded so a
+  fixed retry resumes from the failure point (see [migrations.md](migrations.md)).
+- `MigrationLockTimeoutError`: the migration advisory lock could not be acquired
+  before the timeout because another instance was migrating. The losing instance
+  applied nothing; a retry after the holder finishes applies only what is still
+  pending.
+
 ## Execution context
 
 `ExecutionError` preserves SQL text and raw parameter values:

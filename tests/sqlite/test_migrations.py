@@ -13,6 +13,7 @@ from snekql.sqlite import (
     Database,
     Fetched,
     Integer,
+    MigrationError,
     Model,
     Pending,
     SchemaVerificationError,
@@ -23,6 +24,12 @@ _CREATE_USER_MIGRATION = (
     'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
     '"email" TEXT NOT NULL) STRICT'
 )
+
+# A body that fails at execution time: ALTER of a table no prior migration
+# created. SQLite raises an operational error the runner reports as MigrationError.
+_FAILING_MIGRATION = 'ALTER TABLE "missing" ADD COLUMN "x" INTEGER'
+
+_CREATE_LATER_MIGRATION = 'CREATE TABLE "later" ("id" INTEGER PRIMARY KEY) STRICT'
 
 
 def _fetch_applied_names(database_path: Path) -> list[str]:
@@ -154,6 +161,95 @@ async def verify_fails_when_a_model_has_no_migration() -> None:
                 await database.verify([User])
         finally:
             await database.close()
+
+
+@test(mark="medium")
+async def failing_migration_leaves_partial_chain_state() -> None:
+    """A mid-chain failure halts: earlier objects/history persist, later ones never run.
+
+    SQLite DDL auto-commits per statement, so the first body's table and its
+    history row survive the failure while the failing and following bodies leave
+    nothing — the documented backend-neutral partial-failure guarantee.
+    """
+
+    migrations = {
+        "001_create_user": _CREATE_USER_MIGRATION,
+        "002_break": _FAILING_MIGRATION,
+        "003_later": _CREATE_LATER_MIGRATION,
+    }
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(MigrationError):
+                await database.migrate(migrations)
+        finally:
+            await database.close()
+
+        assert_true(_table_exists(database_path, "user"))
+        assert_true(not _table_exists(database_path, "later"))
+        assert_eq(_fetch_applied_names(database_path), ["001_create_user"])
+
+
+@test(mark="medium")
+async def fixed_retry_resumes_from_the_failure_point() -> None:
+    """Replacing the failing body and re-migrating applies only the still-pending bodies."""
+
+    failing = {
+        "001_create_user": _CREATE_USER_MIGRATION,
+        "002_break": _FAILING_MIGRATION,
+        "003_later": _CREATE_LATER_MIGRATION,
+    }
+    fixed = {
+        "001_create_user": _CREATE_USER_MIGRATION,
+        "002_break": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
+        "003_later": _CREATE_LATER_MIGRATION,
+    }
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(MigrationError):
+                await database.migrate(failing)
+            await database.migrate(fixed)
+        finally:
+            await database.close()
+
+        assert_true(_table_exists(database_path, "later"))
+        assert_eq(
+            _fetch_applied_names(database_path),
+            ["001_create_user", "002_break", "003_later"],
+        )
+
+
+@test(mark="medium")
+async def multi_statement_body_is_rejected_leaving_no_partial_object() -> None:
+    """SQLite cannot leave an intra-body partial object: the driver rejects multi-statement bodies.
+
+    This is the backend-divergent case (see docs/migrations.md): a body that
+    creates one object then fails on a later statement leaves the first object
+    behind on MariaDB, but on SQLite ``aiosqlite``'s single-statement ``execute``
+    rejects the whole body before anything runs, so the create never happens and
+    the body records nothing. The asymmetry is a hard driver constraint, not a
+    snekql-owned transaction.
+    """
+
+    # First statement would create "user"; the body is rejected as a unit, so it
+    # is never created and the failure is wrapped as MigrationError.
+    multi_statement = (
+        f'{_CREATE_USER_MIGRATION}; ALTER TABLE "missing" ADD COLUMN "x" INTEGER'
+    )
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(MigrationError):
+                await database.migrate({"001_multi": multi_statement})
+        finally:
+            await database.close()
+
+        assert_true(not _table_exists(database_path, "user"))
+        assert_eq(_fetch_applied_names(database_path), [])
 
 
 @test(mark="medium")

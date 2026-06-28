@@ -8,10 +8,23 @@ Migration History rows, never the full set.
 from __future__ import annotations
 
 import anyio
-from snektest import AsyncFixture, assert_eq, assert_true, load_fixture, test
+from snektest import (
+    AsyncFixture,
+    assert_eq,
+    assert_raises,
+    assert_true,
+    load_fixture,
+    test,
+)
 
 from snekql import mariadb
-from snekql.mariadb import PENDING_GENERATION, Database, Fetched, Pending
+from snekql.mariadb import (
+    PENDING_GENERATION,
+    Database,
+    Fetched,
+    MigrationError,
+    Pending,
+)
 from snekql.testing.mariadb import TemporaryMariaDBServer
 from tests.helpers import provide_mariadb_server
 
@@ -29,6 +42,17 @@ async def _fetch_applied_names(server: TemporaryMariaDBServer) -> list[str]:
     result = await server.run_sql("SELECT name FROM snekql_migrations")
     lines = [line for line in result.stdout.splitlines() if line]
     return lines[1:]
+
+
+async def _table_exists(server: TemporaryMariaDBServer, table_name: str) -> bool:
+    sql = (
+        "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES"
+        " WHERE TABLE_SCHEMA = DATABASE()"
+        f" AND TABLE_NAME = '{table_name}'"
+    )
+    result = await server.run_sql(sql)
+    lines = [line for line in result.stdout.splitlines() if line]
+    return table_name in lines[1:]
 
 
 async def mariadb_server() -> AsyncFixture[TemporaryMariaDBServer]:
@@ -95,6 +119,103 @@ async def concurrent_migrate_applies_each_migration_once() -> None:
         task_group.start_soon(_migrate_and_close)
 
     assert_eq((await _fetch_applied_names(server)).count("mig_concurrent"), 1)
+
+
+@test(mark="medium")
+async def failing_migration_leaves_partial_chain_state() -> None:
+    """A mid-chain failure halts: earlier objects/history persist, later ones never run.
+
+    MariaDB DDL auto-commits server-side, so the first body's table and its
+    history row survive the failure while the failing and following bodies leave
+    nothing — the documented backend-neutral partial-failure guarantee.
+    """
+
+    migrations = {
+        "mig62_partial_ok": _create_user_table_sql("mig62_partial_ok_t"),
+        # ALTER of a table no migration created fails at execution time.
+        "mig62_partial_break": "ALTER TABLE `mig62_missing_t` ADD COLUMN `x` BIGINT",
+        "mig62_partial_later": (
+            "CREATE TABLE `mig62_partial_later_t` ("
+            "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+            ") ENGINE=InnoDB"
+        ),
+    }
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(MigrationError):
+            await database.migrate(migrations)
+    finally:
+        await database.close()
+
+    applied = await _fetch_applied_names(server)
+    assert_true("mig62_partial_ok" in applied)
+    assert_true("mig62_partial_break" not in applied)
+    assert_true(await _table_exists(server, "mig62_partial_ok_t"))
+    assert_true(not await _table_exists(server, "mig62_partial_later_t"))
+
+
+@test(mark="medium")
+async def fixed_retry_resumes_from_the_failure_point() -> None:
+    """Replacing the failing body and re-migrating applies only the still-pending bodies."""
+
+    failing = {
+        "mig62_retry_ok": _create_user_table_sql("mig62_retry_ok_t"),
+        "mig62_retry_break": "ALTER TABLE `mig62_retry_missing_t` ADD COLUMN `x` BIGINT",
+        "mig62_retry_later": (
+            "CREATE TABLE `mig62_retry_later_t` ("
+            "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+            ") ENGINE=InnoDB"
+        ),
+    }
+    fixed = dict(failing)
+    fixed["mig62_retry_break"] = (
+        "ALTER TABLE `mig62_retry_ok_t` ADD COLUMN `status` "
+        "VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"
+    )
+    server = await load_fixture(mariadb_server())
+
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(MigrationError):
+            await database.migrate(failing)
+        await database.migrate(fixed)
+    finally:
+        await database.close()
+
+    applied = await _fetch_applied_names(server)
+    assert_true("mig62_retry_break" in applied)
+    assert_true("mig62_retry_later" in applied)
+    assert_true(await _table_exists(server, "mig62_retry_later_t"))
+
+
+@test(mark="medium")
+async def multi_statement_body_can_leave_a_partial_object() -> None:
+    """A multi-statement body that fails mid-way leaves earlier objects behind on MariaDB.
+
+    This is the backend-divergent case (see docs/migrations.md): MariaDB accepts a
+    multi-statement body and auto-commits each DDL statement server-side, so the
+    first statement's table survives even though a later statement fails and the
+    body is never recorded. SQLite cannot reproduce this — its driver rejects
+    multi-statement bodies outright. snekql does no cleanup, which is why such
+    bodies must be idempotent.
+    """
+
+    body = (
+        f"{_create_user_table_sql('mig62_partial_obj_t')}; "
+        "ALTER TABLE `mig62_partial_obj_missing_t` ADD COLUMN `x` BIGINT"
+    )
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(MigrationError):
+            await database.migrate({"mig62_partial_obj": body})
+    finally:
+        await database.close()
+
+    # The failing body is not recorded, but its first statement's table survives.
+    assert_true("mig62_partial_obj" not in await _fetch_applied_names(server))
+    assert_true(await _table_exists(server, "mig62_partial_obj_t"))
 
 
 @test(mark="medium")
