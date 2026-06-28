@@ -68,6 +68,7 @@
 ### Fixed
 
 - The MariaDB `Json` column constructor now has a `default=None` overload matching `Integer`/`Real`/`Boolean`, so a nullable JSON column (`Col[dict[...] | None] = mariadb.Json(nullable=True, default=None)`) type-checks instead of narrowing the column to `None`.
+- SQLite connection pool acquisition is now first-in-first-out fair. Previously a task that released a connection could immediately re-acquire it ahead of tasks already waiting (`condition.notify_all()` with no ordering), so under contention one worker could monopolize the pool while another was starved for the duration of the load (Jain fairness index ≈ 0.13 at `pool_size=1, workers=8`, with ~1 s tail acquire latency). Waiters are now served in arrival order via a ticket queue, eliminating the starvation (Jain ≈ 1.0, millisecond tail latency) with unchanged throughput. The MariaDB runtime delegates to the `aiomysql` pool and still exhibits this starvation; that is tracked separately. See `benchmarks/` and issue #66.
 
 ### Notes
 
