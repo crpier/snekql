@@ -1,4 +1,4 @@
-"""Standalone concurrency/throughput benchmarks for snekql (GitHub issue #66).
+"""Standalone concurrency/throughput benchmarks for snekql.
 
 These are deliberately separate from the ``snektest`` unit suite: they spin up
 real databases, drive concurrent async load, and report timing distributions.

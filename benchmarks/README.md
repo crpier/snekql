@@ -12,8 +12,11 @@ pool sizes and workload mixes.
 # Everything available (SQLite + MariaDB if the binaries are installed)
 uv run python -m benchmarks.run
 
-# One backend, longer run, bigger dataset
-uv run python -m benchmarks.run --backend sqlite --duration 5 --rows 20000
+# One backend, longer run, more seeded rows for the point-read/write/mixed
+# workloads (`--rows`); the large-select probe is sized separately
+# (`--large-select-rows`)
+uv run python -m benchmarks.run --backend sqlite --duration 5 --rows 20000 \
+    --large-select-rows 50000
 
 # Tune the sweep
 uv run python -m benchmarks.run --pool-sizes 1 4 16 --worker-counts 1 8 32

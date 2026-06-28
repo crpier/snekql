@@ -1,4 +1,4 @@
-"""Entry point for the snekql concurrency benchmarks (GitHub issue #66).
+"""Entry point for the snekql concurrency benchmarks.
 
 Run everything that is locally available::
 
@@ -80,9 +80,13 @@ async def _run_scenarios(
     """Run the full scenario matrix against one backend factory."""
 
     reports: list[BenchmarkReport] = []
+    representative_pool = max(config.pool_sizes)
+    representative_workers = max(config.worker_counts)
 
-    # Pool-size / worker sweep on a read-mostly workload: this is the headline
-    # fairness + throughput matrix.
+    # Sweep every workload mix across the pool-size axis: point reads run the
+    # full worker sweep (the headline fairness + throughput matrix), while the
+    # write-heavy and mixed workloads run at the peak worker count for each pool
+    # size so workload mix and pool size are crossed, not measured in isolation.
     for pool_size in config.pool_sizes:
         db = await make_db(pool_size)
         try:
@@ -97,32 +101,23 @@ async def _run_scenarios(
                 reports.append(report)
                 print(format_report(report))
                 print()
+            for label, op in (
+                ("write", write_row(api, db)),
+                ("mixed", mixed_read_write(api, db, config.rows)),
+            ):
+                scenario = f"{backend_label} {label} pool={pool_size}"
+                scenario += f" workers={representative_workers}"
+                report = await run_concurrent(
+                    scenario,
+                    op,
+                    workers=representative_workers,
+                    duration=config.duration,
+                )
+                reports.append(report)
+                print(format_report(report))
+                print()
         finally:
             await db.close()
-
-    # Write-heavy and mixed workloads at a representative pool size.
-    representative_pool = max(config.pool_sizes)
-    representative_workers = max(config.worker_counts)
-    db = await make_db(representative_pool)
-    try:
-        await seed_rows(api, db, config.rows)
-        for label, op in (
-            ("write", write_row(api, db)),
-            ("mixed", mixed_read_write(api, db, config.rows)),
-        ):
-            scenario = f"{backend_label} {label} pool={representative_pool}"
-            scenario += f" workers={representative_workers}"
-            report = await run_concurrent(
-                scenario,
-                op,
-                workers=representative_workers,
-                duration=config.duration,
-            )
-            reports.append(report)
-            print(format_report(report))
-            print()
-    finally:
-        await db.close()
 
     # Large-result materialization: the event-loop-stall probe.
     db = await make_db(representative_pool)
