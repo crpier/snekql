@@ -8,8 +8,11 @@ from sqlite3 import connect
 from tempfile import TemporaryDirectory
 from typing import Any, cast
 
+import anyio
+import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
+import snekql.runtime as runtime_module
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -131,6 +134,56 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         await database.close()
 
     assert_eq(rows, [("active", "a@example.com"), ("disabled", "b@example.com")])
+
+
+@test(mark="medium")
+async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
+    """A large fetch_all interleaves with other tasks instead of starving the loop."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model selected through the runtime."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    interval = runtime_module.FETCH_ALL_YIELD_INTERVAL
+    row_count = interval * 2 + 1
+    expected_checkpoints = (row_count - 1) // interval
+
+    # Observe the actual behaviour the cooperative checkpoint promises: a
+    # competing task on the same loop makes progress *while* fetch_all
+    # materializes. A background ticker advances once per scheduler turn it is
+    # handed, so each checkpoint fetch_all yields lets it tick at least once. A
+    # materialization that ran straight through without yielding would block the
+    # ticker for the whole stretch. Asserting interleaving (not the internal
+    # checkpoint call count) keeps the test indifferent to how the yield is spelled.
+    ticks = 0
+
+    async def ticker() -> None:
+        nonlocal ticks
+        while True:
+            await anyio.lowlevel.checkpoint()
+            ticks += 1
+
+    rows: list[User[Fetched]] = []
+    database = await initialized_database(database=":memory:", models=[User])
+    try:
+        async with database.transaction() as tx:
+            for index in range(row_count):
+                await tx.execute(insert(User(email=f"user{index}@example.com")))
+            async with anyio.create_task_group() as task_group:
+                task_group.start_soon(ticker)
+                rows = await tx.fetch_all(select(User).all())
+                task_group.cancel_scope.cancel()
+    finally:
+        await database.close()
+
+    assert_eq(len(rows), row_count)
+    assert ticks >= expected_checkpoints
 
 
 @test(mark="fast")

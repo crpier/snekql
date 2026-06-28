@@ -65,14 +65,30 @@ Jain **0.03** (one worker did 14848 ops, another did 1) with max latency equal
 to the whole run. This is inside `aiomysql`, not snekql's own pool, so it needs
 a wrapper-level fair queue. Filed as a follow-up.
 
-### 3. `fetch_all` materialization blocks the event loop — open follow-up
+### 3. `fetch_all` materialization blocks the event loop — fixed in this change
 
 `Transaction.fetch_all` materializes and validates every row synchronously after
-`fetchall()`. Selecting 20000 rows produced a **57 ms** (SQLite) / **115 ms**
-(MariaDB) event-loop stall — long enough to delay every other task on the loop.
-`fetch_chunks(...)` streams server-side and keeps stalls negligible; it is the
-recommended path for large result sets. Filed as a follow-up to document the
-guidance and consider chunked materialization yielding to the loop.
+`fetchall()`. Before the fix, selecting 20000 rows produced a **57 ms** (SQLite)
+/ **115 ms** (MariaDB) event-loop stall — long enough to delay every other task
+on the loop.
+
+The materialization loop now awaits an `anyio` checkpoint every
+`FETCH_ALL_YIELD_INTERVAL` (1000) rows, capping any single uninterrupted run.
+The `large-select` scenario (20000-row `fetch_all`, 4 workers) over the SQLite
+backend, before vs after:
+
+| | max loop stall | p99 loop stall | throughput |
+|---|---|---|---|
+| baseline (`origin/main`) | 63.3 ms | 57.7 ms | 8.0 ops/s |
+| cooperative yield | 11.9 ms | 9.2 ms | 8.0 ops/s |
+
+~5x stall reduction with no measurable throughput cost. The driver `fetchall()`
+itself is awaited (aiosqlite offloads to a thread, aiomysql awaits the buffered
+read), so the synchronous Python-level materialization the checkpoint breaks up
+is the stall this targets. `fetch_chunks(...)` still streams server-side and
+keeps stalls negligible without buffering the whole result; it remains the
+recommended path for large or unbounded reads. Reproduce with
+`uv run python -m benchmarks.run --backend sqlite`. See issue #187.
 
 ## Pool-size guidance for async services
 
