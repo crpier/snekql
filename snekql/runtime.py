@@ -19,6 +19,7 @@ from typing import (
 )
 
 import anyio
+from anyio.lowlevel import checkpoint
 
 from snekql._runtime_selection import (
     RuntimeConfig,
@@ -68,6 +69,15 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
+
+# ``fetch_all`` materializes and validates every row synchronously on the event
+# loop. For large result sets that is a CPU-bound stretch that starves every
+# other task on the loop, so the materialization loop yields a cooperative
+# checkpoint every this-many rows. The interval is large enough that the
+# per-checkpoint overhead is negligible on bounded results yet small enough that
+# no single uninterrupted run blocks the loop for long. Callers with genuinely
+# large results should stream with ``fetch_chunks`` instead.
+FETCH_ALL_YIELD_INTERVAL = 1000
 
 
 @validate_boundary(error_type=QueryConstructionError)
@@ -415,7 +425,16 @@ class Transaction:
         validate: bool = True,
     ) -> list[tuple[*Ts]]: ...
     async def fetch_all(self, query: object, *, validate: bool = True) -> object:
-        """Fetch all rows for a select query."""
+        """Fetch and materialize every row of a select query into a list.
+
+        Intended for bounded result sets. The whole result is loaded into memory
+        and each row is validated synchronously on the event loop; the loop
+        yields a cooperative checkpoint periodically so a large materialization
+        does not monopolize it, but the read still holds the connection for its
+        full duration. For large or unbounded results stream with ``fetch_chunks``
+        instead, which fetches incrementally from a server-side cursor and keeps
+        per-batch materialization small.
+        """
 
         async with self._lock:
             connection = self.require_connection()
@@ -444,12 +463,16 @@ class Transaction:
                 params,
                 len(rows),
             )
-            return [
-                self.runtime.materialize_select_row(
-                    select_query, tuple(row), validate=validate
+            materialized: list[object] = []
+            for index, row in enumerate(rows):
+                if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
+                    await checkpoint()
+                materialized.append(
+                    self.runtime.materialize_select_row(
+                        select_query, tuple(row), validate=validate
+                    )
                 )
-                for row in rows
-            ]
+            return materialized
 
     @overload
     def fetch_chunks(

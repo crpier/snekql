@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, test
 
+import snekql.runtime as runtime_module
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -131,6 +132,48 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
         await database.close()
 
     assert_eq(rows, [("active", "a@example.com"), ("disabled", "b@example.com")])
+
+
+@test(mark="medium")
+async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
+    """Materializing many rows checkpoints periodically so the loop is not starved."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model selected through the runtime."""
+
+        id: User.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: User.Col[str] = Text(nullable=False)
+
+    interval = runtime_module.FETCH_ALL_YIELD_INTERVAL
+    row_count = interval * 2 + 1
+
+    original_checkpoint = cast(
+        "Callable[[], Awaitable[None]]", runtime_module.checkpoint
+    )
+    checkpoints = {"count": 0}
+
+    async def counting_checkpoint() -> None:
+        checkpoints["count"] += 1
+        await original_checkpoint()
+
+    database = await initialized_database(database=":memory:", models=[User])
+    try:
+        async with database.transaction() as tx:
+            for index in range(row_count):
+                await tx.execute(insert(User(email=f"user{index}@example.com")))
+            runtime_module.checkpoint = counting_checkpoint
+            checkpoints["count"] = 0
+            rows = await tx.fetch_all(select(User).all())
+    finally:
+        runtime_module.checkpoint = original_checkpoint
+        await database.close()
+
+    assert_eq(len(rows), row_count)
+    assert_eq(checkpoints["count"], (row_count - 1) // interval)
 
 
 @test(mark="fast")

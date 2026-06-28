@@ -460,8 +460,13 @@ async with db.transaction() as tx:
 
 Runtime methods:
 
-- `fetch_all(select(...))` returns all result rows. It loads the whole result
-  into memory; for large result sets stream with `fetch_chunks` instead.
+- `fetch_all(select(...))` returns all result rows. It is for bounded result
+  sets: the whole result is loaded into memory and every row is validated
+  synchronously on the event loop. The materialization loop yields a cooperative
+  checkpoint periodically so a large read does not monopolize the loop, but it
+  still holds the connection for its full duration. For large result sets stream
+  with `fetch_chunks` instead, which fetches incrementally and keeps per-batch
+  materialization small.
 - `fetch_chunks(select(...), size=N)` streams rows in batches of up to `N` from a
   server-side cursor, so an arbitrarily large result never has to fit in memory.
   It returns a `ChunkStream` — an async context manager and async iterator — that
