@@ -113,6 +113,11 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
         nullable=False, default_factory=uuid.uuid4
     )
     profile: MariadbUser.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
+    # Nullable JSON: the ``default=None`` overload widens the value type to
+    # optional and makes the field omittable, parallel to Integer/Real/Boolean.
+    prefs: MariadbUser.JsonCol[dict[str, object] | None] = mariadb.Json(
+        nullable=True, default=None
+    )
 
 
 if TYPE_CHECKING:
@@ -201,6 +206,8 @@ if TYPE_CHECKING:
     mariadb_user = MariadbUser(email="alice@example.com")
     _ = assert_type(mariadb_user, MariadbUser[Pending])
     _ = assert_type(mariadb_user.account_id, uuid.UUID)
+    # ``default=None`` makes the nullable JSON column omittable and optional.
+    _ = assert_type(mariadb_user.prefs, dict[str, object] | None)
     _ = assert_type(
         select(MariadbUser),
         SelectModelQuery[MariadbUser[Pending], MariadbUser[Fetched]],

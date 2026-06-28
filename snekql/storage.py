@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from json import JSONDecodeError, loads
+from math import isfinite
 from types import EllipsisType
 from typing import (
     Any,
@@ -50,6 +51,12 @@ type ReferentialAction = Literal["CASCADE", "RESTRICT", "SET NULL", "NO ACTION"]
 # bind the runtime class for ``isinstance`` marker detection.
 _JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
 
+# Inclusive bounds of a signed 64-bit integer. SQLite INTEGER and MariaDB BIGINT
+# both top out here; values outside the range cannot be persisted, so the codec
+# rejects them with a domain error instead of letting the driver overflow.
+_INT64_MIN = -(2**63)
+_INT64_MAX = 2**63 - 1
+
 
 @dataclass(frozen=True, kw_only=True)
 class _BackendCodec:
@@ -66,6 +73,12 @@ class _BackendCodec:
     datetime_encode_suffix: str
     decode_datetime: Callable[[object, str], datetime]
     json_accepts_bytes: bool
+    # Length ceilings for the variable-width text/binary storage families, or
+    # ``None`` when the backend imposes no practical limit. Encoding rejects
+    # oversized values with a domain error rather than letting the driver
+    # silently truncate (MariaDB non-strict mode) or raise a raw error.
+    max_text_chars: int | None
+    max_blob_bytes: int | None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1051,9 +1064,9 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
                 + f"{timestamp.microsecond // 1000:03d}"
                 + codec.datetime_encode_suffix
             )
-        return self._encode_primitive(value)
+        return self._encode_primitive(value, codec=codec)
 
-    def _encode_primitive(self, value: object) -> object:
+    def _encode_primitive(self, value: object, *, codec: _BackendCodec) -> object:
         """Wire-encode a primitive-storage value through pydantic serialization.
 
         ``mode="json"`` turns datetimes/UUIDs into bare strings and passes
@@ -1063,8 +1076,48 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
 
         adapter = self._logical_adapter()
         if self.sqlite_storage_class == "BLOB":
-            return adapter.dump_python(value, mode="python")
-        return adapter.dump_python(value, mode="json")
+            encoded = adapter.dump_python(value, mode="python")
+            if (
+                codec.max_blob_bytes is not None
+                and isinstance(encoded, bytes | bytearray)
+                and len(encoded) > codec.max_blob_bytes
+            ):
+                msg = (
+                    f"{self._require_name()!r} binary value exceeds the "
+                    f"{codec.max_blob_bytes}-byte limit for this backend"
+                )
+                raise ModelValidationError(msg)
+            return encoded
+        encoded = adapter.dump_python(value, mode="json")
+        # Reject values no backend can store losslessly before they reach the
+        # driver: non-finite floats (``nan`` silently becomes ``NULL`` in SQLite
+        # and MariaDB DOUBLE refuses them outright) and integers outside the
+        # signed 64-bit range (the SQLite driver raises a raw ``OverflowError``).
+        if isinstance(encoded, float) and not isfinite(encoded):
+            msg = f"{self._require_name()!r} non-finite float values cannot be stored"
+            raise ModelValidationError(msg)
+        if (
+            self.storage_type_name == "Integer"
+            and type(encoded) is int
+            and not (_INT64_MIN <= encoded <= _INT64_MAX)
+        ):
+            msg = f"{self._require_name()!r} integer value exceeds the 64-bit range"
+            raise ModelValidationError(msg)
+        # TEXT-family columns (Text) may overflow a backend's variable-width
+        # ceiling; reject before truncation. Uuid/DateTime also encode to text
+        # but are fixed-width, so only the Text family is checked.
+        if (
+            self.storage_type_name == "Text"
+            and codec.max_text_chars is not None
+            and isinstance(encoded, str)
+            and len(encoded) > codec.max_text_chars
+        ):
+            msg = (
+                f"{self._require_name()!r} text value exceeds the "
+                f"{codec.max_text_chars}-character limit for this backend"
+            )
+            raise ModelValidationError(msg)
+        return encoded
 
     def _encode_json(self, value: object) -> str:
         """Serialize a Json column value through its logical pydantic adapter.
@@ -1260,12 +1313,20 @@ _SQLITE_CODEC = _BackendCodec(
     datetime_encode_suffix="Z",
     decode_datetime=_decode_sqlite_datetime,
     json_accepts_bytes=False,
+    # SQLite TEXT/BLOB share a single ~1 GB limit far above any practical row;
+    # treat them as unbounded here.
+    max_text_chars=None,
+    max_blob_bytes=None,
 )
 _MARIADB_CODEC = _BackendCodec(
     datetime_encode_format="%Y-%m-%d %H:%M:%S.",
     datetime_encode_suffix="",
     decode_datetime=_decode_mariadb_datetime,
     json_accepts_bytes=True,
+    # Text maps to VARCHAR(255) (255 characters) and Blob to BLOB (65535 bytes);
+    # JSON is LONGTEXT-backed and effectively unbounded.
+    max_text_chars=255,
+    max_blob_bytes=65535,
 )
 _BACKEND_CODECS: dict[StorageBackend, _BackendCodec] = {
     "sqlite": _SQLITE_CODEC,
