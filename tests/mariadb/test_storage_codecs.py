@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel
-from snektest import assert_eq, assert_isinstance, assert_raises, load_fixture, test
+from pydantic import BaseModel, Json
+from snektest import (
+    assert_eq,
+    assert_isinstance,
+    assert_raises,
+    assert_true,
+    load_fixture,
+    test,
+)
 
 from snekql import mariadb
 from snekql.mariadb import (
@@ -15,6 +23,7 @@ from snekql.mariadb import (
     CurrentTimestamp,
     Fetched,
     ModelDeclarationError,
+    ModelValidationError,
     Pending,
     insert,
     select,
@@ -138,6 +147,95 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
             """Invalid MariaDB model using auto increment outside a primary key."""
 
             count: BadCounter.Col[int] = mariadb.Integer(auto_increment=True)
+
+
+@test()
+def mariadb_nullable_columns_round_trip_none_and_reject_required_nulls() -> None:
+    """Nullable MariaDB columns encode/decode ``None``; a non-null column rejects
+    a ``NULL`` from the driver with a domain error."""
+
+    class Profile[S = Pending](mariadb.Model[S, "Profile[Fetched]"]):
+        """Model with a nullable column per representative MariaDB family."""
+
+        rating: Profile.Col[float | None] = mariadb.Real(nullable=True, default=None)
+        nickname: Profile.Col[str | None] = mariadb.Text(nullable=True, default=None)
+        prefs: Profile.Col[dict[str, int] | None] = mariadb.Json(
+            nullable=True, default=None
+        )
+        flag: Profile.Col[bool | None] = mariadb.Boolean(nullable=True, default=None)
+        seen_at: Profile.Col[datetime | None] = mariadb.DateTime(
+            nullable=True, default=None
+        )
+
+    for column in (
+        Profile.rating,
+        Profile.nickname,
+        Profile.prefs,
+        Profile.flag,
+        Profile.seen_at,
+    ):
+        assert_true(column.encode(None, backend="mariadb") is None)
+        assert_true(column.decode(None, backend="mariadb") is None)
+
+    class Required[S = Pending](mariadb.Model[S, "Required[Fetched]"]):
+        """Non-null column whose decode must reject a driver ``NULL``."""
+
+        value: Required.Col[str] = mariadb.Text(nullable=False)
+
+    with assert_raises(ModelValidationError):
+        _ = Required.value.decode(None, backend="mariadb")
+
+
+@test()
+def mariadb_integer_codec_enforces_the_signed_64_bit_range() -> None:
+    """MariaDB BIGINT is signed 64-bit; the extremes encode and values past the
+    range fail with a domain error before reaching the driver."""
+
+    class Counter[S = Pending](mariadb.Model[S, "Counter[Fetched]"]):
+        """Model with a single BIGINT column."""
+
+        value: Counter.Col[int] = mariadb.Integer(nullable=False)
+
+    for boundary in (-(2**63), 2**63 - 1):
+        assert_eq(Counter.value.encode(boundary, backend="mariadb"), boundary)
+
+    with assert_raises(ModelValidationError):
+        _ = Counter.value.encode(2**63, backend="mariadb")
+    with assert_raises(ModelValidationError):
+        _ = Counter.value.encode(-(2**63) - 1, backend="mariadb")
+
+
+@test()
+def mariadb_non_finite_floats_fail_with_a_domain_error() -> None:
+    """MariaDB DOUBLE cannot store ``nan``/``inf``; the codec rejects them with a
+    domain error, matching the SQLite contract."""
+
+    class Reading[S = Pending](mariadb.Model[S, "Reading[Fetched]"]):
+        """Model with a single DOUBLE column."""
+
+        value: Reading.Col[float] = mariadb.Real(nullable=False)
+
+    for bad in (math.nan, math.inf, -math.inf):
+        with assert_raises(ModelValidationError):
+            _ = Reading.value.encode(bad, backend="mariadb")
+
+    assert_eq(Reading.value.encode(1.5, backend="mariadb"), 1.5)
+
+
+@test()
+def mariadb_json_codec_preserves_insertion_key_order() -> None:
+    """The MariaDB Json wire codec keeps the payload's key order (no sorting) and
+    round-trips nested values."""
+
+    class Payload[S = Pending](mariadb.Model[S, "Payload[Fetched]"]):
+        """Model with a free-form JSON object column."""
+
+        data: Payload.Col[Json[dict[str, object]]] = mariadb.Json(nullable=False)
+
+    nested: dict[str, object] = {"b": 1, "a": {"d": [1, 2], "c": None}}
+    encoded = Payload.data.encode(nested, backend="mariadb")
+    assert_eq(encoded, '{"b":1,"a":{"d":[1,2],"c":null}}')
+    assert_eq(Payload.data.decode(encoded, backend="mariadb"), nested)
 
 
 @test(mark="medium")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
@@ -319,3 +320,148 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
                 default=CurrentTimestamp,
                 default_factory=lambda: datetime(2026, 5, 31, tzinfo=UTC),
             )
+
+
+@test()
+def nullable_column_round_trips_none_for_every_storage_class() -> None:
+    """A nullable column encodes ``None`` to SQL ``NULL`` and decodes it back,
+    while a non-null column rejects ``NULL`` on the way in with a domain error."""
+
+    class Profile[S = Pending](Model[S, "Profile[Fetched]"]):
+        """Table model with one nullable column per SQLite storage class."""
+
+        id: Profile.Col[int] = Integer(primary_key=True)
+        rating: Profile.Col[float | None] = Real(nullable=True, default=None)
+        nickname: Profile.Col[str | None] = Text(nullable=True, default=None)
+        avatar: Profile.Col[bytes | None] = Blob(nullable=True, default=None)
+        prefs: Profile.Col[Json[dict[str, int]] | None] = Text(
+            nullable=True, default=None
+        )
+
+    profile = Profile(id=1)
+    _, encoded = encode_model_row(profile, backend="sqlite")
+    assert_eq(
+        encoded,
+        {"id": 1, "rating": None, "nickname": None, "avatar": None, "prefs": None},
+    )
+
+    fetched = cast(
+        "Profile[Fetched]",
+        decode_model_row(
+            Profile,
+            {"id": 1, "rating": None, "nickname": None, "avatar": None, "prefs": None},
+            backend="sqlite",
+        ),
+    )
+    assert_true(fetched.rating is None)
+    assert_true(fetched.nickname is None)
+    assert_true(fetched.avatar is None)
+    assert_true(fetched.prefs is None)
+
+    class Required[S = Pending](Model[S, "Required[Fetched]"]):
+        """Non-null column whose decode must reject a ``NULL`` from the driver."""
+
+        value: Required.Col[str] = Text(nullable=False)
+
+    with assert_raises(ModelValidationError):
+        _ = decode_model_row(Required, {"value": None}, backend="sqlite")
+
+
+@test()
+def integer_storage_round_trips_the_signed_64_bit_boundaries() -> None:
+    """SQLite INTEGER is a signed 64-bit type; the extremes round-trip, and a
+    value past the range fails with a domain error before the driver overflows."""
+
+    class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+        """Table model with a single INTEGER column."""
+
+        value: Counter.Col[int] = Integer(nullable=False)
+
+    for boundary in (-(2**63), 2**63 - 1):
+        _, encoded = encode_model_row(Counter(value=boundary), backend="sqlite")
+        assert_eq(encoded, {"value": boundary})
+
+    # One past the signed 64-bit range: SQLite's driver raises a raw
+    # ``OverflowError`` at bind time, so the codec rejects it first as a domain
+    # error rather than letting persistence fail opaquely.
+    with assert_raises(ModelValidationError):
+        _ = encode_model_row(Counter(value=2**63), backend="sqlite")
+    with assert_raises(ModelValidationError):
+        _ = encode_model_row(Counter(value=-(2**63) - 1), backend="sqlite")
+
+
+@test()
+def non_finite_floats_fail_with_a_domain_error_before_persistence() -> None:
+    """``nan``/``inf`` corrupt SQLite REAL storage (``nan`` silently becomes
+    ``NULL``) and are rejected outright by MariaDB DOUBLE, so the codec refuses
+    them with a domain error for a consistent cross-backend contract."""
+
+    class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
+        """Table model with a single REAL column."""
+
+        value: Reading.Col[float] = Real(nullable=False)
+
+    for bad in (math.nan, math.inf, -math.inf):
+        with assert_raises(ModelValidationError):
+            _ = encode_model_row(Reading(value=bad), backend="sqlite")
+
+    # Ordinary finite floats are untouched.
+    _, encoded = encode_model_row(Reading(value=1.5), backend="sqlite")
+    assert_eq(encoded, {"value": 1.5})
+
+
+@test()
+def large_text_blob_and_json_values_round_trip_unchanged() -> None:
+    """Large payloads are passed through the codec verbatim; SQLite imposes no
+    practical size ceiling below its 1 GB default limit."""
+
+    class Document[S = Pending](Model[S, "Document[Fetched]"]):
+        """Table model carrying sizable TEXT, BLOB, and JSON columns."""
+
+        body: Document.Col[str] = Text(nullable=False)
+        raw: Document.Col[bytes] = Blob(nullable=False)
+        tags: Document.Col[Json[list[str]]] = Text(nullable=False)
+
+    body = "x" * 1_000_000
+    raw = b"\x00\xff" * 500_000
+    tags = [f"tag-{i}" for i in range(10_000)]
+    document = Document(body=body, raw=raw, tags=tags)
+    _, encoded = encode_model_row(document, backend="sqlite")
+
+    fetched = cast(
+        "Document[Fetched]",
+        decode_model_row(Document, encoded, backend="sqlite"),
+    )
+    assert_eq(fetched.body, body)
+    assert_eq(fetched.raw, raw)
+    assert_eq(fetched.tags, tags)
+
+
+@test()
+def json_codec_preserves_insertion_key_order_and_nested_values() -> None:
+    """The JSON wire codec keeps the payload's key order (no sorting) and
+    faithfully round-trips arbitrarily nested objects and arrays."""
+
+    class Payload[S = Pending](Model[S, "Payload[Fetched]"]):
+        """Table model with a free-form JSON object column."""
+
+        data: Payload.Col[Json[dict[str, object]]] = Text(nullable=False)
+
+    nested: dict[str, object] = {
+        "b": 1,
+        "a": {"d": [1, 2, {"deep": True}], "c": None},
+        "z": ["x", {"y": 2}],
+    }
+    _, encoded = encode_model_row(Payload(data=nested), backend="sqlite")
+
+    # Keys serialize in insertion order ("b" before "a"), not sorted.
+    assert_eq(
+        encoded,
+        {"data": '{"b":1,"a":{"d":[1,2,{"deep":true}],"c":null},"z":["x",{"y":2}]}'},
+    )
+
+    fetched = cast(
+        "Payload[Fetched]",
+        decode_model_row(Payload, encoded, backend="sqlite"),
+    )
+    assert_eq(fetched.data, nested)

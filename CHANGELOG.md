@@ -61,10 +61,16 @@
 ### Changed
 
 - `ExecutionError` now folds its chained cause into `str()` (`cause=<type>: <message>`) when raised with `raise ... from cause`, so the underlying driver error (e.g. `no such table: ...`) is visible without inspecting `__cause__` or the traceback. All execution-failure sites already chain the original error, so the message gains the cause across the board; the SQL and params context is unchanged.
+- Encoding now rejects values no backend can persist losslessly with a `ModelValidationError`, before the value reaches the driver: non-finite floats (`nan`, `inf`, `-inf`) on real-number columns (`nan` would silently become `NULL` in SQLite `REAL`, and MariaDB `DOUBLE` refuses them outright) and integers outside the signed 64-bit range `[-2**63, 2**63 - 1]` on integer columns (previously the SQLite driver raised a raw `OverflowError` at bind time). See [docs/adr/0005-storage-primitive-constructors-with-derived-codecs.md](./docs/adr/0005-storage-primitive-constructors-with-derived-codecs.md).
+
+### Fixed
+
+- The MariaDB `Json` column constructor now has a `default=None` overload matching `Integer`/`Real`/`Boolean`, so a nullable JSON column (`Col[dict[...] | None] = mariadb.Json(nullable=True, default=None)`) type-checks instead of narrowing the column to `None`.
 
 ### Notes
 
 - Following pydantic's documented behavior, `Real` columns accept an `int` and widen it to `float` even under strict validation.
+- Storage codecs carry two intentional precision losses, now documented in ADR 0005: MariaDB `DateTime` columns truncate `datetime` values to millisecond precision (`DATETIME(3)`) and normalize to UTC on encode; SQLite `Col[datetime] = Text()` preserves microseconds and the original offset.
 
 ## 0.3.0 - 2026-06-07
 

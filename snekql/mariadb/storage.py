@@ -504,6 +504,16 @@ class Json:
         nullable: bool | None = None,
         unique: bool = False,
         index: bool = False,
+        default: None,
+    ) -> JsonAttr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        *,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
         default: T,
     ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
 

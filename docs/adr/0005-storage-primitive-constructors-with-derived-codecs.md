@@ -142,6 +142,19 @@ For everything the new codec does own, empirically (pydantic 2.x):
   type.
 - **MariaDB keeps `JsonAttr`** (the `json_extract_int` operator subtype),
   produced by its native `Json()` constructor — unaffected.
+- **Intentional precision and representation loss.** Two losses are by design,
+  not bugs: MariaDB `DateTime` columns store `DATETIME(3)`, so encode truncates a
+  Python `datetime` to **millisecond** precision (`...678901` microseconds becomes
+  `...678`); and the encoder normalizes to **UTC** before formatting, so the
+  stored text carries no offset. SQLite `Col[datetime] = Text()` is exempt — it
+  delegates to pydantic and preserves microseconds and the original offset.
+- **Values no backend can store losslessly fail at encode with a domain error**,
+  not at the driver. Non-finite floats (`nan`, `inf`, `-inf`) are rejected
+  (`nan` silently becomes `NULL` in SQLite REAL, and MariaDB `DOUBLE` refuses
+  them outright), and integers outside the signed 64-bit range
+  (`[-2**63, 2**63 - 1]`, the shared ceiling of SQLite `INTEGER` and MariaDB
+  `BIGINT`) are rejected before the SQLite driver would raise a raw
+  `OverflowError`. Both surface as `ModelValidationError`.
 - **First beneficiary: UUID.** `Col[uuid.UUID]`, client-generated via
   `default_factory=uuid.uuid4` (PK known before insert — a plain `Col`, not
   `GenCol`), `Text()` on SQLite and native `Uuid()` on MariaDB. Version pinning
