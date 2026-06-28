@@ -57,6 +57,32 @@ Migration errors:
   applied nothing; a retry after the holder finishes applies only what is still
   pending.
 
+## Close lifecycle and retry semantics
+
+`Database.close()` moves a runtime through three states: accepting work,
+closing, and closed. While closing, new transactions are rejected with
+`DatabaseClosingError`; after a successful close they are rejected with
+`DatabaseClosedError`. A successful `close()` is idempotent — calling it again
+returns immediately.
+
+A close waits up to `acquire_timeout` for checked-out work to return. If that
+wait elapses, `close()` raises `DatabaseCloseTimeoutError`. Behavior after a
+timeout differs by backend, because the underlying drivers differ:
+
+- **SQLite**: a timed-out close leaves the database **retryable**. The runtime
+  returns to accepting work once checked-out connections come back, so callers
+  can resume work or call `close()` again. (See
+  `timed_out_close_keeps_database_retryable` in `tests/sqlite/test_runtime.py`.)
+- **MariaDB**: a timed-out close is **terminal**. aiomysql's `pool.close()` is
+  irreversible, so the runtime stays in the closing state and keeps rejecting
+  work with `DatabaseClosingError`; it cannot be re-admitted. (See
+  `mariadb_close_timeout_keeps_pool_rejecting_new_work` in
+  `tests/runtime/test_async_lifecycle.py`.)
+
+Async services that catch `DatabaseCloseTimeoutError` must account for this:
+on SQLite the runtime may still be usable, while on MariaDB it should be
+treated as permanently unavailable.
+
 ## Execution context
 
 `ExecutionError` preserves SQL text and raw parameter values:
