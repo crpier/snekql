@@ -326,6 +326,64 @@ async def mariadb_reordered_columns_verify_semantically() -> None:
 
 
 @test(mark="medium")
+async def mariadb_boolean_tinyint_alias_verifies_clean() -> None:
+    """``BOOLEAN`` is a ``TINYINT(1)`` alias; either spelling is not drift."""
+
+    class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
+        """Model whose boolean column is migrated as the underlying TINYINT(1)."""
+
+        __tablename__ = "issue58_boolean_alias"
+        id: Flag.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        active: Flag.Col[bool] = mariadb.Boolean(nullable=False)
+
+    # MariaDB normalizes BOOLEAN to TINYINT(1); the hand-written DDL spells the
+    # underlying type, which information_schema still reports as DATA_TYPE
+    # 'tinyint', matching the model's expected shape.
+    create_sql = (
+        "CREATE TABLE issue58_boolean_alias ("
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+        "`active` TINYINT(1) NOT NULL"
+        ") ENGINE=InnoDB"
+    )
+    session = await load_fixture(database_session([Flag], setup_sql=[create_sql]))
+
+    assert_eq(await _fetch_index_rows(session.server, "issue58_boolean_alias"), [])
+
+
+@test(mark="medium")
+async def mariadb_json_longtext_alias_verifies_clean() -> None:
+    """``JSON`` is a ``LONGTEXT`` alias; either spelling is not drift."""
+
+    class Doc[S = Pending](mariadb.Model[S, "Doc[Fetched]"]):
+        """Model whose JSON column is migrated as the underlying LONGTEXT."""
+
+        __tablename__ = "issue58_json_alias"
+        id: Doc.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        payload: Doc.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
+
+    # MariaDB implements JSON as LONGTEXT with a json_valid CHECK; the CHECK is
+    # invisible to verification and DATA_TYPE reads back 'longtext' for both
+    # spellings, so the LONGTEXT-spelled column is not drift.
+    create_sql = (
+        "CREATE TABLE issue58_json_alias ("
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+        "`payload` LONGTEXT NOT NULL"
+        ") ENGINE=InnoDB"
+    )
+    session = await load_fixture(database_session([Doc], setup_sql=[create_sql]))
+
+    assert_eq(await _fetch_index_rows(session.server, "issue58_json_alias"), [])
+
+
+@test(mark="medium")
 async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
     """A column whose nullability diverges is named precisely in the error."""
 

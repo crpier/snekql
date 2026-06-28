@@ -25,6 +25,7 @@ from snekql.sqlite import (
     SchemaVerificationError,
     Text,
 )
+from snekql.sqlite._schema_ddl import sqlite_type_affinity
 from snekql.sqlite.schema import verify_sqlite_schema
 from tests.helpers import capture_snekql_logs, migrate_models
 
@@ -639,6 +640,120 @@ async def cosmetically_different_ddl_verifies_semantically() -> None:
         database = await Database.initialize(database=database_path)
         await database.verify([User])
         await database.close()
+
+
+@test(mark="fast")
+async def sqlite_type_affinity_follows_sqlite_rules() -> None:
+    """The affinity helper collapses declared types per SQLite's documented rules."""
+
+    integer_affinity = ("INTEGER", "INT", "BIGINT", "int8", "INT UNSIGNED")
+    text_affinity = ("TEXT", "VARCHAR(255)", "nvarchar", "CLOB", "CHARACTER(20)")
+    blob_affinity = ("BLOB", "")
+    real_affinity = ("REAL", "DOUBLE", "FLOAT", "double precision")
+    numeric_affinity = ("NUMERIC", "DECIMAL(10,2)", "BOOLEAN", "DATE")
+
+    for declared in integer_affinity:
+        assert_eq(sqlite_type_affinity(declared), "INTEGER")
+    for declared in text_affinity:
+        assert_eq(sqlite_type_affinity(declared), "TEXT")
+    for declared in blob_affinity:
+        assert_eq(sqlite_type_affinity(declared), "BLOB")
+    for declared in real_affinity:
+        assert_eq(sqlite_type_affinity(declared), "REAL")
+    for declared in numeric_affinity:
+        assert_eq(sqlite_type_affinity(declared), "NUMERIC")
+
+
+@test(mark="medium")
+async def verify_accepts_sqlite_integer_type_aliases() -> None:
+    """A STRICT column declared ``INT`` shares INTEGER affinity and is not drift."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Model whose count column maps to INTEGER but is migrated as ``INT``."""
+
+        id: Event.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+        count: Event.Col[int] = Integer(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        # STRICT accepts the INT spelling; it carries INTEGER affinity, so a
+        # migration author writing INT is semantically identical to snekql's
+        # INTEGER and must not be reported as drift.
+        existing_sql = (
+            'CREATE TABLE "event" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"count" INT NOT NULL) STRICT'
+        )
+        _execute_sql(database_path, existing_sql)
+
+        database = await Database.initialize(database=database_path)
+        await database.verify([Event])
+        await database.close()
+
+
+@test(mark="medium")
+async def verify_collapses_sqlite_text_affinity_aliases() -> None:
+    """A non-STRICT ``VARCHAR(255)`` column collapses to TEXT affinity, not drift."""
+
+    class Note[S = Pending](Model[S, "Note[Fetched]"]):
+        """Model whose body is TEXT but is migrated as ``VARCHAR(255)``."""
+
+        body: Note.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        # A legacy non-STRICT table: STRICT itself is reported separately as a
+        # storage-option divergence, but the VARCHAR(255) column must collapse to
+        # TEXT affinity and not add spurious per-column type drift. (VARCHAR is
+        # rejected by STRICT, so the legacy table is built without it.)
+        existing_sql = 'CREATE TABLE "note" ("body" VARCHAR(255) NOT NULL)'
+        _execute_sql(database_path, existing_sql)
+
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([Note])
+        finally:
+            await database.close()
+
+    # Only the missing STRICT storage option is drift; the VARCHAR(255) column
+    # collapses to TEXT affinity and contributes no type divergence.
+    message = str(raised.exception)
+    assert_true("storage options" in message)
+    assert_true("'body'" not in message)
+
+
+@test(mark="medium")
+async def strict_verify_raises_on_meaningful_type_affinity_drift() -> None:
+    """A live column whose affinity differs from the model is genuine drift."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Model whose label is TEXT while the live column has INTEGER affinity."""
+
+        id: Event.GenCol[int] = Integer(
+            primary_key=True, auto_increment=True, default=PENDING_GENERATION
+        )
+        label: Event.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        existing_sql = (
+            'CREATE TABLE "event" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+            '"label" INTEGER NOT NULL) STRICT'
+        )
+        _execute_sql(database_path, existing_sql)
+
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([Event])
+        finally:
+            await database.close()
+
+    message = str(raised.exception)
+    assert_true("'label'" in message)
+    assert_true("type" in message)
 
 
 @test(mark="medium")
