@@ -197,9 +197,9 @@ class ChunkStream[RowT]:
 
     def __init__(
         self,
+        *,
         transaction: Transaction,
         select_query: AnySelectQuery,
-        *,
         lock: anyio.Lock,
         size: PositiveInt,
         validate: bool,
@@ -288,6 +288,9 @@ class ChunkStream[RowT]:
             self._params,
             len(rows),
         )
+        # Materialization runs outside the fetch try/except, mirroring
+        # ``fetch_all``: a decode/validation failure surfaces as its own error
+        # type rather than being wrapped as a fetch-level ``ExecutionError``.
         return [
             cast(
                 "RowT",
@@ -509,7 +512,11 @@ class Transaction:
         select_query = self._require_select_query(query)
         self._validate_query_backend(select_query)
         return ChunkStream(
-            self, select_query, lock=self._lock, size=size, validate=validate
+            transaction=self,
+            select_query=select_query,
+            lock=self._lock,
+            size=size,
+            validate=validate,
         )
 
     async def _fetch_capped_rows(

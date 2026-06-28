@@ -318,6 +318,43 @@ async def mariadb_runtime_closes_stream_cursor_on_early_break() -> None:
 
 
 @test(mark="medium")
+async def mariadb_runtime_closes_stream_cursor_on_consumer_exception() -> None:
+    """A consumer error mid-stream still frees the server-side cursor."""
+
+    class _ConsumerError(Exception):
+        """Raised inside the stream body to force an error exit."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB streaming error-exit coverage."""
+
+        __tablename__ = "issue59_user_stream_error"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        for index in range(5):
+            await tx.execute(insert(User(email=f"user{index}@example.com")))
+
+    async with database.transaction() as tx:
+        with assert_raises(_ConsumerError):
+            async with tx.fetch_chunks(select(User.email).all(), size=2) as stream:
+                async for _ in stream:
+                    raise _ConsumerError
+        # The stream's __aexit__ closes the SSCursor even on error, so the same
+        # transaction can run a follow-up query without "commands out of sync".
+        remaining = await tx.fetch_all(select(User.email).all())
+
+    assert_eq(len(remaining), 5)
+
+
+@test(mark="medium")
 async def mariadb_runtime_deletes_filtered_rows() -> None:
     """MariaDB delete removes rows matching the predicate."""
 

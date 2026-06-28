@@ -320,3 +320,26 @@ async def fetch_chunks_closes_cursor_on_iteration_error() -> None:
                 pass
 
     assert_true(cursor.close_count >= 1)
+
+
+class _ConsumerError(Exception):
+    """Raised by the consumer body to exercise cleanup on caller-side failure."""
+
+
+@test(mark="fast")
+async def fetch_chunks_closes_cursor_on_consumer_exception() -> None:
+    """An exception raised in the ``async for`` body still closes the cursor."""
+
+    cursor = _CleanupCursor(_cleanup_rows(10))
+    runtime = _CleanupRuntime(_CleanupConnection(cursor))
+    transaction = Transaction(runtime=runtime, timeout=1.0)
+
+    with assert_raises(_ConsumerError):
+        async with (
+            transaction as tx,
+            tx.fetch_chunks(select(_StreamUser.id).all(), size=2) as stream,
+        ):
+            async for _ in stream:
+                raise _ConsumerError
+
+    assert_eq(cursor.close_count, 1)
