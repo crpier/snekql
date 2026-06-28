@@ -19,7 +19,7 @@ from typing import (
 )
 
 import anyio
-from anyio.lowlevel import checkpoint
+import anyio.lowlevel
 
 from snekql._runtime_selection import (
     RuntimeConfig,
@@ -466,7 +466,7 @@ class Transaction:
             materialized: list[object] = []
             for index, row in enumerate(rows):
                 if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
-                    await checkpoint()
+                    await anyio.lowlevel.checkpoint()
                 materialized.append(
                     self.runtime.materialize_select_row(
                         select_query, tuple(row), validate=validate
