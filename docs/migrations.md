@@ -113,6 +113,36 @@ transaction — you own any transaction control inside your SQL. As a result:
 - On MariaDB, DDL auto-commits, so a multi-statement DDL body is not atomic;
   prefer single-statement or idempotent bodies.
 
+### Partial-failure guarantees (both backends)
+
+The apply flow gives the same chain-level guarantee on SQLite and MariaDB. When
+a body in the chain fails:
+
+- Every migration that ran **before** the failure stays applied and stays
+  recorded in the Migration History.
+- The failing migration is **not** recorded, and no later migration in the chain
+  runs.
+- A `migrate` with the failing body fixed re-runs only the still-pending bodies
+  (the failed one and everything after it), so the chain resumes from the
+  failure point rather than re-running the whole set.
+
+What differs between backends is only what a **single failing body** leaves
+behind, and that follows each engine's own DDL transaction semantics:
+
+- **SQLite** auto-commits per statement; a body executes exactly one statement,
+  so a failed body leaves no partial object from that body.
+- **MariaDB** auto-commits each DDL statement server-side and cannot roll DDL
+  back. snekql does **no** cleanup and tracks **no** managed objects — a body
+  that creates one object and then fails on a later statement can leave the
+  first object behind. This is why bodies must be idempotent (e.g.
+  `CREATE TABLE IF NOT EXISTS`, guarded `ALTER`): the resume re-runs the failed
+  body verbatim, and idempotency is what makes that safe over whatever partial
+  state remains.
+
+`verify` never participates in this: it only reads the live schema and creates
+nothing (see [schema-drift.md](schema-drift.md)), so a failed `verify` leaves no
+schema change on either backend.
+
 ## Concurrency
 
 snekql coordinates concurrent migration runs so that several instances calling

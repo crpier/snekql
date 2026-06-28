@@ -72,6 +72,14 @@ constraint.
 The Migration History table (`snekql_migrations`) is snekql-owned and is never
 verified; keep it out of the `models` you pass to `verify`.
 
+Verification is **read-only on both backends and leaves no schema change**,
+however it fails. SQLite runs the inspection inside a transaction it always
+rolls back (it never commits during verify); MariaDB reads `INFORMATION_SCHEMA`
+with no transaction. That asymmetry is invisible to callers: because `verify`
+only reads, a failed or drift-raising `verify` leaves the schema exactly as
+`migrate` left it. The partial-state question therefore lives entirely in
+[migrations](migrations.md#idempotency-and-failure), never in `verify`.
+
 ## Schema Policy
 
 The Schema Policy lives on `verify` — it is the choice of how the step that
