@@ -30,7 +30,13 @@ recognized as matching whenever it is semantically equal to the model.
 
 - table presence;
 - per column: name, storage type / affinity-class, nullability, primary-key,
-  auto-increment, *whether* a server default exists, collation;
+  auto-increment, *whether* a server default exists, collation. Storage type is
+  compared by each backend's normalized class, not the declared spelling: SQLite
+  collapses a column to its [type
+  affinity](https://www.sqlite.org/datatype3.html#determination_of_column_affinity)
+  (so `INT`/`INTEGER`/`BIGINT` and `VARCHAR(255)`/`TEXT` are equal), and MariaDB
+  compares `INFORMATION_SCHEMA.DATA_TYPE` (so `BOOLEAN`≡`TINYINT(1)` and
+  `JSON`≡`LONGTEXT`). A genuine affinity/type-class change is still drift;
 - per index: name, columns, uniqueness;
 - per foreign key: local column → target table/column;
 - table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).

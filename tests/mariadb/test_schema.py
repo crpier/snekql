@@ -64,6 +64,24 @@ async def _fetch_index_rows(
     return [cast("tuple[str, str, str]", tuple(line.split("\t"))) for line in lines[1:]]
 
 
+async def _fetch_column_data_type(
+    server: TemporaryMariaDBServer, table_name: str, column_name: str
+) -> str:
+    """Fetch a column's normalized ``INFORMATION_SCHEMA.DATA_TYPE``."""
+
+    result = await server.run_sql(
+        f"""
+        SELECT DATA_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = '{table_name}'
+          AND COLUMN_NAME = '{column_name}'
+        """,
+    )
+    lines = [line for line in result.stdout.splitlines() if line]
+    return lines[1]
+
+
 async def database_session(
     models: Sequence[type[Table[Any]]] = (),
     *,
@@ -322,6 +340,78 @@ async def mariadb_reordered_columns_verify_semantically() -> None:
     assert_eq(
         await _fetch_index_rows(session.server, "issue119_reordered"),
         [],
+    )
+
+
+@test(mark="medium")
+async def mariadb_boolean_tinyint_alias_verifies_clean() -> None:
+    """``BOOLEAN`` is a ``TINYINT(1)`` alias; either spelling is not drift."""
+
+    class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
+        """Model whose boolean column is migrated as the underlying TINYINT(1)."""
+
+        __tablename__ = "issue58_boolean_alias"
+        id: Flag.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        active: Flag.Col[bool] = mariadb.Boolean(nullable=False)
+
+    # The migration author writes the BOOLEAN alias; MariaDB stores it as
+    # TINYINT(1) and information_schema reports DATA_TYPE 'tinyint', the same
+    # class the model's Boolean column expects. Reaching past the fixture means
+    # the strict verify accepted the alias.
+    create_sql = (
+        "CREATE TABLE issue58_boolean_alias ("
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+        "`active` BOOLEAN NOT NULL"
+        ") ENGINE=InnoDB"
+    )
+    session = await load_fixture(database_session([Flag], setup_sql=[create_sql]))
+
+    # The BOOLEAN spelling was normalized away to its underlying class, which is
+    # exactly why strict verify above did not report drift.
+    assert_eq(
+        await _fetch_column_data_type(
+            session.server, "issue58_boolean_alias", "active"
+        ),
+        "tinyint",
+    )
+
+
+@test(mark="medium")
+async def mariadb_json_longtext_alias_verifies_clean() -> None:
+    """``JSON`` is a ``LONGTEXT`` alias; either spelling is not drift."""
+
+    class Doc[S = Pending](mariadb.Model[S, "Doc[Fetched]"]):
+        """Model whose JSON column is migrated as the underlying LONGTEXT."""
+
+        __tablename__ = "issue58_json_alias"
+        id: Doc.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        payload: Doc.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
+
+    # The migration author writes the JSON alias; MariaDB implements it as
+    # LONGTEXT with a json_valid CHECK (the CHECK is invisible to verification)
+    # and DATA_TYPE reads back 'longtext', the class the model's Json column
+    # expects. Reaching past the fixture means the strict verify accepted it.
+    create_sql = (
+        "CREATE TABLE issue58_json_alias ("
+        "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+        "`payload` JSON NOT NULL"
+        ") ENGINE=InnoDB"
+    )
+    session = await load_fixture(database_session([Doc], setup_sql=[create_sql]))
+
+    # The JSON spelling was normalized away to its underlying class, which is
+    # exactly why strict verify above did not report drift.
+    assert_eq(
+        await _fetch_column_data_type(session.server, "issue58_json_alias", "payload"),
+        "longtext",
     )
 
 

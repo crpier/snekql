@@ -16,7 +16,7 @@ from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, Table
 from snekql._schema_startup import verify_schema
 from snekql.errors import SchemaError
 from snekql.model import Table
-from snekql.sqlite._schema_ddl import SCHEMA_DIALECT
+from snekql.sqlite._schema_ddl import SCHEMA_DIALECT, sqlite_type_affinity
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import SchemaPolicy
 
@@ -100,7 +100,10 @@ async def _fetch_column_shapes(
         shapes.append(
             ColumnShape(
                 name=str(name),
-                storage_type=str(data_type).upper(),
+                # Compare by SQLite affinity class, not declared spelling, so
+                # benign type aliases (INT vs INTEGER, VARCHAR vs TEXT) are not
+                # drift while genuine affinity changes still are.
+                storage_type=sqlite_type_affinity(str(data_type)),
                 nullable=int(notnull) == 0,
                 primary_key=is_primary_key,
                 auto_increment=is_primary_key and has_autoincrement,

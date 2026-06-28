@@ -24,6 +24,33 @@ if TYPE_CHECKING:
     from snekql.model import Table
 
 
+def sqlite_type_affinity(declared_type: str) -> str:
+    """Collapse a declared SQLite column type to its affinity class.
+
+    SQLite assigns every column a *type affinity* from its declared type rather
+    than storing the spelling, so ``INT``, ``INTEGER``, and ``BIGINT`` are the
+    same column and ``VARCHAR(255)`` is ``TEXT``. Verification compares affinity,
+    not spelling, so a migration author's benign type alias is not reported as
+    drift; a genuine affinity change (``TEXT`` -> ``INTEGER``) still is. snekql
+    only ever emits ``INTEGER``/``REAL``/``TEXT``/``BLOB``, each of which maps to
+    its own affinity, so the model side is unchanged by this collapse.
+
+    The rules are SQLite's documented affinity-determination order
+    (https://www.sqlite.org/datatype3.html#determination_of_column_affinity).
+    """
+
+    upper = declared_type.upper()
+    if "INT" in upper:
+        return "INTEGER"
+    if "CHAR" in upper or "CLOB" in upper or "TEXT" in upper:
+        return "TEXT"
+    if "BLOB" in upper or not upper:
+        return "BLOB"
+    if "REAL" in upper or "FLOA" in upper or "DOUB" in upper:
+        return "REAL"
+    return "NUMERIC"
+
+
 def _requires_not_null(planned_column: PlannedColumn) -> bool:
     column = planned_column.column
     # A table-level composite PRIMARY KEY is always NOT NULL: a STRICT table
