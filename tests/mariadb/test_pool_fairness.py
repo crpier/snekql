@@ -55,10 +55,10 @@ class _UnfairAiomysqlPool:
         if self._waiters:
             self._waiters.pop().set()
 
-    def close(self) -> None:  # pragma: no cover - not exercised here
+    def close(self) -> None:
         pass
 
-    async def wait_closed(self) -> None:  # pragma: no cover - not exercised here
+    async def wait_closed(self) -> None:
         pass
 
 
@@ -66,10 +66,13 @@ async def single_connection_pool() -> AsyncGenerator[MariaDBConnectionPool]:
     """Provide a ``pool_size=1`` pool over an unfair fake aiomysql pool."""
 
     pool = MariaDBConnectionPool(_UnfairAiomysqlPool(maxsize=1), pool_size=1)
-    yield pool
+    try:
+        yield pool
+    finally:
+        await pool.close(_TIMEOUT)
 
 
-@test(mark="fast")
+@test(mark="medium")
 async def releasing_task_does_not_barge_past_a_waiter() -> None:
     """Re-acquiring after release must queue behind an already-parked waiter."""
 
@@ -105,7 +108,7 @@ async def releasing_task_does_not_barge_past_a_waiter() -> None:
     )
 
 
-@test(mark="fast")
+@test(mark="medium")
 async def parked_waiters_are_served_in_arrival_order() -> None:
     """Multiple parked waiters acquire the connection FIFO, not LIFO."""
 
@@ -126,3 +129,44 @@ async def parked_waiters_are_served_in_arrival_order() -> None:
         await pool.release(held)
 
     assert_eq(order, ["first", "second", "third"])
+
+
+@test(mark="medium")
+async def cancelling_a_parked_waiter_frees_its_fifo_slot() -> None:
+    """A waiter cancelled while parked must not block later FIFO waiters.
+
+    If the cancelled acquirer left its ticket at the front of the queue, every
+    later waiter would be stuck behind a dead ticket and never get served.
+    """
+
+    pool = await load_fixture(single_connection_pool())
+    served: list[str] = []
+
+    held = await pool.acquire(_TIMEOUT)
+
+    async def cancellable_waiter(scope_holder: list[anyio.CancelScope]) -> None:
+        with anyio.CancelScope() as scope:
+            scope_holder.append(scope)
+            connection = await pool.acquire(_TIMEOUT)
+            served.append("cancelled-waiter")
+            await pool.release(connection)
+
+    async def waiter() -> None:
+        connection = await pool.acquire(_TIMEOUT)
+        served.append("waiter")
+        await pool.release(connection)
+
+    scope_holder: list[anyio.CancelScope] = []
+    async with anyio.create_task_group() as task_group:
+        # First in line; it will be cancelled while parked.
+        task_group.start_soon(cancellable_waiter, scope_holder)
+        await anyio.wait_all_tasks_blocked()
+        # Second in line, queued strictly behind the soon-to-be-cancelled one.
+        task_group.start_soon(waiter)
+        await anyio.wait_all_tasks_blocked()
+
+        scope_holder[0].cancel()
+        await anyio.wait_all_tasks_blocked()
+        await pool.release(held)
+
+    assert_eq(served, ["waiter"])

@@ -139,7 +139,7 @@ class MariaDBConnectionPool:
     aiomysql's own checkout has no fairness guarantee: when the pool is
     exhausted it wakes a blocked acquirer without regard to arrival order, so a
     task that releases and immediately re-acquires can barge past tasks that
-    were already waiting (issue #186). This wrapper puts a FIFO admission gate
+    were already waiting. This wrapper puts a FIFO admission gate
     in front of ``pool.acquire()``, mirroring the ticket queue in
     ``snekql/sqlite/pool.py``: at most ``pool_size`` acquirers are admitted at
     once, and parked acquirers are served strictly in arrival order. Because
@@ -217,7 +217,14 @@ class MariaDBConnectionPool:
         ticket: int | None = None
         while True:
             async with self.condition:
-                self.check_accepting_work()
+                try:
+                    self.check_accepting_work()
+                except BaseException:
+                    # Rejected (closing/closed) while already queued: drop our
+                    # ticket so later FIFO waiters are not blocked behind us.
+                    if ticket is not None:
+                        self._discard_waiter(ticket)
+                    raise
                 if self._waiter_is_served_first(ticket) and (
                     self._admitted < self.pool_size
                 ):
@@ -254,11 +261,17 @@ class MariaDBConnectionPool:
             raise PoolTimeoutError(msg) from error
 
     async def _release_admission(self) -> None:
-        """Free an admission slot and wake the next FIFO waiter."""
+        """Free an admission slot and wake the next FIFO waiter.
 
-        async with self.condition:
-            self._admitted -= 1
-            self.condition.notify_all()
+        Shielded because it runs on cleanup paths (acquisition failure and
+        release): dropping the slot must complete even under cancellation, or a
+        parked FIFO waiter stalls until its own deadline.
+        """
+
+        with anyio.CancelScope(shield=True):
+            async with self.condition:
+                self._admitted -= 1
+                self.condition.notify_all()
 
     def _waiter_is_served_first(self, ticket: int | None) -> bool:
         """Return whether this acquirer may claim a slot now.
@@ -310,6 +323,13 @@ class MariaDBConnectionPool:
                 )
                 msg = "timed out acquiring database connection"
                 raise PoolTimeoutError(msg) from error
+            except BaseException:
+                # Cancelled while parked: drop our ticket so later FIFO waiters
+                # are not blocked behind a dead acquirer. ``condition.wait`` has
+                # re-acquired the lock by the time it propagates, so this runs
+                # safely under cancellation.
+                self._discard_waiter(ticket)
+                raise
             return
         self._discard_waiter(ticket)
         logger.warning(
@@ -350,12 +370,14 @@ class MariaDBConnectionPool:
 
         Returns the connection to the driver before freeing the admission slot
         so the next FIFO waiter always finds a free connection to check out.
+        Shielded so a cancellation between the two steps cannot leak a slot.
         """
 
-        release = cast("Any", self.pool).release
-        _ = release(connection)
-        await self._release_admission()
-        logger.debug("mariadb connection released")
+        with anyio.CancelScope(shield=True):
+            release = cast("Any", self.pool).release
+            _ = release(connection)
+            await self._release_admission()
+            logger.debug("mariadb connection released")
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         """Close the underlying aiomysql pool and wait for connections."""
@@ -364,7 +386,11 @@ class MariaDBConnectionPool:
         if self.closed:
             logger.debug("mariadb database close skipped: already closed")
             return
-        self.closing = True
+        async with self.condition:
+            self.closing = True
+            # Wake parked acquirers so they re-check ``check_accepting_work``
+            # and fail fast instead of waiting out their own deadline.
+            self.condition.notify_all()
         try:
             pool = cast("Any", self.pool)
             pool.close()
