@@ -155,6 +155,16 @@ For everything the new codec does own, empirically (pydantic 2.x):
   (`[-2**63, 2**63 - 1]`, the shared ceiling of SQLite `INTEGER` and MariaDB
   `BIGINT`) are rejected before the SQLite driver would raise a raw
   `OverflowError`. Both surface as `ModelValidationError`.
+- **Variable-width text/binary ceilings are enforced per backend.** MariaDB
+  `Text` maps to `VARCHAR(255)` (255 characters) and `Blob` to `BLOB` (65535
+  bytes); values past those limits would silently truncate in MariaDB
+  non-strict mode (corruption) or raise a raw driver error. The codec carries
+  the per-backend ceiling (`_BackendCodec.max_text_chars` / `max_blob_bytes`)
+  and rejects oversized `Text`/`Blob` values at encode with a
+  `ModelValidationError`. SQLite's ~1 GB shared `TEXT`/`BLOB` limit is treated
+  as unbounded (`None`), and MariaDB `Json` (LONGTEXT-backed) is likewise
+  unbounded. `Uuid`/`DateTime` also encode to text but are fixed-width, so only
+  the `Text` family is length-checked.
 - **First beneficiary: UUID.** `Col[uuid.UUID]`, client-generated via
   `default_factory=uuid.uuid4` (PK known before insert — a plain `Col`, not
   `GenCol`), `Text()` on SQLite and native `Uuid()` on MariaDB. Version pinning

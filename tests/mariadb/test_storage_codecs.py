@@ -238,6 +238,59 @@ def mariadb_json_codec_preserves_insertion_key_order() -> None:
     assert_eq(Payload.data.decode(encoded, backend="mariadb"), nested)
 
 
+@test()
+def mariadb_boolean_codec_normalizes_driver_tinyint_to_bool() -> None:
+    """Boolean encodes to ``1``/``0`` and decodes the driver ``tinyint`` back to a
+    real ``bool`` (not a bare ``int``), both nullable and non-null."""
+
+    class Flagged[S = Pending](mariadb.Model[S, "Flagged[Fetched]"]):
+        """Model with a non-null and a nullable BOOLEAN column."""
+
+        enabled: Flagged.Col[bool] = mariadb.Boolean(nullable=False)
+        verified: Flagged.Col[bool | None] = mariadb.Boolean(
+            nullable=True, default=None
+        )
+
+    assert_eq(Flagged.enabled.encode(True, backend="mariadb"), 1)
+    assert_eq(Flagged.enabled.encode(False, backend="mariadb"), 0)
+
+    for driver_value in (0, 1):
+        decoded = Flagged.enabled.decode(driver_value, backend="mariadb")
+        assert_isinstance(decoded, bool)
+        assert_eq(decoded, bool(driver_value))
+
+    assert_true(Flagged.verified.encode(None, backend="mariadb") is None)
+    assert_true(Flagged.verified.decode(None, backend="mariadb") is None)
+
+
+@test()
+def mariadb_oversized_text_and_blob_values_fail_with_a_domain_error() -> None:
+    """MariaDB ``Text`` is ``VARCHAR(255)`` and ``Blob`` is ``BLOB`` (64 KiB);
+    values past those limits are rejected at encode with a domain error rather
+    than silently truncated by the driver. JSON has no practical ceiling."""
+
+    class Document[S = Pending](mariadb.Model[S, "Document[Fetched]"]):
+        """Model carrying length-bounded TEXT and BLOB columns plus JSON."""
+
+        body: Document.Col[str] = mariadb.Text(nullable=False)
+        raw: Document.Col[bytes] = mariadb.Blob(nullable=False)
+        tags: Document.Col[Json[list[str]]] = mariadb.Json(nullable=False)
+
+    # Boundary values encode unchanged.
+    assert_eq(Document.body.encode("x" * 255, backend="mariadb"), "x" * 255)
+    assert_eq(Document.raw.encode(b"\x00" * 65535, backend="mariadb"), b"\x00" * 65535)
+
+    with assert_raises(ModelValidationError):
+        _ = Document.body.encode("x" * 256, backend="mariadb")
+    with assert_raises(ModelValidationError):
+        _ = Document.raw.encode(b"\x00" * 65536, backend="mariadb")
+
+    # JSON (LONGTEXT-backed) carries large payloads verbatim.
+    big_tags = [f"tag-{i}" for i in range(10_000)]
+    encoded = Document.tags.encode(big_tags, backend="mariadb")
+    assert_eq(Document.tags.decode(encoded, backend="mariadb"), big_tags)
+
+
 @test(mark="medium")
 async def mariadb_value_families_round_trip_through_runtime() -> None:
     """MariaDB round trips the initial value families through a live database."""
