@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## 0.4.0 - 2026-06-28
+
 ### Breaking changes
 
 - `Database.initialize(...)` is now **connect-only**: it opens connectivity and a connection pool and does no schema work. It no longer accepts `models=`, `schema_policy=`, or `migrations=`. Migrations and verification are explicit verbs on the live Database, and **automatic table creation from Table Models is removed entirely** — schema comes into existence only by running migration bodies. Move `initialize(migrations=..., models=..., schema_policy=...)` to `initialize → migrate → verify`:
