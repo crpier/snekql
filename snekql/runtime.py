@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from types import TracebackType
 from typing import (
@@ -69,6 +69,14 @@ from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
 
+
+@validate_boundary(error_type=QueryConstructionError)
+def _validate_chunk_size(*, size: PositiveInt) -> None:
+    """Reject non-positive ``fetch_chunks`` batch sizes at the call site."""
+
+    _ = size
+
+
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
@@ -110,6 +118,21 @@ class RuntimeConnection(Protocol):
         sql: str,
         params: tuple[object, ...],
     ) -> RuntimeCursor: ...
+
+    async def execute_stream(
+        self,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> RuntimeCursor:
+        """Execute a select for incremental fetching.
+
+        The returned cursor must stream rows from the server rather than buffer
+        the full result set client-side, so callers can ``fetchmany`` over an
+        unbounded result without loading it all into memory. The cursor must be
+        fully consumed or closed before another statement runs on the
+        connection.
+        """
+        ...
 
 
 class RuntimeBackend(Protocol):
@@ -159,6 +182,124 @@ class RuntimeBackend(Protocol):
         *,
         validate: bool = True,
     ) -> list[object]: ...
+
+
+class ChunkStream[RowT]:
+    """Incremental batch reader over one select, bound to a transaction.
+
+    Created by ``Transaction.fetch_chunks``. It is both an async context manager
+    and an async iterator: entering acquires the transaction connection and opens
+    a streaming cursor, iterating yields lists of up to ``size`` materialized
+    rows, and exiting closes the cursor and releases the connection regardless of
+    how iteration ended. Use it inside ``async with`` rather than iterating the
+    bare object so cleanup is deterministic.
+    """
+
+    def __init__(
+        self,
+        *,
+        transaction: Transaction,
+        select_query: AnySelectQuery,
+        lock: anyio.Lock,
+        size: PositiveInt,
+        validate: bool,
+    ) -> None:
+        self._transaction: Transaction = transaction
+        self._select_query: AnySelectQuery = select_query
+        self._lock: anyio.Lock = lock
+        self._size: PositiveInt = size
+        self._validate: bool = validate
+        self._cursor: RuntimeCursor | None = None
+        self._entered: bool = False
+        self._sql: str = ""
+        self._params: tuple[object, ...] = ()
+
+    async def __aenter__(self) -> Self:
+        if self._entered:
+            msg = "chunk stream is already open"
+            raise DatabaseRuntimeError(msg)
+        self._entered = True
+        transaction = self._transaction
+        await self._lock.acquire()
+        try:
+            connection = transaction.require_connection()
+            self._sql, self._params = transaction.runtime.compile_select_sql(
+                self._select_query
+            )
+            try:
+                self._cursor = await connection.execute_stream(self._sql, self._params)
+            except Exception as error:
+                logger.exception(
+                    "%s fetch_chunks query failed: %s params=%r",
+                    transaction.runtime.backend_family,
+                    self._sql,
+                    self._params,
+                )
+                msg = "select failed"
+                raise ExecutionError(msg, sql=self._sql, params=self._params) from error
+        except BaseException:
+            self._lock.release()
+            raise
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        _ = exc_type
+        _ = exc_value
+        _ = traceback
+        try:
+            cursor = self._cursor
+            self._cursor = None
+            if cursor is not None:
+                await cursor.close()
+        finally:
+            self._lock.release()
+
+    def __aiter__(self) -> AsyncIterator[list[RowT]]:
+        return self
+
+    async def __anext__(self) -> list[RowT]:
+        cursor = self._cursor
+        if cursor is None:
+            msg = "chunk stream is not open; use 'async with tx.fetch_chunks(...)'"
+            raise DatabaseRuntimeError(msg)
+        transaction = self._transaction
+        try:
+            rows = await cursor.fetchmany(self._size)
+        except Exception as error:
+            logger.exception(
+                "%s fetch_chunks fetch failed: %s params=%r",
+                transaction.runtime.backend_family,
+                self._sql,
+                self._params,
+            )
+            msg = "select failed"
+            raise ExecutionError(msg, sql=self._sql, params=self._params) from error
+        if not rows:
+            raise StopAsyncIteration
+        logger.debug(
+            "%s fetch_chunks batch: %s params=%r rows=%d",
+            transaction.runtime.backend_family,
+            self._sql,
+            self._params,
+            len(rows),
+        )
+        # Materialization runs outside the fetch try/except, mirroring
+        # ``fetch_all``: a decode/validation failure surfaces as its own error
+        # type rather than being wrapped as a fetch-level ``ExecutionError``.
+        return [
+            cast(
+                "RowT",
+                transaction.runtime.materialize_select_row(
+                    self._select_query, tuple(row), validate=self._validate
+                ),
+            )
+            for row in rows
+        ]
 
 
 class Transaction:
@@ -309,6 +450,74 @@ class Transaction:
                 )
                 for row in rows
             ]
+
+    @overload
+    def fetch_chunks(
+        self,
+        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        *,
+        size: PositiveInt,
+        validate: bool = True,
+    ) -> ChunkStream[ReadModelT]: ...
+    @overload
+    def fetch_chunks(
+        self,
+        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
+        *,
+        size: PositiveInt,
+        validate: bool = True,
+    ) -> ChunkStream[T]: ...
+    @overload
+    def fetch_chunks(
+        self,
+        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
+        *,
+        size: PositiveInt,
+        validate: bool = True,
+    ) -> ChunkStream[tuple[*Ts]]: ...
+    @overload
+    def fetch_chunks(
+        self,
+        query: JoinModelQuery[OwnerT, *Ts],
+        *,
+        size: PositiveInt,
+        validate: bool = True,
+    ) -> ChunkStream[tuple[*Ts]]: ...
+    def fetch_chunks(
+        self, query: object, *, size: PositiveInt, validate: bool = True
+    ) -> ChunkStream[Any]:
+        """Stream a select's rows in batches of at most ``size`` rows.
+
+        Unlike ``fetch_all``, rows are fetched incrementally from a server-side
+        (unbounded) cursor, so an arbitrarily large result set never has to fit
+        in memory at once. Each batch holds up to ``size`` materialized rows; the
+        final batch may be smaller and an empty result yields nothing.
+
+        Returns a ``ChunkStream`` -- an async context manager that is also an
+        async iterator. Always consume it inside ``async with`` so the cursor is
+        closed and the connection released deterministically on full
+        consumption, early ``break``, or an error mid-iteration::
+
+            async with tx.fetch_chunks(select(User).all(), size=500) as stream:
+                async for batch in stream:
+                    ...
+
+        The single transaction connection is held for the lifetime of the
+        stream: no other query may run on this transaction, and the stream must
+        be closed before the transaction commits. Open and consume the stream
+        within one task.
+        """
+
+        _validate_chunk_size(size=size)
+        select_query = self._require_select_query(query)
+        self._validate_query_backend(select_query)
+        return ChunkStream(
+            transaction=self,
+            select_query=select_query,
+            lock=self._lock,
+            size=size,
+            validate=validate,
+        )
 
     async def _fetch_capped_rows(
         self, query: object, *, method: str

@@ -83,6 +83,15 @@ class SQLiteConnectionAdapter:
         cursor = await self.connection.execute(sql, params)
         return SQLiteCursorAdapter(cursor)
 
+    async def execute_stream(
+        self,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> SQLiteCursorAdapter:
+        # aiosqlite's default cursor already yields rows lazily, so incremental
+        # fetchmany over it streams without buffering the full result set.
+        return await self.execute(sql, params)
+
     async def _execute_control_sql(self, sql: str) -> None:
         cursor = await self.connection.execute(sql, ())
         try:

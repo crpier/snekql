@@ -460,7 +460,26 @@ async with db.transaction() as tx:
 
 Runtime methods:
 
-- `fetch_all(select(...))` returns all result rows.
+- `fetch_all(select(...))` returns all result rows. It loads the whole result
+  into memory; for large result sets stream with `fetch_chunks` instead.
+- `fetch_chunks(select(...), size=N)` streams rows in batches of up to `N` from a
+  server-side cursor, so an arbitrarily large result never has to fit in memory.
+  It returns a `ChunkStream` — an async context manager and async iterator — that
+  must be consumed inside `async with` so the cursor is closed and the connection
+  released deterministically:
+
+  ```python
+  async with tx.fetch_chunks(select(User).all(), size=500) as stream:
+      async for batch in stream:  # batch: list[User[Fetched]]
+          for user in batch:
+              ...
+  ```
+
+  The stream holds the transaction's single connection for its whole lifetime: no
+  other query may run on the transaction until the stream is closed, and it must
+  be opened and consumed within one task. On MariaDB this uses an unbuffered
+  `SSCursor`; a default cursor would buffer the full result client-side and defeat
+  streaming.
 - `fetch_one(select(...))` returns the single matching row (exactly-one
   contract); it raises `NoResultError` for no row and `MultipleResultsError` for
   more than one. A `None` from a single-value `fetch_one` means SQL `NULL`.

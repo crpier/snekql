@@ -12,6 +12,7 @@ from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Aggregate,
+    ChunkStream,
     CurrentTimestamp,
     Fetched,
     ForeignKey,
@@ -521,6 +522,20 @@ if TYPE_CHECKING:
         _ = assert_type(
             await transaction.fetch_all(select(User.email, User.status).all()),
             list[tuple[str, str]],
+        )
+        # fetch_chunks preserves the same per-row shapes, wrapped in a
+        # ChunkStream of row batches.
+        _ = assert_type(
+            transaction.fetch_chunks(select(User).all(), size=100),
+            ChunkStream[User[Fetched]],
+        )
+        _ = assert_type(
+            transaction.fetch_chunks(select(User.email).all(), size=100),
+            ChunkStream[str],
+        )
+        _ = assert_type(
+            transaction.fetch_chunks(select(User.email, User.status).all(), size=100),
+            ChunkStream[tuple[str, str]],
         )
         # fetch_one is exactly-one: a returned value is never absent, so the
         # single-value result keeps the column read type without ``| None``.

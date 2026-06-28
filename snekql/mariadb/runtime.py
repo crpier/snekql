@@ -100,6 +100,28 @@ class MariaDBConnectionAdapter:
         params: tuple[object, ...],
     ) -> MariaDBCursorAdapter:
         cursor = await cast("Any", self.connection).cursor()
+        return await self._run_on_cursor(cursor, sql, params)
+
+    async def execute_stream(
+        self,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> MariaDBCursorAdapter:
+        # A default aiomysql cursor buffers the whole result set client-side on
+        # execute, defeating incremental fetch. SSCursor streams rows from the
+        # server instead; it must be fully consumed or closed before the next
+        # statement runs on this connection, which the held transaction lock and
+        # the cursor close in fetch_chunks guarantee.
+        ss_cursor = cast("Any", import_module("aiomysql")).SSCursor
+        cursor = await cast("Any", self.connection).cursor(ss_cursor)
+        return await self._run_on_cursor(cursor, sql, params)
+
+    @staticmethod
+    async def _run_on_cursor(
+        cursor: Any,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> MariaDBCursorAdapter:
         try:
             _ = await cursor.execute(sql, params)
         except Exception:

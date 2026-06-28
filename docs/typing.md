@@ -132,6 +132,29 @@ use `fetch_all(...)` (the list is the presence channel: `[]` vs `[None]`) or
 project a tuple that includes a non-nullable column. To take the first of
 several rows on purpose, add `.limit(1)` and use `fetch_one`/`fetch_one_or_none`.
 
+`fetch_chunks(..., size=N)` streams the same per-row shape as `fetch_all`, but
+batched: it returns a `ChunkStream[RowT]` whose iteration yields
+`list[RowT]` chunks of up to `N` rows. The element type tracks the selected
+shape exactly as `fetch_all` does:
+
+```python
+async with tx.fetch_chunks(select(User).all(), size=500) as stream:
+    async for batch in stream:   # batch: list[User[Fetched]]
+        ...
+
+async with tx.fetch_chunks(select(User.email).all(), size=500) as stream:
+    async for batch in stream:   # batch: list[str]
+        ...
+
+async with tx.fetch_chunks(select(User.email, User.status).all(), size=500) as stream:
+    async for batch in stream:   # batch: list[tuple[str, str]]
+        ...
+```
+
+`ChunkStream` is exported from the backend namespaces (`snekql.sqlite`,
+`snekql.mariadb`) for typed annotations only. Like the query classes, do not
+construct it directly — obtain one from `Transaction.fetch_chunks`.
+
 ## Joins
 
 A column may declare the model it references with `FKCol[Target, T]`. The
