@@ -89,6 +89,9 @@ class _SlowExecuteConnection:
         await self.allow_execute_finish.wait()
         return _FakeCursor()
 
+    async def execute_stream(self, sql: str, params: tuple[object, ...]) -> _FakeCursor:
+        return await self.execute(sql, params)
+
 
 class _ReleaseBlockingConnection:
     """Connection fake used to cancel transaction cleanup during release."""
@@ -106,6 +109,9 @@ class _ReleaseBlockingConnection:
         _ = sql
         _ = params
         return _FakeCursor()
+
+    async def execute_stream(self, sql: str, params: tuple[object, ...]) -> _FakeCursor:
+        return await self.execute(sql, params)
 
 
 class _FakeRuntime:

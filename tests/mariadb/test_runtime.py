@@ -250,6 +250,74 @@ async def mariadb_runtime_updates_matching_rows() -> None:
 
 
 @test(mark="medium")
+async def mariadb_runtime_streams_rows_in_chunks() -> None:
+    """MariaDB fetch_chunks streams batches over a server-side cursor."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB streaming coverage."""
+
+        __tablename__ = "issue59_user_stream"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        for index in range(5):
+            await tx.execute(insert(User(email=f"user{index}@example.com")))
+
+    async with (
+        database.transaction() as tx,
+        tx.fetch_chunks(select(User.email).all(), size=2) as stream,
+    ):
+        batches = [batch async for batch in stream]
+
+    assert_eq([len(batch) for batch in batches], [2, 2, 1])
+    assert_eq(
+        sorted(email for batch in batches for email in batch),
+        [f"user{index}@example.com" for index in range(5)],
+    )
+
+
+@test(mark="medium")
+async def mariadb_runtime_closes_stream_cursor_on_early_break() -> None:
+    """An early break frees the server-side cursor so the connection stays usable."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Table model for MariaDB streaming early-exit coverage."""
+
+        __tablename__ = "issue59_user_stream_break"
+
+        id: User.GenCol[int] = mariadb.Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: User.Col[str] = mariadb.Text(nullable=False)
+
+    database = await load_fixture(database_session([User]))
+
+    async with database.transaction() as tx:
+        for index in range(5):
+            await tx.execute(insert(User(email=f"user{index}@example.com")))
+
+    async with database.transaction() as tx:
+        async with tx.fetch_chunks(select(User.email).all(), size=2) as stream:
+            async for _ in stream:
+                break
+        # Cursor is closed on stream exit, so the connection serves a follow-up
+        # query in the same transaction without a "commands out of sync" error.
+        remaining = await tx.fetch_all(select(User.email).all())
+
+    assert_eq(len(remaining), 5)
+
+
+@test(mark="medium")
 async def mariadb_runtime_deletes_filtered_rows() -> None:
     """MariaDB delete removes rows matching the predicate."""
 

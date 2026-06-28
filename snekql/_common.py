@@ -81,7 +81,7 @@ from snekql.query import (
     scalar,
     select,
 )
-from snekql.runtime import Database, Transaction
+from snekql.runtime import ChunkStream, Database, Transaction
 from snekql.storage import (
     PENDING_GENERATION,
     Attr,
@@ -95,6 +95,7 @@ __all__ = [
     "Aggregate",
     "Assignment",
     "Attr",
+    "ChunkStream",
     "Col",
     "Database",
     "DatabaseCloseTimeoutError",

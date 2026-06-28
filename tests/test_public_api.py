@@ -32,6 +32,7 @@ _NEUTRAL_NAMES = frozenset(
         "Aggregate",
         "Assignment",
         "Attr",
+        "ChunkStream",
         "Col",
         "Database",
         "DatabaseCloseTimeoutError",
