@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from json import JSONDecodeError, loads
 from math import isfinite
 from types import EllipsisType
@@ -1088,6 +1088,19 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
                 )
                 raise ModelValidationError(msg)
             return encoded
+        # pydantic serializes a datetime's UTC offset only to whole-minute
+        # resolution; a sub-minute offset (historical LMT zones, e.g. +03:06:52)
+        # would be truncated and silently shift the stored instant. Refuse it
+        # rather than corrupt it -- whole-minute offsets and naive values pass.
+        if isinstance(value, datetime):
+            offset = value.utcoffset()
+            if offset is not None and offset % timedelta(minutes=1):
+                msg = (
+                    f"{self._require_name()!r} datetime has a sub-minute UTC "
+                    f"offset ({offset}) that ISO-text serialization cannot store "
+                    f"without shifting the instant"
+                )
+                raise ModelValidationError(msg)
         encoded = adapter.dump_python(value, mode="json")
         # Reject values no backend can store losslessly before they reach the
         # driver: non-finite floats (``nan`` silently becomes ``NULL`` in SQLite
