@@ -6,7 +6,7 @@ import logging
 from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
 
@@ -34,6 +34,9 @@ from snekql.model import Table
 from snekql.query import AnySelectQuery
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt
+
+if TYPE_CHECKING:
+    from snekql.runtime import TransactionMode
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +89,13 @@ class MariaDBConnectionAdapter:
     def __init__(self, connection: object) -> None:
         self.connection: object = connection
 
-    async def begin(self) -> None:
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        # InnoDB serializes writers with row-level locks rather than one global
+        # writer lock, so there is no eager writer-lock acquisition to request:
+        # ``immediate`` and ``deferred`` both open an ordinary transaction. The
+        # parameter exists to satisfy the backend-neutral ``RuntimeConnection``
+        # seam (and is a no-op here).
+        del mode
         await cast("Any", self.connection).begin()
 
     async def commit(self) -> None:

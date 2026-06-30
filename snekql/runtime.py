@@ -70,6 +70,14 @@ from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
 
+# Transaction begin mode. ``deferred`` opens a plain transaction that acquires
+# no lock until its first write (the SQL default); ``immediate`` declares write
+# intent up front so a backend that can take the writer lock eagerly does so,
+# trading deferred read concurrency for fair, fail-fast writer-lock acquisition.
+# SQLite honors this as ``BEGIN`` vs ``BEGIN IMMEDIATE``; row-locking backends
+# treat it as a no-op (see each adapter's ``begin``).
+type TransactionMode = Literal["deferred", "immediate"]
+
 # ``fetch_all`` materializes and validates every row synchronously on the event
 # loop. For large result sets that is a CPU-bound stretch that starves every
 # other task on the loop, so the materialization loop yields a cooperative
@@ -117,7 +125,7 @@ class RuntimeCursor(Protocol):
 class RuntimeConnection(Protocol):
     """Connection behavior required by backend-neutral transactions."""
 
-    async def begin(self) -> None: ...
+    async def begin(self, mode: TransactionMode) -> None: ...
 
     async def commit(self) -> None: ...
 
@@ -324,6 +332,7 @@ class Transaction:
         *,
         runtime: RuntimeBackend | None = None,
         timeout: NonNegativeFloat = 0.0,
+        mode: TransactionMode = "deferred",
     ) -> None:
         if runtime is None:
             msg = "use db.transaction(...) to start a transaction"
@@ -332,6 +341,7 @@ class Transaction:
         self.connection: RuntimeConnection | None = None
         self.runtime: RuntimeBackend = runtime
         self.timeout: NonNegativeFloat = timeout
+        self.mode: TransactionMode = mode
         self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
@@ -339,13 +349,14 @@ class Transaction:
             msg = "transaction is closed"
             raise TransactionClosedError(msg)
         logger.debug(
-            "%s transaction acquiring connection (timeout=%s)",
+            "%s transaction acquiring connection (timeout=%s, mode=%s)",
             self.runtime.backend_family,
             self.timeout,
+            self.mode,
         )
         connection = await self.runtime.acquire(self.timeout)
         try:
-            await connection.begin()
+            await connection.begin(self.mode)
         except Exception as error:
             logger.exception("%s transaction begin failed", self.runtime.backend_family)
             with anyio.CancelScope(shield=True):
@@ -1073,8 +1084,21 @@ class Database:
             raise
 
     @validate_boundary(error_type=DatabaseRuntimeError)
-    def transaction(self, *, timeout: NonNegativeFloat | None = None) -> Transaction:
-        """Create a transaction context manager using the runtime backend."""
+    def transaction(
+        self,
+        *,
+        timeout: NonNegativeFloat | None = None,
+        mode: TransactionMode = "deferred",
+    ) -> Transaction:
+        """Create a transaction context manager using the runtime backend.
+
+        ``mode="immediate"`` declares write intent so the backend acquires the
+        writer lock when the transaction opens instead of on its first write.
+        On SQLite this issues ``BEGIN IMMEDIATE``, which queues fairly on the
+        single writer lock and lets a losing writer be retried at acquisition
+        rather than failing mid-transaction; prefer it for write transactions
+        under contention. It is a no-op on row-locking backends.
+        """
 
         self.runtime.check_accepting_work()
         acquisition_timeout = (
@@ -1083,6 +1107,7 @@ class Database:
         return Transaction(
             runtime=self.runtime,
             timeout=acquisition_timeout,
+            mode=mode,
         )
 
     async def close(self) -> None:

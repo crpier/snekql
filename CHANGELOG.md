@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- `db.transaction(mode="immediate")` declares write intent so SQLite acquires
+  the single writer lock up front via `BEGIN IMMEDIATE`, resolving writer
+  contention fairly at acquisition instead of mid-transaction. On top of the
+  per-connection `busy_timeout` PRAGMA, snekql now retries that acquisition with
+  bounded exponential backoff and jitter (`Config.busy_max_retries`, default 5;
+  backoff tunable via `Config.busy_base_backoff` and `Config.busy_max_backoff`),
+  so a burst of concurrent writers is absorbed rather than surfacing
+  `OperationalError`/`ExecutionError`; a genuinely stuck lock still surfaces once
+  the budget is spent. `mode` defaults to `"deferred"` (unchanged behavior) and
+  is a no-op on MariaDB, whose InnoDB engine uses row-level locks. See
+  [docs/engine-settings.md](./docs/engine-settings.md). (#201)
+
 ## 0.4.0 - 2026-06-28
 
 ### Breaking changes

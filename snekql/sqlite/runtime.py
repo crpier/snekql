@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
 from aiosqlite import Connection, Cursor
@@ -25,9 +25,17 @@ from snekql.sqlite.query import (
     materialize_sqlite_select_row,
     materialize_sqlite_write_rows,
 )
+from snekql.sqlite.retry import (
+    DEFAULT_BUSY_RETRY_POLICY,
+    BusyRetryPolicy,
+    retry_on_sqlite_busy,
+)
 from snekql.sqlite.schema import verify_sqlite_schema
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat
+
+if TYPE_CHECKING:
+    from snekql.runtime import TransactionMode
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +71,33 @@ class SQLiteCursorAdapter:
 class SQLiteConnectionAdapter:
     """Runtime connection adapter backed by an aiosqlite connection."""
 
-    def __init__(self, connection: Connection) -> None:
+    def __init__(
+        self,
+        connection: Connection,
+        *,
+        retry_policy: BusyRetryPolicy = DEFAULT_BUSY_RETRY_POLICY,
+    ) -> None:
         self.connection: Connection = connection
+        self.retry_policy: BusyRetryPolicy = retry_policy
 
-    async def begin(self) -> None:
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        if mode == "immediate":
+            # ``BEGIN IMMEDIATE`` takes the single writer lock now, so a losing
+            # writer contends here -- before doing any read work -- rather than
+            # discovering it can't write only at the first write statement. The
+            # in-driver ``busy_timeout`` makes that contention wait; the bounded
+            # retry-with-jitter absorbs a collision that outlasts the PRAGMA
+            # wait, while a genuinely stuck lock still surfaces once the budget
+            # is spent. Retrying lock acquisition (before any statement runs) is
+            # safe; retrying a write inside an open transaction is not -- under
+            # WAL a concurrent commit turns it into an unrecoverable
+            # ``SQLITE_BUSY_SNAPSHOT``.
+            await retry_on_sqlite_busy(self._begin_immediate, self.retry_policy)
+            return
         await self._execute_control_sql("BEGIN")
+
+    async def _begin_immediate(self) -> None:
+        await self._execute_control_sql("BEGIN IMMEDIATE")
 
     async def commit(self) -> None:
         await self._execute_control_sql("COMMIT")
@@ -110,16 +140,18 @@ class SQLiteRuntime:
         *,
         acquire_timeout: NonNegativeFloat,
         connection_pool: SQLiteConnectionPool,
+        busy_retry_policy: BusyRetryPolicy = DEFAULT_BUSY_RETRY_POLICY,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: SQLiteConnectionPool = connection_pool
+        self.busy_retry_policy: BusyRetryPolicy = busy_retry_policy
 
     async def acquire(
         self,
         acquisition_timeout: NonNegativeFloat,
     ) -> SQLiteConnectionAdapter:
         connection = await self.connection_pool.acquire(acquisition_timeout)
-        return SQLiteConnectionAdapter(connection)
+        return SQLiteConnectionAdapter(connection, retry_policy=self.busy_retry_policy)
 
     async def release(self, connection: object) -> None:
         if not isinstance(connection, SQLiteConnectionAdapter):
@@ -202,6 +234,11 @@ async def initialize_runtime(config: Config) -> SQLiteRuntime:
             database_path=database_path,
             initial_connection=connection,
             pool_size=config.pool_size,
+        ),
+        busy_retry_policy=BusyRetryPolicy(
+            max_retries=config.busy_max_retries,
+            base_backoff=config.busy_base_backoff,
+            max_backoff=config.busy_max_backoff,
         ),
     )
 

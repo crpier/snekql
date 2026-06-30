@@ -9,7 +9,17 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 from snekql._runtime_selection import register_default_backend_factory
 from snekql.errors import DatabaseRuntimeError
-from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+from snekql.sqlite.retry import (
+    DEFAULT_BUSY_BASE_BACKOFF,
+    DEFAULT_BUSY_MAX_BACKOFF,
+    DEFAULT_BUSY_MAX_RETRIES,
+)
+from snekql.validation import (
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveInt,
+    validate_boundary,
+)
 
 if TYPE_CHECKING:
     from snekql._runtime_selection import RuntimeConfig
@@ -27,9 +37,12 @@ def _resolve_pool_size(
 
 
 @validate_boundary(error_type=DatabaseRuntimeError)
-def _validate_sqlite_config(
+def _validate_sqlite_config(  # noqa: PLR0913
     *,
     acquire_timeout: NonNegativeFloat,
+    busy_base_backoff: NonNegativeFloat,
+    busy_max_backoff: NonNegativeFloat,
+    busy_max_retries: NonNegativeInt,
     database: Path | Literal[":memory:"],
     pool_size: PositiveInt,
 ) -> None:
@@ -40,7 +53,8 @@ def _validate_sqlite_config(
     runtime initialization begins.
     """
 
-    del acquire_timeout, database, pool_size
+    del acquire_timeout, busy_base_backoff, busy_max_backoff, busy_max_retries
+    del database, pool_size
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -56,10 +70,22 @@ class Config:
     database: Path | Literal[":memory:"]
     acquire_timeout: NonNegativeFloat = 30.0
     pool_size: PositiveInt = 5
+    # Retries layered on top of the per-connection ``busy_timeout`` PRAGMA when
+    # a ``mode="immediate"`` transaction loses the writer-lock race. Bounds how
+    # much in-process write contention is absorbed before a busy lock surfaces.
+    busy_max_retries: NonNegativeInt = DEFAULT_BUSY_MAX_RETRIES
+    # Exponential backoff (seconds) between those retries, capped at
+    # ``busy_max_backoff``, with full jitter per sleep. Only needs to
+    # desynchronize colliding writers; the long wait is the ``busy_timeout``.
+    busy_base_backoff: NonNegativeFloat = DEFAULT_BUSY_BASE_BACKOFF
+    busy_max_backoff: NonNegativeFloat = DEFAULT_BUSY_MAX_BACKOFF
 
     def __post_init__(self) -> None:
         _validate_sqlite_config(
             acquire_timeout=self.acquire_timeout,
+            busy_base_backoff=self.busy_base_backoff,
+            busy_max_backoff=self.busy_max_backoff,
+            busy_max_retries=self.busy_max_retries,
             database=self.database,
             pool_size=self.pool_size,
         )
