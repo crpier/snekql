@@ -84,3 +84,18 @@ def join_rejects_joining_a_table_twice() -> None:
 
     with assert_raises(QueryConstructionError):
         _ = query.join(Order, on=Order.user_id.references(User.id))
+
+
+@test(mark="fast")
+def where_rejects_a_plain_column_from_a_table_not_in_scope() -> None:
+    """A where() predicate on a column whose table is not in the query is rejected.
+
+    This pins the construction-time scope check for the common plain-column
+    (``Attr``) operand -- the fast path that resolves the concrete column before
+    the structural dialect-protocol check.
+    """
+
+    query = cast("Any", select(User))
+
+    with assert_raises(QueryConstructionError):
+        _ = query.where(Order.note.eq("x"))
