@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 
 from snektest import (
-    AsyncFixture,
     assert_eq,
     assert_raises,
     assert_true,
+    fixture,
     load_fixture,
     test,
 )
@@ -82,12 +82,13 @@ async def _fetch_column_data_type(
     return lines[1]
 
 
+@fixture
 async def database_session(
     models: Sequence[type[Table[Any]]] = (),
     *,
     schema_policy: SchemaPolicy = "strict",
     setup_sql: Sequence[str] = (),
-) -> AsyncFixture[_DatabaseSession]:
+) -> AsyncGenerator[_DatabaseSession]:
     """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())

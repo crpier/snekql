@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 import anyio
-from snektest import assert_eq, load_fixture, test
+from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql.sqlite.pool import (
     SQLiteConnectionPool,
@@ -20,6 +20,7 @@ from snekql.sqlite.pool import (
 _TIMEOUT = 30.0
 
 
+@fixture
 async def single_connection_pool() -> AsyncGenerator[SQLiteConnectionPool]:
     """Provide a `pool_size=1` in-memory pool and close it on teardown."""
 

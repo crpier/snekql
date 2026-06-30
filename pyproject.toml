@@ -8,6 +8,7 @@ dependencies = [
     "annotated-types>=0.7.0",
     "anyio>=4.12.0",
     "pydantic>=2.13.4",
+    "snektest>=0.16.0",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,7 @@ dev = [
     "pyrefly>=1.0.0",
     "pyright>=1.1.409",
     "ruff>=0.15.15",
-    "snektest>=0.12.0",
+    "snektest>=0.16.0",
     "ty>=0.0.44",
 ]
 
