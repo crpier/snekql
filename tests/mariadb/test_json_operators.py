@@ -104,8 +104,11 @@ def json_extract_int_rejects_a_non_integer_value() -> None:
     """
 
     query = select(_Profiled.profile.json_extract_int("$.age")).all()
-    with assert_raises(ModelValidationError):
-        _ = materialize_mariadb_select_row(query, (b'"hello"',))
+    # The spec-enumerated non-integer JSON scalars: a string, a float, and a
+    # JSON null literal (distinct from SQL NULL, which decodes to ``None``).
+    for raw in (b'"hello"', b"12.5", b"null"):
+        with assert_raises(ModelValidationError):
+            _ = materialize_mariadb_select_row(query, (raw,))
 
 
 @test(mark="fast")

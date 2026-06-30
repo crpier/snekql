@@ -91,3 +91,27 @@ def mariadb_select_materialization_asserts_database_row_shape() -> None:
 
     with assert_raises(AssertionError):
         _ = materialize_mariadb_select_row(query, ("a@example.com", "extra"))
+
+
+@test(mark="fast")
+def mariadb_min_max_decode_to_logical_type() -> None:
+    """MIN/MAX over a MariaDB column decode through the column's full codec.
+
+    F6's fix is backend-agnostic: the same wire->logical coercion that runs on
+    SQLite must run on MariaDB too, so a ``datetime``/``bool`` aggregate carries
+    its logical type rather than the raw driver wire value.
+    """
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """MariaDB model exercising MIN/MAX logical decoding."""
+
+        enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+
+    earliest = materialize_mariadb_select_row(
+        select(Event.happened_at.min()).all(), ("2026-01-02 03:04:05.678",)
+    )
+    flag = materialize_mariadb_select_row(select(Event.enabled.max()).all(), (1,))
+
+    assert_eq(earliest, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
+    assert_eq(flag, True)

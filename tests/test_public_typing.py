@@ -333,6 +333,9 @@ if TYPE_CHECKING:
     _ = User.nickname.ne(None)  # pyright: ignore[reportDeprecated]
     _ = User.nickname.gt(None)  # pyright: ignore[reportDeprecated]
     _ = User.nickname.between(None, None)  # pyright: ignore[reportDeprecated]
+    _ = assert_type(User.nickname.in_("nick"), Predicate[User[Pending]])
+    _ = User.nickname.in_(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.not_in(None)  # pyright: ignore[reportDeprecated]
     # Subqueries: a column-vs-column comparison keeps the left column's owner; a
     # single-column subquery types in_subquery; exists() carries no outer column;
     # scalar() carries the projected value type for projections and comparisons.

@@ -237,7 +237,8 @@ select(User.email, Region.code).join(Order, on=Order.user_id.references(User.id)
 > **LEFT-join nullability caveat.** For projection-select, a projected column
 > taken from the nullable side of a `left_join` keeps its non-optional read type
 > (for example `str`, not `str | None`), even though an unmatched row yields
-> `None` at runtime. Model-select left joins are sound — the whole right model
+> `None` at runtime — the unmatched value decodes to `None` rather than raising
+> on the column's own `NOT NULL` constraint. Model-select left joins are sound — the whole right model
 > becomes `... | None`. Prefer model-select when you need a left join's
 > nullability reflected in the types.
 

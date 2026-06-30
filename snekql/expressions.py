@@ -125,7 +125,12 @@ class Comparable[OwnerT, ValueT]:
     def is_not_null(self) -> Predicate[OwnerT]:
         return Predicate(kind="is_not_null", column=self)
 
-    def in_(self, *values: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("in_(None) is invalid; use is_null()")
+    def in_(self, value: None, /) -> Predicate[OwnerT]: ...
+    @overload
+    def in_(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def in_(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "in_() requires at least one value"
             raise QueryConstructionError(msg)
@@ -134,7 +139,12 @@ class Comparable[OwnerT, ValueT]:
             raise QueryConstructionError(msg)
         return Predicate(kind="in", column=self, values=values)
 
-    def not_in(self, *values: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("not_in(None) is invalid; use is_not_null()")
+    def not_in(self, value: None, /) -> Predicate[OwnerT]: ...
+    @overload
+    def not_in(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def not_in(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "not_in() requires at least one value"
             raise QueryConstructionError(msg)
