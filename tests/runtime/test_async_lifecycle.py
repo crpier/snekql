@@ -12,7 +12,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
-from snekql.runtime import RuntimeConnection
+from snekql.runtime import RuntimeConnection, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
     Database,
@@ -73,8 +73,8 @@ class _SlowExecuteConnection:
         self.commit_called: bool = False
         self.execute_started: anyio.Event = anyio.Event()
 
-    async def begin(self) -> None:
-        return None
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        _ = mode
 
     async def commit(self) -> None:
         self.commit_called = True
@@ -96,8 +96,8 @@ class _SlowExecuteConnection:
 class _ReleaseBlockingConnection:
     """Connection fake used to cancel transaction cleanup during release."""
 
-    async def begin(self) -> None:
-        return None
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        _ = mode
 
     async def commit(self) -> None:
         return None

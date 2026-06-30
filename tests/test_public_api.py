@@ -87,6 +87,7 @@ _NEUTRAL_NAMES = frozenset(
         "Table",
         "Transaction",
         "TransactionClosedError",
+        "TransactionMode",
         "UpdateQuery",
         "UpdateReturningQuery",
         "UpdateReturningTupleQuery",

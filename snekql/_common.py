@@ -81,7 +81,7 @@ from snekql.query import (
     scalar,
     select,
 )
-from snekql.runtime import ChunkStream, Database, Transaction
+from snekql.runtime import ChunkStream, Database, Transaction, TransactionMode
 from snekql.storage import (
     PENDING_GENERATION,
     Attr,
@@ -150,6 +150,7 @@ __all__ = [
     "Table",
     "Transaction",
     "TransactionClosedError",
+    "TransactionMode",
     "UpdateQuery",
     "UpdateReturningQuery",
     "UpdateReturningTupleQuery",

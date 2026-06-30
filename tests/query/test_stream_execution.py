@@ -10,7 +10,7 @@ from snektest.assertions import assert_true
 
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
-from snekql.runtime import RuntimeConnection, Transaction
+from snekql.runtime import RuntimeConnection, Transaction, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
@@ -175,8 +175,8 @@ class _CleanupConnection:
     def __init__(self, cursor: _CleanupCursor) -> None:
         self.cursor: _CleanupCursor = cursor
 
-    async def begin(self) -> None:
-        return None
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        _ = mode
 
     async def commit(self) -> None:
         return None

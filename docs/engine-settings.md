@@ -19,6 +19,36 @@ Applied and verified in `open_sqlite_connection`:
 | `PRAGMA busy_timeout` | `5000` ms | The pool opens several connections to one database file; a busy timeout lets writers serialize instead of failing immediately with "database is locked". |
 | `PRAGMA encoding` | `UTF-8` | Verified (not set): snekql stores and compares text as UTF-8. |
 
+### Write contention and `mode="immediate"`
+
+SQLite has one global, exclusive writer lock, regardless of `pool_size`: a
+bigger pool buys more *open* transactions, not more concurrent writers. A plain
+(deferred) transaction acquires no lock until its first write, so a transaction
+that reads before it writes only discovers it cannot get the writer lock after
+that read work is done — and under WAL a concurrent commit in that window turns
+the write into an unrecoverable `SQLITE_BUSY_SNAPSHOT`.
+
+For transactions known to write, declare it:
+
+```python
+async with db.transaction(mode="immediate") as tx:
+    await tx.execute(insert(row))
+```
+
+`mode="immediate"` issues `BEGIN IMMEDIATE`, taking the writer lock up front so
+contention is resolved fairly at acquisition rather than mid-transaction. The
+`busy_timeout` PRAGMA makes a losing writer wait for the lock; on top of that,
+snekql retries the acquisition with bounded exponential backoff and jitter
+(`Config.busy_max_retries`, default 5) so a collision that outlasts the PRAGMA
+wait is absorbed instead of surfacing. A genuinely stuck lock (for example an
+external process holding the database) still surfaces as an error once the retry
+budget is spent. Retry is applied only to writer-lock acquisition, never to a
+statement inside an open transaction, because retrying a write after a
+concurrent commit cannot clear `SQLITE_BUSY_SNAPSHOT`.
+
+On MariaDB, `mode` is a no-op: InnoDB serializes writers with row-level locks,
+so there is no single writer lock to acquire eagerly.
+
 `STRICT` tables are enforced at DDL-compile time and checked during schema drift
 verification; see [schema-drift.md](./schema-drift.md).
 
