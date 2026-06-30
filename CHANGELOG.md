@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Columns are now **NOT NULL by default**. Omitting `nullable=` (or passing
+  `nullable=None`) previously produced a physically nullable column whose
+  non-optional read type promised a non-`None` value — a silent mismatch where a
+  `NULL` row decoded to `None` while the type checker believed otherwise (#203
+  F9). An unset `nullable=` now means NOT NULL, identical to `nullable=False`;
+  only `nullable=True` (which still requires a `| None` read type) opts into a
+  nullable column. Scaffolded/migrated DDL for any column declared without
+  `nullable=` now emits `NOT NULL`; if you relied on the old implicit-nullable
+  behavior, declare the column `Col[T | None]` with `nullable=True`. This holds
+  even when the declaration-time annotation cross-check cannot resolve the hint
+  (e.g. a forward reference), closing a second seam where a skipped cross-check
+  left a non-optional column silently nullable. (#203)
+
+### Fixed
+
+- `scalar(subquery)` is now typed `Scalar[Any, T | None]` and decodes a no-match
+  to `None` instead of raising. A SQL scalar subquery evaluates to `NULL` on an
+  empty/no-match result set regardless of the inner column's `NOT NULL`
+  constraint; the projected slot previously typed the inner column's
+  non-optional type and raised `ModelValidationError` at fetch when the subquery
+  matched zero rows (#203 F10).
+
 ### Added
 
 - `db.transaction(mode="immediate")` declares write intent so SQLite acquires

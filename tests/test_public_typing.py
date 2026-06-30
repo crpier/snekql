@@ -346,9 +346,11 @@ if TYPE_CHECKING:
     )
     _ = assert_type(exists(select(Order.id).all()), Predicate[Any])
     _ = assert_type(not_exists(select(Order.id).all()), Predicate[Any])
+    # A scalar subquery evaluates to NULL on an empty match, so its projected
+    # value type is always optional even over a NOT NULL inner column (#203 F10).
     _ = assert_type(
         scalar(select(Order.user_id).where(Order.user_id.eq_col(User.id))),
-        Scalar[Any, int],
+        Scalar[Any, int | None],
     )
     _ = assert_type(
         User.id.gt_col(scalar(select(Order.user_id).all())),

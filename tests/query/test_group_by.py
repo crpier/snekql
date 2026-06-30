@@ -137,7 +137,12 @@ def group_by_is_backend_portable() -> None:
 
 @test(mark="fast")
 def ungrouped_bare_column_with_aggregate_is_a_compilation_error() -> None:
-    """A non-aggregate projected column not in GROUP BY is rejected."""
+    """A non-aggregate projected column not in GROUP BY is rejected.
+
+    The mixed projection type-checks as an ordinary tuple select; GROUP BY
+    coverage is not expressible in the type system, so it is a runtime-only
+    (loud, never silent) check (#203 F11).
+    """
 
     with assert_raises(QueryCompilationError):
         _ = compile_sqlite_select_sql(

@@ -70,6 +70,26 @@ def scaffold_emits_create_table_and_index_ddl() -> None:
     assert_eq(ddl, _EXPECTED_USER_DDL)
 
 
+class ScaffoldDefaultNull[S = Pending](Model[S, "ScaffoldDefaultNull[Fetched]"]):
+    """Model whose column omits ``nullable=`` to exercise the NOT NULL default."""
+
+    id: ScaffoldDefaultNull.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    name: ScaffoldDefaultNull.Col[str] = Text()
+
+
+@test(mark="fast")
+def scaffold_defaults_unset_nullable_to_not_null() -> None:
+    """A column declared without ``nullable=`` scaffolds as NOT NULL (#203 F9).
+
+    The non-optional ``Col[str]`` read type promises a non-``None`` value, so the
+    physical column must reject NULL rather than silently admitting one.
+    """
+
+    ddl = scaffold([ScaffoldDefaultNull])
+
+    assert_true('"name" TEXT NOT NULL' in ddl)
+
+
 @test(mark="fast")
 def scaffold_emits_foreign_key_constraint() -> None:
     """Scaffold renders a table-level FOREIGN KEY ... REFERENCES constraint."""

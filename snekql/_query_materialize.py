@@ -82,8 +82,13 @@ def _decode_selectable(
     validate: bool,
 ) -> object:
     if isinstance(field, Scalar):
-        # A scalar subquery decodes through its single projected selectable, so
-        # an inner SUM/COUNT/column normalizes exactly as it would standalone.
+        # A scalar subquery evaluates to SQL NULL on an empty/no-match result
+        # set, even over a NOT NULL inner column, so a NULL decodes to None
+        # rather than through the inner column's null rejection (#203 F10).
+        if value is None:
+            return None
+        # Otherwise decode through its single projected selectable, so an inner
+        # SUM/COUNT/column normalizes exactly as it would standalone.
         inner = require_single_column_subquery(field.subquery)
         return _decode_selectable(
             inner.fields[0],
