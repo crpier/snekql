@@ -235,7 +235,11 @@ async def initialize_runtime(config: Config) -> SQLiteRuntime:
             initial_connection=connection,
             pool_size=config.pool_size,
         ),
-        busy_retry_policy=BusyRetryPolicy(max_retries=config.busy_max_retries),
+        busy_retry_policy=BusyRetryPolicy(
+            max_retries=config.busy_max_retries,
+            base_backoff=config.busy_base_backoff,
+            max_backoff=config.busy_max_backoff,
+        ),
     )
 
 

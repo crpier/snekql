@@ -20,6 +20,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
+    Config,
     Fetched,
     Integer,
     Model,
@@ -28,7 +29,7 @@ from snekql.sqlite import (
 )
 from snekql.sqlite.pool import close_sqlite_connection, open_sqlite_connection
 from snekql.sqlite.retry import BusyRetryPolicy
-from snekql.sqlite.runtime import SQLiteConnectionAdapter
+from snekql.sqlite.runtime import SQLiteConnectionAdapter, initialize_runtime
 from tests.helpers import initialized_database
 
 
@@ -197,3 +198,23 @@ async def concurrent_immediate_writers_do_not_surface_lock_errors() -> None:
 
         assert_eq(errors, [])
         assert_eq(_row_count(database_path), writer_count)
+
+
+@test(mark="fast")
+async def config_backoff_tuning_reaches_the_runtime_retry_policy() -> None:
+    """Backoff knobs on ``Config`` are plumbed into the busy retry policy."""
+
+    config = Config(
+        database=":memory:",
+        busy_max_retries=9,
+        busy_base_backoff=0.05,
+        busy_max_backoff=1.5,
+    )
+    runtime = await initialize_runtime(config)
+    try:
+        assert_eq(
+            runtime.busy_retry_policy,
+            BusyRetryPolicy(max_retries=9, base_backoff=0.05, max_backoff=1.5),
+        )
+    finally:
+        await runtime.close(close_timeout=5.0)

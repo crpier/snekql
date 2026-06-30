@@ -39,7 +39,8 @@ async with db.transaction(mode="immediate") as tx:
 contention is resolved fairly at acquisition rather than mid-transaction. The
 `busy_timeout` PRAGMA makes a losing writer wait for the lock; on top of that,
 snekql retries the acquisition with bounded exponential backoff and jitter
-(`Config.busy_max_retries`, default 5) so a collision that outlasts the PRAGMA
+(`Config.busy_max_retries`, default 5; backoff bounded by `Config.busy_base_backoff`
+and `Config.busy_max_backoff`) so a collision that outlasts the PRAGMA
 wait is absorbed instead of surfacing. A genuinely stuck lock (for example an
 external process holding the database) still surfaces as an error once the retry
 budget is spent. Retry is applied only to writer-lock acquisition, never to a
