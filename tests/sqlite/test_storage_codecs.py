@@ -225,6 +225,31 @@ def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
 
 
 @test()
+def datetime_with_a_sub_minute_offset_is_rejected() -> None:
+    """ISO-text serialization truncates UTC offsets to whole minutes, silently
+    shifting the instant for historical sub-minute zones (e.g. an LMT offset of
+    ``+03:06:52``). The codec refuses such datetimes with a domain error rather
+    than corrupt them; whole-minute offsets and naive datetimes are unaffected."""
+
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+        """Table model with a timestamp stored as ISO text."""
+
+        created_at: AuditLog.Col[datetime] = Text(nullable=False)
+
+    sub_minute = timezone(timedelta(hours=3, minutes=6, seconds=52))
+    corrupting = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
+    with assert_raises(ModelValidationError):
+        _ = encode_model_row(AuditLog(created_at=corrupting), backend="sqlite")
+
+    # A whole-minute offset carrying the same wall time still round-trips.
+    whole_minute = datetime(
+        2026, 5, 31, 12, 0, 1, tzinfo=timezone(timedelta(hours=3, minutes=6))
+    )
+    _, encoded = encode_model_row(AuditLog(created_at=whole_minute), backend="sqlite")
+    assert_eq(encoded, {"created_at": "2026-05-31T12:00:01+03:06"})
+
+
+@test()
 def uuid_logical_type_round_trips_as_text_and_blocks_like() -> None:
     """The ADR's first beneficiary: a ``Col[uuid.UUID]`` stored as ``Text()``
     round-trips through pydantic (string on the wire) and exposes no ``like``
