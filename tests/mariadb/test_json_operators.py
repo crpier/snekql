@@ -8,9 +8,10 @@ decodes it through the leaf-owned ``__decode__``.
 
 from __future__ import annotations
 
-from snektest import assert_eq, test
+from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
+from snekql.errors import ModelValidationError
 from snekql.mariadb import Fetched, Pending, select
 from snekql.mariadb.query import (
     compile_mariadb_select_sql,
@@ -82,6 +83,32 @@ def json_extract_int_decodes_a_projected_value() -> None:
     decoded = materialize_mariadb_select_row(query, ("41",))
 
     assert_eq(decoded, 41)
+
+
+@test(mark="fast")
+def json_extract_int_decodes_a_missing_path_to_none() -> None:
+    """A missing JSON path reaches the driver as SQL NULL; the optional result
+    decodes it to ``None`` rather than raising on ``int(None)``.
+    """
+
+    query = select(_Profiled.profile.json_extract_int("$.age")).all()
+    decoded = materialize_mariadb_select_row(query, (None,))
+
+    assert_eq(decoded, None)
+
+
+@test(mark="fast")
+def json_extract_int_rejects_a_non_integer_value() -> None:
+    """A present-but-non-integer JSON scalar is a declaration mismatch, raised
+    as a clear error rather than a bare ``ValueError``.
+    """
+
+    query = select(_Profiled.profile.json_extract_int("$.age")).all()
+    # The spec-enumerated non-integer JSON scalars: a string, a float, and a
+    # JSON null literal (distinct from SQL NULL, which decodes to ``None``).
+    for raw in (b'"hello"', b"12.5", b"null"):
+        with assert_raises(ModelValidationError):
+            _ = materialize_mariadb_select_row(query, (raw,))
 
 
 @test(mark="fast")

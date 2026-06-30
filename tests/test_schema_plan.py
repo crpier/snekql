@@ -246,7 +246,9 @@ def schema_plan_rejects_a_nullable_composite_primary_key_column() -> None:
     class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
         """Table illegally declaring a composite-PK column nullable."""
 
-        left: CompositeNullable.Col[int] = Integer(primary_key=True, nullable=True)
+        left: CompositeNullable.Col[int | None] = Integer(
+            primary_key=True, nullable=True
+        )
         right: CompositeNullable.Col[int] = Integer(primary_key=True)
 
     with assert_raises(ModelDeclarationError):

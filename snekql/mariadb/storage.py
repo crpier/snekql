@@ -8,6 +8,7 @@ from types import EllipsisType
 from typing import TYPE_CHECKING, Any, cast, overload
 
 from snekql._query_state import require_column_model
+from snekql.errors import ModelValidationError
 from snekql.expressions import Comparable
 from snekql.storage import (
     Attr,
@@ -36,19 +37,24 @@ def _json_path_literal(path: str) -> str:
 
 
 @dataclass(frozen=True)
-class _JsonExtractInt[OwnerT](Comparable[OwnerT, int]):
-    """``JSON_EXTRACT(col, path)`` typed as an ``int`` (ADR 0004 open-AST seam).
+class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
+    """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
 
     The first dialect-specific operator: it lives entirely in the MariaDB
     namespace and reaches the core only through the structural protocols.
 
-    * ``Comparable[OwnerT, int]`` gives it the comparison surface (``.gt(18)``)
-      typed to ``int``, so it works as a ``WHERE`` operand.
+    * ``Comparable[OwnerT, int | None]`` gives it the comparison surface
+      (``.gt(18)``) typed to ``int``, so it works as a ``WHERE`` operand.
     * ``__owner_model__`` / ``__compile_sql__`` satisfy ``SqlCompilable`` (the
       operand-render seam).
     * ``__compile_select_sql__`` / ``__decode__`` additionally satisfy
-      ``DialectSelectable[int]`` (the projection seam), so it can be projected
-      and Materialized to an ``int`` without the core naming this class.
+      ``DialectSelectable[int | None]`` (the projection seam), so it can be
+      projected and Materialized without the core naming this class.
+
+    The result is optional because ``JSON_EXTRACT`` returns SQL ``NULL`` whenever
+    the path is absent -- the common case for a sparse document. A value that is
+    present but not an integer is a declaration mismatch and raises rather than
+    silently coercing.
     """
 
     column: Attr[Any, Any, Any, Any, Any]
@@ -63,12 +69,23 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, int]):
     def __compile_select_sql__(self, ctx: CompileCtx) -> str:
         return self.__compile_sql__(ctx)
 
-    def __decode__(self, raw: object) -> int:
+    def __decode__(self, raw: object) -> int | None:
+        # A missing JSON path reaches the driver as SQL NULL -> None; the type is
+        # optional precisely so this normal sparse-document case is not a crash.
+        if raw is None:
+            return None
         # MariaDB returns JSON scalars as text (or bytes from the driver); the
         # leaf owns this raw->typed conversion.
         if isinstance(raw, (bytes, bytearray)):
             raw = raw.decode()
-        return int(cast("str | int | float", raw))
+        try:
+            return int(cast("str | int | float", raw))
+        except (TypeError, ValueError) as error:
+            msg = (
+                f"json_extract_int({self.path!r}) expected an integer at the path "
+                f"but found {raw!r}"
+            )
+            raise ModelValidationError(msg) from error
 
 
 class JsonAttr[

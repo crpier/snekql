@@ -531,22 +531,22 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
         /,
     ) -> InsertReturningValueQuery[OwnerT, T1]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
+        field2: Attr[Any, Any, OwnerT, Any, T2],
         /,
     ) -> InsertReturningTupleQuery[OwnerT, T1, T2]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
-        field3: Attr[Any, Any, Any, Any, T3],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
+        field2: Attr[Any, Any, OwnerT, Any, T2],
+        field3: Attr[Any, Any, OwnerT, Any, T3],
         /,
     ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3]: ...
     def returning(self, *fields: object) -> object:
@@ -574,22 +574,22 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](_BaseInsertQuery):
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
         /,
     ) -> InsertManyReturningValueQuery[OwnerT, T1]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
+        field2: Attr[Any, Any, OwnerT, Any, T2],
         /,
     ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
-        field3: Attr[Any, Any, Any, Any, T3],
+        field1: Attr[Any, Any, OwnerT, Any, T1],
+        field2: Attr[Any, Any, OwnerT, Any, T2],
+        field3: Attr[Any, Any, OwnerT, Any, T3],
         /,
     ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3]: ...
     def returning(self, *fields: object) -> object:
@@ -693,22 +693,22 @@ class UpdateQuery[ModelT: Table[Any]](_SqlInspectionMixin):
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
+        field1: Attr[Any, Any, ModelT, Any, T1],
         /,
     ) -> UpdateReturningValueQuery[ModelT, T1]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
+        field1: Attr[Any, Any, ModelT, Any, T1],
+        field2: Attr[Any, Any, ModelT, Any, T2],
         /,
     ) -> UpdateReturningTupleQuery[ModelT, T1, T2]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
-        field3: Attr[Any, Any, Any, Any, T3],
+        field1: Attr[Any, Any, ModelT, Any, T1],
+        field2: Attr[Any, Any, ModelT, Any, T2],
+        field3: Attr[Any, Any, ModelT, Any, T3],
         /,
     ) -> UpdateReturningTupleQuery[ModelT, T1, T2, T3]: ...
     def returning(self, *fields: object) -> object:
@@ -758,22 +758,22 @@ class DeleteQuery[ModelT: Table[Any]](_SqlInspectionMixin):
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
+        field1: Attr[Any, Any, ModelT, Any, T1],
         /,
     ) -> DeleteReturningValueQuery[ModelT, T1]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
+        field1: Attr[Any, Any, ModelT, Any, T1],
+        field2: Attr[Any, Any, ModelT, Any, T2],
         /,
     ) -> DeleteReturningTupleQuery[ModelT, T1, T2]: ...
     @overload
     def returning(
         self,
-        field1: Attr[Any, Any, Any, Any, T1],
-        field2: Attr[Any, Any, Any, Any, T2],
-        field3: Attr[Any, Any, Any, Any, T3],
+        field1: Attr[Any, Any, ModelT, Any, T1],
+        field2: Attr[Any, Any, ModelT, Any, T2],
+        field3: Attr[Any, Any, ModelT, Any, T3],
         /,
     ) -> DeleteReturningTupleQuery[ModelT, T1, T2, T3]: ...
     def returning(self, *fields: object) -> object:

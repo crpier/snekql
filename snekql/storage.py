@@ -740,6 +740,33 @@ def _strip_json_marker(annotation: object) -> object:
     return annotation
 
 
+def _unwrap_annotated(annotation: object) -> object:
+    """Drop any ``Annotated[...]`` metadata, exposing the underlying type."""
+
+    if getattr(annotation, "__metadata__", None) is not None:
+        return cast("Any", annotation).__origin__
+    return annotation
+
+
+def _annotation_admits_none(annotation: object) -> bool:
+    """Whether a logical annotation includes ``None`` (``T | None``)."""
+
+    annotation = _unwrap_annotated(annotation)
+    arguments = get_args(annotation)
+    if arguments:
+        return any(argument is type(None) for argument in arguments)
+    return annotation is type(None)
+
+
+def _annotation_core_types(annotation: object) -> list[object]:
+    """The non-``None`` member types of a (possibly union/Annotated) annotation."""
+
+    annotation = _unwrap_annotated(annotation)
+    arguments = get_args(annotation)
+    members = list(arguments) if arguments else [annotation]
+    return [_unwrap_annotated(member) for member in members if member is not type(None)]
+
+
 class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = WriteT](
     Comparable[OwnerT, ReadValueT],
 ):
@@ -910,6 +937,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             return self._coerce_pending_generation(fetched=fetched)
         if value is None:
             return self._coerce_null_value()
+        value = self._coerce_int_column_bool(value)
         try:
             return self._logical_adapter().validate_python(value, strict=True)
         except ValidationError as error:
@@ -1186,20 +1214,92 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             logical = non_none[0]
         return isinstance(logical, type) and issubclass(logical, str)
 
+    def _resolved_logical_type(self) -> object | None:
+        """Resolve this column's logical (annotation) type, or ``None`` if unknown.
+
+        Mirrors :meth:`_logical_adapter`'s resolution but returns the type object
+        (with the ``pydantic.Json`` marker stripped) rather than a validator, so
+        the nullability/numeric gates can inspect it. Resolution can legitimately
+        fail before a model's declaring scope is fully populated (forward refs);
+        callers treat ``None`` as "unknown" and stay permissive.
+        """
+
+        owner = self.owner
+        if owner is None:
+            return None
+        try:
+            annotation = _resolve_model_hints(owner).get(self._require_name())
+            return _strip_json_marker(
+                _extract_logical_type(annotation, self._require_name())
+            )
+        except ModelDeclarationError, NameError, TypeError:
+            return None
+
+    def _logical_is_numeric(self) -> bool | None:
+        """Whether the logical type is numeric (``int``/``float``, not ``bool``).
+
+        ``None`` when the type cannot be resolved. ``bool`` is excluded even though
+        it subclasses ``int``: summing/averaging a boolean column is not a boolean.
+        """
+
+        logical = self._resolved_logical_type()
+        if logical is None:
+            return None
+        cores = _annotation_core_types(logical)
+        if not cores:
+            return False
+        return all(
+            isinstance(core, type)
+            and issubclass(core, (int, float))
+            and not issubclass(core, bool)
+            for core in cores
+        )
+
+    def _coerce_int_column_bool(self, value: object) -> object:
+        """Coerce a ``bool`` to ``int`` for an integer-logical column.
+
+        ``bool`` is a structural subtype of ``int``, so a boolean type-checks
+        where an ``int`` column is expected; pydantic strict-``int`` validation
+        then rejects it. Coercing here makes the runtime accept what the type
+        already admits, for ``int``-logical columns only (a ``Col[bool]`` keeps a
+        ``bool`` logical type and is left untouched).
+        """
+
+        if type(value) is not bool:
+            return value
+        logical = self._resolved_logical_type()
+        if logical is None:
+            return value
+        if _annotation_core_types(logical) == [int]:
+            return int(value)
+        return value
+
     def count(self) -> Aggregate[OwnerT, int]:
         """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
 
         return Aggregate(func="COUNT", column=self, owner=self.owner)
 
     def sum(self) -> Aggregate[OwnerT, ReadValueT | None]:
-        """Aggregate this column as ``SUM(col)`` (``None`` over an empty set)."""
+        """Aggregate this column as ``SUM(col)`` (``None`` over an empty set).
 
+        Rejected on non-numeric columns: ``SUM``/``AVG`` over text coerces to
+        ``0.0`` in SQLite, so the column's logical read type would not describe
+        the float the database returns.
+        """
+
+        self._require_numeric_aggregate("sum")
         return Aggregate(func="SUM", column=self, owner=self.owner)
 
     def avg(self) -> Aggregate[OwnerT, float | None]:
         """Aggregate this column as ``AVG(col)`` (``float``, ``None`` if empty)."""
 
+        self._require_numeric_aggregate("avg")
         return Aggregate(func="AVG", column=self, owner=self.owner)
+
+    def _require_numeric_aggregate(self, func: str) -> None:
+        if self._logical_is_numeric() is False:
+            msg = f"{func}() is only valid for numeric columns"
+            raise QueryConstructionError(msg)
 
     def min(self) -> Aggregate[OwnerT, ReadValueT | None]:
         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
@@ -1283,6 +1383,26 @@ class FKAttr[
         """Build a join condition between this FK column and its target."""
 
         return JoinOn(left_column=self, right_column=other)
+
+
+def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
+    """Whether a column's logical annotation includes ``None``; ``None`` if unknown.
+
+    Public seam for model declaration validation, which lives in a different
+    module. Resolution can legitimately fail before a model's declaring scope is
+    fully populated (forward refs); callers treat ``None`` as "unknown".
+    """
+
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return None
+    try:
+        annotation = _resolve_model_hints(owner).get(name)
+        logical = _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return None
+    return _annotation_admits_none(logical)
 
 
 def _decode_sqlite_datetime(value: object, name: str) -> datetime:

@@ -766,7 +766,7 @@ async def model_matching_migration_evolved_table_verifies_clean() -> None:
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        age: User.Col[int] = Integer(nullable=True)
+        age: User.Col[int | None] = Integer(nullable=True)
         email: User.Col[str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, overload
+from warnings import deprecated
 
 from snekql.errors import QueryConstructionError
 
@@ -96,13 +97,23 @@ class Comparable[OwnerT, ValueT]:
     meaningful over an aggregate.
     """
 
-    def eq(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("eq(None) is invalid; use is_null()")
+    def eq(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def eq(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def eq(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "eq(None) is invalid; use is_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="eq", column=self, value=value)
 
-    def ne(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("ne(None) is invalid; use is_not_null()")
+    def ne(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def ne(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def ne(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "ne(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
@@ -114,7 +125,12 @@ class Comparable[OwnerT, ValueT]:
     def is_not_null(self) -> Predicate[OwnerT]:
         return Predicate(kind="is_not_null", column=self)
 
-    def in_(self, *values: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("in_(None) is invalid; use is_null()")
+    def in_(self, value: None, /) -> Predicate[OwnerT]: ...
+    @overload
+    def in_(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def in_(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "in_() requires at least one value"
             raise QueryConstructionError(msg)
@@ -123,7 +139,12 @@ class Comparable[OwnerT, ValueT]:
             raise QueryConstructionError(msg)
         return Predicate(kind="in", column=self, values=values)
 
-    def not_in(self, *values: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("not_in(None) is invalid; use is_not_null()")
+    def not_in(self, value: None, /) -> Predicate[OwnerT]: ...
+    @overload
+    def not_in(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def not_in(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "not_in() requires at least one value"
             raise QueryConstructionError(msg)
@@ -132,31 +153,59 @@ class Comparable[OwnerT, ValueT]:
             raise QueryConstructionError(msg)
         return Predicate(kind="not_in", column=self, values=values)
 
-    def gt(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("gt(None) is invalid; use is_not_null()")
+    def gt(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def gt(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def gt(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "gt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="gt", column=self, value=value)
 
-    def gte(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("gte(None) is invalid; use is_not_null()")
+    def gte(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def gte(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def gte(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "gte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="gte", column=self, value=value)
 
-    def lt(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("lt(None) is invalid; use is_not_null()")
+    def lt(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def lt(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def lt(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "lt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="lt", column=self, value=value)
 
-    def lte(self, value: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("lte(None) is invalid; use is_not_null()")
+    def lte(self, value: None) -> Predicate[OwnerT]: ...
+    @overload
+    def lte(self, value: ValueT) -> Predicate[OwnerT]: ...
+    def lte(self, value: ValueT | None) -> Predicate[OwnerT]:
         if value is None:
             msg = "lte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return Predicate(kind="lte", column=self, value=value)
 
-    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]:
+    @overload
+    @deprecated("between() bounds cannot be None; use is_null()/is_not_null()")
+    def between(self, low: None, high: ValueT) -> Predicate[OwnerT]: ...
+    @overload
+    @deprecated("between() bounds cannot be None; use is_null()/is_not_null()")
+    def between(self, low: ValueT, high: None) -> Predicate[OwnerT]: ...
+    @overload
+    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]: ...
+    def between(self, low: ValueT | None, high: ValueT | None) -> Predicate[OwnerT]:
         if low is None or high is None:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)

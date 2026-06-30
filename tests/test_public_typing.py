@@ -59,6 +59,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
+    nickname: User.Col[str | None] = Text(nullable=True, default=None)
     created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
 
 
@@ -221,13 +222,14 @@ if TYPE_CHECKING:
         MariadbUser.profile.json_extract_int("$.age").gt(18),
         Predicate[MariadbUser[Pending]],
     )
+    # A missing JSON path yields SQL NULL, so the projection is `int | None`.
     _ = assert_type(
         select(MariadbUser.profile.json_extract_int("$.age")),
-        SelectValueQuery[Any, Any, int],
+        SelectValueQuery[Any, Any, int | None],
     )
     _ = assert_type(
         select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),
-        SelectTupleQuery[MariadbUser[Pending], MariadbUser[Pending], str, int],
+        SelectTupleQuery[MariadbUser[Pending], MariadbUser[Pending], str, int | None],
     )
 
     pending_user = User(email="alice@example.com")
@@ -322,6 +324,18 @@ if TYPE_CHECKING:
     )
     _ = assert_type(User.email.like("%@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.not_like("%@example.com"), Predicate[User[Pending]])
+    # Nullable column: comparing against None is invalid (the runtime rejects it);
+    # the typed surface steers callers to is_null()/is_not_null() with a
+    # deprecation diagnostic, while a real value still type-checks.
+    _ = assert_type(User.nickname.eq("nick"), Predicate[User[Pending]])
+    _ = assert_type(User.nickname.is_null(), Predicate[User[Pending]])
+    _ = User.nickname.eq(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.ne(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.gt(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.between(None, None)  # pyright: ignore[reportDeprecated]
+    _ = assert_type(User.nickname.in_("nick"), Predicate[User[Pending]])
+    _ = User.nickname.in_(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.not_in(None)  # pyright: ignore[reportDeprecated]
     # Subqueries: a column-vs-column comparison keeps the left column's owner; a
     # single-column subquery types in_subquery; exists() carries no outer column;
     # scalar() carries the projected value type for projections and comparisons.
@@ -470,6 +484,10 @@ if TYPE_CHECKING:
         update(User).set(User.email.to("new@example.com")),
         UpdateQuery[User[Pending]],
     )
+    # returning() is scoped to the written model: a column from another model is
+    # rejected statically (the owner is pinned), matching the runtime guard.
+    _ = insert(pending_user).returning(Order.note)  # pyright: ignore[reportArgumentType]
+    _ = update(User).returning(Order.note)  # pyright: ignore[reportArgumentType]
 
     async def check_write_types(transaction: Transaction) -> None:
         """Runtime write overloads type returning inserts as Fetched models."""

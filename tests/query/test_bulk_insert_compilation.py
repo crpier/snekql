@@ -88,7 +88,9 @@ def returning_rejects_a_column_from_another_model() -> None:
     """A returning projection must name columns of the inserted model."""
 
     with assert_raises(QueryConstructionError):
-        _ = insert(User(email="a@example.com")).returning(Account.name)
+        # A column from another model is also a static error (the owner is pinned
+        # to the written model); the runtime guard is what this test exercises.
+        _ = insert(User(email="a@example.com")).returning(Account.name)  # pyright: ignore[reportArgumentType]
 
 
 @test(mark="fast")

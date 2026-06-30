@@ -154,6 +154,27 @@ def projection_join_materializes_a_tuple_of_scalars() -> None:
 
 
 @test(mark="fast")
+def left_join_projection_yields_none_for_an_unmatched_not_null_column() -> None:
+    """A NOT NULL column projected from a left join's nullable side decodes to
+    ``None`` for an unmatched row rather than raising on its own constraint.
+    """
+
+    query = (
+        select(JoinUser.email, JoinOrder.note)
+        .left_join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
+        .all()
+    )
+
+    values = materialize_select_row_for_backend(
+        query.state,
+        ("a@b.c", None),
+        backend="sqlite",
+    )
+
+    assert_eq(values, ("a@b.c", None))
+
+
+@test(mark="fast")
 def single_column_projection_join_unwraps_to_one_scalar() -> None:
     """A single projected column over a join still returns a bare scalar."""
 
