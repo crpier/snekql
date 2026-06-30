@@ -353,6 +353,44 @@ def optional_annotation_requires_nullable_true() -> None:
 
 
 @test(mark="fast")
+def optional_annotation_rejects_unset_nullable() -> None:
+    """A ``| None`` read type with no ``nullable=`` is rejected (#203 F9).
+
+    The unset default now means NOT NULL, so it contradicts an optional read
+    type exactly as ``nullable=False`` does.
+    """
+
+    with assert_raises(ModelDeclarationError):
+
+        class UnsetNullable[S = Pending](Model[S, "UnsetNullable[Fetched]"]):
+            """A `| None` annotation without nullable=True is a contradiction."""
+
+            maybe: UnsetNullable.Col[str | None] = Text()
+
+
+@test(mark="fast")
+def unset_nullable_defaults_to_not_null() -> None:
+    """Omitting ``nullable=`` produces a NOT NULL column (#203 F9).
+
+    The column's static read type is non-optional, so the runtime column must be
+    NOT NULL; the F2 cross-check accepts the declaration and the stored
+    nullability is ``False``, not the old tri-state ``None``.
+    """
+
+    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+        """A non-optional column declared without nullable= is NOT NULL."""
+
+        id: Account.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        name: Account.Col[str] = Text()
+
+    assert_is(Account.name.nullable, False)
+
+
+@test(mark="fast")
 def non_optional_annotation_rejects_nullable_true() -> None:
     """A non-optional read type must not be declared runtime-nullable."""
 

@@ -354,3 +354,30 @@ async def scalar_subquery_projects_per_row_value() -> None:
         await database.close()
 
     assert_eq(rows, [(1, 7), (2, None)])
+
+
+@test(mark="medium")
+async def scalar_over_non_nullable_column_decodes_empty_to_none() -> None:
+    """A scalar over a NOT NULL column yields ``None`` on an empty match (#203 F10).
+
+    A SQL scalar subquery evaluates to NULL whenever it matches zero rows, even
+    over a ``NOT NULL`` inner column, so the projected slot decodes to ``None``
+    rather than raising on the inner column's null rejection.
+    """
+
+    database = await initialized_database(database=":memory:", models=[User, Order])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(User(country="us")))
+            rows = await tx.fetch_all(
+                select(
+                    User.id,
+                    scalar(select(Order.amount).where(Order.id.eq(-999))),
+                )
+                .all()
+                .order_by(User.id.asc()),
+            )
+    finally:
+        await database.close()
+
+    assert_eq(rows, [(1, None)])

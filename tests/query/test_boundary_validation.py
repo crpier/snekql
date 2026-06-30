@@ -35,6 +35,8 @@ def select_limit_and_offset_reject_invalid_values_at_boundary() -> None:
     # TODO: does it make sense to add tests/add validation for cases that
     # are already handled by the type checker? Also, we have the validate_boundary
     # decorator, I'm not sure we need to test.
+    # `NonNegativeInt` is plain `int` to the type checker, so a negative literal
+    # type-checks; the bound is a runtime-only (loud) check (#203 F12).
     with assert_raises(QueryConstructionError):
         _ = select(BoundaryUser).all().limit(-1)
 

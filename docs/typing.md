@@ -83,6 +83,28 @@ fetched_user.id      # int
 `PENDING_GENERATION` is the singleton sentinel value for generated pending values that have
 not been filled by the database yet.
 
+### Nullability
+
+A column is **NOT NULL by default**. `nullable=` is unset (the constructor
+default), `nullable=None`, and `nullable=False` all produce a NOT NULL column;
+only `nullable=True` makes it nullable. The read annotation and the flag are
+cross-checked at declaration: a `| None` read type requires `nullable=True`, and
+a non-optional read type forbids it. Each side rejects the contradiction at class
+definition time.
+
+```python
+name:     User.Col[str]        = Text()                 # NOT NULL (unset default)
+required: User.Col[str]        = Text(nullable=False)   # NOT NULL (explicit)
+optional: User.Col[str | None] = Text(nullable=True)    # nullable
+
+bad:      User.Col[str]        = Text(nullable=True)    # rejected: type vs flag
+bad2:     User.Col[str | None] = Text()                 # rejected: | None needs nullable=True
+```
+
+The NOT NULL default holds even when the cross-check cannot resolve the
+annotation (for example a forward reference it skips): the physical column is
+still NOT NULL, so a non-optional read type is never handed a SQL `NULL`.
+
 ## Query result shapes
 
 The selected shape controls the runtime return type:
@@ -305,6 +327,26 @@ declaration order. Every column of a composite key is always `NOT NULL`, so
 declaring such a column `nullable=True` is rejected at declaration time, as is
 combining `auto_increment` with a composite key (`AUTOINCREMENT` requires a
 single `INTEGER PRIMARY KEY`).
+
+## Runtime-checked constraints
+
+Most validity rules are enforced by the type checker, but a few cannot be
+expressed in Python's type system and are checked at query construction or
+compilation instead. They raise loudly — they are never silent unsoundness — but
+the type checker will not flag them ahead of time:
+
+- **Mixed aggregate projections need `group_by`.** `select(col, agg)` type-checks
+  as an ordinary tuple select, but every non-aggregate projected column must
+  appear in `group_by(...)`; a missing one raises `QueryCompilationError` at
+  fetch. The type checker cannot track which columns are grouped.
+- **`limit`/`offset` bounds.** Their parameter is `NonNegativeInt`, which Pyright
+  sees as plain `int`, so a negative literal type-checks; a negative value raises
+  `QueryConstructionError` at construction.
+
+A scalar subquery (`scalar(...)`), by contrast, **is** reflected in the types: it
+evaluates to SQL `NULL` on an empty/no-match result set, so its projected slot is
+typed `... | None` and decodes a no-match to `None` rather than raising, even over
+a `NOT NULL` inner column.
 
 ## Backend namespaces
 

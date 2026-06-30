@@ -793,7 +793,14 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self.is_generated: bool = False
         self.name: str | None = None
         self.owner: type[object] | None = None
-        self.nullable: bool | None = config.nullable
+        # An unset ``nullable=`` (the constructor default ``None``) means NOT
+        # NULL: the column's non-optional read type promises a non-``None`` value,
+        # so the physical column must reject NULL and decoding must never yield
+        # ``None``. Normalizing to a concrete ``bool`` here closes the silent
+        # mismatch where an unset column was emitted nullable yet typed
+        # non-optional (#203 F9), and keeps the normalization independent of
+        # whether the declaration-time annotation cross-check can resolve hints.
+        self.nullable: bool = config.nullable is True
         self.primary_key: bool = config.primary_key
         self.server_default: object | None = config.server_default
         self.sqlite_storage_class: SQLiteStorageClass = config.sqlite_storage_class

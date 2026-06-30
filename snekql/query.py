@@ -1173,12 +1173,17 @@ def not_exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
     return Predicate(kind="not_exists", subquery=subquery)
 
 
-def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T]:
+def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T | None]:
     """Wrap a single-column select as a scalar subquery usable as a value.
 
     The result is a selectable (projectable alongside columns) and a comparison
     operand (the right side of a ``*_col`` comparison). The subquery must project
     exactly one column and is expected to yield at most one row per evaluation.
+
+    The projected value type is always optional: a SQL scalar subquery evaluates
+    to ``NULL`` on an empty/no-match result set regardless of the inner column's
+    ``NOT NULL`` constraint, so the slot decodes to ``None`` rather than the inner
+    type alone (#203 F10).
     """
 
     _ = require_single_column_subquery(subquery)

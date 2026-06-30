@@ -174,9 +174,11 @@ async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
 
         create_table = _fetch_create_table(database_path, "order")
 
+    # A non-optional ``FKCol[User, int]`` without ``nullable=`` is NOT NULL: the
+    # unset default means non-nullable (#203 F9), matching the read type.
     expected_sql = (
         'CREATE TABLE "order" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, '
-        '"user_id" INTEGER, "soft_user_id" INTEGER NOT NULL, '
+        '"user_id" INTEGER NOT NULL, "soft_user_id" INTEGER NOT NULL, '
         '"note" TEXT NOT NULL, '
         'FOREIGN KEY ("user_id") REFERENCES "user" ("id")) STRICT'
     )
