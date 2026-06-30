@@ -130,6 +130,14 @@ def require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
 
 
 def require_selectable(value: object) -> Selectable:
+    # Plain columns are the overwhelmingly common selectable; test the concrete
+    # ``Attr`` first so the hot path never reaches the structural
+    # ``SqlCompilable`` protocol check (a runtime-checkable ``isinstance`` that
+    # walks the operand's attributes). Dialect leaves -- the only ``SqlCompilable``
+    # values -- are disjoint from ``Attr``/``Aggregate``/``Scalar``, so the
+    # reordering selects the same branch for every value.
+    if isinstance(value, Attr):
+        return cast("Attr[Any, Any, Any, Any, Any]", value)
     if isinstance(value, Aggregate):
         return cast("Aggregate[Any, Any]", value)
     if isinstance(value, Scalar):
@@ -195,6 +203,12 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
     callers handle scalar fields before reaching this seam.
     """
 
+    # A bound column is the common case; resolve it before the structural
+    # ``SqlCompilable`` protocol check (an attribute-walking runtime-checkable
+    # ``isinstance``). ``Attr`` is disjoint from the other selectable kinds, so
+    # the fast path never changes which branch a value takes.
+    if isinstance(field, Attr):
+        return require_column_model(field)
     if isinstance(field, Scalar):
         msg = "a scalar subquery has no single owning table"
         raise QueryConstructionError(msg)
@@ -202,19 +216,18 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
         # A dialect expression names its own owning table; the core scope-checks
         # it through this seam without knowing the concrete leaf type.
         return field.__owner_model__()
-    if isinstance(field, Aggregate):
-        owner = field.owner
-        if owner is None:
-            msg = "aggregate is not bound to a table model"
-            raise QueryConstructionError(msg)
-        model = cast("type[Table[Any]]", owner)
-        try:
-            _ = require_model_columns(model)
-        except ModelDeclarationError as error:
-            msg = "aggregate is not bound to a table model"
-            raise QueryConstructionError(msg) from error
-        return model
-    return require_column_model(field)
+    # Only an aggregate remains: it carries its owning table directly.
+    owner = field.owner
+    if owner is None:
+        msg = "aggregate is not bound to a table model"
+        raise QueryConstructionError(msg)
+    model = cast("type[Table[Any]]", owner)
+    try:
+        _ = require_model_columns(model)
+    except ModelDeclarationError as error:
+        msg = "aggregate is not bound to a table model"
+        raise QueryConstructionError(msg) from error
+    return model
 
 
 def require_model_returning_fields(
@@ -278,20 +291,40 @@ def ensure_predicate_targets_models(
     if predicate.kind in SUBQUERY_PREDICATE_KINDS:
         _ = require_single_column_subquery(predicate.subquery)
     if predicate.column is not None:
-        if isinstance(predicate.column, Aggregate):
-            msg = "aggregates cannot appear in where(); use having()"
-            raise QueryConstructionError(msg)
-        if isinstance(predicate.column, SqlCompilable):
-            if predicate.column.__owner_model__() not in models:
-                msg = "predicate references a table that is not in the query"
-                raise QueryConstructionError(msg)
-        else:
-            column = require_field(predicate.column)
-            if require_column_model(column) not in models:
-                msg = "predicate references a table that is not in the query"
-                raise QueryConstructionError(msg)
+        _ensure_where_column_in_scope(predicate.column, models)
     for child in predicate.children:
         ensure_predicate_targets_models(child, models)
+
+
+def _ensure_where_column_in_scope(
+    column: object,
+    models: tuple[type[Table[Any]], ...],
+) -> None:
+    """Check a where-predicate operand belongs to a table already in scope.
+
+    A plain column predicate is by far the common case, so the concrete ``Attr``
+    is tested before the structural ``SqlCompilable`` protocol check (an
+    attribute-walking runtime-checkable ``isinstance``). ``Attr`` is disjoint
+    from the ``Aggregate`` and dialect-leaf branches, so the order never changes
+    which branch a value takes.
+    """
+
+    out_of_scope = "predicate references a table that is not in the query"
+    if isinstance(column, Attr):
+        bound = cast("Attr[Any, Any, Any, Any, Any]", column)
+        if require_column_model(bound) not in models:
+            raise QueryConstructionError(out_of_scope)
+        return
+    if isinstance(column, Aggregate):
+        msg = "aggregates cannot appear in where(); use having()"
+        raise QueryConstructionError(msg)
+    if isinstance(column, SqlCompilable):
+        if column.__owner_model__() not in models:
+            raise QueryConstructionError(out_of_scope)
+        return
+    bare_column = require_field(column)
+    if require_column_model(bare_column) not in models:
+        raise QueryConstructionError(out_of_scope)
 
 
 def ensure_having_targets(

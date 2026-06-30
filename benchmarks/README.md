@@ -1,10 +1,14 @@
-# snekql concurrency benchmarks
+# snekql benchmarks
 
-Standalone stress tests for runtime behavior under concurrent async load, kept
-separate from the `snektest` unit suite. They answer the questions in
-[issue #66](https://github.com/crpier/snekql/issues/66): pool fairness,
-event-loop stalls during result materialization, and throughput/latency across
-pool sizes and workload mixes.
+Standalone performance benchmarks, kept separate from the `snektest` unit suite.
+Two families:
+
+- **Concurrency** (`benchmarks.run`): runtime behavior under concurrent async
+  load — pool fairness, event-loop stalls, throughput/latency across pool sizes
+  and workload mixes ([issue #66](https://github.com/crpier/snekql/issues/66)).
+- **Construction** (`benchmarks.construction`): the pure-CPU cost of the
+  immutable Query Builder, with no I/O. See
+  [Query construction throughput](#query-construction-throughput) below.
 
 ## Running
 
@@ -111,3 +115,64 @@ From the sweep (read-mostly point queries, one event loop):
   surfaces as `PoolTimeoutError` instead of unbounded latency.
 - **Use `fetch_chunks` for large reads** to avoid event-loop stalls; reserve
   `fetch_all` for bounded result sets.
+
+## Query construction throughput
+
+`benchmarks.construction` measures how fast `select(...).where(...).limit(...)`
+chains (and insert/update builds) turn into immutable query state — no database,
+no async. It reports a throughput distribution over repeated trials and
+per-query retained memory.
+
+```bash
+uv run python -m benchmarks.construction
+```
+
+Each workload is timed over 15 trials of 50 000 builds (after a 5 000-build
+warmup), with the GC disabled inside each timed trial so a background collection
+cannot land mid-sample. Reported per workload: median and mean builds/second,
+the coefficient of variation (stdev / mean) across trials, and mean retained
+bytes per built query (`tracemalloc` snapshot diff with every query held alive).
+
+### Variance
+
+Within-run variance is small (CV typically < 1%). The larger source of noise is
+**cross-run drift** from CPU frequency scaling / thermals: back-to-back full runs
+of the same code can differ by ~5%, more than the within-run CV. So before/after
+comparisons interleave the two builds (A/B/A) on the same machine state rather
+than comparing one run to one run; the A runs must bracket the B run for a delta
+to be real. Pin a core and disable turbo for the steadiest numbers.
+
+### Finding: concrete-type checks before structural protocol checks
+
+Profiling construction showed two dominant costs: `dataclasses.replace` on every
+immutable builder transition, and `isinstance` against the `@runtime_checkable`
+`SqlCompilable` / `DialectSelectable` protocols (each such check walks the
+operand's attributes via `inspect.getattr_static`). The dialect-expression
+protocols are a niche extension point (e.g. MariaDB JSON operators); the
+overwhelmingly common operand is a plain `Attr` column, yet the hot construction
+paths (`require_selectable`, `selectable_owner_model`,
+`ensure_predicate_targets_models`) reached the expensive protocol check before
+falling through to the column case.
+
+Testing the concrete `Attr` (and `Aggregate` / `Scalar`) types *before* the
+structural protocol check removes that cost for the common path. The reordering
+is semantics-preserving: `Attr`/`Aggregate`/`Scalar` are disjoint from the
+protocol-only dialect leaves, so every value still selects the same branch (the
+full `snektest` suite passes unchanged, and per-query retained memory is
+identical — the same state objects are built).
+
+Before (`origin/main`) vs after, median builds/second (interleaved A/B/A, SQLite
+models, Linux), with per-query bytes unchanged:
+
+| workload | baseline | optimized | change | bytes/query |
+|---|---|---|---|---|
+| point_read (`select.where.limit`) | 102,827 | 141,367 | **+37%** | 530 |
+| filtered (2×where + order_by + limit/offset) | 40,686 | 65,701 | **+62%** | 803 |
+| projection (`select(col,col).where.limit`) | 56,595 | 111,008 | **+97%** | 515 |
+| update (`set.where`) | 151,157 | 237,157 | **+57%** | 529 |
+| insert (no protocol checks) | 260,119 | 263,160 | +1% (noise) | 441 |
+
+`insert` builds touch no selectable/predicate scope check, so they are the
+control: unchanged within noise, confirming the gain comes from the reordered
+checks rather than run drift. `dataclasses.replace` remains the next bottleneck
+to target.
