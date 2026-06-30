@@ -7,12 +7,14 @@ Migration History rows, never the full set.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+
 import anyio
 from snektest import (
-    AsyncFixture,
     assert_eq,
     assert_raises,
     assert_true,
+    fixture,
     load_fixture,
     test,
 )
@@ -55,7 +57,8 @@ async def _table_exists(server: TemporaryMariaDBServer, table_name: str) -> bool
     return table_name in lines[1:]
 
 
-async def mariadb_server() -> AsyncFixture[TemporaryMariaDBServer]:
+@fixture
+async def mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Provide the shared local MariaDB server for migration tests."""
 
     server = await load_fixture(provide_mariadb_server())

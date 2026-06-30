@@ -245,6 +245,7 @@ dependencies = [
     { name = "annotated-types" },
     { name = "anyio" },
     { name = "pydantic" },
+    { name = "snektest" },
 ]
 
 [package.optional-dependencies]
@@ -273,6 +274,7 @@ requires-dist = [
     { name = "annotated-types", specifier = ">=0.7.0" },
     { name = "anyio", specifier = ">=4.12.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "snektest", specifier = ">=0.16.0" },
 ]
 provides-extras = ["aiomysql", "aiosqlite"]
 
@@ -283,22 +285,22 @@ dev = [
     { name = "pyrefly", specifier = ">=1.0.0" },
     { name = "pyright", specifier = ">=1.1.409" },
     { name = "ruff", specifier = ">=0.15.15" },
-    { name = "snektest", specifier = ">=0.12.0" },
+    { name = "snektest", specifier = ">=0.16.0" },
     { name = "ty", specifier = ">=0.0.44" },
 ]
 
 [[package]]
 name = "snektest"
-version = "0.15.0"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "hypothesis" },
     { name = "pydantic" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/88/0c6db6bca94fe921c2ad83a3e6c5ae0f9d8e9e9367986b507f486f087219/snektest-0.15.0.tar.gz", hash = "sha256:1908112344a3284a4678aacd8272364ed096d6fd986ed109e858bfa4fa297aab", size = 63751, upload-time = "2026-06-06T19:23:56.857Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/c1/da3edd9ab955d19821486a35d168e177c31fc71079d3225bb5b8ca768e3b/snektest-0.16.0.tar.gz", hash = "sha256:b3723cd42b6bb7fded4fb7be3cd7aeb23b68788e1ee69460ba01a75074c23a51", size = 69695, upload-time = "2026-06-27T20:16:14.018Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/09/360edb3e1423c5be1048ce8ef5cf0694d2fe4708869445d4b5eb96387563/snektest-0.15.0-py3-none-any.whl", hash = "sha256:04539de90a84333663ed4ff1c71fea3ca15d2c0d20acf21dcf0a734ac5fa0d2d", size = 36708, upload-time = "2026-06-06T19:23:55.337Z" },
+    { url = "https://files.pythonhosted.org/packages/11/53/44d102d3c9abeb06bf1e0041d7f02b089ee2834dd048f17cbc158e1943a8/snektest-0.16.0-py3-none-any.whl", hash = "sha256:ad9469d28dc7589746dedf302e35e6aa3bf37437ec83d5048457877722888ab1", size = 41401, upload-time = "2026-06-27T20:16:12.776Z" },
 ]
 
 [[package]]

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
 from typing import Any
 
 from snektest import (
-    AsyncFixture,
     assert_eq,
     assert_raises,
+    fixture,
     load_fixture,
     test,
 )
@@ -51,11 +51,12 @@ class _UpdateUser[S = Pending](mariadb.Model[S, "_UpdateUser[Fetched]"]):
     status: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
 
 
+@fixture
 async def database_session(
     models: Sequence[type[Table[Any]]] = (),
     *,
     pool_size: int = 1,
-) -> AsyncFixture[Database]:
+) -> AsyncGenerator[Database]:
     """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())
@@ -68,7 +69,8 @@ async def database_session(
         await database.close()
 
 
-async def database_with_update_users() -> AsyncFixture[Database]:
+@fixture
+async def database_with_update_users() -> AsyncGenerator[Database]:
     """Provide a MariaDB Database seeded with update target rows."""
 
     database = await load_fixture(database_session([_UpdateUser]))

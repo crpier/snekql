@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator, Sequence
+from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from snektest import AsyncSessionFixture
+from snektest import fixture
 
 from snekql.mariadb.schema import scaffold_mariadb_statements
 from snekql.runtime import Database
@@ -129,7 +129,8 @@ def capture_snekql_logs() -> Generator[SnekqlLogCapture]:
         logger.removeHandler(handler)
 
 
-async def provide_mariadb_server() -> AsyncSessionFixture[TemporaryMariaDBServer]:
+@fixture(scope="session")
+async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
     """Provide a local MariaDB server for medium integration tests."""
 
     async with temporary_mariadb_server(

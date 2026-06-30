@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import Any
 
-from snektest import AsyncFixture, assert_eq, assert_is_none, load_fixture, test
+from snektest import assert_eq, assert_is_none, fixture, load_fixture, test
 
 from snekql import mariadb
 from snekql.mariadb import (
@@ -39,9 +39,10 @@ class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
     )
 
 
+@fixture
 async def database_session(
     models: Sequence[type[Table[Any]]] = (),
-) -> AsyncFixture[Database]:
+) -> AsyncGenerator[Database]:
     """Provide an initialized MariaDB Database and close it after the test."""
 
     server = await load_fixture(provide_mariadb_server())

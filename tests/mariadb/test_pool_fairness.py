@@ -13,7 +13,7 @@ from collections import deque
 from collections.abc import AsyncGenerator
 
 import anyio
-from snektest import assert_eq, load_fixture, test
+from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql.mariadb.runtime import MariaDBConnectionPool
 
@@ -62,6 +62,7 @@ class _UnfairAiomysqlPool:
         pass
 
 
+@fixture
 async def single_connection_pool() -> AsyncGenerator[MariaDBConnectionPool]:
     """Provide a ``pool_size=1`` pool over an unfair fake aiomysql pool."""
 
