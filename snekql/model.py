@@ -36,6 +36,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    column_admits_none,
 )
 
 type BackendFamily = StorageBackend
@@ -195,6 +196,11 @@ class ModelMeta(type):
                 namespace,
                 columns,
             )
+        if not is_model_base:
+            # Runs after the declaring-scope locals are captured so column
+            # annotations resolve; this is what lets the nullability cross-check
+            # read each column's logical type.
+            ModelMeta._validate_column_nullability(columns)
         return model_class
 
     @staticmethod
@@ -449,6 +455,38 @@ class ModelMeta(type):
         # database supplies the value.
         column.server_default = CurrentTimestamp
         column.default = PENDING_GENERATION
+
+    @staticmethod
+    def _validate_column_nullability(
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> None:
+        """Cross-check each column's ``nullable=`` flag against its annotation.
+
+        A column's static read type comes from its ``Col[T]`` annotation while
+        ``NULL`` acceptance at runtime is driven by ``nullable=``; if the two
+        disagree the type promises something the runtime does not honour (a
+        ``Col[str]`` that decodes ``None``, or a ``Col[str | None]`` that never
+        does). Require ``| None`` in the annotation if and only if
+        ``nullable=True``. Columns whose logical type cannot be resolved here
+        (forward references) are skipped rather than guessed.
+        """
+
+        for name, column in columns.items():
+            admits_none = column_admits_none(column)
+            if admits_none is None:
+                continue
+            if admits_none and column.nullable is not True:
+                msg = (
+                    f"column {name!r} annotation includes None but is not "
+                    f"declared nullable=True"
+                )
+                raise ModelDeclarationError(msg)
+            if not admits_none and column.nullable is True:
+                msg = (
+                    f"column {name!r} is declared nullable=True but its "
+                    f"annotation does not include None"
+                )
+                raise ModelDeclarationError(msg)
 
     @staticmethod
     def _infer_table_name(class_name: str) -> str:

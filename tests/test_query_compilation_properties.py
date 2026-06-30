@@ -98,7 +98,11 @@ def _predicates_for(
         values.map(column.lte),
         operand_lists.map(lambda operands: column.in_(*operands)),
         operand_lists.map(lambda operands: column.not_in(*operands)),
-        st.tuples(values, values).map(lambda bounds: column.between(*bounds)),
+        st.tuples(values, values).map(
+            # `column`/`values` are deliberately `Any`-typed test infrastructure,
+            # so `between` resolves to its None-rejecting overload here.
+            lambda bounds: column.between(*bounds),  # pyright: ignore[reportDeprecated]
+        ),
         st.just(column.is_null()),
         st.just(column.is_not_null()),
     ]

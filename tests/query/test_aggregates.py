@@ -9,6 +9,8 @@ identical SQL in SQLite and MariaDB. ``GROUP BY``/``HAVING`` are separate slices
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
@@ -159,6 +161,62 @@ async def sum_normalizes_to_int_for_integer_column() -> None:
     assert_eq(empty, None)
     assert_eq(total, 7)
     assert isinstance(total, int)
+
+
+@test(mark="fast")
+def sum_and_avg_reject_non_numeric_columns() -> None:
+    """SUM/AVG over a non-numeric column coerce to a float in SQLite, so the
+    column's logical read type would not describe the result; reject them.
+    """
+
+    with assert_raises(QueryConstructionError):
+        _ = User.email.sum()
+    with assert_raises(QueryConstructionError):
+        _ = User.email.avg()
+
+
+@test(mark="fast")
+def sum_and_avg_allow_numeric_columns() -> None:
+    """SUM/AVG over numeric columns build without objection."""
+
+    _ = Order.amount.sum()
+    _ = Order.amount.avg()
+
+
+@test(mark="medium")
+async def min_and_max_decode_datetime_to_logical_type() -> None:
+    """MIN/MAX over a TEXT-stored datetime decode to ``datetime``, not raw text.
+
+    The wire->logical coercion that a normal column select performs must also run
+    for MIN/MAX, otherwise the static ``datetime | None`` type is unsound.
+    """
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Datetime table stored as TEXT on SQLite."""
+
+        id: Event.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        when: Event.Col[datetime] = Text(nullable=False)
+
+    earlier = datetime(2020, 1, 1, tzinfo=UTC)
+    later = datetime(2021, 6, 15, tzinfo=UTC)
+    database = await initialized_database(database=":memory:", models=[Event])
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(Event(when=earlier)))
+            await tx.execute(insert(Event(when=later)))
+            lowest = await tx.fetch_one(select(Event.when.min()).all())
+            highest = await tx.fetch_one(select(Event.when.max()).all())
+    finally:
+        await database.close()
+
+    assert isinstance(lowest, datetime)
+    assert isinstance(highest, datetime)
+    assert_eq(lowest, earlier)
+    assert_eq(highest, later)
 
 
 @test(mark="fast")

@@ -341,8 +341,52 @@ def construct_builds_pending_models_without_validation() -> None:
 
 
 @test(mark="fast")
-def integer_columns_reject_non_int_in_strict_mode() -> None:
-    """Strict validation rejects bool and float for Integer columns."""
+def optional_annotation_requires_nullable_true() -> None:
+    """A ``| None`` read type must agree with a runtime-nullable column."""
+
+    with assert_raises(ModelDeclarationError):
+
+        class MissingNullable[S = Pending](Model[S, "MissingNullable[Fetched]"]):
+            """A `| None` annotation without nullable=True is a contradiction."""
+
+            maybe: MissingNullable.Col[str | None] = Text(nullable=False)
+
+
+@test(mark="fast")
+def non_optional_annotation_rejects_nullable_true() -> None:
+    """A non-optional read type must not be declared runtime-nullable."""
+
+    with assert_raises(ModelDeclarationError):
+
+        class NullableNonOptional[S = Pending](
+            Model[S, "NullableNonOptional[Fetched]"]
+        ):
+            """nullable=True without `| None` would decode None into a `str`."""
+
+            value: NullableNonOptional.Col[str] = Text(nullable=True)
+
+
+@test(mark="fast")
+def consistent_nullability_is_accepted() -> None:
+    """Matching annotation and ``nullable=`` flag declare without objection."""
+
+    class Profile[S = Pending](Model[S, "Profile[Fetched]"]):
+        """Every column's annotation agrees with its nullable flag."""
+
+        id: Profile.GenCol[int] = Integer(
+            primary_key=True,
+            auto_increment=True,
+            default=PENDING_GENERATION,
+        )
+        email: Profile.Col[str] = Text(nullable=False)
+        nickname: Profile.Col[str | None] = Text(nullable=True, default=None)
+
+    assert_eq(Profile(email="a@example.com").nickname, None)
+
+
+@test(mark="fast")
+def integer_columns_reject_float_in_strict_mode() -> None:
+    """Strict validation rejects float for Integer columns."""
 
     class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
         """Table model with an integer column."""
@@ -350,10 +394,39 @@ def integer_columns_reject_non_int_in_strict_mode() -> None:
         value: Counter.Col[int] = Integer(nullable=False)
 
     with assert_raises(ModelValidationError):
-        _ = Counter(value=cast("int", True))
-
-    with assert_raises(ModelValidationError):
         _ = Counter(value=cast("int", 1.0))
+
+
+@test(mark="fast")
+def integer_columns_coerce_bool_to_int() -> None:
+    """A bool type-checks where an int column is expected (bool <: int), so the
+    runtime coerces it to int rather than rejecting what the type already admits.
+    """
+
+    class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+        """Table model with an integer column."""
+
+        value: Counter.Col[int] = Integer(nullable=False)
+
+    counter = Counter(value=True)
+
+    assert_eq(counter.value, 1)
+    assert_eq(type(counter.value), int)
+
+
+@test(mark="fast")
+def bool_columns_keep_bool_values() -> None:
+    """A Col[bool] keeps a bool logical type, so its values are not coerced."""
+
+    class Flagged[S = Pending](Model[S, "Flagged[Fetched]"]):
+        """Table model with a boolean column stored as INTEGER."""
+
+        flag: Flagged.Col[bool] = Integer(nullable=False)
+
+    flagged = Flagged(flag=True)
+
+    assert_eq(flagged.flag, True)
+    assert_eq(type(flagged.flag), bool)
 
 
 @test(mark="fast")

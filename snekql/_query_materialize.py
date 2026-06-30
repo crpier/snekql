@@ -38,10 +38,9 @@ def _decode_aggregate(
 
     Aggregates are not real columns: ``COUNT`` is always an ``int``; ``AVG`` is a
     ``float``; ``SUM`` mirrors the wrapped column's logical type (so MariaDB's
-    ``DECIMAL`` and SQLite's integer agree); ``MIN``/``MAX`` reuse the column's
-    wire decode but skip per-row logical validation, since an aggregate value
-    need not satisfy the column's declared constraints. ``NULL`` over an empty
-    set decodes to ``None`` for everything but ``COUNT``.
+    ``DECIMAL`` and SQLite's integer agree); ``MIN``/``MAX`` decode through the
+    column's full codec so the result carries the column's logical type. ``NULL``
+    over an empty set decodes to ``None`` for everything but ``COUNT``.
     """
 
     if value is None:
@@ -53,7 +52,12 @@ def _decode_aggregate(
     column = require_field(aggregate.column)
     if aggregate.func == "SUM":
         return _normalize_sum(column, value)
-    return column.decode(value, backend=backend, validate=False)
+    # MIN/MAX yield a real stored column value, so the wire->logical coercion
+    # (ISO text -> datetime, text -> UUID/Decimal/enum, 1 -> bool) must run for
+    # the result to match the column's logical read type. A MIN/MAX value already
+    # satisfies the column's constraints, so validation here is a coercion, not a
+    # gate (the NULL-over-empty-set case returned above).
+    return column.decode(value, backend=backend, validate=True)
 
 
 def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
@@ -159,13 +163,48 @@ def materialize_select_row_for_backend(
             for index, column in enumerate(state.fields)
         }
         return decode_model_row(state.model, values, backend=backend, validate=validate)
+    nullable_models = _left_joined_models(state)
     decoded_values = tuple(
-        _decode_selectable(column, row[index], backend=backend, validate=validate)
+        _decode_projection_field(
+            column,
+            row[index],
+            nullable_models=nullable_models,
+            backend=backend,
+            validate=validate,
+        )
         for index, column in enumerate(state.fields)
     )
     if len(decoded_values) == 1:
         return decoded_values[0]
     return decoded_values
+
+
+def _left_joined_models(state: SelectState) -> frozenset[type[object]]:
+    """Models projected from the nullable side of a LEFT join, by identity."""
+
+    return frozenset(join.model for join in state.joins if join.join_type == "LEFT")
+
+
+def _decode_projection_field(
+    column: Selectable,
+    value: object,
+    *,
+    nullable_models: frozenset[type[object]],
+    backend: StorageBackend,
+    validate: bool,
+) -> object:
+    """Decode one projected column, tolerating a left-join's unmatched NULLs.
+
+    A column projected from the nullable side of a LEFT join is ``None`` for an
+    unmatched row even when the column is itself ``NOT NULL``; decoding that
+    through the column's codec would wrongly enforce its NOT NULL constraint and
+    raise. Such a ``None`` is yielded as ``None`` (the documented projection
+    nullability gap) rather than crashing the fetch.
+    """
+
+    if value is None and isinstance(column, Attr) and column.owner in nullable_models:
+        return None
+    return _decode_selectable(column, value, backend=backend, validate=validate)
 
 
 def _materialize_insert_returning_fields(
