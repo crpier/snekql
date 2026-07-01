@@ -19,27 +19,43 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections.abc import Sequence
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Protocol
 
 from benchmarks import _models_mariadb, _models_sqlite
+from benchmarks._fixtures import (
+    benchmark_mariadb_server,
+    mariadb_benchmark_database,
+    sqlite_benchmark_database,
+)
 from benchmarks._harness import BenchmarkReport, format_report, run_concurrent
 from benchmarks._workloads import (
     BackendQueryApi,
     large_select,
     mixed_read_write,
     point_read,
-    seed_rows,
     write_row,
 )
 from snekql import mariadb
 from snekql.runtime import Database
 from snekql.sqlite import insert as sqlite_insert
 from snekql.sqlite import select as sqlite_select
-from snekql.testing.mariadb import temporary_mariadb_server
-from tests.helpers import migrate_models
+
+
+class DatabaseFactory(Protocol):
+    """Open a seeded database for one scenario group as an async CM.
+
+    Backed by a snektest fixture handle: entering it connects, migrates, and
+    seeds ``rows`` rows against a ``pool_size`` pool; exiting closes it.
+    """
+
+    def __call__(
+        self, *, pool_size: int, rows: int
+    ) -> AbstractAsyncContextManager[Database]: ...
+
 
 _SQLITE_API = BackendQueryApi(
     model=_models_sqlite.BenchUser,
@@ -73,7 +89,7 @@ def _section(title: str) -> None:
 
 async def _run_scenarios(
     backend_label: str,
-    make_db: Any,
+    make_db: DatabaseFactory,
     api: BackendQueryApi,
     config: BenchConfig,
 ) -> list[BenchmarkReport]:
@@ -88,9 +104,7 @@ async def _run_scenarios(
     # write-heavy and mixed workloads run at the peak worker count for each pool
     # size so workload mix and pool size are crossed, not measured in isolation.
     for pool_size in config.pool_sizes:
-        db = await make_db(pool_size)
-        try:
-            await seed_rows(api, db, config.rows)
+        async with make_db(pool_size=pool_size, rows=config.rows) as db:
             for workers in config.worker_counts:
                 report = await run_concurrent(
                     f"{backend_label} point-read pool={pool_size} workers={workers}",
@@ -116,13 +130,11 @@ async def _run_scenarios(
                 reports.append(report)
                 print(format_report(report))
                 print()
-        finally:
-            await db.close()
 
     # Large-result materialization: the event-loop-stall probe.
-    db = await make_db(representative_pool)
-    try:
-        await seed_rows(api, db, config.large_select_limit)
+    async with make_db(
+        pool_size=representative_pool, rows=config.large_select_limit
+    ) as db:
         scenario = f"{backend_label} large-select rows={config.large_select_limit}"
         scenario += f" pool={representative_pool}"
         report = await run_concurrent(
@@ -134,8 +146,6 @@ async def _run_scenarios(
         reports.append(report)
         print(format_report(report))
         print()
-    finally:
-        await db.close()
 
     return reports
 
@@ -145,14 +155,10 @@ async def run_sqlite(config: BenchConfig, directory: Path) -> list[BenchmarkRepo
 
     _section("SQLite (file-backed, WAL)")
 
-    counter = {"n": 0}
-
-    async def make_db(pool_size: int) -> Database:
-        counter["n"] += 1
-        path = directory / f"bench_{counter['n']}.db"
-        db = await Database.initialize(database=path, pool_size=pool_size)
-        await migrate_models(db, _models_sqlite.MODELS)
-        return db
+    def make_db(*, pool_size: int, rows: int) -> AbstractAsyncContextManager[Database]:
+        return sqlite_benchmark_database(
+            directory, _SQLITE_API, pool_size=pool_size, rows=rows
+        )
 
     return await _run_scenarios("sqlite", make_db, _SQLITE_API, config)
 
@@ -162,17 +168,14 @@ async def run_mariadb(config: BenchConfig) -> list[BenchmarkReport]:
 
     _section("MariaDB (throwaway server)")
     try:
-        async with temporary_mariadb_server(
-            data_directory=Path(".snektest/bench-mariadb-data"),
-            reset_database=True,
-            transports={"tcp"},
-        ) as server:
+        async with benchmark_mariadb_server() as server:
 
-            async def make_db(pool_size: int) -> Database:
-                backend = server.config(pool_size=pool_size)
-                db = await Database.initialize(backend)
-                await migrate_models(db, _models_mariadb.MODELS)
-                return db
+            def make_db(
+                *, pool_size: int, rows: int
+            ) -> AbstractAsyncContextManager[Database]:
+                return mariadb_benchmark_database(
+                    server, _MARIADB_API, pool_size=pool_size, rows=rows
+                )
 
             return await _run_scenarios("mariadb", make_db, _MARIADB_API, config)
     except Exception as error:
