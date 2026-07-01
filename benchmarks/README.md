@@ -31,6 +31,13 @@ MariaDB scenarios spin up a throwaway server via the project's
 MariaDB binaries are not installed. No external server or credentials are
 needed.
 
+Per-scenario database setup is handled by snektest fixtures
+(`benchmarks/_fixtures.py`): a fixture handle doubles as an async context
+manager, so the driver consumes it standalone with `async with` — no snektest
+runner — while getting connect → migrate → seed setup and deterministic
+teardown for free. The benchmarks themselves stay plain scripts (they emit
+measurements, not pass/fail verdicts); only the setup half is on fixtures.
+
 ## What is measured
 
 Each scenario runs `--workers` async tasks that repeatedly open a transaction
