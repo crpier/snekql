@@ -94,7 +94,7 @@ async def query_before_enter_raises_not_started() -> None:
 
 @test(mark="medium")
 async def query_after_exit_raises_closed() -> None:
-    """A query run after the transaction has exited rejects use-after-close."""
+    """Every query method rejects use after the transaction has exited."""
 
     database = await initialized_database(database=":memory:", models=[MisuseUser])
     try:
@@ -105,6 +105,16 @@ async def query_after_exit_raises_closed() -> None:
             _ = await tx.fetch_all(select(MisuseUser).all())
         assert "closed" in str(caught.exception)
         assert isinstance(caught.exception, TransactionStateError)
+
+        with assert_raises(TransactionClosedError):
+            _ = await tx.fetch_one(select(MisuseUser).all())
+
+        with assert_raises(TransactionClosedError):
+            await tx.execute(insert(MisuseUser(email="late@example.com")))
+
+        with assert_raises(TransactionClosedError):
+            async with tx.fetch_chunks(select(MisuseUser).all(), size=10):
+                pass
     finally:
         await database.close()
 
@@ -159,7 +169,15 @@ async def double_exit_raises_closed() -> None:
 
 @test(mark="medium")
 async def concurrent_use_of_shared_transaction_serializes() -> None:
-    """Sharing one transaction across tasks serializes work on its connection."""
+    """Concurrent queries on one shared transaction all land without corruption.
+
+    Five inserts spawned onto one transaction's single connection each apply
+    exactly once, which is only possible because the internal lock serializes
+    them. This asserts the observable outcome (no lost or duplicated work); that
+    the lock actually orders queries is pinned directly by
+    ``shared_transaction_close_waits_for_active_query`` in
+    ``tests/runtime/test_async_lifecycle.py``.
+    """
 
     database = await initialized_database(database=":memory:", models=[MisuseUser])
     try:
@@ -180,7 +198,14 @@ async def concurrent_use_of_shared_transaction_serializes() -> None:
 
 @test(mark="medium")
 async def concurrent_use_after_close_raises_closed() -> None:
-    """A task that touches a transaction after it closed is rejected."""
+    """Use-after-close surfaces as TransactionClosedError even from a task group.
+
+    This is deterministic, not a race: the transaction is fully closed before the
+    task group starts, so the point is that the rejection propagates out of a
+    spawned task. The genuine query-racing-with-close case is pinned separately by
+    ``shared_transaction_close_waits_for_active_query`` in
+    ``tests/runtime/test_async_lifecycle.py``.
+    """
 
     database = await initialized_database(database=":memory:", models=[MisuseUser])
     try:
