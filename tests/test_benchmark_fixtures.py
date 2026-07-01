@@ -17,7 +17,7 @@ from snektest import assert_eq, assert_raises, test
 from benchmarks import _models_sqlite
 from benchmarks._fixtures import sqlite_benchmark_database
 from benchmarks._workloads import BackendQueryApi
-from snekql.runtime import DatabaseRuntimeError
+from snekql.sqlite import DatabaseClosedError
 from snekql.sqlite import insert as sqlite_insert
 from snekql.sqlite import select as sqlite_select
 
@@ -48,7 +48,7 @@ async def sqlite_fixture_closes_database_on_exit() -> None:
         ) as db:
             pass
 
-        with assert_raises(DatabaseRuntimeError):
+        with assert_raises(DatabaseClosedError):
             async with db.transaction():
                 pass
 
