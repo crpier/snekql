@@ -191,8 +191,14 @@ store a UUID as raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
 
 There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.
-Timezone policy is the logical type's job — a naive `datetime` round-trips
-naive; annotate `Col[AwareDatetime]` to require awareness.
+Timezone policy is the logical type's job — over a primitive storage class
+(SQLite `Text()`, or `Integer()` with an epoch type) a naive `datetime`
+round-trips naive; annotate `Col[AwareDatetime]` to require awareness. The one
+exception is MariaDB's native `DateTime`, which stores offset-less UTC text: it
+has no way to record a naive value's zone, so encoding a naive `datetime` there
+is rejected with a `ModelValidationError` rather than silently assuming the
+writer's local zone. Attach a timezone (or annotate `Col[AwareDatetime]`) for
+those columns.
 
 Because the logical type is whatever Pydantic can validate, the UUID-version
 aliases work as drop-in logical types and add version validation for free:

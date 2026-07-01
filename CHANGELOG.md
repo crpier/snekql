@@ -4,6 +4,17 @@
 
 ### Breaking changes
 
+- A **naive `datetime` is now rejected** when encoding a MariaDB native
+  `DateTime` column, with a `ModelValidationError`. That column stores
+  offset-less UTC text, and the previous encoder normalized with `astimezone`,
+  which interprets a naive value as the **write machine's local zone** — so the
+  same wall-clock value landed as a different stored instant depending on where
+  the write ran, and read back aware-UTC (an asymmetric, machine-dependent
+  round-trip). snekql no longer guesses the zone: attach a timezone, or annotate
+  `Col[AwareDatetime]` to reject naive at model construction. Aware datetimes are
+  unaffected. The primitive-storage path (SQLite `Col[datetime] = Text()`) is
+  unchanged and still round-trips naive as naive wall-clock text.
+
 - Columns are now **NOT NULL by default**. Omitting `nullable=` (or passing
   `nullable=None`) previously produced a physically nullable column whose
   non-optional read type promised a non-`None` value — a silent mismatch where a
