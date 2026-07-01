@@ -1093,7 +1093,20 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value).astimezone(UTC)
+            timestamp = cast("datetime", value)
+            # A native DateTime column stores offset-less UTC text. A naive input
+            # has no offset to reduce it to a single instant, so ``astimezone``
+            # would silently assume the machine's local zone -- the same
+            # wall-clock value would land as a different instant depending on
+            # where the write ran. Refuse it; awareness is the logical type's job.
+            if timestamp.tzinfo is None:
+                msg = (
+                    f"{self._require_name()!r} naive datetime cannot be stored in "
+                    f"a DateTime column; attach a timezone (or annotate "
+                    f"Col[AwareDatetime]) so the instant is unambiguous"
+                )
+                raise ModelValidationError(msg)
+            timestamp = timestamp.astimezone(UTC)
             return (
                 timestamp.strftime(codec.datetime_encode_format)
                 + f"{timestamp.microsecond // 1000:03d}"

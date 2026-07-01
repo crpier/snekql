@@ -132,8 +132,10 @@ For everything the new codec does own, empirically (pydantic 2.x):
   incompatible (storage, logical) pair surfaces at first insert/fetch via a
   pydantic error, not at class creation. Accepted in exchange for a smaller,
   pydantic-delegated surface.
-- **Timezone behavior changes.** Naive datetimes round-trip as naive; awareness
-  is opt-in via the logical type. Previously snekql forced `...Z` UTC.
+- **Timezone behavior changes.** Over a primitive storage class naive datetimes
+  round-trip as naive; awareness is opt-in via the logical type. Previously
+  snekql forced `...Z` UTC. (MariaDB's native `DateTime`, which stores
+  offset-less UTC, is the exception — see the naive-rejection note below.)
 - **`like` / `not_like` gate on the logical `str` type**, not on TEXT storage, so
   `Col[uuid.UUID] = Text()` does not expose `like`.
 - **Storage representation is a deliberate per-column choice** (`Col[datetime] =
@@ -148,6 +150,13 @@ For everything the new codec does own, empirically (pydantic 2.x):
   `...678`); and the encoder normalizes to **UTC** before formatting, so the
   stored text carries no offset. SQLite `Col[datetime] = Text()` is exempt — it
   delegates to pydantic and preserves microseconds and the original offset.
+  Because the native `DateTime` text carries no offset, a **naive** datetime has
+  no zone to record; rather than silently assume the writer's local zone (the
+  original `astimezone` behavior, which shifted the stored instant by the write
+  machine's offset), encode rejects naive input for that column with a
+  `ModelValidationError`. Aware datetimes reduce to an unambiguous UTC instant
+  and pass. The primitive-storage path (SQLite `Text()`) still round-trips naive
+  as naive wall-clock text.
 - **Values no backend can store losslessly fail at encode with a domain error**,
   not at the driver. Non-finite floats (`nan`, `inf`, `-inf`) are rejected
   (`nan` silently becomes `NULL` in SQLite REAL, and MariaDB `DOUBLE` refuses

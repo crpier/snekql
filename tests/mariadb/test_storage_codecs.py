@@ -129,6 +129,34 @@ def mariadb_datetime_codec_decodes_native_driver_datetimes() -> None:
 
 
 @test()
+def mariadb_datetime_codec_rejects_naive_datetimes_on_encode() -> None:
+    """A native ``DateTime`` column stores UTC text with no offset. Encoding a
+    naive datetime would force snekql to assume a timezone (previously the
+    machine's local zone via ``astimezone``), so the same wall-clock value would
+    land as a different instant depending on where the write ran. Reject naive
+    input outright rather than guess; awareness is opt-in via the logical type."""
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """Model binding a MariaDB DateTime descriptor for direct codec checks."""
+
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+
+    naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
+    with assert_raises(ModelValidationError):
+        _ = Event.happened_at.encode(naive, backend="mariadb")
+
+    # Aware datetimes are unaffected: they carry the offset needed to reduce to a
+    # single unambiguous UTC instant.
+    aware = datetime(
+        2026, 1, 2, 3, 4, 5, 678000, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
+    assert_eq(
+        Event.happened_at.encode(aware, backend="mariadb"),
+        "2026-01-01 21:34:05.678",
+    )
+
+
+@test()
 def mariadb_server_defaults_require_generated_datetime_columns() -> None:
     """CurrentTimestamp keeps the existing generated-column declaration rules."""
 
