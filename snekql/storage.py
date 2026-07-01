@@ -1442,7 +1442,14 @@ def _decode_sqlite_datetime(value: object, name: str) -> datetime:
 
 
 def _decode_mariadb_datetime(value: object, name: str) -> datetime:
-    """The MariaDB driver returns DATETIME columns as ``datetime`` (or text)."""
+    """The MariaDB driver returns DATETIME columns as ``datetime`` (or text).
+
+    Decode deliberately mirrors encode's asymmetry: encode rejects a naive input
+    because a *user* value carries no zone to reduce it to a single instant, but a
+    naive value read back here originates from offset-less UTC text this column
+    itself stored, so its zone is known to be UTC. Attaching ``UTC`` recovers the
+    original instant rather than guessing -- do not "fix" this to match encode.
+    """
 
     if isinstance(value, datetime):
         if value.tzinfo is None:
