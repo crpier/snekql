@@ -12,8 +12,16 @@ These tests close that loop. Each drives a real end-to-end path -- insert /
 where / like / in / between / update-set -- with the canonical injection
 strings as *values*, then reopens the file with the stdlib driver to assert the
 table survived and every payload round-tripped verbatim. A regression that
-spliced a value into SQL text instead of binding it would drop a table, return
-extra rows, or corrupt the stored data -- all of which these assertions catch.
+spliced a value into SQL text instead of binding it would return extra rows or
+corrupt the stored data -- caught here by the exact row-count and verbatim
+round-trip assertions, which are the primary proof.
+
+One caveat about scope: the runtime executes a single statement per ``execute``
+call (``sqlite3``'s ``Cursor.execute`` raises on stacked statements), so a
+smuggled ``; DROP TABLE`` could not itself drop the table even if a regression
+spliced it into the text. The schema-survival checks are therefore a
+belt-and-suspenders guard against that single-statement assumption regressing --
+not the assertion that carries the injection-safety proof.
 """
 
 from __future__ import annotations
@@ -146,11 +154,15 @@ async def eq_predicate_treats_payload_as_a_value_not_sql() -> None:
                     assert_eq(len(matched), 1)
                     assert_eq(matched[0].email, payload)
 
-                # The bare tautology, as a value, matches nothing (no such email).
-                empty = await tx.fetch_all(
+                # The tautology string was itself inserted as one row, so eq
+                # matches exactly that single literal -- not every row, the way a
+                # spliced ``OR '1'='1'`` would.
+                tautology_match = await tx.fetch_all(
                     select(Account).where(Account.email.eq("1' OR '1'='1"))
                 )
-                assert_eq(len(empty), 1)  # only the stored literal, not every row
+                assert_eq(
+                    len(tautology_match), 1
+                )  # the one stored literal, not all rows
         finally:
             await database.close()
 
