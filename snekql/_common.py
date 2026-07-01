@@ -36,6 +36,9 @@ from snekql.errors import (
     SchemaVerificationError,
     SnekqlError,
     TransactionClosedError,
+    TransactionNotStartedError,
+    TransactionReuseError,
+    TransactionStateError,
 )
 from snekql.expressions import (
     Aggregate,
@@ -151,6 +154,9 @@ __all__ = [
     "Transaction",
     "TransactionClosedError",
     "TransactionMode",
+    "TransactionNotStartedError",
+    "TransactionReuseError",
+    "TransactionStateError",
     "UpdateQuery",
     "UpdateReturningQuery",
     "UpdateReturningTupleQuery",

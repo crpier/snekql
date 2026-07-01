@@ -34,6 +34,8 @@ from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
     TransactionClosedError,
+    TransactionNotStartedError,
+    TransactionReuseError,
 )
 from snekql.model import (
     BackendFamily,
@@ -323,6 +325,15 @@ class ChunkStream[RowT]:
 class Transaction:
     """Async transaction that executes built snekql queries on one connection.
 
+    Single-use and not re-entrant: enter it exactly once with ``async with
+    db.transaction()``, run queries while it is open, and let the block exit
+    commit (clean exit) or roll back (the block raised). Using it off that path
+    raises a ``TransactionStateError`` subclass -- ``TransactionNotStartedError``
+    before entry, ``TransactionClosedError`` after close, ``TransactionReuseError``
+    on a second entry. Queries on one transaction are serialized on its single
+    connection, so sharing it across tasks is safe but offers no parallelism; open
+    separate transactions for concurrent work. See ``docs/error-handling.md``.
+
     >>> async def create_user(transaction: Transaction, user: User[Pending]) -> None:
     ...     await transaction.execute(insert(user))
     """
@@ -345,9 +356,21 @@ class Transaction:
         self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
-        if self.closed or self.connection is not None:
-            msg = "transaction is closed"
-            raise TransactionClosedError(msg)
+        # A Transaction is single-use and not re-entrant: it is entered exactly
+        # once and cannot be restarted. Re-entering one that is still open, or
+        # one already used and closed, is reuse rather than a closed-use error.
+        if self.connection is not None:
+            msg = (
+                "transaction is already in progress; a Transaction is "
+                "single-use and not re-entrant"
+            )
+            raise TransactionReuseError(msg)
+        if self.closed:
+            msg = (
+                "transaction has already been used; create a new one with "
+                "db.transaction()"
+            )
+            raise TransactionReuseError(msg)
         logger.debug(
             "%s transaction acquiring connection (timeout=%s, mode=%s)",
             self.runtime.backend_family,
@@ -880,12 +903,24 @@ class Transaction:
         return ()
 
     def require_connection(self) -> RuntimeConnection:
-        """Return the active transaction connection or reject use-after-close."""
+        """Return the active connection or reject use before start / after close.
+
+        A query run after the transaction closed raises ``TransactionClosedError``;
+        one run before the transaction was ever entered raises
+        ``TransactionNotStartedError``. Both are ``TransactionStateError``
+        subclasses, so a caller can catch either uniformly.
+        """
 
         connection = self.connection
-        if self.closed or connection is None:
+        if self.closed:
             msg = "transaction is closed"
             raise TransactionClosedError(msg)
+        if connection is None:
+            msg = (
+                "transaction has not been started; enter it with "
+                "'async with db.transaction()'"
+            )
+            raise TransactionNotStartedError(msg)
         return connection
 
     def _validate_query_backend(self, query: object) -> None:

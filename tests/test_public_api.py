@@ -88,6 +88,9 @@ _NEUTRAL_NAMES = frozenset(
         "Transaction",
         "TransactionClosedError",
         "TransactionMode",
+        "TransactionNotStartedError",
+        "TransactionReuseError",
+        "TransactionStateError",
         "UpdateQuery",
         "UpdateReturningQuery",
         "UpdateReturningTupleQuery",
@@ -389,6 +392,9 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Text,
         sqlite.Transaction,
         sqlite.TransactionClosedError,
+        sqlite.TransactionNotStartedError,
+        sqlite.TransactionReuseError,
+        sqlite.TransactionStateError,
         sqlite.UpdateQuery,
         sqlite.UpdateReturningQuery,
         sqlite.UpdateReturningTupleQuery,
@@ -430,6 +436,9 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
         sqlite.QueryConstructionError("package-originated failure"),
         sqlite.SchemaVerificationError("package-originated failure"),
         sqlite.TransactionClosedError("package-originated failure"),
+        sqlite.TransactionNotStartedError("package-originated failure"),
+        sqlite.TransactionReuseError("package-originated failure"),
+        sqlite.TransactionStateError("package-originated failure"),
     )
 
     catches: tuple[Callable[[], None], ...] = tuple(

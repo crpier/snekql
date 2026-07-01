@@ -47,8 +47,32 @@ class DatabaseClosedError(DatabaseRuntimeError):
     """Raised when a closed Database is used for new work."""
 
 
-class TransactionClosedError(DatabaseRuntimeError):
+class TransactionStateError(DatabaseRuntimeError):
+    """Base class for Transaction lifecycle misuse.
+
+    A ``Transaction`` is single-use: enter it exactly once with ``async with``,
+    run queries while it is open, and let the block exit close it. Using it out
+    of that order -- before entering, after closing, or entering it more than
+    once -- raises a subclass of this error. Catch this base to treat every
+    lifecycle misuse uniformly.
+    """
+
+
+class TransactionClosedError(TransactionStateError):
     """Raised when a Transaction is used after it has closed."""
+
+
+class TransactionNotStartedError(TransactionStateError):
+    """Raised when a Transaction runs a query before it has been entered."""
+
+
+class TransactionReuseError(TransactionStateError):
+    """Raised when a Transaction is entered more than once.
+
+    A ``Transaction`` is not re-entrant and cannot be restarted: re-entering one
+    that is still open, or one that has already been used and closed, raises this
+    error. Create a fresh ``db.transaction()`` for each unit of work.
+    """
 
 
 class PoolTimeoutError(DatabaseRuntimeError):
