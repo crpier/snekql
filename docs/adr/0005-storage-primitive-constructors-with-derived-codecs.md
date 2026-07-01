@@ -136,6 +136,14 @@ For everything the new codec does own, empirically (pydantic 2.x):
   round-trip as naive; awareness is opt-in via the logical type. Previously
   snekql forced `...Z` UTC. (MariaDB's native `DateTime`, which stores
   offset-less UTC, is the exception — see the naive-rejection note below.)
+
+  **Superseded for `datetime` over `TEXT` by
+  [ADR 0009](0009-canonical-utc-datetime-text-form.md):** because SQLite compares
+  TEXT lexically, a non-canonical stored form made equality / `ORDER BY` / range
+  predicates instant-*incorrect* (#212). A `Col[datetime] = Text()` is now
+  canonicalized to a UTC millisecond instant and rejects naive input, matching
+  the MariaDB native `DateTime` contract. A custom epoch type over `Integer()`
+  still round-trips per its own Pydantic rules.
 - **`like` / `not_like` gate on the logical `str` type**, not on TEXT storage, so
   `Col[uuid.UUID] = Text()` does not expose `like`.
 - **Storage representation is a deliberate per-column choice** (`Col[datetime] =
@@ -148,8 +156,11 @@ For everything the new codec does own, empirically (pydantic 2.x):
   not bugs: MariaDB `DateTime` columns store `DATETIME(3)`, so encode truncates a
   Python `datetime` to **millisecond** precision (`...678901` microseconds becomes
   `...678`); and the encoder normalizes to **UTC** before formatting, so the
-  stored text carries no offset. SQLite `Col[datetime] = Text()` is exempt — it
-  delegates to pydantic and preserves microseconds and the original offset.
+  stored text carries no offset. (SQLite `Col[datetime] = Text()` was originally
+  exempt — delegating to pydantic, preserving microseconds and the original
+  offset — but [ADR 0009](0009-canonical-utc-datetime-text-form.md) now applies
+  the same UTC-millisecond canonicalization there too, for comparison
+  correctness.)
   Because the native `DateTime` text carries no offset, a **naive** datetime has
   no zone to record; rather than silently assume the writer's local zone (the
   original `astimezone` behavior, which shifted the stored instant by the write

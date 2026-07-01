@@ -30,6 +30,8 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
         happened_at: Event.Col[datetime] = Text(nullable=False)
         payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
 
+    # Encoding canonicalizes to a UTC millisecond instant (issue #212), so the
+    # sub-millisecond microseconds (678901) floor to 678 on the wire.
     timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     pending_event = Event(
         enabled=True,
@@ -43,7 +45,7 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
             Event,
             {
                 "enabled": 0,
-                "happened_at": "2026-01-02T03:04:05.678901Z",
+                "happened_at": "2026-01-02T03:04:05.678Z",
                 "payload": '{"ok":true}',
             },
             backend="sqlite",
@@ -55,13 +57,13 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
         encoded_row,
         {
             "enabled": 1,
-            "happened_at": "2026-01-02T03:04:05.678901Z",
+            "happened_at": "2026-01-02T03:04:05.678Z",
             "payload": '{"ok":true}',
         },
     )
     assert_eq(fetched_event.enabled, False)
     assert_eq(
-        fetched_event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+        fetched_event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)
     )
     assert_eq(fetched_event.payload, {"ok": True})
 

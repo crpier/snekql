@@ -77,29 +77,31 @@ _json_values = st.recursive(
 )
 _json_objects = st.dictionaries(_json_text, _json_values, max_size=5)
 
-# ISO-text serialization only stores whole-minute UTC offsets, so the round-trip
-# is exact for whole-minute offsets, naive values, and UTC. Sub-minute offsets
-# (historical LMT zones) cannot round-trip and are rejected at encode instead --
-# tested separately below rather than excluded silently.
-_whole_minute_offsets = st.integers(
-    min_value=-(23 * 60 + 59), max_value=23 * 60 + 59
-).map(lambda minutes: timezone(timedelta(minutes=minutes)))
-_datetimes = st.datetimes(
+# A datetime over TEXT canonicalizes to a UTC millisecond instant (issue #212),
+# so any *aware* datetime -- UTC, whole-minute, or historical sub-minute offset --
+# round-trips to that floored-millisecond UTC instant. Naive datetimes have no
+# offset to reduce to an instant and are rejected at encode instead -- tested
+# separately below rather than excluded silently.
+_any_offsets = st.integers(min_value=-(24 * 3600 - 1), max_value=24 * 3600 - 1).map(
+    lambda seconds: timezone(timedelta(seconds=seconds))
+)
+_aware_datetimes = st.datetimes(
     min_value=datetime(1900, 1, 1),  # noqa: DTZ001
     max_value=datetime(2200, 1, 1),  # noqa: DTZ001
-    timezones=st.none() | st.just(UTC) | _whole_minute_offsets,
+    timezones=st.just(UTC) | _any_offsets,
+)
+_naive_datetimes = st.datetimes(
+    min_value=datetime(1900, 1, 1),  # noqa: DTZ001
+    max_value=datetime(2200, 1, 1),  # noqa: DTZ001
+    timezones=st.none(),
 )
 
-_sub_minute_offsets = (
-    st.integers(min_value=-(24 * 3600 - 1), max_value=24 * 3600 - 1)
-    .filter(lambda seconds: seconds % 60 != 0)
-    .map(lambda seconds: timezone(timedelta(seconds=seconds)))
-)
-_sub_minute_datetimes = st.datetimes(
-    min_value=datetime(1900, 1, 1),  # noqa: DTZ001
-    max_value=datetime(2200, 1, 1),  # noqa: DTZ001
-    timezones=_sub_minute_offsets,
-)
+
+def _floored_utc_instant(value: datetime) -> datetime:
+    """The canonical stored form: UTC, floored to millisecond precision."""
+
+    in_utc = value.astimezone(UTC)
+    return in_utc.replace(microsecond=in_utc.microsecond // 1000 * 1000)
 
 
 @settings(deadline=None)
@@ -186,21 +188,24 @@ def boolean_decode_rejects_non_binary_integers(value: int) -> None:
 
 
 @settings(deadline=None)
-@test_hypothesis(_datetimes, mark="fast")
-def datetime_round_trips_at_microsecond_precision(value: datetime) -> None:
-    """A datetime stored as ISO text round-trips to the same instant, preserving
-    microseconds and offset (SQLite does no UTC canonicalization)."""
+@test_hypothesis(_aware_datetimes, mark="fast")
+def datetime_round_trips_at_millisecond_utc(value: datetime) -> None:
+    """An aware datetime stored as ISO text canonicalizes to a UTC millisecond
+    instant (issue #212): decode recovers that floored-millisecond UTC value
+    regardless of the input's original offset or sub-millisecond precision."""
 
     encoded = Scalars.when.encode(value, backend=BACKEND)
-    assert_eq(Scalars.when.decode(encoded, backend=BACKEND), value)
+    assert_eq(
+        Scalars.when.decode(encoded, backend=BACKEND), _floored_utc_instant(value)
+    )
 
 
 @settings(deadline=None)
-@test_hypothesis(_sub_minute_datetimes, mark="fast")
-def datetime_with_sub_minute_offset_is_rejected(value: datetime) -> None:
-    """A sub-minute UTC offset cannot survive ISO-text serialization, so the
-    codec rejects it with a domain error instead of silently shifting the
-    instant."""
+@test_hypothesis(_naive_datetimes, mark="fast")
+def naive_datetime_is_rejected(value: datetime) -> None:
+    """A naive datetime has no offset to reduce it to a single instant, so it
+    cannot be canonicalized for comparison and is rejected at encode with a
+    domain error (matching the MariaDB native ``DateTime`` contract)."""
 
     with assert_raises(ModelValidationError):
         _ = Scalars.when.encode(value, backend=BACKEND)

@@ -186,10 +186,11 @@ def json_decode_without_validation_returns_raw_decoded_value() -> None:
 
 
 @test()
-def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
-    """A ``Col[datetime]`` over ``Text()`` delegates to pydantic: the value is
-    serialized in its own offset (no forced UTC) at microsecond precision, and
-    naive datetimes are allowed -- timezone policy is the user's logical type."""
+def datetime_over_text_canonicalizes_to_utc_millisecond_iso() -> None:
+    """A ``Col[datetime]`` over ``Text()`` normalizes to UTC + fixed millisecond
+    ISO text ending in ``Z`` so lexical TEXT comparison coincides with instant
+    comparison (issue #212). An offset is converted to UTC and sub-millisecond
+    precision floors to milliseconds; the stored text is a bare UTC instant."""
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with a timestamp stored as ISO text."""
@@ -201,35 +202,71 @@ def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
     audit_log = AuditLog(created_at=source)
     _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
 
-    # The Pending Model holds the raw validated datetime; encoding preserves the
-    # offset and microseconds rather than canonicalizing to UTC milliseconds.
+    # The Pending Model holds the raw validated datetime; encoding converts to
+    # UTC (12:00:01+05:30 -> 06:30:01Z) and floors microseconds to milliseconds.
     assert_eq(audit_log.created_at, source)
-    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T12:00:01.987654+05:30"})
+    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T06:30:01.987Z"})
 
     fetched = cast(
         "AuditLog[Fetched]",
         decode_model_row(
             AuditLog,
-            {"created_at": "2026-05-31T12:00:01.987654+05:30"},
+            {"created_at": "2026-05-31T06:30:01.987Z"},
             backend="sqlite",
         ),
     )
-    assert_eq(fetched.created_at, source)
-
-    # No AwareDatetime injection: a naive datetime is accepted and round-trips
-    # naive (the user opts into awareness via the logical type).
-    naive = datetime(2026, 5, 31, 12, 0, 1)  # noqa: DTZ001
-    naive_log = AuditLog(created_at=naive)
-    _, encoded_naive = encode_model_row(naive_log, backend="sqlite")
-    assert_eq(encoded_naive, {"created_at": "2026-05-31T12:00:01"})
+    # Decode recovers the UTC instant at the stored (millisecond) precision.
+    assert_eq(fetched.created_at, datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC))
 
 
 @test()
-def datetime_with_a_sub_minute_offset_is_rejected() -> None:
-    """ISO-text serialization truncates UTC offsets to whole minutes, silently
-    shifting the instant for historical sub-minute zones (e.g. an LMT offset of
-    ``+03:06:52``). The codec refuses such datetimes with a domain error rather
-    than corrupt them; whole-minute offsets and naive datetimes are unaffected."""
+def datetime_over_text_gives_identical_text_for_the_same_instant() -> None:
+    """Three representations of one instant -- a UTC whole second, the same
+    instant with a ``+05:30`` offset, and the server-default millisecond form --
+    all encode to the identical canonical text. Equality, ORDER BY, and range
+    predicates over the TEXT column are therefore instant-correct (issue #212)."""
+
+    class Log[S = Pending](Model[S, "Log[Fetched]"]):
+        """Table model with a timestamp stored as ISO text."""
+
+        ts: Log.Col[datetime] = Text(nullable=False)
+
+    canonical = "2026-07-01T12:00:00.000Z"  # == the strftime server-default form
+    utc_second = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
+    offset = datetime(
+        2026, 7, 1, 17, 30, 0, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    )
+
+    _, from_utc = encode_model_row(Log(ts=utc_second), backend="sqlite")
+    _, from_offset = encode_model_row(Log(ts=offset), backend="sqlite")
+
+    assert_eq(from_utc, {"ts": canonical})
+    assert_eq(from_offset, {"ts": canonical})
+
+
+@test()
+def datetime_over_text_rejects_naive_input() -> None:
+    """A naive datetime carries no offset to reduce it to a single instant, so
+    storing it as lexical text would make comparison ambiguous. Encode rejects
+    it (matching the MariaDB native ``DateTime`` contract, #211); awareness is
+    the logical type's job -- annotate ``Col[AwareDatetime]`` or attach a zone."""
+
+    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+        """Table model with a timestamp stored as ISO text."""
+
+        created_at: AuditLog.Col[datetime] = Text(nullable=False)
+
+    naive = datetime(2026, 5, 31, 12, 0, 1)  # noqa: DTZ001
+    with assert_raises(ModelValidationError):
+        _ = encode_model_row(AuditLog(created_at=naive), backend="sqlite")
+
+
+@test()
+def datetime_over_text_folds_sub_minute_offsets_into_the_utc_instant() -> None:
+    """Normalizing to UTC before formatting means a historical sub-minute offset
+    (e.g. an LMT offset of ``+03:06:52``) is folded into the stored instant, not
+    truncated: the canonical text carries no offset, so there is nothing left to
+    shift. This supersedes the pre-#212 rejection of sub-minute offsets."""
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with a timestamp stored as ISO text."""
@@ -237,16 +274,10 @@ def datetime_with_a_sub_minute_offset_is_rejected() -> None:
         created_at: AuditLog.Col[datetime] = Text(nullable=False)
 
     sub_minute = timezone(timedelta(hours=3, minutes=6, seconds=52))
-    corrupting = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
-    with assert_raises(ModelValidationError):
-        _ = encode_model_row(AuditLog(created_at=corrupting), backend="sqlite")
-
-    # A whole-minute offset carrying the same wall time still round-trips.
-    whole_minute = datetime(
-        2026, 5, 31, 12, 0, 1, tzinfo=timezone(timedelta(hours=3, minutes=6))
-    )
-    _, encoded = encode_model_row(AuditLog(created_at=whole_minute), backend="sqlite")
-    assert_eq(encoded, {"created_at": "2026-05-31T12:00:01+03:06"})
+    source = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
+    _, encoded = encode_model_row(AuditLog(created_at=source), backend="sqlite")
+    # 12:00:01 +03:06:52 -> 08:53:09 UTC.
+    assert_eq(encoded, {"created_at": "2026-05-31T08:53:09.000Z"})
 
 
 @test()

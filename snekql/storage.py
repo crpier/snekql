@@ -808,6 +808,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self.unique: bool = config.unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
+        self._is_datetime_text_cache: bool | None = None
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         self.name = name
@@ -875,7 +876,9 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
                 return self._decode_json(value, codec=codec, validate=validate)
             if self.storage_type_name == "Boolean":
                 decoded: object = None if value is None else self._decode_boolean(value)
-            elif self.storage_type_name == "DateTime":
+            elif (
+                self.storage_type_name == "DateTime" or self._is_datetime_text_column()
+            ):
                 decoded = (
                     None
                     if value is None
@@ -995,6 +998,32 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self._is_json_cache = result
         return result
 
+    def _is_datetime_text_column(self) -> bool:
+        """Whether this is a ``datetime`` logical type stored over primitive TEXT.
+
+        Distinct from the MariaDB native ``DateTime`` storage type: this is a
+        ``Col[datetime] = Text()`` (or ``Col[AwareDatetime] = Text()``), which on
+        SQLite is the only way to store a timestamp. Such columns are
+        canonicalized to a UTC millisecond ISO instant on encode so lexical TEXT
+        comparison coincides with instant comparison (issue #212); they share the
+        native ``DateTime`` codec's reject-naive / UTC / millisecond contract.
+        """
+
+        cached = self._is_datetime_text_cache
+        if cached is not None:
+            return cached
+        result = False
+        if self.storage_type_name == "Text" and not self._is_json_column():
+            logical = self._resolved_logical_type()
+            if logical is not None:
+                cores = _annotation_core_types(logical)
+                result = bool(cores) and all(
+                    isinstance(core, type) and issubclass(core, datetime)
+                    for core in cores
+                )
+        self._is_datetime_text_cache = result
+        return result
+
     def _coerce_pending_generation(self, *, fetched: bool) -> PendingGeneration:
         if self.is_generated and not fetched:
             return PENDING_GENERATION
@@ -1092,17 +1121,20 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             return self._encode_json(value)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
-        if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value)
-            # A native DateTime column stores offset-less UTC text. A naive input
-            # has no offset to reduce it to a single instant, so ``astimezone``
-            # would silently assume the machine's local zone -- the same
-            # wall-clock value would land as a different instant depending on
+        if self.storage_type_name == "DateTime" or self._is_datetime_text_column():
+            # The native MariaDB DateTime type and a datetime stored over
+            # primitive TEXT share one contract: normalize to a UTC millisecond
+            # instant so the stored text is a single canonical form and lexical
+            # comparison coincides with instant comparison (issue #212). A naive
+            # input has no offset to reduce it to a single instant, so
+            # ``astimezone`` would silently assume the machine's local zone -- the
+            # same wall-clock value would land as a different instant depending on
             # where the write ran. Refuse it; awareness is the logical type's job.
+            timestamp = cast("datetime", value)
             if timestamp.tzinfo is None:
                 msg = (
                     f"{self._require_name()!r} naive datetime cannot be stored in "
-                    f"a DateTime column; attach a timezone (or annotate "
+                    f"a datetime column; attach a timezone (or annotate "
                     f"Col[AwareDatetime]) so the instant is unambiguous"
                 )
                 raise ModelValidationError(msg)
@@ -1426,7 +1458,13 @@ def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
 
 
 def _decode_sqlite_datetime(value: object, name: str) -> datetime:
-    """SQLite stores timestamps as ISO ``...Z`` text; non-text is a bug."""
+    """Decode the canonical SQLite datetime-over-text form (ADR 0009).
+
+    A ``Col[datetime] = Text()`` is encoded as a UTC millisecond instant ending
+    in ``Z``; this is the decode side, enforcing that shape and recovering an
+    aware UTC ``datetime``. Non-text or a missing ``Z`` is not something snekql
+    ever writes, so it is treated as corruption/foreign data and rejected.
+    """
 
     if not isinstance(value, str):
         msg = f"{name!r} database value must be timestamp text"

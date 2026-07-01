@@ -4,6 +4,23 @@
 
 ### Breaking changes
 
+- **SQLite `Col[datetime] = Text()` is now canonicalized to a UTC millisecond
+  instant on encode** (`...THH:MM:SS.mmmZ`), matching the `CurrentTimestamp`
+  server default's `strftime` form. Previously the value was serialized by
+  Pydantic in its own offset at microsecond precision (or as naive text). SQLite
+  compares TEXT **lexically**, so the same instant serialized to different
+  strings (`12:00:00Z` vs `12:00:00.000Z` vs a `+05:30` offset) and equality,
+  `ORDER BY`, and range predicates over the column were instant-*incorrect* — a
+  `+05:30` row sorted by its `17:30` text rather than its `12:00` UTC instant.
+  Normalizing to UTC + fixed milliseconds makes lexical comparison coincide with
+  instant comparison. Consequences: a **naive `datetime` is now rejected** on
+  such columns with a `ModelValidationError` (attach a timezone or annotate
+  `Col[AwareDatetime]`), stored text carries no offset, and sub-millisecond
+  precision floors to milliseconds. A datetime read back is aware UTC. A custom
+  epoch type over `Integer()` is unaffected. Historical **sub-minute offsets are
+  no longer rejected** — they are folded into the UTC instant rather than
+  truncated. (#212)
+
 - A **naive `datetime` is now rejected** when encoding a MariaDB native
   `DateTime` column, with a `ModelValidationError`. That column stores
   offset-less UTC text, and the previous encoder normalized with `astimezone`,
@@ -12,8 +29,9 @@
   the write ran, and read back aware-UTC (an asymmetric, machine-dependent
   round-trip). snekql no longer guesses the zone: attach a timezone, or annotate
   `Col[AwareDatetime]` to reject naive at model construction. Aware datetimes are
-  unaffected. The primitive-storage path (SQLite `Col[datetime] = Text()`) is
-  unchanged and still round-trips naive as naive wall-clock text.
+  unaffected. SQLite `Col[datetime] = Text()` now applies the same reject-naive /
+  UTC contract (see above), so the two backends' datetime-over-text columns are
+  symmetric.
 
 - Columns are now **NOT NULL by default**. Omitting `nullable=` (or passing
   `nullable=None`) previously produced a physically nullable column whose
