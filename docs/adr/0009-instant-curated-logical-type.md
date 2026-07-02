@@ -37,6 +37,25 @@ time:
   and pydantic `AwareDatetime` both qualify (both are lexically unsafe). No
   warning for `Instant`, and none on MariaDB native `DateTime`, which the engine
   already compares by instant.
+- The warning fires at **model declaration time**, not first encode. `Instant`
+  is the recommended practice for datetime columns even when nothing orders or
+  compares them today, so the nudge should be loud, early, and once per class —
+  not deferred until a write happens to exercise the column.
+- The warning keys on a **public `OrderPreserving` annotation marker**, not on
+  `Instant`'s identity: it fires when the metadata lacks the marker. `Instant`
+  carries the marker; a user type with a genuinely order-safe wire form (e.g. a
+  fixed-width epoch text) attaches it to self-certify. The marker is a claim
+  snekql does not verify — the warning is advisory, not a proof. Blanket
+  suppression stays available via the warning category.
+- **Exported from each Backend Namespace** (`from snekql.sqlite import
+  Instant`, likewise `snekql.mariadb`), never from top-level `snekql`, which
+  deliberately has no flat API. Unlike column declarations — per-backend
+  classes kept separate as a divergence seam ([ADR
+  0003](0003-per-backend-namespace-column-declarations.md)) — `Instant` is a
+  Logical Type: backend-blind by [ADR
+  0005](0005-storage-primitive-constructors-with-derived-codecs.md), so both
+  namespaces re-export the **same** alias. `OrderPreserving` follows the same
+  export pattern.
 
 ## Corrected empirical claims (supersede the text of #212)
 
