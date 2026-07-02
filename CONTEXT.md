@@ -96,9 +96,9 @@ _Avoid_: serializer, converter, ORM type, column type
 A text wire encoding whose lexical order equals the logical order of the values it encodes, so `=`, `ORDER BY`, and range predicates over text storage agree with the Logical Type's semantics.
 _Avoid_: sortable string, lexicographic format, collation
 
-**Instant**:
+**UtcDatetime**:
 A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; the recommended datetime type for database columns.
-_Avoid_: AwareDatetime, timestamp, wall-clock datetime
+_Avoid_: Instant, AwareDatetime, timestamp, wall-clock datetime
 
 **Generated Column**:
 A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.

@@ -1,4 +1,4 @@
-# Instant: a curated logical type with an order-preserving wire form
+# UtcDatetime: a curated logical type with an order-preserving wire form
 
 Status: **Accepted**. Extends
 [ADR 0005](0005-storage-primitive-constructors-with-derived-codecs.md).
@@ -16,7 +16,7 @@ semantics.
 
 ## Decision
 
-snekql exports **`Instant`**, a curated Logical Type for an absolute point in
+snekql exports **`UtcDatetime`**, a curated Logical Type for an absolute point in
 time:
 
 - **Aware-only.** Naive datetimes are rejected at validation. Bare
@@ -34,35 +34,35 @@ time:
 - **Millisecond precision**, wire form `YYYY-MM-DDTHH:MM:SS.sssZ` — an
   **order-preserving wire form**: lexical text order equals instant order, which
   is what makes SQLite `Text()` equality, ordering, and range queries correct.
-- **A database-interaction type, not an application type.** `Instant` makes no
+- **A database-interaction type, not an application type.** `UtcDatetime` makes no
   claim to be the right datetime for business logic or display; it does not
   preserve the writer's offset (pydantic `AwareDatetime` keeps that niche for
   audit/display columns that are never ordered or range-queried).
 - **No new server default.** The existing `CurrentTimestamp` marker already
   emits `strftime('%Y-%m-%dT%H:%M:%fZ','now')` (ms + `Z`) on SQLite and
-  `CURRENT_TIMESTAMP(3)` into `DATETIME(3)` on MariaDB, so it matches `Instant`
+  `CURRENT_TIMESTAMP(3)` into `DATETIME(3)` on MariaDB, so it matches `UtcDatetime`
   byte-for-byte (SQLite) / by-instant (MariaDB). Millisecond precision was
   chosen *because* it makes the existing default line up.
 - A **suppressible warning** fires when a SQLite `Text()` column carries a
   datetime logical type without an order-preserving wire form — bare `datetime`
   and pydantic `AwareDatetime` both qualify (both are lexically unsafe). No
-  warning for `Instant`, and none on MariaDB native `DateTime`, which the engine
+  warning for `UtcDatetime`, and none on MariaDB native `DateTime`, which the engine
   already compares by instant.
-- The warning fires at **model declaration time**, not first encode. `Instant`
+- The warning fires at **model declaration time**, not first encode. `UtcDatetime`
   is the recommended practice for datetime columns even when nothing orders or
   compares them today, so the nudge should be loud, early, and once per class —
   not deferred until a write happens to exercise the column.
 - The warning keys on a **public `OrderPreserving` annotation marker**, not on
-  `Instant`'s identity: it fires when the metadata lacks the marker. `Instant`
+  `UtcDatetime`'s identity: it fires when the metadata lacks the marker. `UtcDatetime`
   carries the marker; a user type with a genuinely order-safe wire form (e.g. a
   fixed-width epoch text) attaches it to self-certify. The marker is a claim
   snekql does not verify — the warning is advisory, not a proof. Blanket
   suppression stays available via the warning category.
 - **Exported from each Backend Namespace** (`from snekql.sqlite import
-  Instant`, likewise `snekql.mariadb`), never from top-level `snekql`, which
+  UtcDatetime`, likewise `snekql.mariadb`), never from top-level `snekql`, which
   deliberately has no flat API. Unlike column declarations — per-backend
   classes kept separate as a divergence seam ([ADR
-  0003](0003-per-backend-namespace-column-declarations.md)) — `Instant` is a
+  0003](0003-per-backend-namespace-column-declarations.md)) — `UtcDatetime` is a
   Logical Type: backend-blind by [ADR
   0005](0005-storage-primitive-constructors-with-derived-codecs.md), so both
   namespaces re-export the **same** alias. `OrderPreserving` follows the same
@@ -94,9 +94,9 @@ and local SQLite:
   the writer's offset back store it explicitly (second column, or a future
   opt-in composite type that documents the `=` caveat).
 - **Retiring `AwareDatetime`.** Not ours to retire — it is pydantic's, and
-  ADR 0005 lets users annotate any type. `Instant` supersedes it *as the
+  ADR 0005 lets users annotate any type. `UtcDatetime` supersedes it *as the
   recommendation*, not as a type: `AwareDatetime` does not fix the comparison
-  hazard it is currently suggested for. Its remaining honest niche vs `Instant`
+  hazard it is currently suggested for. Its remaining honest niche vs `UtcDatetime`
   is an audit/display column that preserves the writer's offset and is never
   ordered or range-queried.
 - **A curated bool.** Rejected: `Col[bool] = Integer()` (0/1) already orders and
@@ -108,7 +108,7 @@ and local SQLite:
 
 - Code and docs that currently point users at `AwareDatetime` as the fix (e.g.
   the MariaDB naive-rejection error message in `storage.py`) redirect to
-  `Instant`.
+  `UtcDatetime`.
 - The dead `_decode_sqlite_datetime` path (never dispatched since SQLite lost
   its `DateTime` storage type in ADR 0005) is wired up or deleted as part of
   this work.
