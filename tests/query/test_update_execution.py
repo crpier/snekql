@@ -17,6 +17,7 @@ from snekql.sqlite import (
     Pending,
     QueryConstructionError,
     Text,
+    UtcDatetime,
     insert,
     select,
     update,
@@ -267,7 +268,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
 
         id: Memory.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         content: Memory.Col[str] = Text(nullable=False)
-        updated_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)
+        updated_at: Memory.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
     explicit = datetime(2000, 1, 1, tzinfo=UTC)
     database = await initialized_database(database=":memory:", models=[Memory])

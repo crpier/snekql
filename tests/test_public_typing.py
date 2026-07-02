@@ -39,6 +39,7 @@ from snekql.sqlite import (
     Text,
     Transaction,
     UpdateQuery,
+    UtcDatetime,
     exists,
     insert,
     not_exists,
@@ -60,7 +61,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
     nickname: User.Col[str | None] = Text(nullable=True, default=None)
-    created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
+    created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import uuid
+import warnings
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
@@ -18,6 +19,7 @@ from snekql.sqlite import (
     CurrentTimestamp,
     Fetched,
     Integer,
+    LexicalDatetimeWarning,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -25,6 +27,7 @@ from snekql.sqlite import (
     QueryConstructionError,
     Real,
     Text,
+    UtcDatetime,
 )
 
 
@@ -42,16 +45,21 @@ def storage_classes_expose_sqlite_metadata() -> None:
     """Column Types map to the four SQLite storage classes; the Logical Type
     (the annotation) decides the Python value, not the constructor."""
 
-    class StorageExample[S = Pending](Model[S, "StorageExample[Fetched]"]):
-        """Table model pairing each storage class with a logical type."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        integer_value: StorageExample.Col[int] = Integer(nullable=False)
-        real_value: StorageExample.Col[float] = Real(nullable=False)
-        text_value: StorageExample.Col[str] = Text(nullable=False)
-        blob_value: StorageExample.Col[bytes] = Blob(nullable=False)
-        json_value: StorageExample.Col[Json[dict[str, object]]] = Text(nullable=False)
-        boolean_value: StorageExample.Col[bool] = Integer(nullable=False)
-        datetime_value: StorageExample.Col[datetime] = Text(nullable=False)
+        class StorageExample[S = Pending](Model[S, "StorageExample[Fetched]"]):
+            """Table model pairing each storage class with a logical type."""
+
+            integer_value: StorageExample.Col[int] = Integer(nullable=False)
+            real_value: StorageExample.Col[float] = Real(nullable=False)
+            text_value: StorageExample.Col[str] = Text(nullable=False)
+            blob_value: StorageExample.Col[bytes] = Blob(nullable=False)
+            json_value: StorageExample.Col[Json[dict[str, object]]] = Text(
+                nullable=False
+            )
+            boolean_value: StorageExample.Col[bool] = Integer(nullable=False)
+            datetime_value: StorageExample.Col[datetime] = Text(nullable=False)
 
     columns = StorageExample.__snekql_columns__
 
@@ -145,10 +153,13 @@ def json_marker_round_trips_rich_annotated_types() -> None:
     )
     assert_eq(fetched_model.payload, Inner(x=1))
 
-    class WhenEvent[S = Pending](Model[S, "WhenEvent[Fetched]"]):
-        """Json column annotated with a datetime."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        when: WhenEvent.Col[Json[datetime]] = Text(nullable=False)
+        class WhenEvent[S = Pending](Model[S, "WhenEvent[Fetched]"]):
+            """Json column annotated with a datetime."""
+
+            when: WhenEvent.Col[Json[datetime]] = Text(nullable=False)
 
     moment = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
     when_event = WhenEvent(when=moment)
@@ -191,10 +202,13 @@ def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
     serialized in its own offset (no forced UTC) at microsecond precision, and
     naive datetimes are allowed -- timezone policy is the user's logical type."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
-        """Table model with a timestamp stored as ISO text."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        created_at: AuditLog.Col[datetime] = Text(nullable=False)
+        class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+            """Table model with a timestamp stored as ISO text."""
+
+            created_at: AuditLog.Col[datetime] = Text(nullable=False)
 
     source_timezone = timezone(timedelta(hours=5, minutes=30))
     source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
@@ -231,10 +245,13 @@ def datetime_with_a_sub_minute_offset_is_rejected() -> None:
     ``+03:06:52``). The codec refuses such datetimes with a domain error rather
     than corrupt them; whole-minute offsets and naive datetimes are unaffected."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
-        """Table model with a timestamp stored as ISO text."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        created_at: AuditLog.Col[datetime] = Text(nullable=False)
+        class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+            """Table model with a timestamp stored as ISO text."""
+
+            created_at: AuditLog.Col[datetime] = Text(nullable=False)
 
     sub_minute = timezone(timedelta(hours=3, minutes=6, seconds=52))
     corrupting = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
@@ -247,6 +264,49 @@ def datetime_with_a_sub_minute_offset_is_rejected() -> None:
     )
     _, encoded = encode_model_row(AuditLog(created_at=whole_minute), backend="sqlite")
     assert_eq(encoded, {"created_at": "2026-05-31T12:00:01+03:06"})
+
+
+@test()
+def utc_datetime_normalizes_and_serializes_order_preserving_text() -> None:
+    """UtcDatetime stores canonical UTC millisecond text over SQLite Text."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Table model with canonical database timestamp storage."""
+
+        happened_at: Event.Col[UtcDatetime] = Text(nullable=False)
+
+    source = datetime(
+        2026,
+        7,
+        1,
+        17,
+        30,
+        0,
+        987654,
+        tzinfo=timezone(timedelta(hours=5, minutes=30)),
+    )
+    event = Event(happened_at=source)
+    _, encoded_event = encode_model_row(event, backend="sqlite")
+
+    assert_eq(event.happened_at, datetime(2026, 7, 1, 12, 0, 0, 987000, tzinfo=UTC))
+    assert_eq(encoded_event, {"happened_at": "2026-07-01T12:00:00.987Z"})
+
+    whole_second = Event(happened_at=datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC))
+    _, encoded_whole_second = encode_model_row(whole_second, backend="sqlite")
+    assert_eq(encoded_whole_second, {"happened_at": "2026-07-01T12:00:00.000Z"})
+
+    fetched = cast(
+        "Event[Fetched]",
+        decode_model_row(
+            Event,
+            {"happened_at": "2026-07-01T12:00:00.987Z"},
+            backend="sqlite",
+        ),
+    )
+    assert_eq(fetched.happened_at, event.happened_at)
+
+    with assert_raises(ModelValidationError):
+        _ = Event(happened_at=datetime(2026, 7, 1, 12, 0, 0))  # noqa: DTZ001
 
 
 @test()
@@ -307,7 +367,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
     class CreatedEvent[S = Pending](Model[S, "CreatedEvent[Fetched]"]):
         """Valid server-filled timestamp column stored as TEXT."""
 
-        created_at: CreatedEvent.GenCol[datetime] = Text(default=CurrentTimestamp)
+        created_at: CreatedEvent.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
         name: CreatedEvent.Col[str] = Text(nullable=False)
 
     column = CreatedEvent.__snekql_columns__["created_at"]
@@ -330,7 +390,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """A server default requires a generated (GenCol) column."""
 
-            created_at: NonGeneratedTimestamp.Col[datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            created_at: NonGeneratedTimestamp.Col[UtcDatetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
                 default=CurrentTimestamp,
             )
 
@@ -341,7 +401,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """CurrentTimestamp cannot be combined with a Python factory."""
 
-            created_at: TimestampWithFactory.GenCol[datetime] = Text(
+            created_at: TimestampWithFactory.GenCol[UtcDatetime] = Text(
                 default=CurrentTimestamp,
                 default_factory=lambda: datetime(2026, 5, 31, tzinfo=UTC),
             )

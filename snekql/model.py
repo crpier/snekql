@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import annotationlib
 import inspect
+import warnings
 from types import EllipsisType
 from typing import (
     Any,
@@ -18,6 +19,7 @@ from typing import (
 
 from snekql.errors import (
     FrozenModelError,
+    LexicalDatetimeWarning,
     ModelDeclarationError,
     ModelValidationError,
     SnekqlError,
@@ -37,6 +39,7 @@ from snekql.storage import (
     StorageBackend,
     Text,
     column_admits_none,
+    column_lacks_order_preserving_datetime,
 )
 
 type BackendFamily = StorageBackend
@@ -201,7 +204,29 @@ class ModelMeta(type):
             # annotations resolve; this is what lets the nullability cross-check
             # read each column's logical type.
             ModelMeta._validate_column_nullability(columns)
+            ModelMeta._warn_lexical_datetime_columns(
+                columns,
+                model_metadata.__snekql_backend__,
+            )
         return model_class
+
+    @staticmethod
+    def _warn_lexical_datetime_columns(
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        backend: BackendFamily,
+    ) -> None:
+        """Warn when SQLite Text datetime storage has lexical SQL semantics."""
+
+        for name, column in columns.items():
+            if column_lacks_order_preserving_datetime(column, backend):
+                warnings.warn(
+                    (
+                        f"SQLite Text datetime column {name!r} compares lexically; "
+                        "use UtcDatetime for an order-preserving wire form"
+                    ),
+                    LexicalDatetimeWarning,
+                    stacklevel=4,
+                )
 
     @staticmethod
     def _capture_declaring_localns(*, is_model_base: bool) -> dict[str, Any] | None:
