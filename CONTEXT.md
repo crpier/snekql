@@ -97,7 +97,7 @@ A text wire encoding whose lexical order equals the logical order of the values 
 _Avoid_: sortable string, lexicographic format, collation
 
 **Instant**:
-A snekql-exported curated Logical Type for an absolute point in time: aware-only, lax about the input's offset, canonical on output — serialized as millisecond-precision UTC in an Order-Preserving Wire Form. The recommended datetime type wherever a column is compared, ordered, or range-queried.
+A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; the recommended datetime type for database columns.
 _Avoid_: AwareDatetime, timestamp, wall-clock datetime
 
 **Generated Column**:

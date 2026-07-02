@@ -21,12 +21,23 @@ time:
 
 - **Aware-only.** Naive datetimes are rejected at validation. Bare
   `Col[datetime]` remains the sanctioned naive wall-clock escape hatch.
-- **Lax in, canonical out.** Any aware offset is accepted (`+05:30` is fine) and
-  the in-memory value may keep it; *serialization* normalizes to UTC. Anything
-  that has been through the database comes back `+00:00`.
+- **Normalize at validation.** Any aware offset is accepted (`+05:30` is fine)
+  and is converted to UTC — and truncated to millisecond precision — the moment
+  the value is validated, not at serialize time. The value a model holds, the
+  value stored, and the value fetched back are identical; there is no
+  wall-clock or precision asymmetry between a Pending Model and its Fetched
+  Model. The governing rule: **reject ambiguous input (naive); normalize
+  unambiguous input to canonical form at validation; canonical everywhere
+  after.** Rejecting non-UTC offsets outright was considered and dropped —
+  aware-to-UTC is unambiguous and lossless as an instant, so rejection would
+  add call-site friction without preventing any bug.
 - **Millisecond precision**, wire form `YYYY-MM-DDTHH:MM:SS.sssZ` — an
   **order-preserving wire form**: lexical text order equals instant order, which
   is what makes SQLite `Text()` equality, ordering, and range queries correct.
+- **A database-interaction type, not an application type.** `Instant` makes no
+  claim to be the right datetime for business logic or display; it does not
+  preserve the writer's offset (pydantic `AwareDatetime` keeps that niche for
+  audit/display columns that are never ordered or range-queried).
 - **No new server default.** The existing `CurrentTimestamp` marker already
   emits `strftime('%Y-%m-%dT%H:%M:%fZ','now')` (ms + `Z`) on SQLite and
   `CURRENT_TIMESTAMP(3)` into `DATETIME(3)` on MariaDB, so it matches `Instant`
