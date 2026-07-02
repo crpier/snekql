@@ -92,6 +92,14 @@ _Avoid_: column type, storage class, storage type, wire type
 The wire encode/decode that bridges a column's Logical Type to its Column Type. It is *derived* from the (Column Type, Logical Type) pair, never named or chosen directly: Pydantic drives it for SQLite storage classes and the `pydantic.Json[T]` marker, while MariaDB native types keep dedicated codecs for their backend wire formats.
 _Avoid_: serializer, converter, ORM type, column type
 
+**Order-Preserving Wire Form**:
+A text wire encoding whose lexical order equals the logical order of the values it encodes, so `=`, `ORDER BY`, and range predicates over text storage agree with the Logical Type's semantics.
+_Avoid_: sortable string, lexicographic format, collation
+
+**Instant**:
+A snekql-exported curated Logical Type for an absolute point in time: aware-only, lax about the input's offset, canonical on output — serialized as millisecond-precision UTC in an Order-Preserving Wire Form. The recommended datetime type wherever a column is compared, ordered, or range-queried.
+_Avoid_: AwareDatetime, timestamp, wall-clock datetime
+
 **Generated Column**:
 A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
 _Avoid_: computed property, Python default, immutable column
