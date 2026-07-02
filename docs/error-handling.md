@@ -62,6 +62,30 @@ Migration errors:
   applied nothing; a retry after the holder finishes applies only what is still
   pending.
 
+## Warnings
+
+Alongside the exception hierarchy, snekql raises advisory warnings for
+declarations that are legal but likely wrong. Every intentional
+package-originated warning is a `SnekqlWarning` subclass, re-exported from each
+backend namespace, so applications can filter the whole group by category:
+
+```python
+import warnings
+from snekql.sqlite import SnekqlWarning
+
+warnings.filterwarnings("ignore", category=SnekqlWarning)
+```
+
+- `LexicalDatetimeWarning`: a SQLite `Text()` column carries a datetime logical
+  type without an order-preserving wire form (bare `datetime` and pydantic
+  `AwareDatetime` both qualify), so SQL `=`, `ORDER BY`, and range predicates
+  compare the stored text lexically rather than by instant. The warning fires
+  once per offending column at **model declaration time**, not first encode, and
+  keys on the absence of the public `OrderPreserving` marker. Annotate the column
+  with `UtcDatetime` (which carries the marker) to silence it and get
+  instant-correct comparisons; see
+  [ADR 0009](adr/0009-utcdatetime-curated-logical-type.md).
+
 ## Transaction lifecycle contract
 
 A `Transaction` is **single-use and not re-entrant**. Enter it exactly once with
