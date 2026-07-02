@@ -24,6 +24,7 @@ from snekql.sqlite import (
     QueryConstructionError,
     Real,
     Text,
+    UtcDatetime,
     insert,
     select,
 )
@@ -199,7 +200,7 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        when: Event.Col[datetime] = Text(nullable=False)
+        when: Event.Col[UtcDatetime] = Text(nullable=False)
 
     earlier = datetime(2020, 1, 1, tzinfo=UTC)
     later = datetime(2021, 6, 15, tzinfo=UTC)

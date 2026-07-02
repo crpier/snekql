@@ -176,7 +176,8 @@ SQLite exposes exactly its four storage classes as column types:
 
 - `sqlite.Integer` — `INTEGER` storage. A `Col[bool]` stores as `0`/`1`.
 - `sqlite.Real` — `REAL` storage.
-- `sqlite.Text` — `TEXT` storage. Holds `Col[str]`, `Col[datetime]` (ISO text),
+- `sqlite.Text` — `TEXT` storage. Holds `Col[str]`, `Col[UtcDatetime]`
+  (canonical UTC millisecond text), `Col[datetime]` (raw ISO text),
   `Col[uuid.UUID]` (string form), or a `Col[pydantic.Json[T]]` payload.
 - `sqlite.Blob` — `BLOB` storage for `Col[bytes]`.
 
@@ -193,12 +194,16 @@ There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.
 Timezone policy is the logical type's job — over a primitive storage class
 (SQLite `Text()`, or `Integer()` with an epoch type) a naive `datetime`
-round-trips naive; annotate `Col[AwareDatetime]` to require awareness. The one
-exception is MariaDB's native `DateTime`, which stores offset-less UTC text: it
-has no way to record a naive value's zone, so encoding a naive `datetime` there
-is rejected with a `ModelValidationError` rather than silently assuming the
-writer's local zone. Attach a timezone (or annotate `Col[AwareDatetime]`) for
-those columns.
+round-trips naive. Use `UtcDatetime` for database timestamp columns: it rejects
+naive values, normalizes aware values to UTC milliseconds, and serializes SQLite
+text so `=`, `ORDER BY`, and ranges compare by instant. Bare SQLite
+`Col[datetime] = Text()` and `Col[AwareDatetime] = Text()` columns emit a
+suppressible `LexicalDatetimeWarning` because their raw ISO text compares
+lexically. The one exception is MariaDB's native `DateTime`, which stores
+offset-less UTC text: it has no way to record a naive value's zone, so encoding a
+naive `datetime` there is rejected with a `ModelValidationError` rather than
+silently assuming the writer's local zone. Attach a timezone (or annotate
+`Col[UtcDatetime]`) for those columns.
 
 Because the logical type is whatever Pydantic can validate, the UUID-version
 aliases work as drop-in logical types and add version validation for free:

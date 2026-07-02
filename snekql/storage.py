@@ -9,6 +9,7 @@ from json import JSONDecodeError, loads
 from math import isfinite
 from types import EllipsisType
 from typing import (
+    Annotated,
     Any,
     Literal,
     Self,
@@ -20,8 +21,16 @@ from typing import (
     overload,
 )
 
-from pydantic import Json as _PydanticJson
-from pydantic import TypeAdapter, ValidationError
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    PlainSerializer,
+    TypeAdapter,
+    ValidationError,
+)
+from pydantic import (
+    Json as _PydanticJson,
+)
 from pydantic_core import PydanticSerializationError
 
 from snekql.errors import (
@@ -56,6 +65,38 @@ _JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
 # rejects them with a domain error instead of letting the driver overflow.
 _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
+
+
+class OrderPreserving:
+    """Marker claiming a text wire form preserves logical ordering.
+
+    Attach this marker inside an `Annotated` logical type when SQLite `Text()`
+    comparison order matches the value's logical order.
+    """
+
+
+def _normalize_utc_milliseconds(value: datetime) -> datetime:
+    """Reject naive datetimes and canonicalize aware values to UTC millis."""
+
+    if value.tzinfo is None:
+        msg = "naive datetime rejected; UtcDatetime is aware-only"
+        raise ValueError(msg)
+    normalized = value.astimezone(UTC)
+    return normalized.replace(microsecond=(normalized.microsecond // 1000) * 1000)
+
+
+def _serialize_utc_milliseconds(value: datetime) -> str:
+    """Serialize canonical datetimes as fixed-width UTC millisecond text."""
+
+    return value.strftime("%Y-%m-%dT%H:%M:%S.") + f"{value.microsecond // 1000:03d}Z"
+
+
+UtcDatetime = Annotated[
+    datetime,
+    AfterValidator(_normalize_utc_milliseconds),
+    PlainSerializer(_serialize_utc_milliseconds, return_type=str, when_used="json"),
+    OrderPreserving,
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -740,6 +781,20 @@ def _strip_json_marker(annotation: object) -> object:
     return annotation
 
 
+def _carries_order_preserving_marker(annotation: object) -> bool:
+    """Whether an annotation self-certifies order-preserving text storage."""
+
+    metadata = getattr(annotation, "__metadata__", None)
+    if metadata and any(
+        item is OrderPreserving or isinstance(item, OrderPreserving)
+        for item in metadata
+    ):
+        return True
+    return any(
+        _carries_order_preserving_marker(argument) for argument in get_args(annotation)
+    )
+
+
 def _unwrap_annotated(annotation: object) -> object:
     """Drop any ``Annotated[...]`` metadata, exposing the underlying type."""
 
@@ -1103,7 +1158,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
                 msg = (
                     f"{self._require_name()!r} naive datetime cannot be stored in "
                     f"a DateTime column; attach a timezone (or annotate "
-                    f"Col[AwareDatetime]) so the instant is unambiguous"
+                    f"Col[UtcDatetime]) so the instant is unambiguous"
                 )
                 raise ModelValidationError(msg)
             timestamp = timestamp.astimezone(UTC)
@@ -1425,20 +1480,40 @@ def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
     return _annotation_admits_none(logical)
 
 
-def _decode_sqlite_datetime(value: object, name: str) -> datetime:
-    """SQLite stores timestamps as ISO ``...Z`` text; non-text is a bug."""
+def column_lacks_order_preserving_datetime(
+    column: Attr[Any, Any, Any, Any, Any],
+    backend: StorageBackend,
+) -> bool:
+    """Whether a SQLite Text datetime column lacks order-safe text encoding."""
 
-    if not isinstance(value, str):
-        msg = f"{name!r} database value must be timestamp text"
-        raise ModelValidationError(msg)
-    if not value.endswith("Z"):
-        msg = f"{name!r} timestamp must end with Z"
-        raise ModelValidationError(msg)
+    if (
+        backend != "sqlite"
+        or column.sqlite_storage_class != "TEXT"
+        or column.storage_type_name != "Text"
+    ):
+        return False
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return False
     try:
-        return datetime.fromisoformat(f"{value[:-1]}+00:00")
-    except ValueError as error:
-        msg = f"{name!r} timestamp is not valid ISO text"
-        raise ModelValidationError(msg) from error
+        annotation = _resolve_model_hints(owner).get(name)
+        logical = _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return False
+    if _carries_order_preserving_marker(logical):
+        return False
+    return any(
+        core_type is datetime or core_type is AwareDatetime
+        for core_type in _annotation_core_types(logical)
+    )
+
+
+def _decode_unreachable_sqlite_datetime(_value: object, name: str) -> datetime:
+    """SQLite has no DateTime storage type; this codec path is unreachable."""
+
+    msg = f"SQLite has no DateTime storage type for {name!r}"
+    raise ModelValidationError(msg)
 
 
 def _decode_mariadb_datetime(value: object, name: str) -> datetime:
@@ -1471,7 +1546,7 @@ def _decode_mariadb_datetime(value: object, name: str) -> datetime:
 _SQLITE_CODEC = _BackendCodec(
     datetime_encode_format="%Y-%m-%dT%H:%M:%S.",
     datetime_encode_suffix="Z",
-    decode_datetime=_decode_sqlite_datetime,
+    decode_datetime=_decode_unreachable_sqlite_datetime,
     json_accepts_bytes=False,
     # SQLite TEXT/BLOB share a single ~1 GB limit far above any practical row;
     # treat them as unbounded here.

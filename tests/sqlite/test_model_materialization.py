@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import UTC, datetime
 from typing import cast
 
@@ -12,6 +13,7 @@ from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
     Fetched,
     Integer,
+    LexicalDatetimeWarning,
     Model,
     ModelValidationError,
     Pending,
@@ -23,12 +25,15 @@ from snekql.sqlite import (
 def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     """SQLite Pending/Fetched Model conversion is handled by the materializer."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
-        """SQLite model used by materialization seam tests."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        enabled: Event.Col[bool] = Integer(nullable=False)
-        happened_at: Event.Col[datetime] = Text(nullable=False)
-        payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
+        class Event[S = Pending](Model[S, "Event[Fetched]"]):
+            """SQLite model used by materialization seam tests."""
+
+            enabled: Event.Col[bool] = Integer(nullable=False)
+            happened_at: Event.Col[datetime] = Text(nullable=False)
+            payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
 
     timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     pending_event = Event(

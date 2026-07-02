@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any, ClassVar, cast
 
-from pydantic import BaseModel, Json, PositiveInt
+from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
 from snektest import (
     assert_eq,
     assert_false,
@@ -18,6 +19,7 @@ from snektest import (
     test,
 )
 
+from snekql import mariadb
 from snekql.sqlite import (
     PENDING_GENERATION,
     Blob,
@@ -26,14 +28,75 @@ from snekql.sqlite import (
     FrozenModelError,
     Index,
     Integer,
+    LexicalDatetimeWarning,
     Model,
     ModelDeclarationError,
     ModelValidationError,
+    OrderPreserving,
     Pending,
     Real,
     Text,
+    UtcDatetime,
 )
 from tests.fixtures.model_without_future_annotations import Memory
+
+type SafeOrderPreservingDatetime = Annotated[datetime, OrderPreserving]
+
+
+@test(mark="fast")
+def sqlite_datetime_text_columns_warn_without_order_preserving_wire_form() -> None:
+    """SQLite Text datetime columns warn unless their logical type self-certifies."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDatetimeWarning)
+
+        class UnsafeAudit[S = Pending](Model[S, "UnsafeAudit[Fetched]"]):
+            """Model with datetime text that compares lexically."""
+
+            occurred_at: UnsafeAudit.Col[datetime] = Text(nullable=False)
+            displayed_at: UnsafeAudit.Col[AwareDatetime] = Text(nullable=False)
+            stored_at: UnsafeAudit.Col[UtcDatetime] = Text(nullable=False)
+            safe_at: UnsafeAudit.Col[SafeOrderPreservingDatetime] = Text(nullable=False)
+
+    assert_eq(len(caught_warnings), 2)
+    assert_true(
+        all(item.category is LexicalDatetimeWarning for item in caught_warnings)
+    )
+    assert_true("occurred_at" in str(caught_warnings[0].message))
+    assert_true("displayed_at" in str(caught_warnings[1].message))
+
+
+@test(mark="fast")
+def lexical_datetime_warning_is_suppressible_by_category() -> None:
+    """The datetime storage warning uses a category callers can silence."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("error", LexicalDatetimeWarning)
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+
+        class SuppressedAudit[S = Pending](Model[S, "SuppressedAudit[Fetched]"]):
+            """Model whose unsafe datetime warning is deliberately suppressed."""
+
+            occurred_at: SuppressedAudit.Col[datetime] = Text(nullable=False)
+
+    assert_eq(caught_warnings, [])
+
+
+@test(mark="fast")
+def mariadb_native_datetime_columns_do_not_warn_about_lexical_text() -> None:
+    """MariaDB native DateTime storage is not SQLite Text storage."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDatetimeWarning)
+
+        class NativeAudit[S = mariadb.Pending](
+            mariadb.Model[S, "NativeAudit[mariadb.Fetched]"],
+        ):
+            """MariaDB model with native datetime storage."""
+
+            occurred_at: NativeAudit.Col[datetime] = mariadb.DateTime(nullable=False)
+
+    assert_eq(caught_warnings, [])
 
 
 @test(mark="fast")
@@ -489,17 +552,20 @@ def storage_classes_pair_with_their_logical_types() -> None:
     """A Column Type pairs with whatever Logical Type the annotation names; the
     constructor records only the SQLite storage class."""
 
-    class Sample[S = Pending](Model[S, "Sample[Fetched]"]):
-        """Table model pairing storage classes with their logical types."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        count: Sample.Col[int] = Integer(nullable=False)
-        amount: Sample.Col[float] = Real(nullable=False)
-        label: Sample.Col[str] = Text(nullable=False)
-        payload: Sample.Col[bytes] = Blob(nullable=False)
-        enabled: Sample.Col[bool] = Integer(nullable=False)
-        created_at: Sample.Col[datetime] = Text(nullable=False)
-        optional_count: Sample.Col[int | None] = Integer(nullable=True)
-        constrained: Sample.Col[Annotated[int, "meta"]] = Integer(nullable=False)
+        class Sample[S = Pending](Model[S, "Sample[Fetched]"]):
+            """Table model pairing storage classes with their logical types."""
+
+            count: Sample.Col[int] = Integer(nullable=False)
+            amount: Sample.Col[float] = Real(nullable=False)
+            label: Sample.Col[str] = Text(nullable=False)
+            payload: Sample.Col[bytes] = Blob(nullable=False)
+            enabled: Sample.Col[bool] = Integer(nullable=False)
+            created_at: Sample.Col[datetime] = Text(nullable=False)
+            optional_count: Sample.Col[int | None] = Integer(nullable=True)
+            constrained: Sample.Col[Annotated[int, "meta"]] = Integer(nullable=False)
 
     assert_eq(Sample.__snekql_columns__["count"].storage_type_name, "Integer")
     assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "Text")
@@ -548,11 +614,14 @@ def json_marker_columns_accept_any_payload_type() -> None:
     """The ``pydantic.Json[T]`` marker opts a ``Text()`` column into JSON storage
     for any payload type, resolved through the column's logical adapter."""
 
-    class Document[S = Pending](Model[S, "Document[Fetched]"]):
-        """Json marker columns accept any payload annotation."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        when: Document.Col[Json[datetime]] = Text(nullable=False)
-        items: Document.Col[Json[list[int]]] = Text(nullable=False)
+        class Document[S = Pending](Model[S, "Document[Fetched]"]):
+            """Json marker columns accept any payload annotation."""
+
+            when: Document.Col[Json[datetime]] = Text(nullable=False)
+            items: Document.Col[Json[list[int]]] = Text(nullable=False)
 
     columns = Document.__snekql_columns__
     assert_eq(columns["when"].sqlite_storage_class, "TEXT")

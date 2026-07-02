@@ -39,6 +39,16 @@
 
 ### Added
 
+- `UtcDatetime`, exported from `snekql.sqlite` and `snekql.mariadb`, is a curated
+  datetime logical type for database timestamp columns. It rejects naive values,
+  normalizes aware values to UTC milliseconds at validation, and serializes as
+  fixed `YYYY-MM-DDTHH:MM:SS.sssZ` text so SQLite `Text()` equality, ordering,
+  and range predicates compare by instant. SQLite `Text()` columns annotated as
+  bare `datetime` or pydantic `AwareDatetime` now emit a suppressible
+  `LexicalDatetimeWarning` at model declaration because their raw ISO text
+  compares lexically; attach `OrderPreserving` to a custom `Annotated` type to
+  self-certify an order-safe wire form. (#212)
+
 - `db.transaction(mode="immediate")` declares write intent so SQLite acquires
   the single writer lock up front via `BEGIN IMMEDIATE`, resolving writer
   contention fairly at acquisition instead of mid-transaction. On top of the

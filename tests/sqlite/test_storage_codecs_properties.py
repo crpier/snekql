@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 import uuid
+import warnings
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, cast
 
@@ -29,6 +30,7 @@ from snekql.sqlite import (
     Blob,
     Fetched,
     Integer,
+    LexicalDatetimeWarning,
     Model,
     ModelValidationError,
     Pending,
@@ -42,18 +44,21 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
-    """One column per SQLite storage class / logical type under test."""
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-    number: Scalars.Col[int] = Integer(nullable=False)
-    rating: Scalars.Col[float] = Real(nullable=False)
-    label: Scalars.Col[str] = Text(nullable=False)
-    blob: Scalars.Col[bytes] = Blob(nullable=False)
-    flag: Scalars.Col[bool] = Integer(nullable=False)
-    when: Scalars.Col[datetime] = Text(nullable=False)
-    # The pydantic ``Json`` marker -- not the dict value -- selects the JSON wire
-    # codec over a plain TEXT column.
-    data: Scalars.Col[Json[dict[str, Any]]] = Text(nullable=False)
+    class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
+        """One column per SQLite storage class / logical type under test."""
+
+        number: Scalars.Col[int] = Integer(nullable=False)
+        rating: Scalars.Col[float] = Real(nullable=False)
+        label: Scalars.Col[str] = Text(nullable=False)
+        blob: Scalars.Col[bytes] = Blob(nullable=False)
+        flag: Scalars.Col[bool] = Integer(nullable=False)
+        when: Scalars.Col[datetime] = Text(nullable=False)
+        # The pydantic ``Json`` marker -- not the dict value -- selects the JSON wire
+        # codec over a plain TEXT column.
+        data: Scalars.Col[Json[dict[str, Any]]] = Text(nullable=False)
 
 
 # JSON payloads: arbitrarily nested, with only JSON-representable leaves. Text is

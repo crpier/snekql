@@ -17,6 +17,7 @@ from snekql.sqlite import (
     Model,
     Pending,
     Text,
+    UtcDatetime,
     insert,
 )
 from tests.helpers import initialized_database
@@ -30,7 +31,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     )
     email: User.Col[str] = Text(nullable=False)
     status: User.Col[str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
+    created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
 
 def _count_rows(database_path: Path) -> int:
