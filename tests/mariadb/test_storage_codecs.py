@@ -445,6 +445,23 @@ def mariadb_oversized_text_and_blob_values_fail_with_a_domain_error() -> None:
     assert_eq(Document.tags.decode(encoded, backend="mariadb"), big_tags)
 
 
+@test()
+def mariadb_blob_decode_normalizes_memoryview_and_bytearray_to_bytes() -> None:
+    """Drivers may hand BLOB columns back as ``memoryview`` or ``bytearray``;
+    the decoder normalizes both to plain ``bytes``."""
+
+    class Attachment[S = Pending](mariadb.Model[S, "Attachment[Fetched]"]):
+        """Model with a single BLOB column."""
+
+        raw: Attachment.Col[bytes] = mariadb.Blob(nullable=False)
+
+    payload = b"\x00driver\xff"
+    for driver_value in (memoryview(payload), bytearray(payload)):
+        decoded = Attachment.raw.decode(driver_value, backend="mariadb")
+        assert_eq(decoded, payload)
+        assert_true(type(decoded) is bytes)
+
+
 @test(mark="medium")
 async def mariadb_value_families_round_trip_through_runtime() -> None:
     """MariaDB round trips the initial value families through a live database."""

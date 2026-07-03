@@ -666,6 +666,26 @@ def large_text_blob_and_json_values_round_trip_unchanged() -> None:
 
 
 @test()
+def blob_decode_normalizes_memoryview_and_bytearray_to_bytes() -> None:
+    """Drivers may hand BLOB columns back as ``memoryview`` or ``bytearray``;
+    the decoder normalizes both to plain ``bytes``."""
+
+    class Attachment[S = Pending](Model[S, "Attachment[Fetched]"]):
+        """Table model with a single BLOB column."""
+
+        raw: Attachment.Col[bytes] = Blob(nullable=False)
+
+    payload = b"\x00driver\xff"
+    for driver_value in (memoryview(payload), bytearray(payload)):
+        fetched = cast(
+            "Attachment[Fetched]",
+            decode_model_row(Attachment, {"raw": driver_value}, backend="sqlite"),
+        )
+        assert_eq(fetched.raw, payload)
+        assert_true(type(fetched.raw) is bytes)
+
+
+@test()
 def json_codec_preserves_insertion_key_order_and_nested_values() -> None:
     """The JSON wire codec keeps the payload's key order (no sorting) and
     faithfully round-trips arbitrarily nested objects and arrays."""
