@@ -25,6 +25,7 @@ from typing import (
 from pydantic import (
     AfterValidator,
     AwareDatetime,
+    BeforeValidator,
     PlainSerializer,
     TypeAdapter,
     ValidationError,
@@ -135,6 +136,40 @@ UtcDatetime = Annotated[
     datetime,
     AfterValidator(_normalize_utc_milliseconds),
     PlainSerializer(_serialize_utc_milliseconds, return_type=str, when_used="json"),
+    OrderPreserving,
+]
+
+
+def _decode_duration_milliseconds(value: object) -> object:
+    """Decode integer wire values as milliseconds before timedelta validation."""
+
+    if type(value) is int:
+        return timedelta(milliseconds=value)
+    return value
+
+
+def _normalize_duration_milliseconds(value: timedelta) -> timedelta:
+    """Canonicalize durations by truncating to whole milliseconds."""
+
+    return value - timedelta(microseconds=value.microseconds % 1000)
+
+
+def _serialize_duration_milliseconds(value: timedelta | int) -> int:
+    """Serialize canonical durations as signed integer milliseconds."""
+
+    if type(value) is int:
+        return value
+    duration = cast("timedelta", value)
+    return duration // timedelta(milliseconds=1)
+
+
+Duration = Annotated[
+    timedelta,
+    BeforeValidator(_decode_duration_milliseconds),
+    AfterValidator(_normalize_duration_milliseconds),
+    PlainSerializer(
+        _serialize_duration_milliseconds, return_type=int, when_used="json"
+    ),
     OrderPreserving,
 ]
 
@@ -1597,6 +1632,27 @@ def column_lacks_canonical_decimal(
     if _carries_canonical_marker(logical):
         return False
     return any(core_type is Decimal for core_type in _annotation_core_types(logical))
+
+
+def column_lacks_order_preserving_duration(
+    column: Attr[Any, Any, Any, Any, Any],
+) -> bool:
+    """Whether a Text duration column lacks order-safe integer storage."""
+
+    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+        return False
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return False
+    try:
+        annotation = _resolve_model_hints(owner).get(name)
+        logical = _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return False
+    if _carries_order_preserving_marker(logical):
+        return False
+    return any(core_type is timedelta for core_type in _annotation_core_types(logical))
 
 
 def column_lacks_order_preserving_datetime(

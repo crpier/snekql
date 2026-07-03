@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import timedelta
 
 from snektest import assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import ExecutionError, Fetched, Pending, insert, select
+from snekql.mariadb import (
+    ExecutionError,
+    Fetched,
+    LexicalDurationWarning,
+    Pending,
+    insert,
+    select,
+)
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
@@ -20,22 +28,24 @@ class IntegerDurationRow[S = Pending](mariadb.Model[S, "IntegerDurationRow[Fetch
     elapsed: IntegerDurationRow.Col[timedelta] = mariadb.Integer(nullable=False)
 
 
-class RoundTripRow[S = Pending](mariadb.Model[S, "RoundTripRow[Fetched]"]):
-    """Text-stored timedelta table for round-trip checks."""
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", LexicalDurationWarning)
 
-    __tablename__ = "timedelta_text_roundtrip"
+    class RoundTripRow[S = Pending](mariadb.Model[S, "RoundTripRow[Fetched]"]):
+        """Text-stored timedelta table for round-trip checks."""
 
-    id: RoundTripRow.Col[int] = mariadb.Integer(primary_key=True)
-    elapsed: RoundTripRow.Col[timedelta] = mariadb.Text(nullable=False)
+        __tablename__ = "timedelta_text_roundtrip"
 
+        id: RoundTripRow.Col[int] = mariadb.Integer(primary_key=True)
+        elapsed: RoundTripRow.Col[timedelta] = mariadb.Text(nullable=False)
 
-class OrderedRow[S = Pending](mariadb.Model[S, "OrderedRow[Fetched]"]):
-    """Text-stored timedelta table for ordering checks."""
+    class OrderedRow[S = Pending](mariadb.Model[S, "OrderedRow[Fetched]"]):
+        """Text-stored timedelta table for ordering checks."""
 
-    __tablename__ = "timedelta_text_order"
+        __tablename__ = "timedelta_text_order"
 
-    id: OrderedRow.Col[int] = mariadb.Integer(primary_key=True)
-    elapsed: OrderedRow.Col[timedelta] = mariadb.Text(nullable=False)
+        id: OrderedRow.Col[int] = mariadb.Integer(primary_key=True)
+        elapsed: OrderedRow.Col[timedelta] = mariadb.Text(nullable=False)
 
 
 @test(mark="medium")

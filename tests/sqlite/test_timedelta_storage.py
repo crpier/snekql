@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import timedelta
 from typing import cast
 
@@ -12,6 +13,7 @@ from snekql.sqlite import (
     ExecutionError,
     Fetched,
     Integer,
+    LexicalDurationWarning,
     Model,
     Pending,
     Text,
@@ -28,11 +30,14 @@ class IntegerDurationRow[S = Pending](Model[S, "IntegerDurationRow[Fetched]"]):
     elapsed: IntegerDurationRow.Col[timedelta] = Integer(nullable=False)
 
 
-class TextDurationRow[S = Pending](Model[S, "TextDurationRow[Fetched]"]):
-    """Table declaring a timedelta over a Text storage class."""
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", LexicalDurationWarning)
 
-    id: TextDurationRow.Col[int] = Integer(primary_key=True)
-    elapsed: TextDurationRow.Col[timedelta] = Text(nullable=False)
+    class TextDurationRow[S = Pending](Model[S, "TextDurationRow[Fetched]"]):
+        """Table declaring a timedelta over a Text storage class."""
+
+        id: TextDurationRow.Col[int] = Integer(primary_key=True)
+        elapsed: TextDurationRow.Col[timedelta] = Text(nullable=False)
 
 
 @test()
