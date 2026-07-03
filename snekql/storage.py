@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from json import JSONDecodeError, loads
 from math import isfinite
 from types import EllipsisType
@@ -67,12 +68,51 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-class OrderPreserving:
+class Canonical:
+    """Marker claiming a text wire form has one representation per value.
+
+    Attach this marker inside an `Annotated` logical type when `Text()` equality
+    matches the value's logical equality.
+    """
+
+
+class OrderPreserving(Canonical):
     """Marker claiming a text wire form preserves logical ordering.
 
-    Attach this marker inside an `Annotated` logical type when SQLite `Text()`
+    Attach this marker inside an `Annotated` logical type when `Text()`
     comparison order matches the value's logical order.
     """
+
+
+def _normalize_canonical_decimal(value: Decimal) -> Decimal:
+    """Canonicalize decimals to minimal finite plain values.
+
+    `Decimal.normalize()` may produce exponent notation for whole powers of ten;
+    re-quantizing those values preserves the number while keeping plain text
+    serialization stable. Zero is special-cased so `-0` becomes `0`.
+    """
+
+    if not value:
+        return Decimal(0)
+    normalized = value.normalize()
+    exponent = normalized.as_tuple().exponent
+    if isinstance(exponent, int) and exponent > 0:
+        return normalized.quantize(Decimal(1))
+    return normalized
+
+
+def _serialize_canonical_decimal(value: Decimal) -> str:
+    """Serialize decimals as minimal plain text, never exponent notation."""
+
+    return format(_normalize_canonical_decimal(value), "f")
+
+
+CanonicalDecimal = Annotated[
+    Decimal,
+    AfterValidator(_normalize_canonical_decimal),
+    PlainSerializer(_serialize_canonical_decimal, return_type=str, when_used="json"),
+    Canonical,
+]
 
 
 def _normalize_utc_milliseconds(value: datetime) -> datetime:
@@ -135,6 +175,8 @@ class AttrConfig:
     auto_increment: bool = False
     default: object = ...
     default_factory: Callable[[], object] | EllipsisType = ...
+    decimal_precision: int | None = None
+    decimal_scale: int | None = None
     foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None
     index: bool = False
     nullable: bool | None = None
@@ -781,13 +823,36 @@ def _strip_json_marker(annotation: object) -> object:
     return annotation
 
 
+def _metadata_item_carries_marker(item: object, marker: type[Canonical]) -> bool:
+    """Whether one annotation metadata item carries a marker claim.
+
+    Annotated metadata often stores the marker class itself, not an instance, so
+    marker detection must honor subclass relationships for both class objects and
+    instances.
+    """
+
+    if item is marker or isinstance(item, marker):
+        return True
+    return isinstance(item, type) and issubclass(item, marker)
+
+
+def _carries_canonical_marker(annotation: object) -> bool:
+    """Whether an annotation self-certifies canonical text storage."""
+
+    metadata = getattr(annotation, "__metadata__", None)
+    if metadata and any(
+        _metadata_item_carries_marker(item, Canonical) for item in metadata
+    ):
+        return True
+    return any(_carries_canonical_marker(argument) for argument in get_args(annotation))
+
+
 def _carries_order_preserving_marker(annotation: object) -> bool:
     """Whether an annotation self-certifies order-preserving text storage."""
 
     metadata = getattr(annotation, "__metadata__", None)
     if metadata and any(
-        item is OrderPreserving or isinstance(item, OrderPreserving)
-        for item in metadata
+        _metadata_item_carries_marker(item, OrderPreserving) for item in metadata
     ):
         return True
     return any(
@@ -838,6 +903,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self.default_factory: Callable[[], object] | EllipsisType = (
             config.default_factory
         )
+        self.decimal_precision: int | None = config.decimal_precision
+        self.decimal_scale: int | None = config.decimal_scale
         self.foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = (
             config.foreign_key_target
         )
@@ -1147,6 +1214,8 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             return self._encode_json(value)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
+        if self.storage_type_name == "Decimal":
+            return self._encode_decimal(value)
         if self.storage_type_name == "DateTime":
             timestamp = cast("datetime", value)
             # A native DateTime column stores offset-less UTC text. A naive input
@@ -1168,6 +1237,35 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
                 + codec.datetime_encode_suffix
             )
         return self._encode_primitive(value, codec=codec)
+
+    def _encode_decimal(self, value: object) -> Decimal:
+        """Reject DECIMAL values that cannot be stored without numeric change."""
+
+        decimal_value = cast("Decimal", value)
+        precision = self.decimal_precision
+        scale = self.decimal_scale
+        if precision is None or scale is None:
+            msg = f"{self._require_name()!r} is missing decimal precision metadata"
+            raise ModelValidationError(msg)
+        if not decimal_value.is_finite():
+            msg = f"{self._require_name()!r} non-finite decimal values cannot be stored"
+            raise ModelValidationError(msg)
+        if decimal_value == 0:
+            return decimal_value
+        normalized = decimal_value.copy_abs().normalize()
+        exponent = normalized.as_tuple().exponent
+        if not isinstance(exponent, int):
+            msg = f"{self._require_name()!r} non-finite decimal values cannot be stored"
+            raise ModelValidationError(msg)
+        integer_digits = max(normalized.adjusted() + 1, 0)
+        fractional_digits = max(-exponent, 0)
+        if integer_digits > precision - scale or fractional_digits > scale:
+            msg = (
+                f"{self._require_name()!r} decimal value does not fit "
+                f"DECIMAL({precision}, {scale})"
+            )
+            raise ModelValidationError(msg)
+        return decimal_value
 
     def _encode_primitive(self, value: object, *, codec: _BackendCodec) -> object:
         """Wire-encode a primitive-storage value through pydantic serialization.
@@ -1325,7 +1423,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             return False
         return all(
             isinstance(core, type)
-            and issubclass(core, (int, float))
+            and issubclass(core, (Decimal, int, float))
             and not issubclass(core, bool)
             for core in cores
         )
@@ -1478,6 +1576,27 @@ def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
     except ModelDeclarationError, NameError, TypeError:
         return None
     return _annotation_admits_none(logical)
+
+
+def column_lacks_canonical_decimal(
+    column: Attr[Any, Any, Any, Any, Any],
+) -> bool:
+    """Whether a Text decimal column lacks equality-safe text encoding."""
+
+    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+        return False
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return False
+    try:
+        annotation = _resolve_model_hints(owner).get(name)
+        logical = _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return False
+    if _carries_canonical_marker(logical):
+        return False
+    return any(core_type is Decimal for core_type in _annotation_core_types(logical))
 
 
 def column_lacks_order_preserving_datetime(

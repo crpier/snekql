@@ -8,7 +8,7 @@ from types import EllipsisType
 from typing import TYPE_CHECKING, Any, cast, overload
 
 from snekql._query_state import require_column_model
-from snekql.errors import ModelValidationError
+from snekql.errors import ModelDeclarationError, ModelValidationError
 from snekql.expressions import Comparable
 from snekql.storage import (
     Attr,
@@ -23,6 +23,10 @@ from snekql.storage import (
 if TYPE_CHECKING:
     from snekql._dialect_expr import CompileCtx
     from snekql.model import Table
+
+
+_DECIMAL_MAX_PRECISION = 65
+_DECIMAL_MAX_SCALE = 30
 
 
 def _json_path_literal(path: str) -> str:
@@ -506,6 +510,116 @@ class Blob:
         )
 
 
+class Decimal:
+    """MariaDB native fixed-point decimal column declaration.
+
+    The logical type is the field annotation, usually ``decimal.Decimal``; the
+    constructor declares the native ``DECIMAL(precision, scale)`` storage shape.
+    """
+
+    @overload
+    def __new__[T](
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default: PendingGeneration,
+    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default: None,
+    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default: T,
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__[T](
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default_factory: Callable[[], T],
+    ) -> Attr[Any, Any, Any, T, T, object]: ...
+
+    @overload
+    def __new__(
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any: ...
+
+    def __new__(  # noqa: PLR0913
+        cls,
+        precision: int,
+        scale: int,
+        *,
+        primary_key: bool = False,
+        nullable: bool | None = None,
+        unique: bool = False,
+        index: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+    ) -> Any:
+        if not (
+            1 <= precision <= _DECIMAL_MAX_PRECISION
+            and 0 <= scale <= min(_DECIMAL_MAX_SCALE, precision)
+        ):
+            msg = (
+                "Decimal precision/scale must satisfy 1 <= precision <= 65 and "
+                "0 <= scale <= min(30, precision)"
+            )
+            raise ModelDeclarationError(msg)
+        return build_attr(
+            AttrConfig(
+                decimal_precision=precision,
+                decimal_scale=scale,
+                default=default,
+                default_factory=default_factory,
+                nullable=nullable,
+                primary_key=primary_key,
+                index=index,
+                unique=unique,
+                sqlite_storage_class="TEXT",
+                storage_type_name="Decimal",
+            ),
+        )
+
+
 class Json:
     """MariaDB JSON column declaration for JSON-compatible model values.
 
@@ -858,6 +972,7 @@ __all__ = [
     "Boolean",
     "CurrentTimestamp",
     "DateTime",
+    "Decimal",
     "ForeignKey",
     "Integer",
     "Json",

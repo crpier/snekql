@@ -23,6 +23,10 @@ class LexicalDatetimeWarning(SnekqlWarning):
     """Warns that a SQLite Text datetime column compares lexically."""
 
 
+class LexicalDecimalWarning(SnekqlWarning):
+    """Warns that a Text decimal column compares lexically."""
+
+
 class ModelError(SnekqlError):
     """Base class for table model declaration and validation failures."""
 

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_true, test
 
+from snekql import mariadb
 from snekql.mariadb import scaffold as scaffold_mariadb
 from snekql.sqlite import (
     Fetched,
@@ -118,6 +120,20 @@ def scaffold_emits_referential_actions() -> None:
     assert_true(
         'REFERENCES "scaffold_user" ("id") ON DELETE CASCADE ON UPDATE RESTRICT' in ddl
     )
+
+
+@test(mark="fast")
+def mariadb_scaffold_emits_decimal_precision_and_scale() -> None:
+    """MariaDB native Decimal columns render DECIMAL(precision, scale)."""
+
+    class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+        """Model with a native MariaDB decimal column."""
+
+        amount: Price.Col[Decimal] = mariadb.Decimal(7, 2, nullable=False)
+
+    ddl = scaffold_mariadb([Price])
+
+    assert_true("`amount` DECIMAL(7,2) NOT NULL" in ddl)
 
 
 @test(mark="fast")

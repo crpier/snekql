@@ -20,6 +20,7 @@ from typing import (
 from snekql.errors import (
     FrozenModelError,
     LexicalDatetimeWarning,
+    LexicalDecimalWarning,
     ModelDeclarationError,
     ModelValidationError,
     SnekqlError,
@@ -39,6 +40,7 @@ from snekql.storage import (
     StorageBackend,
     Text,
     column_admits_none,
+    column_lacks_canonical_decimal,
     column_lacks_order_preserving_datetime,
 )
 
@@ -204,18 +206,18 @@ class ModelMeta(type):
             # annotations resolve; this is what lets the nullability cross-check
             # read each column's logical type.
             ModelMeta._validate_column_nullability(columns)
-            ModelMeta._warn_lexical_datetime_columns(
+            ModelMeta._warn_lexical_text_columns(
                 columns,
                 model_metadata.__snekql_backend__,
             )
         return model_class
 
     @staticmethod
-    def _warn_lexical_datetime_columns(
+    def _warn_lexical_text_columns(
         columns: dict[str, Attr[Any, Any, Any, Any, Any]],
         backend: BackendFamily,
     ) -> None:
-        """Warn when SQLite Text datetime storage has lexical SQL semantics."""
+        """Warn when Text storage has lexical SQL semantics for typed values."""
 
         for name, column in columns.items():
             if column_lacks_order_preserving_datetime(column, backend):
@@ -225,6 +227,16 @@ class ModelMeta(type):
                         "use UtcDatetime for an order-preserving wire form"
                     ),
                     LexicalDatetimeWarning,
+                    stacklevel=4,
+                )
+            if column_lacks_canonical_decimal(column):
+                warnings.warn(
+                    (
+                        f"Text decimal column {name!r} compares lexically; use "
+                        "CanonicalDecimal for equality-safe storage, or integer "
+                        "minor units / native Decimal storage for ordering"
+                    ),
+                    LexicalDecimalWarning,
                     stacklevel=4,
                 )
 

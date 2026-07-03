@@ -81,7 +81,7 @@ A database-supplied column value that is filled in by the database when an inser
 _Avoid_: Python default, constructor default
 
 **Column Type**:
-The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, or `Uuid()`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
+The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, `Uuid()`, or `Decimal(precision, scale)`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
 _Avoid_: logical type, Python type, value type, storage class
 
 **Logical Type**:
@@ -92,13 +92,21 @@ _Avoid_: column type, storage class, storage type, wire type
 The wire encode/decode that bridges a column's Logical Type to its Column Type. It is *derived* from the (Column Type, Logical Type) pair, never named or chosen directly: Pydantic drives it for SQLite storage classes and the `pydantic.Json[T]` marker, while MariaDB native types keep dedicated codecs for their backend wire formats.
 _Avoid_: serializer, converter, ORM type, column type
 
+**Canonical Wire Form**:
+A text wire encoding that maps each Logical Type value to exactly one text, so `=`, `IN`, and unique indexes over text storage agree with the Logical Type's equality. Says nothing about ordering.
+_Avoid_: normalized string, canonical form (of the Python value), serialization format
+
 **Order-Preserving Wire Form**:
-A text wire encoding whose lexical order equals the logical order of the values it encodes, so `=`, `ORDER BY`, and range predicates over text storage agree with the Logical Type's semantics.
+A Canonical Wire Form whose lexical order additionally equals the logical order of the values it encodes, so `ORDER BY` and range predicates over text storage also agree with the Logical Type's semantics.
 _Avoid_: sortable string, lexicographic format, collation
 
 **UtcDatetime**:
 A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; the recommended datetime type for database columns.
 _Avoid_: Instant, AwareDatetime, timestamp, wall-clock datetime
+
+**CanonicalDecimal**:
+A snekql-exported curated Logical Type for exact decimal values, normalized at validation to the canonical minimal plain form (no exponent, no trailing fractional zeros, no negative zero), so the value held, stored, and fetched back are identical. Serialized in a Canonical Wire Form: equality-safe over text storage, but not order-safe.
+_Avoid_: Decimal (for the curated type), money type, fixed-point type
 
 **Generated Column**:
 A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.

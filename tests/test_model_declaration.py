@@ -6,6 +6,7 @@ import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
@@ -23,12 +24,15 @@ from snekql import mariadb
 from snekql.sqlite import (
     PENDING_GENERATION,
     Blob,
+    Canonical,
+    CanonicalDecimal,
     Fetched,
     ForeignKey,
     FrozenModelError,
     Index,
     Integer,
     LexicalDatetimeWarning,
+    LexicalDecimalWarning,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -41,6 +45,40 @@ from snekql.sqlite import (
 from tests.fixtures.model_without_future_annotations import Memory
 
 type SafeOrderPreservingDatetime = Annotated[datetime, OrderPreserving]
+type SafeCanonicalTextDecimal = Annotated[Decimal, Canonical]
+type SafeOrderPreservingTextDecimal = Annotated[Decimal, OrderPreserving]
+
+
+@test(mark="fast")
+def text_decimal_columns_warn_without_canonical_wire_form() -> None:
+    """Text decimal columns warn on both backends unless canonicalized."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDecimalWarning)
+
+        class SqlitePrice[S = Pending](Model[S, "SqlitePrice[Fetched]"]):
+            """SQLite model with decimal text columns."""
+
+            unsafe_amount: SqlitePrice.Col[Decimal] = Text(nullable=False)
+            curated_amount: SqlitePrice.Col[CanonicalDecimal] = Text(nullable=False)
+            safe_amount: SqlitePrice.Col[SafeCanonicalTextDecimal] = Text(
+                nullable=False
+            )
+            ordered_amount: SqlitePrice.Col[SafeOrderPreservingTextDecimal] = Text(
+                nullable=False
+            )
+
+        class MariaPrice[S = mariadb.Pending](
+            mariadb.Model[S, "MariaPrice[mariadb.Fetched]"],
+        ):
+            """MariaDB model with a decimal Text column."""
+
+            unsafe_amount: MariaPrice.Col[Decimal] = mariadb.Text(nullable=False)
+
+    assert_eq(len(caught_warnings), 2)
+    assert_true(all(item.category is LexicalDecimalWarning for item in caught_warnings))
+    assert_true("unsafe_amount" in str(caught_warnings[0].message))
+    assert_true("unsafe_amount" in str(caught_warnings[1].message))
 
 
 @test(mark="fast")

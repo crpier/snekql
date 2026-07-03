@@ -6,6 +6,7 @@ import math
 import uuid
 import warnings
 from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import cast
 
 from pydantic import BaseModel, Json
@@ -16,6 +17,7 @@ from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
     PENDING_GENERATION,
     Blob,
+    CanonicalDecimal,
     CurrentTimestamp,
     Fetched,
     Integer,
@@ -95,6 +97,32 @@ def bool_logical_type_encodes_to_integer_and_decodes_before_validation() -> None
 
     with assert_raises(ModelValidationError):
         _ = decode_model_row(FeatureFlag, {"enabled": 2}, backend="sqlite")
+
+
+@test()
+def canonical_decimal_normalizes_and_encodes_plain_text() -> None:
+    """CanonicalDecimal stores one plain text representation per decimal value."""
+
+    class Price[S = Pending](Model[S, "Price[Fetched]"]):
+        """Table model with exact decimal text storage."""
+
+        amount: Price.Col[CanonicalDecimal] = Text(nullable=False)
+
+    price = Price(amount=Decimal("1.500"))
+    exponent_price = Price(amount=Decimal("1E+2"))
+    negative_zero_price = Price(amount=Decimal("-0"))
+    _, encoded_price = encode_model_row(price, backend="sqlite")
+    _, encoded_exponent_price = encode_model_row(exponent_price, backend="sqlite")
+    _, encoded_negative_zero_price = encode_model_row(
+        negative_zero_price, backend="sqlite"
+    )
+
+    assert_eq(price.amount, Decimal("1.5"))
+    assert_eq(exponent_price.amount, Decimal(100))
+    assert_eq(negative_zero_price.amount, Decimal(0))
+    assert_eq(encoded_price, {"amount": "1.5"})
+    assert_eq(encoded_exponent_price, {"amount": "100"})
+    assert_eq(encoded_negative_zero_price, {"amount": "0"})
 
 
 @test()

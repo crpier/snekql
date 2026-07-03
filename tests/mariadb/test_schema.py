@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, ClassVar, cast
 
 from snektest import (
@@ -228,6 +229,33 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
         """,
     )
     assert_eq(result.stdout.splitlines()[-1], "0")
+
+
+@test(mark="medium")
+async def mariadb_decimal_precision_drift_is_reported() -> None:
+    """Strict MariaDB schema verification compares Decimal precision and scale."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class Price[S = Pending](mariadb.Model[S, "Price[Fetched]"]):
+        """Model whose live decimal scale differs."""
+
+        __tablename__ = "native_decimal_drift"
+        amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
+
+    _ = await server.run_sql(
+        "CREATE TABLE native_decimal_drift (`amount` DECIMAL(5,3) NOT NULL) ENGINE=InnoDB"
+    )
+
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([Price])
+    finally:
+        await database.close()
+
+    assert_true("decimal(5,2)" in str(raised.exception))
+    assert_true("decimal(5,3)" in str(raised.exception))
 
 
 @test(mark="medium")
