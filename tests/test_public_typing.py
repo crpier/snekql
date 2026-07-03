@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_type
 
@@ -12,6 +13,7 @@ from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Aggregate,
+    CanonicalDecimal,
     ChunkStream,
     CurrentTimestamp,
     Fetched,
@@ -62,6 +64,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     status: User.Col[str] = Text(nullable=False, default="active")
     nickname: User.Col[str | None] = Text(nullable=True, default=None)
     created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
+    balance: User.Col[CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
@@ -111,6 +114,7 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
         default=PENDING_GENERATION,
     )
     email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
+    balance: MariadbUser.Col[Decimal] = mariadb.Decimal(9, 2, nullable=False)
     # Native MariaDB UUID Column Type paired with the uuid.UUID logical type.
     account_id: MariadbUser.Col[uuid.UUID] = mariadb.Uuid(
         nullable=False, default_factory=uuid.uuid4

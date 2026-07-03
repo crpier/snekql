@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Json
@@ -66,6 +67,24 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
         Event.happened_at.decode("2026-01-02 03:04:05.678", backend="mariadb"),
         datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
     )
+
+
+@test()
+def mariadb_decimal_codec_rejects_values_that_do_not_fit_column_scale() -> None:
+    """A native Decimal column rejects values MariaDB would round or overflow."""
+
+    class Price[S = Pending](mariadb.Model[S, "Price[Fetched]"]):
+        """Model binding a native MariaDB Decimal descriptor."""
+
+        amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
+
+    assert_eq(
+        Price.amount.encode(Decimal("999.99"), backend="mariadb"), Decimal("999.99")
+    )
+    with assert_raises(ModelValidationError):
+        _ = Price.amount.encode(Decimal("1000.00"), backend="mariadb")
+    with assert_raises(ModelValidationError):
+        _ = Price.amount.encode(Decimal("1.234"), backend="mariadb")
 
 
 @test()

@@ -81,7 +81,7 @@ A database-supplied column value that is filled in by the database when an inser
 _Avoid_: Python default, constructor default
 
 **Column Type**:
-The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, or `Uuid()`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
+The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, `Uuid()`, or `Decimal(precision, scale)`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
 _Avoid_: logical type, Python type, value type, storage class
 
 **Logical Type**:
@@ -93,7 +93,7 @@ The wire encode/decode that bridges a column's Logical Type to its Column Type. 
 _Avoid_: serializer, converter, ORM type, column type
 
 **Canonical Wire Form**:
-A text wire encoding that maps each logical value to exactly one text, so `=`, `IN`, and unique indexes over text storage agree with the Logical Type's equality. Says nothing about ordering.
+A text wire encoding that maps each Logical Type value to exactly one text, so `=`, `IN`, and unique indexes over text storage agree with the Logical Type's equality. Says nothing about ordering.
 _Avoid_: normalized string, canonical form (of the Python value), serialization format
 
 **Order-Preserving Wire Form**:

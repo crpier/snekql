@@ -187,8 +187,9 @@ JSON uses Pydantic's marker, not a snekql type: annotate
 `list[Model]`, ...) round-trips, not just `dict`/`list`/primitives.
 
 MariaDB additionally exposes its native types as column types — `mariadb.Json`,
-`mariadb.Boolean`, `mariadb.DateTime`, and `mariadb.Uuid` (native `UUID`). To
-store a UUID as raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
+`mariadb.Boolean`, `mariadb.DateTime`, `mariadb.Uuid` (native `UUID`), and
+`mariadb.Decimal(precision, scale)` (native `DECIMAL(p,s)`). To store a UUID as
+raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
 
 There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.
@@ -204,6 +205,26 @@ offset-less UTC text: it has no way to record a naive value's zone, so encoding 
 naive `datetime` there is rejected with a `ModelValidationError` rather than
 silently assuming the writer's local zone. Attach a timezone (or annotate
 `Col[UtcDatetime]`) for those columns.
+
+Decimal storage has the same two-coordinate rule:
+
+- Use `Col[CanonicalDecimal] = Text()` when you need portable exact decimal
+  identity/equality over text storage. It normalizes `Decimal("1.50")` to
+  `Decimal("1.5")`, `Decimal("1E+2")` to `Decimal("100")`, and negative zero to
+  zero, then stores minimal plain text. Equality, `IN`, and unique indexes are
+  safe; lexical ordering and range predicates are not.
+- On SQLite, store integer minor units (`Col[int] = Integer()`, e.g. cents) when
+  the database must order, range-filter, or aggregate decimal quantities.
+- On MariaDB, use `Col[decimal.Decimal] = mariadb.Decimal(precision, scale)` for
+  native numeric equality, ordering, range predicates, and aggregation. Values
+  that would overflow or require rounding for the declared `(precision, scale)`
+  are rejected before they reach the driver.
+
+Bare `Col[decimal.Decimal] = Text()` emits `LexicalDecimalWarning` on both
+backends because Pydantic's default decimal text can represent the same value in
+multiple ways and still sorts lexically, not numerically. Suppress it only when a
+custom `Annotated[..., Canonical]` or `Annotated[..., OrderPreserving]` logical
+type owns the wire-form invariant.
 
 Because the logical type is whatever Pydantic can validate, the UUID-version
 aliases work as drop-in logical types and add version validation for free:

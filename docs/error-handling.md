@@ -85,6 +85,13 @@ warnings.filterwarnings("ignore", category=SnekqlWarning)
   with `UtcDatetime` (which carries the marker) to silence it and get
   instant-correct comparisons; see
   [ADR 0009](adr/0009-utcdatetime-curated-logical-type.md).
+- `LexicalDecimalWarning`: a `Text()` column on either backend carries a
+  `decimal.Decimal` logical type without a canonical wire form. SQL equality,
+  `IN`, and unique indexes can miss because the same decimal value can serialize
+  as different text, and ordering remains lexical. Use `CanonicalDecimal` for
+  equality-safe text storage, integer minor units for SQLite ordering and
+  aggregation, or MariaDB native `Decimal(precision, scale)` when that backend is
+  available.
 
 ## Transaction lifecycle contract
 

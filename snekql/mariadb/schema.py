@@ -26,9 +26,22 @@ from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 TEXT_COLLATION = "utf8mb4_bin"
 
 
+def _format_decimal_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
+    """Render a native DECIMAL type from its required precision metadata."""
+
+    precision = column.decimal_precision
+    scale = column.decimal_scale
+    if precision is None or scale is None:
+        msg = "Decimal column is missing precision metadata"
+        raise SchemaError(msg)
+    return f"DECIMAL({precision},{scale})"
+
+
 def _compile_column_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
     """Map the initial shared value families to MariaDB column types."""
 
+    if column.storage_type_name == "Decimal":
+        return _format_decimal_type(column)
     column_types = {
         "Blob": "BLOB",
         "Boolean": "BOOLEAN",
@@ -53,6 +66,7 @@ def _column_data_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
         "Blob": "blob",
         "Boolean": "tinyint",
         "DateTime": "datetime",
+        "Decimal": "decimal",
         "Integer": "bigint",
         "Json": "longtext",
         "Real": "double",
@@ -80,15 +94,34 @@ def _column_collation(column: Attr[Any, Any, Any, Any, Any]) -> str | None:
     return None
 
 
-def _format_storage_type(data_type: str, max_length: int | None) -> str:
-    """Fold a column's length into its type token (e.g. ``varchar(255)``).
+def _column_numeric_precision(column: Attr[Any, Any, Any, Any, Any]) -> int | None:
+    if column.storage_type_name == "Decimal":
+        return column.decimal_precision
+    return None
 
-    Only variable-length string types carry a meaningful declared length here,
-    so the length is appended for ``varchar`` and ignored for fixed-width types.
-    """
+
+def _column_numeric_scale(column: Attr[Any, Any, Any, Any, Any]) -> int | None:
+    if column.storage_type_name == "Decimal":
+        return column.decimal_scale
+    return None
+
+
+def _format_storage_type(
+    data_type: str,
+    max_length: int | None,
+    numeric_precision: int | None = None,
+    numeric_scale: int | None = None,
+) -> str:
+    """Fold a column's declared parameters into its catalog type token."""
 
     if data_type == "varchar" and max_length is not None:
         return f"varchar({max_length})"
+    if (
+        data_type == "decimal"
+        and numeric_precision is not None
+        and numeric_scale is not None
+    ):
+        return f"decimal({numeric_precision},{numeric_scale})"
     return data_type
 
 
@@ -103,7 +136,10 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     return ColumnShape(
         name=planned_column.name,
         storage_type=_format_storage_type(
-            _column_data_type(column), _column_max_length(column)
+            _column_data_type(column),
+            _column_max_length(column),
+            _column_numeric_precision(column),
+            _column_numeric_scale(column),
         ),
         nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
@@ -201,7 +237,8 @@ async def _fetch_existing_column_shapes(
     rows = await _fetchall(
         connection,
         """
-        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE,
+        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH,
+               NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE,
                COLUMN_KEY, EXTRA, COLLATION_NAME, COLUMN_DEFAULT
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
@@ -212,15 +249,36 @@ async def _fetch_existing_column_shapes(
     )
     shapes: list[ColumnShape] = []
     for row in rows:
-        name, data_type, max_length, nullable, column_key, extra, collation = row[:7]
-        default = row[7]
+        (
+            name,
+            data_type,
+            max_length,
+            numeric_precision,
+            numeric_scale,
+            nullable,
+            column_key,
+            extra,
+            collation,
+            default,
+        ) = row
         parsed_max_length = (
             int(max_length) if isinstance(max_length, int | str) else None
+        )
+        parsed_numeric_precision = (
+            int(numeric_precision) if isinstance(numeric_precision, int | str) else None
+        )
+        parsed_numeric_scale = (
+            int(numeric_scale) if isinstance(numeric_scale, int | str) else None
         )
         shapes.append(
             ColumnShape(
                 name=str(name),
-                storage_type=_format_storage_type(str(data_type), parsed_max_length),
+                storage_type=_format_storage_type(
+                    str(data_type),
+                    parsed_max_length,
+                    parsed_numeric_precision,
+                    parsed_numeric_scale,
+                ),
                 nullable=nullable == "YES",
                 primary_key=column_key == "PRI",
                 auto_increment="auto_increment" in str(extra),

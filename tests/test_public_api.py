@@ -32,6 +32,8 @@ _NEUTRAL_NAMES = frozenset(
         "Aggregate",
         "Assignment",
         "Attr",
+        "Canonical",
+        "CanonicalDecimal",
         "ChunkStream",
         "Col",
         "Database",
@@ -61,6 +63,7 @@ _NEUTRAL_NAMES = frozenset(
         "JoinModelQuery",
         "JoinOn",
         "LexicalDatetimeWarning",
+        "LexicalDecimalWarning",
         "MigrationError",
         "MigrationLockTimeoutError",
         "PendingGeneration",
@@ -128,7 +131,7 @@ _DIALECT_NAMES = frozenset(
 # native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
 # column attribute type.
 _MARIADB_ONLY_NAMES = frozenset(
-    {"Boolean", "DateTime", "Json", "JsonAttr", "Uuid"},
+    {"Boolean", "DateTime", "Decimal", "Json", "JsonAttr", "Uuid"},
 )
 _SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
