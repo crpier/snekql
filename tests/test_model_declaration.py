@@ -138,6 +138,23 @@ def text_duration_columns_warn_without_order_preserving_wire_form() -> None:
 
 
 @test(mark="fast")
+def duration_over_text_warns_because_integer_wire_form_sorts_lexically() -> None:
+    """Duration over Text() warns; its integer wire form is not text-order safe."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDurationWarning)
+
+        class LexicalTimer[S = Pending](Model[S, "LexicalTimer[Fetched]"]):
+            """SQLite model declaring Duration over lexical Text storage."""
+
+            elapsed: LexicalTimer.Col[Duration] = Text(nullable=False)
+
+    assert_eq(len(caught_warnings), 1)
+    assert_true(caught_warnings[0].category is LexicalDurationWarning)
+    assert_true("elapsed" in str(caught_warnings[0].message))
+
+
+@test(mark="fast")
 def lexical_datetime_warning_is_suppressible_by_category() -> None:
     """The datetime storage warning uses a category callers can silence."""
 

@@ -170,7 +170,6 @@ Duration = Annotated[
     PlainSerializer(
         _serialize_duration_milliseconds, return_type=int, when_used="json"
     ),
-    OrderPreserving,
 ]
 
 

@@ -244,8 +244,8 @@ class ModelMeta(type):
             if column_lacks_order_preserving_duration(column):
                 warnings.warn(
                     (
-                        f"Text duration column {name!r} compares lexically; use "
-                        "Duration over Integer storage for order-preserving storage"
+                        f"Text duration column {name!r} compares lexically; store "
+                        "durations over Integer() for an order-preserving wire form"
                     ),
                     LexicalDurationWarning,
                     stacklevel=4,
