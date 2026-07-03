@@ -5,7 +5,7 @@ from __future__ import annotations
 import warnings
 from abc import abstractmethod
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, ClassVar, cast
 
@@ -26,6 +26,7 @@ from snekql.sqlite import (
     Blob,
     Canonical,
     CanonicalDecimal,
+    Duration,
     Fetched,
     ForeignKey,
     FrozenModelError,
@@ -33,6 +34,7 @@ from snekql.sqlite import (
     Integer,
     LexicalDatetimeWarning,
     LexicalDecimalWarning,
+    LexicalDurationWarning,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -102,6 +104,54 @@ def sqlite_datetime_text_columns_warn_without_order_preserving_wire_form() -> No
     )
     assert_true("occurred_at" in str(caught_warnings[0].message))
     assert_true("displayed_at" in str(caught_warnings[1].message))
+
+
+@test(mark="fast")
+def text_duration_columns_warn_without_order_preserving_wire_form() -> None:
+    """Text duration columns warn on both backends unless they use Duration."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDurationWarning)
+
+        class SqliteTimer[S = Pending](Model[S, "SqliteTimer[Fetched]"]):
+            """SQLite model with duration text columns."""
+
+            unsafe_elapsed: SqliteTimer.Col[timedelta] = Text(nullable=False)
+            curated_elapsed: SqliteTimer.Col[Duration] = Integer(nullable=False)
+
+        class MariaTimer[S = mariadb.Pending](
+            mariadb.Model[S, "MariaTimer[mariadb.Fetched]"],
+        ):
+            """MariaDB model with duration Text and Integer columns."""
+
+            unsafe_elapsed: MariaTimer.Col[timedelta] = mariadb.Text(nullable=False)
+            curated_elapsed: MariaTimer.Col[mariadb.Duration] = mariadb.Integer(
+                nullable=False
+            )
+
+    assert_eq(len(caught_warnings), 2)
+    assert_true(
+        all(item.category is LexicalDurationWarning for item in caught_warnings)
+    )
+    assert_true("unsafe_elapsed" in str(caught_warnings[0].message))
+    assert_true("unsafe_elapsed" in str(caught_warnings[1].message))
+
+
+@test(mark="fast")
+def duration_over_text_warns_because_integer_wire_form_sorts_lexically() -> None:
+    """Duration over Text() warns; its integer wire form is not text-order safe."""
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", LexicalDurationWarning)
+
+        class LexicalTimer[S = Pending](Model[S, "LexicalTimer[Fetched]"]):
+            """SQLite model declaring Duration over lexical Text storage."""
+
+            elapsed: LexicalTimer.Col[Duration] = Text(nullable=False)
+
+    assert_eq(len(caught_warnings), 1)
+    assert_true(caught_warnings[0].category is LexicalDurationWarning)
+    assert_true("elapsed" in str(caught_warnings[0].message))
 
 
 @test(mark="fast")

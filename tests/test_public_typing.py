@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import AbstractAsyncContextManager
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_type
@@ -16,6 +16,7 @@ from snekql.sqlite import (
     CanonicalDecimal,
     ChunkStream,
     CurrentTimestamp,
+    Duration,
     Fetched,
     ForeignKey,
     Index,
@@ -65,6 +66,7 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     nickname: User.Col[str | None] = Text(nullable=True, default=None)
     created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
     balance: User.Col[CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
+    elapsed: User.Col[Duration] = Integer(nullable=False, default=timedelta(0))
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):

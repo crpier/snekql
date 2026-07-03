@@ -92,6 +92,14 @@ warnings.filterwarnings("ignore", category=SnekqlWarning)
   equality-safe text storage, integer minor units for SQLite ordering and
   aggregation, or MariaDB native `Decimal(precision, scale)` when that backend is
   available.
+- `LexicalDurationWarning`: a `Text()` column on either backend carries a
+  `datetime.timedelta` logical type without a text-order-preserving wire form.
+  The wire form is signed integer total milliseconds, so stored as text it sorts
+  lexically — `"10000"` sorts before `"9000"` though it is the longer duration,
+  and negative durations sort wrong — making SQL `=`, `ORDER BY`, and range
+  predicates disagree with elapsed-time order. `Duration` shares this integer
+  wire form, so it warns over `Text()` too: store durations over `Integer()`,
+  where integer order equals duration order.
 
 ## Transaction lifecycle contract
 

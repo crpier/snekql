@@ -21,6 +21,7 @@ from snekql.errors import (
     FrozenModelError,
     LexicalDatetimeWarning,
     LexicalDecimalWarning,
+    LexicalDurationWarning,
     ModelDeclarationError,
     ModelValidationError,
     SnekqlError,
@@ -42,6 +43,7 @@ from snekql.storage import (
     column_admits_none,
     column_lacks_canonical_decimal,
     column_lacks_order_preserving_datetime,
+    column_lacks_order_preserving_duration,
 )
 
 type BackendFamily = StorageBackend
@@ -237,6 +239,15 @@ class ModelMeta(type):
                         "minor units / native Decimal storage for ordering"
                     ),
                     LexicalDecimalWarning,
+                    stacklevel=4,
+                )
+            if column_lacks_order_preserving_duration(column):
+                warnings.warn(
+                    (
+                        f"Text duration column {name!r} compares lexically; store "
+                        "durations over Integer() for an order-preserving wire form"
+                    ),
+                    LexicalDurationWarning,
                     stacklevel=4,
                 )
 

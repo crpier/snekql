@@ -6,7 +6,7 @@ import math
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Json
 from snektest import (
@@ -19,6 +19,7 @@ from snektest import (
 )
 
 from snekql import mariadb
+from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.mariadb import (
     PENDING_GENERATION,
     CurrentTimestamp,
@@ -67,6 +68,112 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
         Event.happened_at.decode("2026-01-02 03:04:05.678", backend="mariadb"),
         datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
     )
+
+
+@test()
+def mariadb_duration_encodes_to_integer_milliseconds() -> None:
+    """Duration stores timedelta values as whole milliseconds."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    _, encoded_timer = encode_model_row(
+        Timer(elapsed=timedelta(seconds=9)), backend="mariadb"
+    )
+
+    assert_eq(encoded_timer, {"elapsed": 9000})
+
+
+@test()
+def mariadb_duration_decodes_integer_milliseconds() -> None:
+    """Duration reads integer wire values as whole milliseconds."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    fetched = cast(
+        "Timer[Fetched]",
+        decode_model_row(Timer, {"elapsed": 9000}, backend="mariadb"),
+    )
+
+    assert_eq(fetched.elapsed, timedelta(seconds=9))
+
+
+@test()
+def mariadb_duration_truncates_sub_millisecond_values() -> None:
+    """Duration canonicalizes model values to whole milliseconds."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    assert_eq(
+        Timer(elapsed=timedelta(microseconds=1500)).elapsed, timedelta(milliseconds=1)
+    )
+
+
+@test()
+def mariadb_duration_negative_values_use_negative_integer_milliseconds() -> None:
+    """Duration stores negative timedeltas as negative milliseconds."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    encoded = Timer.elapsed.encode(timedelta(seconds=-5), backend="mariadb")
+
+    assert_eq(encoded, -5000)
+    assert_eq(Timer.elapsed.decode(encoded, backend="mariadb"), timedelta(seconds=-5))
+
+
+@test()
+def mariadb_duration_negative_sub_millisecond_values_truncate_down() -> None:
+    """Negative Duration values truncate toward negative infinity."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    assert_eq(
+        Timer(elapsed=timedelta(microseconds=-500)).elapsed, timedelta(milliseconds=-1)
+    )
+
+
+@test()
+def mariadb_duration_model_construction_accepts_integer_milliseconds() -> None:
+    """Duration accepts raw integer milliseconds at model construction."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    assert_eq(Timer(elapsed=cast("Any", 9000)).elapsed, timedelta(seconds=9))
+
+
+@test()
+def mariadb_duration_integer_milliseconds_obey_signed_64_bit_range() -> None:
+    """Duration values past signed 64-bit milliseconds fail at encode."""
+
+    class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
+        """Model binding a Duration descriptor for direct codec checks."""
+
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
+
+    try:
+        _ = Timer.elapsed.encode(2**63, backend="mariadb")
+    except ModelValidationError as error:
+        assert_true("64-bit" in str(error))
+    else:
+        msg = "expected Duration encode to reject oversized milliseconds"
+        raise AssertionError(msg)
 
 
 @test()

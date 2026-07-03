@@ -108,6 +108,10 @@ _Avoid_: Instant, AwareDatetime, timestamp, wall-clock datetime
 A snekql-exported curated Logical Type for exact decimal values, normalized at validation to the canonical minimal plain form (no exponent, no trailing fractional zeros, no negative zero), so the value held, stored, and fetched back are identical. Serialized in a Canonical Wire Form: equality-safe over text storage, but not order-safe.
 _Avoid_: Decimal (for the curated type), money type, fixed-point type
 
+**Duration**:
+A snekql-exported curated Logical Type for elapsed time: normalized to whole-millisecond precision at validation and serialized as signed integer total milliseconds, so the value held, stored, fetched back, and compared by the database are identical. The recommended timedelta type for database columns.
+_Avoid_: timedelta (for the curated type), interval, wall-clock time
+
 **Generated Column**:
 A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
 _Avoid_: computed property, Python default, immutable column

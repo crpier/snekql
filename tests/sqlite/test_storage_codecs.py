@@ -7,7 +7,7 @@ import uuid
 import warnings
 from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Json
 from snektest import assert_eq, assert_false, assert_raises, assert_true, test
@@ -19,6 +19,7 @@ from snekql.sqlite import (
     Blob,
     CanonicalDecimal,
     CurrentTimestamp,
+    Duration,
     Fetched,
     Integer,
     LexicalDatetimeWarning,
@@ -123,6 +124,120 @@ def canonical_decimal_normalizes_and_encodes_plain_text() -> None:
     assert_eq(encoded_price, {"amount": "1.5"})
     assert_eq(encoded_exponent_price, {"amount": "100"})
     assert_eq(encoded_negative_zero_price, {"amount": "0"})
+
+
+@test()
+def duration_encodes_to_integer_milliseconds() -> None:
+    """Duration stores timedelta values as whole milliseconds."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    _, encoded_timer = encode_model_row(
+        Timer(elapsed=timedelta(seconds=9)), backend="sqlite"
+    )
+
+    assert_eq(encoded_timer, {"elapsed": 9000})
+
+
+@test()
+def duration_decodes_integer_milliseconds() -> None:
+    """Duration reads integer wire values as whole milliseconds."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    fetched = cast(
+        "Timer[Fetched]",
+        decode_model_row(Timer, {"elapsed": 9000}, backend="sqlite"),
+    )
+
+    assert_eq(fetched.elapsed, timedelta(seconds=9))
+
+
+@test()
+def duration_truncates_sub_millisecond_values() -> None:
+    """Duration canonicalizes model values to whole milliseconds."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    timer = Timer(elapsed=timedelta(microseconds=1500))
+
+    assert_eq(timer.elapsed, timedelta(milliseconds=1))
+
+
+@test()
+def duration_negative_values_round_trip_through_integer_milliseconds() -> None:
+    """Duration stores negative timedeltas as negative milliseconds."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    _, encoded_timer = encode_model_row(
+        Timer(elapsed=timedelta(seconds=-5)), backend="sqlite"
+    )
+    fetched = cast(
+        "Timer[Fetched]",
+        decode_model_row(Timer, encoded_timer, backend="sqlite"),
+    )
+
+    assert_eq(encoded_timer, {"elapsed": -5000})
+    assert_eq(fetched.elapsed, timedelta(seconds=-5))
+
+
+@test()
+def duration_negative_sub_millisecond_values_truncate_down() -> None:
+    """Negative Duration values truncate toward negative infinity."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    timer = Timer(elapsed=timedelta(microseconds=-500))
+
+    assert_eq(timer.elapsed, timedelta(milliseconds=-1))
+
+
+@test()
+def duration_model_construction_accepts_integer_milliseconds() -> None:
+    """Duration accepts raw integer milliseconds at model construction."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    timer = Timer(elapsed=cast("Any", 9000))
+
+    assert_eq(timer.elapsed, timedelta(seconds=9))
+
+
+@test()
+def duration_integer_milliseconds_obey_signed_64_bit_range() -> None:
+    """Duration values past signed 64-bit milliseconds fail at encode."""
+
+    class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
+        """Table model with duration storage."""
+
+        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+
+    try:
+        _ = Timer.elapsed.encode(2**63, backend="sqlite")
+    except ModelValidationError as error:
+        assert_true("64-bit" in str(error))
+    else:
+        msg = "expected Duration encode to reject oversized milliseconds"
+        raise AssertionError(msg)
 
 
 @test()
