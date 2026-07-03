@@ -50,7 +50,9 @@ async def mariadb_blob_storage_round_trips_payload_variants() -> None:
         id: BinaryRecord.Col[int] = mariadb.Integer(primary_key=True)
         payload: BinaryRecord.Col[bytes] = mariadb.Blob(nullable=False)
 
-    payloads = [b"", b"\x00\xff\x00\xff", b"\x00\xff" * 32_767 + b"\x00"]
+    cap_sized = b"\x00\xff" * 32_767 + b"\x00"
+    assert_eq(len(cap_sized), 65_535)
+    payloads = [b"", b"\x00\xff\x00\xff", cap_sized]
     database = await initialized_database(server.config(), models=[BinaryRecord])
     try:
         async with database.transaction() as tx:
