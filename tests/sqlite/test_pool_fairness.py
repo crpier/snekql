@@ -93,3 +93,44 @@ async def parked_waiters_are_served_in_arrival_order() -> None:
         await pool.release(held)
 
     assert_eq(order, ["first", "second", "third"])
+
+
+@test(mark="medium")
+async def cancelling_a_parked_waiter_frees_its_fifo_slot() -> None:
+    """A waiter cancelled while parked must not block later FIFO waiters.
+
+    If the cancelled acquirer left its ticket at the front of the queue, every
+    later waiter would be stuck behind a dead ticket and never get served.
+    """
+
+    pool = await load_fixture(single_connection_pool())
+    served: list[str] = []
+
+    held = await pool.acquire(_TIMEOUT)
+
+    async def cancellable_waiter(scope_holder: list[anyio.CancelScope]) -> None:
+        with anyio.CancelScope() as scope:
+            scope_holder.append(scope)
+            connection = await pool.acquire(_TIMEOUT)
+            served.append("cancelled-waiter")
+            await pool.release(connection)
+
+    async def waiter() -> None:
+        connection = await pool.acquire(_TIMEOUT)
+        served.append("waiter")
+        await pool.release(connection)
+
+    scope_holder: list[anyio.CancelScope] = []
+    async with anyio.create_task_group() as task_group:
+        # First in line; it will be cancelled while parked.
+        task_group.start_soon(cancellable_waiter, scope_holder)
+        await anyio.wait_all_tasks_blocked()
+        # Second in line, queued strictly behind the soon-to-be-cancelled one.
+        task_group.start_soon(waiter)
+        await anyio.wait_all_tasks_blocked()
+
+        scope_holder[0].cancel()
+        await anyio.wait_all_tasks_blocked()
+        await pool.release(held)
+
+    assert_eq(served, ["waiter"])
