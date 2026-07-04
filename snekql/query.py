@@ -22,6 +22,14 @@ from typing import (
 )
 
 from snekql._dialect_expr import DialectSelectable
+from snekql._query_scope import (
+    ScopeResolver,
+    ensure_assignment_targets_model,
+    ensure_grouping_targets_models,
+    ensure_having_targets,
+    ensure_ordering_targets_models,
+    ensure_predicate_targets_models,
+)
 from snekql._query_state import (
     DeleteState,
     InsertState,
@@ -29,10 +37,6 @@ from snekql._query_state import (
     JoinType,
     SelectState,
     UpdateState,
-    ensure_assignment_targets_model,
-    ensure_having_targets,
-    ensure_ordering_targets_models,
-    ensure_predicate_targets_models,
     require_column_model,
     require_field,
     require_insert_model,
@@ -835,8 +839,9 @@ def _select_where(
     if state.explicit_all:
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=state.result_models())
     for predicate in predicates:
-        ensure_predicate_targets_models(predicate, state.result_models())
+        ensure_predicate_targets_models(predicate, scope)
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -847,8 +852,9 @@ def _select_order_by(
     if not orderings:
         msg = "order_by() requires at least one ordering"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=state.result_models())
     for ordering in orderings:
-        ensure_ordering_targets_models(ordering, state.result_models())
+        ensure_ordering_targets_models(ordering, scope)
     return replace(state, orderings=(*state.orderings, *orderings))
 
 
@@ -860,11 +866,10 @@ def _select_group_by(
         msg = "group_by() requires at least one column"
         raise QueryConstructionError(msg)
     grouped = tuple(require_field(column) for column in columns)
-    models = state.result_models()
-    for column in grouped:
-        if require_column_model(column) not in models:
-            msg = "group_by references a table that is not in the query"
-            raise QueryConstructionError(msg)
+    ensure_grouping_targets_models(
+        grouped,
+        ScopeResolver(own_models=state.result_models()),
+    )
     return replace(state, groupings=(*state.groupings, *grouped))
 
 
@@ -875,8 +880,9 @@ def _select_having(
     if not predicates:
         msg = "having() requires at least one predicate"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=state.result_models())
     for predicate in predicates:
-        ensure_having_targets(predicate, state)
+        ensure_having_targets(predicate, state, scope)
     return replace(state, having=(*state.having, *predicates))
 
 
@@ -980,8 +986,9 @@ def _update_set(
     if not assignments:
         msg = "set() requires at least one assignment"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=(state.model,))
     for assignment in assignments:
-        ensure_assignment_targets_model(assignment, state.model)
+        ensure_assignment_targets_model(assignment, scope)
     return replace(state, assignments=(*state.assignments, *assignments))
 
 
@@ -995,8 +1002,9 @@ def _update_where(
     if state.explicit_all:
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=(state.model,))
     for predicate in predicates:
-        ensure_predicate_targets_models(predicate, (state.model,))
+        ensure_predicate_targets_models(predicate, scope)
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
@@ -1019,8 +1027,9 @@ def _delete_where(
     if state.explicit_all:
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
+    scope = ScopeResolver(own_models=(state.model,))
     for predicate in predicates:
-        ensure_predicate_targets_models(predicate, (state.model,))
+        ensure_predicate_targets_models(predicate, scope)
     return replace(state, predicates=(*state.predicates, *predicates))
 
 
