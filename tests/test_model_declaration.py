@@ -21,6 +21,7 @@ from snektest import (
 )
 
 from snekql import mariadb
+from snekql.model import require_model_columns
 from snekql.sqlite import (
     PENDING_GENERATION,
     Blob,
@@ -657,7 +658,7 @@ def storage_classes_pair_with_their_logical_types() -> None:
 
     assert_eq(Sample.__snekql_columns__["count"].storage_type_name, "Integer")
     assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "Text")
-    assert_eq(Sample.__snekql_columns__["created_at"].sqlite_storage_class, "TEXT")
+    assert_eq(Sample.__snekql_columns__["created_at"].storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -692,9 +693,9 @@ def storage_logical_pairs_are_not_constrained_at_declaration() -> None:
         maybe_count: Wide.Col[int | None] = Text(nullable=True)
 
     columns = Wide.__snekql_columns__
-    assert_eq(columns["ratio"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["flag"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["maybe_count"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["ratio"].storage_class, "INTEGER")
+    assert_eq(columns["flag"].storage_class, "INTEGER")
+    assert_eq(columns["maybe_count"].storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -712,8 +713,8 @@ def json_marker_columns_accept_any_payload_type() -> None:
             items: Document.Col[Json[list[int]]] = Text(nullable=False)
 
     columns = Document.__snekql_columns__
-    assert_eq(columns["when"].sqlite_storage_class, "TEXT")
-    assert_eq(columns["items"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["when"].storage_class, "TEXT")
+    assert_eq(columns["items"].storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -744,3 +745,24 @@ def forward_ref_json_payload_does_not_block_declaration() -> None:
 
     assert_eq(reading.value, 1.0)
     assert_isinstance(reading.value, float)
+
+
+@test(mark="fast")
+def require_model_columns_rejects_non_model_classes() -> None:
+    """Column metadata access fails as a declaration error off table models."""
+
+    class NotAModel:
+        """Plain class without snekql column metadata."""
+
+    with assert_raises(ModelDeclarationError) as missing_error:
+        _ = require_model_columns(NotAModel)
+    assert_eq(str(missing_error.exception), "schema setup requires snekql table models")
+
+    class FakeColumns:
+        """Plain class whose ``__snekql_columns__`` is not column metadata."""
+
+        __snekql_columns__ = "not a mapping"
+
+    with assert_raises(ModelDeclarationError) as shape_error:
+        _ = require_model_columns(FakeColumns)
+    assert_eq(str(shape_error.exception), "schema setup requires snekql table models")

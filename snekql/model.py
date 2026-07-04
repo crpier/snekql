@@ -686,7 +686,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
 
 
 def require_model_columns(
-    model: type[Table[Any]],
+    model: type[object],
 ) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
     """Return frozen snekql column metadata for a table model."""
 

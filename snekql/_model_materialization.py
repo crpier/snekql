@@ -3,26 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import cast
 
 from snekql.errors import ModelDeclarationError, QueryConstructionError
-from snekql.storage import PENDING_GENERATION, Attr, StorageBackend
-
-
-def _require_model_columns(
-    model: type[object],
-) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
-    columns = getattr(model, "__snekql_columns__", None)
-    if not isinstance(columns, dict):
-        msg = "schema setup requires snekql table models"
-        raise ModelDeclarationError(msg)
-    return cast("dict[str, Attr[Any, Any, Any, Any, Any]]", columns)
+from snekql.model import require_model_columns
+from snekql.storage import PENDING_GENERATION, StorageBackend
 
 
 def _require_insert_model(row: object) -> type[object]:
     model_class = row.__class__
     try:
-        _ = _require_model_columns(model_class)
+        _ = require_model_columns(model_class)
     except ModelDeclarationError as error:
         msg = "insert requires a snekql model instance"
         raise QueryConstructionError(msg) from error
@@ -38,7 +29,7 @@ def encode_model_row(
 
     model_class = _require_insert_model(row)
     encoded_row: dict[str, object] = {}
-    for name, column in _require_model_columns(model_class).items():
+    for name, column in require_model_columns(model_class).items():
         value = getattr(row, name)
         if value is PENDING_GENERATION:
             continue
@@ -63,7 +54,7 @@ def decode_model_row(
     )
     storage["_snekql_frozen"] = False
     storage["_snekql_state"] = "Fetched"
-    for name, column in _require_model_columns(model).items():
+    for name, column in require_model_columns(model).items():
         assert name in remaining_values, (  # noqa: S101
             f"missing database value for {name!r}"
         )

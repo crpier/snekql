@@ -52,7 +52,7 @@ from snekql.expressions import (
     Predicate,
 )
 
-type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+type StorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
 
 # Foreign-key referential actions. ``SET DEFAULT`` is intentionally omitted: SQLite
@@ -197,31 +197,6 @@ class _BackendCodec:
     max_blob_bytes: int | None
 
 
-@dataclass(frozen=True, kw_only=True)
-class AttrConfig:
-    """Constructor bundle for column descriptors.
-
-    Keeping descriptor configuration in one value avoids long internal
-    constructors while preserving explicit storage metadata at each call site.
-    """
-
-    sqlite_storage_class: SQLiteStorageClass
-    storage_type_name: str
-    auto_increment: bool = False
-    default: object = ...
-    default_factory: Callable[[], object] | EllipsisType = ...
-    decimal_precision: int | None = None
-    decimal_scale: int | None = None
-    foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None
-    index: bool = False
-    nullable: bool | None = None
-    on_delete: ReferentialAction | None = None
-    on_update: ReferentialAction | None = None
-    primary_key: bool = False
-    server_default: object | None = None
-    unique: bool = False
-
-
 WriteOwnerT = TypeVar("WriteOwnerT")
 LoadedOwnerT = TypeVar("LoadedOwnerT")
 OwnerT = TypeVar("OwnerT")
@@ -255,17 +230,6 @@ PENDING_GENERATION = PendingGeneration()
 # Startup schema verification behavior: strict raises on drift, warn logs and
 # continues. TypeAliasType currently exposes a read-only generic __doc__.
 type SchemaPolicy = Literal["strict", "warn"]
-
-
-def build_attr(config: AttrConfig) -> Any:
-    """Build a public column descriptor from normalized storage metadata.
-
-    Storage classes differ mostly by SQLite class and logical type name. Keeping
-    descriptor wiring here gives the storage declaration module one place to
-    change how declaration metadata becomes query/model behavior.
-    """
-
-    return FKAttr[Any, Any, Any, Any, Any, Any](config)
 
 
 class Integer:
@@ -363,18 +327,16 @@ class Integer:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                auto_increment=auto_increment,
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="INTEGER",
-                storage_type_name="Integer",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            auto_increment=auto_increment,
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            storage_class="INTEGER",
+            storage_type_name="Integer",
         )
 
 
@@ -462,17 +424,15 @@ class Real:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="REAL",
-                storage_type_name="Real",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            storage_class="REAL",
+            storage_type_name="Real",
         )
 
 
@@ -564,17 +524,15 @@ class Text:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Text",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            storage_class="TEXT",
+            storage_type_name="Text",
         )
 
 
@@ -662,17 +620,15 @@ class Blob:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="BLOB",
-                storage_type_name="Blob",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            storage_class="BLOB",
+            storage_type_name="Blob",
         )
 
 
@@ -767,19 +723,17 @@ class ForeignKey:
         default: object = ...,
     ) -> Any:
         target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
-        return build_attr(
-            AttrConfig(
-                default=default,
-                foreign_key_target=target_column,
-                nullable=nullable,
-                on_delete=on_delete,
-                on_update=on_update,
-                primary_key=primary_key,
-                sqlite_storage_class=target_column.sqlite_storage_class,
-                storage_type_name=target_column.storage_type_name,
-                index=index,
-                unique=unique,
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            foreign_key_target=target_column,
+            nullable=nullable,
+            on_delete=on_delete,
+            on_update=on_update,
+            primary_key=primary_key,
+            storage_class=target_column.storage_class,
+            storage_type_name=target_column.storage_type_name,
+            index=index,
+            unique=unique,
         )
 
 
@@ -932,21 +886,35 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
     helper methods on the model class.
     """
 
-    def __init__(self, config: AttrConfig) -> None:
-        self.auto_increment: bool = config.auto_increment
-        self.default: object = config.default
-        self.default_factory: Callable[[], object] | EllipsisType = (
-            config.default_factory
-        )
-        self.decimal_precision: int | None = config.decimal_precision
-        self.decimal_scale: int | None = config.decimal_scale
+    def __init__(  # noqa: PLR0913
+        self,
+        *,
+        storage_class: StorageClass,
+        storage_type_name: str,
+        auto_increment: bool = False,
+        default: object = ...,
+        default_factory: Callable[[], object] | EllipsisType = ...,
+        decimal_precision: int | None = None,
+        decimal_scale: int | None = None,
+        foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None,
+        index: bool = False,
+        nullable: bool | None = None,
+        on_delete: ReferentialAction | None = None,
+        on_update: ReferentialAction | None = None,
+        primary_key: bool = False,
+        unique: bool = False,
+    ) -> None:
+        self.auto_increment: bool = auto_increment
+        self.default: object = default
+        self.default_factory: Callable[[], object] | EllipsisType = default_factory
+        self.decimal_precision: int | None = decimal_precision
+        self.decimal_scale: int | None = decimal_scale
         self.foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = (
-            config.foreign_key_target
+            foreign_key_target
         )
-        self.foreign_key: bool = config.foreign_key_target is not None
-        self.index: bool = config.index
-        self.on_delete: ReferentialAction | None = config.on_delete
-        self.on_update: ReferentialAction | None = config.on_update
+        self.index: bool = index
+        self.on_delete: ReferentialAction | None = on_delete
+        self.on_update: ReferentialAction | None = on_update
         self.is_generated: bool = False
         self.name: str | None = None
         self.owner: type[object] | None = None
@@ -957,12 +925,14 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         # mismatch where an unset column was emitted nullable yet typed
         # non-optional (#203 F9), and keeps the normalization independent of
         # whether the declaration-time annotation cross-check can resolve hints.
-        self.nullable: bool = config.nullable is True
-        self.primary_key: bool = config.primary_key
-        self.server_default: object | None = config.server_default
-        self.sqlite_storage_class: SQLiteStorageClass = config.sqlite_storage_class
-        self.storage_type_name: str = config.storage_type_name
-        self.unique: bool = config.unique
+        self.nullable: bool = nullable is True
+        self.primary_key: bool = primary_key
+        # Set post-construction during model-body processing when a
+        # CurrentTimestamp marker replaces the declared default.
+        self.server_default: object | None = None
+        self.storage_class: StorageClass = storage_class
+        self.storage_type_name: str = storage_type_name
+        self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
 
@@ -1218,9 +1188,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         ``bytearray`` and are normalized to ``bytes`` first.
         """
 
-        if self.sqlite_storage_class == "BLOB" and isinstance(
-            value, memoryview | bytearray
-        ):
+        if self.storage_class == "BLOB" and isinstance(value, memoryview | bytearray):
             value = bytes(cast("Any", value))
         try:
             return self._logical_adapter().validate_python(value)
@@ -1311,7 +1279,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         """
 
         adapter = self._logical_adapter()
-        if self.sqlite_storage_class == "BLOB":
+        if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
             if (
                 codec.max_blob_bytes is not None
@@ -1618,7 +1586,7 @@ def column_lacks_canonical_decimal(
 ) -> bool:
     """Whether a Text decimal column lacks equality-safe text encoding."""
 
-    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
         return False
     owner = column.owner
     name = column.name
@@ -1639,7 +1607,7 @@ def column_lacks_order_preserving_duration(
 ) -> bool:
     """Whether a Text duration column lacks order-safe integer storage."""
 
-    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
         return False
     owner = column.owner
     name = column.name
@@ -1663,7 +1631,7 @@ def column_lacks_order_preserving_datetime(
 
     if (
         backend != "sqlite"
-        or column.sqlite_storage_class != "TEXT"
+        or column.storage_class != "TEXT"
         or column.storage_type_name != "Text"
     ):
         return False

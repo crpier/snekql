@@ -15,8 +15,10 @@ from snekql.sqlite import (
     Integer,
     LexicalDatetimeWarning,
     Model,
+    ModelDeclarationError,
     ModelValidationError,
     Pending,
+    QueryConstructionError,
     Text,
 )
 
@@ -115,3 +117,19 @@ def sqlite_model_materialization_can_skip_validation() -> None:
     )
 
     assert_eq(fetched.amount, -5)
+
+
+@test(mark="fast")
+def model_materialization_rejects_non_model_inputs() -> None:
+    """Encoding wraps the declaration error; decoding surfaces it directly."""
+
+    class NotAModel:
+        """Plain class without snekql column metadata."""
+
+    with assert_raises(QueryConstructionError) as encode_error:
+        _ = encode_model_row(NotAModel(), backend="sqlite")
+    assert_eq(str(encode_error.exception), "insert requires a snekql model instance")
+
+    with assert_raises(ModelDeclarationError) as decode_error:
+        _ = decode_model_row(NotAModel, {}, backend="sqlite")
+    assert_eq(str(decode_error.exception), "schema setup requires snekql table models")

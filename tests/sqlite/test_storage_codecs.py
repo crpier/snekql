@@ -66,13 +66,13 @@ def storage_classes_expose_sqlite_metadata() -> None:
 
     columns = StorageExample.__snekql_columns__
 
-    assert_eq(columns["integer_value"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["real_value"].sqlite_storage_class, "REAL")
-    assert_eq(columns["text_value"].sqlite_storage_class, "TEXT")
-    assert_eq(columns["blob_value"].sqlite_storage_class, "BLOB")
-    assert_eq(columns["json_value"].sqlite_storage_class, "TEXT")
-    assert_eq(columns["boolean_value"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["datetime_value"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["integer_value"].storage_class, "INTEGER")
+    assert_eq(columns["real_value"].storage_class, "REAL")
+    assert_eq(columns["text_value"].storage_class, "TEXT")
+    assert_eq(columns["blob_value"].storage_class, "BLOB")
+    assert_eq(columns["json_value"].storage_class, "TEXT")
+    assert_eq(columns["boolean_value"].storage_class, "INTEGER")
+    assert_eq(columns["datetime_value"].storage_class, "TEXT")
 
 
 @test()

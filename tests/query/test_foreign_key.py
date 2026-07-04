@@ -89,4 +89,4 @@ def foreign_key_derives_its_storage_class_from_the_target_column() -> None:
         owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
 
     assert_eq(Order.owner_email.storage_type_name, "Text")
-    assert_eq(Order.owner_email.sqlite_storage_class, "TEXT")
+    assert_eq(Order.owner_email.storage_class, "TEXT")
