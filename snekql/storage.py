@@ -70,6 +70,11 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
+# Curated logical types. Each curated type keeps its validators, serializer,
+# ``Annotated`` alias, and lexical-safety guard together in one block, preceded
+# by the wire-form markers and marker-detection helpers they share.
+
+
 class Canonical:
     """Marker claiming a text wire form has one representation per value.
 
@@ -84,6 +89,65 @@ class OrderPreserving(Canonical):
     Attach this marker inside an `Annotated` logical type when `Text()`
     comparison order matches the value's logical order.
     """
+
+
+def _metadata_item_carries_marker(item: object, marker: type[Canonical]) -> bool:
+    """Whether one annotation metadata item carries a marker claim.
+
+    Annotated metadata often stores the marker class itself, not an instance, so
+    marker detection must honor subclass relationships for both class objects and
+    instances.
+    """
+
+    if item is marker or isinstance(item, marker):
+        return True
+    return isinstance(item, type) and issubclass(item, marker)
+
+
+def _carries_canonical_marker(annotation: object) -> bool:
+    """Whether an annotation self-certifies canonical text storage."""
+
+    metadata = getattr(annotation, "__metadata__", None)
+    if metadata and any(
+        _metadata_item_carries_marker(item, Canonical) for item in metadata
+    ):
+        return True
+    return any(_carries_canonical_marker(argument) for argument in get_args(annotation))
+
+
+def _carries_order_preserving_marker(annotation: object) -> bool:
+    """Whether an annotation self-certifies order-preserving text storage."""
+
+    metadata = getattr(annotation, "__metadata__", None)
+    if metadata and any(
+        _metadata_item_carries_marker(item, OrderPreserving) for item in metadata
+    ):
+        return True
+    return any(
+        _carries_order_preserving_marker(argument) for argument in get_args(annotation)
+    )
+
+
+def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None:
+    """Resolve a Text-storage column's logical annotation, or None if not applicable.
+
+    ``None`` conflates "not Text storage" with "unresolvable" (unbound column, or
+    resolution failing before the declaring scope is fully populated); every
+    caller maps both to a ``False`` guard verdict, so the distinction carries no
+    information here.
+    """
+
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
+        return None
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return None
+    try:
+        annotation = _resolve_model_hints(owner).get(name)
+        return _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return None
 
 
 def _normalize_canonical_decimal(value: Decimal) -> Decimal:
@@ -117,6 +181,17 @@ CanonicalDecimal = Annotated[
 ]
 
 
+def column_lacks_canonical_decimal(
+    column: Attr[Any, Any, Any, Any, Any],
+) -> bool:
+    """Whether a Text decimal column lacks equality-safe text encoding."""
+
+    logical = _text_column_logical(column)
+    if logical is None or _carries_canonical_marker(logical):
+        return False
+    return any(core_type is Decimal for core_type in _annotation_core_types(logical))
+
+
 def _normalize_utc_milliseconds(value: datetime) -> datetime:
     """Reject naive datetimes and canonicalize aware values to UTC millis."""
 
@@ -139,6 +214,23 @@ UtcDatetime = Annotated[
     PlainSerializer(_serialize_utc_milliseconds, return_type=str, when_used="json"),
     OrderPreserving,
 ]
+
+
+def column_lacks_order_preserving_datetime(
+    column: Attr[Any, Any, Any, Any, Any],
+    backend: StorageBackend,
+) -> bool:
+    """Whether a SQLite Text datetime column lacks order-safe text encoding."""
+
+    if backend != "sqlite":
+        return False
+    logical = _text_column_logical(column)
+    if logical is None or _carries_order_preserving_marker(logical):
+        return False
+    return any(
+        core_type is datetime or core_type is AwareDatetime
+        for core_type in _annotation_core_types(logical)
+    )
 
 
 def _decode_duration_milliseconds(value: object) -> object:
@@ -172,6 +264,17 @@ Duration = Annotated[
         _serialize_duration_milliseconds, return_type=int, when_used="json"
     ),
 ]
+
+
+def column_lacks_order_preserving_duration(
+    column: Attr[Any, Any, Any, Any, Any],
+) -> bool:
+    """Whether a Text duration column lacks order-safe integer storage."""
+
+    logical = _text_column_logical(column)
+    if logical is None or _carries_order_preserving_marker(logical):
+        return False
+    return any(core_type is timedelta for core_type in _annotation_core_types(logical))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -810,43 +913,6 @@ def _strip_json_marker(annotation: object) -> object:
     if _carries_json_marker(annotation):
         return cast("Any", annotation).__origin__
     return annotation
-
-
-def _metadata_item_carries_marker(item: object, marker: type[Canonical]) -> bool:
-    """Whether one annotation metadata item carries a marker claim.
-
-    Annotated metadata often stores the marker class itself, not an instance, so
-    marker detection must honor subclass relationships for both class objects and
-    instances.
-    """
-
-    if item is marker or isinstance(item, marker):
-        return True
-    return isinstance(item, type) and issubclass(item, marker)
-
-
-def _carries_canonical_marker(annotation: object) -> bool:
-    """Whether an annotation self-certifies canonical text storage."""
-
-    metadata = getattr(annotation, "__metadata__", None)
-    if metadata and any(
-        _metadata_item_carries_marker(item, Canonical) for item in metadata
-    ):
-        return True
-    return any(_carries_canonical_marker(argument) for argument in get_args(annotation))
-
-
-def _carries_order_preserving_marker(annotation: object) -> bool:
-    """Whether an annotation self-certifies order-preserving text storage."""
-
-    metadata = getattr(annotation, "__metadata__", None)
-    if metadata and any(
-        _metadata_item_carries_marker(item, OrderPreserving) for item in metadata
-    ):
-        return True
-    return any(
-        _carries_order_preserving_marker(argument) for argument in get_args(annotation)
-    )
 
 
 def _unwrap_annotated(annotation: object) -> object:
@@ -1579,77 +1645,6 @@ def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
     except ModelDeclarationError, NameError, TypeError:
         return None
     return _annotation_admits_none(logical)
-
-
-def column_lacks_canonical_decimal(
-    column: Attr[Any, Any, Any, Any, Any],
-) -> bool:
-    """Whether a Text decimal column lacks equality-safe text encoding."""
-
-    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
-        return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_canonical_marker(logical):
-        return False
-    return any(core_type is Decimal for core_type in _annotation_core_types(logical))
-
-
-def column_lacks_order_preserving_duration(
-    column: Attr[Any, Any, Any, Any, Any],
-) -> bool:
-    """Whether a Text duration column lacks order-safe integer storage."""
-
-    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
-        return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_order_preserving_marker(logical):
-        return False
-    return any(core_type is timedelta for core_type in _annotation_core_types(logical))
-
-
-def column_lacks_order_preserving_datetime(
-    column: Attr[Any, Any, Any, Any, Any],
-    backend: StorageBackend,
-) -> bool:
-    """Whether a SQLite Text datetime column lacks order-safe text encoding."""
-
-    if (
-        backend != "sqlite"
-        or column.storage_class != "TEXT"
-        or column.storage_type_name != "Text"
-    ):
-        return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_order_preserving_marker(logical):
-        return False
-    return any(
-        core_type is datetime or core_type is AwareDatetime
-        for core_type in _annotation_core_types(logical)
-    )
 
 
 def _decode_unreachable_sqlite_datetime(_value: object, name: str) -> datetime:
