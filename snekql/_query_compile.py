@@ -155,7 +155,6 @@ def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
@@ -164,13 +163,11 @@ def _compile_compound_predicate_sql(
     left_sql, left_params = _compile_predicate_sql(
         predicate.children[0],
         dialect,
-        qualified=qualified,
         scope=scope,
     )
     right_sql, right_params = _compile_predicate_sql(
         predicate.children[1],
         dialect,
-        qualified=qualified,
         scope=scope,
     )
     operator = "AND" if predicate.kind == "and" else "OR"
@@ -181,7 +178,6 @@ def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
@@ -190,7 +186,6 @@ def _compile_negated_predicate_sql(
     child_sql, child_params = _compile_predicate_sql(
         predicate.children[0],
         dialect,
-        qualified=qualified,
         scope=scope,
     )
     return f"NOT ({child_sql})", child_params
@@ -328,7 +323,6 @@ def _compile_column_comparison_sql(
     column_name: str,
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a comparison whose right side is a column or a scalar subquery.
@@ -354,7 +348,7 @@ def _compile_column_comparison_sql(
         clause="comparison",
         error=QueryCompilationError,
     )
-    other_ref = _render_column_ref(other, dialect, qualified=qualified)
+    other_ref = _render_column_ref(other, dialect, qualified=scope.qualified)
     return f"{column_name} {operator} {other_ref}", ()
 
 
@@ -429,17 +423,15 @@ def _compile_column_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     selectable = require_selectable(predicate.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
+    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
     if predicate.kind in _COLUMN_COMPARISON_OPERATORS:
         return _compile_column_comparison_sql(
             predicate,
             column_name,
             dialect,
-            qualified=qualified,
             scope=scope,
         )
     if predicate.kind in SUBQUERY_PREDICATE_KINDS:
@@ -456,31 +448,15 @@ def _compile_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope=scope,
-        )
+        return _compile_compound_predicate_sql(predicate, dialect, scope=scope)
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope=scope,
-        )
+        return _compile_negated_predicate_sql(predicate, dialect, scope=scope)
     if predicate.kind in EXISTENCE_PREDICATE_KINDS:
         return _compile_exists_sql(predicate, dialect, scope=scope)
-    return _compile_column_predicate_sql(
-        predicate,
-        dialect,
-        qualified=qualified,
-        scope=scope,
-    )
+    return _compile_column_predicate_sql(predicate, dialect, scope=scope)
 
 
 def _compile_group_by_sql(
@@ -500,12 +476,10 @@ def _compile_ordering_sql(
     ordering: OrderBy[Any],
     scope: ScopeResolver,
     dialect: QueryDialect,
-    *,
-    qualified: bool,
 ) -> str:
     ensure_ordering_targets_models(ordering, scope)
     selectable = require_selectable(ordering.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
+    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
     return f"{column_name} {ordering.direction}"
 
 
@@ -513,7 +487,6 @@ def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
@@ -522,7 +495,6 @@ def _compile_predicates_sql(
         predicate_sql, compiled_params = _compile_predicate_sql(
             predicate,
             dialect,
-            qualified=qualified,
             scope=scope,
         )
         predicate_sql_parts.append(f"({predicate_sql})")
@@ -637,7 +609,6 @@ def _compile_update_sql(
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=False,
             scope=scope,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
@@ -666,7 +637,6 @@ def _compile_delete_sql(
         predicate_sql, params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=False,
             scope=ScopeResolver(own_models=(state.model,)),
         )
         sql = f"{sql} WHERE {predicate_sql}"
@@ -682,7 +652,6 @@ def _compile_select_list(
     state: SelectState,
     dialect: QueryDialect,
     *,
-    qualified: bool,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Render the projected columns, collecting any scalar-subquery parameters.
@@ -705,7 +674,12 @@ def _compile_select_list(
             params = (*params, *scalar_params)
             continue
         parts.append(
-            _render_selectable(field, dialect, qualified=qualified, projection=True),
+            _render_selectable(
+                field,
+                dialect,
+                qualified=scope.qualified,
+                projection=True,
+            ),
         )
     return ", ".join(parts), params
 
@@ -728,7 +702,6 @@ def _compile_select_state(
         if outer is not None
         else ScopeResolver(own_models=own_models)
     )
-    qualified = scope.qualified
     for column in state.fields:
         if isinstance(column, Scalar):
             continue
@@ -740,12 +713,7 @@ def _compile_select_state(
         )
     ensure_grouping_covers_projection(state)
     table_name = require_model_table_name(state.model)
-    quoted_columns, params = _compile_select_list(
-        state,
-        dialect,
-        qualified=qualified,
-        scope=scope,
-    )
+    quoted_columns, params = _compile_select_list(state, dialect, scope=scope)
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
     quoted_table = dialect.quote_identifier(table_name)
     sql_parts = [
@@ -762,25 +730,25 @@ def _compile_select_state(
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=qualified,
             scope=scope,
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.groupings:
-        sql_parts.append(_compile_group_by_sql(state, dialect, qualified=qualified))
+        sql_parts.append(
+            _compile_group_by_sql(state, dialect, qualified=scope.qualified)
+        )
     if state.having:
         having_sql, having_params = _compile_predicates_sql(
             state.having,
             dialect,
-            qualified=qualified,
             scope=scope,
         )
         sql_parts.append(f"HAVING {having_sql}")
         params = (*params, *having_params)
     if state.orderings:
         order_by = ", ".join(
-            _compile_ordering_sql(ordering, scope, dialect, qualified=qualified)
+            _compile_ordering_sql(ordering, scope, dialect)
             for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
