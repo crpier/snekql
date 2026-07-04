@@ -128,6 +128,28 @@ def _carries_order_preserving_marker(annotation: object) -> bool:
     )
 
 
+def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None:
+    """Resolve a Text-storage column's logical annotation, or None if not applicable.
+
+    ``None`` conflates "not Text storage" with "unresolvable" (unbound column, or
+    resolution failing before the declaring scope is fully populated); every
+    caller maps both to a ``False`` guard verdict, so the distinction carries no
+    information here.
+    """
+
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
+        return None
+    owner = column.owner
+    name = column.name
+    if owner is None or name is None:
+        return None
+    try:
+        annotation = _resolve_model_hints(owner).get(name)
+        return _strip_json_marker(_extract_logical_type(annotation, name))
+    except ModelDeclarationError, NameError, TypeError:
+        return None
+
+
 def _normalize_canonical_decimal(value: Decimal) -> Decimal:
     """Canonicalize decimals to minimal finite plain values.
 
@@ -164,18 +186,8 @@ def column_lacks_canonical_decimal(
 ) -> bool:
     """Whether a Text decimal column lacks equality-safe text encoding."""
 
-    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
-        return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_canonical_marker(logical):
+    logical = _text_column_logical(column)
+    if logical is None or _carries_canonical_marker(logical):
         return False
     return any(core_type is Decimal for core_type in _annotation_core_types(logical))
 
@@ -210,22 +222,10 @@ def column_lacks_order_preserving_datetime(
 ) -> bool:
     """Whether a SQLite Text datetime column lacks order-safe text encoding."""
 
-    if (
-        backend != "sqlite"
-        or column.storage_class != "TEXT"
-        or column.storage_type_name != "Text"
-    ):
+    if backend != "sqlite":
         return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_order_preserving_marker(logical):
+    logical = _text_column_logical(column)
+    if logical is None or _carries_order_preserving_marker(logical):
         return False
     return any(
         core_type is datetime or core_type is AwareDatetime
@@ -271,18 +271,8 @@ def column_lacks_order_preserving_duration(
 ) -> bool:
     """Whether a Text duration column lacks order-safe integer storage."""
 
-    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
-        return False
-    owner = column.owner
-    name = column.name
-    if owner is None or name is None:
-        return False
-    try:
-        annotation = _resolve_model_hints(owner).get(name)
-        logical = _strip_json_marker(_extract_logical_type(annotation, name))
-    except ModelDeclarationError, NameError, TypeError:
-        return False
-    if _carries_order_preserving_marker(logical):
+    logical = _text_column_logical(column)
+    if logical is None or _carries_order_preserving_marker(logical):
         return False
     return any(core_type is timedelta for core_type in _annotation_core_types(logical))
 
