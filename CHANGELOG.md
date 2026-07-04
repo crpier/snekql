@@ -4,6 +4,14 @@
 
 ### Breaking changes
 
+- The column metadata attribute `Attr.sqlite_storage_class` is **renamed to
+  `storage_class`** (the ADR-0003 sanctioned backend-neutral name); values are
+  unchanged (`"INTEGER" | "REAL" | "TEXT" | "BLOB"`). Code declaring columns
+  through the documented constructors is unaffected; only code reading the
+  attribute off a column descriptor must switch to the new name. The internal
+  `AttrConfig`/`build_attr` construction helpers are gone: `Attr.__init__` now
+  takes the column metadata as keyword arguments directly. (#228)
+
 - `Predicate` is now an **abstract base class**; every predicate builder
   (`.eq()`, `.in_()`, `&`/`|`/`~`, `exists()`, ...) returns a dedicated frozen
   node that compiles itself through the open-AST seam, replacing the former

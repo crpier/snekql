@@ -52,7 +52,7 @@ from snekql.expressions import (
     Predicate,
 )
 
-type SQLiteStorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
+type StorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
 type StorageBackend = Literal["mariadb", "sqlite"]
 
 # Foreign-key referential actions. ``SET DEFAULT`` is intentionally omitted: SQLite
@@ -335,7 +335,7 @@ class Integer:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="INTEGER",
+            storage_class="INTEGER",
             storage_type_name="Integer",
         )
 
@@ -431,7 +431,7 @@ class Real:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="REAL",
+            storage_class="REAL",
             storage_type_name="Real",
         )
 
@@ -531,7 +531,7 @@ class Text:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="Text",
         )
 
@@ -627,7 +627,7 @@ class Blob:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="BLOB",
+            storage_class="BLOB",
             storage_type_name="Blob",
         )
 
@@ -730,7 +730,7 @@ class ForeignKey:
             on_delete=on_delete,
             on_update=on_update,
             primary_key=primary_key,
-            sqlite_storage_class=target_column.sqlite_storage_class,
+            storage_class=target_column.storage_class,
             storage_type_name=target_column.storage_type_name,
             index=index,
             unique=unique,
@@ -889,7 +889,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
     def __init__(  # noqa: PLR0913
         self,
         *,
-        sqlite_storage_class: SQLiteStorageClass,
+        storage_class: StorageClass,
         storage_type_name: str,
         auto_increment: bool = False,
         default: object = ...,
@@ -930,7 +930,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         # Set post-construction during model-body processing when a
         # CurrentTimestamp marker replaces the declared default.
         self.server_default: object | None = None
-        self.sqlite_storage_class: SQLiteStorageClass = sqlite_storage_class
+        self.storage_class: StorageClass = storage_class
         self.storage_type_name: str = storage_type_name
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
@@ -1188,9 +1188,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         ``bytearray`` and are normalized to ``bytes`` first.
         """
 
-        if self.sqlite_storage_class == "BLOB" and isinstance(
-            value, memoryview | bytearray
-        ):
+        if self.storage_class == "BLOB" and isinstance(value, memoryview | bytearray):
             value = bytes(cast("Any", value))
         try:
             return self._logical_adapter().validate_python(value)
@@ -1281,7 +1279,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         """
 
         adapter = self._logical_adapter()
-        if self.sqlite_storage_class == "BLOB":
+        if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
             if (
                 codec.max_blob_bytes is not None
@@ -1588,7 +1586,7 @@ def column_lacks_canonical_decimal(
 ) -> bool:
     """Whether a Text decimal column lacks equality-safe text encoding."""
 
-    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
         return False
     owner = column.owner
     name = column.name
@@ -1609,7 +1607,7 @@ def column_lacks_order_preserving_duration(
 ) -> bool:
     """Whether a Text duration column lacks order-safe integer storage."""
 
-    if column.sqlite_storage_class != "TEXT" or column.storage_type_name != "Text":
+    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
         return False
     owner = column.owner
     name = column.name
@@ -1633,7 +1631,7 @@ def column_lacks_order_preserving_datetime(
 
     if (
         backend != "sqlite"
-        or column.sqlite_storage_class != "TEXT"
+        or column.storage_class != "TEXT"
         or column.storage_type_name != "Text"
     ):
         return False

@@ -658,7 +658,7 @@ def storage_classes_pair_with_their_logical_types() -> None:
 
     assert_eq(Sample.__snekql_columns__["count"].storage_type_name, "Integer")
     assert_eq(Sample.__snekql_columns__["created_at"].storage_type_name, "Text")
-    assert_eq(Sample.__snekql_columns__["created_at"].sqlite_storage_class, "TEXT")
+    assert_eq(Sample.__snekql_columns__["created_at"].storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -693,9 +693,9 @@ def storage_logical_pairs_are_not_constrained_at_declaration() -> None:
         maybe_count: Wide.Col[int | None] = Text(nullable=True)
 
     columns = Wide.__snekql_columns__
-    assert_eq(columns["ratio"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["flag"].sqlite_storage_class, "INTEGER")
-    assert_eq(columns["maybe_count"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["ratio"].storage_class, "INTEGER")
+    assert_eq(columns["flag"].storage_class, "INTEGER")
+    assert_eq(columns["maybe_count"].storage_class, "TEXT")
 
 
 @test(mark="fast")
@@ -713,8 +713,8 @@ def json_marker_columns_accept_any_payload_type() -> None:
             items: Document.Col[Json[list[int]]] = Text(nullable=False)
 
     columns = Document.__snekql_columns__
-    assert_eq(columns["when"].sqlite_storage_class, "TEXT")
-    assert_eq(columns["items"].sqlite_storage_class, "TEXT")
+    assert_eq(columns["when"].storage_class, "TEXT")
+    assert_eq(columns["items"].storage_class, "TEXT")
 
 
 @test(mark="fast")

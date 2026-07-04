@@ -38,3 +38,13 @@ is what an anticipatory seam looks like before its first divergence.
   `storage_type_name` instead. Renaming that field to a backend-neutral name
   would remove the leak that makes the duplication *look* redundant, without
   merging the per-namespace classes.
+
+## Amendments
+
+- **Sanctioned cleanup landed** — #228 renames the SQLite-specific field to the
+  backend-neutral `storage_class` (alias `SQLiteStorageClass` becomes
+  `StorageClass`); values stay `"INTEGER" | "REAL" | "TEXT" | "BLOB"`. The same
+  change folds the `AttrConfig`/`build_attr` construction shuttles into
+  `Attr.__init__` directly, so the shared column contract states its field list
+  once. Per-namespace Column Type classes and their overload stacks are
+  untouched, as this decision requires.

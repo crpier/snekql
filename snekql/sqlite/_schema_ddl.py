@@ -63,7 +63,7 @@ def _requires_not_null(planned_column: PlannedColumn) -> bool:
     # PRAGMA table_info reports notnull=0). Every other single-column PK (TEXT,
     # BLOB, REAL) is reported notnull=1, so the DDL must emit NOT NULL to match.
     if column.primary_key:
-        return column.sqlite_storage_class != "INTEGER"
+        return column.storage_class != "INTEGER"
     # The column DDL and the expected shape share this predicate to stay in
     # lockstep.
     return column.nullable is False
@@ -71,7 +71,7 @@ def _requires_not_null(planned_column: PlannedColumn) -> bool:
 
 def _compile_column_definition(planned_column: PlannedColumn) -> str:
     column = planned_column.column
-    parts = [quote_identifier(planned_column.name), column.sqlite_storage_class]
+    parts = [quote_identifier(planned_column.name), column.storage_class]
     # A composite primary key is rendered once as a table-level constraint, so its
     # member columns must not also carry an inline PRIMARY KEY.
     if column.primary_key and not planned_column.composite_pk:
@@ -89,7 +89,7 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     column = planned_column.column
     return ColumnShape(
         name=planned_column.name,
-        storage_type=column.sqlite_storage_class,
+        storage_type=column.storage_class,
         nullable=not _requires_not_null(planned_column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,

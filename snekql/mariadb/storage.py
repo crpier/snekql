@@ -219,7 +219,7 @@ class Integer:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="INTEGER",
+            storage_class="INTEGER",
             storage_type_name="Integer",
         )
 
@@ -311,7 +311,7 @@ class Real:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="REAL",
+            storage_class="REAL",
             storage_type_name="Real",
         )
 
@@ -403,7 +403,7 @@ class Text:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="Text",
         )
 
@@ -495,7 +495,7 @@ class Blob:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="BLOB",
+            storage_class="BLOB",
             storage_type_name="Blob",
         )
 
@@ -603,7 +603,7 @@ class Decimal:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="Decimal",
         )
 
@@ -672,7 +672,7 @@ class Json:
             nullable=nullable,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="Json",
         )
 
@@ -756,7 +756,7 @@ class Boolean:
             nullable=nullable,
             index=index,
             unique=unique,
-            sqlite_storage_class="INTEGER",
+            storage_class="INTEGER",
             storage_type_name="Boolean",
         )
 
@@ -840,7 +840,7 @@ class DateTime:
             nullable=nullable,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="DateTime",
         )
 
@@ -942,7 +942,7 @@ class Uuid:
             primary_key=primary_key,
             index=index,
             unique=unique,
-            sqlite_storage_class="TEXT",
+            storage_class="TEXT",
             storage_type_name="Uuid",
         )
 
