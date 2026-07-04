@@ -102,3 +102,18 @@ materializes it while importing no Backend Namespace.
 - **Other clauses**: dialect expressions in `ORDER BY` / `GROUP BY` and as
   aggregate arguments are expected to ride the same render/decode seams but are
   not yet prototyped.
+
+## Amendments
+
+- **Built-in predicates** — #227 extends the open-AST commitment from dialect
+  leaves to the core's own predicate vocabulary. `Predicate` is an abstract
+  base and each built-in predicate (comparison, null, membership, between,
+  like, column comparison, subquery membership, existence, compound, negation)
+  is a small frozen node that compiles itself through a structural
+  `PredicateCompiler` seam (`snekql/expressions.py`), the built-in counterpart
+  to `SqlCompilable`/`CompileCtx`. The `kind`-string dispatch ladder in Query
+  Compilation and the kind-set constants are gone: construction and
+  compilation of a predicate co-locate in one node, and the abstract compile
+  method gives the exhaustiveness the type checker can see. Same seam concept,
+  no new one — the deep (dialect leaf) and shallow (built-in) shapes of the
+  expression AST now compile the same way.

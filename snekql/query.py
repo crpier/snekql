@@ -55,6 +55,7 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    ExistencePredicate,
     JoinOn,
     OrderBy,
     Predicate,
@@ -1172,14 +1173,14 @@ def exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
     """
 
     _ = require_subquery_state(subquery)
-    return Predicate(kind="exists", subquery=subquery)
+    return ExistencePredicate(subquery=subquery, negated=False)
 
 
 def not_exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
     """Build a ``NOT EXISTS (subquery)`` predicate (see :func:`exists`)."""
 
     _ = require_subquery_state(subquery)
-    return Predicate(kind="not_exists", subquery=subquery)
+    return ExistencePredicate(subquery=subquery, negated=True)
 
 
 def scalar[T](subquery: SelectValueQuery[Any, Any, T], /) -> Scalar[Any, T | None]:
