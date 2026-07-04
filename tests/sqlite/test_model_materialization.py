@@ -15,8 +15,10 @@ from snekql.sqlite import (
     Integer,
     LexicalDatetimeWarning,
     Model,
+    ModelDeclarationError,
     ModelValidationError,
     Pending,
+    QueryConstructionError,
     Text,
 )
 
@@ -115,3 +117,17 @@ def sqlite_model_materialization_can_skip_validation() -> None:
     )
 
     assert_eq(fetched.amount, -5)
+
+
+@test(mark="fast")
+def model_materialization_rejects_non_model_inputs() -> None:
+    """Encoding wraps the declaration error; decoding surfaces it directly."""
+
+    class NotAModel:
+        """Plain class without snekql column metadata."""
+
+    with assert_raises(QueryConstructionError):
+        _ = encode_model_row(NotAModel(), backend="sqlite")
+
+    with assert_raises(ModelDeclarationError):
+        _ = decode_model_row(NotAModel, {}, backend="sqlite")

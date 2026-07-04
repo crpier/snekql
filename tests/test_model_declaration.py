@@ -21,6 +21,7 @@ from snektest import (
 )
 
 from snekql import mariadb
+from snekql.model import require_model_columns
 from snekql.sqlite import (
     PENDING_GENERATION,
     Blob,
@@ -744,3 +745,22 @@ def forward_ref_json_payload_does_not_block_declaration() -> None:
 
     assert_eq(reading.value, 1.0)
     assert_isinstance(reading.value, float)
+
+
+@test(mark="fast")
+def require_model_columns_rejects_non_model_classes() -> None:
+    """Column metadata access fails as a declaration error off table models."""
+
+    class NotAModel:
+        """Plain class without snekql column metadata."""
+
+    with assert_raises(ModelDeclarationError):
+        _ = require_model_columns(NotAModel)
+
+    class FakeColumns:
+        """Plain class whose ``__snekql_columns__`` is not column metadata."""
+
+        __snekql_columns__ = "not a mapping"
+
+    with assert_raises(ModelDeclarationError):
+        _ = require_model_columns(FakeColumns)
