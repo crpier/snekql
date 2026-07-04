@@ -9,21 +9,15 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import anyio
 from aiosqlite import Connection, Cursor
 
+from snekql._query_codec import DialectQueryCodec
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
-from snekql.query import AnySelectQuery
 from snekql.sqlite.config import Config
 from snekql.sqlite.migrations import apply_sqlite_migrations
 from snekql.sqlite.pool import (
     SQLiteConnectionPool,
     normalize_sqlite_database,
     open_sqlite_connection,
-)
-from snekql.sqlite.query import (
-    compile_sqlite_select_sql,
-    compile_sqlite_write_sql,
-    materialize_sqlite_select_row,
-    materialize_sqlite_write_rows,
 )
 from snekql.sqlite.retry import (
     DEFAULT_BUSY_RETRY_POLICY,
@@ -145,6 +139,7 @@ class SQLiteRuntime:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
         self.connection_pool: SQLiteConnectionPool = connection_pool
         self.busy_retry_policy: BusyRetryPolicy = busy_retry_policy
+        self.query_codec: DialectQueryCodec = DialectQueryCodec.for_backend("sqlite")
 
     async def acquire(
         self,
@@ -188,33 +183,6 @@ class SQLiteRuntime:
             await verify_sqlite_schema(connection, models, schema_policy)
         finally:
             await self.connection_pool.release(connection)
-
-    def compile_select_sql(
-        self,
-        query: AnySelectQuery,
-    ) -> tuple[str, tuple[object, ...]]:
-        return compile_sqlite_select_sql(query)
-
-    def compile_write_sql(self, query: object) -> tuple[str, tuple[object, ...]]:
-        return compile_sqlite_write_sql(query)
-
-    def materialize_select_row(
-        self,
-        query: AnySelectQuery,
-        row: Sequence[object],
-        *,
-        validate: bool = True,
-    ) -> object:
-        return materialize_sqlite_select_row(query, row, validate=validate)
-
-    def materialize_write_rows(
-        self,
-        query: object,
-        rows: Sequence[Sequence[object]],
-        *,
-        validate: bool = True,
-    ) -> list[object]:
-        return materialize_sqlite_write_rows(query, rows, validate=validate)
 
 
 async def initialize_runtime(config: Config) -> SQLiteRuntime:

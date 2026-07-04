@@ -26,8 +26,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_write_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 @test(mark="fast")
@@ -46,7 +45,7 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
         Order.status.eq("done"),
     )
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     expected_sql = 'DELETE FROM "select" WHERE ("where" != ?) AND ("status" = ?)'
     assert_eq(sql, expected_sql)
@@ -73,7 +72,7 @@ def delete_returning_appends_projected_columns() -> None:
         )
     )
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     expected = 'DELETE FROM "user" WHERE ("status" = ?) RETURNING "id", "email"'
     assert_eq(sql, expected)
@@ -127,9 +126,9 @@ def delete_requires_exactly_one_filter_intent() -> None:
         _ = all_query.where(User.status.eq("disabled"))
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(base_query)
+        _ = SQLITE_CODEC.compile_write_sql(base_query)
 
-    assert_eq(compile_sqlite_write_sql(all_query), ('DELETE FROM "user"', ()))
+    assert_eq(SQLITE_CODEC.compile_write_sql(all_query), ('DELETE FROM "user"', ()))
 
 
 @test(mark="medium")

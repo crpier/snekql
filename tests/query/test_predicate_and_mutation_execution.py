@@ -24,8 +24,7 @@ from snekql.sqlite import (
     select,
     update,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql, compile_sqlite_write_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -100,12 +99,12 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
         _ = filtered_query.all()
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(base_query)
+        _ = SQLITE_CODEC.compile_select_sql(base_query)
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(all_query)
+        _ = SQLITE_CODEC.compile_write_sql(all_query)
 
-    sql, params = compile_sqlite_select_sql(paged_query)
+    sql, params = SQLITE_CODEC.compile_select_sql(paged_query)
 
     expected_sql = (
         'SELECT "email" FROM "user" WHERE ("status" = ?) '
@@ -145,17 +144,17 @@ def update_compilation_requires_set_and_filter_intent() -> None:
     all_query = set_query.all()
     assert_is(all_query.all(), all_query)
     assert_eq(
-        compile_sqlite_write_sql(all_query),
+        SQLITE_CODEC.compile_write_sql(all_query),
         ('UPDATE "user" SET "status" = ?', ("disabled",)),
     )
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(base_query.all())
+        _ = SQLITE_CODEC.compile_write_sql(base_query.all())
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(set_query)
+        _ = SQLITE_CODEC.compile_write_sql(set_query)
 
-    sql, params = compile_sqlite_write_sql(filtered_query)
+    sql, params = SQLITE_CODEC.compile_write_sql(filtered_query)
 
     assert_eq(sql, 'UPDATE "user" SET "status" = ? WHERE ("email" = ?)')
     assert_eq(params, ("disabled", "old@example.com"))
@@ -191,14 +190,14 @@ def delete_compilation_requires_filter_intent() -> None:
         _ = filtered_query.all()
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(base_query)
+        _ = SQLITE_CODEC.compile_write_sql(base_query)
 
-    sql, params = compile_sqlite_write_sql(filtered_query)
+    sql, params = SQLITE_CODEC.compile_write_sql(filtered_query)
 
     expected_sql = 'DELETE FROM "user" WHERE ("status" = ?) AND ("email" LIKE ?)'
     assert_eq(sql, expected_sql)
     assert_eq(params, ("disabled", "%@example.com"))
-    assert_eq(compile_sqlite_write_sql(all_query), ('DELETE FROM "user"', ()))
+    assert_eq(SQLITE_CODEC.compile_write_sql(all_query), ('DELETE FROM "user"', ()))
 
 
 @test(mark="medium")

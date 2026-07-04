@@ -44,8 +44,7 @@ from snekql.sqlite import (
     select,
     update,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 # The canonical breakout shapes: closing a string/identifier quote and
 # appending a second statement, tautologies, comment terminators, UNION
@@ -141,7 +140,7 @@ async def eq_predicate_treats_payload_as_a_value_not_sql() -> None:
                 for payload in _INJECTION_VALUES:
                     # The compiled SQL must carry the payload only as a bound
                     # parameter -- never spliced into the statement text.
-                    sql, params = compile_sqlite_select_sql(
+                    sql, params = SQLITE_CODEC.compile_select_sql(
                         select(Account).where(Account.email.eq(payload))
                     )
                     assert_eq(sql.count("?"), 1)
@@ -177,21 +176,21 @@ async def like_in_and_between_bind_payloads_as_parameters() -> None:
     between_low = "'; DELETE FROM account; --"
     between_high = "zzz'; DROP TABLE account; --"
 
-    like_sql, like_params = compile_sqlite_select_sql(
+    like_sql, like_params = SQLITE_CODEC.compile_select_sql(
         select(Account).where(Account.email.like(like_payload))
     )
     assert_eq(like_sql.count("?"), 1)
     assert_eq(like_params, (like_payload,))
     assert_true("UNION" not in like_sql.upper())
 
-    in_sql, in_params = compile_sqlite_select_sql(
+    in_sql, in_params = SQLITE_CODEC.compile_select_sql(
         select(Account).where(Account.email.in_(*in_payloads))
     )
     assert_eq(in_sql.count("?"), len(in_payloads))
     assert_eq(in_params, in_payloads)
     assert_true("DROP" not in in_sql.upper())
 
-    between_sql, between_params = compile_sqlite_select_sql(
+    between_sql, between_params = SQLITE_CODEC.compile_select_sql(
         select(Account).where(Account.email.between(between_low, between_high))
     )
     assert_eq(between_sql.count("?"), 2)
@@ -246,6 +245,8 @@ async def limit_and_offset_reject_non_integer_operands() -> None:
             _ = select(Account).all().offset(bad)  # pyright: ignore[reportArgumentType]
 
     # A legitimate integer limit binds as a placeholder, not inlined text.
-    sql, params = compile_sqlite_select_sql(select(Account).all().limit(5).offset(10))
+    sql, params = SQLITE_CODEC.compile_select_sql(
+        select(Account).all().limit(5).offset(10)
+    )
     assert_eq(sql.count("?"), 2)
     assert_eq(params, (5, 10))

@@ -22,8 +22,7 @@ from snekql.sqlite import (
     select,
     update,
 )
-from snekql.sqlite.query import compile_sqlite_write_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 @test(mark="fast")
@@ -46,7 +45,7 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
         .where(Order.where.ne("old"))
     )
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     expected_sql = 'UPDATE "select" SET "where" = ?, "status" = ? WHERE ("where" != ?)'
     assert_eq(sql, expected_sql)
@@ -71,7 +70,7 @@ def update_returning_appends_model_columns_in_declaration_order() -> None:
         .returning()
     )
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     expected = 'UPDATE "user" SET "status" = ? WHERE ("email" = ?)'
     expected += ' RETURNING "id", "email", "status"'
@@ -95,7 +94,7 @@ def update_set_current_timestamp_renders_server_expression() -> None:
         .where(Doc.title.ne("old"))
     )
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     expected_sql = (
         'UPDATE "doc" SET '
@@ -146,7 +145,7 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
 
     query = update(User).set(User.account_id.to(2), User.revision.to(3)).all()
 
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
 
     assert_eq(sql, 'UPDATE "user" SET "account_id" = ?, "revision" = ?')
     assert_eq(params, (2, 3))

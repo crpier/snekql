@@ -92,9 +92,9 @@ from snekql._common import (
     select,
 )
 
-# Importing the query module registers the MariaDB query Dialect so a built
+# Importing the dialect module registers the MariaDB query Dialect so a built
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
-from snekql.mariadb import query as query
+from snekql.mariadb import _dialect_sql as _dialect_sql
 from snekql.mariadb.config import Config
 from snekql.mariadb.model import Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold

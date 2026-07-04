@@ -12,7 +12,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
-from snekql.runtime import RuntimeConnection, TransactionMode
+from snekql.runtime import QueryCodec, RuntimeConnection, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
     Database,
@@ -114,47 +114,8 @@ class _ReleaseBlockingConnection:
         return await self.execute(sql, params)
 
 
-class _FakeRuntime:
-    """Runtime fake with just enough behavior for Transaction lifecycle tests."""
-
-    backend_family: BackendFamily = "sqlite"
-
-    def __init__(self, connection: RuntimeConnection) -> None:
-        self.acquire_timeout: NonNegativeFloat = 1.0
-        self.connection: RuntimeConnection = connection
-        self.release_allowed: anyio.Event = anyio.Event()
-        self.release_started: anyio.Event = anyio.Event()
-        self.released: bool = False
-
-    async def acquire(
-        self,
-        acquisition_timeout: NonNegativeFloat,
-    ) -> RuntimeConnection:
-        _ = acquisition_timeout
-        return self.connection
-
-    async def release(self, connection: object) -> None:
-        _ = connection
-        self.release_started.set()
-        await self.release_allowed.wait()
-        self.released = True
-
-    async def close(self, close_timeout: NonNegativeFloat) -> None:
-        _ = close_timeout
-
-    def check_accepting_work(self) -> None:
-        return None
-
-    async def apply_migrations(self, migrations: dict[str, str]) -> None:
-        _ = migrations
-
-    async def verify_schema(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-    ) -> None:
-        _ = models
-        _ = schema_policy
+class _CannedQueryCodec:
+    """Query codec fake returning canned SQL and empty materializations."""
 
     def compile_select_sql(
         self,
@@ -190,6 +151,50 @@ class _FakeRuntime:
         _ = rows
         _ = validate
         return []
+
+
+class _FakeRuntime:
+    """Runtime fake with just enough behavior for Transaction lifecycle tests."""
+
+    backend_family: BackendFamily = "sqlite"
+
+    def __init__(self, connection: RuntimeConnection) -> None:
+        self.acquire_timeout: NonNegativeFloat = 1.0
+        self.connection: RuntimeConnection = connection
+        self.query_codec: QueryCodec = _CannedQueryCodec()
+        self.release_allowed: anyio.Event = anyio.Event()
+        self.release_started: anyio.Event = anyio.Event()
+        self.released: bool = False
+
+    async def acquire(
+        self,
+        acquisition_timeout: NonNegativeFloat,
+    ) -> RuntimeConnection:
+        _ = acquisition_timeout
+        return self.connection
+
+    async def release(self, connection: object) -> None:
+        _ = connection
+        self.release_started.set()
+        await self.release_allowed.wait()
+        self.released = True
+
+    async def close(self, close_timeout: NonNegativeFloat) -> None:
+        _ = close_timeout
+
+    def check_accepting_work(self) -> None:
+        return None
+
+    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+        _ = migrations
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None:
+        _ = models
+        _ = schema_policy
 
 
 class _NeverClosingPool:

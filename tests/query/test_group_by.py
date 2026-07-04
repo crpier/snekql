@@ -12,7 +12,6 @@ from __future__ import annotations
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
-from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -22,8 +21,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -53,7 +51,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
 def group_by_renders_between_where_and_order_by() -> None:
     """GROUP BY sits between WHERE and ORDER BY in the compiled clause order."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .where(User.id.gt(0))
         .group_by(User.country)
@@ -74,7 +72,7 @@ def group_by_renders_between_where_and_order_by() -> None:
 def mixed_projection_compiles_to_group_key_and_aggregate() -> None:
     """A bare column and an aggregate project together under GROUP BY."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count()).group_by(User.country).all(),
     )
 
@@ -86,7 +84,7 @@ def mixed_projection_compiles_to_group_key_and_aggregate() -> None:
 def group_by_qualifies_columns_under_a_join() -> None:
     """Joined grouped projections qualify both the key and the aggregate."""
 
-    sql, _ = compile_sqlite_select_sql(
+    sql, _ = SQLITE_CODEC.compile_select_sql(
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
         .group_by(User.country)
@@ -107,7 +105,7 @@ def group_by_qualifies_columns_under_a_join() -> None:
 def aggregate_renders_in_order_by_position() -> None:
     """An aggregate can drive ORDER BY in a grouped query."""
 
-    sql, _ = compile_sqlite_select_sql(
+    sql, _ = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
         .order_by(User.id.count().desc())
@@ -128,7 +126,7 @@ def group_by_is_backend_portable() -> None:
     """GROUP BY is identical SQL in MariaDB save for identifier quoting."""
 
     assert_eq(
-        compile_mariadb_select_sql(
+        MARIADB_CODEC.compile_select_sql(
             select(User.country, User.id.count()).group_by(User.country).all(),
         )[0],
         "SELECT `country`, COUNT(`id`) FROM `user` GROUP BY `country`",
@@ -145,7 +143,7 @@ def ungrouped_bare_column_with_aggregate_is_a_compilation_error() -> None:
     """
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(
+        _ = SQLITE_CODEC.compile_select_sql(
             select(User.country, User.id.count()).all(),
         )
 

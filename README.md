@@ -608,8 +608,8 @@ wrong backend.
 
 The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 `snekql.testing.mariadb`, each curated in its own `__all__`. Underscored modules
-(`snekql._*`) and backend submodules (`snekql.sqlite.query`,
-`snekql.sqlite.config`, …) are implementation detail and not supported import
+(`snekql._*`) and backend submodules (`snekql.sqlite.config`,
+`snekql.sqlite.verbs`, …) are implementation detail and not supported import
 paths — their public symbols are re-exported through the namespace top level.
 Query classes (`SelectModelQuery`, `InsertQuery`, …) are public as return and
 `isinstance` types but are built only through the `select`/`insert`/`update`/

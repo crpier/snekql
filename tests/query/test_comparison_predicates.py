@@ -25,8 +25,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
@@ -48,7 +47,7 @@ def comparison_operators_render_expected_sql_and_params() -> None:
     }
 
     for predicate, operator in cases.items():
-        sql, params = compile_sqlite_select_sql(select(Reading).where(predicate))
+        sql, params = SQLITE_CODEC.compile_select_sql(select(Reading).where(predicate))
         expected = f'SELECT "id", "value" FROM "reading" WHERE ("value" {operator} ?)'
         assert_eq(sql, expected)
         assert_eq(params, (5,))
@@ -58,7 +57,7 @@ def comparison_operators_render_expected_sql_and_params() -> None:
 def between_renders_two_ordered_placeholders() -> None:
     """`between` emits BETWEEN ? AND ? with the bounds in argument order."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(Reading).where(Reading.value.between(1, 10)),
     )
 
@@ -73,7 +72,7 @@ def comparison_predicates_compose_with_boolean_operators() -> None:
 
     predicate = (Reading.value.gte(1) & Reading.value.lt(10)) | ~Reading.value.gt(100)
 
-    sql, params = compile_sqlite_select_sql(select(Reading).where(predicate))
+    sql, params = SQLITE_CODEC.compile_select_sql(select(Reading).where(predicate))
 
     expected = (
         'SELECT "id", "value" FROM "reading" '
@@ -103,7 +102,7 @@ def comparison_predicates_qualify_columns_across_joins() -> None:
         user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
         total: Order.Col[int] = sqlite.Integer(nullable=False)
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User)
         .join(Order, on=Order.user_id.references(User.id))
         .where(Order.total.gt(10) & Order.total.between(1, 100)),
@@ -179,7 +178,7 @@ def comparison_compilation_rejects_none_carried_into_predicate() -> None:
     )
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(select(Reading).where(raw_gt))
+        _ = SQLITE_CODEC.compile_select_sql(select(Reading).where(raw_gt))
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(select(Reading).where(raw_between))
+        _ = SQLITE_CODEC.compile_select_sql(select(Reading).where(raw_between))

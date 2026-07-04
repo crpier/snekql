@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from snektest import assert_in, assert_raises, load_fixture, test
+from snektest import assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
 from snekql.sqlite import (
@@ -107,6 +107,40 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
 
     assert_in("expected mariadb", str(error.exception))
     assert_in("received sqlite", str(error.exception))
+
+
+@test(mark="medium")
+async def sqlite_runtime_query_codec_compiles_with_the_sqlite_dialect() -> None:
+    """A SQLite Database's runtime carries a codec bound to the SQLite Dialect."""
+
+    database = await Database.initialize(database=":memory:")
+    try:
+        sql, params = database.runtime.query_codec.compile_select_sql(
+            select(SqliteIdentityUser.email).where(SqliteIdentityUser.email.eq("a")),
+        )
+    finally:
+        await database.close()
+
+    assert_eq(sql, 'SELECT "email" FROM "sqlite_identity_user" WHERE ("email" = ?)')
+    assert_eq(params, ("a",))
+
+
+@test(mark="medium")
+async def mariadb_runtime_query_codec_compiles_with_the_mariadb_dialect() -> None:
+    """A MariaDB Database's runtime carries a codec bound to the MariaDB Dialect."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    database = await Database.initialize(_config_from_server(server))
+    try:
+        sql, params = database.runtime.query_codec.compile_select_sql(
+            select(MariadbIdentityUser.email).where(MariadbIdentityUser.email.eq("a")),
+        )
+    finally:
+        await database.close()
+
+    assert_eq(sql, "SELECT `email` FROM `mariadb_identity_user` WHERE (`email` = %s)")
+    assert_eq(params, ("a",))
 
 
 @test()

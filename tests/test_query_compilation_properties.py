@@ -39,7 +39,7 @@ from snekql.sqlite import (
     select,
     update,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql, compile_sqlite_write_sql
+from tests.helpers import SQLITE_CODEC
 
 if TYPE_CHECKING:
     from snekql.expressions import Predicate
@@ -152,7 +152,7 @@ def _select_queries(draw: st.DrawFn) -> Any:
 def every_value_is_bound_as_a_placeholder(query: Any) -> None:
     """Compiled SQL has exactly one placeholder per bound parameter."""
 
-    sql, params = compile_sqlite_select_sql(query)
+    sql, params = SQLITE_CODEC.compile_select_sql(query)
     assert_eq(sql.count(_PLACEHOLDER), len(params))
 
 
@@ -161,8 +161,8 @@ def every_value_is_bound_as_a_placeholder(query: Any) -> None:
 def compilation_is_deterministic(query: Any) -> None:
     """Compiling the same query twice yields identical SQL and parameters."""
 
-    first = compile_sqlite_select_sql(query)
-    second = compile_sqlite_select_sql(query)
+    first = SQLITE_CODEC.compile_select_sql(query)
+    second = SQLITE_CODEC.compile_select_sql(query)
     assert_eq(first, second)
     sql, _ = first
     assert_true(sql.startswith("SELECT"))
@@ -173,7 +173,7 @@ def compilation_is_deterministic(query: Any) -> None:
 def in_predicate_binds_one_placeholder_per_value(values: list[int]) -> None:
     """An IN predicate expands to exactly one placeholder per supplied value."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(Widget.id).where(Widget.qty.in_(*values)),
     )
     assert_eq(len(params), len(values))
@@ -189,7 +189,7 @@ def in_predicate_binds_one_placeholder_per_value(values: list[int]) -> None:
 def limit_and_offset_bind_their_values_in_order(limit: int, offset: int) -> None:
     """LIMIT and OFFSET bind their integers as trailing parameters, in order."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(Widget.id).all().limit(limit).offset(offset),
     )
     assert_eq(params, (limit, offset))
@@ -227,7 +227,7 @@ def update_binds_every_set_and_where_value(
 
     query = update(Widget).set(*assignments)
     query = query.where(*predicates) if predicates else query.all()
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
     assert_eq(sql.count(_PLACEHOLDER), len(params))
 
 
@@ -238,5 +238,5 @@ def delete_binds_every_where_value(predicates: list[Predicate[Any]]) -> None:
 
     query = delete(Widget)
     query = query.where(*predicates) if predicates else query.all()
-    sql, params = compile_sqlite_write_sql(query)
+    sql, params = SQLITE_CODEC.compile_write_sql(query)
     assert_eq(sql.count(_PLACEHOLDER), len(params))

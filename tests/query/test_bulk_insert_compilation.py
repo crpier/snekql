@@ -15,7 +15,7 @@ from snekql.sqlite import (
     Text,
     insert,
 )
-from snekql.sqlite.query import compile_sqlite_write_sql
+from tests.helpers import SQLITE_CODEC
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -41,7 +41,7 @@ class Account[S = Pending](Model[S, "Account[Fetched]"]):
 def single_returning_appends_all_columns_in_declaration_order() -> None:
     """A single insert with returning() lists every column after RETURNING."""
 
-    sql, params = compile_sqlite_write_sql(
+    sql, params = SQLITE_CODEC.compile_write_sql(
         insert(User(email="a@example.com")).returning()
     )
 
@@ -55,7 +55,7 @@ def single_returning_appends_all_columns_in_declaration_order() -> None:
 def single_returning_columns_lists_only_named_columns() -> None:
     """returning(col, col) lists just those columns after RETURNING, in order."""
 
-    sql, params = compile_sqlite_write_sql(
+    sql, params = SQLITE_CODEC.compile_write_sql(
         insert(User(email="a@example.com")).returning(User.id, User.email)
     )
 
@@ -69,7 +69,7 @@ def single_returning_columns_lists_only_named_columns() -> None:
 def bulk_returning_columns_lists_only_named_columns_once() -> None:
     """A bulk returning projection appends one RETURNING clause for the batch."""
 
-    sql, _ = compile_sqlite_write_sql(
+    sql, _ = SQLITE_CODEC.compile_write_sql(
         insert(
             [
                 User(email="a@example.com"),
@@ -97,7 +97,7 @@ def returning_rejects_a_column_from_another_model() -> None:
 def bulk_insert_compiles_one_multi_row_values_statement() -> None:
     """A bulk insert flattens homogeneous rows into one VALUES list."""
 
-    sql, params = compile_sqlite_write_sql(
+    sql, params = SQLITE_CODEC.compile_write_sql(
         insert(
             [
                 User(email="a@example.com", status="active"),
@@ -117,7 +117,7 @@ def bulk_insert_compiles_one_multi_row_values_statement() -> None:
 def bulk_insert_returning_appends_columns_once() -> None:
     """Bulk returning appends a single RETURNING clause for the whole statement."""
 
-    sql, params = compile_sqlite_write_sql(
+    sql, params = SQLITE_CODEC.compile_write_sql(
         insert(
             [
                 User(email="a@example.com", status="active"),
@@ -147,4 +147,4 @@ def bulk_insert_rejects_heterogeneous_column_sets() -> None:
     )
 
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_write_sql(query)
+        _ = SQLITE_CODEC.compile_write_sql(query)

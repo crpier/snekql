@@ -22,7 +22,7 @@ from snekql.sqlite import (
     select,
     update,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql, compile_sqlite_write_sql
+from tests.helpers import SQLITE_CODEC
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -42,7 +42,7 @@ def repr_renders_parameterized_select_sql() -> None:
     """``repr`` shows the parameterized SQL and the bound params on one line."""
 
     query = select(User).where(User.age.gt(18))
-    sql, params = compile_sqlite_select_sql(query)
+    sql, params = SQLITE_CODEC.compile_select_sql(query)
 
     assert_eq(repr(query), f"<SelectModelQuery: {sql} | params={params!r}>")
     assert_eq(params, (18,))
@@ -68,7 +68,7 @@ def composed_query_repr_reflects_final_state() -> None:
 
     query = select(User).where(User.age.gt(18))
     query = query.where(User.email.eq("a@b.com"))
-    sql, _params = compile_sqlite_select_sql(query)
+    sql, _params = SQLITE_CODEC.compile_select_sql(query)
 
     assert_eq('("age" > ?)' in sql, True)
     assert_eq('("email" = ?)' in sql, True)
@@ -92,14 +92,14 @@ def update_and_delete_repr_render_write_sql() -> None:
     """Update and delete queries render their write SQL through ``repr``."""
 
     update_query = update(User).set(User.age.to(21)).where(User.id.eq(1))
-    update_sql, update_params = compile_sqlite_write_sql(update_query)
+    update_sql, update_params = SQLITE_CODEC.compile_write_sql(update_query)
     assert_eq(
         repr(update_query),
         f"<UpdateQuery: {update_sql} | params={update_params!r}>",
     )
 
     delete_query = delete(User).where(User.id.eq(1))
-    delete_sql, delete_params = compile_sqlite_write_sql(delete_query)
+    delete_sql, delete_params = SQLITE_CODEC.compile_write_sql(delete_query)
     assert_eq(
         repr(delete_query),
         f"<DeleteQuery: {delete_sql} | params={delete_params!r}>",
@@ -111,6 +111,6 @@ def insert_repr_renders_values_sql() -> None:
     """An insert query renders its ``INSERT`` SQL through ``repr``."""
 
     insert_query = insert(User(email="a@b.com", age=18))
-    sql, params = compile_sqlite_write_sql(insert_query)
+    sql, params = SQLITE_CODEC.compile_write_sql(insert_query)
 
     assert_eq(repr(insert_query), f"<InsertQuery: {sql} | params={params!r}>")

@@ -20,8 +20,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -51,7 +50,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
 def distinct_model_select_emits_select_distinct() -> None:
     """A model select with distinct prefixes every column with DISTINCT."""
 
-    sql, params = compile_sqlite_select_sql(select(User).all().distinct())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User).all().distinct())
 
     assert_eq(sql, 'SELECT DISTINCT "id", "email" FROM "user"')
     assert_eq(params, ())
@@ -61,7 +60,7 @@ def distinct_model_select_emits_select_distinct() -> None:
 def distinct_single_column_select_emits_select_distinct() -> None:
     """A single-column select with distinct emits SELECT DISTINCT."""
 
-    sql, params = compile_sqlite_select_sql(select(User.email).all().distinct())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User.email).all().distinct())
 
     assert_eq(sql, 'SELECT DISTINCT "email" FROM "user"')
     assert_eq(params, ())
@@ -71,7 +70,7 @@ def distinct_single_column_select_emits_select_distinct() -> None:
 def distinct_multi_column_select_emits_select_distinct() -> None:
     """A multi-column select with distinct emits SELECT DISTINCT."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.id, User.email).all().distinct(),
     )
 
@@ -83,7 +82,7 @@ def distinct_multi_column_select_emits_select_distinct() -> None:
 def distinct_joined_select_emits_select_distinct() -> None:
     """A joined select with distinct prefixes the qualified column list."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User).join(Order, on=Order.user_id.references(User.id)).all().distinct(),
     )
 
@@ -103,7 +102,7 @@ def distinct_joined_select_emits_select_distinct() -> None:
 def distinct_composes_with_where_order_by_and_limit() -> None:
     """Distinct sits between SELECT and the column list, leaving clauses intact."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.email)
         .where(User.email.in_("a@example.com", "b@example.com"))
         .order_by(User.email.asc())
@@ -127,8 +126,8 @@ def distinct_is_order_independent() -> None:
     after = select(User.email).where(User.email.eq("a@example.com")).distinct()
 
     assert_eq(
-        compile_sqlite_select_sql(before),
-        compile_sqlite_select_sql(after),
+        SQLITE_CODEC.compile_select_sql(before),
+        SQLITE_CODEC.compile_select_sql(after),
     )
 
 
@@ -140,8 +139,8 @@ def distinct_is_idempotent() -> None:
     twice = select(User.email).all().distinct().distinct()
 
     assert_eq(
-        compile_sqlite_select_sql(once),
-        compile_sqlite_select_sql(twice),
+        SQLITE_CODEC.compile_select_sql(once),
+        SQLITE_CODEC.compile_select_sql(twice),
     )
 
 
