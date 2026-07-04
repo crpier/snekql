@@ -13,10 +13,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql import mariadb
 from snekql.errors import ModelValidationError
 from snekql.mariadb import Fetched, Pending, select
-from snekql.mariadb.query import (
-    compile_mariadb_select_sql,
-    materialize_mariadb_select_row,
-)
+from tests.helpers import MARIADB_CODEC
 
 
 class _Profiled[S = Pending](mariadb.Model[S, "_Profiled[Fetched]"]):
@@ -30,7 +27,7 @@ class _Profiled[S = Pending](mariadb.Model[S, "_Profiled[Fetched]"]):
 def json_extract_int_renders_as_a_where_operand() -> None:
     """A JSON path operator composes as a predicate operand the core renders."""
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(_Profiled.name).where(
             _Profiled.profile.json_extract_int("$.age").gt(18)
         ),
@@ -50,7 +47,7 @@ def json_extract_int_composes_with_core_predicates() -> None:
     combined = _Profiled.name.eq("ada") & _Profiled.profile.json_extract_int(
         "$.age",
     ).gt(18)
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(_Profiled.name).where(combined),
     )
 
@@ -64,7 +61,7 @@ def json_extract_int_composes_with_core_predicates() -> None:
 def json_extract_int_renders_as_a_projection() -> None:
     """A JSON path operator projects in the select list via the projection seam."""
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(_Profiled.profile.json_extract_int("$.age")).all(),
     )
 
@@ -80,7 +77,7 @@ def json_extract_int_decodes_a_projected_value() -> None:
     """Materialization decodes the projected scalar through the leaf decode seam."""
 
     query = select(_Profiled.profile.json_extract_int("$.age")).all()
-    decoded = materialize_mariadb_select_row(query, ("41",))
+    decoded = MARIADB_CODEC.materialize_select_row(query, ("41",))
 
     assert_eq(decoded, 41)
 
@@ -92,7 +89,7 @@ def json_extract_int_decodes_a_missing_path_to_none() -> None:
     """
 
     query = select(_Profiled.profile.json_extract_int("$.age")).all()
-    decoded = materialize_mariadb_select_row(query, (None,))
+    decoded = MARIADB_CODEC.materialize_select_row(query, (None,))
 
     assert_eq(decoded, None)
 
@@ -108,7 +105,7 @@ def json_extract_int_rejects_a_non_integer_value() -> None:
     # JSON null literal (distinct from SQL NULL, which decodes to ``None``).
     for raw in (b'"hello"', b"12.5", b"null"):
         with assert_raises(ModelValidationError):
-            _ = materialize_mariadb_select_row(query, (raw,))
+            _ = MARIADB_CODEC.materialize_select_row(query, (raw,))
 
 
 @test(mark="fast")
@@ -119,6 +116,6 @@ def json_extract_int_decodes_in_a_heterogeneous_projection() -> None:
         _Profiled.name,
         _Profiled.profile.json_extract_int("$.age"),
     ).all()
-    decoded = materialize_mariadb_select_row(query, ("ada", b"41"))
+    decoded = MARIADB_CODEC.materialize_select_row(query, ("ada", b"41"))
 
     assert_eq(decoded, ("ada", 41))

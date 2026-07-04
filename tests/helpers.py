@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from snektest import fixture
 
+from snekql._query_codec import DialectQueryCodec
 from snekql.mariadb.schema import scaffold_mariadb_statements
 from snekql.runtime import Database
 from snekql.sqlite._schema_ddl import scaffold_sqlite_statements
@@ -22,6 +23,11 @@ from snekql.testing.mariadb import (
 if TYPE_CHECKING:
     from snekql._runtime_selection import RuntimeConfig
     from snekql.model import Table
+
+# The backend imports above pull in both Backend Namespaces, so each family's
+# query Dialect is registered before these shared test codecs resolve it.
+SQLITE_CODEC = DialectQueryCodec.for_backend("sqlite")
+MARIADB_CODEC = DialectQueryCodec.for_backend("mariadb")
 
 
 def scaffold_migrations(

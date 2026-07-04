@@ -18,8 +18,7 @@ from snekql.sqlite import (
     Text,
     insert,
 )
-from snekql.sqlite.query import compile_sqlite_write_sql
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
@@ -42,7 +41,7 @@ def insert_compilation_omits_pending_generation_and_quotes_identifiers() -> None
         id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         where: Order.Col[str] = Text(nullable=False)
 
-    sql, params = compile_sqlite_write_sql(insert(Order(where="x")))
+    sql, params = SQLITE_CODEC.compile_write_sql(insert(Order(where="x")))
 
     assert_eq(sql, 'INSERT INTO "select" ("where") VALUES (?)')
     assert_eq(params, ("x",))
@@ -57,7 +56,7 @@ def insert_compilation_uses_default_values_when_all_fields_are_pending() -> None
 
         id: AuditLog.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    sql, params = compile_sqlite_write_sql(insert(AuditLog()))
+    sql, params = SQLITE_CODEC.compile_write_sql(insert(AuditLog()))
 
     assert_eq(sql, 'INSERT INTO "audit_log" DEFAULT VALUES')
     assert_eq(params, ())

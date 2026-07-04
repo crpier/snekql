@@ -6,7 +6,7 @@ from snektest import assert_eq, test
 
 from snekql import mariadb
 from snekql.mariadb import CurrentTimestamp, Fetched, Pending, insert, select, update
-from snekql.mariadb.query import compile_mariadb_select_sql, compile_mariadb_write_sql
+from tests.helpers import MARIADB_CODEC
 
 
 @test(mark="fast")
@@ -19,7 +19,7 @@ def mariadb_select_compilation_quotes_identifiers_with_backticks() -> None:
         __tablename__ = "select"
         where: KeywordModel.Col[str] = mariadb.Text(nullable=False)
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(KeywordModel.where).all(),
     )
 
@@ -36,7 +36,7 @@ def mariadb_select_compilation_uses_percent_s_placeholders() -> None:
 
         status: User.Col[str] = mariadb.Text(nullable=False)
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.status).where(User.status.eq("active")),
     )
 
@@ -53,7 +53,7 @@ def mariadb_select_compilation_renders_in_predicates() -> None:
 
         status: User.Col[str] = mariadb.Text(nullable=False)
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.status).where(User.status.in_("active", "paused")),
     )
 
@@ -70,7 +70,7 @@ def mariadb_select_compilation_renders_result_windowing() -> None:
 
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    select_sql, select_params = compile_mariadb_select_sql(
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.email).all().order_by(User.email.desc()).limit(2).offset(1),
     )
 
@@ -91,7 +91,7 @@ def mariadb_update_compilation_renders_predicated_assignments() -> None:
         enabled: User.Col[bool] = mariadb.Boolean(nullable=False)
         status: User.Col[str] = mariadb.Text(nullable=False)
 
-    update_sql, update_params = compile_mariadb_write_sql(
+    update_sql, update_params = MARIADB_CODEC.compile_write_sql(
         update(User).set(User.enabled.to(False)).where(User.status.ne("old")),
     )
 
@@ -109,7 +109,7 @@ def mariadb_update_compilation_renders_current_timestamp_expression() -> None:
         title: Doc.Col[str] = mariadb.Text(nullable=False)
         edited_at: Doc.Col[str] = mariadb.Text(nullable=False)
 
-    update_sql, update_params = compile_mariadb_write_sql(
+    update_sql, update_params = MARIADB_CODEC.compile_write_sql(
         update(Doc)
         .set(Doc.edited_at.to(CurrentTimestamp), Doc.title.to("new"))
         .where(Doc.title.ne("old")),
@@ -132,7 +132,7 @@ def mariadb_insert_compilation_encodes_boolean_values_with_mariadb_codecs() -> N
 
         enabled: FeatureFlag.Col[bool] = mariadb.Boolean(nullable=False)
 
-    insert_sql, insert_params = compile_mariadb_write_sql(
+    insert_sql, insert_params = MARIADB_CODEC.compile_write_sql(
         insert(FeatureFlag(enabled=True)),
     )
 

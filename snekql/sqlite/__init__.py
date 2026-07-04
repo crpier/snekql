@@ -92,9 +92,9 @@ from snekql._common import (
 )
 from snekql.model import Model
 
-# Importing the query module registers the SQLite query Dialect so a built
+# Importing the dialect module registers the SQLite query Dialect so a built
 # SQLite query can render its own SQL for inspection (see _query_dialect).
-from snekql.sqlite import query as query
+from snekql.sqlite import _dialect_sql as _dialect_sql
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
 from snekql.sqlite.verbs import delete, insert, update

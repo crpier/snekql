@@ -10,7 +10,7 @@ from snektest.assertions import assert_true
 
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
-from snekql.runtime import RuntimeConnection, Transaction, TransactionMode
+from snekql.runtime import QueryCodec, RuntimeConnection, Transaction, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
@@ -197,38 +197,8 @@ class _CleanupConnection:
         return self.cursor
 
 
-class _CleanupRuntime:
-    """Runtime fake that streams preset rows and materializes the first column."""
-
-    backend_family: BackendFamily = "sqlite"
-
-    def __init__(self, connection: RuntimeConnection) -> None:
-        self.acquire_timeout: NonNegativeFloat = 1.0
-        self.connection: RuntimeConnection = connection
-
-    async def acquire(self, acquisition_timeout: NonNegativeFloat) -> RuntimeConnection:
-        _ = acquisition_timeout
-        return self.connection
-
-    async def release(self, connection: object) -> None:
-        _ = connection
-
-    async def close(self, close_timeout: NonNegativeFloat) -> None:
-        _ = close_timeout
-
-    def check_accepting_work(self) -> None:
-        return None
-
-    async def apply_migrations(self, migrations: dict[str, str]) -> None:
-        _ = migrations
-
-    async def verify_schema(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-    ) -> None:
-        _ = models
-        _ = schema_policy
+class _FirstColumnQueryCodec:
+    """Query codec fake that compiles to canned SQL and keeps the first column."""
 
     def compile_select_sql(
         self, query: AnySelectQuery
@@ -261,6 +231,41 @@ class _CleanupRuntime:
         _ = query
         _ = validate
         return list(rows)
+
+
+class _CleanupRuntime:
+    """Runtime fake that streams preset rows and materializes the first column."""
+
+    backend_family: BackendFamily = "sqlite"
+
+    def __init__(self, connection: RuntimeConnection) -> None:
+        self.acquire_timeout: NonNegativeFloat = 1.0
+        self.connection: RuntimeConnection = connection
+        self.query_codec: QueryCodec = _FirstColumnQueryCodec()
+
+    async def acquire(self, acquisition_timeout: NonNegativeFloat) -> RuntimeConnection:
+        _ = acquisition_timeout
+        return self.connection
+
+    async def release(self, connection: object) -> None:
+        _ = connection
+
+    async def close(self, close_timeout: NonNegativeFloat) -> None:
+        _ = close_timeout
+
+    def check_accepting_work(self) -> None:
+        return None
+
+    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+        _ = migrations
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None:
+        _ = models
+        _ = schema_policy
 
 
 def _cleanup_rows(count: int) -> list[tuple[int]]:

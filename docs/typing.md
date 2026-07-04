@@ -423,13 +423,12 @@ change without notice.
 - Any module or name beginning with an underscore (`snekql._common`,
   `snekql._query_compile`, and the rest of the `snekql._*` modules).
 - Backend *submodules*, even though they are not underscored:
-  `snekql.sqlite.query`, `snekql.sqlite.config`, `snekql.sqlite.verbs`,
-  `snekql.sqlite.runtime`, and their MariaDB peers. Their public symbols are
-  re-exported through the namespace top level; the submodule paths are not a
-  supported import surface. (The `query` submodule is imported by each namespace
-  only to register its Dialect for SQL inspection — see
-  [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md) —
-  not to expose a `<namespace>.query` import path.)
+  `snekql.sqlite.config`, `snekql.sqlite.verbs`, `snekql.sqlite.runtime`, and
+  their MariaDB peers. Their public symbols are re-exported through the
+  namespace top level; the submodule paths are not a supported import surface.
+  (Each namespace imports its `_dialect_sql` module only to register its query
+  Dialect for SQL inspection — see
+  [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md).)
 
 **Query classes are return types, not constructors.** The query classes
 (`SelectModelQuery`, `InsertQuery`, the `*Returning*` variants, and the rest)

@@ -280,24 +280,3 @@ def materialize_write_returning_rows_for_backend(
             decode_model_row(model_class, values, backend=backend, validate=validate),
         )
     return materialized
-
-
-def materialize_insert_returning_rows_for_backend(
-    query: object,
-    rows: Sequence[Sequence[object]],
-    *,
-    backend: StorageBackend,
-    validate: bool = True,
-) -> list[object]:
-    """Materialize ``RETURNING`` rows from an insert into Fetched models."""
-
-    state = getattr(query, "state", None)
-    if not isinstance(state, InsertState):
-        msg = "materialize requires an insert query"
-        raise QueryCompilationError(msg)
-    return materialize_write_returning_rows_for_backend(
-        query,
-        rows,
-        backend=backend,
-        validate=validate,
-    )

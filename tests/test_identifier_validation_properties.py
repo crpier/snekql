@@ -24,11 +24,10 @@ from snektest import assert_eq, assert_raises, assert_true, test, test_hypothesi
 
 from snekql.mariadb import scaffold as scaffold_mariadb_ddl
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb
-from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import Index, Integer, Model, ModelDeclarationError, select
 from snekql.sqlite import scaffold as scaffold_sqlite_ddl
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite
-from snekql.sqlite.query import compile_sqlite_select_sql
+from tests.helpers import MARIADB_CODEC, SQLITE_CODEC
 
 # Characters with established meaning in SQL syntax: quote/backtick
 # delimiters, statement separators, comment markers, NUL, and whitespace
@@ -287,14 +286,14 @@ def awkward_but_valid_column_names_compile_safely_with_parameterized_values() ->
 
         predicate = getattr(model, name).eq(1)
 
-        sqlite_sql, sqlite_params = compile_sqlite_select_sql(
+        sqlite_sql, sqlite_params = SQLITE_CODEC.compile_select_sql(
             select(model).where(predicate)
         )
         assert_true(quote_sqlite(name) in sqlite_sql)
         assert_eq(sqlite_sql.count("?"), 1)
         assert_eq(sqlite_params, (1,))
 
-        mariadb_sql, mariadb_params = compile_mariadb_select_sql(
+        mariadb_sql, mariadb_params = MARIADB_CODEC.compile_select_sql(
             select(model).where(predicate)
         )
         assert_true(quote_mariadb(name) in mariadb_sql)

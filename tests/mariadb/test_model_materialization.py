@@ -10,7 +10,7 @@ from snektest import assert_eq, assert_raises, test
 from snekql import mariadb
 from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.mariadb import Fetched, Pending, select
-from snekql.mariadb.query import materialize_mariadb_select_row
+from tests.helpers import MARIADB_CODEC
 
 
 @test(mark="fast")
@@ -87,10 +87,10 @@ def mariadb_select_materialization_asserts_database_row_shape() -> None:
     query = select(User.email).all()
 
     with assert_raises(AssertionError):
-        _ = materialize_mariadb_select_row(query, ())
+        _ = MARIADB_CODEC.materialize_select_row(query, ())
 
     with assert_raises(AssertionError):
-        _ = materialize_mariadb_select_row(query, ("a@example.com", "extra"))
+        _ = MARIADB_CODEC.materialize_select_row(query, ("a@example.com", "extra"))
 
 
 @test(mark="fast")
@@ -108,10 +108,10 @@ def mariadb_min_max_decode_to_logical_type() -> None:
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
 
-    earliest = materialize_mariadb_select_row(
+    earliest = MARIADB_CODEC.materialize_select_row(
         select(Event.happened_at.min()).all(), ("2026-01-02 03:04:05.678",)
     )
-    flag = materialize_mariadb_select_row(select(Event.enabled.max()).all(), (1,))
+    flag = MARIADB_CODEC.materialize_select_row(select(Event.enabled.max()).all(), (1,))
 
     assert_eq(earliest, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
     assert_eq(flag, True)

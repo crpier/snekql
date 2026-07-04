@@ -17,7 +17,6 @@ from __future__ import annotations
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
-from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -30,8 +29,7 @@ from snekql.sqlite import (
     scalar,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -64,7 +62,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
 def column_comparison_renders_both_columns() -> None:
     """``eq_col`` compares two columns instead of a column against a value."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(Order.id)
         .join(User, on=Order.user_id.references(User.id))
         .where(Order.amount.gt_col(User.id)),
@@ -87,7 +85,7 @@ def column_comparison_against_unscoped_table_is_a_compilation_error() -> None:
 
     query = select(Order.id).where(Order.amount.eq_col(User.id))
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(query)
+        _ = SQLITE_CODEC.compile_select_sql(query)
 
 
 # --- Slice 2: IN / NOT IN subquery ------------------------------------------
@@ -97,7 +95,7 @@ def column_comparison_against_unscoped_table_is_a_compilation_error() -> None:
 def in_subquery_renders_nested_select() -> None:
     """``in_subquery`` nests a single-column select as the membership set."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.id).where(
             User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
         ),
@@ -118,7 +116,7 @@ def in_subquery_renders_nested_select() -> None:
 def not_in_subquery_renders_negated_membership() -> None:
     """``not_in_subquery`` emits ``NOT IN`` against the nested select."""
 
-    sql, _params = compile_sqlite_select_sql(
+    sql, _params = SQLITE_CODEC.compile_select_sql(
         select(User.id).where(
             User.id.not_in_subquery(select(Order.user_id).all()),
         ),
@@ -145,7 +143,7 @@ def in_subquery_requires_single_column_select() -> None:
 def correlated_exists_threads_outer_column() -> None:
     """A correlated EXISTS references the outer row via a column comparison."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.id).where(
             exists(
                 select(Order.id)
@@ -170,7 +168,7 @@ def correlated_exists_threads_outer_column() -> None:
 def not_exists_negates_the_subquery() -> None:
     """``not_exists`` emits ``NOT EXISTS`` around the nested select."""
 
-    sql, _params = compile_sqlite_select_sql(
+    sql, _params = SQLITE_CODEC.compile_select_sql(
         select(User.id).where(
             not_exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
         ),
@@ -193,7 +191,7 @@ def exists_correlation_to_unscoped_table_is_a_compilation_error() -> None:
         exists(select(Order.id).where(Order.user_id.eq_col(User.id))),
     )
     with assert_raises(QueryCompilationError):
-        _ = compile_sqlite_select_sql(query)
+        _ = SQLITE_CODEC.compile_select_sql(query)
 
 
 # --- Slice 4: scalar subqueries ---------------------------------------------
@@ -203,7 +201,7 @@ def exists_correlation_to_unscoped_table_is_a_compilation_error() -> None:
 def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
     """A scalar subquery projects a single value alongside ordinary columns."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(
             User.id,
             scalar(
@@ -226,7 +224,7 @@ def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
 def scalar_subquery_as_comparison_operand() -> None:
     """A scalar subquery can stand in as a comparison operand."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(Order.id).where(
             Order.amount.gt_col(scalar(select(Order.amount.avg()).all())),
         ),
@@ -257,7 +255,7 @@ def scalar_requires_single_column_select() -> None:
 def subqueries_are_backend_portable() -> None:
     """Nested SQL matches MariaDB save for quoting and placeholders."""
 
-    sql, params = compile_mariadb_select_sql(
+    sql, params = MARIADB_CODEC.compile_select_sql(
         select(User.id).where(
             User.id.in_subquery(select(Order.user_id).where(Order.amount.gt(100))),
         ),

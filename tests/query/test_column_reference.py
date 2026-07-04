@@ -12,7 +12,7 @@ from snektest import assert_eq, test
 
 from snekql import sqlite
 from snekql.sqlite import Fetched, Pending, Text, select
-from snekql.sqlite.query import compile_sqlite_select_sql
+from tests.helpers import SQLITE_CODEC
 
 
 @test(mark="fast")
@@ -25,7 +25,7 @@ def select_columns_render_as_bare_quoted_names() -> None:
         label: Widget.Col[str] = Text(nullable=False)
         sku: Widget.Col[str] = Text(nullable=False)
 
-    select_sql, select_params = compile_sqlite_select_sql(
+    select_sql, select_params = SQLITE_CODEC.compile_select_sql(
         select(Widget.label, Widget.sku).all(),
     )
 
@@ -43,7 +43,7 @@ def predicate_and_ordering_columns_render_as_bare_quoted_names() -> None:
         label: Widget.Col[str] = Text(nullable=False)
         sku: Widget.Col[str] = Text(nullable=False)
 
-    select_sql, select_params = compile_sqlite_select_sql(
+    select_sql, select_params = SQLITE_CODEC.compile_select_sql(
         select(Widget.label).where(Widget.sku.eq("A1")).order_by(Widget.label.asc()),
     )
 

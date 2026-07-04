@@ -12,7 +12,6 @@ from __future__ import annotations
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
-from snekql.mariadb.query import compile_mariadb_select_sql
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -21,8 +20,7 @@ from snekql.sqlite import (
     insert,
     select,
 )
-from snekql.sqlite.query import compile_sqlite_select_sql
-from tests.helpers import initialized_database
+from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -52,7 +50,7 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
 def having_renders_between_group_by_and_order_by() -> None:
     """Clause order is WHERE -> GROUP BY -> HAVING -> ORDER BY."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .where(User.id.gt(0))
         .group_by(User.country)
@@ -75,7 +73,7 @@ def having_renders_between_group_by_and_order_by() -> None:
 def having_over_an_aggregate_renders_the_function() -> None:
     """A HAVING predicate over an aggregate renders ``FUNC(col)`` as its LHS."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
         .having(User.id.count().gt(5))
@@ -91,7 +89,7 @@ def having_over_an_aggregate_renders_the_function() -> None:
 def having_over_a_grouped_column_renders_the_column() -> None:
     """A HAVING predicate may target a grouped column instead of an aggregate."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
         .having(User.country.ne("antarctica"))
@@ -107,7 +105,7 @@ def having_over_a_grouped_column_renders_the_column() -> None:
 def having_qualifies_aggregates_under_a_join() -> None:
     """A joined HAVING aggregate qualifies the wrapped column with its table."""
 
-    sql, params = compile_sqlite_select_sql(
+    sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
         .group_by(User.country)
@@ -131,7 +129,7 @@ def having_is_backend_portable() -> None:
     """HAVING is identical SQL in MariaDB save for identifier quoting."""
 
     assert_eq(
-        compile_mariadb_select_sql(
+        MARIADB_CODEC.compile_select_sql(
             select(User.country, User.id.count())
             .group_by(User.country)
             .having(User.id.count().gt(5))

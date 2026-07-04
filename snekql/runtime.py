@@ -155,30 +155,8 @@ class RuntimeConnection(Protocol):
         ...
 
 
-class RuntimeBackend(Protocol):
-    """Backend adapter seam used by Database and Transaction."""
-
-    acquire_timeout: NonNegativeFloat
-    backend_family: BackendFamily
-
-    async def acquire(
-        self,
-        acquisition_timeout: NonNegativeFloat,
-    ) -> RuntimeConnection: ...
-
-    async def release(self, connection: object) -> None: ...
-
-    async def close(self, close_timeout: NonNegativeFloat) -> None: ...
-
-    def check_accepting_work(self) -> None: ...
-
-    async def apply_migrations(self, migrations: dict[str, str]) -> None: ...
-
-    async def verify_schema(
-        self,
-        models: Sequence[type[Table[Any]]],
-        schema_policy: SchemaPolicy,
-    ) -> None: ...
+class QueryCodec(Protocol):
+    """Query compile/materialize seam a backend adapter exposes as one object."""
 
     def compile_select_sql(
         self,
@@ -202,6 +180,33 @@ class RuntimeBackend(Protocol):
         *,
         validate: bool = True,
     ) -> list[object]: ...
+
+
+class RuntimeBackend(Protocol):
+    """Backend adapter seam used by Database and Transaction."""
+
+    acquire_timeout: NonNegativeFloat
+    backend_family: BackendFamily
+    query_codec: QueryCodec
+
+    async def acquire(
+        self,
+        acquisition_timeout: NonNegativeFloat,
+    ) -> RuntimeConnection: ...
+
+    async def release(self, connection: object) -> None: ...
+
+    async def close(self, close_timeout: NonNegativeFloat) -> None: ...
+
+    def check_accepting_work(self) -> None: ...
+
+    async def apply_migrations(self, migrations: dict[str, str]) -> None: ...
+
+    async def verify_schema(
+        self,
+        models: Sequence[type[Table[Any]]],
+        schema_policy: SchemaPolicy,
+    ) -> None: ...
 
 
 class ChunkStream[RowT]:
@@ -243,8 +248,8 @@ class ChunkStream[RowT]:
         await self._lock.acquire()
         try:
             connection = transaction.require_connection()
-            self._sql, self._params = transaction.runtime.compile_select_sql(
-                self._select_query
+            self._sql, self._params = (
+                transaction.runtime.query_codec.compile_select_sql(self._select_query)
             )
             try:
                 self._cursor = await connection.execute_stream(self._sql, self._params)
@@ -314,7 +319,7 @@ class ChunkStream[RowT]:
         return [
             cast(
                 "RowT",
-                transaction.runtime.materialize_select_row(
+                transaction.runtime.query_codec.materialize_select_row(
                     self._select_query, tuple(row), validate=self._validate
                 ),
             )
@@ -474,7 +479,7 @@ class Transaction:
             connection = self.require_connection()
             select_query = self._require_select_query(query)
             self._validate_query_backend(select_query)
-            sql, params = self.runtime.compile_select_sql(select_query)
+            sql, params = self.runtime.query_codec.compile_select_sql(select_query)
             try:
                 cursor = await connection.execute(sql, params)
                 try:
@@ -502,7 +507,7 @@ class Transaction:
                 if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
                     await anyio.lowlevel.checkpoint()
                 materialized.append(
-                    self.runtime.materialize_select_row(
+                    self.runtime.query_codec.materialize_select_row(
                         select_query, tuple(row), validate=validate
                     )
                 )
@@ -591,7 +596,7 @@ class Transaction:
         connection = self.require_connection()
         select_query = self._require_select_query(query)
         self._validate_query_backend(select_query)
-        sql, params = self.runtime.compile_select_sql(select_query)
+        sql, params = self.runtime.query_codec.compile_select_sql(select_query)
         try:
             cursor = await connection.execute(sql, params)
             try:
@@ -666,7 +671,7 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one found more than one row"
             raise MultipleResultsError(msg)
-        return self.runtime.materialize_select_row(
+        return self.runtime.query_codec.materialize_select_row(
             select_query, rows[0], validate=validate
         )
 
@@ -720,7 +725,7 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one_or_none found more than one row"
             raise MultipleResultsError(msg)
-        return self.runtime.materialize_select_row(
+        return self.runtime.query_codec.materialize_select_row(
             select_query, rows[0], validate=validate
         )
 
@@ -845,7 +850,9 @@ class Transaction:
             if is_many and not self._insert_rows(write_query):
                 return [] if returning else None
             self._validate_query_backend(cast("object", write_query))
-            sql, params = self.runtime.compile_write_sql(cast("object", write_query))
+            sql, params = self.runtime.query_codec.compile_write_sql(
+                cast("object", write_query)
+            )
             returned_rows: list[tuple[object, ...]] = []
             affected_rows = 0
             try:
@@ -875,7 +882,7 @@ class Transaction:
                 return affected_rows
             if not returning:
                 return None
-            models = self.runtime.materialize_write_rows(
+            models = self.runtime.query_codec.materialize_write_rows(
                 cast("object", write_query),
                 returned_rows,
                 validate=validate,
