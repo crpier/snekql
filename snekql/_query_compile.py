@@ -14,6 +14,12 @@ from typing import Any, cast
 
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._query_dialect import QueryDialect, query_dialect_for_backend
+from snekql._query_scope import (
+    ScopeResolver,
+    ensure_assignment_targets_model,
+    ensure_grouping_covers_projection,
+    ensure_ordering_targets_models,
+)
 from snekql._query_state import (
     EXISTENCE_PREDICATE_KINDS,
     SUBQUERY_PREDICATE_KINDS,
@@ -22,9 +28,6 @@ from snekql._query_state import (
     Selectable,
     SelectState,
     UpdateState,
-    ensure_assignment_targets_model,
-    ensure_grouping_covers_projection,
-    ensure_ordering_targets_models,
     require_column_model,
     require_column_name,
     require_field,
@@ -32,7 +35,6 @@ from snekql._query_state import (
     require_selectable,
     require_single_column_subquery,
     require_subquery_state,
-    selectable_owner_model,
 )
 from snekql.errors import QueryCompilationError
 from snekql.expressions import Aggregate, OrderBy, Predicate, Scalar
@@ -137,16 +139,12 @@ def _compile_scalar_sql(
     scalar_subquery: Scalar[Any, Any],
     dialect: QueryDialect,
     *,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a scalar subquery as a parenthesized correlated select."""
 
     state = require_single_column_subquery(scalar_subquery.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
+    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
     return f"({sub_sql})", sub_params
 
 
@@ -157,8 +155,7 @@ def _compile_compound_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
         msg = "compound predicate is malformed"
@@ -166,14 +163,12 @@ def _compile_compound_predicate_sql(
     left_sql, left_params = _compile_predicate_sql(
         predicate.children[0],
         dialect,
-        qualified=qualified,
-        scope_models=scope_models,
+        scope=scope,
     )
     right_sql, right_params = _compile_predicate_sql(
         predicate.children[1],
         dialect,
-        qualified=qualified,
-        scope_models=scope_models,
+        scope=scope,
     )
     operator = "AND" if predicate.kind == "and" else "OR"
     return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
@@ -183,8 +178,7 @@ def _compile_negated_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
         msg = "negated predicate is malformed"
@@ -192,8 +186,7 @@ def _compile_negated_predicate_sql(
     child_sql, child_params = _compile_predicate_sql(
         predicate.children[0],
         dialect,
-        qualified=qualified,
-        scope_models=scope_models,
+        scope=scope,
     )
     return f"NOT ({child_sql})", child_params
 
@@ -330,8 +323,7 @@ def _compile_column_comparison_sql(
     column_name: str,
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a comparison whose right side is a column or a scalar subquery.
 
@@ -347,14 +339,16 @@ def _compile_column_comparison_sql(
         operand_sql, operand_params = _compile_scalar_sql(
             cast("Scalar[Any, Any]", operand),
             dialect,
-            scope_models=scope_models,
+            scope=scope,
         )
         return f"{column_name} {operator} {operand_sql}", operand_params
     other = require_field(operand)
-    if require_column_model(other) not in scope_models:
-        msg = "comparison references a table that is not in the query"
-        raise QueryCompilationError(msg)
-    other_ref = _render_column_ref(other, dialect, qualified=qualified)
+    scope.ensure_operand_in_scope(
+        other,
+        clause="comparison",
+        error=QueryCompilationError,
+    )
+    other_ref = _render_column_ref(other, dialect, qualified=scope.qualified)
     return f"{column_name} {operator} {other_ref}", ()
 
 
@@ -363,16 +357,12 @@ def _compile_subquery_membership_sql(
     column_name: str,
     dialect: QueryDialect,
     *,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile ``col IN (subquery)`` / ``col NOT IN (subquery)``."""
 
     state = require_single_column_subquery(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
+    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
     operator = "IN" if predicate.kind == "in_subquery" else "NOT IN"
     return f"{column_name} {operator} ({sub_sql})", sub_params
 
@@ -381,16 +371,12 @@ def _compile_exists_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile ``EXISTS (subquery)`` / ``NOT EXISTS (subquery)``."""
 
     state = require_subquery_state(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(
-        state,
-        dialect,
-        outer_models=scope_models,
-    )
+    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
     keyword = "EXISTS" if predicate.kind == "exists" else "NOT EXISTS"
     return f"{keyword} ({sub_sql})", sub_params
 
@@ -437,25 +423,23 @@ def _compile_column_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     selectable = require_selectable(predicate.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
+    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
     if predicate.kind in _COLUMN_COMPARISON_OPERATORS:
         return _compile_column_comparison_sql(
             predicate,
             column_name,
             dialect,
-            qualified=qualified,
-            scope_models=scope_models,
+            scope=scope,
         )
     if predicate.kind in SUBQUERY_PREDICATE_KINDS:
         return _compile_subquery_membership_sql(
             predicate,
             column_name,
             dialect,
-            scope_models=scope_models,
+            scope=scope,
         )
     return _compile_value_predicate_sql(predicate, selectable, column_name, dialect)
 
@@ -464,31 +448,15 @@ def _compile_predicate_sql(
     predicate: Predicate[Any],
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
+        return _compile_compound_predicate_sql(predicate, dialect, scope=scope)
     if predicate.kind == "not":
-        return _compile_negated_predicate_sql(
-            predicate,
-            dialect,
-            qualified=qualified,
-            scope_models=scope_models,
-        )
+        return _compile_negated_predicate_sql(predicate, dialect, scope=scope)
     if predicate.kind in EXISTENCE_PREDICATE_KINDS:
-        return _compile_exists_sql(predicate, dialect, scope_models=scope_models)
-    return _compile_column_predicate_sql(
-        predicate,
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
+        return _compile_exists_sql(predicate, dialect, scope=scope)
+    return _compile_column_predicate_sql(predicate, dialect, scope=scope)
 
 
 def _compile_group_by_sql(
@@ -506,14 +474,12 @@ def _compile_group_by_sql(
 
 def _compile_ordering_sql(
     ordering: OrderBy[Any],
-    models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
     dialect: QueryDialect,
-    *,
-    qualified: bool,
 ) -> str:
-    ensure_ordering_targets_models(ordering, models)
+    ensure_ordering_targets_models(ordering, scope)
     selectable = require_selectable(ordering.column)
-    column_name = _render_selectable(selectable, dialect, qualified=qualified)
+    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
     return f"{column_name} {ordering.direction}"
 
 
@@ -521,8 +487,7 @@ def _compile_predicates_sql(
     predicates: tuple[Predicate[Any], ...],
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
     predicate_params: list[object] = []
@@ -530,8 +495,7 @@ def _compile_predicates_sql(
         predicate_sql, compiled_params = _compile_predicate_sql(
             predicate,
             dialect,
-            qualified=qualified,
-            scope_models=scope_models,
+            scope=scope,
         )
         predicate_sql_parts.append(f"({predicate_sql})")
         predicate_params.extend(compiled_params)
@@ -625,10 +589,11 @@ def _compile_update_sql(
         msg = "update requires all() or where() before execution"
         raise QueryCompilationError(msg)
     table_name = require_model_table_name(state.model)
+    scope = ScopeResolver(own_models=(state.model,))
     set_sql_parts: list[str] = []
     params: tuple[object, ...] = ()
     for assignment in state.assignments:
-        ensure_assignment_targets_model(assignment, state.model)
+        ensure_assignment_targets_model(assignment, scope)
         column = require_field(assignment.column)
         column_name = _render_column_ref(column, dialect)
         if assignment.value is CurrentTimestamp:
@@ -644,8 +609,7 @@ def _compile_update_sql(
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=False,
-            scope_models=(state.model,),
+            scope=scope,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
@@ -673,8 +637,7 @@ def _compile_delete_sql(
         predicate_sql, params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=False,
-            scope_models=(state.model,),
+            scope=ScopeResolver(own_models=(state.model,)),
         )
         sql = f"{sql} WHERE {predicate_sql}"
     if state.returning:
@@ -689,8 +652,7 @@ def _compile_select_list(
     state: SelectState,
     dialect: QueryDialect,
     *,
-    qualified: bool,
-    scope_models: tuple[type[Table[Any]], ...],
+    scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
     """Render the projected columns, collecting any scalar-subquery parameters.
 
@@ -706,13 +668,18 @@ def _compile_select_list(
             scalar_sql, scalar_params = _compile_scalar_sql(
                 field,
                 dialect,
-                scope_models=scope_models,
+                scope=scope,
             )
             parts.append(scalar_sql)
             params = (*params, *scalar_params)
             continue
         parts.append(
-            _render_selectable(field, dialect, qualified=qualified, projection=True),
+            _render_selectable(
+                field,
+                dialect,
+                qualified=scope.qualified,
+                projection=True,
+            ),
         )
     return ", ".join(parts), params
 
@@ -721,31 +688,32 @@ def _compile_select_state(
     state: SelectState,
     dialect: QueryDialect,
     *,
-    outer_models: tuple[type[Table[Any]], ...] = (),
+    outer: ScopeResolver | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
         raise QueryCompilationError(msg)
     own_models = state.result_models()
-    # A subquery (compiled with an enclosing scope) qualifies every column so an
-    # inner reference never collides with an identically named outer column;
-    # correlated references resolve against the enclosing scope.
-    qualified = bool(state.joins) or bool(outer_models)
-    scope_models = (*own_models, *outer_models)
+    # A subquery layers the enclosing query's scope as outer, so correlated
+    # references resolve against it; the resolver's qualification then makes
+    # an inner reference never collide with an identically named outer column.
+    scope = (
+        outer.enter_subquery(own_models)
+        if outer is not None
+        else ScopeResolver(own_models=own_models)
+    )
     for column in state.fields:
         if isinstance(column, Scalar):
             continue
-        if selectable_owner_model(column) not in own_models:
-            msg = "select references a table that is not in the query"
-            raise QueryCompilationError(msg)
+        scope.ensure_operand_in_scope(
+            column,
+            clause="select",
+            error=QueryCompilationError,
+            own_only=True,
+        )
     ensure_grouping_covers_projection(state)
     table_name = require_model_table_name(state.model)
-    quoted_columns, params = _compile_select_list(
-        state,
-        dialect,
-        qualified=qualified,
-        scope_models=scope_models,
-    )
+    quoted_columns, params = _compile_select_list(state, dialect, scope=scope)
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
     quoted_table = dialect.quote_identifier(table_name)
     sql_parts = [
@@ -762,25 +730,25 @@ def _compile_select_state(
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,
             dialect,
-            qualified=qualified,
-            scope_models=scope_models,
+            scope=scope,
         )
         sql_parts.append(f"WHERE {predicate_sql}")
         params = (*params, *predicate_params)
     if state.groupings:
-        sql_parts.append(_compile_group_by_sql(state, dialect, qualified=qualified))
+        sql_parts.append(
+            _compile_group_by_sql(state, dialect, qualified=scope.qualified)
+        )
     if state.having:
         having_sql, having_params = _compile_predicates_sql(
             state.having,
             dialect,
-            qualified=qualified,
-            scope_models=scope_models,
+            scope=scope,
         )
         sql_parts.append(f"HAVING {having_sql}")
         params = (*params, *having_params)
     if state.orderings:
         order_by = ", ".join(
-            _compile_ordering_sql(ordering, own_models, dialect, qualified=qualified)
+            _compile_ordering_sql(ordering, scope, dialect)
             for ordering in state.orderings
         )
         sql_parts.append(f"ORDER BY {order_by}")
