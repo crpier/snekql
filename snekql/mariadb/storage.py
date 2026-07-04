@@ -12,12 +12,10 @@ from snekql.errors import ModelDeclarationError, ModelValidationError
 from snekql.expressions import Comparable
 from snekql.storage import (
     Attr,
-    AttrConfig,
     CurrentTimestamp,
     FKAttr,
     ForeignKey,
     PendingGeneration,
-    build_attr,
 )
 
 if TYPE_CHECKING:
@@ -213,18 +211,16 @@ class Integer:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                auto_increment=auto_increment,
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="INTEGER",
-                storage_type_name="Integer",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            auto_increment=auto_increment,
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="INTEGER",
+            storage_type_name="Integer",
         )
 
 
@@ -308,17 +304,15 @@ class Real:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="REAL",
-                storage_type_name="Real",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="REAL",
+            storage_type_name="Real",
         )
 
 
@@ -402,17 +396,15 @@ class Text:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Text",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Text",
         )
 
 
@@ -496,17 +488,15 @@ class Blob:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="BLOB",
-                storage_type_name="Blob",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="BLOB",
+            storage_type_name="Blob",
         )
 
 
@@ -604,19 +594,17 @@ class Decimal:
                 "0 <= scale <= min(30, precision)"
             )
             raise ModelDeclarationError(msg)
-        return build_attr(
-            AttrConfig(
-                decimal_precision=precision,
-                decimal_scale=scale,
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Decimal",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            decimal_precision=precision,
+            decimal_scale=scale,
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Decimal",
         )
 
 
@@ -679,15 +667,13 @@ class Json:
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
         return JsonAttr[Any, Any, Any, Any, Any](
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Json",
-            ),
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Json",
         )
 
 
@@ -764,16 +750,14 @@ class Boolean:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="INTEGER",
-                storage_type_name="Boolean",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="INTEGER",
+            storage_type_name="Boolean",
         )
 
 
@@ -850,16 +834,14 @@ class DateTime:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="DateTime",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="TEXT",
+            storage_type_name="DateTime",
         )
 
 
@@ -953,17 +935,15 @@ class Uuid:
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
     ) -> Any:
-        return build_attr(
-            AttrConfig(
-                default=default,
-                default_factory=default_factory,
-                nullable=nullable,
-                primary_key=primary_key,
-                index=index,
-                unique=unique,
-                sqlite_storage_class="TEXT",
-                storage_type_name="Uuid",
-            ),
+        return FKAttr[Any, Any, Any, Any, Any, Any](
+            default=default,
+            default_factory=default_factory,
+            nullable=nullable,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+            sqlite_storage_class="TEXT",
+            storage_type_name="Uuid",
         )
 
 
