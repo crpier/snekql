@@ -754,13 +754,15 @@ def require_model_columns_rejects_non_model_classes() -> None:
     class NotAModel:
         """Plain class without snekql column metadata."""
 
-    with assert_raises(ModelDeclarationError):
+    with assert_raises(ModelDeclarationError) as missing_error:
         _ = require_model_columns(NotAModel)
+    assert_eq(str(missing_error.exception), "schema setup requires snekql table models")
 
     class FakeColumns:
         """Plain class whose ``__snekql_columns__`` is not column metadata."""
 
         __snekql_columns__ = "not a mapping"
 
-    with assert_raises(ModelDeclarationError):
+    with assert_raises(ModelDeclarationError) as shape_error:
         _ = require_model_columns(FakeColumns)
+    assert_eq(str(shape_error.exception), "schema setup requires snekql table models")

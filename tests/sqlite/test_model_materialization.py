@@ -126,8 +126,10 @@ def model_materialization_rejects_non_model_inputs() -> None:
     class NotAModel:
         """Plain class without snekql column metadata."""
 
-    with assert_raises(QueryConstructionError):
+    with assert_raises(QueryConstructionError) as encode_error:
         _ = encode_model_row(NotAModel(), backend="sqlite")
+    assert_eq(str(encode_error.exception), "insert requires a snekql model instance")
 
-    with assert_raises(ModelDeclarationError):
+    with assert_raises(ModelDeclarationError) as decode_error:
         _ = decode_model_row(NotAModel, {}, backend="sqlite")
+    assert_eq(str(decode_error.exception), "schema setup requires snekql table models")
