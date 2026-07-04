@@ -47,6 +47,7 @@ from snekql.expressions import (
     Assignment,
     Comparable,
     JoinOn,
+    LikePredicate,
     OrderBy,
     Predicate,
 )
@@ -1387,13 +1388,13 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         if not self._is_str_logical():
             msg = "like() is only valid for text columns"
             raise QueryConstructionError(msg)
-        return Predicate(kind="like", column=self, value=pattern)
+        return LikePredicate(operand=self, pattern=pattern, negated=False)
 
     def not_like(self, pattern: str) -> Predicate[OwnerT]:
         if not self._is_str_logical():
             msg = "not_like() is only valid for text columns"
             raise QueryConstructionError(msg)
-        return Predicate(kind="not_like", column=self, value=pattern)
+        return LikePredicate(operand=self, pattern=pattern, negated=True)
 
     def _is_str_logical(self) -> bool:
         """Whether the column's logical type is ``str`` (gates ``like``).

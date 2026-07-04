@@ -4,6 +4,16 @@
 
 ### Breaking changes
 
+- `Predicate` is now an **abstract base class**; every predicate builder
+  (`.eq()`, `.in_()`, `&`/`|`/`~`, `exists()`, ...) returns a dedicated frozen
+  node that compiles itself through the open-AST seam, replacing the former
+  type-erased `Predicate(kind=...)` record. Constructing a bare `Predicate()`
+  now raises `TypeError` at construction instead of failing later with
+  `QueryConstructionError` when the predicate reached `where()` validation.
+  Code that builds predicates through the documented column/aggregate methods
+  and composes them with `&`/`|`/`~` is unaffected, including
+  `isinstance(..., Predicate)` checks and `Predicate[Owner]` annotations. (#227)
+
 - A **naive `datetime` is now rejected** when encoding a MariaDB native
   `DateTime` column, with a `ModelValidationError`. That column stores
   offset-less UTC text, and the previous encoder normalized with `astimezone`,

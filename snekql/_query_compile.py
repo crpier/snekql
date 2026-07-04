@@ -21,8 +21,6 @@ from snekql._query_scope import (
     ensure_ordering_targets_models,
 )
 from snekql._query_state import (
-    EXISTENCE_PREDICATE_KINDS,
-    SUBQUERY_PREDICATE_KINDS,
     DeleteState,
     InsertState,
     Selectable,
@@ -45,9 +43,6 @@ from snekql.model import (
     require_model_table_name,
 )
 from snekql.storage import PENDING_GENERATION, Attr, CurrentTimestamp
-
-_BINARY_PREDICATE_CHILD_COUNT = 2
-_UNARY_PREDICATE_CHILD_COUNT = 1
 
 
 def _render_column_ref(
@@ -148,136 +143,6 @@ def _compile_scalar_sql(
     return f"({sub_sql})", sub_params
 
 
-_COMPARISON_OPERATORS = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<="}
-
-
-def _compile_compound_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.children) != _BINARY_PREDICATE_CHILD_COUNT:
-        msg = "compound predicate is malformed"
-        raise QueryCompilationError(msg)
-    left_sql, left_params = _compile_predicate_sql(
-        predicate.children[0],
-        dialect,
-        scope=scope,
-    )
-    right_sql, right_params = _compile_predicate_sql(
-        predicate.children[1],
-        dialect,
-        scope=scope,
-    )
-    operator = "AND" if predicate.kind == "and" else "OR"
-    return f"({left_sql}) {operator} ({right_sql})", (*left_params, *right_params)
-
-
-def _compile_negated_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.children) != _UNARY_PREDICATE_CHILD_COUNT:
-        msg = "negated predicate is malformed"
-        raise QueryCompilationError(msg)
-    child_sql, child_params = _compile_predicate_sql(
-        predicate.children[0],
-        dialect,
-        scope=scope,
-    )
-    return f"NOT ({child_sql})", child_params
-
-
-def _compile_equality_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if predicate.value is None:
-        msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
-        if predicate.kind == "eq":
-            msg = "eq(None) is invalid; use is_null()"
-        raise QueryCompilationError(msg)
-    operator = "=" if predicate.kind == "eq" else "!="
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (encode(predicate.value),),
-    )
-
-
-def _compile_comparison_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if predicate.value is None:
-        msg = f"{predicate.kind}(None) is invalid; use is_not_null()"
-        raise QueryCompilationError(msg)
-    operator = _COMPARISON_OPERATORS[predicate.kind]
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (encode(predicate.value),),
-    )
-
-
-def _compile_between_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if len(predicate.values) != 2:  # noqa: PLR2004
-        msg = "between() requires exactly two bounds"
-        raise QueryCompilationError(msg)
-    if any(bound is None for bound in predicate.values):
-        msg = "between() bounds cannot be None; use is_null()/is_not_null()"
-        raise QueryCompilationError(msg)
-    params = tuple(encode(bound) for bound in predicate.values)
-    return (
-        f"{column_name} BETWEEN {dialect.placeholder} AND {dialect.placeholder}",
-        params,
-    )
-
-
-def _compile_membership_predicate_sql(
-    predicate: Predicate[Any],
-    encode: Callable[[object], object],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if not predicate.values:
-        msg = "IN predicates require at least one value"
-        raise QueryCompilationError(msg)
-    if any(value is None for value in predicate.values):
-        msg = "IN predicate values cannot be None"
-        raise QueryCompilationError(msg)
-    placeholders = ", ".join(dialect.placeholder for _ in predicate.values)
-    operator = "IN" if predicate.kind == "in" else "NOT IN"
-    params = tuple(encode(value) for value in predicate.values)
-    return f"{column_name} {operator} ({placeholders})", params
-
-
-def _compile_like_predicate_sql(
-    predicate: Predicate[Any],
-    column: Attr[Any, Any, Any, Any, Any],
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    if column.storage_type_name != "Text":
-        msg = f"{predicate.kind}() is only valid for text columns"
-        raise QueryCompilationError(msg)
-    operator = "LIKE" if predicate.kind == "like" else "NOT LIKE"
-    return (
-        f"{column_name} {operator} {dialect.placeholder}",
-        (dialect.encode_column_value(column, predicate.value),),
-    )
-
-
 def _predicate_value_encoder(
     selectable: Selectable,
     dialect: QueryDialect,
@@ -308,140 +173,81 @@ def _predicate_value_encoder(
     return lambda value: dialect.encode_column_value(column, value)
 
 
-_COLUMN_COMPARISON_OPERATORS = {
-    "eq_col": "=",
-    "ne_col": "!=",
-    "gt_col": ">",
-    "gte_col": ">=",
-    "lt_col": "<",
-    "lte_col": "<=",
-}
+@dataclass(frozen=True)
+class _PredicateCompileContext:
+    """The concrete ``PredicateCompiler`` Query Compilation hands each node.
 
-
-def _compile_column_comparison_sql(
-    predicate: Predicate[Any],
-    column_name: str,
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a comparison whose right side is a column or a scalar subquery.
-
-    A scalar-subquery operand renders as a parenthesized correlated select; a
-    column operand renders as a qualified column reference whose table must be
-    reachable in the current scope (its own tables plus any enclosing query the
-    subquery correlates to), else the reference is rejected at compile time.
+    Wraps the statement's ``(dialect, scope)`` pair behind the structural seam
+    predicate nodes compile themselves against, reusing the module's existing
+    rendering/encoding helpers so a node never learns about dialects or scope
+    resolution directly (the built-in counterpart to ADR 0004's ``CompileCtx``).
     """
 
-    operator = _COLUMN_COMPARISON_OPERATORS[predicate.kind]
-    operand = predicate.value
-    if isinstance(operand, Scalar):
-        operand_sql, operand_params = _compile_scalar_sql(
-            cast("Scalar[Any, Any]", operand),
-            dialect,
-            scope=scope,
+    dialect: QueryDialect
+    scope: ScopeResolver
+
+    @property
+    def placeholder(self) -> str:
+        return self.dialect.placeholder
+
+    def render_operand(self, operand: object) -> str:
+        """Render a predicate's left-side operand (column or aggregate)."""
+
+        return _render_selectable(
+            require_selectable(operand),
+            self.dialect,
+            qualified=self.scope.qualified,
         )
-        return f"{column_name} {operator} {operand_sql}", operand_params
-    other = require_field(operand)
-    scope.ensure_operand_in_scope(
-        other,
-        clause="comparison",
-        error=QueryCompilationError,
-    )
-    other_ref = _render_column_ref(other, dialect, qualified=scope.qualified)
-    return f"{column_name} {operator} {other_ref}", ()
 
+    def value_encoder(self, operand: object) -> Callable[[object], object]:
+        """Build the comparison-value encoder for a predicate operand."""
 
-def _compile_subquery_membership_sql(
-    predicate: Predicate[Any],
-    column_name: str,
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile ``col IN (subquery)`` / ``col NOT IN (subquery)``."""
+        return _predicate_value_encoder(require_selectable(operand), self.dialect)
 
-    state = require_single_column_subquery(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
-    operator = "IN" if predicate.kind == "in_subquery" else "NOT IN"
-    return f"{column_name} {operator} ({sub_sql})", sub_params
+    def render_comparison_operand(self, other: object) -> str:
+        """Render the column on the right side of a ``*_col`` comparison.
 
+        The column's table must be reachable in the current scope (the
+        statement's own tables plus any enclosing query the subquery
+        correlates to), else the reference is rejected at compile time.
+        """
 
-def _compile_exists_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile ``EXISTS (subquery)`` / ``NOT EXISTS (subquery)``."""
-
-    state = require_subquery_state(predicate.subquery)
-    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
-    keyword = "EXISTS" if predicate.kind == "exists" else "NOT EXISTS"
-    return f"{keyword} ({sub_sql})", sub_params
-
-
-def _compile_value_predicate_sql(
-    predicate: Predicate[Any],
-    selectable: Selectable,
-    column_name: str,
-    dialect: QueryDialect,
-) -> tuple[str, tuple[object, ...]]:
-    """Compile a predicate whose right side is a literal value (or none)."""
-
-    encode = _predicate_value_encoder(selectable, dialect)
-    if predicate.kind in {"eq", "ne"}:
-        return _compile_equality_predicate_sql(predicate, encode, column_name, dialect)
-    if predicate.kind in {"is_null", "is_not_null"}:
-        operator = "IS NULL" if predicate.kind == "is_null" else "IS NOT NULL"
-        return f"{column_name} {operator}", ()
-    if predicate.kind in {"in", "not_in"}:
-        return _compile_membership_predicate_sql(
-            predicate,
-            encode,
-            column_name,
-            dialect,
+        column = require_field(other)
+        self.scope.ensure_operand_in_scope(
+            column,
+            clause="comparison",
+            error=QueryCompilationError,
         )
-    if predicate.kind in {"like", "not_like"}:
-        return _compile_like_predicate_sql(
-            predicate,
-            require_field(predicate.column),
-            column_name,
-            dialect,
-        )
-    if predicate.kind in _COMPARISON_OPERATORS:
-        return _compile_comparison_predicate_sql(
-            predicate, encode, column_name, dialect
-        )
-    if predicate.kind == "between":
-        return _compile_between_predicate_sql(predicate, encode, column_name, dialect)
-    msg = "unknown predicate kind"
-    raise QueryCompilationError(msg)
+        return _render_column_ref(column, self.dialect, qualified=self.scope.qualified)
 
+    def compile_scalar(self, scalar: object) -> tuple[str, tuple[object, ...]]:
+        """Compile a scalar-subquery operand as a parenthesized select."""
 
-def _compile_column_predicate_sql(
-    predicate: Predicate[Any],
-    dialect: QueryDialect,
-    *,
-    scope: ScopeResolver,
-) -> tuple[str, tuple[object, ...]]:
-    selectable = require_selectable(predicate.column)
-    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
-    if predicate.kind in _COLUMN_COMPARISON_OPERATORS:
-        return _compile_column_comparison_sql(
-            predicate,
-            column_name,
-            dialect,
-            scope=scope,
+        return _compile_scalar_sql(
+            cast("Scalar[Any, Any]", scalar),
+            self.dialect,
+            scope=self.scope,
         )
-    if predicate.kind in SUBQUERY_PREDICATE_KINDS:
-        return _compile_subquery_membership_sql(
-            predicate,
-            column_name,
-            dialect,
-            scope=scope,
+
+    def compile_subquery(
+        self,
+        subquery: object,
+        *,
+        single_column: bool,
+    ) -> tuple[str, tuple[object, ...]]:
+        """Compile a nested select, layering this statement's scope as outer."""
+
+        state = (
+            require_single_column_subquery(subquery)
+            if single_column
+            else require_subquery_state(subquery)
         )
-    return _compile_value_predicate_sql(predicate, selectable, column_name, dialect)
+        return _compile_select_state(state, self.dialect, outer=self.scope)
+
+    def compile(self, predicate: Predicate[Any]) -> tuple[str, tuple[object, ...]]:
+        """Compile a nested predicate (a compound/negated node's child)."""
+
+        return predicate.__compile_predicate_sql__(self)
 
 
 def _compile_predicate_sql(
@@ -450,13 +256,8 @@ def _compile_predicate_sql(
     *,
     scope: ScopeResolver,
 ) -> tuple[str, tuple[object, ...]]:
-    if predicate.kind in {"and", "or"}:
-        return _compile_compound_predicate_sql(predicate, dialect, scope=scope)
-    if predicate.kind == "not":
-        return _compile_negated_predicate_sql(predicate, dialect, scope=scope)
-    if predicate.kind in EXISTENCE_PREDICATE_KINDS:
-        return _compile_exists_sql(predicate, dialect, scope=scope)
-    return _compile_column_predicate_sql(predicate, dialect, scope=scope)
+    context = _PredicateCompileContext(dialect=dialect, scope=scope)
+    return predicate.__compile_predicate_sql__(context)
 
 
 def _compile_group_by_sql(

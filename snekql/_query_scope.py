@@ -21,8 +21,6 @@ from typing import Any, cast
 
 from snekql._dialect_expr import SqlCompilable
 from snekql._query_state import (
-    EXISTENCE_PREDICATE_KINDS,
-    SUBQUERY_PREDICATE_KINDS,
     SelectState,
     require_column_model,
     require_column_name,
@@ -133,28 +131,32 @@ def ensure_predicate_targets_models(
     predicate: Predicate[Any],
     scope: ScopeResolver,
 ) -> None:
-    """Validate a where() predicate tree's operands against the scope."""
+    """Validate a where() predicate tree's operands against the scope.
 
-    if predicate.kind == "":
-        msg = "where predicates must be built from columns"
-        raise QueryConstructionError(msg)
-    if predicate.kind in EXISTENCE_PREDICATE_KINDS:
+    The traversal is node-name-blind: it walks the structural surface every
+    predicate node exposes (operand, children, and nested select plus its
+    arity), so adding a predicate kind never touches this validator.
+    """
+
+    arity = predicate.__predicate_subquery_arity__
+    if arity == "select":
         # EXISTS carries no outer column; correlation to the outer scope is
         # resolved when the subquery compiles, not at construction.
-        _ = require_subquery_state(predicate.subquery)
+        _ = require_subquery_state(predicate.__predicate_subquery__())
         return
-    if predicate.kind in SUBQUERY_PREDICATE_KINDS:
-        _ = require_single_column_subquery(predicate.subquery)
-    if predicate.column is not None:
-        if isinstance(predicate.column, Aggregate):
+    if arity == "single_column":
+        _ = require_single_column_subquery(predicate.__predicate_subquery__())
+    operand = predicate.__predicate_operand__()
+    if operand is not None:
+        if isinstance(operand, Aggregate):
             msg = "aggregates cannot appear in where(); use having()"
             raise QueryConstructionError(msg)
         scope.ensure_operand_in_scope(
-            predicate.column,
+            operand,
             clause="predicate",
             error=QueryConstructionError,
         )
-    for child in predicate.children:
+    for child in predicate.__predicate_children__():
         ensure_predicate_targets_models(child, scope)
 
 
@@ -171,12 +173,10 @@ def ensure_having_targets(
     already in scope).
     """
 
-    if predicate.kind == "":
-        msg = "having predicates must be built from columns or aggregates"
-        raise QueryConstructionError(msg)
-    if predicate.column is not None:
-        ensure_having_selectable(predicate.column, state, scope)
-    for child in predicate.children:
+    operand = predicate.__predicate_operand__()
+    if operand is not None:
+        ensure_having_selectable(operand, state, scope)
+    for child in predicate.__predicate_children__():
         ensure_having_targets(child, state, scope)
 
 

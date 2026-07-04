@@ -13,6 +13,7 @@ from typing import cast
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
+from snekql.expressions import BetweenPredicate, ComparisonPredicate
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -172,9 +173,15 @@ async def comparison_predicates_filter_rows_end_to_end() -> None:
 def comparison_compilation_rejects_none_carried_into_predicate() -> None:
     """A None value reaching compilation is rejected with a null-predicate hint."""
 
-    raw_gt: Predicate[Reading] = Predicate(kind="gt", column=Reading.value, value=None)
-    raw_between: Predicate[Reading] = Predicate(
-        kind="between", column=Reading.value, values=(1, None)
+    raw_gt: Predicate[Reading] = ComparisonPredicate(
+        operand=Reading.value,
+        operator="gt",
+        value=None,
+    )
+    raw_between: Predicate[Reading] = BetweenPredicate(
+        operand=Reading.value,
+        low=1,
+        high=None,
     )
 
     with assert_raises(QueryCompilationError):

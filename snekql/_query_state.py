@@ -271,7 +271,3 @@ def require_insert_model(row: object) -> type[Table[Any]]:
         raise QueryConstructionError(msg)
     model_row = cast("Model[Any, Any]", row)
     return cast("type[Table[Any]]", model_row.__class__)
-
-
-SUBQUERY_PREDICATE_KINDS = {"in_subquery", "not_in_subquery"}
-EXISTENCE_PREDICATE_KINDS = {"exists", "not_exists"}
