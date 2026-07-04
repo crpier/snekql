@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
 
+from snekql._pool_gate import FairAdmissionGate
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -148,13 +148,12 @@ class MariaDBConnectionPool:
     aiomysql's own checkout has no fairness guarantee: when the pool is
     exhausted it wakes a blocked acquirer without regard to arrival order, so a
     task that releases and immediately re-acquires can barge past tasks that
-    were already waiting. This wrapper puts a FIFO admission gate
-    in front of ``pool.acquire()``, mirroring the ticket queue in
-    ``snekql/sqlite/pool.py``: at most ``pool_size`` acquirers are admitted at
-    once, and parked acquirers are served strictly in arrival order. Because
-    admission never exceeds the underlying pool's capacity, ``pool.acquire()``
-    always finds a free connection and never blocks, so the gate alone decides
-    service order.
+    were already waiting. This wrapper puts the shared FIFO admission gate
+    (``snekql/_pool_gate.py``) in front of ``pool.acquire()``: at most
+    ``pool_size`` acquirers are admitted at once, and parked acquirers are
+    served strictly in arrival order. Because admission never exceeds the
+    underlying pool's capacity, ``pool.acquire()`` always finds a free
+    connection and never blocks, so the gate alone decides service order.
     """
 
     def __init__(
@@ -167,15 +166,11 @@ class MariaDBConnectionPool:
         self.closing: bool = False
         self.pool: object = pool
         self.pool_size: PositiveInt = pool_size
-        self.condition: anyio.Condition = anyio.Condition()
-        # Number of acquirers that hold an admission slot (a checked-out or
-        # about-to-be-checked-out connection). Bounded by ``pool_size``.
-        self._admitted: int = 0
-        # FIFO queue of waiting-acquirer ticket numbers. A parked acquirer may
-        # only claim a slot when its ticket is at the front, which stops a task
-        # that just released from barging ahead of earlier waiters.
-        self._waiters: deque[int] = deque()
-        self._next_ticket: int = 0
+        self.gate: FairAdmissionGate = FairAdmissionGate(
+            capacity=pool_size,
+            check_accepting_work=self.check_accepting_work,
+            log_label="mariadb",
+        )
 
     def check_accepting_work(self) -> None:
         """Reject new work when closed or temporarily closing."""
@@ -196,53 +191,21 @@ class MariaDBConnectionPool:
             "mariadb connection acquisition started (timeout=%s)", acquisition_timeout
         )
         deadline = anyio.current_time() + acquisition_timeout
-        await self._admit(deadline, acquisition_timeout)
+        await self.gate.admit(deadline, acquisition_timeout)
         try:
             connection = await self._checkout(deadline, acquisition_timeout)
         except BaseException:
-            await self._release_admission()
+            await self.gate.release()
             raise
         try:
             await self._ensure_configured(connection)
         except BaseException:
             # ``_ensure_configured`` returns the connection to the underlying
             # pool on failure; free our admission slot so a waiter can proceed.
-            await self._release_admission()
+            await self.gate.release()
             raise
         logger.debug("mariadb connection acquired")
         return connection
-
-    async def _admit(
-        self,
-        deadline: float,
-        acquisition_timeout: NonNegativeFloat,
-    ) -> None:
-        """Take a FIFO admission slot, parking in arrival order under contention.
-
-        Holds ``self.condition`` only while inspecting/claiming the gate; the
-        underlying checkout happens after this returns.
-        """
-
-        ticket: int | None = None
-        while True:
-            async with self.condition:
-                try:
-                    self.check_accepting_work()
-                except BaseException:
-                    # Rejected (closing/closed) while already queued: drop our
-                    # ticket so later FIFO waiters are not blocked behind us.
-                    if ticket is not None:
-                        self._discard_waiter(ticket)
-                    raise
-                if self._waiter_is_served_first(ticket) and (
-                    self._admitted < self.pool_size
-                ):
-                    if ticket is not None:
-                        _ = self._waiters.popleft()
-                    self._admitted += 1
-                    return
-                ticket = self._enqueue_waiter(ticket)
-                await self._wait_for_release(ticket, deadline, acquisition_timeout)
 
     async def _checkout(
         self,
@@ -268,95 +231,6 @@ class MariaDBConnectionPool:
             )
             msg = "timed out acquiring database connection"
             raise PoolTimeoutError(msg) from error
-
-    async def _release_admission(self) -> None:
-        """Free an admission slot and wake the next FIFO waiter.
-
-        Shielded because it runs on cleanup paths (acquisition failure and
-        release): dropping the slot must complete even under cancellation, or a
-        parked FIFO waiter stalls until its own deadline.
-        """
-
-        with anyio.CancelScope(shield=True):
-            async with self.condition:
-                self._admitted -= 1
-                self.condition.notify_all()
-
-    def _waiter_is_served_first(self, ticket: int | None) -> bool:
-        """Return whether this acquirer may claim a slot now.
-
-        A fresh acquirer (no ticket yet) may proceed only when nobody is queued
-        ahead of it; a parked acquirer may proceed only at the front of the
-        queue. Must be called while holding ``self.condition``.
-        """
-
-        if ticket is None:
-            return not self._waiters
-        return bool(self._waiters) and self._waiters[0] == ticket
-
-    def _enqueue_waiter(self, ticket: int | None) -> int:
-        """Append a new FIFO ticket for a parking acquirer, or reuse its own.
-
-        Must be called while holding ``self.condition``.
-        """
-
-        if ticket is not None:
-            return ticket
-        ticket = self._next_ticket
-        self._next_ticket += 1
-        self._waiters.append(ticket)
-        return ticket
-
-    async def _wait_for_release(
-        self,
-        ticket: int,
-        deadline: float,
-        acquisition_timeout: NonNegativeFloat,
-    ) -> None:
-        """Wait for a slot to free up, or time out the acquisition.
-
-        Must be called while holding ``self.condition``; drops ``ticket`` and
-        raises ``PoolTimeoutError`` when the deadline passes.
-        """
-
-        remaining_timeout = deadline - anyio.current_time()
-        if remaining_timeout > 0:
-            try:
-                with anyio.fail_after(remaining_timeout):
-                    await self.condition.wait()
-            except TimeoutError as error:
-                self._discard_waiter(ticket)
-                logger.warning(
-                    "mariadb connection acquisition timed out (timeout=%s)",
-                    acquisition_timeout,
-                )
-                msg = "timed out acquiring database connection"
-                raise PoolTimeoutError(msg) from error
-            except BaseException:
-                # Cancelled while parked: drop our ticket so later FIFO waiters
-                # are not blocked behind a dead acquirer. ``condition.wait`` has
-                # re-acquired the lock by the time it propagates, so this runs
-                # safely under cancellation.
-                self._discard_waiter(ticket)
-                raise
-            return
-        self._discard_waiter(ticket)
-        logger.warning(
-            "mariadb connection acquisition timed out (timeout=%s)",
-            acquisition_timeout,
-        )
-        msg = "timed out acquiring database connection"
-        raise PoolTimeoutError(msg)
-
-    def _discard_waiter(self, ticket: int) -> None:
-        """Drop a no-longer-waiting ticket and let the next waiter retry.
-
-        Must be called while holding ``self.condition``.
-        """
-
-        if ticket in self._waiters:
-            self._waiters.remove(ticket)
-        self.condition.notify_all()
 
     async def _ensure_configured(self, connection: object) -> None:
         """Apply required session settings once per physical connection."""
@@ -385,7 +259,7 @@ class MariaDBConnectionPool:
         with anyio.CancelScope(shield=True):
             release = cast("Any", self.pool).release
             _ = release(connection)
-            await self._release_admission()
+            await self.gate.release()
             logger.debug("mariadb connection released")
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
@@ -395,11 +269,11 @@ class MariaDBConnectionPool:
         if self.closed:
             logger.debug("mariadb database close skipped: already closed")
             return
-        async with self.condition:
+        async with self.gate.condition:
             self.closing = True
             # Wake parked acquirers so they re-check ``check_accepting_work``
             # and fail fast instead of waiting out their own deadline.
-            self.condition.notify_all()
+            self.gate.condition.notify_all()
         try:
             pool = cast("Any", self.pool)
             pool.close()
