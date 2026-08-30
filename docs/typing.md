@@ -177,6 +177,39 @@ async with tx.fetch_chunks(select(User.email, User.status).all(), size=500) as s
 `snekql.mariadb`) for typed annotations only. Like the query classes, do not
 construct it directly — obtain one from `Transaction.fetch_chunks`.
 
+## Insert conflicts
+
+`on_conflict` pins its target columns and update assignments to the inserted
+model. Pyright rejects a target or assignment from another model:
+
+```python
+from snekql.sqlite import DoNothing, DoUpdate, insert
+
+update_email = insert(User(email=email, status=status)).on_conflict(
+    User.email,
+    action=DoUpdate(User.status.to_inserted()),
+)
+# InsertQuery[User[Pending], User[Fetched]]
+
+ignore_email = insert([User(email=email, status=status)]).on_conflict(
+    User.email,
+    action=DoNothing,
+)
+# InsertManyQuery[User[Pending], User[Fetched]]
+```
+
+`DoUpdate` requires at least one assignment and accepts several. A literal
+`.to(value)` assignment keeps the column's normal value type. `.to_inserted()`
+needs no value because it refers to that column on the attempted insert.
+
+`DoUpdate` keeps the normal `.returning(...)` result types. `DoNothing` rejects
+`.returning(...)`: a SQLite conflict produces no row, which cannot satisfy the
+single-insert returning type. Plain execution returns `None` for both actions.
+
+MariaDB cannot encode an explicit conflict target. It checks every primary key
+and unique index even though `on_conflict` remains typed to the named columns.
+SQLite requires the named columns to match a primary key or unique index.
+
 ## Joins
 
 A column may declare the model it references with `FKCol[Target, T]`. The

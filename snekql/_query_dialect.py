@@ -10,6 +10,9 @@ from snekql.errors import QueryCompilationError
 from snekql.storage import Attr
 
 type QueryColumn = Attr[Any, Any, Any, Any, Any]
+type ConflictDoNothingCompiler = Callable[[tuple[str, ...]], str]
+type ConflictUpdateCompiler = Callable[[tuple[str, ...], str], str]
+type InsertedValueRenderer = Callable[[str], str]
 type QueryValueEncoder = Callable[[QueryColumn, object], object]
 
 
@@ -17,9 +20,12 @@ type QueryValueEncoder = Callable[[QueryColumn, object], object]
 class QueryDialect:
     """Small Dialect seam for compiling shared query state into backend SQL."""
 
+    conflict_do_nothing_sql: ConflictDoNothingCompiler
+    conflict_update_sql: ConflictUpdateCompiler
     current_timestamp_sql: str
     empty_insert_sql: Callable[[str], str]
     encode_column_value: QueryValueEncoder
+    inserted_value_sql: InsertedValueRenderer
     placeholder: str
     quote_identifier: Callable[[str], str]
     supports_delete_returning: bool = False
