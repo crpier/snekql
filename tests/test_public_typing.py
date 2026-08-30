@@ -16,6 +16,8 @@ from snekql.sqlite import (
     CanonicalDecimal,
     ChunkStream,
     CurrentTimestamp,
+    DoNothing,
+    DoUpdate,
     Duration,
     Fetched,
     ForeignKey,
@@ -466,6 +468,21 @@ if TYPE_CHECKING:
         InsertManyQuery[User[Pending], User[Fetched]],
     )
     _ = assert_type(
+        DoUpdate(User.email.to_inserted(), User.status.to("active")),
+        DoUpdate[User[Pending]],
+    )
+    _ = assert_type(
+        insert(pending_user).on_conflict(
+            User.email,
+            action=DoUpdate(User.status.to_inserted()),
+        ),
+        InsertQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        insert([pending_user]).on_conflict(User.email, action=DoNothing),
+        InsertManyQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
         insert(pending_user).returning(),
         InsertReturningQuery[User[Pending], User[Fetched]],
     )
@@ -496,6 +513,14 @@ if TYPE_CHECKING:
     # returning() is scoped to the written model: a column from another model is
     # rejected statically (the owner is pinned), matching the runtime guard.
     _ = insert(pending_user).returning(Order.note)  # pyright: ignore[reportArgumentType]
+    _ = insert(pending_user).on_conflict(
+        Order.note,  # pyright: ignore[reportArgumentType]
+        action=DoNothing,
+    )
+    _ = insert(pending_user).on_conflict(
+        User.email,
+        action=DoUpdate(Order.note.to_inserted()),  # pyright: ignore[reportArgumentType]
+    )
     _ = update(User).returning(Order.note)  # pyright: ignore[reportArgumentType]
 
     async def check_write_types(transaction: Transaction) -> None:

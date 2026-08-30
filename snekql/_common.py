@@ -47,6 +47,8 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    DoNothing,
+    DoUpdate,
     JoinOn,
     OrderBy,
     Predicate,
@@ -120,6 +122,8 @@ __all__ = [
     "DeleteReturningQuery",
     "DeleteReturningTupleQuery",
     "DeleteReturningValueQuery",
+    "DoNothing",
+    "DoUpdate",
     "Duration",
     "ExecutionError",
     "FKAttr",

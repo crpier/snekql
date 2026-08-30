@@ -45,6 +45,8 @@ _NEUTRAL_NAMES = frozenset(
         "DeleteReturningQuery",
         "DeleteReturningTupleQuery",
         "DeleteReturningValueQuery",
+        "DoNothing",
+        "DoUpdate",
         "Duration",
         "ExecutionError",
         "FKAttr",
@@ -228,6 +230,7 @@ def column_declarations_produce_query_attributes() -> None:
     assert_isinstance(AttributeUser.email.eq("alice@example.com"), sqlite.Predicate)
     assert_isinstance(AttributeUser.email.asc(), sqlite.OrderBy)
     assert_isinstance(AttributeUser.email.to("new@example.com"), sqlite.Assignment)
+    assert_isinstance(AttributeUser.email.to_inserted(), sqlite.Assignment)
 
 
 @test()
@@ -279,6 +282,15 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     assert_isinstance(update_query.all(), sqlite.UpdateQuery)
     assert_isinstance(delete_query.where(predicate), sqlite.DeleteQuery)
     assert_isinstance(delete_query.all(), sqlite.DeleteQuery)
+    assert_isinstance(
+        sqlite.insert(
+            MutationUser(email="alice@example.com", status="active")
+        ).on_conflict(
+            MutationUser.email,
+            action=sqlite.DoUpdate(MutationUser.status.to_inserted()),
+        ),
+        sqlite.InsertQuery,
+    )
 
 
 @test()
@@ -369,6 +381,8 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.DeleteReturningQuery,
         sqlite.DeleteReturningTupleQuery,
         sqlite.DeleteReturningValueQuery,
+        sqlite.DoNothing,
+        sqlite.DoUpdate,
         sqlite.ExecutionError,
         sqlite.Fetched,
         sqlite.FrozenModelError,

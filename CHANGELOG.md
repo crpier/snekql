@@ -57,6 +57,16 @@
 
 ### Added
 
+- Insert queries now support atomic conflict handling with
+  `.on_conflict(..., action=DoUpdate(...))` and
+  `.on_conflict(..., action=DoNothing)`. `DoUpdate` accepts several typed
+  assignments; `column.to_inserted()` references the attempted insert value,
+  while ordinary `.to(value)` and `.to(CurrentTimestamp)` assignments remain
+  available. SQLite emits `ON CONFLICT`; MariaDB emits `ON DUPLICATE KEY UPDATE`
+  and checks every unique key because it has no explicit conflict-target syntax.
+  Single and bulk `DoUpdate` inserts retain `.returning(...)`; `DoNothing`
+  rejects it because SQLite may produce no row. (#239)
+
 - `UtcDatetime`, exported from `snekql.sqlite` and `snekql.mariadb`, is a curated
   datetime logical type for database timestamp columns. It rejects naive values,
   normalizes aware values to UTC milliseconds at validation, and serializes as

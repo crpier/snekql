@@ -46,7 +46,8 @@ def insert(row_or_rows: object, /) -> object:
     compiles to one multi-row ``INSERT`` and is a no-op when empty. Executed
     plain, the insert returns ``None``. Call ``.returning()`` to get the Fetched
     model(s) MariaDB produced -- generated ``AUTO_INCREMENT`` keys and server
-    defaults -- read back through ``RETURNING``.
+    defaults -- read back through ``RETURNING``. Call ``.on_conflict`` with
+    ``DoUpdate`` or ``DoNothing`` for ``ON DUPLICATE KEY UPDATE`` handling.
     """
 
     return build_insert(row_or_rows)

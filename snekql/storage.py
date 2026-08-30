@@ -46,6 +46,7 @@ from snekql.expressions import (
     Aggregate,
     Assignment,
     Comparable,
+    InsertedValue,
     JoinOn,
     LikePredicate,
     OrderBy,
@@ -1574,6 +1575,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         """
 
         return Assignment(column=self, value=value)
+
+    def to_inserted(self) -> Assignment[OwnerT]:
+        """Assign this column's value from the row whose insert conflicted."""
+
+        return Assignment(column=self, value=InsertedValue)
 
     def __column_value_type__(self) -> ReadValueT:
         """Typing-only witness of this column's read value type.
