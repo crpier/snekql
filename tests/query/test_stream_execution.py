@@ -32,12 +32,12 @@ from tests.helpers import initialized_database
 class _StreamUser[S = Pending](Model[S, "_StreamUser[Fetched]"]):
     """Table model selected through the streaming runtime."""
 
-    id: _StreamUser.GenCol[int] = Integer(
+    id: _StreamUser.GenCol[_StreamUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: _StreamUser.Col[str] = Text(nullable=False)
+    email: _StreamUser.Col[_StreamUser, str] = Text(nullable=False)
 
 
 @test(mark="medium")

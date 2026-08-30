@@ -25,37 +25,37 @@ from tests.helpers import initialized_database
 class JoinUser[S = Pending](Model[S, "JoinUser[Fetched]"]):
     """Referenced table."""
 
-    id: JoinUser.GenCol[int] = Integer(
+    id: JoinUser.GenCol[JoinUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: JoinUser.Col[str] = Text(nullable=False)
+    email: JoinUser.Col[JoinUser, str] = Text(nullable=False)
 
 
 class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
     """Table with a foreign key to ``JoinUser``."""
 
-    id: JoinOrder.GenCol[int] = Integer(
+    id: JoinOrder.GenCol[JoinOrder, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: JoinOrder.FKCol[JoinUser, int] = ForeignKey(JoinUser.id)
-    note: JoinOrder.Col[str] = Text(nullable=False)
+    user_id: JoinOrder.FKCol[JoinOrder, JoinUser, int] = ForeignKey(JoinUser.id)
+    note: JoinOrder.Col[JoinOrder, str] = Text(nullable=False)
 
 
 class Pipeline[S = Pending](Model[S, "Pipeline[Fetched]"]):
     """Table keyed on an app-generated TEXT (UUID) primary key."""
 
-    id: Pipeline.Col[str] = Text(primary_key=True)
+    id: Pipeline.Col[Pipeline, str] = Text(primary_key=True)
 
 
 class Secret[S = Pending](Model[S, "Secret[Fetched]"]):
     """Row with a nullable optional foreign key to ``Pipeline``."""
 
-    id: Secret.Col[str] = Text(primary_key=True)
-    pipeline_id: Secret.FKCol[Pipeline, str | None] = ForeignKey(
+    id: Secret.Col[Secret, str] = Text(primary_key=True)
+    pipeline_id: Secret.FKCol[Secret, Pipeline, str | None] = ForeignKey(
         Pipeline.id, nullable=True, default=None
     )
 

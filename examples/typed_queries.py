@@ -26,14 +26,14 @@ from snekql.sqlite import (
 class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
     """Example model focused on static result-shape inference."""
 
-    id: Account.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[Account, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: Account.Col[str] = sqlite.Text(nullable=False)
-    status: Account.Col[str] = sqlite.Text(nullable=False, default="active")
-    created_at: Account.GenCol[datetime] = sqlite.Text(
+    email: sqlite.Col[Account, str] = sqlite.Text(nullable=False)
+    status: sqlite.Col[Account, str] = sqlite.Text(nullable=False, default="active")
+    created_at: sqlite.GenCol[Account, datetime] = sqlite.Text(
         default=sqlite.CurrentTimestamp,
     )
 

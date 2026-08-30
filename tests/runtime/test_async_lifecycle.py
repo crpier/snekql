@@ -36,12 +36,12 @@ from tests.helpers import initialized_database
 class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
     """Table model used by async lifecycle tests."""
 
-    id: _AsyncUser.GenCol[int] = Integer(
+    id: _AsyncUser.GenCol[_AsyncUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: _AsyncUser.Col[str] = Text(nullable=False)
+    email: _AsyncUser.Col[_AsyncUser, str] = Text(nullable=False)
 
 
 class _FakeCursor:

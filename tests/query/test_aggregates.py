@@ -33,24 +33,24 @@ from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Base table for aggregate compilation tests."""
 
-    id: User.GenCol[int] = sqlite.Integer(
+    id: User.GenCol[User, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = sqlite.Text(nullable=False)
+    email: User.Col[User, str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Table with numeric columns to aggregate over."""
 
-    id: Order.GenCol[int] = sqlite.Integer(
+    id: Order.GenCol[Order, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
-    amount: Order.Col[int] = sqlite.Integer(nullable=False)
+    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
+    amount: Order.Col[Order, int] = sqlite.Integer(nullable=False)
 
 
 @test(mark="fast")
@@ -140,12 +140,12 @@ async def sum_normalizes_to_int_for_integer_column() -> None:
     class Sale[S = Pending](Model[S, "Sale[Fetched]"]):
         """Integer-amount table for sum normalization."""
 
-        id: Sale.GenCol[int] = Integer(
+        id: Sale.GenCol[Sale, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        amount: Sale.Col[int] = Integer(nullable=False)
+        amount: Sale.Col[Sale, int] = Integer(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Sale])
     try:
@@ -193,12 +193,12 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Datetime table stored as TEXT on SQLite."""
 
-        id: Event.GenCol[int] = Integer(
+        id: Event.GenCol[Event, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        when: Event.Col[UtcDatetime] = Text(nullable=False)
+        when: Event.Col[Event, UtcDatetime] = Text(nullable=False)
 
     earlier = datetime(2020, 1, 1, tzinfo=UTC)
     later = datetime(2021, 6, 15, tzinfo=UTC)
@@ -233,12 +233,12 @@ async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
     class Label[S = Pending](Model[S, "Label[Fetched]"]):
         """Text table for min/max decoding."""
 
-        id: Label.GenCol[int] = Integer(
+        id: Label.GenCol[Label, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        name: Label.Col[str] = Text(nullable=False)
+        name: Label.Col[Label, str] = Text(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Label])
     try:
@@ -264,12 +264,12 @@ async def avg_decodes_to_float_and_none_over_empty() -> None:
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
         """Real-valued table for avg decoding."""
 
-        id: Reading.GenCol[int] = Integer(
+        id: Reading.GenCol[Reading, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        value: Reading.Col[float] = Real(nullable=False)
+        value: Reading.Col[Reading, float] = Real(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Reading])
     try:

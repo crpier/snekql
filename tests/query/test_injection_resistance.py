@@ -68,11 +68,11 @@ _INJECTION_VALUES = (
 class Account[S = Pending](Model[S, "Account[Fetched]"]):
     """Model whose text columns receive the injection payloads as data."""
 
-    id: Account.GenCol[int] = Integer(
+    id: Account.GenCol[Account, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: Account.Col[str] = Text(nullable=False)
-    status: Account.Col[str] = Text(nullable=False, default="active")
+    email: Account.Col[Account, str] = Text(nullable=False)
+    status: Account.Col[Account, str] = Text(nullable=False, default="active")
 
 
 def _surviving_tables(database_path: Path) -> set[str]:

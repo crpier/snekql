@@ -98,54 +98,33 @@ class Table[StateT]:
         return Aggregate(func="COUNT", column=None, owner=cls)
 
 
-# Private normal persisted-column alias used to build the public Col alias.
-type _Col[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
+# Public column aliases carry query scope as an explicit model argument. Their
+# descriptor instance owners are lifecycle-wide Table types: the descriptor is
+# only reachable through its declaring model, while Pending versus Fetched
+# selects the write or read value overload.
+type Col[OwnerT: Table[Any], T] = Attr[
+    Table[Pending],
+    Table[Fetched],
+    OwnerT,
     T,
     T,
 ]
 
-# Private generated-column alias models pending-generation marker vs fetched T.
-type _GenCol[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
+type GenCol[OwnerT: Table[Any], T] = Attr[
+    Table[Pending],
+    Table[Fetched],
+    OwnerT,
     T | PendingGeneration,
     T,
 ]
 
-# Public normal persisted-column alias for external table model helpers.
-type Col[WriteModelT: Table[Any], FetchedModelT, T] = _Col[
-    WriteModelT,
-    FetchedModelT,
+# Target records the referenced model so `references` can require a matching
+# target column.
+type FKCol[OwnerT: Table[Any], Target, T] = FKAttr[
+    Table[Pending],
+    Table[Fetched],
+    OwnerT,
     T,
-]
-
-# Public generated/server-filled column alias for external model helpers.
-type GenCol[WriteModelT: Table[Any], FetchedModelT, T] = _GenCol[
-    WriteModelT,
-    FetchedModelT,
-    T,
-]
-
-# Private foreign-key column alias used to build the public FKCol alias. The
-# trailing Target records the referenced model so `references` can require a
-# matching target column.
-type _FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = FKAttr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
-    T,
-    T,
-    Target,
-]
-
-# Public foreign-key column alias for external table model helpers.
-type FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = _FKCol[
-    WriteModelT,
-    FetchedModelT,
     T,
     Target,
 ]
@@ -576,14 +555,15 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    # Normal persisted-column alias scoped to the declaring model class.
-    type Col[T] = Attr[Self, ReadModelT, Self, T, T]
-    # Generated/server-filled column alias scoped to the declaring model class.
-    type GenCol[T] = Attr[Self, ReadModelT, Self, T | PendingGeneration, T]
-    # Foreign-key column alias; Target is the *Pending* owner of the referenced
-    # model (`Order.FKCol[User, int]`). PEP 696 resolves the bare `User` to
-    # `User[Pending]`, so no `[Pending]` suffix is required.
-    type FKCol[Target, T] = FKAttr[Self, ReadModelT, Self, T, T, Target]
+    # Explicit-owner aliases remain available through model classes for callers
+    # that prefer `User.Col[User, T]` over the backend namespace spelling.
+    type Col[OwnerT: Table[Any], T] = Attr[Table[Pending], Table[Fetched], OwnerT, T, T]
+    type GenCol[OwnerT: Table[Any], T] = Attr[
+        Table[Pending], Table[Fetched], OwnerT, T | PendingGeneration, T
+    ]
+    type FKCol[OwnerT: Table[Any], Target, T] = FKAttr[
+        Table[Pending], Table[Fetched], OwnerT, T, T, Target
+    ]
 
     def __init__(self, **values: object) -> None:
         self._snekql_populate(values, validate=True)

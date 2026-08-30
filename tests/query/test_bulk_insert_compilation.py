@@ -21,20 +21,20 @@ from tests.helpers import SQLITE_CODEC
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with a generated primary key and explicit columns."""
 
-    id: User.GenCol[int] = Integer(
+    id: User.GenCol[User, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: User.Col[str] = Text(nullable=False)
-    status: User.Col[str] = Text(nullable=False, default="active")
+    email: User.Col[User, str] = Text(nullable=False)
+    status: User.Col[User, str] = Text(nullable=False, default="active")
 
 
 class Account[S = Pending](Model[S, "Account[Fetched]"]):
     """Unrelated table model, used to test cross-model returning rejection."""
 
-    id: Account.GenCol[int] = Integer(
+    id: Account.GenCol[Account, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    name: Account.Col[str] = Text(nullable=False)
+    name: Account.Col[Account, str] = Text(nullable=False)
 
 
 @test(mark="fast")

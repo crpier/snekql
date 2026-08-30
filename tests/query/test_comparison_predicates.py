@@ -32,8 +32,10 @@ from tests.helpers import SQLITE_CODEC, initialized_database
 class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
     """Single table used by comparison compilation checks."""
 
-    id: Reading.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    value: Reading.Col[int] = Integer(nullable=False)
+    id: Reading.GenCol[Reading, int] = Integer(
+        primary_key=True, default=PENDING_GENERATION
+    )
+    value: Reading.Col[Reading, int] = Integer(nullable=False)
 
 
 @test(mark="fast")
@@ -90,18 +92,18 @@ def comparison_predicates_qualify_columns_across_joins() -> None:
     class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Referenced table."""
 
-        id: User.GenCol[int] = sqlite.Integer(
+        id: User.GenCol[User, int] = sqlite.Integer(
             primary_key=True, default=PENDING_GENERATION
         )
 
     class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
         """Table with a foreign key to ``User`` and a numeric column."""
 
-        id: Order.GenCol[int] = sqlite.Integer(
+        id: Order.GenCol[Order, int] = sqlite.Integer(
             primary_key=True, default=PENDING_GENERATION
         )
-        user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
-        total: Order.Col[int] = sqlite.Integer(nullable=False)
+        user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
+        total: Order.Col[Order, int] = sqlite.Integer(nullable=False)
 
     sql, params = SQLITE_CODEC.compile_select_sql(
         select(User)

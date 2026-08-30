@@ -107,12 +107,12 @@ async def lifecycle_verbs_emit_events() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to observe lifecycle logging."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with _capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -143,7 +143,7 @@ async def warn_verify_policy_logs_drift() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift logging."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with _capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -164,12 +164,12 @@ async def transaction_execution_logs_query_context() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to observe query execution logging."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with _capture_snekql_logs() as logs:
         database = await initialized_database(
@@ -201,7 +201,7 @@ async def query_failure_logs_error_context() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique field used to force a write failure."""
 
-        email: User.Col[str] = Text(nullable=False, unique=True)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
 
     with _capture_snekql_logs() as logs:
         database = await initialized_database(

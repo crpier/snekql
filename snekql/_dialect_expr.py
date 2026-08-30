@@ -61,17 +61,17 @@ class SqlCompilable(Protocol):
 
 
 @runtime_checkable
-class DialectSelectable[T](Protocol):
-    """A dialect expression that is also projectable and decodes to ``T``.
+class DialectSelectable[OwnerT: "Table[Any]", T](Protocol):
+    """A dialect expression owned by one table and projectable as ``T``.
 
     Adds the projection seam to :class:`SqlCompilable`: ``__compile_select_sql__``
     renders it in a ``SELECT`` list and ``__decode__`` converts the raw driver
-    value to ``T``. ``T`` flows into the query's result type purely through the
-    ``select`` overloads; the core materializes by calling ``__decode__`` and
-    never names the leaf.
+    value to ``T``. Both the owner and value flow into query types through the
+    ``select`` overloads; the core materializes structurally and never names the
+    leaf.
     """
 
-    def __owner_model__(self) -> type[Table[Any]]: ...
+    def __owner_model__(self) -> type[OwnerT]: ...
 
     def __compile_sql__(self, ctx: CompileCtx) -> str: ...
 

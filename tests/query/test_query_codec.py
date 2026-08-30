@@ -26,7 +26,7 @@ def sqlite_codec_compiles_select_with_sqlite_dialect() -> None:
     class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
         """Model compiled through the SQLite codec."""
 
-        label: Widget.Col[str] = sqlite.Text(nullable=False)
+        label: Widget.Col[Widget, str] = sqlite.Text(nullable=False)
 
     codec = DialectQueryCodec.for_backend("sqlite")
 
@@ -45,7 +45,7 @@ def mariadb_codec_compiles_select_with_mariadb_dialect() -> None:
     class Widget[S = Pending](mariadb.Model[S, "Widget[Fetched]"]):
         """Model compiled through the MariaDB codec."""
 
-        label: Widget.Col[str] = mariadb.Text(nullable=False)
+        label: Widget.Col[Widget, str] = mariadb.Text(nullable=False)
 
     codec = DialectQueryCodec.for_backend("mariadb")
 
@@ -64,7 +64,7 @@ def sqlite_codec_compiles_write_with_sqlite_dialect() -> None:
     class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
         """Model inserted through the SQLite codec."""
 
-        label: Widget.Col[str] = sqlite.Text(nullable=False)
+        label: Widget.Col[Widget, str] = sqlite.Text(nullable=False)
 
     codec = DialectQueryCodec.for_backend("sqlite")
 
@@ -83,7 +83,7 @@ def mariadb_codec_compiles_write_with_mariadb_dialect() -> None:
     class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
         """Model whose boolean encoding differs from Python's."""
 
-        enabled: Flag.Col[bool] = mariadb.Boolean(nullable=False)
+        enabled: Flag.Col[Flag, bool] = mariadb.Boolean(nullable=False)
 
     codec = DialectQueryCodec.for_backend("mariadb")
 
@@ -102,7 +102,7 @@ def sqlite_codec_materializes_select_rows_with_backend_decoding() -> None:
     class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
         """Model materialized through the SQLite codec."""
 
-        label: Widget.Col[str] = sqlite.Text(nullable=False)
+        label: Widget.Col[Widget, str] = sqlite.Text(nullable=False)
 
     codec = DialectQueryCodec.for_backend("sqlite")
 
@@ -121,7 +121,7 @@ def mariadb_codec_materializes_write_rows_with_backend_decoding() -> None:
     class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
         """Model whose boolean decodes from MariaDB's integer wire value."""
 
-        enabled: Flag.Col[bool] = mariadb.Boolean(nullable=False)
+        enabled: Flag.Col[Flag, bool] = mariadb.Boolean(nullable=False)
 
     codec = DialectQueryCodec.for_backend("mariadb")
 

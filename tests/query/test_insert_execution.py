@@ -38,8 +38,10 @@ def insert_compilation_omits_pending_generation_and_quotes_identifiers() -> None
         """Table model with identifiers that must be quoted."""
 
         __tablename__ = "select"
-        id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        where: Order.Col[str] = Text(nullable=False)
+        id: Order.GenCol[Order, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        where: Order.Col[Order, str] = Text(nullable=False)
 
     sql, params = SQLITE_CODEC.compile_write_sql(insert(Order(where="x")))
 
@@ -54,7 +56,9 @@ def insert_compilation_uses_default_values_when_all_fields_are_pending() -> None
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Table model with no explicit insertable values."""
 
-        id: AuditLog.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        id: AuditLog.GenCol[AuditLog, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
 
     sql, params = SQLITE_CODEC.compile_write_sql(insert(AuditLog()))
 
@@ -69,10 +73,14 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with explicit, default, and generated fields."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        email: User.Col[str] = Text(nullable=False)
-        label: User.Col[str] = Text(nullable=False, default_factory=lambda: "fresh")
-        status: User.Col[str] = Text(nullable=False, default="active")
+        id: User.GenCol[User, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        email: User.Col[User, str] = Text(nullable=False)
+        label: User.Col[User, str] = Text(
+            nullable=False, default_factory=lambda: "fresh"
+        )
+        status: User.Col[User, str] = Text(nullable=False, default="active")
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -99,8 +107,10 @@ async def execution_errors_preserve_insert_sql_and_params() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to trigger a duplicate primary key failure."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        email: User.Col[str] = Text(nullable=False)
+        id: User.GenCol[User, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"

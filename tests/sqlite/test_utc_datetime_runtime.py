@@ -22,8 +22,8 @@ from tests.helpers import initialized_database
 class TimedEvent[S = Pending](Model[S, "TimedEvent[Fetched]"]):
     """Event table with canonical timestamp text storage."""
 
-    id: TimedEvent.Col[int] = Integer(primary_key=True)
-    happened_at: TimedEvent.Col[UtcDatetime] = Text(nullable=False)
+    id: TimedEvent.Col[TimedEvent, int] = Integer(primary_key=True)
+    happened_at: TimedEvent.Col[TimedEvent, UtcDatetime] = Text(nullable=False)
 
 
 @test(mark="medium")

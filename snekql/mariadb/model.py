@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, Self, TypeVar
+from typing import Any, ClassVar, Literal, TypeVar
 
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.storage import JsonAttr
+from snekql.model import Fetched, ModelMeta, Pending, Table
 from snekql.model import Model as BaseModel
-from snekql.model import ModelMeta, Table
 from snekql.storage import Attr
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
+
+
+type JsonCol[OwnerT: Table[Any], T] = JsonAttr[
+    Table[Pending],
+    Table[Fetched],
+    OwnerT,
+    T,
+    T,
+]
 
 
 class Model[StateT, ReadModelT: Table[Any]](BaseModel[StateT, ReadModelT]):
@@ -26,9 +35,9 @@ class Model[StateT, ReadModelT: Table[Any]](BaseModel[StateT, ReadModelT]):
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    # MariaDB-only JSON column alias: resolves to the JSON column subtype so the
-    # dialect JSON path operators are visible on JSON columns only (ADR 0004).
-    type JsonCol[T] = JsonAttr[Self, ReadModelT, Self, T, T]
+    type JsonCol[OwnerT: Table[Any], T] = JsonAttr[
+        Table[Pending], Table[Fetched], OwnerT, T, T
+    ]
 
 
-__all__ = ["Model", "ModelMeta"]
+__all__ = ["JsonCol", "Model", "ModelMeta"]

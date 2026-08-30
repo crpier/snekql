@@ -23,7 +23,7 @@ from snekql.sqlite import (
 class BoundaryUser[S = Pending](Model[S, "BoundaryUser[Fetched]"]):
     """Table model used by select boundary validation tests."""
 
-    email: BoundaryUser.Col[str] = Text(nullable=False)
+    email: BoundaryUser.Col[BoundaryUser, str] = Text(nullable=False)
 
 
 @test(mark="fast")

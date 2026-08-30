@@ -24,8 +24,12 @@ class IntegerDurationRow[S = Pending](mariadb.Model[S, "IntegerDurationRow[Fetch
 
     __tablename__ = "timedelta_integer_duration"
 
-    id: IntegerDurationRow.Col[int] = mariadb.Integer(primary_key=True)
-    elapsed: IntegerDurationRow.Col[timedelta] = mariadb.Integer(nullable=False)
+    id: IntegerDurationRow.Col[IntegerDurationRow, int] = mariadb.Integer(
+        primary_key=True
+    )
+    elapsed: IntegerDurationRow.Col[IntegerDurationRow, timedelta] = mariadb.Integer(
+        nullable=False
+    )
 
 
 with warnings.catch_warnings():
@@ -36,16 +40,18 @@ with warnings.catch_warnings():
 
         __tablename__ = "timedelta_text_roundtrip"
 
-        id: RoundTripRow.Col[int] = mariadb.Integer(primary_key=True)
-        elapsed: RoundTripRow.Col[timedelta] = mariadb.Text(nullable=False)
+        id: RoundTripRow.Col[RoundTripRow, int] = mariadb.Integer(primary_key=True)
+        elapsed: RoundTripRow.Col[RoundTripRow, timedelta] = mariadb.Text(
+            nullable=False
+        )
 
     class OrderedRow[S = Pending](mariadb.Model[S, "OrderedRow[Fetched]"]):
         """Text-stored timedelta table for ordering checks."""
 
         __tablename__ = "timedelta_text_order"
 
-        id: OrderedRow.Col[int] = mariadb.Integer(primary_key=True)
-        elapsed: OrderedRow.Col[timedelta] = mariadb.Text(nullable=False)
+        id: OrderedRow.Col[OrderedRow, int] = mariadb.Integer(primary_key=True)
+        elapsed: OrderedRow.Col[OrderedRow, timedelta] = mariadb.Text(nullable=False)
 
 
 @test(mark="medium")

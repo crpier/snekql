@@ -15,10 +15,13 @@ from snekql.sqlite import (
     Aggregate,
     CanonicalDecimal,
     ChunkStream,
+    Col,
     CurrentTimestamp,
     Duration,
     Fetched,
+    FKCol,
     ForeignKey,
+    GenCol,
     Index,
     InsertManyQuery,
     InsertManyReturningQuery,
@@ -56,53 +59,53 @@ from snekql.testing import mariadb as testing_mariadb
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Canonical table model used by public API typing examples."""
 
-    id: User.GenCol[int] = Integer(
+    id: GenCol[User, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = Text(nullable=False)
-    status: User.Col[str] = Text(nullable=False, default="active")
-    nickname: User.Col[str | None] = Text(nullable=True, default=None)
-    created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
-    balance: User.Col[CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
-    elapsed: User.Col[Duration] = Integer(nullable=False, default=timedelta(0))
+    email: Col[User, str] = Text(nullable=False)
+    status: Col[User, str] = Text(nullable=False, default="active")
+    nickname: Col[User, str | None] = Text(nullable=True, default=None)
+    created_at: GenCol[User, UtcDatetime] = Text(default=CurrentTimestamp)
+    balance: Col[User, CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
+    elapsed: Col[User, Duration] = Integer(nullable=False, default=timedelta(0))
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
     """Table with a foreign key to ``User`` for join typing examples."""
 
-    id: Order.GenCol[int] = Integer(
+    id: GenCol[Order, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
+    user_id: FKCol[Order, User, int] = ForeignKey(User.id)
     # Nullable optional FK: ``default=None`` widens the value type and makes the
     # field omittable, parallel to the plain column constructors.
-    reviewer_id: Order.FKCol[User, int | None] = ForeignKey(
+    reviewer_id: FKCol[Order, User, int | None] = ForeignKey(
         User.id, nullable=True, default=None
     )
-    note: Order.Col[str] = Text(nullable=False)
+    note: Col[Order, str] = Text(nullable=False)
 
 
 class Region[S = Pending](Model[S, "Region[Fetched]"]):
     """Unjoined table used to probe out-of-scope rejections."""
 
-    code: Region.Col[str] = Text(nullable=False)
+    code: Col[Region, str] = Text(nullable=False)
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     """SQLite namespace table model used by public API typing examples."""
 
-    id: SqliteUser.GenCol[int] = sqlite.Integer(
+    id: GenCol[SqliteUser, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
+    email: Col[SqliteUser, str] = sqlite.Text(nullable=False)
     # UUID logical type stored as TEXT on SQLite (no native UUID storage class).
-    account_id: SqliteUser.Col[uuid.UUID] = sqlite.Text(
+    account_id: Col[SqliteUser, uuid.UUID] = sqlite.Text(
         nullable=False, default_factory=uuid.uuid4
     )
 
@@ -110,21 +113,23 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
 class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
     """MariaDB namespace table model used by public API typing examples."""
 
-    id: MariadbUser.GenCol[int] = mariadb.Integer(
+    id: mariadb.GenCol[MariadbUser, int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: MariadbUser.Col[str] = mariadb.Text(nullable=False)
-    balance: MariadbUser.Col[Decimal] = mariadb.Decimal(9, 2, nullable=False)
+    email: mariadb.Col[MariadbUser, str] = mariadb.Text(nullable=False)
+    balance: mariadb.Col[MariadbUser, Decimal] = mariadb.Decimal(9, 2, nullable=False)
     # Native MariaDB UUID Column Type paired with the uuid.UUID logical type.
-    account_id: MariadbUser.Col[uuid.UUID] = mariadb.Uuid(
+    account_id: mariadb.Col[MariadbUser, uuid.UUID] = mariadb.Uuid(
         nullable=False, default_factory=uuid.uuid4
     )
-    profile: MariadbUser.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
+    profile: mariadb.JsonCol[MariadbUser, dict[str, object]] = mariadb.Json(
+        nullable=False
+    )
     # Nullable JSON: the ``default=None`` overload widens the value type to
     # optional and makes the field omittable, parallel to Integer/Real/Boolean.
-    prefs: MariadbUser.JsonCol[dict[str, object] | None] = mariadb.Json(
+    prefs: mariadb.JsonCol[MariadbUser, dict[str, object] | None] = mariadb.Json(
         nullable=True, default=None
     )
 
@@ -136,21 +141,21 @@ if TYPE_CHECKING:
     ):
         """Invalid default declarations rejected by static typing."""
 
-        text_default: InvalidSqliteDefaults.Col[int] = Text(default="nan")  # pyright: ignore[reportAssignmentType]
-        factory_default: InvalidSqliteDefaults.Col[int] = Integer(
+        text_default: Col[InvalidSqliteDefaults, int] = Text(default="nan")  # pyright: ignore[reportAssignmentType]
+        factory_default: Col[InvalidSqliteDefaults, int] = Integer(
             default_factory=lambda: "nan"
         )  # pyright: ignore[reportAssignmentType]
-        pending_generation_default: InvalidSqliteDefaults.Col[int] = Integer(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        pending_generation_default: Col[InvalidSqliteDefaults, int] = Integer(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
             default=PENDING_GENERATION
         )
-        server_default: InvalidSqliteDefaults.Col[datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        server_default: Col[InvalidSqliteDefaults, datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
             default=CurrentTimestamp
         )
 
     class InvalidOrderDefaults[S = Pending](Model[S, "InvalidOrderDefaults[Fetched]"]):
         """Invalid foreign-key default declarations rejected by static typing."""
 
-        user_id: InvalidOrderDefaults.FKCol[User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType, reportCallIssue]
+        user_id: FKCol[InvalidOrderDefaults, User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType, reportCallIssue]
             User.id,
             default="nan",  # pyright: ignore[reportArgumentType]
         )
@@ -160,8 +165,10 @@ if TYPE_CHECKING:
     ):
         """Invalid MariaDB default declarations rejected by static typing."""
 
-        text_default: InvalidMariadbDefaults.Col[int] = mariadb.Text(default="nan")  # pyright: ignore[reportAssignmentType]
-        factory_default: InvalidMariadbDefaults.Col[int] = mariadb.Uuid(
+        text_default: mariadb.Col[InvalidMariadbDefaults, int] = mariadb.Text(
+            default="nan"
+        )  # pyright: ignore[reportAssignmentType]
+        factory_default: mariadb.Col[InvalidMariadbDefaults, int] = mariadb.Uuid(
             default_factory=lambda: "nan"
         )  # pyright: ignore[reportAssignmentType]
 
@@ -232,7 +239,7 @@ if TYPE_CHECKING:
     # A missing JSON path yields SQL NULL, so the projection is `int | None`.
     _ = assert_type(
         select(MariadbUser.profile.json_extract_int("$.age")),
-        SelectValueQuery[Any, Any, int | None],
+        SelectValueQuery[MariadbUser[Pending], MariadbUser[Pending], int | None],
     )
     _ = assert_type(
         select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),

@@ -28,13 +28,13 @@ from tests.helpers import SQLITE_CODEC
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model used across the SQL-inspection tests."""
 
-    id: User.GenCol[int] = Integer(
+    id: User.GenCol[User, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = Text(nullable=False)
-    age: User.Col[int] = Integer(nullable=False)
+    email: User.Col[User, str] = Text(nullable=False)
+    age: User.Col[User, int] = Integer(nullable=False)
 
 
 @test(mark="fast")

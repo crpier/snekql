@@ -44,15 +44,15 @@ from snekql.sqlite import (
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Base table used by the node-construction checks."""
 
-    id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    email: User.Col[str] = Text(nullable=False)
+    id: User.GenCol[User, int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    email: User.Col[User, str] = Text(nullable=False)
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
     """Second table for column comparisons and subquery predicates."""
 
-    id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
+    id: Order.GenCol[Order, int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    user_id: Order.FKCol[Order, User, int] = ForeignKey(User.id)
 
 
 class _StubCompiler:

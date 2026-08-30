@@ -54,15 +54,21 @@ def storage_classes_expose_sqlite_metadata() -> None:
         class StorageExample[S = Pending](Model[S, "StorageExample[Fetched]"]):
             """Table model pairing each storage class with a logical type."""
 
-            integer_value: StorageExample.Col[int] = Integer(nullable=False)
-            real_value: StorageExample.Col[float] = Real(nullable=False)
-            text_value: StorageExample.Col[str] = Text(nullable=False)
-            blob_value: StorageExample.Col[bytes] = Blob(nullable=False)
-            json_value: StorageExample.Col[Json[dict[str, object]]] = Text(
+            integer_value: StorageExample.Col[StorageExample, int] = Integer(
                 nullable=False
             )
-            boolean_value: StorageExample.Col[bool] = Integer(nullable=False)
-            datetime_value: StorageExample.Col[datetime] = Text(nullable=False)
+            real_value: StorageExample.Col[StorageExample, float] = Real(nullable=False)
+            text_value: StorageExample.Col[StorageExample, str] = Text(nullable=False)
+            blob_value: StorageExample.Col[StorageExample, bytes] = Blob(nullable=False)
+            json_value: StorageExample.Col[StorageExample, Json[dict[str, object]]] = (
+                Text(nullable=False)
+            )
+            boolean_value: StorageExample.Col[StorageExample, bool] = Integer(
+                nullable=False
+            )
+            datetime_value: StorageExample.Col[StorageExample, datetime] = Text(
+                nullable=False
+            )
 
     columns = StorageExample.__snekql_columns__
 
@@ -82,7 +88,7 @@ def bool_logical_type_encodes_to_integer_and_decodes_before_validation() -> None
     class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
         """Table model with a boolean flag stored as INTEGER."""
 
-        enabled: FeatureFlag.Col[bool] = Integer(nullable=False)
+        enabled: FeatureFlag.Col[FeatureFlag, bool] = Integer(nullable=False)
 
     enabled = FeatureFlag(enabled=True)
     disabled = cast(
@@ -107,7 +113,7 @@ def canonical_decimal_normalizes_and_encodes_plain_text() -> None:
     class Price[S = Pending](Model[S, "Price[Fetched]"]):
         """Table model with exact decimal text storage."""
 
-        amount: Price.Col[CanonicalDecimal] = Text(nullable=False)
+        amount: Price.Col[Price, CanonicalDecimal] = Text(nullable=False)
 
     price = Price(amount=Decimal("1.500"))
     exponent_price = Price(amount=Decimal("1E+2"))
@@ -133,7 +139,7 @@ def duration_encodes_to_integer_milliseconds() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     _, encoded_timer = encode_model_row(
         Timer(elapsed=timedelta(seconds=9)), backend="sqlite"
@@ -149,7 +155,7 @@ def duration_decodes_integer_milliseconds() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     fetched = cast(
         "Timer[Fetched]",
@@ -166,7 +172,7 @@ def duration_truncates_sub_millisecond_values() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     timer = Timer(elapsed=timedelta(microseconds=1500))
 
@@ -180,7 +186,7 @@ def duration_negative_values_round_trip_through_integer_milliseconds() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     _, encoded_timer = encode_model_row(
         Timer(elapsed=timedelta(seconds=-5)), backend="sqlite"
@@ -201,7 +207,7 @@ def duration_negative_sub_millisecond_values_truncate_down() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     timer = Timer(elapsed=timedelta(microseconds=-500))
 
@@ -215,7 +221,7 @@ def duration_model_construction_accepts_integer_milliseconds() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     timer = Timer(elapsed=cast("Any", 9000))
 
@@ -229,7 +235,7 @@ def duration_integer_milliseconds_obey_signed_64_bit_range() -> None:
     class Timer[S = Pending](Model[S, "Timer[Fetched]"]):
         """Table model with duration storage."""
 
-        elapsed: Timer.Col[Duration] = Integer(nullable=False)
+        elapsed: Timer.Col[Timer, Duration] = Integer(nullable=False)
 
     try:
         _ = Timer.elapsed.encode(2**63, backend="sqlite")
@@ -249,7 +255,7 @@ def json_marker_encodes_to_text_and_decodes_before_validation() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with a JSON payload stored as TEXT."""
 
-        payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
+        payload: Event.Col[Event, Json[dict[str, object]]] = Text(nullable=False)
 
     event = Event(payload={"kind": "created", "count": 2})
     fetched = cast(
@@ -285,7 +291,7 @@ def json_marker_round_trips_rich_annotated_types() -> None:
     class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
         """Json column annotated with a pydantic model."""
 
-        payload: ModelEvent.Col[Json[Inner]] = Text(nullable=False)
+        payload: ModelEvent.Col[ModelEvent, Json[Inner]] = Text(nullable=False)
 
     model_event = ModelEvent(payload=Inner(x=1))
     _, encoded_model = encode_model_row(model_event, backend="sqlite")
@@ -302,7 +308,7 @@ def json_marker_round_trips_rich_annotated_types() -> None:
         class WhenEvent[S = Pending](Model[S, "WhenEvent[Fetched]"]):
             """Json column annotated with a datetime."""
 
-            when: WhenEvent.Col[Json[datetime]] = Text(nullable=False)
+            when: WhenEvent.Col[WhenEvent, Json[datetime]] = Text(nullable=False)
 
     moment = datetime(2026, 5, 31, 6, 30, 1, 987000, tzinfo=UTC)
     when_event = WhenEvent(when=moment)
@@ -328,7 +334,7 @@ def json_decode_without_validation_returns_raw_decoded_value() -> None:
     class ModelEvent[S = Pending](Model[S, "ModelEvent[Fetched]"]):
         """Json column annotated with a pydantic model."""
 
-        payload: ModelEvent.Col[Json[Inner]] = Text(nullable=False)
+        payload: ModelEvent.Col[ModelEvent, Json[Inner]] = Text(nullable=False)
 
     raw = cast(
         "ModelEvent[Fetched]",
@@ -351,7 +357,7 @@ def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
         class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
             """Table model with a timestamp stored as ISO text."""
 
-            created_at: AuditLog.Col[datetime] = Text(nullable=False)
+            created_at: AuditLog.Col[AuditLog, datetime] = Text(nullable=False)
 
     source_timezone = timezone(timedelta(hours=5, minutes=30))
     source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
@@ -394,7 +400,7 @@ def datetime_with_a_sub_minute_offset_is_rejected() -> None:
         class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
             """Table model with a timestamp stored as ISO text."""
 
-            created_at: AuditLog.Col[datetime] = Text(nullable=False)
+            created_at: AuditLog.Col[AuditLog, datetime] = Text(nullable=False)
 
     sub_minute = timezone(timedelta(hours=3, minutes=6, seconds=52))
     corrupting = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
@@ -416,7 +422,7 @@ def utc_datetime_normalizes_and_serializes_order_preserving_text() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Table model with canonical database timestamp storage."""
 
-        happened_at: Event.Col[UtcDatetime] = Text(nullable=False)
+        happened_at: Event.Col[Event, UtcDatetime] = Text(nullable=False)
 
     source = datetime(
         2026,
@@ -461,7 +467,9 @@ def uuid_logical_type_round_trips_as_text_and_blocks_like() -> None:
     class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Table model with a client-generated UUID primary key."""
 
-        id: Account.Col[uuid.UUID] = Text(primary_key=True, default_factory=uuid.uuid4)
+        id: Account.Col[Account, uuid.UUID] = Text(
+            primary_key=True, default_factory=uuid.uuid4
+        )
 
     value = uuid.UUID("12345678-1234-5678-1234-567812345678")
     account = Account(id=value)
@@ -489,7 +497,7 @@ def external_value_failures_are_wrapped_in_model_validation_error() -> None:
     class ExternalValue[S = Pending](Model[S, "ExternalValue[Fetched]"]):
         """Table model with an external default provider."""
 
-        payload: ExternalValue.Col[Json[dict[str, int]]] = Text(
+        payload: ExternalValue.Col[ExternalValue, Json[dict[str, int]]] = Text(
             default_factory=broken_default
         )
 
@@ -510,8 +518,10 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
     class CreatedEvent[S = Pending](Model[S, "CreatedEvent[Fetched]"]):
         """Valid server-filled timestamp column stored as TEXT."""
 
-        created_at: CreatedEvent.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
-        name: CreatedEvent.Col[str] = Text(nullable=False)
+        created_at: CreatedEvent.GenCol[CreatedEvent, UtcDatetime] = Text(
+            default=CurrentTimestamp
+        )
+        name: CreatedEvent.Col[CreatedEvent, str] = Text(nullable=False)
 
     column = CreatedEvent.__snekql_columns__["created_at"]
     assert_true(column.server_default is CurrentTimestamp)
@@ -533,7 +543,9 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """A server default requires a generated (GenCol) column."""
 
-            created_at: NonGeneratedTimestamp.Col[UtcDatetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            created_at: NonGeneratedTimestamp.Col[
+                NonGeneratedTimestamp, UtcDatetime
+            ] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
                 default=CurrentTimestamp,
             )
 
@@ -544,7 +556,9 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """CurrentTimestamp cannot be combined with a Python factory."""
 
-            created_at: TimestampWithFactory.GenCol[UtcDatetime] = Text(
+            created_at: TimestampWithFactory.GenCol[
+                TimestampWithFactory, UtcDatetime
+            ] = Text(
                 default=CurrentTimestamp,
                 default_factory=lambda: datetime(2026, 5, 31, tzinfo=UTC),
             )
@@ -558,11 +572,11 @@ def nullable_column_round_trips_none_for_every_storage_class() -> None:
     class Profile[S = Pending](Model[S, "Profile[Fetched]"]):
         """Table model with one nullable column per SQLite storage class."""
 
-        id: Profile.Col[int] = Integer(primary_key=True)
-        rating: Profile.Col[float | None] = Real(nullable=True, default=None)
-        nickname: Profile.Col[str | None] = Text(nullable=True, default=None)
-        avatar: Profile.Col[bytes | None] = Blob(nullable=True, default=None)
-        prefs: Profile.Col[Json[dict[str, int]] | None] = Text(
+        id: Profile.Col[Profile, int] = Integer(primary_key=True)
+        rating: Profile.Col[Profile, float | None] = Real(nullable=True, default=None)
+        nickname: Profile.Col[Profile, str | None] = Text(nullable=True, default=None)
+        avatar: Profile.Col[Profile, bytes | None] = Blob(nullable=True, default=None)
+        prefs: Profile.Col[Profile, Json[dict[str, int]] | None] = Text(
             nullable=True, default=None
         )
 
@@ -589,7 +603,7 @@ def nullable_column_round_trips_none_for_every_storage_class() -> None:
     class Required[S = Pending](Model[S, "Required[Fetched]"]):
         """Non-null column whose decode must reject a ``NULL`` from the driver."""
 
-        value: Required.Col[str] = Text(nullable=False)
+        value: Required.Col[Required, str] = Text(nullable=False)
 
     with assert_raises(ModelValidationError):
         _ = decode_model_row(Required, {"value": None}, backend="sqlite")
@@ -603,7 +617,7 @@ def integer_storage_round_trips_the_signed_64_bit_boundaries() -> None:
     class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
         """Table model with a single INTEGER column."""
 
-        value: Counter.Col[int] = Integer(nullable=False)
+        value: Counter.Col[Counter, int] = Integer(nullable=False)
 
     for boundary in (-(2**63), 2**63 - 1):
         _, encoded = encode_model_row(Counter(value=boundary), backend="sqlite")
@@ -627,7 +641,7 @@ def non_finite_floats_fail_with_a_domain_error_before_persistence() -> None:
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
         """Table model with a single REAL column."""
 
-        value: Reading.Col[float] = Real(nullable=False)
+        value: Reading.Col[Reading, float] = Real(nullable=False)
 
     for bad in (math.nan, math.inf, -math.inf):
         with assert_raises(ModelValidationError):
@@ -646,9 +660,9 @@ def large_text_blob_and_json_values_round_trip_unchanged() -> None:
     class Document[S = Pending](Model[S, "Document[Fetched]"]):
         """Table model carrying sizable TEXT, BLOB, and JSON columns."""
 
-        body: Document.Col[str] = Text(nullable=False)
-        raw: Document.Col[bytes] = Blob(nullable=False)
-        tags: Document.Col[Json[list[str]]] = Text(nullable=False)
+        body: Document.Col[Document, str] = Text(nullable=False)
+        raw: Document.Col[Document, bytes] = Blob(nullable=False)
+        tags: Document.Col[Document, Json[list[str]]] = Text(nullable=False)
 
     body = "x" * 1_000_000
     raw = b"\x00\xff" * 500_000
@@ -673,7 +687,7 @@ def blob_decode_normalizes_memoryview_and_bytearray_to_bytes() -> None:
     class Attachment[S = Pending](Model[S, "Attachment[Fetched]"]):
         """Table model with a single BLOB column."""
 
-        raw: Attachment.Col[bytes] = Blob(nullable=False)
+        raw: Attachment.Col[Attachment, bytes] = Blob(nullable=False)
 
     payload = b"\x00driver\xff"
     for driver_value in (memoryview(payload), bytearray(payload)):
@@ -693,7 +707,7 @@ def json_codec_preserves_insertion_key_order_and_nested_values() -> None:
     class Payload[S = Pending](Model[S, "Payload[Fetched]"]):
         """Table model with a free-form JSON object column."""
 
-        data: Payload.Col[Json[dict[str, object]]] = Text(nullable=False)
+        data: Payload.Col[Payload, Json[dict[str, object]]] = Text(nullable=False)
 
     nested: dict[str, object] = {
         "b": 1,

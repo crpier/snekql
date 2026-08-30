@@ -20,9 +20,9 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model used by materialization seam tests."""
 
-        enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
-        payload: Event.Col[dict[str, object]] = mariadb.Json(nullable=False)
+        enabled: Event.Col[Event, bool] = mariadb.Boolean(nullable=False)
+        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
+        payload: Event.Col[Event, dict[str, object]] = mariadb.Json(nullable=False)
 
     pending_event = Event(
         enabled=True,
@@ -66,7 +66,7 @@ def mariadb_model_materialization_asserts_database_row_shape() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model used by row-shape checks."""
 
-        enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
+        enabled: Event.Col[Event, bool] = mariadb.Boolean(nullable=False)
 
     with assert_raises(AssertionError):
         _ = decode_model_row(Event, {}, backend="mariadb")
@@ -82,7 +82,7 @@ def mariadb_select_materialization_asserts_database_row_shape() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """MariaDB model used by row-shape materialization checks."""
 
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     query = select(User.email).all()
 
@@ -105,8 +105,8 @@ def mariadb_min_max_decode_to_logical_type() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """MariaDB model exercising MIN/MAX logical decoding."""
 
-        enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        enabled: Event.Col[Event, bool] = mariadb.Boolean(nullable=False)
+        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
 
     earliest = MARIADB_CODEC.materialize_select_row(
         select(Event.happened_at.min()).all(), ("2026-01-02 03:04:05.678",)

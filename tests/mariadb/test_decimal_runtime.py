@@ -16,8 +16,10 @@ class OrderedPrice[S = Pending](mariadb.Model[S, "OrderedPrice[Fetched]"]):
 
     __tablename__ = "native_decimal_order_price"
 
-    id: OrderedPrice.Col[int] = mariadb.Integer(primary_key=True)
-    amount: OrderedPrice.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
+    id: OrderedPrice.Col[OrderedPrice, int] = mariadb.Integer(primary_key=True)
+    amount: OrderedPrice.Col[OrderedPrice, Decimal] = mariadb.Decimal(
+        5, 2, nullable=False
+    )
 
 
 class SummedPrice[S = Pending](mariadb.Model[S, "SummedPrice[Fetched]"]):
@@ -25,8 +27,10 @@ class SummedPrice[S = Pending](mariadb.Model[S, "SummedPrice[Fetched]"]):
 
     __tablename__ = "native_decimal_sum_price"
 
-    id: SummedPrice.Col[int] = mariadb.Integer(primary_key=True)
-    amount: SummedPrice.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
+    id: SummedPrice.Col[SummedPrice, int] = mariadb.Integer(primary_key=True)
+    amount: SummedPrice.Col[SummedPrice, Decimal] = mariadb.Decimal(
+        5, 2, nullable=False
+    )
 
 
 @test(mark="medium")

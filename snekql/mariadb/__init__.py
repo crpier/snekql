@@ -96,7 +96,7 @@ from snekql._common import (
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
 from snekql.mariadb import _dialect_sql as _dialect_sql
 from snekql.mariadb.config import Config
-from snekql.mariadb.model import Model
+from snekql.mariadb.model import JsonCol, Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
 from snekql.mariadb.storage import (
     Blob,
@@ -160,6 +160,7 @@ __all__ = [
     "JoinOn",
     "Json",
     "JsonAttr",
+    "JsonCol",
     "LexicalDatetimeWarning",
     "LexicalDecimalWarning",
     "LexicalDurationWarning",

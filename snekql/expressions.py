@@ -109,10 +109,10 @@ class Predicate[OwnerT](ABC):
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = None
 
     def __and__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate(operator="AND", children=(self, other))
+        return CompoundPredicate[OwnerT | Other](operator="AND", children=(self, other))
 
     def __or__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate(operator="OR", children=(self, other))
+        return CompoundPredicate[OwnerT | Other](operator="OR", children=(self, other))
 
     def __invert__(self) -> Predicate[OwnerT]:
         return NegatedPredicate(child=self)

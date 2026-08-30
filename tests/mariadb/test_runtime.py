@@ -42,13 +42,13 @@ class _UpdateUser[S = Pending](mariadb.Model[S, "_UpdateUser[Fetched]"]):
 
     __tablename__ = "issue38_user_update"
 
-    id: _UpdateUser.GenCol[int] = mariadb.Integer(
+    id: _UpdateUser.GenCol[_UpdateUser, int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
-    status: _UpdateUser.Col[str] = mariadb.Text(nullable=False)
+    email: _UpdateUser.Col[_UpdateUser, str] = mariadb.Text(nullable=False)
+    status: _UpdateUser.Col[_UpdateUser, str] = mariadb.Text(nullable=False)
 
 
 @fixture
@@ -91,12 +91,12 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
 
         __tablename__ = "issue37_user_round_trip"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -119,12 +119,12 @@ async def mariadb_runtime_rolls_back_failed_transactions() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         __tablename__ = "issue37_user_lifecycle"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -175,12 +175,12 @@ async def mariadb_runtime_fetches_scalar_rows() -> None:
 
         __tablename__ = "issue38_user_scalar_result"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -200,13 +200,13 @@ async def mariadb_runtime_fetches_tuple_rows() -> None:
 
         __tablename__ = "issue38_user_tuple_result"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
-        status: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -260,12 +260,12 @@ async def mariadb_runtime_streams_rows_in_chunks() -> None:
 
         __tablename__ = "issue59_user_stream"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -295,12 +295,12 @@ async def mariadb_runtime_closes_stream_cursor_on_early_break() -> None:
 
         __tablename__ = "issue59_user_stream_break"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -331,12 +331,12 @@ async def mariadb_runtime_closes_stream_cursor_on_consumer_exception() -> None:
 
         __tablename__ = "issue59_user_stream_error"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -365,13 +365,13 @@ async def mariadb_runtime_deletes_filtered_rows() -> None:
 
         __tablename__ = "issue38_user_filtered_delete"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
-        status: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -395,12 +395,12 @@ async def mariadb_runtime_deletes_all_rows() -> None:
 
         __tablename__ = "issue38_user_delete_all"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([User]))
 
@@ -424,8 +424,8 @@ async def mariadb_execution_errors_preserve_sql_and_params() -> None:
 
         __tablename__ = "issue38_account_errors"
 
-        id: Account.Col[int] = mariadb.Integer(primary_key=True)
-        email: Account.Col[str] = mariadb.Text(nullable=False)
+        id: Account.Col[Account, int] = mariadb.Integer(primary_key=True)
+        email: Account.Col[Account, str] = mariadb.Text(nullable=False)
 
     database = await load_fixture(database_session([Account]))
 
@@ -457,12 +457,12 @@ async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
 
         __tablename__ = "issue109_sale_aggregate"
 
-        id: Sale.GenCol[int] = mariadb.Integer(
+        id: Sale.GenCol[Sale, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+        amount: Sale.Col[Sale, int] = mariadb.Integer(nullable=False)
 
     database = await load_fixture(database_session([Sale]))
 
@@ -495,13 +495,13 @@ async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
 
         __tablename__ = "issue112_sale_grouped"
 
-        id: Sale.GenCol[int] = mariadb.Integer(
+        id: Sale.GenCol[Sale, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        region: Sale.Col[str] = mariadb.Text(nullable=False)
-        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+        region: Sale.Col[Sale, str] = mariadb.Text(nullable=False)
+        amount: Sale.Col[Sale, int] = mariadb.Integer(nullable=False)
 
     database = await load_fixture(database_session([Sale]))
 
@@ -533,13 +533,13 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
 
         __tablename__ = "issue113_sale_having"
 
-        id: Sale.GenCol[int] = mariadb.Integer(
+        id: Sale.GenCol[Sale, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        region: Sale.Col[str] = mariadb.Text(nullable=False)
-        amount: Sale.Col[int] = mariadb.Integer(nullable=False)
+        region: Sale.Col[Sale, str] = mariadb.Text(nullable=False)
+        amount: Sale.Col[Sale, int] = mariadb.Integer(nullable=False)
 
     database = await load_fixture(database_session([Sale]))
 
@@ -568,25 +568,27 @@ async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
 
         __tablename__ = "issue118_customer"
 
-        id: Customer.GenCol[int] = mariadb.Integer(
+        id: Customer.GenCol[Customer, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        country: Customer.Col[str] = mariadb.Text(nullable=False)
+        country: Customer.Col[Customer, str] = mariadb.Text(nullable=False)
 
     class Purchase[S = Pending](mariadb.Model[S, "Purchase[Fetched]"]):
         """Inner table with a foreign key back to ``Customer``."""
 
         __tablename__ = "issue118_purchase"
 
-        id: Purchase.GenCol[int] = mariadb.Integer(
+        id: Purchase.GenCol[Purchase, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        customer_id: Purchase.FKCol[Customer, int] = mariadb.ForeignKey(Customer.id)
-        amount: Purchase.Col[int] = mariadb.Integer(nullable=False)
+        customer_id: Purchase.FKCol[Purchase, Customer, int] = mariadb.ForeignKey(
+            Customer.id
+        )
+        amount: Purchase.Col[Purchase, int] = mariadb.Integer(nullable=False)
 
     database = await load_fixture(database_session([Customer, Purchase]))
 

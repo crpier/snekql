@@ -117,12 +117,12 @@ async def mariadb_schema_creates_column_unique_indexes() -> None:
 
         __tablename__ = "issue39_user_column_unique_indexes"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
+        email: User.Col[User, str] = mariadb.Text(nullable=False, unique=True)
 
     session = await load_fixture(database_session([User]))
 
@@ -141,12 +141,12 @@ async def mariadb_schema_creates_column_non_unique_indexes() -> None:
 
         __tablename__ = "issue146_user_column_non_unique_indexes"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        status: User.Col[str] = mariadb.Text(nullable=False, index=True)
+        status: User.Col[User, str] = mariadb.Text(nullable=False, index=True)
 
     session = await load_fixture(database_session([User]))
 
@@ -168,14 +168,14 @@ async def mariadb_schema_creates_table_indexes() -> None:
 
         __tablename__ = "issue39_user_table_indexes"
 
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
-        status: User.Col[str] = mariadb.Text(nullable=False)
-        tenant_id: User.Col[int] = mariadb.Integer(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
+        tenant_id: User.Col[User, int] = mariadb.Integer(nullable=False)
 
         __indexes__: ClassVar[list[Index[Any]]] = [
             Index(status),
@@ -203,14 +203,14 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
         """First model using a duplicate index name."""
 
         __tablename__ = "issue39_duplicate_user"
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
     class Org[S = Pending](mariadb.Model[S, "Org[Fetched]"]):
         """Second model using a duplicate index name."""
 
         __tablename__ = "issue39_duplicate_org"
-        name: Org.Col[str] = mariadb.Text(nullable=False)
+        name: Org.Col[Org, str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(name, name="ix_duplicate")]
 
     database = await Database.initialize(server.config())
@@ -241,7 +241,7 @@ async def mariadb_decimal_precision_drift_is_reported() -> None:
         """Model whose live decimal scale differs."""
 
         __tablename__ = "native_decimal_drift"
-        amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
+        amount: Price.Col[Price, Decimal] = mariadb.Decimal(5, 2, nullable=False)
 
     _ = await server.run_sql(
         "CREATE TABLE native_decimal_drift (`amount` DECIMAL(5,3) NOT NULL) ENGINE=InnoDB"
@@ -268,12 +268,12 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
         """Model that expects more columns than the existing table."""
 
         __tablename__ = "issue39_table_drift"
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     _ = await server.run_sql("CREATE TABLE issue39_table_drift (`email` VARCHAR(255))")
 
@@ -295,7 +295,7 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
         """Model that expects a unique index absent from the existing table."""
 
         __tablename__ = "issue39_index_drift"
-        email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
+        email: User.Col[User, str] = mariadb.Text(nullable=False, unique=True)
 
     _ = await server.run_sql(
         "CREATE TABLE issue39_index_drift (`email` VARCHAR(255) NOT NULL)"
@@ -317,12 +317,12 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
         """Model used for warn-policy drift verification."""
 
         __tablename__ = "issue39_warn_drift"
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     with capture_snekql_logs() as logs:
         _ = await load_fixture(
@@ -350,12 +350,12 @@ async def mariadb_reordered_columns_verify_semantically() -> None:
         """Model verified against a semantically equal, reordered live table."""
 
         __tablename__ = "issue119_reordered"
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     # Columns declared in the opposite order to the model: semantically identical.
     create_sql = (
@@ -380,12 +380,12 @@ async def mariadb_boolean_tinyint_alias_verifies_clean() -> None:
         """Model whose boolean column is migrated as the underlying TINYINT(1)."""
 
         __tablename__ = "issue58_boolean_alias"
-        id: Flag.GenCol[int] = mariadb.Integer(
+        id: Flag.GenCol[Flag, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        active: Flag.Col[bool] = mariadb.Boolean(nullable=False)
+        active: Flag.Col[Flag, bool] = mariadb.Boolean(nullable=False)
 
     # The migration author writes the BOOLEAN alias; MariaDB stores it as
     # TINYINT(1) and information_schema reports DATA_TYPE 'tinyint', the same
@@ -417,12 +417,12 @@ async def mariadb_json_longtext_alias_verifies_clean() -> None:
         """Model whose JSON column is migrated as the underlying LONGTEXT."""
 
         __tablename__ = "issue58_json_alias"
-        id: Doc.GenCol[int] = mariadb.Integer(
+        id: Doc.GenCol[Doc, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        payload: Doc.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
+        payload: Doc.JsonCol[Doc, dict[str, object]] = mariadb.Json(nullable=False)
 
     # The migration author writes the JSON alias; MariaDB implements it as
     # LONGTEXT with a json_valid CHECK (the CHECK is invisible to verification)
@@ -454,12 +454,12 @@ async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
         """Model whose email is NOT NULL while the live column is nullable."""
 
         __tablename__ = "issue119_column_drift"
-        id: User.GenCol[int] = mariadb.Integer(
+        id: User.GenCol[User, int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     create_sql = (
         "CREATE TABLE issue119_column_drift ("

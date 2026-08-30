@@ -19,31 +19,31 @@ from snekql.sqlite import PENDING_GENERATION, Fetched, Integer, Pending, Text, s
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
     """Model exposing columns whose codecs make decoding observable."""
 
-    label: Widget.Col[str] = Text(nullable=False)
-    enabled: Widget.Col[bool] = Integer(nullable=False)
+    label: Widget.Col[Widget, str] = Text(nullable=False)
+    enabled: Widget.Col[Widget, bool] = Integer(nullable=False)
 
 
 class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
     """Referenced table for join materialization tests."""
 
-    id: JoinUser.GenCol[int] = sqlite.Integer(
+    id: JoinUser.GenCol[JoinUser, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: JoinUser.Col[str] = Text(nullable=False)
+    email: JoinUser.Col[JoinUser, str] = Text(nullable=False)
 
 
 class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
     """Table with a foreign key to ``JoinUser``."""
 
-    id: JoinOrder.GenCol[int] = sqlite.Integer(
+    id: JoinOrder.GenCol[JoinOrder, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
-    note: JoinOrder.Col[str] = Text(nullable=False)
+    user_id: JoinOrder.FKCol[JoinOrder, JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
+    note: JoinOrder.Col[JoinOrder, str] = Text(nullable=False)
 
 
 @test(mark="fast")

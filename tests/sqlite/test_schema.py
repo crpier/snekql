@@ -118,12 +118,12 @@ async def migrate_builds_quoted_strict_tables() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for schema creation."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -147,24 +147,24 @@ async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table whose primary key anchors the constraint."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table with an enforced and a typed-only reference to ``User``."""
 
-        id: Order.GenCol[int] = Integer(
+        id: Order.GenCol[Order, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
-        soft_user_id: Order.FKCol[User, int] = Integer(nullable=False)
-        note: Order.Col[str] = Text(nullable=False)
+        user_id: Order.FKCol[Order, User, int] = ForeignKey(User.id)
+        soft_user_id: Order.FKCol[Order, User, int] = Integer(nullable=False)
+        note: Order.Col[Order, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -192,23 +192,27 @@ async def migrate_builds_and_verifies_a_composite_primary_key() -> None:
     class Team[S = Pending](Model[S, "Team[Fetched]"]):
         """Referenced table anchoring the join table's foreign keys."""
 
-        id: Team.GenCol[int] = Integer(
+        id: Team.GenCol[Team, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table anchoring the join table's foreign keys."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
     class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
         """Join table whose identity is the (team, user) column pair."""
 
-        team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
-        user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
-        role: TeamMember.Col[str] = Text(nullable=False)
+        team_id: TeamMember.FKCol[TeamMember, Team, int] = ForeignKey(
+            Team.id, primary_key=True
+        )
+        user_id: TeamMember.FKCol[TeamMember, User, int] = ForeignKey(
+            User.id, primary_key=True
+        )
+        role: TeamMember.Col[TeamMember, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -239,7 +243,7 @@ async def migrate_builds_and_verifies_a_text_primary_key() -> None:
     class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
         """Table keyed on an app-generated TEXT (UUID) primary key."""
 
-        id: Doc.Col[str] = Text(primary_key=True)
+        id: Doc.Col[Doc, str] = Text(primary_key=True)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -264,22 +268,24 @@ async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table whose unique email is the FK target."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False, unique=True)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table whose owner_email references ``user(email)``."""
 
-        id: Order.GenCol[int] = Integer(
+        id: Order.GenCol[Order, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
+        owner_email: Order.FKCol[Order, User, str] = ForeignKey(
+            User.email, nullable=False
+        )
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -304,17 +310,17 @@ async def migrate_emits_and_verifies_referential_actions() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table anchoring the cascading foreign key."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Owned table whose rows cascade on parent delete, restrict on update."""
 
-        id: Order.GenCol[int] = Integer(
+        id: Order.GenCol[Order, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        user_id: Order.FKCol[User, int] = ForeignKey(
+        user_id: Order.FKCol[Order, User, int] = ForeignKey(
             User.id, nullable=False, on_delete="CASCADE", on_update="RESTRICT"
         )
 
@@ -345,17 +351,19 @@ async def strict_verify_raises_on_referential_action_drift() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table for referential-action drift detection."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Model expecting ON DELETE CASCADE against an action-free live table."""
 
-        id: Order.GenCol[int] = Integer(
+        id: Order.GenCol[Order, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        user_id: Order.FKCol[User, int] = ForeignKey(User.id, on_delete="CASCADE")
+        user_id: Order.FKCol[Order, User, int] = ForeignKey(
+            User.id, on_delete="CASCADE"
+        )
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -385,7 +393,7 @@ async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> Non
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Referenced table for foreign-key drift detection."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
@@ -394,12 +402,12 @@ async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> Non
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table whose model declares a constraint absent from the database."""
 
-        id: Order.GenCol[int] = Integer(
+        id: Order.GenCol[Order, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        user_id: Order.FKCol[User, int] = ForeignKey(User.id)
+        user_id: Order.FKCol[Order, User, int] = ForeignKey(User.id)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -428,12 +436,12 @@ async def initialize_accepts_sqlite_config_object() -> None:
     class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Table model used for SQLite config initialization."""
 
-        id: User.GenCol[int] = sqlite.Integer(
+        id: User.GenCol[User, int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = sqlite.Text(nullable=False)
+        email: User.Col[User, str] = sqlite.Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -472,8 +480,8 @@ async def migrate_builds_column_unique_indexes_after_tables() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique public identifier."""
 
-        email: User.Col[str] = Text(nullable=False, unique=True)
-        status: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
+        status: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -501,8 +509,8 @@ async def migrate_builds_column_non_unique_indexes() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a column-level non-unique index."""
 
-        email: User.Col[str] = Text(nullable=False, unique=True)
-        status: User.Col[str] = Text(nullable=False, index=True)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
+        status: User.Col[User, str] = Text(nullable=False, index=True)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -528,9 +536,9 @@ async def migrate_builds_table_indexes_in_declaration_order() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with single and composite table indexes."""
 
-        email: User.Col[str] = Text(nullable=False, unique=True)
-        status: User.Col[str] = Text(nullable=False)
-        tenant_id: User.Col[int] = Integer(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
+        status: User.Col[User, str] = Text(nullable=False)
+        tenant_id: User.Col[User, int] = Integer(nullable=False)
 
         __indexes__: ClassVar[list[Index[Any]]] = [
             Index(status),
@@ -595,12 +603,12 @@ async def verify_accepts_existing_tables_after_controlled_normalization() -> Non
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for existing schema verification."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -624,10 +632,10 @@ async def cosmetically_different_ddl_verifies_semantically() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model verified against a table whose DDL differs only cosmetically."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -673,10 +681,10 @@ async def verify_accepts_sqlite_integer_type_aliases() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Model whose count column maps to INTEGER but is migrated as ``INT``."""
 
-        id: Event.GenCol[int] = Integer(
+        id: Event.GenCol[Event, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        count: Event.Col[int] = Integer(nullable=False)
+        count: Event.Col[Event, int] = Integer(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -701,7 +709,7 @@ async def verify_collapses_sqlite_text_affinity_aliases() -> None:
     class Note[S = Pending](Model[S, "Note[Fetched]"]):
         """Model whose body is TEXT but is migrated as ``VARCHAR(255)``."""
 
-        body: Note.Col[str] = Text(nullable=False)
+        body: Note.Col[Note, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -733,10 +741,10 @@ async def strict_verify_raises_on_meaningful_type_affinity_drift() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """Model whose label is TEXT while the live column has INTEGER affinity."""
 
-        id: Event.GenCol[int] = Integer(
+        id: Event.GenCol[Event, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        label: Event.Col[str] = Text(nullable=False)
+        label: Event.Col[Event, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -765,11 +773,11 @@ async def model_matching_migration_evolved_table_verifies_clean() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose age column was appended to the table by a later ALTER."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        age: User.Col[int | None] = Integer(nullable=True)
-        email: User.Col[str] = Text(nullable=False)
+        age: User.Col[User, int | None] = Integer(nullable=True)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -792,10 +800,10 @@ async def strict_drift_error_names_the_divergent_column() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose email is NOT NULL while the live column is nullable."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -824,7 +832,7 @@ async def strict_verify_raises_on_index_drift() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model requiring an index for verification."""
 
-        email: User.Col[str] = Text(nullable=False, unique=True)
+        email: User.Col[User, str] = Text(nullable=False, unique=True)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -847,7 +855,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """First model using an explicit index name."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [
             Index(email, name="ix_conflict"),
         ]
@@ -855,7 +863,7 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
     class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Second model reusing the explicit index name."""
 
-        email: Account.Col[str] = Text(nullable=False)
+        email: Account.Col[Account, str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [
             Index(email, name="ix_conflict"),
         ]
@@ -877,7 +885,7 @@ async def strict_verify_raises_on_schema_drift() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for drift detection."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -898,7 +906,7 @@ async def warn_verify_policy_logs_drift_and_continues() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used for warn policy drift detection."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with capture_snekql_logs() as logs, TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -919,12 +927,12 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
         """First model for duplicate table detection."""
 
         __tablename__ = "account"
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Second model with the same resolved table name."""
 
-        email: Account.Col[str] = Text(nullable=False)
+        email: Account.Col[Account, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -943,7 +951,7 @@ async def schema_verification_closes_control_cursors() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model used to force BEGIN, metadata fetch, and COMMIT."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     connection = _SchemaConnection()
 

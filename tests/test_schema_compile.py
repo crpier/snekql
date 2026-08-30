@@ -29,10 +29,10 @@ class _Author[S = Pending](Model[S, "_Author[Fetched]"]):
 
     __tablename__ = "author"
 
-    id: _Author.GenCol[int] = Integer(
+    id: _Author.GenCol[_Author, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: _Author.Col[str] = Text(nullable=False, unique=True)
+    email: _Author.Col[_Author, str] = Text(nullable=False, unique=True)
 
 
 class _Book[S = Pending](Model[S, "_Book[Fetched]"]):
@@ -40,11 +40,11 @@ class _Book[S = Pending](Model[S, "_Book[Fetched]"]):
 
     __tablename__ = "book"
 
-    id: _Book.GenCol[int] = Integer(
+    id: _Book.GenCol[_Book, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    isbn: _Book.Col[str] = Text(nullable=False, unique=True)
-    author_id: _Book.FKCol[_Author, int] = ForeignKey(_Author.id)
+    isbn: _Book.Col[_Book, str] = Text(nullable=False, unique=True)
+    author_id: _Book.FKCol[_Book, _Author, int] = ForeignKey(_Author.id)
 
 
 def _planned(model_cls: type) -> PlannedModel:
@@ -110,10 +110,10 @@ class _Loan[S = Pending](Model[S, "_Loan[Fetched]"]):
 
     __tablename__ = "loan"
 
-    id: _Loan.GenCol[int] = Integer(
+    id: _Loan.GenCol[_Loan, int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    author_id: _Loan.FKCol[_Author, int] = ForeignKey(
+    author_id: _Loan.FKCol[_Loan, _Author, int] = ForeignKey(
         _Author.id, on_delete="CASCADE", on_update="RESTRICT"
     )
 

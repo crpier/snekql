@@ -27,14 +27,16 @@ class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
 
     __tablename__ = "issue117_bulk_user"
 
-    id: _BulkUser.GenCol[int] = mariadb.Integer(
+    id: _BulkUser.GenCol[_BulkUser, int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: _BulkUser.Col[str] = mariadb.Text(nullable=False)
-    status: _BulkUser.Col[str] = mariadb.Text(nullable=False, default="active")
-    created_at: _BulkUser.GenCol[datetime] = mariadb.DateTime(
+    email: _BulkUser.Col[_BulkUser, str] = mariadb.Text(nullable=False)
+    status: _BulkUser.Col[_BulkUser, str] = mariadb.Text(
+        nullable=False, default="active"
+    )
+    created_at: _BulkUser.GenCol[_BulkUser, datetime] = mariadb.DateTime(
         default=CurrentTimestamp,
     )
 

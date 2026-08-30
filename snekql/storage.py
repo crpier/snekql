@@ -868,16 +868,14 @@ def _resolve_model_hints(owner: type[object]) -> dict[str, Any]:
 def _extract_logical_type(annotation: object, name: str) -> object:
     """Pull the validated value type out of a column annotation.
 
-    `Col[T]` and `GenCol[T]` carry the logical type as their only argument;
-    `FKCol[Target, T]` carries it second, after the referenced model.
+    Every public column alias puts its Logical Type last. Earlier arguments
+    carry the declaring model and, for `FKCol`, the referenced model.
     """
 
     alias_name = getattr(get_origin(annotation), "__name__", None)
     arguments = get_args(annotation)
-    if alias_name in {"Col", "GenCol"} and arguments:
-        return arguments[0]
-    if alias_name == "FKCol" and len(arguments) >= 2:  # noqa: PLR2004
-        return arguments[1]
+    if alias_name in {"Col", "FKCol", "GenCol", "JsonCol"} and arguments:
+        return arguments[-1]
     msg = f"cannot determine validated type for column {name!r}"
     raise ModelDeclarationError(msg)
 

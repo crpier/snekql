@@ -96,7 +96,10 @@ def _model_indexes(
     table_name: str,
     columns: tuple[PlannedColumn, ...],
 ) -> tuple[NormalizedIndex, ...]:
-    table_indexes = getattr(model, "__snekql_indexes__", ())
+    table_indexes = cast(
+        "tuple[NormalizedIndex, ...]",
+        getattr(model, "__snekql_indexes__", ()),
+    )
     return (*_column_indexes(table_name, columns), *table_indexes)
 
 
@@ -104,8 +107,8 @@ def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]
     """Resolve the referenced model from a column's ``FKCol`` annotation."""
 
     # Resolving annotations needs names visible where the model was declared,
-    # plus the model's own name for self-referential column owners
-    # (``Order.GenCol[int]``), which is not yet bound while the class body runs.
+    # plus the model's own name for explicit column owners
+    # (`GenCol[Order, int]`), which is not yet bound while the class body runs.
     captured_localns = cast(
         "dict[str, Any] | None",
         getattr(model, "__snekql_localns__", None),
@@ -119,9 +122,11 @@ def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]
     annotation = hints.get(name)
     origin = get_origin(annotation)
     if origin is None or getattr(origin, "__name__", None) != "FKCol":
-        msg = f"foreign_key column {name!r} must be annotated as FKCol[Target, T]"
+        msg = (
+            f"foreign_key column {name!r} must be annotated as FKCol[Owner, Target, T]"
+        )
         raise SchemaError(msg)
-    target_argument = cast("object", get_args(annotation)[0])
+    target_argument = cast("object", get_args(annotation)[-2])
     target_model = get_origin(target_argument) or target_argument
     if not isinstance(target_model, type) or not issubclass(target_model, Table):
         msg = f"foreign-key target for column {name!r} is not a table model"

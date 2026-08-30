@@ -93,8 +93,8 @@ class _FakeSchemaBackend:
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with one index used by schema verification flow tests."""
 
-    id: User.GenCol[int] = Integer(primary_key=True, auto_increment=True)
-    email: User.Col[str] = Text(nullable=False)
+    id: User.GenCol[User, int] = Integer(primary_key=True, auto_increment=True)
+    email: User.Col[User, str] = Text(nullable=False)
     __indexes__: ClassVar[list[Index[Any]]] = [
         Index(email, name="ix_user_email"),
     ]

@@ -133,7 +133,7 @@ _DIALECT_NAMES = frozenset(
 # native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
 # column attribute type.
 _MARIADB_ONLY_NAMES = frozenset(
-    {"Boolean", "DateTime", "Decimal", "Json", "JsonAttr", "Uuid"},
+    {"Boolean", "DateTime", "Decimal", "Json", "JsonAttr", "JsonCol", "Uuid"},
 )
 _SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
@@ -222,7 +222,7 @@ def column_declarations_produce_query_attributes() -> None:
     class AttributeUser(sqlite.Model[sqlite.Pending, "AttributeUser[sqlite.Fetched]"]):
         """Table model for descriptor smoke checks."""
 
-        email: AttributeUser.Col[str] = sqlite.Text(nullable=False)
+        email: AttributeUser.Col[AttributeUser, str] = sqlite.Text(nullable=False)
 
     assert_isinstance(AttributeUser.email, sqlite.Attr)
     assert_isinstance(AttributeUser.email.eq("alice@example.com"), sqlite.Predicate)
@@ -252,7 +252,7 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     class SqliteUser(sqlite.Model[sqlite.Pending, "SqliteUser[sqlite.Fetched]"]):
         """SQLite table model declared through the SQLite namespace."""
 
-        email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
+        email: SqliteUser.Col[SqliteUser, str] = sqlite.Text(nullable=False)
 
     assert_isinstance(SqliteUser.email, sqlite.Attr)
     assert_isinstance(SqliteUser.email.eq("alice@example.com"), sqlite.Predicate)
@@ -265,8 +265,8 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     class MutationUser(sqlite.Model[sqlite.Pending, "MutationUser[sqlite.Fetched]"]):
         """Table model for mutation chain smoke checks."""
 
-        email: MutationUser.Col[str] = sqlite.Text(nullable=False)
-        status: MutationUser.Col[str] = sqlite.Text(nullable=False)
+        email: MutationUser.Col[MutationUser, str] = sqlite.Text(nullable=False)
+        status: MutationUser.Col[MutationUser, str] = sqlite.Text(nullable=False)
 
     assignment = MutationUser.status.to("disabled")
     predicate = MutationUser.email.eq("alice@example.com")
@@ -319,14 +319,14 @@ def write_verbs_diverge_with_backend_specific_docstrings() -> None:
     ):
         """SQLite table model for per-backend verb smoke checks."""
 
-        email: SqliteVerbUser.Col[str] = sqlite.Text(nullable=False)
+        email: SqliteVerbUser.Col[SqliteVerbUser, str] = sqlite.Text(nullable=False)
 
     class MariaDBVerbUser(
         mariadb.Model[mariadb.Pending, "MariaDBVerbUser[mariadb.Fetched]"],
     ):
         """MariaDB table model for per-backend verb smoke checks."""
 
-        email: MariaDBVerbUser.Col[str] = mariadb.Text(nullable=False)
+        email: MariaDBVerbUser.Col[MariaDBVerbUser, str] = mariadb.Text(nullable=False)
 
     # The write verbs are distinct objects per backend, unlike neutral ``select``.
     assert sqlite.insert is not mariadb.insert

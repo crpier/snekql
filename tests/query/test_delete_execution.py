@@ -37,8 +37,8 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
         """Table model with identifiers requiring SQLite quoting."""
 
         __tablename__ = "select"
-        status: Order.Col[str] = Text(nullable=False)
-        where: Order.Col[str] = Text(nullable=False)
+        status: Order.Col[Order, str] = Text(nullable=False)
+        where: Order.Col[Order, str] = Text(nullable=False)
 
     query = delete(Order).where(
         Order.where.ne("old"),
@@ -59,9 +59,11 @@ def delete_returning_appends_projected_columns() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through RETURNING."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        email: User.Col[str] = Text(nullable=False)
-        status: User.Col[str] = Text(nullable=False)
+        id: User.GenCol[User, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        email: User.Col[User, str] = Text(nullable=False)
+        status: User.Col[User, str] = Text(nullable=False)
 
     query = (
         delete(User)
@@ -86,12 +88,12 @@ def delete_predicates_must_belong_to_target_model() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Target table model for ownership checks."""
 
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Unrelated table model for ownership checks."""
 
-        message: AuditLog.Col[str] = Text(nullable=False)
+        message: AuditLog.Col[AuditLog, str] = Text(nullable=False)
 
     where = cast("Callable[..., object]", delete(User).where)
 
@@ -106,8 +108,8 @@ def delete_requires_exactly_one_filter_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by explicit delete intent checks."""
 
-        email: User.Col[str] = Text(nullable=False)
-        status: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
+        status: User.Col[User, str] = Text(nullable=False)
 
     base_query = delete(User)
     filtered_query = base_query.where(User.status.eq("disabled"))
@@ -138,9 +140,11 @@ async def delete_returning_yields_deleted_projection() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through RETURNING execution."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        email: User.Col[str] = Text(nullable=False)
-        status: User.Col[str] = Text(nullable=False, default="active")
+        id: User.GenCol[User, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        email: User.Col[User, str] = Text(nullable=False)
+        status: User.Col[User, str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -166,9 +170,11 @@ async def delete_execute_returns_affected_row_count() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model deleted through the async runtime."""
 
-        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        email: User.Col[str] = Text(nullable=False)
-        status: User.Col[str] = Text(nullable=False, default="active")
+        id: User.GenCol[User, int] = Integer(
+            primary_key=True, default=PENDING_GENERATION
+        )
+        email: User.Col[User, str] = Text(nullable=False)
+        status: User.Col[User, str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:

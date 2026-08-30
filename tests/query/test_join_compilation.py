@@ -17,24 +17,24 @@ from tests.helpers import SQLITE_CODEC
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Referenced table."""
 
-    id: User.GenCol[int] = sqlite.Integer(
+    id: User.GenCol[User, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = sqlite.Text(nullable=False)
+    email: User.Col[User, str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Table with a foreign key to ``User``."""
 
-    id: Order.GenCol[int] = sqlite.Integer(
+    id: Order.GenCol[Order, int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
-    note: Order.Col[str] = sqlite.Text(nullable=False)
+    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
+    note: Order.Col[Order, str] = sqlite.Text(nullable=False)
 
 
 @test(mark="fast")

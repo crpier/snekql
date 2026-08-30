@@ -39,7 +39,7 @@ def _json_path_literal(path: str) -> str:
 
 
 @dataclass(frozen=True)
-class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
+class _JsonExtractInt[OwnerT: "Table[Any]"](Comparable[OwnerT, "int | None"]):
     """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
 
     The first dialect-specific operator: it lives entirely in the MariaDB
@@ -50,7 +50,8 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
     * ``__owner_model__`` / ``__compile_sql__`` satisfy ``SqlCompilable`` (the
       operand-render seam).
     * ``__compile_select_sql__`` / ``__decode__`` additionally satisfy
-      ``DialectSelectable[int | None]`` (the projection seam), so it can be
+      ``DialectSelectable[OwnerT, int | None]`` (the projection seam), so it can
+      be
       projected and Materialized without the core naming this class.
 
     The result is optional because ``JSON_EXTRACT`` returns SQL ``NULL`` whenever
@@ -62,8 +63,8 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
     column: Attr[Any, Any, Any, Any, Any]
     path: str
 
-    def __owner_model__(self) -> type[Table[Any]]:
-        return require_column_model(self.column)
+    def __owner_model__(self) -> type[OwnerT]:
+        return cast("type[OwnerT]", require_column_model(self.column))
 
     def __compile_sql__(self, ctx: CompileCtx) -> str:
         return f"JSON_EXTRACT({ctx.render_column(self.column)}, {_json_path_literal(self.path)})"
@@ -93,7 +94,7 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
 class JsonAttr[
     WriteOwnerT,
     LoadedOwnerT,
-    OwnerT,
+    OwnerT: "Table[Any]",
     WriteT,
     ReadValueT,
     SetValueT = WriteT,

@@ -17,7 +17,7 @@ def mariadb_select_compilation_quotes_identifiers_with_backticks() -> None:
         """Model using SQL keywords to make identifier quoting observable."""
 
         __tablename__ = "select"
-        where: KeywordModel.Col[str] = mariadb.Text(nullable=False)
+        where: KeywordModel.Col[KeywordModel, str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(KeywordModel.where).all(),
@@ -34,7 +34,7 @@ def mariadb_select_compilation_uses_percent_s_placeholders() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile one equality predicate."""
 
-        status: User.Col[str] = mariadb.Text(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.status).where(User.status.eq("active")),
@@ -51,7 +51,7 @@ def mariadb_select_compilation_renders_in_predicates() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile an IN predicate."""
 
-        status: User.Col[str] = mariadb.Text(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.status).where(User.status.in_("active", "paused")),
@@ -68,7 +68,7 @@ def mariadb_select_compilation_renders_result_windowing() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile result-windowing clauses."""
 
-        email: User.Col[str] = mariadb.Text(nullable=False)
+        email: User.Col[User, str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
         select(User.email).all().order_by(User.email.desc()).limit(2).offset(1),
@@ -88,8 +88,8 @@ def mariadb_update_compilation_renders_predicated_assignments() -> None:
     class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
         """Model used to compile one update statement."""
 
-        enabled: User.Col[bool] = mariadb.Boolean(nullable=False)
-        status: User.Col[str] = mariadb.Text(nullable=False)
+        enabled: User.Col[User, bool] = mariadb.Boolean(nullable=False)
+        status: User.Col[User, str] = mariadb.Text(nullable=False)
 
     update_sql, update_params = MARIADB_CODEC.compile_write_sql(
         update(User).set(User.enabled.to(False)).where(User.status.ne("old")),
@@ -106,8 +106,8 @@ def mariadb_update_compilation_renders_current_timestamp_expression() -> None:
     class Doc[S = Pending](mariadb.Model[S, "Doc[Fetched]"]):
         """Model with a column refreshed to the server clock on update."""
 
-        title: Doc.Col[str] = mariadb.Text(nullable=False)
-        edited_at: Doc.Col[str] = mariadb.Text(nullable=False)
+        title: Doc.Col[Doc, str] = mariadb.Text(nullable=False)
+        edited_at: Doc.Col[Doc, str] = mariadb.Text(nullable=False)
 
     update_sql, update_params = MARIADB_CODEC.compile_write_sql(
         update(Doc)
@@ -130,7 +130,7 @@ def mariadb_insert_compilation_encodes_boolean_values_with_mariadb_codecs() -> N
     class FeatureFlag[S = Pending](mariadb.Model[S, "FeatureFlag[Fetched]"]):
         """Model with a boolean column whose encoded value differs from Python."""
 
-        enabled: FeatureFlag.Col[bool] = mariadb.Boolean(nullable=False)
+        enabled: FeatureFlag.Col[FeatureFlag, bool] = mariadb.Boolean(nullable=False)
 
     insert_sql, insert_params = MARIADB_CODEC.compile_write_sql(
         insert(FeatureFlag(enabled=True)),

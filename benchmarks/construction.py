@@ -38,14 +38,14 @@ class BenchUser[S = Pending](Model[S, "BenchUser[Fetched]"]):
 
     __tablename__ = "bench_user"
 
-    id: BenchUser.GenCol[int] = Integer(
+    id: BenchUser.GenCol[BenchUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: BenchUser.Col[str] = Text(nullable=False)
-    name: BenchUser.Col[str] = Text(nullable=False)
-    age: BenchUser.Col[int] = Integer(nullable=False)
+    email: BenchUser.Col[BenchUser, str] = Text(nullable=False)
+    name: BenchUser.Col[BenchUser, str] = Text(nullable=False)
+    age: BenchUser.Col[BenchUser, int] = Integer(nullable=False)
 
 
 def build_point_read() -> object:

@@ -17,13 +17,13 @@ class BenchUser[S = Pending](Model[S, "BenchUser[Fetched]"]):
 
     __tablename__ = "bench_user"
 
-    id: BenchUser.GenCol[int] = Integer(
+    id: BenchUser.GenCol[BenchUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: BenchUser.Col[str] = Text(nullable=False)
-    payload: BenchUser.Col[str] = Text(nullable=False)
+    email: BenchUser.Col[BenchUser, str] = Text(nullable=False)
+    payload: BenchUser.Col[BenchUser, str] = Text(nullable=False)
 
 
 MODELS = [BenchUser]

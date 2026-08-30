@@ -34,23 +34,23 @@ from tests.helpers import initialized_database
 class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
     """Table model used by transaction runtime tests."""
 
-    id: RuntimeUser.GenCol[int] = Integer(
+    id: RuntimeUser.GenCol[RuntimeUser, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: RuntimeUser.Col[str] = Text(nullable=False)
+    email: RuntimeUser.Col[RuntimeUser, str] = Text(nullable=False)
 
 
 class RuntimeReceipt[S = Pending](Model[S, "RuntimeReceipt[Fetched]"]):
     """Table model with a constrained column for read-side validation tests."""
 
-    id: RuntimeReceipt.GenCol[int] = Integer(
+    id: RuntimeReceipt.GenCol[RuntimeReceipt, int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    amount: RuntimeReceipt.Col[PositiveInt] = Integer(nullable=False)
+    amount: RuntimeReceipt.Col[RuntimeReceipt, PositiveInt] = Integer(nullable=False)
 
 
 def _count_users(database_path: Path) -> int:

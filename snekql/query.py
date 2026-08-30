@@ -1070,14 +1070,13 @@ def select[Owner1T: Table[Any], T1](
 ) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
 
 
-# A lone open-AST dialect expression projects its single decoded value; the
-# result type `T1` flows from the leaf selectable, and its owning table is
-# type-erased (the core never names the leaf, so scope is checked at runtime).
+# A lone open-AST dialect expression carries its owner and decoded value through
+# the same query-scope checks as built-in expressions.
 @overload
-def select[T1](
-    field1: DialectSelectable[T1],
+def select[Owner1T: Table[Any], T1](
+    field1: DialectSelectable[Owner1T, T1],
     /,
-) -> SelectValueQuery[Any, Any, T1]: ...
+) -> SelectValueQuery[Owner1T, Owner1T, T1]: ...
 
 
 # Multi-column projections accept a column, an aggregate, or a scalar subquery in
@@ -1090,11 +1089,11 @@ def select[Owner1T: Table[Any], T1, Owner2T: Table[Any], T2](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1]
     | Scalar[Owner1T, T1]
-    | DialectSelectable[T1],
+    | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2]
     | Scalar[Owner2T, T2]
-    | DialectSelectable[T2],
+    | DialectSelectable[Owner2T, T2],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T, T1, T2]: ...
 
@@ -1111,15 +1110,15 @@ def select[
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1]
     | Scalar[Owner1T, T1]
-    | DialectSelectable[T1],
+    | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2]
     | Scalar[Owner2T, T2]
-    | DialectSelectable[T2],
+    | DialectSelectable[Owner2T, T2],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3]
     | Scalar[Owner3T, T3]
-    | DialectSelectable[T3],
+    | DialectSelectable[Owner3T, T3],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
 

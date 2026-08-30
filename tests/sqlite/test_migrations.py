@@ -124,10 +124,10 @@ async def verify_passes_against_migration_created_schema() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose DDL matches the create-user migration body."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -146,10 +146,10 @@ async def verify_fails_when_a_model_has_no_migration() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose table is never created because migrations own creation."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     create_other = 'CREATE TABLE "other" ("id" INTEGER PRIMARY KEY) STRICT'
     with TemporaryDirectory() as directory:
@@ -259,10 +259,10 @@ async def replica_init_then_verify_catches_a_forgotten_migration() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Model whose table the replica expects an earlier deploy to have created."""
 
-        id: User.GenCol[int] = Integer(
+        id: User.GenCol[User, int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: User.Col[str] = Text(nullable=False)
+        email: User.Col[User, str] = Text(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
