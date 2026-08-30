@@ -543,9 +543,9 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """A server default requires a generated (GenCol) column."""
 
-            created_at: NonGeneratedTimestamp.Col[
+            created_at: NonGeneratedTimestamp.Col[  # pyright: ignore[reportUnknownVariableType]
                 NonGeneratedTimestamp, UtcDatetime
-            ] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            ] = Text(  # pyright: ignore[reportAssignmentType]
                 default=CurrentTimestamp,
             )
 
