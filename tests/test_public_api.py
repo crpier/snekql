@@ -9,10 +9,11 @@ as each backend's ``Model`` and column constructors -- is imported from
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import FrozenInstanceError
 from inspect import isclass
-from typing import cast
+from typing import Any, cast
 
-from snektest import test
+from snektest import assert_raises, test
 from snektest.assertions import (
     assert_eq,
     assert_in,
@@ -55,8 +56,12 @@ _NEUTRAL_NAMES = frozenset(
         "LexicalDatetimeWarning",
         "LexicalDecimalWarning",
         "LexicalDurationWarning",
+        "MigrationDeclarationError",
         "MigrationError",
+        "MigrationHistoryError",
+        "MigrationLockError",
         "MigrationLockTimeoutError",
+        "MigrationResult",
         "PendingGeneration",
         "ModelDeclarationError",
         "ModelError",
@@ -179,6 +184,8 @@ def backend_namespaces_hide_implementation_types() -> None:
         "InsertReturningValueQuery",
         "JoinModelQuery",
         "ModelMeta",
+        "Migration",
+        "MigrationRecord",
         "SelectModelQuery",
         "SelectTupleQuery",
         "SelectValueQuery",
@@ -406,7 +413,11 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.Index,
         sqlite.Integer,
         sqlite.MigrationError,
+        sqlite.MigrationDeclarationError,
+        sqlite.MigrationHistoryError,
+        sqlite.MigrationLockError,
         sqlite.MigrationLockTimeoutError,
+        sqlite.MigrationResult,
         sqlite.PendingGeneration,
         sqlite.Model,
         sqlite.ModelDeclarationError,
@@ -458,6 +469,9 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
         ),
         sqlite.FrozenModelError("package-originated failure"),
         sqlite.MigrationError("package-originated failure"),
+        sqlite.MigrationDeclarationError("package-originated failure"),
+        sqlite.MigrationHistoryError("package-originated failure"),
+        sqlite.MigrationLockError("package-originated failure"),
         sqlite.MigrationLockTimeoutError("package-originated failure"),
         sqlite.ModelDeclarationError("package-originated failure"),
         sqlite.ModelValidationError("package-originated failure"),
@@ -477,6 +491,20 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
 
     for catch in catches:
         catch()
+
+
+@test()
+def migration_result_is_an_immutable_public_value() -> None:
+    """Migration outcomes carry ordered tuples and cannot be mutated."""
+
+    result = sqlite.MigrationResult(
+        applied=("002",),
+        already_applied=("001",),
+        legacy_adopted=False,
+    )
+
+    with assert_raises(FrozenInstanceError):
+        cast("Any", result).applied = ()
 
 
 @test()

@@ -23,7 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from snekql import sqlite
-from snekql.sqlite import Database, Fetched, Pending, insert, scaffold, select
+from snekql.sqlite import Database, Fetched, Pending, insert, select
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
@@ -35,9 +35,23 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: sqlite.Col[str] = sqlite.Text(unique=True)
 
 
+MIGRATIONS = {
+    "0001_create_user": (
+        'CREATE TABLE "user" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL'
+        ') STRICT'
+    ),
+    "0002_user_email_unique": (
+        'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
+    ),
+}
+
+
 async def main() -> None:
     async with await Database.initialize(sqlite.Config(database=Path("app.db"))) as db:
-        await db.migrate({"0001_create_user": scaffold([User])})
+        await db.migrate(MIGRATIONS)
+        await db.verify_migrations(MIGRATIONS)
         await db.verify([User], policy="strict")
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
@@ -52,7 +66,10 @@ async def main() -> None:
 - Import a backend namespace: `from snekql import sqlite` or `from snekql import mariadb`.
 - Import model bases, storage constructors, verbs, and runtime classes from that backend namespace.
 - Declare generated columns as `GenCol[T]` and use `PENDING_GENERATION` for values the database fills.
-- Own migrations as raw SQL. Use `scaffold([Model])` only to produce the first migration body.
+- Own migrations as committed raw SQL. Use `scaffold([Model])` during development,
+  then review and paste each statement into the migration declaration. Never call
+  `scaffold` at application startup because current model metadata must not rewrite
+  historical migration checksums.
 - Runtime drivers are optional extras: install `snekql[aiosqlite]` or `snekql[aiomysql]`.
 
 ## Copyable examples

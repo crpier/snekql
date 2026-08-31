@@ -45,7 +45,6 @@ from snekql.sqlite import (
     Fetched,
     Pending,
     insert,
-    scaffold,
     select,
 )
 
@@ -61,10 +60,25 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     created_at: sqlite.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
 
 
+MIGRATIONS = {
+    "0001_create_user": (
+        'CREATE TABLE "user" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL, '
+        '"status" TEXT NOT NULL, '
+        '"created_at" TEXT NOT NULL DEFAULT '
+        "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        ") STRICT"
+    ),
+    "0002_user_email_unique": (
+        'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
+    ),
+}
+
+
 async def main() -> None:
-    # initialize connects only; schema is built by applying migrations and
-    # then verified against the models. `scaffold` emits the initial CREATE
-    # TABLE DDL you own and paste into your migration set (inlined here).
+    # The migration SQL is generated once during development, reviewed, and
+    # committed as a literal. Runtime model changes cannot alter its checksum.
     async with await Database.initialize(
         sqlite.Config(
             database=Path("app.db"),
@@ -72,7 +86,8 @@ async def main() -> None:
             acquire_timeout=30.0,
         ),
     ) as db:
-        await db.migrate({"0001_create_user": scaffold([User])})
+        await db.migrate(MIGRATIONS)
+        await db.verify_migrations(MIGRATIONS)
         await db.verify([User], policy="strict")
         async with db.transaction(timeout=5.0) as tx:
             await tx.execute(insert(User(email="alice@example.com")))
@@ -437,14 +452,15 @@ form remains supported for compatibility, but new code should use `sqlite.Config
 from pathlib import Path
 
 from snekql import sqlite
-from snekql.sqlite import Database, scaffold
+from snekql.sqlite import Database
 
 
 db = await Database.initialize(
     sqlite.Config(database=Path("app.db"), pool_size=5),
 )
-# Build the schema by applying migrations, then verify it against the models.
-await db.migrate({"0001_create_user": scaffold([User])})
+# MIGRATIONS is the committed literal chain from the quick start above.
+await db.migrate(MIGRATIONS)
+await db.verify_migrations(MIGRATIONS)
 await db.verify([User])
 
 memory_db = await Database.initialize(
@@ -481,7 +497,7 @@ runtime checks agree:
 
 ```python
 from snekql import mariadb
-from snekql.mariadb import Database, Fetched, Pending, insert, scaffold, select
+from snekql.mariadb import Database, Fetched, Pending, insert, select
 
 
 class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
@@ -502,7 +518,20 @@ config = mariadb.Config(
 )
 
 async with await Database.initialize(config) as db:
-    await db.migrate({"0001_create_account": scaffold([Account])})
+    migrations = {
+        "0001_create_account": (
+            "CREATE TABLE `account` ("
+            "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
+            "`email` VARCHAR(255) CHARACTER SET utf8mb4 "
+            "COLLATE utf8mb4_bin NOT NULL"
+            ") ENGINE=InnoDB"
+        ),
+        "0002_account_email_unique": (
+            "CREATE UNIQUE INDEX `ux_account_email` ON `account` (`email`)"
+        ),
+    }
+    await db.migrate(migrations)
+    await db.verify_migrations(migrations)
     await db.verify([Account])
     async with db.transaction() as tx:
         await tx.execute(insert(Account(email="alice@example.com")))
@@ -562,34 +591,34 @@ Runtime methods:
 
 ## Migrations and verification
 
-Initialization does no schema work. Schema is built by applying hand-authored
-migrations and checked against your models — two explicit verbs on a live
-Database, always shown together:
+Initialization does no schema work. A live `Database` applies the complete
+migration chain, verifies its recorded head, then checks the schema against the
+models:
 
 ```python
 db = await Database.initialize(database=Path("app.db"))
-await db.migrate(
-    {
-        "0001_create_user": scaffold([User]),
-        "0002_add_user_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
-    },
-)
+# MIGRATIONS is the complete committed chain shown in the quick start.
+result = await db.migrate(MIGRATIONS)
+await db.verify_migrations(MIGRATIONS)
 await db.verify([User], policy="strict")
 ```
 
-- `db.migrate(migrations)` applies an ordered `dict[str, str]` of name → raw SQL
-  body exactly once each, recording every success in a snekql-owned Migration
-  History. Migrations are the **sole schema-creation authority** — a fresh
-  database is built by replaying the whole chain. The dev-time `scaffold(...)`
-  helper emits the initial `CREATE TABLE` DDL so you do not hand-write it.
+- `db.migrate(migrations)` accepts the complete ordered `dict[str, str]` chain.
+  It verifies each recorded position and exact-body SHA-256 before applying the
+  pending suffix, then returns an immutable `MigrationResult`. Migrations are the
+  sole schema-creation authority. Run `scaffold(...)` during development, review
+  its output, and commit the SQL as literals rather than recomputing old bodies
+  from current model metadata.
+- `db.verify_migrations(migrations)` performs a read-only exact-head check. It
+  neither applies pending SQL nor upgrades legacy history.
 - `db.verify(models, *, policy=...)` is a partial, structural check that reports
   Schema Drift between the models and the live schema. `policy="strict"` raises
   `SchemaVerificationError`; `policy="warn"` logs and continues. It compares
   columns, indexes, foreign keys, and storage options by name and semantics, and
   cannot see default values, `CHECK` constraints, triggers, or data.
 
-A deploy step runs `initialize → migrate → verify`; app replicas run
-`initialize → verify` to confirm an already-migrated schema. See
+A deploy step runs `initialize -> migrate -> verify_migrations -> verify`; app
+replicas run `initialize -> verify_migrations -> verify`. See
 [docs/migrations.md](./docs/migrations.md) and
 [docs/schema-drift.md](./docs/schema-drift.md).
 
@@ -603,6 +632,8 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 - `DatabaseClosedError`, `PoolTimeoutError`, `TransactionClosedError`,
   `ExecutionError`
 - `SchemaVerificationError`
+- `MigrationDeclarationError`, `MigrationHistoryError`, `MigrationError`,
+  `MigrationLockError`
 
 `ExecutionError` preserves `sql` and `params` for debugging. Structured query
 logs may also include SQL and params exactly as supplied to the database driver;

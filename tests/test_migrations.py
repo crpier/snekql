@@ -1,178 +1,107 @@
-"""Backend-neutral migration runner flow tests using a fake migration backend."""
+"""Backend-neutral immutable Migration declaration and history tests."""
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from snektest import assert_eq, assert_raises, test
 
-from snektest import assert_eq, assert_raises, assert_true, test
-
-from snekql._migrations import run_migrations
-from snekql.errors import MigrationError
-
-
-class _MigrationBodyError(Exception):
-    """Raised by the fake backend to simulate a failing migration body."""
-
-
-class _FakeMigrationBackend:
-    """Migration backend fake that scripts applied names and records calls.
-
-    Mirrors the schema-startup `_FakeSchemaBackend`: it answers what has been
-    applied and records the ordered call sequence so flow tests can assert the
-    runner ensures history, reads applied names, and applies pending bodies in
-    insertion order with bookkeeping after each success.
-    """
-
-    def __init__(
-        self,
-        *,
-        applied: set[str] | None = None,
-        failing_body: str | None = None,
-    ) -> None:
-        self.calls: list[tuple[str, str | None]] = []
-        self.applied: set[str] = applied or set()
-        self.failing_body: str | None = failing_body
-
-    @asynccontextmanager
-    async def migration_lock(self) -> AsyncGenerator[None]:
-        self.calls.append(("migration_lock_enter", None))
-        try:
-            yield
-        finally:
-            self.calls.append(("migration_lock_exit", None))
-
-    async def ensure_history_table(self) -> None:
-        self.calls.append(("ensure_history_table", None))
-
-    async def fetch_applied_names(self) -> set[str]:
-        self.calls.append(("fetch_applied_names", None))
-        return set(self.applied)
-
-    async def execute_migration_body(self, sql: str) -> None:
-        self.calls.append(("execute_migration_body", sql))
-        if sql == self.failing_body:
-            raise _MigrationBodyError(sql)
-
-    async def record_applied(self, name: str) -> None:
-        self.calls.append(("record_applied", name))
+from snekql._migrations import (
+    MigrationRecord,
+    prepare_migrations,
+    validate_history_prefix,
+    validate_legacy_history,
+)
+from snekql.errors import MigrationDeclarationError, MigrationHistoryError
 
 
 @test(mark="fast")
-async def pending_migrations_apply_in_insertion_order() -> None:
-    """The runner ensures history, reads applied, then applies pending bodies in order."""
+def declaration_snapshot_preserves_order_sql_and_checksum() -> None:
+    """Planning copies insertion order and hashes the exact UTF-8 body."""
 
-    backend = _FakeMigrationBackend()
-    await run_migrations(
-        backend,
-        {
-            "001_create_users": "CREATE TABLE users (id INTEGER)",
-            "002_add_email": "ALTER TABLE users ADD COLUMN email TEXT",
-        },
-    )
+    migrations = {"001_select": "SELECT 1"}
+    plan = prepare_migrations(migrations)
+    migrations["002_late"] = "SELECT 2"
 
+    assert_eq(len(plan), 1)
+    assert_eq(plan[0].position, 1)
+    assert_eq(plan[0].name, "001_select")
+    assert_eq(plan[0].sql, "SELECT 1")
     assert_eq(
-        backend.calls,
-        [
-            ("migration_lock_enter", None),
-            ("ensure_history_table", None),
-            ("fetch_applied_names", None),
-            ("execute_migration_body", "CREATE TABLE users (id INTEGER)"),
-            ("record_applied", "001_create_users"),
-            ("execute_migration_body", "ALTER TABLE users ADD COLUMN email TEXT"),
-            ("record_applied", "002_add_email"),
-            ("migration_lock_exit", None),
-        ],
+        plan[0].checksum,
+        "e004ebd5b5532a4b85984a62f8ad48a81aa3460c1ca07701f386135d72cdecf5",
     )
 
 
 @test(mark="fast")
-async def already_applied_migrations_are_skipped() -> None:
-    """A migration whose name is already in history is neither run nor re-recorded."""
+def declaration_rejects_invalid_names_and_bodies() -> None:
+    """Migration identity and exact SQL must be stable UTF-8 built-in strings."""
 
-    backend = _FakeMigrationBackend(applied={"001_create_users"})
-    await run_migrations(
-        backend,
-        {
-            "001_create_users": "CREATE TABLE users (id INTEGER)",
-            "002_add_email": "ALTER TABLE users ADD COLUMN email TEXT",
-        },
+    invalid_declarations: tuple[object, ...] = (
+        [],
+        {"": "SELECT 1"},
+        {"x" * 256: "SELECT 1"},
+        {"001": ""},
+        {"001": "   "},
+        {"001\x00": "SELECT 1"},
+        {"001": "SELECT\x00 1"},
+        {"001": "\ud800"},
     )
-
-    assert_true(
-        ("execute_migration_body", "CREATE TABLE users (id INTEGER)")
-        not in backend.calls
-    )
-    assert_true(("record_applied", "001_create_users") not in backend.calls)
-    skipped = {"ensure_history_table", "migration_lock_enter", "migration_lock_exit"}
-    assert_eq(
-        [call for call in backend.calls if call[0] not in skipped],
-        [
-            ("fetch_applied_names", None),
-            ("execute_migration_body", "ALTER TABLE users ADD COLUMN email TEXT"),
-            ("record_applied", "002_add_email"),
-        ],
-    )
+    for declaration in invalid_declarations:
+        with assert_raises(MigrationDeclarationError):
+            prepare_migrations(
+                declaration  # ty: ignore[invalid-argument-type]
+            )
 
 
 @test(mark="fast")
-async def empty_migration_mapping_performs_no_backend_work() -> None:
-    """An empty migration mapping touches the Migration History backend not at all."""
+def every_ordered_history_prefix_is_valid() -> None:
+    """Migration accepts exactly each prefix of the complete declaration."""
 
-    backend = _FakeMigrationBackend()
-    await run_migrations(backend, {})
+    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2", "003": "SELECT 3"})
+    records = tuple(migration.history_record() for migration in plan)
 
-    assert_eq(backend.calls, [])
+    for prefix_length in range(len(records) + 1):
+        validate_history_prefix(records[:prefix_length], plan)
 
 
 @test(mark="fast")
-async def failing_migration_halts_and_keeps_prior_successes_recorded() -> None:
-    """A failing body halts the run; earlier successes stay recorded, later ones never run."""
+def divergent_ordered_history_is_rejected() -> None:
+    """Holes, unknown names, body edits, and overlong history fail closed."""
 
-    failing_body = "ALTER TABLE users ADD COLUMN broken"
-    backend = _FakeMigrationBackend(failing_body=failing_body)
-    with assert_raises(MigrationError):
-        await run_migrations(
-            backend,
-            {
-                "001_create_users": "CREATE TABLE users (id INTEGER)",
-                "002_break": failing_body,
-                "003_after": "CREATE TABLE later (id INTEGER)",
-            },
+    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
+    first, second = (migration.history_record() for migration in plan)
+    divergent_histories = (
+        (MigrationRecord(2, first.name, first.checksum),),
+        (MigrationRecord(1, "unknown", first.checksum),),
+        (MigrationRecord(1, first.name, "0" * 64),),
+        (first, second, MigrationRecord(3, "003", "0" * 64)),
+    )
+
+    for history in divergent_histories:
+        with assert_raises(MigrationHistoryError):
+            validate_history_prefix(history, plan)
+
+
+@test(mark="fast")
+def full_head_verification_rejects_pending_history() -> None:
+    """Read-only verification requires the declaration's complete head."""
+
+    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
+
+    with assert_raises(MigrationHistoryError):
+        validate_history_prefix(
+            (plan[0].history_record(),),
+            plan,
+            require_head=True,
         )
 
-    assert_true(("record_applied", "001_create_users") in backend.calls)
-    assert_true(("record_applied", "002_break") not in backend.calls)
-    assert_true(
-        ("execute_migration_body", "CREATE TABLE later (id INTEGER)")
-        not in backend.calls
-    )
-
 
 @test(mark="fast")
-async def apply_flow_runs_inside_the_advisory_lock() -> None:
-    """The lock is entered before any history work and exited only after the last."""
+def legacy_names_must_equal_one_declared_prefix_set() -> None:
+    """Adoption rejects holes, unknown rows, and overlong legacy history."""
 
-    backend = _FakeMigrationBackend()
-    await run_migrations(
-        backend,
-        {"001_create_users": "CREATE TABLE users (id INTEGER)"},
-    )
+    plan = prepare_migrations({"001": "SELECT 1", "002": "SELECT 2"})
+    assert_eq(validate_legacy_history({"001"}, plan), 1)
 
-    assert_eq(backend.calls[0], ("migration_lock_enter", None))
-    assert_eq(backend.calls[-1], ("migration_lock_exit", None))
-    inner = backend.calls[1:-1]
-    assert_true(("migration_lock_enter", None) not in inner)
-    assert_true(("migration_lock_exit", None) not in inner)
-
-
-@test(mark="fast")
-async def failing_migration_still_releases_the_advisory_lock() -> None:
-    """A body failure exits the lock so a fixed retry can re-acquire it."""
-
-    failing_body = "ALTER TABLE users ADD COLUMN broken"
-    backend = _FakeMigrationBackend(failing_body=failing_body)
-    with assert_raises(MigrationError):
-        await run_migrations(backend, {"001_break": failing_body})
-
-    assert_eq(backend.calls[-1], ("migration_lock_exit", None))
+    for legacy_names in ({"002"}, {"unknown"}, {"001", "002", "003"}):
+        with assert_raises(MigrationHistoryError):
+            validate_legacy_history(legacy_names, plan)

@@ -8,6 +8,7 @@ Migration History rows, never the full set.
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from hashlib import sha256
 
 import anyio
 from snektest import (
@@ -24,7 +25,10 @@ from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
     Fetched,
+    MigrationDeclarationError,
     MigrationError,
+    MigrationHistoryError,
+    MigrationResult,
     Pending,
 )
 from snekql.testing.mariadb import TemporaryMariaDBServer
@@ -71,12 +75,334 @@ async def migrate_creates_table_and_records_history() -> None:
 
     server = await load_fixture(mariadb_server())
     database = await Database.initialize(server.config())
-    await database.migrate(
+    result = await database.migrate(
         {"mig_create_users": _create_user_table_sql("mig_users_t1")},
     )
     await database.close()
 
     assert_true("mig_create_users" in await _fetch_applied_names(server))
+    assert_eq(
+        result,
+        MigrationResult(
+            applied=("mig_create_users",),
+            already_applied=(),
+            legacy_adopted=False,
+        ),
+    )
+
+
+@test(mark="medium")
+async def empty_mariadb_declarations_inspect_without_read_only_mutation() -> None:
+    """Empty verification is read-only; empty migration checks and creates history."""
+
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+
+    await database.verify_migrations({})
+    assert_true(not await _table_exists(server, "snekql_migrations"))
+    result = await database.migrate({})
+    assert_eq(
+        result,
+        MigrationResult(
+            applied=(),
+            already_applied=(),
+            legacy_adopted=False,
+        ),
+    )
+    await database.migrate(
+        {"mig_after_empty": _create_user_table_sql("mig_after_empty_t")}
+    )
+    with assert_raises(MigrationHistoryError):
+        await database.migrate({})
+    await database.close()
+
+
+@test(mark="medium")
+async def verify_migrations_accepts_the_exact_mariadb_head() -> None:
+    """A replica can verify exact ordered checksummed history without applying."""
+
+    migrations = {"mig_verify_head": _create_user_table_sql("mig_verify_head_t")}
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    await database.migrate(migrations)
+
+    result = await database.verify_migrations(migrations)
+    await database.close()
+
+    assert_eq(result, None)
+
+
+@test(mark="medium")
+async def edited_mariadb_body_is_rejected() -> None:
+    """A recorded MariaDB name cannot hide changed SQL bytes."""
+
+    migrations = {"mig_edit": _create_user_table_sql("mig_edit_t")}
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    await database.migrate(migrations)
+
+    with assert_raises(MigrationHistoryError):
+        await database.migrate({"mig_edit": f"{migrations['mig_edit']} "})
+    await database.close()
+
+
+@test(mark="medium")
+async def explicit_mariadb_legacy_adoption_baselines_history() -> None:
+    """Explicit consent upgrades exact v1 rows through restartable staging."""
+
+    server = await load_fixture(mariadb_server())
+    create_user = _create_user_table_sql("mig_legacy_t")
+    await server.run_sql(create_user)
+    await server.run_sql(
+        "CREATE TABLE `snekql_migrations` ("
+        "name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin "
+        "NOT NULL PRIMARY KEY, applied_at DATETIME(3) NOT NULL"
+        ") ENGINE=InnoDB; "
+        "INSERT INTO `snekql_migrations` (name, applied_at) "
+        "VALUES ('mig_legacy', UTC_TIMESTAMP(3))"
+    )
+    database = await Database.initialize(server.config())
+
+    with assert_raises(MigrationHistoryError):
+        await database.migrate({"mig_legacy": create_user})
+    result = await database.migrate({"mig_legacy": create_user}, adopt_legacy=True)
+    await database.close()
+
+    assert_eq(
+        result,
+        MigrationResult(
+            applied=(),
+            already_applied=("mig_legacy",),
+            legacy_adopted=True,
+        ),
+    )
+
+
+@test(mark="medium")
+async def empty_mariadb_legacy_history_upgrades_without_adoption() -> None:
+    """An empty exact v1 table upgrades without a trust decision."""
+
+    server = await load_fixture(mariadb_server())
+    await server.run_sql(
+        "CREATE TABLE `snekql_migrations` ("
+        "name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin "
+        "NOT NULL PRIMARY KEY, applied_at DATETIME(3) NOT NULL"
+        ") ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+
+    result = await database.migrate({})
+    await database.close()
+
+    assert_eq(
+        result,
+        MigrationResult(
+            applied=(),
+            already_applied=(),
+            legacy_adopted=False,
+        ),
+    )
+
+
+@test(mark="medium")
+async def mariadb_transaction_control_is_rejected_before_pool_acquisition() -> None:
+    """Bodies cannot end the transaction that owns their history insert."""
+
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(
+        server.config(pool_size=1, acquire_timeout=0.01)
+    )
+
+    async with database.transaction():
+        for body in (
+            "COMMIT",
+            "INSERT INTO item VALUES (1); ROLLBACK",
+            "SET autocommit = 1",
+            "SELECT GET_LOCK('other', 0)",
+            "INSERT INTO item VALUES (1); /*! COMMIT */",
+            "INSERT INTO item VALUES (1); /*M! COMMIT */",
+            "INSERT INTO item VALUES (1); SELECT 1--1; COMMIT",
+            "PREPARE migration_stmt FROM 'COMMIT'; EXECUTE migration_stmt",
+            "CALL commits_work()",
+            "SET SESSION check_constraint_checks = 0",
+            "SET @@SESSION.sql_mode = ''",
+            "SET SESSION `check_constraint_checks` = 0",
+            "SET SESSION `sql_mode` = ''",
+            "SET NAMES latin1",
+        ):
+            with assert_raises(MigrationDeclarationError):
+                await database.migrate({"invalid_body": body})
+    await database.close()
+
+
+@test(mark="medium")
+async def mariadb_unknown_history_objects_and_schemas_fail_closed() -> None:
+    """Views, malformed staging, and fake final checks are never adopted."""
+
+    server = await load_fixture(mariadb_server())
+    await server.run_sql(
+        "CREATE VIEW snekql_migrations AS "
+        "SELECT 1 AS position, 'name' AS name, "
+        "REPEAT('0', 64) AS checksum, UTC_TIMESTAMP(3) AS applied_at"
+    )
+    database = await Database.initialize(server.config())
+    with assert_raises(MigrationHistoryError):
+        await database.verify_migrations({})
+    with assert_raises(MigrationHistoryError):
+        await database.migrate({})
+    await database.close()
+
+    await server.run_sql("DROP VIEW snekql_migrations")
+    await server.reset_database()
+    await server.run_sql(
+        "CREATE TABLE snekql_migrations ("
+        "name BIGINT NOT NULL PRIMARY KEY, applied_at TEXT NULL, "
+        "position BIGINT UNSIGNED NULL, checksum VARBINARY(64) NULL"
+        ") ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    with assert_raises(MigrationHistoryError):
+        await database.migrate({})
+    await database.close()
+
+    await server.reset_database()
+    await server.run_sql(
+        "CREATE TABLE snekql_migrations ("
+        "position BIGINT UNSIGNED NOT NULL PRIMARY KEY, "
+        "name VARBINARY(1020) NOT NULL, "
+        "checksum VARBINARY(64) NOT NULL, applied_at DATETIME(3) NOT NULL, "
+        "UNIQUE KEY uq_snekql_migrations_name (name), "
+        "CONSTRAINT chk_snekql_migrations_position CHECK (1), "
+        "CONSTRAINT chk_snekql_migrations_name CHECK (1), "
+        "CONSTRAINT chk_snekql_migrations_checksum CHECK (1)"
+        ") ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    with assert_raises(MigrationHistoryError):
+        await database.verify_migrations({})
+    await database.close()
+
+    await server.reset_database()
+    database = await Database.initialize(server.config())
+    await database.migrate({})
+    await database.close()
+    await server.run_sql(
+        "ALTER TABLE snekql_migrations MODIFY COLUMN applied_at "
+        "DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) "
+        "ON UPDATE CURRENT_TIMESTAMP(3)"
+    )
+    database = await Database.initialize(server.config())
+    with assert_raises(MigrationHistoryError):
+        await database.verify_migrations({})
+    await database.close()
+
+    await server.reset_database()
+    database = await Database.initialize(server.config())
+    await database.migrate({})
+    await database.close()
+    await server.run_sql(
+        "CREATE TRIGGER mutate_snekql_history BEFORE INSERT "
+        "ON snekql_migrations FOR EACH ROW SET NEW.position = NEW.position"
+    )
+    database = await Database.initialize(server.config())
+    with assert_raises(MigrationHistoryError):
+        await database.verify_migrations({})
+    await database.close()
+
+
+@test(mark="medium")
+async def populated_staging_resumes_without_repeating_legacy_consent() -> None:
+    """Persisted positions and checksums prove that adoption already occurred."""
+
+    server = await load_fixture(mariadb_server())
+    name = "snake_🐍"
+    body = "SELECT 1"
+    checksum = sha256(body.encode("utf-8")).hexdigest()
+    await server.run_sql(
+        "CREATE TABLE snekql_migrations ("
+        "name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin "
+        "NOT NULL PRIMARY KEY, applied_at DATETIME(3) NOT NULL"
+        ") ENGINE=InnoDB; "
+        "INSERT INTO snekql_migrations (name, applied_at) VALUES "
+        "(CONVERT(0x736E616B655FF09F908D USING utf8mb4), UTC_TIMESTAMP(3)); "
+        "ALTER TABLE snekql_migrations "
+        "ADD COLUMN position BIGINT UNSIGNED NULL, "
+        "ADD COLUMN checksum VARBINARY(64) NULL; "
+        "UPDATE snekql_migrations SET position = 1, "
+        f"checksum = '{checksum}'"
+    )
+    database = await Database.initialize(server.config(charset="latin1"))
+
+    result = await database.migrate({name: body})
+    await database.close()
+
+    assert_eq(result.applied, ())
+    assert_eq(result.already_applied, (name,))
+    assert_true(result.legacy_adopted)
+
+
+@test(mark="medium")
+async def mariadb_legacy_adoption_resumes_from_staging() -> None:
+    """A restart after nullable v2 columns were added completes safely."""
+
+    server = await load_fixture(mariadb_server())
+    create_user = _create_user_table_sql("mig_staging_t")
+    await server.run_sql(create_user)
+    await server.run_sql(
+        "CREATE TABLE `snekql_migrations` ("
+        "name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin "
+        "NOT NULL PRIMARY KEY, applied_at DATETIME(3) NOT NULL, "
+        "position BIGINT UNSIGNED NULL, checksum VARBINARY(64) NULL"
+        ") ENGINE=InnoDB; "
+        "INSERT INTO `snekql_migrations` (name, applied_at) "
+        "VALUES ('mig_staging', UTC_TIMESTAMP(3))"
+    )
+    database = await Database.initialize(server.config())
+
+    result = await database.migrate({"mig_staging": create_user}, adopt_legacy=True)
+    await database.close()
+
+    assert_true(result.legacy_adopted)
+    history = await server.run_sql(
+        "SELECT position, checksum FROM `snekql_migrations` WHERE name = 'mig_staging'"
+    )
+    assert_true("1" in history.stdout.splitlines()[1].split("\t")[0])
+
+
+@test(mark="medium")
+async def transactional_dml_rolls_back_when_history_insert_fails() -> None:
+    """InnoDB DML and its v2 history row share one commit."""
+
+    migrations = {
+        "mig_dml_table": (
+            "CREATE TABLE `mig_dml_t` (`id` BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB"
+        )
+    }
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    await database.migrate(migrations)
+
+    with assert_raises(MigrationHistoryError):
+        await database.migrate(
+            {
+                **migrations,
+                "mig_dml_insert": (
+                    "CREATE TRIGGER `reject_migration_history` BEFORE INSERT "
+                    "ON `snekql_migrations` FOR EACH ROW "
+                    "SIGNAL SQLSTATE '45000' "
+                    "SET MESSAGE_TEXT = 'blocked history insert'; "
+                    "INSERT INTO `mig_dml_t` (`id`) VALUES (1)"
+                ),
+            }
+        )
+    await database.close()
+
+    rows = await server.run_sql("SELECT COUNT(*) FROM `mig_dml_t`")
+    triggers = await server.run_sql(
+        "SHOW TRIGGERS WHERE `Trigger` = 'reject_migration_history'"
+    )
+    assert_true("0" in rows.stdout.splitlines()[1:])
+    assert_true("reject_migration_history" in triggers.stdout)
 
 
 @test(mark="medium")

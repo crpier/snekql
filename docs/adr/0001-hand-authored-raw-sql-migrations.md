@@ -43,10 +43,9 @@ consistent with the rest of the library.
 
 ## Amendments
 
-The core of this ADR stands: migrations are hand-authored raw SQL, applied
-exactly once, recorded per name in the Migration History, with bodies and
-bookkeeping non-atomic (so bodies must be idempotent). Later ADRs change only
-*where and when* migrations run, and add a narrow generation affordance:
+The core of this ADR stands: migrations are hand-authored raw SQL and recorded
+one row at a time in Migration History. Later work changed the execution and
+history guarantees:
 
 - **Concurrency** — [ADR 0002](0002-advisory-locked-concurrent-migrations.md)
   reverses the "concurrent runs are undefined; migrate from a single place"
@@ -68,3 +67,14 @@ bookkeeping non-atomic (so bodies must be idempotent). Later ADRs change only
   immutable, identical in status to any other body. snekql still refuses the
   dangerous part it rejected here: model-vs-live **diffing** and the SQLite
   rebuild-copy dance. No `ALTER`-generation, no autogenerate.
+- **Migration History v2** — issue #254 reverses the name-set and blanket
+  non-atomic choices. Every call now declares one complete ordered chain.
+  History stores one-based positions and SHA-256 checksums, and the recorded
+  rows must equal a declaration prefix. SQLite wraps each body and history row
+  in one `BEGIN IMMEDIATE` transaction. MariaDB commits transactional InnoDB DML
+  with its history row; transaction control, required session-setting changes,
+  advisory-lock calls, and dynamic SQL are rejected inside MariaDB bodies so
+  they cannot escape that boundary or poison a pooled connection. DDL retains
+  MariaDB's unavoidable implicit-commit crash window.
+  `verify_migrations(...)` checks the exact full head without mutation. Existing
+  non-empty name-only history requires explicit adoption.

@@ -172,6 +172,16 @@ class SQLiteConnectionPool:
             if should_close:
                 await close_sqlite_connection(connection)
 
+    async def discard(self, connection: Connection) -> None:
+        """Close an unsafe checked-out connection instead of pooling it."""
+
+        with anyio.CancelScope(shield=True):
+            try:
+                await close_sqlite_connection(connection)
+            finally:
+                await self.gate.release()
+            logger.warning("sqlite connection discarded")
+
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 

@@ -225,19 +225,24 @@ async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
 
 
 @test(mark="medium")
-async def temporary_mariadb_server_reset_database_drops_reused_tables() -> None:
-    """The public reset helper removes stale tables from a reused database."""
+async def temporary_mariadb_server_reset_database_drops_reused_objects() -> None:
+    """The public reset helper removes stale tables and views."""
 
     with TemporaryDirectory() as temporary_directory:
         data_directory = Path(temporary_directory) / "data"
         async with temporary_mariadb_server(data_directory=data_directory) as server:
             _ = await server.run_sql("CREATE TABLE stale_public_table (`id` INT)")
+            _ = await server.run_sql(
+                "CREATE VIEW stale_public_view AS SELECT 1 AS value"
+            )
 
         async with temporary_mariadb_server(data_directory=data_directory) as server:
             await server.reset_database()
             result = await server.run_sql("SHOW TABLES LIKE 'stale_public_table'")
+            view_result = await server.run_sql("SHOW TABLES LIKE 'stale_public_view'")
 
     assert_eq(result.stdout, "")
+    assert_eq(view_result.stdout, "")
 
 
 @test(mark="medium")

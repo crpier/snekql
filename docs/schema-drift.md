@@ -1,19 +1,20 @@
 # Schema verification and drift
 
 `db.verify(models, *, policy=...)` checks the live schema against your Table
-Models. It is the **only** feedback loop tying the hand-written migration chain
-back to the models — it catches "you changed the model but not the migration" and
-"you rolled the app forward past the migration that feeds it". Verification never
-creates anything: [migrations](migrations.md) are the sole schema-creation
-authority.
+Models. It is the check that ties hand-written migrations back to current model
+metadata. `db.verify_migrations(migrations)` separately proves that ordered,
+checksummed Migration History is at this code version's exact head. Neither
+method creates application tables. [Migrations](migrations.md) remain the sole
+schema-creation authority.
 
-Run `verify` after `migrate`, and show them together — forgetting `verify`
-silently drops the migration↔model net:
+Run both checks after `migrate`:
 
 ```python
+MIGRATIONS = {"001_create_user": 'CREATE TABLE "user" (...) STRICT'}
 db = await Database.initialize(database=Path("app.db"))
-await db.migrate({"001_create_user": 'CREATE TABLE "user" (...) STRICT'})
-await db.verify([User, AuditLog])
+await db.migrate(MIGRATIONS)
+await db.verify_migrations(MIGRATIONS)
+await db.verify([User])
 ```
 
 ## Verification is a partial, structural check
@@ -84,7 +85,7 @@ rolls back (it never commits during verify); MariaDB reads `INFORMATION_SCHEMA`
 with no transaction. That asymmetry is invisible to callers: because `verify`
 only reads, a failed or drift-raising `verify` leaves the schema exactly as
 `migrate` left it. The partial-state question therefore lives entirely in
-[migrations](migrations.md#idempotency-and-failure), never in `verify`.
+[migrations](migrations.md#failure-and-transaction-behavior), never in `verify`.
 
 ## Schema Policy
 
@@ -108,11 +109,11 @@ before enforcing drift failures.
 
 ## Deploy and replica use
 
-- A **deploy step** runs `initialize → migrate → verify`, applying the chain and
-  confirming it against the models before traffic.
-- An **app replica** runs `initialize → verify` (no migrate) to confirm the
-  already-migrated schema matches this build's models and fail fast on a
-  forgotten migration.
+- A **deploy step** runs `initialize -> migrate -> verify_migrations -> verify`,
+  applying the chain and checking history plus model shape before traffic.
+- An **app replica** runs `initialize -> verify_migrations -> verify` without
+  migration. It fails if history is behind this build even when partial model
+  verification cannot observe a data-only migration.
 
 Both follow the caller's topology (see [migrations.md](migrations.md)).
 

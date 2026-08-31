@@ -808,6 +808,26 @@ if TYPE_CHECKING:
             list[tuple[int, str]],
         )
 
+    async def check_migration_types(database: sqlite.Database) -> None:
+        """Migration verbs expose one immutable result and a read-only check."""
+
+        migrations = {"001_users": 'CREATE TABLE "user" ("id" INTEGER) STRICT'}
+        migration_result = assert_type(
+            await database.migrate(migrations),
+            sqlite.MigrationResult,
+        )
+        _ = assert_type(migration_result.applied, tuple[str, ...])
+        _ = assert_type(migration_result.already_applied, tuple[str, ...])
+        _ = assert_type(migration_result.legacy_adopted, bool)
+        _ = assert_type(await database.verify_migrations(migrations), None)
+        _ = await database.migrate(
+            [("001_users", "SELECT 1")]  # ty: ignore[invalid-argument-type]
+        )
+        _ = await database.migrate(
+            migrations,
+            True,  # ty: ignore[too-many-positional-arguments]
+        )
+
     async def execute_public_query_annotations(
         transaction: Transaction,
         read_query: Select[User[Fetched]],

@@ -14,6 +14,7 @@ Backend Namespace, so it stays compatible with the dialect-blindness invariant.
 
 from __future__ import annotations
 
+from snekql._migrations import MigrationResult
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -24,7 +25,10 @@ from snekql.errors import (
     LexicalDatetimeWarning,
     LexicalDecimalWarning,
     LexicalDurationWarning,
+    MigrationDeclarationError,
     MigrationError,
+    MigrationHistoryError,
+    MigrationLockError,
     MigrationLockTimeoutError,
     ModelDeclarationError,
     ModelError,
@@ -110,8 +114,12 @@ __all__ = [
     "LexicalDatetimeWarning",
     "LexicalDecimalWarning",
     "LexicalDurationWarning",
+    "MigrationDeclarationError",
     "MigrationError",
+    "MigrationHistoryError",
+    "MigrationLockError",
     "MigrationLockTimeoutError",
+    "MigrationResult",
     "ModelDeclarationError",
     "ModelError",
     "ModelValidationError",

@@ -54,13 +54,23 @@ Schema errors:
 
 Migration errors:
 
+- `MigrationDeclarationError`: the declaration is not an exact ordered
+  `dict[str, str]`, contains invalid names or bodies, or uses a backend-invalid
+  body. Validation happens before connection acquisition.
+- `MigrationHistoryError`: recorded history is missing, malformed, divergent,
+  behind the declaration during read-only verification, or still uses legacy
+  history without explicit adoption.
 - `MigrationError`: a hand-authored migration body failed to apply. The message
   names the failing migration; previously-applied migrations stay recorded so a
   fixed retry resumes from the failure point (see [migrations.md](migrations.md)).
-- `MigrationLockTimeoutError`: the migration advisory lock could not be acquired
-  before the timeout because another instance was migrating. The losing instance
-  applied nothing; a retry after the holder finishes applies only what is still
-  pending.
+- `MigrationLockError`: migration lock ownership or release could not be
+  confirmed. MariaDB discards an unsafe physical connection rather than
+  returning it to the pool.
+- `MigrationLockTimeoutError`: SQLite's writer lock or MariaDB's advisory lock
+  could not be acquired within its budget. It is a
+  `MigrationLockError` subclass. The losing instance applied nothing; a retry
+  after the holder finishes checks the exact prefix and applies the pending
+  suffix.
 
 ## Warnings
 

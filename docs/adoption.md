@@ -31,7 +31,6 @@ from snekql.sqlite import (
     Pending,
     Text,
     insert,
-    scaffold,
     select,
 )
 
@@ -46,15 +45,26 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     created_at: GenCol[datetime] = Text(default=CurrentTimestamp)
 
 
+MIGRATIONS = {
+    "0001_create_user": (
+        'CREATE TABLE "user" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL, '
+        '"created_at" TEXT NOT NULL DEFAULT '
+        "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        ') STRICT'
+    )
+}
+
+
 async def main() -> None:
-    # initialize connects only; build the schema by applying a migration, then
-    # verify it against the models. `scaffold` emits the initial CREATE TABLE
-    # DDL you own and paste into your migration set (inlined here).
+    # initialize connects only; migrations remain committed literal SQL.
     async with await Database.initialize(
         database=":memory:",
         pool_size=1,
     ) as db:
-        await db.migrate({"0001_create_user": scaffold([User])})
+        await db.migrate(MIGRATIONS)
+        await db.verify_migrations(MIGRATIONS)
         await db.verify([User])
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))

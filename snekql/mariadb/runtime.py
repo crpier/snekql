@@ -8,7 +8,9 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
+from anyio.lowlevel import checkpoint
 
+from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
 from snekql.errors import (
@@ -20,8 +22,11 @@ from snekql.errors import (
 )
 from snekql.mariadb.config import Config
 from snekql.mariadb.migrations import (
+    MariaDBMigrationBackend,
     apply_mariadb_migrations,
     build_migration_lock_name,
+    validate_mariadb_migrations,
+    verify_mariadb_migrations,
 )
 from snekql.mariadb.schema import verify_mariadb_schema
 from snekql.mariadb.settings import configure_mariadb_connection
@@ -255,6 +260,18 @@ class MariaDBConnectionPool:
             _ = release(connection)
             await self.gate.release()
             logger.debug("mariadb connection released")
+        await checkpoint()
+
+    async def discard(self, connection: object) -> None:
+        """Physically close a connection whose lock ownership is uncertain."""
+
+        with anyio.CancelScope(shield=True):
+            cast("Any", connection).close()
+            release = cast("Any", self.pool).release
+            _ = release(connection)
+            await self.gate.release()
+            logger.warning("mariadb connection discarded")
+        await checkpoint()
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         """Close the underlying aiomysql pool and wait for connections."""
@@ -308,17 +325,38 @@ class MariaDBRuntime:
         connection = await self.connection_pool.acquire(acquisition_timeout)
         return MariaDBConnectionAdapter(connection)
 
-    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+    async def apply_migrations(
+        self,
+        migrations: MigrationPlan,
+        *,
+        adopt_legacy: bool = False,
+    ) -> MigrationResult:
         """Apply pending migrations on a pooled connection under the lock (ADR 0007)."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
+        backend = MariaDBMigrationBackend(
+            connection,
+            lock_name=self.migration_lock_name,
+            lock_timeout=self.acquire_timeout,
+        )
         try:
-            await apply_mariadb_migrations(
-                connection,
+            return await apply_mariadb_migrations(
+                backend,
                 migrations,
-                lock_name=self.migration_lock_name,
-                lock_timeout=self.acquire_timeout,
+                adopt_legacy=adopt_legacy,
             )
+        finally:
+            if backend.connection_reusable:
+                await self.connection_pool.release(connection)
+            else:
+                await self.connection_pool.discard(connection)
+
+    async def verify_migrations(self, migrations: MigrationPlan) -> None:
+        """Verify Migration History without changing it."""
+
+        connection = await self.connection_pool.acquire(self.acquire_timeout)
+        try:
+            await verify_mariadb_migrations(connection, migrations)
         finally:
             await self.connection_pool.release(connection)
 
@@ -348,6 +386,11 @@ class MariaDBRuntime:
 
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()
+
+    def validate_migrations(self, migrations: MigrationPlan) -> None:
+        """Reject bodies that can escape the owned transaction or lock."""
+
+        validate_mariadb_migrations(migrations)
 
 
 async def initialize_runtime(config: Config) -> MariaDBRuntime:

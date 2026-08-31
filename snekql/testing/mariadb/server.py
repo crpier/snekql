@@ -46,6 +46,19 @@ _RESET_DATABASE_SQL = """
 SET SESSION group_concat_max_len = 1000000;
 SET FOREIGN_KEY_CHECKS = 0;
 SELECT GROUP_CONCAT(CONCAT('`', REPLACE(TABLE_NAME, '`', '``'), '`'))
+INTO @snekql_views_to_drop
+FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_TYPE = 'VIEW';
+SET @snekql_drop_views = IF(
+    @snekql_views_to_drop IS NULL,
+    'DO 0',
+    CONCAT('DROP VIEW ', @snekql_views_to_drop)
+);
+PREPARE snekql_drop_views_statement FROM @snekql_drop_views;
+EXECUTE snekql_drop_views_statement;
+DEALLOCATE PREPARE snekql_drop_views_statement;
+SELECT GROUP_CONCAT(CONCAT('`', REPLACE(TABLE_NAME, '`', '``'), '`'))
 INTO @snekql_tables_to_drop
 FROM information_schema.TABLES
 WHERE TABLE_SCHEMA = DATABASE()
