@@ -11,17 +11,15 @@ from tests.helpers import initialized_database
 class BinaryRecord[S = Pending](Model[S, "BinaryRecord[Fetched]"]):
     """Binary record table with blob payload storage."""
 
-    id: BinaryRecord.Col[BinaryRecord, int] = Integer(primary_key=True)
-    payload: BinaryRecord.Col[BinaryRecord, bytes] = Blob(nullable=False)
+    id: BinaryRecord.Col[int] = Integer(primary_key=True)
+    payload: BinaryRecord.Col[bytes] = Blob(nullable=False)
 
 
 class OptionalBinaryRecord[S = Pending](Model[S, "OptionalBinaryRecord[Fetched]"]):
     """Binary record table with a nullable blob payload."""
 
-    id: OptionalBinaryRecord.Col[OptionalBinaryRecord, int] = Integer(primary_key=True)
-    payload: OptionalBinaryRecord.Col[OptionalBinaryRecord, bytes | None] = Blob(
-        nullable=True, default=None
-    )
+    id: OptionalBinaryRecord.Col[int] = Integer(primary_key=True)
+    payload: OptionalBinaryRecord.Col[bytes | None] = Blob(nullable=True, default=None)
 
 
 @test(mark="medium")

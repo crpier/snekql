@@ -2,7 +2,7 @@
 
 Status: **Accepted**, implemented on `feat/storage-primitive-codecs` (see #144).
 SQLite collapses to four storage-primitive constructors, codecs derive from the
-annotation, and MariaDB gains a native `Uuid`; the full suite (snektest, pyright,
+annotation, and MariaDB gains a native `Uuid`; the full suite (snektest, ty,
 ruff) is green. May still be reverted if the ergonomics do not hold up, but the
 design questions below are settled.
 
@@ -34,11 +34,11 @@ layer keyed on the **storage class**, wrapping the annotation's pydantic
 `TypeAdapter`:
 
 ```python
-created_at: Order.Col[datetime]        = Text()   # TEXT  + pydantic datetime
-epoch_at:   Order.Col[EpochDatetime]   = Integer() # INTEGER + a user pydantic type
-enabled:    Order.Col[bool]            = Integer() # INTEGER + pydantic bool (0/1)
-id:         Order.Col[uuid.UUID]       = Text()    # TEXT  + pydantic UUID (str)
-payload:    Order.Col[Json[dict[str, int]]] = Text()  # pydantic.Json[T] marker
+created_at: Col[datetime] = Text()  # TEXT + pydantic datetime
+epoch_at: Col[EpochDatetime] = Integer()  # INTEGER + a user pydantic type
+enabled: Col[bool] = Integer()  # INTEGER + pydantic bool (0/1)
+id: Col[uuid.UUID] = Text()  # TEXT + pydantic UUID (str)
+payload: Col[Json[dict[str, int]]] = Text()  # pydantic.Json[T] marker
 ```
 
 ### The backends are asymmetric, on purpose
@@ -142,8 +142,8 @@ For everything the new codec does own, empirically (pydantic 2.x):
   Text()` ISO vs a user epoch type in `Integer()`), new expressiveness at a
   small legibility cost: the assignment site names storage, the annotation names
   type.
-- **MariaDB keeps `JsonAttr`** (the `json_extract_int` operator subtype),
-  produced by its native `Json()` constructor — unaffected.
+- **MariaDB keeps an internal `JsonAttr` subtype** for `json_extract_int`,
+  produced by its native `Json()` constructor. Callers use `JsonCol[T]`.
 - **Intentional precision and representation loss.** Two losses are by design,
   not bugs: MariaDB `DateTime` columns store `DATETIME(3)`, so encode truncates a
   Python `datetime` to **millisecond** precision (`...678901` microseconds becomes

@@ -26,24 +26,24 @@ from tests.helpers import SQLITE_CODEC, initialized_database
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Referenced table used by join distinct compilation."""
 
-    id: User.GenCol[User, int] = sqlite.Integer(
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[User, str] = sqlite.Text(nullable=False)
+    email: User.Col[str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Table with a foreign key to ``User``."""
 
-    id: Order.GenCol[Order, int] = sqlite.Integer(
+    id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
-    note: Order.Col[Order, str] = sqlite.Text(nullable=False)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
+    note: Order.Col[str] = sqlite.Text(nullable=False)
 
 
 @test(mark="fast")
@@ -151,12 +151,12 @@ async def distinct_collapses_duplicate_rows_at_runtime() -> None:
     class Visit[S = Pending](Model[S, "Visit[Fetched]"]):
         """Table holding duplicate status values."""
 
-        id: Visit.GenCol[Visit, int] = Integer(
+        id: Visit.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        status: Visit.Col[Visit, str] = Text(nullable=False)
+        status: Visit.Col[str] = Text(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Visit])
     try:

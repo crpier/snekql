@@ -35,13 +35,13 @@ from snekql.sqlite import (
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = Text(nullable=False)
-    created_at: User.GenCol[datetime] = Text(default=CurrentTimestamp)
+    email: Col[str] = Text()
+    created_at: GenCol[datetime] = Text(default=CurrentTimestamp)
 
 
 async def main() -> None:
@@ -63,14 +63,14 @@ async def main() -> None:
 asyncio.run(main())
 PY
 uv run python smoke.py
-uv add --dev pyright
-uv run pyright smoke.py
+uv add --dev ty==0.0.75
+uv run ty check smoke.py
 ```
 
 Expected result:
 
 - The runtime script exits successfully.
-- Pyright reports `0 errors, 0 warnings, 0 informations`.
+- `ty` reports `All checks passed!`.
 
 ## Repository smoke test
 
@@ -78,7 +78,7 @@ Run the same high-level adoption path against the checkout:
 
 ```sh
 uv run python -m examples.basic_app
-uv run pyright examples/typed_queries.py
+uv run ty check examples/typed_queries.py
 ```
 
 The first command exercises model declaration, connect-only initialization,
@@ -95,7 +95,7 @@ Before announcing a release:
 3. Run the repository validation suite:
    ```sh
    uv run snektest
-   uv run pyright .
+   uv run ty check
    uv run ruff check .
    uv run ruff format --check .
    ```

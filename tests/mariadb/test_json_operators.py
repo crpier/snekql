@@ -19,10 +19,8 @@ from tests.helpers import MARIADB_CODEC
 class _Profiled[S = Pending](mariadb.Model[S, "_Profiled[Fetched]"]):
     """MariaDB model with a JSON column carrying the dialect operators."""
 
-    name: _Profiled.Col[_Profiled, str] = mariadb.Text(nullable=False)
-    profile: _Profiled.JsonCol[_Profiled, dict[str, object]] = mariadb.Json(
-        nullable=False
-    )
+    name: _Profiled.Col[str] = mariadb.Text(nullable=False)
+    profile: _Profiled.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
 
 
 @test(mark="fast")

@@ -21,20 +21,20 @@ from tests.helpers import SQLITE_CODEC
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with a generated primary key and explicit columns."""
 
-    id: User.GenCol[User, int] = Integer(
+    id: User.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: User.Col[User, str] = Text(nullable=False)
-    status: User.Col[User, str] = Text(nullable=False, default="active")
+    email: User.Col[str] = Text(nullable=False)
+    status: User.Col[str] = Text(nullable=False, default="active")
 
 
 class Account[S = Pending](Model[S, "Account[Fetched]"]):
     """Unrelated table model, used to test cross-model returning rejection."""
 
-    id: Account.GenCol[Account, int] = Integer(
+    id: Account.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    name: Account.Col[Account, str] = Text(nullable=False)
+    name: Account.Col[str] = Text(nullable=False)
 
 
 @test(mark="fast")
@@ -90,7 +90,9 @@ def returning_rejects_a_column_from_another_model() -> None:
     with assert_raises(QueryConstructionError):
         # A column from another model is also a static error (the owner is pinned
         # to the written model); the runtime guard is what this test exercises.
-        _ = insert(User(email="a@example.com")).returning(Account.name)  # pyright: ignore[reportArgumentType]
+        _ = insert(User(email="a@example.com")).returning(
+            Account.name  # ty: ignore[invalid-argument-type]
+        )
 
 
 @test(mark="fast")

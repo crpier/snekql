@@ -11,13 +11,13 @@ class BenchUser[S = Pending](mariadb.Model[S, "BenchUser[Fetched]"]):
 
     __tablename__ = "bench_user"
 
-    id: BenchUser.GenCol[BenchUser, int] = mariadb.Integer(
+    id: BenchUser.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=mariadb.PENDING_GENERATION,
     )
-    email: BenchUser.Col[BenchUser, str] = mariadb.Text(nullable=False)
-    payload: BenchUser.Col[BenchUser, str] = mariadb.Text(nullable=False)
+    email: BenchUser.Col[str] = mariadb.Text(nullable=False)
+    payload: BenchUser.Col[str] = mariadb.Text(nullable=False)
 
 
 MODELS = [BenchUser]

@@ -22,8 +22,8 @@ async def mariadb_duration_integer_storage_round_trips() -> None:
 
         __tablename__ = "duration_integer_roundtrip"
 
-        id: TimedSpan.Col[TimedSpan, int] = mariadb.Integer(primary_key=True)
-        elapsed: TimedSpan.Col[TimedSpan, Duration] = mariadb.Integer(nullable=False)
+        id: TimedSpan.Col[int] = mariadb.Integer(primary_key=True)
+        elapsed: TimedSpan.Col[Duration] = mariadb.Integer(nullable=False)
 
     database = await initialized_database(server.config(), models=[TimedSpan])
     try:
@@ -47,8 +47,8 @@ async def mariadb_duration_integer_storage_orders_by_magnitude() -> None:
 
         __tablename__ = "duration_integer_order"
 
-        id: TimedSpan.Col[TimedSpan, int] = mariadb.Integer(primary_key=True)
-        elapsed: TimedSpan.Col[TimedSpan, Duration] = mariadb.Integer(nullable=False)
+        id: TimedSpan.Col[int] = mariadb.Integer(primary_key=True)
+        elapsed: TimedSpan.Col[Duration] = mariadb.Integer(nullable=False)
 
     database = await initialized_database(server.config(), models=[TimedSpan])
     try:
@@ -78,8 +78,8 @@ async def mariadb_duration_integer_storage_ranges_by_magnitude() -> None:
 
         __tablename__ = "duration_integer_range"
 
-        id: TimedSpan.Col[TimedSpan, int] = mariadb.Integer(primary_key=True)
-        elapsed: TimedSpan.Col[TimedSpan, Duration] = mariadb.Integer(nullable=False)
+        id: TimedSpan.Col[int] = mariadb.Integer(primary_key=True)
+        elapsed: TimedSpan.Col[Duration] = mariadb.Integer(nullable=False)
 
     database = await initialized_database(server.config(), models=[TimedSpan])
     try:

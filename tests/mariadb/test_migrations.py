@@ -230,10 +230,10 @@ async def verify_passes_against_migration_created_schema() -> None:
 
         __tablename__ = "mig_verify_t3"
 
-        id: MigUser.GenCol[MigUser, int] = mariadb.Integer(
+        id: MigUser.GenCol[int] = mariadb.Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
-        email: MigUser.Col[MigUser, str] = mariadb.Text(nullable=False)
+        email: MigUser.Col[str] = mariadb.Text(nullable=False)
 
     server = await load_fixture(mariadb_server())
     database = await Database.initialize(server.config())

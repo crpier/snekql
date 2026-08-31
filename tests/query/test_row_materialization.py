@@ -7,43 +7,51 @@ a tuple of scalars. These tests pin that shared seam directly.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
-from snekql.sqlite import PENDING_GENERATION, Fetched, Integer, Pending, Text, select
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Fetched,
+    Integer,
+    Pending,
+    QueryConstructionError,
+    Text,
+    select,
+)
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
     """Model exposing columns whose codecs make decoding observable."""
 
-    label: Widget.Col[Widget, str] = Text(nullable=False)
-    enabled: Widget.Col[Widget, bool] = Integer(nullable=False)
+    label: Widget.Col[str] = Text(nullable=False)
+    enabled: Widget.Col[bool] = Integer(nullable=False)
 
 
 class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
     """Referenced table for join materialization tests."""
 
-    id: JoinUser.GenCol[JoinUser, int] = sqlite.Integer(
+    id: JoinUser.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: JoinUser.Col[JoinUser, str] = Text(nullable=False)
+    email: JoinUser.Col[str] = Text(nullable=False)
 
 
 class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
     """Table with a foreign key to ``JoinUser``."""
 
-    id: JoinOrder.GenCol[JoinOrder, int] = sqlite.Integer(
+    id: JoinOrder.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: JoinOrder.FKCol[JoinOrder, JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
-    note: JoinOrder.Col[JoinOrder, str] = Text(nullable=False)
+    user_id: JoinOrder.FKCol[JoinUser, int] = sqlite.ForeignKey(JoinUser.id)
+    note: JoinOrder.Col[str] = Text(nullable=False)
 
 
 @test(mark="fast")
@@ -154,24 +162,15 @@ def projection_join_materializes_a_tuple_of_scalars() -> None:
 
 
 @test(mark="fast")
-def left_join_projection_yields_none_for_an_unmatched_not_null_column() -> None:
-    """A NOT NULL column projected from a left join's nullable side decodes to
-    ``None`` for an unmatched row rather than raising on its own constraint.
-    """
+def projection_left_join_is_rejected_before_materialization() -> None:
+    """Projection left joins cannot promise sound per-slot nullability."""
 
-    query = (
-        select(JoinUser.email, JoinOrder.note)
-        .left_join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-        .all()
-    )
-
-    values = materialize_select_row_for_backend(
-        query.state,
-        ("a@b.c", None),
-        backend="sqlite",
-    )
-
-    assert_eq(values, ("a@b.c", None))
+    query = cast("object", select(JoinUser.email, JoinOrder.note))
+    with assert_raises(QueryConstructionError):
+        cast("Any", query).left_join(
+            JoinOrder,
+            on=JoinOrder.user_id.references(JoinUser.id),
+        )
 
 
 @test(mark="fast")

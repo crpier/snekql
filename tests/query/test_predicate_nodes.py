@@ -44,15 +44,15 @@ from snekql.sqlite import (
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Base table used by the node-construction checks."""
 
-    id: User.GenCol[User, int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    email: User.Col[User, str] = Text(nullable=False)
+    id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    email: User.Col[str] = Text(nullable=False)
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
     """Second table for column comparisons and subquery predicates."""
 
-    id: Order.GenCol[Order, int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    user_id: Order.FKCol[Order, User, int] = ForeignKey(User.id)
+    id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
 
 
 class _StubCompiler:
@@ -177,12 +177,12 @@ def comparison_node_rejects_none_with_null_predicate_hint() -> None:
     """A None comparison value is rejected at compile with the null-method hint."""
 
     compiler = _StubCompiler()
-    raw_eq: Predicate[User] = ComparisonPredicate(
+    raw_eq: Predicate[User] = ComparisonPredicate[User](
         operand=User.id,
         operator="eq",
         value=None,
     )
-    raw_gt: Predicate[User] = ComparisonPredicate(
+    raw_gt: Predicate[User] = ComparisonPredicate[User](
         operand=User.id,
         operator="gt",
         value=None,
@@ -238,7 +238,9 @@ def between_node_compiles_bounds_in_order_and_rejects_none() -> None:
     assert_eq(sql, "operand BETWEEN ? AND ?")
     assert_eq(params, (("encoded", 1), ("encoded", 10)))
 
-    raw_between: Predicate[User] = BetweenPredicate(operand=User.id, low=1, high=None)
+    raw_between: Predicate[User] = BetweenPredicate[User](
+        operand=User.id, low=1, high=None
+    )
     with assert_raises(QueryCompilationError) as raised:
         _ = raw_between.__compile_predicate_sql__(compiler)
     assert_eq(
@@ -261,7 +263,7 @@ def like_nodes_compile_pattern_and_gate_on_text_storage() -> None:
     assert_eq(sql, "operand NOT LIKE ?")
     assert_eq(params, (("encoded", "%a%"),))
 
-    raw_like: Predicate[User] = LikePredicate(
+    raw_like: Predicate[User] = LikePredicate[User](
         operand=User.id,
         pattern="%a%",
         negated=False,

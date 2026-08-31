@@ -38,12 +38,12 @@ from tests.helpers import initialized_database
 class MisuseUser[S = Pending](Model[S, "MisuseUser[Fetched]"]):
     """Table model used by transaction misuse tests."""
 
-    id: MisuseUser.GenCol[MisuseUser, int] = Integer(
+    id: MisuseUser.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: MisuseUser.Col[MisuseUser, str] = Text(nullable=False)
+    email: MisuseUser.Col[str] = Text(nullable=False)
 
 
 def _count_users(database_path: Path) -> int:

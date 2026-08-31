@@ -39,7 +39,7 @@ from snekql.storage import Attr
 type Selectable = (
     Attr[Any, Any, Any, Any, Any]
     | Aggregate[Any, Any]
-    | Scalar[Any, Any]
+    | Scalar[Any, Any, Any]
     | SqlCompilable
 )
 
@@ -142,7 +142,7 @@ def require_selectable(value: object) -> Selectable:
     if isinstance(value, Aggregate):
         return cast("Aggregate[Any, Any]", value)
     if isinstance(value, Scalar):
-        return cast("Scalar[Any, Any]", value)
+        return cast("Scalar[Any, Any, Any]", value)
     if isinstance(value, SqlCompilable):
         return value
     return require_field(value)

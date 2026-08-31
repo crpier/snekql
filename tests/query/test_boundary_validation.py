@@ -23,7 +23,7 @@ from snekql.sqlite import (
 class BoundaryUser[S = Pending](Model[S, "BoundaryUser[Fetched]"]):
     """Table model used by select boundary validation tests."""
 
-    email: BoundaryUser.Col[BoundaryUser, str] = Text(nullable=False)
+    email: BoundaryUser.Col[str] = Text(nullable=False)
 
 
 @test(mark="fast")
@@ -45,7 +45,13 @@ def select_limit_and_offset_reject_invalid_values_at_boundary() -> None:
 
     with assert_raises(QueryConstructionError):
         # We are intentionally calling offset with the wrong type.
-        _ = select(BoundaryUser).all().offset("1")  # pyright: ignore[reportArgumentType]
+        _ = (
+            select(BoundaryUser)
+            .all()
+            .offset(
+                "1"  # ty: ignore[invalid-argument-type]
+            )
+        )
 
 
 @test(mark="fast")

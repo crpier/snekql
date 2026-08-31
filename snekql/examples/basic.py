@@ -12,15 +12,13 @@ from snekql.sqlite import Database, Fetched, Pending, insert, scaffold, select
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Example table model used by the basic application."""
 
-    id: sqlite.GenCol[User, int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: sqlite.Col[User, str] = sqlite.Text(nullable=False, unique=True)
-    created_at: sqlite.GenCol[User, datetime] = sqlite.Text(
-        default=sqlite.CurrentTimestamp
-    )
+    email: sqlite.Col[str] = sqlite.Text(unique=True)
+    created_at: sqlite.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
 
 
 async def main() -> None:

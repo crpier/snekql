@@ -13,8 +13,8 @@ from tests.helpers import initialized_database
 class TimedSpan[S = Pending](Model[S, "TimedSpan[Fetched]"]):
     """Timed span table with integer duration storage."""
 
-    id: TimedSpan.Col[TimedSpan, int] = Integer(primary_key=True)
-    elapsed: TimedSpan.Col[TimedSpan, Duration] = Integer(nullable=False)
+    id: TimedSpan.Col[int] = Integer(primary_key=True)
+    elapsed: TimedSpan.Col[Duration] = Integer(nullable=False)
 
 
 @test(mark="medium")

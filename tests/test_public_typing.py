@@ -1,4 +1,4 @@
-"""Pyright-oriented public API prototypes."""
+"""ty-oriented public API conformance probes."""
 
 from __future__ import annotations
 
@@ -10,19 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_type
 
 from snekql import mariadb, sqlite
-from snekql.sqlite import (
-    PENDING_GENERATION,
-    Aggregate,
-    CanonicalDecimal,
-    ChunkStream,
-    Col,
-    CurrentTimestamp,
-    Duration,
-    Fetched,
-    FKCol,
-    ForeignKey,
-    GenCol,
-    Index,
+from snekql.query import (
+    DeleteQuery,
+    DeleteReturningQuery,
+    DeleteReturningTupleQuery,
     InsertManyQuery,
     InsertManyReturningQuery,
     InsertManyReturningTupleQuery,
@@ -31,21 +22,42 @@ from snekql.sqlite import (
     InsertReturningQuery,
     InsertReturningTupleQuery,
     InsertReturningValueQuery,
-    Integer,
     JoinModelQuery,
+    SelectModelQuery,
+    SelectTupleQuery,
+    SelectValueQuery,
+    UpdateQuery,
+    UpdateReturningQuery,
+    UpdateReturningTupleQuery,
+)
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Aggregate,
+    CanonicalDecimal,
+    ChunkStream,
+    Col,
+    ColumnRef,
+    CurrentTimestamp,
+    Duration,
+    Fetched,
+    FKCol,
+    ForeignKey,
+    GenCol,
+    Index,
+    Integer,
+    JoinOn,
     Model,
     OrderBy,
     Pending,
     PendingGeneration,
     Predicate,
     Scalar,
-    SelectModelQuery,
-    SelectTupleQuery,
-    SelectValueQuery,
+    Select,
     Text,
     Transaction,
-    UpdateQuery,
     UtcDatetime,
+    Write,
+    delete,
     exists,
     insert,
     not_exists,
@@ -59,77 +71,73 @@ from snekql.testing import mariadb as testing_mariadb
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Canonical table model used by public API typing examples."""
 
-    id: GenCol[User, int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: Col[User, str] = Text(nullable=False)
-    status: Col[User, str] = Text(nullable=False, default="active")
-    nickname: Col[User, str | None] = Text(nullable=True, default=None)
-    created_at: GenCol[User, UtcDatetime] = Text(default=CurrentTimestamp)
-    balance: Col[User, CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
-    elapsed: Col[User, Duration] = Integer(nullable=False, default=timedelta(0))
+    email: Col[str] = Text(nullable=False)
+    status: Col[str] = Text(nullable=False, default="active")
+    nickname: Col[str | None] = Text(nullable=True, default=None)
+    created_at: GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
+    balance: Col[CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
+    elapsed: Col[Duration] = Integer(nullable=False, default=timedelta(0))
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
     """Table with a foreign key to ``User`` for join typing examples."""
 
-    id: GenCol[Order, int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: FKCol[Order, User, int] = ForeignKey(User.id)
+    user_id: FKCol[User, int] = ForeignKey(User.id)
     # Nullable optional FK: ``default=None`` widens the value type and makes the
     # field omittable, parallel to the plain column constructors.
-    reviewer_id: FKCol[Order, User, int | None] = ForeignKey(
+    reviewer_id: FKCol[User, int | None] = ForeignKey(
         User.id, nullable=True, default=None
     )
-    note: Col[Order, str] = Text(nullable=False)
+    note: Col[str] = Text(nullable=False)
 
 
 class Region[S = Pending](Model[S, "Region[Fetched]"]):
     """Unjoined table used to probe out-of-scope rejections."""
 
-    code: Col[Region, str] = Text(nullable=False)
+    code: Col[str] = Text(nullable=False)
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     """SQLite namespace table model used by public API typing examples."""
 
-    id: GenCol[SqliteUser, int] = sqlite.Integer(
+    id: GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: Col[SqliteUser, str] = sqlite.Text(nullable=False)
+    email: Col[str] = sqlite.Text(nullable=False)
     # UUID logical type stored as TEXT on SQLite (no native UUID storage class).
-    account_id: Col[SqliteUser, uuid.UUID] = sqlite.Text(
-        nullable=False, default_factory=uuid.uuid4
-    )
+    account_id: Col[uuid.UUID] = sqlite.Text(nullable=False, default_factory=uuid.uuid4)
 
 
 class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
     """MariaDB namespace table model used by public API typing examples."""
 
-    id: mariadb.GenCol[MariadbUser, int] = mariadb.Integer(
+    id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: mariadb.Col[MariadbUser, str] = mariadb.Text(nullable=False)
-    balance: mariadb.Col[MariadbUser, Decimal] = mariadb.Decimal(9, 2, nullable=False)
+    email: mariadb.Col[str] = mariadb.Text(nullable=False)
+    balance: mariadb.Col[Decimal] = mariadb.Decimal(9, 2, nullable=False)
     # Native MariaDB UUID Column Type paired with the uuid.UUID logical type.
-    account_id: mariadb.Col[MariadbUser, uuid.UUID] = mariadb.Uuid(
+    account_id: mariadb.Col[uuid.UUID] = mariadb.Uuid(
         nullable=False, default_factory=uuid.uuid4
     )
-    profile: mariadb.JsonCol[MariadbUser, dict[str, object]] = mariadb.Json(
-        nullable=False
-    )
+    profile: mariadb.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)
     # Nullable JSON: the ``default=None`` overload widens the value type to
     # optional and makes the field omittable, parallel to Integer/Real/Boolean.
-    prefs: mariadb.JsonCol[MariadbUser, dict[str, object] | None] = mariadb.Json(
+    prefs: mariadb.JsonCol[dict[str, object] | None] = mariadb.Json(
         nullable=True, default=None
     )
 
@@ -141,23 +149,25 @@ if TYPE_CHECKING:
     ):
         """Invalid default declarations rejected by static typing."""
 
-        text_default: Col[InvalidSqliteDefaults, int] = Text(default="nan")  # pyright: ignore[reportAssignmentType]
-        factory_default: Col[InvalidSqliteDefaults, int] = Integer(
-            default_factory=lambda: "nan"
-        )  # pyright: ignore[reportAssignmentType]
-        pending_generation_default: Col[InvalidSqliteDefaults, int] = Integer(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        text_default: Col[int] = Text(default="nan")  # ty: ignore[invalid-assignment]
+        factory_default: Col[int] = Integer(default_factory=lambda: "nan")  # ty: ignore[invalid-assignment]
+        pending_generation_default: Col[int] = Integer(  # ty: ignore[invalid-assignment]
             default=PENDING_GENERATION
         )
-        server_default: Col[InvalidSqliteDefaults, datetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+        server_default: Col[datetime] = Text(  # ty: ignore[invalid-assignment]
             default=CurrentTimestamp
+        )
+        conflicting_default: Col[int] = Integer(  # ty: ignore[no-matching-overload]
+            default=1,
+            default_factory=lambda: 2,
         )
 
     class InvalidOrderDefaults[S = Pending](Model[S, "InvalidOrderDefaults[Fetched]"]):
         """Invalid foreign-key default declarations rejected by static typing."""
 
-        user_id: FKCol[InvalidOrderDefaults, User, int] = ForeignKey(  # pyright: ignore[reportAssignmentType, reportCallIssue]
+        user_id: FKCol[User, int] = ForeignKey(  # ty: ignore[no-matching-overload]
             User.id,
-            default="nan",  # pyright: ignore[reportArgumentType]
+            default="nan",
         )
 
     class InvalidMariadbDefaults[S = Pending](
@@ -165,12 +175,23 @@ if TYPE_CHECKING:
     ):
         """Invalid MariaDB default declarations rejected by static typing."""
 
-        text_default: mariadb.Col[InvalidMariadbDefaults, int] = mariadb.Text(
-            default="nan"
-        )  # pyright: ignore[reportAssignmentType]
-        factory_default: mariadb.Col[InvalidMariadbDefaults, int] = mariadb.Uuid(
-            default_factory=lambda: "nan"
-        )  # pyright: ignore[reportAssignmentType]
+        text_default: mariadb.Col[int] = mariadb.Text(default="nan")  # ty: ignore[invalid-assignment]
+        factory_default: mariadb.Col[int] = mariadb.Uuid(default_factory=lambda: "nan")  # ty: ignore[invalid-assignment]
+
+    _ = User()  # ty: ignore[missing-argument]
+    _ = MariadbUser(email="alice@example.com")  # ty: ignore[missing-argument]
+    public_email: ColumnRef[User[Pending], str] = User.email
+    public_select: Select[User[Fetched]] = select(User)
+    public_insert: Write[None] = insert(User(email="alice@example.com"))
+    public_update: Write[int] = update(User).all()
+    _laundered_order_column: Col[str] = Order.note  # ty: ignore[invalid-assignment]
+    _ = update(User).set(
+        _laundered_order_column.to("wrong model")  # ty: ignore[invalid-argument-type]
+    )
+    _raw_column = Text(default="raw")
+    _ = update(User).set(
+        _raw_column.to("wrong model")  # ty: ignore[invalid-argument-type]
+    )
 
     sqlite_config = sqlite.Config(database=Path("app.db"))
     _ = assert_type(sqlite_config, sqlite.Config)
@@ -219,7 +240,11 @@ if TYPE_CHECKING:
 
     mariadb_index = mariadb.Index(MariadbUser.email)
     _ = assert_type(mariadb_index, Index[MariadbUser[Pending]])
-    mariadb_user = MariadbUser(email="alice@example.com")
+    mariadb_user = MariadbUser(
+        email="alice@example.com",
+        balance=Decimal(0),
+        profile={},
+    )
     _ = assert_type(mariadb_user, MariadbUser[Pending])
     _ = assert_type(mariadb_user.account_id, uuid.UUID)
     # ``default=None`` makes the nullable JSON column omittable and optional.
@@ -268,20 +293,55 @@ if TYPE_CHECKING:
         select(User.email, User.status),
         SelectTupleQuery[User[Pending], User[Pending], str, str],
     )
+    _ = assert_type(
+        select(
+            User.id,
+            User.email,
+            User.status,
+            User.nickname,
+            User.created_at,
+            User.balance,
+            User.elapsed,
+            User.id,
+        ),
+        SelectTupleQuery[
+            User[Pending],
+            User[Pending],
+            int,
+            str,
+            str,
+            str | None,
+            UtcDatetime,
+            CanonicalDecimal,
+            Duration,
+            int,
+        ],
+    )
+    _ = select(  # ty: ignore[no-matching-overload]
+        User.id,
+        User.email,
+        User.status,
+        User.nickname,
+        User.created_at,
+        User.balance,
+        User.elapsed,
+        User.id,
+        User.email,
+    )
     # Aggregates: column methods carry owner + result type; the star form lives
     # on the model. count is int; sum/min/max are nullable; avg is float | None.
     _ = assert_type(User.id.count(), Aggregate[User[Pending], int])
     _ = assert_type(User.count_all(), Aggregate[User[Pending], int])
-    _ = assert_type(Order.id.sum(), Aggregate[Order[Pending], int | None])
-    _ = assert_type(Order.id.min(), Aggregate[Order[Pending], int | None])
-    _ = assert_type(Order.id.avg(), Aggregate[Order[Pending], float | None])
+    _ = assert_type(Order.id.sum(), Aggregate[Order[Pending], int | None, int])
+    _ = assert_type(Order.id.min(), Aggregate[Order[Pending], int | None, int])
+    _ = assert_type(Order.id.avg(), Aggregate[Order[Pending], float | None, float])
     _ = assert_type(
         select(User.id.count()).all(),
         SelectValueQuery[User[Pending], User[Pending], int],
     )
     _ = assert_type(
         select(Order.id.sum()).all(),
-        SelectValueQuery[Order[Pending], Order[Pending], int | None],
+        SelectValueQuery[Order[Pending], Order[Pending], int | None, int],
     )
     # Grouped projection: a column and an aggregate land in a tuple select; the
     # aggregate carries its result type and an aggregate can drive order_by.
@@ -338,22 +398,27 @@ if TYPE_CHECKING:
     )
     _ = assert_type(User.email.like("%@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.not_like("%@example.com"), Predicate[User[Pending]])
+    _ = User.id.like("1")  # ty: ignore[no-matching-overload]
     # Nullable column: comparing against None is invalid (the runtime rejects it);
     # the typed surface steers callers to is_null()/is_not_null() with a
     # deprecation diagnostic, while a real value still type-checks.
     _ = assert_type(User.nickname.eq("nick"), Predicate[User[Pending]])
     _ = assert_type(User.nickname.is_null(), Predicate[User[Pending]])
-    _ = User.nickname.eq(None)  # pyright: ignore[reportDeprecated]
-    _ = User.nickname.ne(None)  # pyright: ignore[reportDeprecated]
-    _ = User.nickname.gt(None)  # pyright: ignore[reportDeprecated]
-    _ = User.nickname.between(None, None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.eq(None)
+    _ = User.nickname.ne(None)
+    _ = User.nickname.gt(None)
+    _ = User.nickname.between(None, None)
     _ = assert_type(User.nickname.in_("nick"), Predicate[User[Pending]])
-    _ = User.nickname.in_(None)  # pyright: ignore[reportDeprecated]
-    _ = User.nickname.not_in(None)  # pyright: ignore[reportDeprecated]
+    _ = User.nickname.in_(None)
+    _ = User.nickname.not_in(None)
     # Subqueries: a column-vs-column comparison keeps the left column's owner; a
     # single-column subquery types in_subquery; exists() carries no outer column;
     # scalar() carries the projected value type for projections and comparisons.
     _ = assert_type(Order.user_id.eq_col(User.id), Predicate[Order[Pending]])
+    _ = assert_type(
+        Order.reviewer_id.references(User.id),
+        JoinOn[Order[Pending], User[Pending]],
+    )
     _ = assert_type(
         User.id.in_subquery(select(Order.user_id).where(Order.user_id.gt(0))),
         Predicate[User[Pending]],
@@ -364,14 +429,23 @@ if TYPE_CHECKING:
     # value type is always optional even over a NOT NULL inner column (#203 F10).
     _ = assert_type(
         scalar(select(Order.user_id).where(Order.user_id.eq_col(User.id))),
-        Scalar[Any, int | None],
+        Scalar[Any, int | None, int],
     )
     _ = assert_type(
         User.id.gt_col(scalar(select(Order.user_id).all())),
         Predicate[User[Pending]],
     )
+    _ = assert_type(
+        User.id.gt_col(scalar(select(Order.id.avg()).all())),
+        Predicate[User[Pending]],
+    )
+    _ = User.id.gt_col(
+        scalar(select(Order.note).all())  # ty: ignore[invalid-argument-type]
+    )
     # A multi-column IN subquery is rejected: in_subquery wants a single column.
-    _ = User.id.in_subquery(select(Order.id, Order.user_id))  # type: ignore[arg-type]
+    _ = User.id.in_subquery(
+        select(Order.id, Order.user_id)  # ty: ignore[invalid-argument-type]
+    )
     _ = assert_type(
         User.email.eq("alice@example.com") & User.status.eq("active"),
         Predicate[User[Pending]],
@@ -400,18 +474,28 @@ if TYPE_CHECKING:
             Order[Fetched] | None,
         ],
     )
+    _ = select(User).join(  # ty: ignore[no-matching-overload]
+        Order,
+        on=JoinOn[Region[Pending], User[Pending]](),
+    )
+    _ = select(User.email).join(  # ty: ignore[no-matching-overload]
+        Order,
+        on=JoinOn[Region[Pending], User[Pending]](),
+    )
     # Rejection: right table, wrong-type key (int FK vs str column).
     _ = select(User).join(
         Order,
-        on=Order.user_id.references(User.email),  # type: ignore[arg-type]
+        on=Order.user_id.references(User.email),  # ty: ignore[no-matching-overload]
     )
     # Rejection: a plain (non-FK) column has no `references`.
     _ = select(User).join(
         Order,
-        on=Order.note.references(User.id),  # type: ignore[attr-defined]
+        on=Order.note.references(User.id),  # ty: ignore[unresolved-attribute]
     )
     # Rejection: a predicate from a table not in the query is out of scope.
-    _ = _user_orders.where(Region.code.eq("EU"))  # type: ignore[arg-type]
+    _ = _user_orders.where(
+        Region.code.eq("EU")  # ty: ignore[invalid-argument-type]
+    )
 
     # Projection joins: the result tuple is fixed by the selected columns, the
     # scope union grows with each join, and the referenced union grows with the
@@ -432,19 +516,11 @@ if TYPE_CHECKING:
     )
     _ = _email_notes.where(User.email.eq("a@b.c") & Order.note.eq("x"))
     _ = _email_notes.order_by(Order.note.asc())
-    # A left join keeps the same projected result shape (its nullability is a
-    # documented gap for projection selects).
-    _ = assert_type(
-        select(User.id, Order.note, Order.note).left_join(
-            Order, on=Order.user_id.references(User.id)
-        ),
-        SelectTupleQuery[
-            User[Pending] | Order[Pending],
-            User[Pending] | Order[Pending],
-            int,
-            str,
-            str,
-        ],
+    # Projection left joins are rejected because the current query shape cannot
+    # make only the nullable-side result slots optional.
+    _ = select(User.id, Order.note, Order.note).left_join(
+        Order,  # ty: ignore[invalid-argument-type]
+        on=Order.user_id.references(User.id),  # ty: ignore[invalid-argument-type]
     )
     # Single-column projection join: filter on a joined table you do not select.
     _ = assert_type(
@@ -460,10 +536,11 @@ if TYPE_CHECKING:
     # Rejection: a projection-join `on` with a wrong-type key.
     _ = select(User.email, Order.note).join(
         Order,
-        on=Order.user_id.references(User.email),  # type: ignore[arg-type]
+        on=Order.user_id.references(User.email),  # ty: ignore[no-matching-overload]
     )
     _ = assert_type(Index(User.email), Index[User[Pending]])
     _ = assert_type(Index(User.email, unique=True), Index[User[Pending]])
+    _ = Index("email")  # ty: ignore[invalid-argument-type]
     _ = assert_type(
         insert(pending_user),
         InsertQuery[User[Pending], User[Fetched]],
@@ -497,13 +574,108 @@ if TYPE_CHECKING:
         InsertManyReturningTupleQuery[User[Pending], int, str],
     )
     _ = assert_type(
+        insert(pending_user).returning(
+            User.id,
+            User.email,
+            User.status,
+            User.nickname,
+            User.created_at,
+            User.balance,
+            User.elapsed,
+            User.id,
+        ),
+        InsertReturningTupleQuery[
+            User[Pending],
+            int,
+            str,
+            str,
+            str | None,
+            UtcDatetime,
+            CanonicalDecimal,
+            Duration,
+            int,
+        ],
+    )
+    _ = assert_type(
+        insert([pending_user]).returning(
+            User.id,
+            User.email,
+            User.status,
+            User.nickname,
+            User.created_at,
+            User.balance,
+            User.elapsed,
+            User.id,
+        ),
+        InsertManyReturningTupleQuery[
+            User[Pending],
+            int,
+            str,
+            str,
+            str | None,
+            UtcDatetime,
+            CanonicalDecimal,
+            Duration,
+            int,
+        ],
+    )
+    _ = assert_type(
         update(User).set(User.email.to("new@example.com")),
-        UpdateQuery[User[Pending]],
+        UpdateQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        delete(User).where(User.id.eq(1)),
+        DeleteQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        update(User).returning(),
+        UpdateReturningQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        delete(User).returning(),
+        DeleteReturningQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        update(User).returning(
+            User.id,
+            User.email,
+            User.status,
+            User.nickname,
+        ),
+        UpdateReturningTupleQuery[
+            User[Pending], User[Fetched], int, str, str, str | None
+        ],
+    )
+    _ = assert_type(
+        delete(User).returning(
+            User.id,
+            User.email,
+            User.status,
+            User.nickname,
+        ),
+        DeleteReturningTupleQuery[
+            User[Pending], User[Fetched], int, str, str, str | None
+        ],
+    )
+    _ = insert(pending_user).returning(  # ty: ignore[no-matching-overload]
+        User.id,
+        User.email,
+        User.status,
+        User.nickname,
+        User.created_at,
+        User.balance,
+        User.elapsed,
+        User.id,
+        User.email,
     )
     # returning() is scoped to the written model: a column from another model is
     # rejected statically (the owner is pinned), matching the runtime guard.
-    _ = insert(pending_user).returning(Order.note)  # pyright: ignore[reportArgumentType]
-    _ = update(User).returning(Order.note)  # pyright: ignore[reportArgumentType]
+    _ = insert(pending_user).returning(
+        Order.note  # ty: ignore[invalid-argument-type]
+    )
+    _ = update(User).returning(
+        Order.note  # ty: ignore[invalid-argument-type]
+    )
 
     async def check_write_types(transaction: Transaction) -> None:
         """Runtime write overloads type returning inserts as Fetched models."""
@@ -519,6 +691,14 @@ if TYPE_CHECKING:
         )
         _ = assert_type(
             await transaction.execute(insert([pending_user]).returning()),
+            list[User[Fetched]],
+        )
+        _ = assert_type(
+            await transaction.execute(update(User).all().returning()),
+            list[User[Fetched]],
+        )
+        _ = assert_type(
+            await transaction.execute(delete(User).all().returning()),
             list[User[Fetched]],
         )
         _ = assert_type(
@@ -616,14 +796,20 @@ if TYPE_CHECKING:
             Order,
             on=Order.user_id.references(User.id),
         )
-        await transaction.fetch_all(_unjoined_select)  # type: ignore[type-var]
+        await transaction.fetch_all(
+            _unjoined_select  # ty: ignore[invalid-argument-type]
+        )
         # Same check for filtering an unjoined table.
         _unjoined_filter = (
             select(User.email)
             .join(Order, on=Order.user_id.references(User.id))
             .where(Region.code.eq("EU"))
         )
-        await transaction.fetch_all(_unjoined_filter)  # type: ignore[type-var]
+        await transaction.fetch_all(
+            _unjoined_filter  # ty: ignore[invalid-argument-type]
+        )
         # Projecting two tables but joining nothing is rejected too.
         _no_join = select(User.email, Order.note)
-        await transaction.fetch_all(_no_join)  # type: ignore[type-var]
+        await transaction.fetch_all(
+            _no_join  # ty: ignore[invalid-argument-type]
+        )

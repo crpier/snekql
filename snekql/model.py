@@ -40,6 +40,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    _UnboundOwner,
     column_admits_none,
     column_lacks_canonical_decimal,
     column_lacks_order_preserving_datetime,
@@ -86,6 +87,12 @@ class Table[StateT]:
         return cls
 
     @classmethod
+    def __owner_invariant__(cls, owner: Self) -> Self:
+        """Pin model-class inference to this exact owner type."""
+
+        return owner
+
+    @classmethod
     def count_all(cls) -> Aggregate[Self, int]:
         """Aggregate the whole table as ``COUNT(*)``.
 
@@ -95,35 +102,38 @@ class Table[StateT]:
         user column name -- a column that shadowed it would break the call.
         """
 
-        return Aggregate(func="COUNT", column=None, owner=cls)
+        return cast(
+            "Aggregate[Self, int]",
+            Aggregate(func="COUNT", column=None, owner=cls),
+        )
 
 
 # Public column aliases carry query scope as an explicit model argument. Their
 # descriptor instance owners are lifecycle-wide Table types: the descriptor is
 # only reachable through its declaring model, while Pending versus Fetched
 # selects the write or read value overload.
-type Col[OwnerT: Table[Any], T] = Attr[
+type Col[T] = Attr[
     Table[Pending],
     Table[Fetched],
-    OwnerT,
+    _UnboundOwner,
     T,
     T,
 ]
 
-type GenCol[OwnerT: Table[Any], T] = Attr[
+type GenCol[T] = Attr[
     Table[Pending],
     Table[Fetched],
-    OwnerT,
+    _UnboundOwner,
     T | PendingGeneration,
     T,
 ]
 
 # Target records the referenced model so `references` can require a matching
 # target column.
-type FKCol[OwnerT: Table[Any], Target, T] = FKAttr[
+type FKCol[Target, T] = FKAttr[
     Table[Pending],
     Table[Fetched],
-    OwnerT,
+    _UnboundOwner,
     T,
     T,
     Target,
@@ -138,7 +148,7 @@ class ModelMeta(type):
     """Typing/runtime hook for direct public column descriptors.
 
     Intended runtime behavior:
-    - treat public column descriptors like `email: User.Col[str] = Text(...)`
+    - treat public column descriptors like `email: Col[str] = Text(...)`
       as both constructor fields and query descriptors
     - use descriptor `__set__` typing for constructor/write values
     - bind public descriptors directly on the model class
@@ -157,7 +167,12 @@ class ModelMeta(type):
         if not is_model_base:
             ModelMeta._validate_model_bases(bases)
             ModelMeta._validate_model_namespace(namespace)
-        model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
+        try:
+            model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
+        except RuntimeError as error:
+            if isinstance(error.__cause__, ModelDeclarationError):
+                raise error.__cause__ from error
+            raise
         annotations = ModelMeta._namespace_annotations(namespace)
         columns = ModelMeta._bind_columns(model_class, annotations)
         model_metadata = cast("Any", model_class)
@@ -489,26 +504,35 @@ class ModelMeta(type):
     ) -> None:
         """Cross-check each column's ``nullable=`` flag against its annotation.
 
-        A column's static read type comes from its ``Col[T]`` annotation while
-        ``NULL`` acceptance at runtime is driven by ``nullable=``; if the two
-        disagree the type promises something the runtime does not honour (a
-        ``Col[str]`` that decodes ``None``, or a ``Col[str | None]`` that never
-        does). Require ``| None`` in the annotation if and only if
-        ``nullable=True``. Columns whose logical type cannot be resolved here
-        (forward references) are skipped rather than guessed.
+        The logical annotation is authoritative. An omitted ``nullable=`` derives
+        from whether that annotation admits ``None``; an explicit flag acts as an
+        assertion and must agree. Resolve fields independently so one unresolved
+        sibling cannot suppress another field's check.
         """
 
         for name, column in columns.items():
             admits_none = column_admits_none(column)
             if admits_none is None:
+                if column.nullable_declared is not None:
+                    continue
+                msg = (
+                    f"column {name!r} annotation cannot be resolved; declare "
+                    "nullable=True or nullable=False explicitly"
+                )
+                raise ModelDeclarationError(msg)
+            if column.primary_key and admits_none:
+                msg = f"primary-key column {name!r} cannot include None"
+                raise ModelDeclarationError(msg)
+            if column.nullable_declared is None:
+                column.nullable = admits_none
                 continue
-            if admits_none and column.nullable is not True:
+            if admits_none and column.nullable_declared is not True:
                 msg = (
                     f"column {name!r} annotation includes None but is not "
                     f"declared nullable=True"
                 )
                 raise ModelDeclarationError(msg)
-            if not admits_none and column.nullable is True:
+            if not admits_none and column.nullable_declared is True:
                 msg = (
                     f"column {name!r} is declared nullable=True but its "
                     f"annotation does not include None"
@@ -546,7 +570,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     """Base class for declaring table models.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: User.Col[str] = Text(nullable=False)
+    ...     email: Col[str] = Text()
     """
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
@@ -555,14 +579,12 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    # Explicit-owner aliases remain available through model classes for callers
-    # that prefer `User.Col[User, T]` over the backend namespace spelling.
-    type Col[OwnerT: Table[Any], T] = Attr[Table[Pending], Table[Fetched], OwnerT, T, T]
-    type GenCol[OwnerT: Table[Any], T] = Attr[
-        Table[Pending], Table[Fetched], OwnerT, T | PendingGeneration, T
+    type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+    type GenCol[T] = Attr[
+        Table[Pending], Table[Fetched], _UnboundOwner, T | PendingGeneration, T
     ]
-    type FKCol[OwnerT: Table[Any], Target, T] = FKAttr[
-        Table[Pending], Table[Fetched], OwnerT, T, T, Target
+    type FKCol[Target, T] = FKAttr[
+        Table[Pending], Table[Fetched], _UnboundOwner, T, T, Target
     ]
 
     def __init__(self, **values: object) -> None:

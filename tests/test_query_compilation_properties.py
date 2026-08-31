@@ -57,12 +57,10 @@ _INT64_MAX = 2**63 - 1
 class Widget[S = Pending](Model[S, "Widget[Fetched]"]):
     """A small multi-type model the generated queries are composed against."""
 
-    id: Widget.GenCol[Widget, int] = Integer(
-        primary_key=True, default=PENDING_GENERATION
-    )
-    name: Widget.Col[Widget, str] = Text(nullable=False)
-    qty: Widget.Col[Widget, int] = Integer(nullable=False)
-    price: Widget.Col[Widget, float] = Real(nullable=False)
+    id: Widget.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    name: Widget.Col[str] = Text(nullable=False)
+    qty: Widget.Col[int] = Integer(nullable=False)
+    price: Widget.Col[float] = Real(nullable=False)
 
 
 _ALL_COLUMNS: tuple[Attr[Any, Any, Any, Any, Any], ...] = (
@@ -103,7 +101,7 @@ def _predicates_for(
         st.tuples(values, values).map(
             # `column`/`values` are deliberately `Any`-typed test infrastructure,
             # so `between` resolves to its None-rejecting overload here.
-            lambda bounds: column.between(*bounds),  # pyright: ignore[reportDeprecated]
+            lambda bounds: column.between(*bounds),
         ),
         st.just(column.is_null()),
         st.just(column.is_not_null()),

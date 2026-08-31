@@ -32,30 +32,30 @@ if TYPE_CHECKING:
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Anchor table providing in-scope columns and aggregates."""
 
-    id: User.GenCol[User, int] = sqlite.Integer(
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    country: User.Col[User, str] = sqlite.Text(nullable=False)
+    country: User.Col[str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Joinable table so a scope can hold more than one own model."""
 
-    id: Order.GenCol[Order, int] = sqlite.Integer(
+    id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
-    amount: Order.Col[Order, int] = sqlite.Integer(nullable=False)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
+    amount: Order.Col[int] = sqlite.Integer(nullable=False)
 
 
 class Unrelated[S = Pending](sqlite.Model[S, "Unrelated[Fetched]"]):
     """Table never brought into scope; its columns must be rejected."""
 
-    id: Unrelated.GenCol[Unrelated, int] = sqlite.Integer(
+    id: Unrelated.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,

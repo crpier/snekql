@@ -50,14 +50,14 @@ _BLOB_MAX = 65535  # BLOB, 64 KiB - 1
 class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
     """One column per MariaDB value family under test."""
 
-    number: Scalars.Col[Scalars, int] = Integer(nullable=False)
-    rating: Scalars.Col[Scalars, float] = Real(nullable=False)
-    label: Scalars.Col[Scalars, str] = Text(nullable=False)
-    blob: Scalars.Col[Scalars, bytes] = Blob(nullable=False)
-    flag: Scalars.Col[Scalars, bool] = Boolean(nullable=False)
-    when: Scalars.Col[Scalars, datetime] = DateTime(nullable=False)
-    account_id: Scalars.Col[Scalars, uuid.UUID] = Uuid(nullable=False)
-    data: Scalars.Col[Scalars, dict[str, Any]] = Json(nullable=False)
+    number: Scalars.Col[int] = Integer(nullable=False)
+    rating: Scalars.Col[float] = Real(nullable=False)
+    label: Scalars.Col[str] = Text(nullable=False)
+    blob: Scalars.Col[bytes] = Blob(nullable=False)
+    flag: Scalars.Col[bool] = Boolean(nullable=False)
+    when: Scalars.Col[datetime] = DateTime(nullable=False)
+    account_id: Scalars.Col[uuid.UUID] = Uuid(nullable=False)
+    data: Scalars.Col[dict[str, Any]] = Json(nullable=False)
 
 
 _json_text = st.text(st.characters(codec="utf-8"))

@@ -50,15 +50,15 @@ with warnings.catch_warnings():
     class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
         """One column per SQLite storage class / logical type under test."""
 
-        number: Scalars.Col[Scalars, int] = Integer(nullable=False)
-        rating: Scalars.Col[Scalars, float] = Real(nullable=False)
-        label: Scalars.Col[Scalars, str] = Text(nullable=False)
-        blob: Scalars.Col[Scalars, bytes] = Blob(nullable=False)
-        flag: Scalars.Col[Scalars, bool] = Integer(nullable=False)
-        when: Scalars.Col[Scalars, datetime] = Text(nullable=False)
+        number: Scalars.Col[int] = Integer(nullable=False)
+        rating: Scalars.Col[float] = Real(nullable=False)
+        label: Scalars.Col[str] = Text(nullable=False)
+        blob: Scalars.Col[bytes] = Blob(nullable=False)
+        flag: Scalars.Col[bool] = Integer(nullable=False)
+        when: Scalars.Col[datetime] = Text(nullable=False)
         # The pydantic ``Json`` marker -- not the dict value -- selects the JSON wire
         # codec over a plain TEXT column.
-        data: Scalars.Col[Scalars, Json[dict[str, Any]]] = Text(nullable=False)
+        data: Scalars.Col[Json[dict[str, Any]]] = Text(nullable=False)
 
 
 # JSON payloads: arbitrarily nested, with only JSON-representable leaves. Text is
@@ -89,7 +89,7 @@ _json_objects = st.dictionaries(_json_text, _json_values, max_size=5)
 _whole_minute_offsets = st.integers(
     min_value=-(23 * 60 + 59), max_value=23 * 60 + 59
 ).map(lambda minutes: timezone(timedelta(minutes=minutes)))
-_datetimes = st.datetimes(
+_datetimes = st.datetimes(  # ty: ignore[no-matching-overload]
     min_value=datetime(1900, 1, 1),  # noqa: DTZ001
     max_value=datetime(2200, 1, 1),  # noqa: DTZ001
     timezones=st.none() | st.just(UTC) | _whole_minute_offsets,
@@ -219,7 +219,7 @@ def uuid_round_trips_as_text(value: uuid.UUID) -> None:
     class Account[S = Pending](Model[S, "Account[Fetched]"]):
         """Model binding a UUID logical type over TEXT."""
 
-        account_id: Account.Col[Account, uuid.UUID] = Text(nullable=False)
+        account_id: Account.Col[uuid.UUID] = Text(nullable=False)
 
     encoded = Account.account_id.encode(value, backend=BACKEND)
     assert_eq(encoded, str(value))

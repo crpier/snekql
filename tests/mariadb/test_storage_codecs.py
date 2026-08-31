@@ -50,9 +50,9 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """Model used to bind MariaDB descriptors for direct codec checks."""
 
-        flag: Event.Col[Event, bool] = mariadb.Boolean(nullable=False)
-        payload: Event.Col[Event, dict[str, object]] = mariadb.Json(nullable=False)
-        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
+        flag: Event.Col[bool] = mariadb.Boolean(nullable=False)
+        payload: Event.Col[dict[str, object]] = mariadb.Json(nullable=False)
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
 
     timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
 
@@ -77,7 +77,7 @@ def mariadb_duration_encodes_to_integer_milliseconds() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     _, encoded_timer = encode_model_row(
         Timer(elapsed=timedelta(seconds=9)), backend="mariadb"
@@ -93,7 +93,7 @@ def mariadb_duration_decodes_integer_milliseconds() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     fetched = cast(
         "Timer[Fetched]",
@@ -110,7 +110,7 @@ def mariadb_duration_truncates_sub_millisecond_values() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     assert_eq(
         Timer(elapsed=timedelta(microseconds=1500)).elapsed, timedelta(milliseconds=1)
@@ -124,7 +124,7 @@ def mariadb_duration_negative_values_use_negative_integer_milliseconds() -> None
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     encoded = Timer.elapsed.encode(timedelta(seconds=-5), backend="mariadb")
 
@@ -139,7 +139,7 @@ def mariadb_duration_negative_sub_millisecond_values_truncate_down() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     assert_eq(
         Timer(elapsed=timedelta(microseconds=-500)).elapsed, timedelta(milliseconds=-1)
@@ -153,7 +153,7 @@ def mariadb_duration_model_construction_accepts_integer_milliseconds() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     assert_eq(Timer(elapsed=cast("Any", 9000)).elapsed, timedelta(seconds=9))
 
@@ -165,7 +165,7 @@ def mariadb_duration_integer_milliseconds_obey_signed_64_bit_range() -> None:
     class Timer[S = Pending](mariadb.Model[S, "Timer[Fetched]"]):
         """Model binding a Duration descriptor for direct codec checks."""
 
-        elapsed: Timer.Col[Timer, mariadb.Duration] = mariadb.Integer(nullable=False)
+        elapsed: Timer.Col[mariadb.Duration] = mariadb.Integer(nullable=False)
 
     try:
         _ = Timer.elapsed.encode(2**63, backend="mariadb")
@@ -183,7 +183,7 @@ def mariadb_decimal_codec_rejects_values_that_do_not_fit_column_scale() -> None:
     class Price[S = Pending](mariadb.Model[S, "Price[Fetched]"]):
         """Model binding a native MariaDB Decimal descriptor."""
 
-        amount: Price.Col[Price, Decimal] = mariadb.Decimal(5, 2, nullable=False)
+        amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
 
     assert_eq(
         Price.amount.encode(Decimal("999.99"), backend="mariadb"), Decimal("999.99")
@@ -205,7 +205,7 @@ def mariadb_json_codec_round_trips_rich_annotated_types() -> None:
     class RichEvent[S = Pending](mariadb.Model[S, "RichEvent[Fetched]"]):
         """Json column annotated with a pydantic model."""
 
-        payload: RichEvent.Col[RichEvent, Inner] = mariadb.Json(nullable=False)
+        payload: RichEvent.Col[Inner] = mariadb.Json(nullable=False)
 
     assert_eq(RichEvent.payload.encode(Inner(x=1), backend="mariadb"), '{"x":1}')
     assert_eq(RichEvent.payload.decode('{"x":1}', backend="mariadb"), Inner(x=1))
@@ -225,7 +225,7 @@ def mariadb_uuid_codec_round_trips_through_the_pydantic_scalar_path() -> None:
     class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
         """Model binding a native MariaDB Uuid descriptor."""
 
-        account_id: Account.Col[Account, uuid.UUID] = mariadb.Uuid(nullable=False)
+        account_id: Account.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
 
     value = uuid.UUID("12345678-1234-5678-1234-567812345678")
     assert_eq(Account.account_id.encode(value, backend="mariadb"), str(value))
@@ -240,7 +240,7 @@ def mariadb_datetime_codec_decodes_native_driver_datetimes() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """Model binding a MariaDB DateTime descriptor for direct codec checks."""
 
-        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
 
     naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
     assert_eq(
@@ -265,7 +265,7 @@ def mariadb_datetime_codec_rejects_naive_datetimes_on_encode() -> None:
     class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
         """Model binding a MariaDB DateTime descriptor for direct codec checks."""
 
-        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
 
     naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
     with assert_raises(ModelValidationError):
@@ -291,7 +291,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
         class BadEvent[S = Pending](mariadb.Model[S, "BadEvent[Fetched]"]):
             """Invalid MariaDB model using a server default on a normal column."""
 
-            created_at: BadEvent.Col[BadEvent, datetime] = mariadb.DateTime(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            created_at: BadEvent.Col[datetime] = mariadb.DateTime(  # ty: ignore[invalid-assignment]
                 default=CurrentTimestamp,
             )
 
@@ -300,9 +300,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
         class BadCounter[S = Pending](mariadb.Model[S, "BadCounter[Fetched]"]):
             """Invalid MariaDB model using auto increment outside a primary key."""
 
-            count: BadCounter.Col[BadCounter, int] = mariadb.Integer(
-                auto_increment=True
-            )
+            count: BadCounter.Col[int] = mariadb.Integer(auto_increment=True)
 
 
 @test()
@@ -313,19 +311,13 @@ def mariadb_nullable_columns_round_trip_none_and_reject_required_nulls() -> None
     class Profile[S = Pending](mariadb.Model[S, "Profile[Fetched]"]):
         """Model with a nullable column per representative MariaDB family."""
 
-        rating: Profile.Col[Profile, float | None] = mariadb.Real(
+        rating: Profile.Col[float | None] = mariadb.Real(nullable=True, default=None)
+        nickname: Profile.Col[str | None] = mariadb.Text(nullable=True, default=None)
+        prefs: Profile.Col[dict[str, int] | None] = mariadb.Json(
             nullable=True, default=None
         )
-        nickname: Profile.Col[Profile, str | None] = mariadb.Text(
-            nullable=True, default=None
-        )
-        prefs: Profile.Col[Profile, dict[str, int] | None] = mariadb.Json(
-            nullable=True, default=None
-        )
-        flag: Profile.Col[Profile, bool | None] = mariadb.Boolean(
-            nullable=True, default=None
-        )
-        seen_at: Profile.Col[Profile, datetime | None] = mariadb.DateTime(
+        flag: Profile.Col[bool | None] = mariadb.Boolean(nullable=True, default=None)
+        seen_at: Profile.Col[datetime | None] = mariadb.DateTime(
             nullable=True, default=None
         )
 
@@ -342,7 +334,7 @@ def mariadb_nullable_columns_round_trip_none_and_reject_required_nulls() -> None
     class Required[S = Pending](mariadb.Model[S, "Required[Fetched]"]):
         """Non-null column whose decode must reject a driver ``NULL``."""
 
-        value: Required.Col[Required, str] = mariadb.Text(nullable=False)
+        value: Required.Col[str] = mariadb.Text(nullable=False)
 
     with assert_raises(ModelValidationError):
         _ = Required.value.decode(None, backend="mariadb")
@@ -356,7 +348,7 @@ def mariadb_integer_codec_enforces_the_signed_64_bit_range() -> None:
     class Counter[S = Pending](mariadb.Model[S, "Counter[Fetched]"]):
         """Model with a single BIGINT column."""
 
-        value: Counter.Col[Counter, int] = mariadb.Integer(nullable=False)
+        value: Counter.Col[int] = mariadb.Integer(nullable=False)
 
     for boundary in (-(2**63), 2**63 - 1):
         assert_eq(Counter.value.encode(boundary, backend="mariadb"), boundary)
@@ -375,7 +367,7 @@ def mariadb_non_finite_floats_fail_with_a_domain_error() -> None:
     class Reading[S = Pending](mariadb.Model[S, "Reading[Fetched]"]):
         """Model with a single DOUBLE column."""
 
-        value: Reading.Col[Reading, float] = mariadb.Real(nullable=False)
+        value: Reading.Col[float] = mariadb.Real(nullable=False)
 
     for bad in (math.nan, math.inf, -math.inf):
         with assert_raises(ModelValidationError):
@@ -392,9 +384,7 @@ def mariadb_json_codec_preserves_insertion_key_order() -> None:
     class Payload[S = Pending](mariadb.Model[S, "Payload[Fetched]"]):
         """Model with a free-form JSON object column."""
 
-        data: Payload.Col[Payload, Json[dict[str, object]]] = mariadb.Json(
-            nullable=False
-        )
+        data: Payload.Col[Json[dict[str, object]]] = mariadb.Json(nullable=False)
 
     nested: dict[str, object] = {"b": 1, "a": {"d": [1, 2], "c": None}}
     encoded = Payload.data.encode(nested, backend="mariadb")
@@ -410,8 +400,8 @@ def mariadb_boolean_codec_normalizes_driver_tinyint_to_bool() -> None:
     class Flagged[S = Pending](mariadb.Model[S, "Flagged[Fetched]"]):
         """Model with a non-null and a nullable BOOLEAN column."""
 
-        enabled: Flagged.Col[Flagged, bool] = mariadb.Boolean(nullable=False)
-        verified: Flagged.Col[Flagged, bool | None] = mariadb.Boolean(
+        enabled: Flagged.Col[bool] = mariadb.Boolean(nullable=False)
+        verified: Flagged.Col[bool | None] = mariadb.Boolean(
             nullable=True, default=None
         )
 
@@ -436,9 +426,9 @@ def mariadb_oversized_text_and_blob_values_fail_with_a_domain_error() -> None:
     class Document[S = Pending](mariadb.Model[S, "Document[Fetched]"]):
         """Model carrying length-bounded TEXT and BLOB columns plus JSON."""
 
-        body: Document.Col[Document, str] = mariadb.Text(nullable=False)
-        raw: Document.Col[Document, bytes] = mariadb.Blob(nullable=False)
-        tags: Document.Col[Document, Json[list[str]]] = mariadb.Json(nullable=False)
+        body: Document.Col[str] = mariadb.Text(nullable=False)
+        raw: Document.Col[bytes] = mariadb.Blob(nullable=False)
+        tags: Document.Col[Json[list[str]]] = mariadb.Json(nullable=False)
 
     # Boundary values encode unchanged.
     assert_eq(Document.body.encode("x" * 255, backend="mariadb"), "x" * 255)
@@ -463,7 +453,7 @@ def mariadb_blob_decode_normalizes_memoryview_and_bytearray_to_bytes() -> None:
     class Attachment[S = Pending](mariadb.Model[S, "Attachment[Fetched]"]):
         """Model with a single BLOB column."""
 
-        raw: Attachment.Col[Attachment, bytes] = mariadb.Blob(nullable=False)
+        raw: Attachment.Col[bytes] = mariadb.Blob(nullable=False)
 
     payload = b"\x00driver\xff"
     for driver_value in (memoryview(payload), bytearray(payload)):
@@ -483,21 +473,21 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
 
         __tablename__ = "issue40_event_values"
 
-        id: Event.GenCol[Event, int] = mariadb.Integer(
+        id: Event.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        account_id: Event.Col[Event, uuid.UUID] = mariadb.Uuid(nullable=False)
-        amount: Event.Col[Event, float] = mariadb.Real(nullable=False)
-        content: Event.Col[Event, bytes] = mariadb.Blob(nullable=False)
-        created_at: Event.GenCol[Event, datetime] = mariadb.DateTime(
+        account_id: Event.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
+        amount: Event.Col[float] = mariadb.Real(nullable=False)
+        content: Event.Col[bytes] = mariadb.Blob(nullable=False)
+        created_at: Event.GenCol[datetime] = mariadb.DateTime(
             default=CurrentTimestamp,
         )
-        enabled: Event.Col[Event, bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[Event, datetime] = mariadb.DateTime(nullable=False)
-        message: Event.Col[Event, str] = mariadb.Text(nullable=False)
-        payload: Event.Col[Event, dict[str, Any]] = mariadb.Json(nullable=False)
+        enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        message: Event.Col[str] = mariadb.Text(nullable=False)
+        payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
     database = await initialized_database(_config_from_server(server), models=[Event])
     happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)

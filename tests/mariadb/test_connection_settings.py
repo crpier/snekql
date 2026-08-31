@@ -39,12 +39,12 @@ async def created_tables_use_innodb_and_binary_text_collation() -> None:
 
         __tablename__ = "issue96_engine_collation"
 
-        id: User.GenCol[User, int] = mariadb.Integer(
+        id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = mariadb.Text(nullable=False)
+        email: User.Col[str] = mariadb.Text(nullable=False)
 
     server = await load_fixture(provide_mariadb_server())
     database = await initialized_database(server.config(), models=[User])
@@ -81,12 +81,12 @@ async def unique_text_columns_compare_case_sensitively() -> None:
 
         __tablename__ = "issue96_case_sensitive"
 
-        id: Account.GenCol[Account, int] = mariadb.Integer(
+        id: Account.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        name: Account.Col[Account, str] = mariadb.Text(nullable=False, unique=True)
+        name: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
 
     server = await load_fixture(provide_mariadb_server())
     database = await initialized_database(server.config(), models=[Account])
@@ -113,7 +113,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
 
         __tablename__ = "issue96_fk_parent"
 
-        id: Parent.GenCol[Parent, int] = mariadb.Integer(
+        id: Parent.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
@@ -124,14 +124,12 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
 
         __tablename__ = "issue96_fk_child"
 
-        id: Child.GenCol[Child, int] = mariadb.Integer(
+        id: Child.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        parent_id: Child.FKCol[Child, Parent, int] = ForeignKey(
-            Parent.id, nullable=False
-        )
+        parent_id: Child.FKCol[Parent, int] = ForeignKey(Parent.id, nullable=False)
 
     server = await load_fixture(provide_mariadb_server())
     database = await initialized_database(server.config(), models=[Parent, Child])
@@ -152,7 +150,7 @@ async def strict_policy_rejects_a_non_innodb_existing_table() -> None:
 
         __tablename__ = "issue96_myisam_drift"
 
-        id: User.GenCol[User, int] = mariadb.Integer(
+        id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
@@ -182,12 +180,12 @@ async def reinitialization_verifies_managed_tables_without_drift() -> None:
 
         __tablename__ = "issue96_reverify"
 
-        id: User.GenCol[User, int] = mariadb.Integer(
+        id: User.GenCol[int] = mariadb.Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = mariadb.Text(nullable=False, unique=True)
+        email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 
     server = await load_fixture(provide_mariadb_server())
 

@@ -61,7 +61,7 @@ class SqlCompilable(Protocol):
 
 
 @runtime_checkable
-class DialectSelectable[OwnerT: "Table[Any]", T](Protocol):
+class DialectSelectable[OwnerT: "Table[Any]", T, CompareT = T](Protocol):
     """A dialect expression owned by one table and projectable as ``T``.
 
     Adds the projection seam to :class:`SqlCompilable`: ``__compile_select_sql__``
@@ -78,3 +78,9 @@ class DialectSelectable[OwnerT: "Table[Any]", T](Protocol):
     def __compile_select_sql__(self, ctx: CompileCtx) -> str: ...
 
     def __decode__(self, raw: object) -> T: ...
+
+    def __column_owner_type__(self) -> OwnerT: ...
+
+    def __column_value_type__(self) -> T: ...
+
+    def __accepts_comparison__(self, value: CompareT, /) -> None: ...

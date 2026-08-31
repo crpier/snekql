@@ -68,11 +68,11 @@ _INJECTION_VALUES = (
 class Account[S = Pending](Model[S, "Account[Fetched]"]):
     """Model whose text columns receive the injection payloads as data."""
 
-    id: Account.GenCol[Account, int] = Integer(
+    id: Account.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: Account.Col[Account, str] = Text(nullable=False)
-    status: Account.Col[Account, str] = Text(nullable=False, default="active")
+    email: Account.Col[str] = Text(nullable=False)
+    status: Account.Col[str] = Text(nullable=False, default="active")
 
 
 def _surviving_tables(database_path: Path) -> set[str]:
@@ -240,9 +240,9 @@ async def limit_and_offset_reject_non_integer_operands() -> None:
 
     for bad in ("1; DROP TABLE account", "1 OR 1=1", "-1"):
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().limit(bad)  # pyright: ignore[reportArgumentType]
+            _ = select(Account).all().limit(bad)  # ty: ignore[invalid-argument-type]
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().offset(bad)  # pyright: ignore[reportArgumentType]
+            _ = select(Account).all().offset(bad)  # ty: ignore[invalid-argument-type]
 
     # A legitimate integer limit binds as a placeholder, not inlined text.
     sql, params = SQLITE_CODEC.compile_select_sql(

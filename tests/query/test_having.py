@@ -26,24 +26,24 @@ from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Base table with a groupable column for HAVING tests."""
 
-    id: User.GenCol[User, int] = sqlite.Integer(
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    country: User.Col[User, str] = sqlite.Text(nullable=False)
+    country: User.Col[str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Table with a numeric column to aggregate per group under a join."""
 
-    id: Order.GenCol[Order, int] = sqlite.Integer(
+    id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
-    amount: Order.Col[Order, int] = sqlite.Integer(nullable=False)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
+    amount: Order.Col[int] = sqlite.Integer(nullable=False)
 
 
 @test(mark="fast")

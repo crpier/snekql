@@ -33,9 +33,9 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
         class Event[S = Pending](Model[S, "Event[Fetched]"]):
             """SQLite model used by materialization seam tests."""
 
-            enabled: Event.Col[Event, bool] = Integer(nullable=False)
-            happened_at: Event.Col[Event, datetime] = Text(nullable=False)
-            payload: Event.Col[Event, Json[dict[str, object]]] = Text(nullable=False)
+            enabled: Event.Col[bool] = Integer(nullable=False)
+            happened_at: Event.Col[datetime] = Text(nullable=False)
+            payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
 
     timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
     pending_event = Event(
@@ -80,7 +80,7 @@ def sqlite_model_materialization_asserts_database_row_shape() -> None:
     class Event[S = Pending](Model[S, "Event[Fetched]"]):
         """SQLite model used by row-shape checks."""
 
-        enabled: Event.Col[Event, bool] = Integer(nullable=False)
+        enabled: Event.Col[bool] = Integer(nullable=False)
 
     with assert_raises(AssertionError):
         _ = decode_model_row(Event, {}, backend="sqlite")
@@ -96,7 +96,7 @@ def sqlite_model_materialization_validates_logical_types() -> None:
     class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
         """SQLite model with a constrained logical type."""
 
-        amount: Receipt.Col[Receipt, PositiveInt] = Integer(nullable=False)
+        amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
 
     with assert_raises(ModelValidationError):
         _ = decode_model_row(Receipt, {"amount": -5}, backend="sqlite")
@@ -109,7 +109,7 @@ def sqlite_model_materialization_can_skip_validation() -> None:
     class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
         """SQLite model with a constrained logical type."""
 
-        amount: Receipt.Col[Receipt, PositiveInt] = Integer(nullable=False)
+        amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
 
     fetched = cast(
         "Receipt[Fetched]",

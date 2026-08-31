@@ -20,13 +20,13 @@ from tests.helpers import TemporaryMariaDBServer, provide_mariadb_server
 class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[Fetched]"]):
     """SQLite table model for backend identity checks."""
 
-    email: SqliteIdentityUser.Col[SqliteIdentityUser, str] = sqlite.Text(nullable=False)
+    email: SqliteIdentityUser.Col[str] = sqlite.Text(nullable=False)
 
 
 class LegacyIdentityUser[S = Pending](Model[S, "LegacyIdentityUser[Fetched]"]):
     """Legacy top-level model remains a SQLite declaration."""
 
-    email: LegacyIdentityUser.Col[LegacyIdentityUser, str] = Text(nullable=False)
+    email: LegacyIdentityUser.Col[str] = Text(nullable=False)
 
 
 class MariadbIdentityUser[S = Pending](
@@ -34,9 +34,7 @@ class MariadbIdentityUser[S = Pending](
 ):
     """MariaDB table model for backend identity checks."""
 
-    email: MariadbIdentityUser.Col[MariadbIdentityUser, str] = mariadb.Text(
-        nullable=False
-    )
+    email: MariadbIdentityUser.Col[str] = mariadb.Text(nullable=False)
 
 
 def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:

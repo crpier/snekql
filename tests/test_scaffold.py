@@ -24,10 +24,8 @@ from snekql.sqlite import (
 class ScaffoldUser[S = Pending](Model[S, "ScaffoldUser[Fetched]"]):
     """Model with an index used to assert scaffolded DDL text."""
 
-    id: ScaffoldUser.GenCol[ScaffoldUser, int] = Integer(
-        primary_key=True, auto_increment=True
-    )
-    email: ScaffoldUser.Col[ScaffoldUser, str] = Text(nullable=False)
+    id: ScaffoldUser.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    email: ScaffoldUser.Col[str] = Text(nullable=False)
     __indexes__: ClassVar[list[Index[Any]]] = [
         Index(email, name="ix_scaffold_user_email"),
     ]
@@ -36,32 +34,26 @@ class ScaffoldUser[S = Pending](Model[S, "ScaffoldUser[Fetched]"]):
 class ScaffoldPost[S = Pending](Model[S, "ScaffoldPost[Fetched]"]):
     """Model with a foreign key used to assert scaffolded FK DDL."""
 
-    id: ScaffoldPost.GenCol[ScaffoldPost, int] = Integer(
-        primary_key=True, auto_increment=True
-    )
-    author_id: ScaffoldPost.FKCol[ScaffoldPost, ScaffoldUser, int] = ForeignKey(
-        ScaffoldUser.id
-    )
+    id: ScaffoldPost.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    author_id: ScaffoldPost.FKCol[ScaffoldUser, int] = ForeignKey(ScaffoldUser.id)
 
 
 class ScaffoldTeam[S = Pending](Model[S, "ScaffoldTeam[Fetched]"]):
     """Referenced table anchoring the join table's foreign keys."""
 
-    id: ScaffoldTeam.GenCol[ScaffoldTeam, int] = Integer(
-        primary_key=True, auto_increment=True
-    )
+    id: ScaffoldTeam.GenCol[int] = Integer(primary_key=True, auto_increment=True)
 
 
 class ScaffoldMember[S = Pending](Model[S, "ScaffoldMember[Fetched]"]):
     """Join table whose identity is a (team, user) column pair."""
 
-    team_id: ScaffoldMember.FKCol[ScaffoldMember, ScaffoldTeam, int] = ForeignKey(
+    team_id: ScaffoldMember.FKCol[ScaffoldTeam, int] = ForeignKey(
         ScaffoldTeam.id, primary_key=True
     )
-    user_id: ScaffoldMember.FKCol[ScaffoldMember, ScaffoldUser, int] = ForeignKey(
+    user_id: ScaffoldMember.FKCol[ScaffoldUser, int] = ForeignKey(
         ScaffoldUser.id, primary_key=True
     )
-    role: ScaffoldMember.Col[ScaffoldMember, str] = Text(nullable=False)
+    role: ScaffoldMember.Col[str] = Text(nullable=False)
 
 
 _EXPECTED_USER_DDL = (
@@ -83,10 +75,8 @@ def scaffold_emits_create_table_and_index_ddl() -> None:
 class ScaffoldDefaultNull[S = Pending](Model[S, "ScaffoldDefaultNull[Fetched]"]):
     """Model whose column omits ``nullable=`` to exercise the NOT NULL default."""
 
-    id: ScaffoldDefaultNull.GenCol[ScaffoldDefaultNull, int] = Integer(
-        primary_key=True, auto_increment=True
-    )
-    name: ScaffoldDefaultNull.Col[ScaffoldDefaultNull, str] = Text()
+    id: ScaffoldDefaultNull.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    name: ScaffoldDefaultNull.Col[str] = Text()
 
 
 @test(mark="fast")
@@ -115,10 +105,8 @@ def scaffold_emits_foreign_key_constraint() -> None:
 class ScaffoldComment[S = Pending](Model[S, "ScaffoldComment[Fetched]"]):
     """Owned model whose author reference declares referential actions."""
 
-    id: ScaffoldComment.GenCol[ScaffoldComment, int] = Integer(
-        primary_key=True, auto_increment=True
-    )
-    author_id: ScaffoldComment.FKCol[ScaffoldComment, ScaffoldUser, int] = ForeignKey(
+    id: ScaffoldComment.GenCol[int] = Integer(primary_key=True, auto_increment=True)
+    author_id: ScaffoldComment.FKCol[ScaffoldUser, int] = ForeignKey(
         ScaffoldUser.id, nullable=False, on_delete="CASCADE", on_update="RESTRICT"
     )
 
@@ -141,7 +129,7 @@ def mariadb_scaffold_emits_decimal_precision_and_scale() -> None:
     class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
         """Model with a native MariaDB decimal column."""
 
-        amount: Price.Col[Price, Decimal] = mariadb.Decimal(7, 2, nullable=False)
+        amount: Price.Col[Decimal] = mariadb.Decimal(7, 2, nullable=False)
 
     ddl = scaffold_mariadb([Price])
 

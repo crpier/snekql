@@ -14,4 +14,4 @@ from snekql.sqlite import CurrentTimestamp, Fetched, Model, Pending, Text
 class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
     """Model whose server-default column requires GenCol detection."""
 
-    created_at: Memory.GenCol[Memory, datetime] = Text(default=CurrentTimestamp)
+    created_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)

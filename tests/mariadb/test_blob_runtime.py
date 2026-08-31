@@ -20,8 +20,8 @@ async def mariadb_blob_storage_round_trips_bytes() -> None:
 
         __tablename__ = "blob_roundtrip"
 
-        id: BinaryRecord.Col[BinaryRecord, int] = mariadb.Integer(primary_key=True)
-        payload: BinaryRecord.Col[BinaryRecord, bytes] = mariadb.Blob(nullable=False)
+        id: BinaryRecord.Col[int] = mariadb.Integer(primary_key=True)
+        payload: BinaryRecord.Col[bytes] = mariadb.Blob(nullable=False)
 
     database = await initialized_database(server.config(), models=[BinaryRecord])
     try:
@@ -47,8 +47,8 @@ async def mariadb_blob_storage_round_trips_payload_variants() -> None:
 
         __tablename__ = "blob_payload_variants"
 
-        id: BinaryRecord.Col[BinaryRecord, int] = mariadb.Integer(primary_key=True)
-        payload: BinaryRecord.Col[BinaryRecord, bytes] = mariadb.Blob(nullable=False)
+        id: BinaryRecord.Col[int] = mariadb.Integer(primary_key=True)
+        payload: BinaryRecord.Col[bytes] = mariadb.Blob(nullable=False)
 
     cap_sized = b"\x00\xff" * 32_767 + b"\x00"
     assert_eq(len(cap_sized), 65_535)
@@ -82,11 +82,9 @@ async def mariadb_nullable_blob_storage_round_trips_null() -> None:
 
         __tablename__ = "blob_nullable"
 
-        id: OptionalBinaryRecord.Col[OptionalBinaryRecord, int] = mariadb.Integer(
-            primary_key=True
-        )
-        payload: OptionalBinaryRecord.Col[OptionalBinaryRecord, bytes | None] = (
-            mariadb.Blob(nullable=True, default=None)
+        id: OptionalBinaryRecord.Col[int] = mariadb.Integer(primary_key=True)
+        payload: OptionalBinaryRecord.Col[bytes | None] = mariadb.Blob(
+            nullable=True, default=None
         )
 
     database = await initialized_database(

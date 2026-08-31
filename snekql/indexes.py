@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeVar, cast, overload
+from typing import Any, TypeVar, cast
 
 from snekql.errors import ModelDeclarationError
 from snekql.storage import Attr
@@ -16,7 +16,7 @@ class Index[OwnerT]:
     """Public table-level index declaration.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: User.Col[str] = Text(nullable=False)
+    ...     email: Col[str] = Text()
     ...     __indexes__ = [Index(email)]
     """
 
@@ -24,25 +24,9 @@ class Index[OwnerT]:
     unique: bool
     name: str | None
 
-    @overload
     def __init__(
         self,
         *columns: Attr[Any, Any, OwnerT, Any, Any],
-        unique: bool = False,
-        name: str | None = None,
-    ) -> None: ...
-
-    @overload
-    def __init__(
-        self,
-        *columns: object,
-        unique: bool = False,
-        name: str | None = None,
-    ) -> None: ...
-
-    def __init__(
-        self,
-        *columns: object,
         unique: bool = False,
         name: str | None = None,
     ) -> None:
@@ -54,8 +38,7 @@ class Index[OwnerT]:
             if not isinstance(column, Attr):
                 msg = "Index() arguments must be snekql column descriptors"
                 raise ModelDeclarationError(msg)
-            attr_column = cast("Attr[Any, Any, OwnerT, Any, Any]", column)
-            column_id = id(attr_column)
+            column_id = id(column)
             if column_id in seen_column_ids:
                 msg = "Index() cannot repeat a column"
                 raise ModelDeclarationError(msg)

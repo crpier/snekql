@@ -16,11 +16,11 @@ from snekql.storage import (
     FKAttr,
     ForeignKey,
     PendingGeneration,
+    _UnboundOwner,
 )
 
 if TYPE_CHECKING:
     from snekql._dialect_expr import CompileCtx
-    from snekql.model import Table
 
 
 _DECIMAL_MAX_PRECISION = 65
@@ -39,7 +39,7 @@ def _json_path_literal(path: str) -> str:
 
 
 @dataclass(frozen=True)
-class _JsonExtractInt[OwnerT: "Table[Any]"](Comparable[OwnerT, "int | None"]):
+class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
     """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
 
     The first dialect-specific operator: it lives entirely in the MariaDB
@@ -62,6 +62,16 @@ class _JsonExtractInt[OwnerT: "Table[Any]"](Comparable[OwnerT, "int | None"]):
 
     column: Attr[Any, Any, Any, Any, Any]
     path: str
+
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness for singleton-select owner inference."""
+
+        raise NotImplementedError
+
+    def __column_value_type__(self) -> int | None:
+        """Typing-only witness for singleton-select result inference."""
+
+        raise NotImplementedError
 
     def __owner_model__(self) -> type[OwnerT]:
         return cast("type[OwnerT]", require_column_model(self.column))
@@ -94,7 +104,7 @@ class _JsonExtractInt[OwnerT: "Table[Any]"](Comparable[OwnerT, "int | None"]):
 class JsonAttr[
     WriteOwnerT,
     LoadedOwnerT,
-    OwnerT: "Table[Any]",
+    OwnerT,
     WriteT,
     ReadValueT,
     SetValueT = WriteT,
@@ -103,12 +113,35 @@ class JsonAttr[
 ):
     """MariaDB JSON column descriptor carrying the JSON path operators.
 
-    A field declared ``profile: User.JsonCol[...]`` resolves to this subtype, so
+    A field declared ``profile: JsonCol[...]`` resolves to this subtype, so
     ``json_extract_int`` is visible on JSON columns and nowhere else. Attaching
     the operator to the column subtype -- rather than the core ``Attr`` -- is the
     type-safety lever (ADR 0003 per-namespace columns + ADR 0004 open AST): the
     operator scopes to exactly the columns that support it.
     """
+
+    @overload
+    def __get__[AccessOwner](
+        self,
+        instance: None,
+        owner: type[AccessOwner],
+    ) -> JsonAttr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        AccessOwner,
+        WriteT,
+        ReadValueT,
+        SetValueT,
+    ]: ...
+
+    @overload
+    def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
+
+    @overload
+    def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
+
+    def __get__(self, instance: object | None, owner: type[Any]) -> object:
+        return cast("object", super().__get__(cast("Any", instance), owner))
 
     def json_extract_int(self, path: str) -> _JsonExtractInt[OwnerT]:
         """Extract an integer at ``path`` from this JSON column.
@@ -121,732 +154,765 @@ class JsonAttr[
         return _JsonExtractInt(column=self, path=path)
 
 
-class Integer:
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Integer(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB integer column declaration for table model fields.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    ...     id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            auto_increment=auto_increment,
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="INTEGER",
-            storage_type_name="Integer",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        auto_increment=auto_increment,
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="INTEGER",
+        storage_type_name="Integer",
+    )
 
 
-class Real:
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Real(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB real-number column declaration for float-like model values."""
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="REAL",
-            storage_type_name="Real",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="REAL",
+        storage_type_name="Real",
+    )
 
 
-class Text:
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Text(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB text column declaration for string model values."""
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="Text",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Text",
+    )
 
 
-class Blob:
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Blob(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB blob column declaration for bytes model values."""
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="BLOB",
-            storage_type_name="Blob",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="BLOB",
+        storage_type_name="Blob",
+    )
 
 
-class Decimal:
+@overload
+def Decimal[T](
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Decimal[T](
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Decimal[T](
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Decimal[T](
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Decimal[T](
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Decimal(  # noqa: N802, PLR0913
+    precision: int,
+    scale: int,
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB native fixed-point decimal column declaration.
 
     The logical type is the field annotation, usually ``decimal.Decimal``; the
     constructor declares the native ``DECIMAL(precision, scale)`` storage shape.
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        precision: int,
-        scale: int,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        if not (
-            1 <= precision <= _DECIMAL_MAX_PRECISION
-            and 0 <= scale <= min(_DECIMAL_MAX_SCALE, precision)
-        ):
-            msg = (
-                "Decimal precision/scale must satisfy 1 <= precision <= 65 and "
-                "0 <= scale <= min(30, precision)"
-            )
-            raise ModelDeclarationError(msg)
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            decimal_precision=precision,
-            decimal_scale=scale,
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="Decimal",
+    if not (
+        1 <= precision <= _DECIMAL_MAX_PRECISION
+        and 0 <= scale <= min(_DECIMAL_MAX_SCALE, precision)
+    ):
+        msg = (
+            "Decimal precision/scale must satisfy 1 <= precision <= 65 and "
+            "0 <= scale <= min(30, precision)"
         )
+        raise ModelDeclarationError(msg)
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        decimal_precision=precision,
+        decimal_scale=scale,
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Decimal",
+    )
 
 
-class Json:
+@overload
+def Json[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> JsonAttr[Any, Any, _UnboundOwner, T | None, T | None, T | None]: ...
+
+
+@overload
+def Json[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> JsonAttr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Json[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> JsonAttr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Json[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> JsonAttr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Json(  # noqa: N802
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB JSON column declaration for JSON-compatible model values.
 
     Builds a :class:`JsonAttr` so the runtime descriptor carries the JSON path
-    operators; a field annotated ``Model.JsonCol[...]`` makes them visible to the
+    operators; a field annotated ``JsonCol[...]`` makes them visible to the
     type checker on JSON columns only.
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> JsonAttr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> JsonAttr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return JsonAttr[Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="Json",
-        )
+    return JsonAttr[Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Json",
+    )
 
 
-class Boolean:
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Boolean[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Boolean(  # noqa: N802
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB boolean column declaration for bool model values."""
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            index=index,
-            unique=unique,
-            storage_class="INTEGER",
-            storage_type_name="Boolean",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        index=index,
+        unique=unique,
+        storage_class="INTEGER",
+        storage_type_name="Boolean",
+    )
 
 
-class DateTime:
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def DateTime[T](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def DateTime(  # noqa: N802
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB datetime column declaration for timezone-aware datetimes."""
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(
-        cls,
-        *,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="DateTime",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="DateTime",
+    )
 
 
-class Uuid:
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Uuid[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Uuid(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """MariaDB native ``UUID`` column declaration for ``uuid.UUID`` values.
 
     The native storage primitive for UUIDs (MariaDB 10.7+); the logical type is
@@ -856,96 +922,18 @@ class Uuid:
     instead, use ``Blob()`` with a ``Col[uuid.UUID]`` annotation.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: User.Col[uuid.UUID] = Uuid(primary_key=True, default_factory=uuid4)
+    ...     id: Col[uuid.UUID] = Uuid(primary_key=True, default_factory=uuid4)
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="Uuid",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Uuid",
+    )
 
 
 __all__ = [

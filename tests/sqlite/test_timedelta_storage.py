@@ -26,10 +26,8 @@ from tests.helpers import initialized_database
 class IntegerDurationRow[S = Pending](Model[S, "IntegerDurationRow[Fetched]"]):
     """Table declaring a timedelta over an Integer storage class."""
 
-    id: IntegerDurationRow.Col[IntegerDurationRow, int] = Integer(primary_key=True)
-    elapsed: IntegerDurationRow.Col[IntegerDurationRow, timedelta] = Integer(
-        nullable=False
-    )
+    id: IntegerDurationRow.Col[int] = Integer(primary_key=True)
+    elapsed: IntegerDurationRow.Col[timedelta] = Integer(nullable=False)
 
 
 with warnings.catch_warnings():
@@ -38,8 +36,8 @@ with warnings.catch_warnings():
     class TextDurationRow[S = Pending](Model[S, "TextDurationRow[Fetched]"]):
         """Table declaring a timedelta over a Text storage class."""
 
-        id: TextDurationRow.Col[TextDurationRow, int] = Integer(primary_key=True)
-        elapsed: TextDurationRow.Col[TextDurationRow, timedelta] = Text(nullable=False)
+        id: TextDurationRow.Col[int] = Integer(primary_key=True)
+        elapsed: TextDurationRow.Col[timedelta] = Text(nullable=False)
 
 
 @test()

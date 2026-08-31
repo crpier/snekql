@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal, Protocol, cast, overload
+from typing import Any, ClassVar, Literal, Protocol, cast, overload, runtime_checkable
 from warnings import deprecated
 
 from snekql.errors import QueryCompilationError, QueryConstructionError
@@ -20,6 +20,26 @@ class _ColumnRef[T_co](Protocol):
     """
 
     def __column_value_type__(self) -> T_co: ...
+
+
+@runtime_checkable
+class ColumnRef[OwnerT, T](Protocol):
+    """Read-only public annotation for a model-owned column reference.
+
+    Concrete descriptor classes remain private implementation details. Use this
+    protocol when an application helper needs to accept any accessed column while
+    preserving its model owner and decoded value type.
+    """
+
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness for the model that owns this column."""
+
+        raise NotImplementedError
+
+    def __column_value_type__(self) -> T:
+        """Typing-only witness for this column's decoded value type."""
+
+        raise NotImplementedError
 
 
 class _ColumnSubquery[T_co](Protocol):
@@ -296,7 +316,7 @@ class ColumnComparisonPredicate[OwnerT](Predicate[OwnerT]):
         operator = _COMPARISON_SQL_OPERATORS[self.operator]
         other = self.other
         if isinstance(other, Scalar):
-            scalar = cast("Scalar[Any, Any]", other)
+            scalar = cast("Scalar[Any, Any, Any]", other)
             operand_sql, operand_params = compiler.compile_scalar(scalar)
             return f"{rendered} {operator} {operand_sql}", operand_params
         other_ref = compiler.render_comparison_operand(other)
@@ -405,7 +425,7 @@ class NegatedPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class Scalar[OwnerT, T]:
+class Scalar[OwnerT, T, CompareT = T]:
     """A scalar subquery: a single-column, single-value SELECT used as a value.
 
     Produced by the top-level ``scalar(...)`` factory wrapping a one-column
@@ -418,6 +438,19 @@ class Scalar[OwnerT, T]:
     """
 
     subquery: object | None = None
+
+    def __accepts_comparison__(self, _value: CompareT) -> None:
+        """Typing-only contravariant witness for the comparison value domain."""
+
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness for singleton-select owner inference."""
+
+        raise NotImplementedError
+
+    def __column_value_type__(self) -> T:
+        """Typing-only witness for singleton-select result inference."""
+
+        raise NotImplementedError
 
 
 class Comparable[OwnerT, ValueT]:
@@ -435,6 +468,9 @@ class Comparable[OwnerT, ValueT]:
     Text-only helpers (``like``/``not_like``) stay on ``Attr`` since they are not
     meaningful over an aggregate.
     """
+
+    def __accepts_comparison__(self, _value: ValueT) -> None:
+        """Typing-only contravariant witness for comparison-domain inference."""
 
     @overload
     @deprecated("eq(None) is invalid; use is_null()")
@@ -562,37 +598,37 @@ class Comparable[OwnerT, ValueT]:
 
     def eq_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="eq", other=other)
 
     def ne_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
 
     def gt_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
     def gte_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
     def lt_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
     def lte_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any],
+        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)
 
@@ -622,7 +658,7 @@ class Comparable[OwnerT, ValueT]:
 
 
 @dataclass(frozen=True)
-class Aggregate[OwnerT, T](Comparable[OwnerT, T]):
+class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT]):
     """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
 
     Produced by column methods (``Order.amount.sum()``) and the model
@@ -637,6 +673,16 @@ class Aggregate[OwnerT, T](Comparable[OwnerT, T]):
     func: str = ""
     column: object | None = None
     owner: object | None = None
+
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness for singleton-select owner inference."""
+
+        raise NotImplementedError
+
+    def __column_value_type__(self) -> T:
+        """Typing-only witness for singleton-select result inference."""
+
+        raise NotImplementedError
 
     def asc(self) -> OrderBy[OwnerT]:
         """Order rows by this aggregate ascending (e.g. ``ORDER BY COUNT(id)``)."""

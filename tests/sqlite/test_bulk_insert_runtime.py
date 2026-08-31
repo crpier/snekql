@@ -26,12 +26,12 @@ from tests.helpers import initialized_database
 class User[S = Pending](Model[S, "User[Fetched]"]):
     """Table model with an auto-increment key and a server-default timestamp."""
 
-    id: User.GenCol[User, int] = Integer(
+    id: User.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
     )
-    email: User.Col[User, str] = Text(nullable=False)
-    status: User.Col[User, str] = Text(nullable=False, default="active")
-    created_at: User.GenCol[User, UtcDatetime] = Text(default=CurrentTimestamp)
+    email: User.Col[str] = Text(nullable=False)
+    status: User.Col[str] = Text(nullable=False, default="active")
+    created_at: User.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
 
 def _count_rows(database_path: Path) -> int:

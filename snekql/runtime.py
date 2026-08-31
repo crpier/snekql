@@ -66,6 +66,9 @@ from snekql.query import (
     UpdateReturningQuery,
     UpdateReturningTupleQuery,
     UpdateReturningValueQuery,
+    _OptionalQueryShape,
+    _QueryShape,
+    _ReturningQuery,
 )
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
@@ -435,35 +438,12 @@ class Transaction:
                     await self.runtime.release(connection)
                     logger.debug("%s transaction released", self.runtime.backend_family)
 
-    @overload
-    async def fetch_all(
+    async def fetch_all[ScopeT, RowT](
         self,
-        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
         validate: bool = True,
-    ) -> list[ReadModelT]: ...
-    @overload
-    async def fetch_all(
-        self,
-        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
-        *,
-        validate: bool = True,
-    ) -> list[T]: ...
-    @overload
-    async def fetch_all(
-        self,
-        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> list[tuple[*Ts]]: ...
-    @overload
-    async def fetch_all(
-        self,
-        query: JoinModelQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> list[tuple[*Ts]]: ...
-    async def fetch_all(self, query: object, *, validate: bool = True) -> object:
+    ) -> list[RowT]:
         """Fetch and materialize every row of a select query into a list.
 
         Intended for bounded result sets. The whole result is loaded into memory
@@ -511,43 +491,15 @@ class Transaction:
                         select_query, tuple(row), validate=validate
                     )
                 )
-            return materialized
+            return cast("list[RowT]", materialized)
 
-    @overload
-    def fetch_chunks(
+    def fetch_chunks[ScopeT, RowT](
         self,
-        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: bool = True,
-    ) -> ChunkStream[ReadModelT]: ...
-    @overload
-    def fetch_chunks(
-        self,
-        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
-        *,
-        size: PositiveInt,
-        validate: bool = True,
-    ) -> ChunkStream[T]: ...
-    @overload
-    def fetch_chunks(
-        self,
-        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
-        *,
-        size: PositiveInt,
-        validate: bool = True,
-    ) -> ChunkStream[tuple[*Ts]]: ...
-    @overload
-    def fetch_chunks(
-        self,
-        query: JoinModelQuery[OwnerT, *Ts],
-        *,
-        size: PositiveInt,
-        validate: bool = True,
-    ) -> ChunkStream[tuple[*Ts]]: ...
-    def fetch_chunks(
-        self, query: object, *, size: PositiveInt, validate: bool = True
-    ) -> ChunkStream[Any]:
+    ) -> ChunkStream[RowT]:
         """Stream a select's rows in batches of at most ``size`` rows.
 
         Unlike ``fetch_all``, rows are fetched incrementally from a server-side
@@ -573,7 +525,7 @@ class Transaction:
         _validate_chunk_size(size=size)
         select_query = self._require_select_query(query)
         self._validate_query_backend(select_query)
-        return ChunkStream(
+        return ChunkStream[RowT](
             transaction=self,
             select_query=select_query,
             lock=self._lock,
@@ -623,35 +575,12 @@ class Transaction:
         )
         return select_query, [tuple(row) for row in rows]
 
-    @overload
-    async def fetch_one(
+    async def fetch_one[ScopeT, RowT](
         self,
-        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
         validate: bool = True,
-    ) -> ReadModelT: ...
-    @overload
-    async def fetch_one(
-        self,
-        query: SelectValueQuery[ScopeRefT, ScopeRefT, T],
-        *,
-        validate: bool = True,
-    ) -> T: ...
-    @overload
-    async def fetch_one(
-        self,
-        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> tuple[*Ts]: ...
-    @overload
-    async def fetch_one(
-        self,
-        query: JoinModelQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> tuple[*Ts]: ...
-    async def fetch_one(self, query: object, *, validate: bool = True) -> object:
+    ) -> RowT:
         """Fetch the single row a select must match (exactly-one contract).
 
         Raises ``NoResultError`` when no row matches and ``MultipleResultsError``
@@ -671,34 +600,19 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one found more than one row"
             raise MultipleResultsError(msg)
-        return self.runtime.query_codec.materialize_select_row(
-            select_query, rows[0], validate=validate
+        return cast(
+            "RowT",
+            self.runtime.query_codec.materialize_select_row(
+                select_query, rows[0], validate=validate
+            ),
         )
 
-    @overload
-    async def fetch_one_or_none(
+    async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: SelectModelQuery[SelectOwnerT, ReadModelT],
+        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
         *,
         validate: bool = True,
-    ) -> ReadModelT | None: ...
-    @overload
-    async def fetch_one_or_none(
-        self,
-        query: SelectTupleQuery[ScopeRefT, ScopeRefT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> tuple[*Ts] | None: ...
-    @overload
-    async def fetch_one_or_none(
-        self,
-        query: JoinModelQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> tuple[*Ts] | None: ...
-    async def fetch_one_or_none(
-        self, query: object, *, validate: bool = True
-    ) -> object:
+    ) -> RowT | None:
         """Fetch zero or one row, returning ``None`` when none matches.
 
         Raises ``MultipleResultsError`` when more than one row matches. Only
@@ -725,79 +639,24 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one_or_none found more than one row"
             raise MultipleResultsError(msg)
-        return self.runtime.query_codec.materialize_select_row(
-            select_query, rows[0], validate=validate
+        return cast(
+            "RowT",
+            self.runtime.query_codec.materialize_select_row(
+                select_query, rows[0], validate=validate
+            ),
         )
 
     @overload
-    async def execute(
+    async def execute[ResultT](
         self,
-        query: InsertReturningQuery[OwnerT, ReadModelT],
+        query: _ReturningQuery[ResultT],
         *,
         validate: bool = True,
-    ) -> ReadModelT: ...
+    ) -> ResultT: ...
     @overload
     async def execute(
         self,
-        query: InsertManyReturningQuery[OwnerT, ReadModelT],
-        *,
-        validate: bool = True,
-    ) -> list[ReadModelT]: ...
-    @overload
-    async def execute(
-        self,
-        query: InsertReturningValueQuery[OwnerT, T],
-        *,
-        validate: bool = True,
-    ) -> T: ...
-    @overload
-    async def execute(
-        self,
-        query: InsertReturningTupleQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> tuple[*Ts]: ...
-    @overload
-    async def execute(
-        self,
-        query: InsertManyReturningValueQuery[OwnerT, T],
-        *,
-        validate: bool = True,
-    ) -> list[T]: ...
-    @overload
-    async def execute(
-        self,
-        query: InsertManyReturningTupleQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> list[tuple[*Ts]]: ...
-    @overload
-    async def execute(
-        self,
-        query: UpdateReturningQuery[OwnerT] | DeleteReturningQuery[OwnerT],
-        *,
-        validate: bool = True,
-    ) -> list[OwnerT]: ...
-    @overload
-    async def execute(
-        self,
-        query: UpdateReturningValueQuery[OwnerT, T]
-        | DeleteReturningValueQuery[OwnerT, T],
-        *,
-        validate: bool = True,
-    ) -> list[T]: ...
-    @overload
-    async def execute(
-        self,
-        query: UpdateReturningTupleQuery[OwnerT, *Ts]
-        | DeleteReturningTupleQuery[OwnerT, *Ts],
-        *,
-        validate: bool = True,
-    ) -> list[tuple[*Ts]]: ...
-    @overload
-    async def execute(
-        self,
-        query: UpdateQuery[Any] | DeleteQuery[Any],
+        query: UpdateQuery[Any, Any] | DeleteQuery[Any, Any],
         *,
         validate: bool = True,
     ) -> int: ...
@@ -887,7 +746,17 @@ class Transaction:
                 returned_rows,
                 validate=validate,
             )
-            if is_many or isinstance(write_query, (UpdateQuery, DeleteQuery)):
+            if is_many or isinstance(
+                write_query,
+                (
+                    UpdateReturningQuery,
+                    UpdateReturningValueQuery,
+                    UpdateReturningTupleQuery,
+                    DeleteReturningQuery,
+                    DeleteReturningValueQuery,
+                    DeleteReturningTupleQuery,
+                ),
+            ):
                 return models
             return models[0]
 
@@ -965,7 +834,17 @@ class Transaction:
             SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
         ):
             return query.state.model
-        if isinstance(query, UpdateQuery | DeleteQuery):
+        if isinstance(
+            query,
+            UpdateQuery
+            | UpdateReturningQuery
+            | UpdateReturningValueQuery
+            | UpdateReturningTupleQuery
+            | DeleteQuery
+            | DeleteReturningQuery
+            | DeleteReturningValueQuery
+            | DeleteReturningTupleQuery,
+        ):
             return query.state.model
         msg = "query backend validation requires a snekql query"
         raise QueryCompilationError(msg)

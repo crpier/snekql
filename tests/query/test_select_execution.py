@@ -38,13 +38,13 @@ async def fetch_all_materializes_model_rows() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model selected through the runtime."""
 
-        id: User.GenCol[User, int] = Integer(
+        id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -75,13 +75,13 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model selected through the runtime."""
 
-        id: User.GenCol[User, int] = Integer(
+        id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -108,13 +108,13 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model selected through the runtime."""
 
-        id: User.GenCol[User, int] = Integer(
+        id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -139,12 +139,12 @@ async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model selected through the runtime."""
 
-        id: User.GenCol[User, int] = Integer(
+        id: User.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     interval = runtime_module.FETCH_ALL_YIELD_INTERVAL
     row_count = interval * 2 + 1
@@ -189,7 +189,7 @@ def select_rejects_mixed_model_and_field_selections() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by invalid select construction checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     select_fn = cast("Callable[..., object]", select)
 
@@ -209,12 +209,12 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """First table model used by invalid select compilation checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Second table model used by invalid select compilation checks."""
 
-        message: AuditLog.Col[AuditLog, str] = Text(nullable=False)
+        message: AuditLog.Col[str] = Text(nullable=False)
 
     select_fn = cast("Callable[..., Any]", select)
     query = select_fn(User.email, AuditLog.message).all()
@@ -226,13 +226,13 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
 class _Person[S = Pending](Model[S, "_Person[Fetched]"]):
     """Table model with a nullable column for fetch cardinality tests."""
 
-    id: _Person.GenCol[_Person, int] = Integer(
+    id: _Person.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: _Person.Col[_Person, str] = Text(nullable=False)
-    nickname: _Person.Col[_Person, str | None] = Text(nullable=True, default=None)
+    email: _Person.Col[str] = Text(nullable=False)
+    nickname: _Person.Col[str | None] = Text(nullable=True, default=None)
 
 
 @test(mark="medium")
@@ -378,10 +378,10 @@ async def fetch_all_validates_decoded_database_values() -> None:
     class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
         """Table model with a ``bool`` logical type stored as INTEGER."""
 
-        id: FeatureFlag.GenCol[FeatureFlag, int] = Integer(
+        id: FeatureFlag.GenCol[int] = Integer(
             primary_key=True, default=PENDING_GENERATION
         )
-        enabled: FeatureFlag.Col[FeatureFlag, bool] = Integer(nullable=False)
+        enabled: FeatureFlag.Col[bool] = Integer(nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -419,7 +419,7 @@ def sqlite_select_materialization_asserts_database_row_shape() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by row-shape materialization checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     query = select(User.email).all()
 
@@ -437,7 +437,7 @@ def select_compilation_requires_explicit_all_or_where() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by select compilation checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     with assert_raises(QueryCompilationError):
         _ = SQLITE_CODEC.compile_select_sql(select(User))
@@ -450,8 +450,8 @@ def select_compilation_parameterizes_filters_limits_and_offsets() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by select compilation checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
 
     query = (
         select(User.email, User.status)

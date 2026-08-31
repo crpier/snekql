@@ -22,8 +22,8 @@ def select_columns_render_as_bare_quoted_names() -> None:
     class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
         """Model exposing columns for the rendering contract."""
 
-        label: Widget.Col[Widget, str] = Text(nullable=False)
-        sku: Widget.Col[Widget, str] = Text(nullable=False)
+        label: Widget.Col[str] = Text(nullable=False)
+        sku: Widget.Col[str] = Text(nullable=False)
 
     select_sql, select_params = SQLITE_CODEC.compile_select_sql(
         select(Widget.label, Widget.sku).all(),
@@ -40,8 +40,8 @@ def predicate_and_ordering_columns_render_as_bare_quoted_names() -> None:
     class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
         """Model exposing columns used in WHERE and ORDER BY."""
 
-        label: Widget.Col[Widget, str] = Text(nullable=False)
-        sku: Widget.Col[Widget, str] = Text(nullable=False)
+        label: Widget.Col[str] = Text(nullable=False)
+        sku: Widget.Col[str] = Text(nullable=False)
 
     select_sql, select_params = SQLITE_CODEC.compile_select_sql(
         select(Widget.label).where(Widget.sku.eq("A1")).order_by(Widget.label.asc()),

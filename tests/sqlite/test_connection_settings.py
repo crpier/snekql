@@ -80,7 +80,7 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     class Parent[S = Pending](Model[S, "Parent[Fetched]"]):
         """Referenced table."""
 
-        id: Parent.GenCol[Parent, int] = Integer(
+        id: Parent.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
@@ -89,14 +89,12 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     class Child[S = Pending](Model[S, "Child[Fetched]"]):
         """Table whose parent_id is an enforced foreign key."""
 
-        id: Child.GenCol[Child, int] = Integer(
+        id: Child.GenCol[int] = Integer(
             primary_key=True,
             auto_increment=True,
             default=PENDING_GENERATION,
         )
-        parent_id: Child.FKCol[Child, Parent, int] = ForeignKey(
-            Parent.id, nullable=False
-        )
+        parent_id: Child.FKCol[Parent, int] = ForeignKey(Parent.id, nullable=False)
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"

@@ -33,8 +33,8 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
         """Table model with identifiers requiring SQLite quoting."""
 
         __tablename__ = "select"
-        status: Order.Col[Order, str] = Text(nullable=False)
-        where: Order.Col[Order, str] = Text(nullable=False)
+        status: Order.Col[str] = Text(nullable=False)
+        where: Order.Col[str] = Text(nullable=False)
 
     query = (
         update(Order)
@@ -59,11 +59,9 @@ def update_returning_appends_model_columns_in_declaration_order() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through RETURNING."""
 
-        id: User.GenCol[User, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
 
     query = (
         update(User)
@@ -87,8 +85,8 @@ def update_set_current_timestamp_renders_server_expression() -> None:
     class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
         """Table model with a column refreshed to the server clock on update."""
 
-        title: Doc.Col[Doc, str] = Text(nullable=False)
-        edited_at: Doc.Col[Doc, str] = Text(nullable=False)
+        title: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[str] = Text(nullable=False)
 
     query = (
         update(Doc)
@@ -114,12 +112,12 @@ def update_assignments_must_belong_to_target_model() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Target table model for ownership checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
         """Unrelated table model for ownership checks."""
 
-        message: AuditLog.Col[AuditLog, str] = Text(nullable=False)
+        message: AuditLog.Col[str] = Text(nullable=False)
 
     set_assignments = cast("Callable[..., object]", update(User).set)
 
@@ -139,11 +137,11 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a primary key and a generated column."""
 
-        account_id: User.GenCol[User, int] = Integer(
+        account_id: User.GenCol[int] = Integer(
             primary_key=True, default=PENDING_GENERATION
         )
-        email: User.Col[User, str] = Text(nullable=False)
-        revision: User.GenCol[User, int] = Integer(default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        revision: User.GenCol[int] = Integer(default=PENDING_GENERATION)
 
     query = update(User).set(User.account_id.to(2), User.revision.to(3)).all()
 
@@ -160,11 +158,9 @@ async def update_returning_yields_updated_models() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through RETURNING execution."""
 
-        id: User.GenCol[User, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -192,11 +188,9 @@ async def update_execute_returns_affected_row_count() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model updated through the async runtime."""
 
-        id: User.GenCol[User, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     database = await initialized_database(database=":memory:", models=[User])
     try:
@@ -236,9 +230,9 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
     class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
         """Table model whose edited_at refreshes to the server clock on update."""
 
-        id: Doc.GenCol[Doc, int] = Integer(primary_key=True, default=PENDING_GENERATION)
-        title: Doc.Col[Doc, str] = Text(nullable=False)
-        edited_at: Doc.Col[Doc, str] = Text(nullable=False)
+        id: Doc.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        title: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[str] = Text(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Doc])
     try:
@@ -271,11 +265,9 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
     class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
         """Table model whose updated_at is server-filled yet update-writable."""
 
-        id: Memory.GenCol[Memory, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        content: Memory.Col[Memory, str] = Text(nullable=False)
-        updated_at: Memory.GenCol[Memory, UtcDatetime] = Text(default=CurrentTimestamp)
+        id: Memory.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        content: Memory.Col[str] = Text(nullable=False)
+        updated_at: Memory.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
     explicit = datetime(2000, 1, 1, tzinfo=UTC)
     database = await initialized_database(database=":memory:", models=[Memory])

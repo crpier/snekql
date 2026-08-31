@@ -22,8 +22,8 @@ from tests.helpers import initialized_database
 class Price[S = Pending](Model[S, "Price[Fetched]"]):
     """Price table with canonical decimal text storage."""
 
-    id: Price.Col[Price, int] = Integer(primary_key=True)
-    amount: Price.Col[Price, CanonicalDecimal] = Text(nullable=False)
+    id: Price.Col[int] = Integer(primary_key=True)
+    amount: Price.Col[CanonicalDecimal] = Text(nullable=False)
 
 
 @test(mark="medium")

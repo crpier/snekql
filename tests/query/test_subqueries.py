@@ -35,24 +35,24 @@ from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     """Outer table for subquery tests."""
 
-    id: User.GenCol[User, int] = sqlite.Integer(
+    id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    country: User.Col[User, str] = sqlite.Text(nullable=False)
+    country: User.Col[str] = sqlite.Text(nullable=False)
 
 
 class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     """Inner table with a foreign key back to ``User``."""
 
-    id: Order.GenCol[Order, int] = sqlite.Integer(
+    id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[Order, User, int] = sqlite.ForeignKey(User.id)
-    amount: Order.Col[Order, int] = sqlite.Integer(nullable=False)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
+    amount: Order.Col[int] = sqlite.Integer(nullable=False)
 
 
 # --- Slice 1: column-to-column comparison -----------------------------------
@@ -133,7 +133,11 @@ def in_subquery_requires_single_column_select() -> None:
     """A model select projects every column, so it is rejected as an IN set."""
 
     with assert_raises(QueryConstructionError):
-        _ = select(User.id).where(User.id.in_subquery(select(Order)))  # type: ignore[arg-type]
+        _ = select(User.id).where(
+            User.id.in_subquery(
+                select(Order)  # ty: ignore[invalid-argument-type]
+            )
+        )
 
 
 # --- Slice 3: EXISTS / NOT EXISTS (correlated) ------------------------------
@@ -245,7 +249,7 @@ def scalar_requires_single_column_select() -> None:
     """A scalar subquery must project exactly one column."""
 
     with assert_raises(QueryConstructionError):
-        _ = scalar(select(User))  # type: ignore[arg-type]
+        _ = scalar(select(User))  # ty: ignore[invalid-argument-type]
 
 
 # --- Backend portability ----------------------------------------------------

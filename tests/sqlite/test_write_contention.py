@@ -36,7 +36,7 @@ from tests.helpers import initialized_database
 class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
     """Single-column table used to drive concurrent inserts."""
 
-    id: Counter.GenCol[Counter, int] = Integer(
+    id: Counter.GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,

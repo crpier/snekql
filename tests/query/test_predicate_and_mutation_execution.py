@@ -43,8 +43,8 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by predicate construction checks."""
 
-        id: User.Col[User, int] = Integer(nullable=False)
-        email: User.Col[User, str] = Text(nullable=False)
+        id: User.Col[int] = Integer(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
 
     email_eq = cast("Callable[[object], object]", User.email.eq)
     email_ne = cast("Callable[[object], object]", User.email.ne)
@@ -63,7 +63,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
         _ = email_not_in("a@example.com", None)
 
     with assert_raises(QueryConstructionError):
-        _ = User.id.like("1%")
+        _ = User.id.like("1%")  # ty: ignore[no-matching-overload]
 
 
 @test(mark="fast")
@@ -73,8 +73,8 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by immutable select checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
 
     base_query = select(User.email)
     filtered_query = base_query.where(User.status.eq("active"))
@@ -121,11 +121,9 @@ def update_compilation_requires_set_and_filter_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by update compilation checks."""
 
-        id: User.GenCol[User, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False)
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
 
     base_query = update(User)
     set_query = base_query.set(User.status.to("disabled"))
@@ -169,8 +167,8 @@ def delete_compilation_requires_filter_intent() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by delete compilation checks."""
 
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False)
 
     base_query = delete(User)
     filtered_query = base_query.where(
@@ -209,11 +207,9 @@ async def update_and_delete_execute_against_sqlite() -> None:
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used by mutation execution checks."""
 
-        id: User.GenCol[User, int] = Integer(
-            primary_key=True, default=PENDING_GENERATION
-        )
-        email: User.Col[User, str] = Text(nullable=False)
-        status: User.Col[User, str] = Text(nullable=False, default="active")
+        id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+        email: User.Col[str] = Text(nullable=False)
+        status: User.Col[str] = Text(nullable=False, default="active")
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
