@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Research and recommendations for SnekQL's migration interface, based on ecosystem comparison and executable validation.">
+  <title>SnekQL migration interface research</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f2eee5;
+      --paper-light: #faf8f2;
+      --ink: #1c2528;
+      --muted: #5b6666;
+      --line: #c8c1b3;
+      --navy: #17384a;
+      --navy-light: #d8e4e8;
+      --red: #8b332b;
+      --red-light: #f0d9d2;
+      --green: #315f4d;
+      --green-light: #d8e6dc;
+      --ochre: #95691e;
+      --ochre-light: #eee1be;
+      --shadow: 0 18px 50px rgb(32 35 31 / 9%);
+      --serif: Georgia, "Times New Roman", serif;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--paper);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgb(23 56 74 / 3%) 1px, transparent 1px) 0 0 / 5rem 5rem,
+        linear-gradient(rgb(23 56 74 / 3%) 1px, transparent 1px) 0 0 / 5rem 5rem,
+        var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    a {
+      color: var(--red);
+      text-decoration-thickness: 1px;
+      text-underline-offset: 0.18em;
+    }
+
+    a:hover { color: var(--navy); }
+
+    code, pre { font-family: var(--mono); }
+
+    code {
+      padding: 0.08rem 0.28rem;
+      border-radius: 0.2rem;
+      background: rgb(23 56 74 / 8%);
+      color: #153342;
+      font-size: 0.91em;
+    }
+
+    pre {
+      margin: 1.25rem 0;
+      padding: 1.2rem 1.3rem;
+      overflow-x: auto;
+      border: 1px solid #294956;
+      border-radius: 0.35rem;
+      color: #eef2ed;
+      background: #132d38;
+      box-shadow: inset 4px 0 0 #b37a31;
+      font-size: 0.85rem;
+      line-height: 1.65;
+    }
+
+    pre code {
+      padding: 0;
+      color: inherit;
+      background: transparent;
+      font-size: inherit;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 35rem;
+      display: grid;
+      align-items: end;
+      color: #f9f5eb;
+      background: var(--navy);
+      border-bottom: 0.55rem solid var(--red);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 84% 22%, transparent 0 7.5rem, rgb(242 238 229 / 14%) 7.6rem 7.75rem, transparent 7.85rem),
+        radial-gradient(circle at 84% 22%, transparent 0 12rem, rgb(242 238 229 / 9%) 12.1rem 12.25rem, transparent 12.35rem),
+        linear-gradient(118deg, transparent 0 58%, rgb(242 238 229 / 6%) 58% 59%, transparent 59%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      width: min(92rem, calc(100% - 3rem));
+      margin: 0 auto;
+      padding: 6rem 0 4.8rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 1.5rem;
+      color: #e9bd77;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, h4 {
+      margin-top: 0;
+      font-family: var(--serif);
+      font-weight: 600;
+      line-height: 1.08;
+    }
+
+    h1 {
+      max-width: 14ch;
+      margin-bottom: 1.6rem;
+      font-size: clamp(3.25rem, 8vw, 7.4rem);
+      letter-spacing: -0.055em;
+    }
+
+    .hero-lede {
+      max-width: 54rem;
+      margin: 0;
+      color: #dfe7e5;
+      font-family: var(--serif);
+      font-size: clamp(1.2rem, 2.1vw, 1.65rem);
+      line-height: 1.45;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 2.2rem;
+    }
+
+    .hero-meta span, .hero-meta a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid rgb(255 255 255 / 22%);
+      border-radius: 99rem;
+      color: #f7f2e8;
+      background: rgb(255 255 255 / 7%);
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      text-decoration: none;
+    }
+
+    .page {
+      width: min(92rem, calc(100% - 3rem));
+      margin: 0 auto;
+      padding: 4rem 0 7rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: clamp(2rem, 5vw, 6rem);
+      align-items: start;
+    }
+
+    .contents {
+      position: sticky;
+      top: 1.5rem;
+      padding: 1.2rem 0 1.2rem 1.1rem;
+      border-left: 3px solid var(--red);
+    }
+
+    .contents p {
+      margin: 0 0 0.65rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .contents a {
+      display: block;
+      padding: 0.31rem 0;
+      color: var(--ink);
+      font-size: 0.86rem;
+      text-decoration: none;
+    }
+
+    .contents a:hover { color: var(--red); }
+
+    article { min-width: 0; }
+
+    section {
+      scroll-margin-top: 2rem;
+      margin-bottom: 5.8rem;
+    }
+
+    .section-number {
+      margin: 0 0 0.75rem;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    h2 {
+      max-width: 18ch;
+      margin-bottom: 1.4rem;
+      font-size: clamp(2.35rem, 5vw, 4.45rem);
+      letter-spacing: -0.04em;
+    }
+
+    h3 {
+      margin: 2.4rem 0 0.85rem;
+      font-size: clamp(1.45rem, 2.6vw, 2rem);
+      letter-spacing: -0.02em;
+    }
+
+    h4 {
+      margin-bottom: 0.5rem;
+      font-size: 1.18rem;
+    }
+
+    .section-lede {
+      max-width: 55rem;
+      margin: 0 0 2.2rem;
+      color: var(--muted);
+      font-family: var(--serif);
+      font-size: 1.22rem;
+      line-height: 1.55;
+    }
+
+    .verdict {
+      position: relative;
+      padding: clamp(1.6rem, 4vw, 3.2rem);
+      color: #f8f5ed;
+      background: var(--red);
+      box-shadow: var(--shadow);
+    }
+
+    .verdict::before {
+      content: "RECOMMENDATION";
+      position: absolute;
+      top: -0.8rem;
+      left: 1.5rem;
+      padding: 0.22rem 0.65rem;
+      color: var(--red);
+      background: var(--paper-light);
+      font-family: var(--mono);
+      font-size: 0.69rem;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+    }
+
+    .verdict p {
+      max-width: 54rem;
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(1.28rem, 2.5vw, 1.85rem);
+      line-height: 1.46;
+    }
+
+    .verdict code {
+      color: #fff5e7;
+      background: rgb(19 45 56 / 38%);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      margin: 2rem 0;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+
+    .metric {
+      min-height: 9.4rem;
+      padding: 1.3rem;
+      background: var(--paper-light);
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--navy);
+      font-family: var(--serif);
+      font-size: 2.8rem;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+      margin: 1.6rem 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.28rem 0.62rem;
+      border-radius: 99rem;
+      font-family: var(--mono);
+      font-size: 0.69rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .tag::before {
+      content: "";
+      width: 0.46rem;
+      height: 0.46rem;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .reproduced { color: #743228; background: var(--red-light); }
+    .sourced { color: #274c62; background: var(--navy-light); }
+    .proposed { color: #315f4d; background: var(--green-light); }
+    .caution { color: #7d591c; background: var(--ochre-light); }
+
+    .two-column, .three-column {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .two-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card {
+      padding: 1.35rem;
+      border: 1px solid var(--line);
+      background: rgb(250 248 242 / 78%);
+    }
+
+    .card p:last-child { margin-bottom: 0; }
+
+    .card-kicker {
+      margin: 0 0 0.7rem;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .callout {
+      margin: 1.5rem 0;
+      padding: 1.2rem 1.35rem;
+      border-left: 4px solid var(--ochre);
+      background: var(--ochre-light);
+    }
+
+    .callout strong { color: #674611; }
+
+    .finding {
+      display: grid;
+      grid-template-columns: 3.2rem minmax(0, 1fr);
+      gap: 1.2rem;
+      padding: 1.7rem 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .finding:last-child { border-bottom: 1px solid var(--line); }
+
+    .finding-index {
+      color: var(--red);
+      font-family: var(--serif);
+      font-size: 2.2rem;
+      line-height: 1;
+    }
+
+    .finding h3 { margin-top: 0; }
+
+    .finding-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin: 0.7rem 0 1rem;
+    }
+
+    .severity {
+      padding: 0.2rem 0.5rem;
+      border: 1px solid currentColor;
+      font-family: var(--mono);
+      font-size: 0.67rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .critical { color: var(--red); }
+    .high { color: #9b5d14; }
+    .medium { color: var(--navy); }
+
+    .output {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.4rem 1rem;
+      margin: 1rem 0;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--line);
+      background: #e9e5da;
+      font-family: var(--mono);
+      font-size: 0.77rem;
+    }
+
+    .output dt { color: var(--muted); }
+    .output dd { margin: 0; overflow-wrap: anywhere; }
+
+    .table-wrap {
+      margin: 1.5rem 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--paper-light);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    th, td {
+      padding: 0.9rem 1rem;
+      border-right: 1px solid #ddd7ca;
+      border-bottom: 1px solid #ddd7ca;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th:last-child, td:last-child { border-right: 0; }
+    tr:last-child td { border-bottom: 0; }
+
+    thead th {
+      color: #f7f4ec;
+      background: var(--navy);
+      font-family: var(--mono);
+      font-size: 0.67rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:nth-child(even) { background: #f1ede3; }
+
+    .comparison { min-width: 66rem; }
+
+    .fit {
+      display: inline-block;
+      padding: 0.15rem 0.42rem;
+      border-radius: 99rem;
+      font-family: var(--mono);
+      font-size: 0.63rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .fit-high { color: var(--green); background: var(--green-light); }
+    .fit-medium { color: var(--ochre); background: var(--ochre-light); }
+    .fit-low { color: var(--red); background: var(--red-light); }
+
+    .option {
+      position: relative;
+      padding: 1.5rem;
+      border: 1px solid var(--line);
+      background: var(--paper-light);
+    }
+
+    .option.recommended {
+      border: 2px solid var(--green);
+      box-shadow: var(--shadow);
+    }
+
+    .option-score {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: var(--navy);
+      font-family: var(--serif);
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .option-score small {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.64rem;
+    }
+
+    .option h3 {
+      max-width: calc(100% - 5rem);
+      margin-top: 0;
+    }
+
+    .score-list {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.35rem 0.8rem;
+      margin: 1rem 0 0;
+      font-size: 0.8rem;
+    }
+
+    .score-list dt { color: var(--muted); }
+    .score-list dd { margin: 0; }
+
+    .algorithm {
+      counter-reset: algorithm;
+      margin: 1.5rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .algorithm li {
+      counter-increment: algorithm;
+      display: grid;
+      grid-template-columns: 2.2rem minmax(0, 1fr);
+      gap: 0.85rem;
+      padding: 0.85rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .algorithm li::before {
+      content: counter(algorithm, decimal-leading-zero);
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.77rem;
+      font-weight: 800;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: 8.5rem minmax(0, 1fr);
+      gap: 1.2rem;
+      padding: 1.3rem 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .phase:last-child { border-bottom: 1px solid var(--line); }
+
+    .phase-name {
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .phase p { margin: 0; }
+
+    details {
+      margin: 0.75rem 0;
+      border: 1px solid var(--line);
+      background: var(--paper-light);
+    }
+
+    summary {
+      padding: 0.9rem 1rem;
+      cursor: pointer;
+      color: var(--navy);
+      font-weight: 700;
+    }
+
+    details > div { padding: 0 1rem 1rem; }
+
+    .sources {
+      padding: 0;
+      list-style: none;
+      counter-reset: sources;
+    }
+
+    .sources li {
+      counter-increment: sources;
+      display: grid;
+      grid-template-columns: 2.8rem minmax(0, 1fr);
+      gap: 0.6rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.84rem;
+      overflow-wrap: anywhere;
+    }
+
+    .sources li::before {
+      content: "S" counter(sources, decimal-leading-zero);
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .footnote {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    footer {
+      padding: 2rem 1.5rem;
+      color: #dbe4e1;
+      background: var(--navy);
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.73rem;
+    }
+
+    @media (max-width: 68rem) {
+      .layout { grid-template-columns: 1fr; }
+      .contents {
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem 1rem;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--red);
+        background: rgb(250 248 242 / 75%);
+      }
+      .contents p { width: 100%; }
+      .contents a { padding: 0; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 47rem) {
+      body { font-size: 15px; }
+      .hero { min-height: 31rem; }
+      .hero-inner, .page { width: min(100% - 1.5rem, 92rem); }
+      .hero-inner { padding: 4rem 0 3rem; }
+      h1 { font-size: clamp(3rem, 16vw, 5rem); }
+      .page { padding-top: 2rem; }
+      .metrics, .two-column, .three-column { grid-template-columns: 1fr; }
+      .finding { grid-template-columns: 2.2rem minmax(0, 1fr); gap: 0.7rem; }
+      .finding-index { font-size: 1.65rem; }
+      .output { grid-template-columns: 1fr; gap: 0.12rem; }
+      .output dd { margin-bottom: 0.55rem; }
+      .phase { grid-template-columns: 1fr; gap: 0.35rem; }
+      section { margin-bottom: 4rem; }
+      pre { margin-inline: -0.25rem; padding: 1rem; font-size: 0.76rem; }
+    }
+
+    @media print {
+      body { background: white; font-size: 10pt; }
+      .hero { min-height: 0; color: var(--ink); background: white; border-bottom: 4pt solid var(--red); }
+      .hero::before, .contents { display: none; }
+      .hero-inner, .page { width: 100%; padding: 1.5rem 0; }
+      .hero-lede, .hero-meta span, .hero-meta a { color: var(--ink); }
+      .layout { display: block; }
+      section { break-inside: avoid; margin-bottom: 2rem; }
+      .verdict { color: white; print-color-adjust: exact; }
+      a { color: inherit; }
+      .table-wrap { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Interface research / SnekQL 0.5</p>
+      <h1>Keep the API. Fix the history.</h1>
+      <p class="hero-lede">SnekQL does not need an Alembic clone. It needs to store migration order and checksums, reject history that is not an exact prefix of the declared chain, and report what each call applied.</p>
+      <div class="hero-meta">
+        <span>31 Aug 2026</span>
+        <span>SQLite + MariaDB</span>
+        <span>12 migration systems surveyed</span>
+        <a href="https://github.com/crpier/snekql/issues/243">Issue #243</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="layout">
+      <nav class="contents" aria-label="Report contents">
+        <p>Contents</p>
+        <a href="#verdict">Verdict</a>
+        <a href="#current">Current contract</a>
+        <a href="#validation">Validation lab</a>
+        <a href="#ecosystem">Ecosystem scan</a>
+        <a href="#options">Options assessed</a>
+        <a href="#proposal">Proposed contract</a>
+        <a href="#rollout">Rollout and tests</a>
+        <a href="#rejected">What not to add</a>
+        <a href="#sources">Sources</a>
+      </nav>
+
+      <article>
+        <section id="verdict">
+          <p class="section-number">01 / Verdict</p>
+          <h2>Keep the call. Enforce its contract.</h2>
+          <p class="section-lede">The ordered mapping is not the weak part. The history table records only names, then treats any subset of those names as valid.</p>
+
+          <div class="verdict">
+            <p>Retain <code>await db.migrate(dict[str, str])</code>. Snapshot the mapping before the first await. Add an ordinal and SHA-256 checksum to each history row, require applied history to equal an exact prefix, return a result, and add <code>db.verify_migrations(...)</code> for replicas that must not mutate schema. On SQLite, make each body and its history insert one <code>BEGIN IMMEDIATE</code> transaction.</p>
+          </div>
+
+          <div class="metrics" aria-label="Research summary">
+            <div class="metric"><strong>5</strong><span>failure modes reproduced against the current implementation</span></div>
+            <div class="metric"><strong>12</strong><span>migration systems compared across Python and six other ecosystems</span></div>
+            <div class="metric"><strong>1</strong><span>new public verb recommended: read-only history verification</span></div>
+            <div class="metric"><strong>0</strong><span>need for a revision graph, rollback DSL, or autogenerator</span></div>
+          </div>
+
+          <div class="legend" aria-label="Evidence legend">
+            <span class="tag reproduced">Reproduced locally</span>
+            <span class="tag sourced">Official source</span>
+            <span class="tag proposed">Recommendation</span>
+            <span class="tag caution">Engine constraint</span>
+          </div>
+
+          <div class="three-column">
+            <div class="card">
+              <p class="card-kicker">Borrow now</p>
+              <h3>History integrity</h3>
+              <p>Flyway, Liquibase, Prisma, and SQLx validate applied content. Django and Goose reject inconsistent or missing predecessors. SnekQL needs both checks.</p>
+            </div>
+            <div class="card">
+              <p class="card-kicker">Preserve</p>
+              <h3>Raw SQL and one chain</h3>
+              <p>Hand-authored SQL, explicit <code>migrate</code>, and separate model verification fit the project. None of the reproduced failures requires changing those decisions.</p>
+            </div>
+            <div class="card">
+              <p class="card-kicker">Do not copy</p>
+              <h3>Framework-sized machinery</h3>
+              <p>Down migrations, branch graphs, generated operations, repeatables, and target versions solve workflows SnekQL does not claim to own.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="current">
+          <p class="section-number">02 / Current contract</p>
+          <h2>Small and readable, but unable to enforce its own rules.</h2>
+          <p class="section-lede">Today, callers provide all identity and ordering facts at each call. The database retains too little information to prove those facts stayed true.</p>
+
+          <pre><code>MIGRATIONS = {
+    "001_create_user": 'CREATE TABLE "user" (...) STRICT',
+    "002_add_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
+}
+
+await db.migrate(MIGRATIONS)  # -&gt; None
+await db.verify([User])</code></pre>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Concern</th><th>Current rule</th><th>Where it lives</th><th>What the database remembers</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Identity</td><td>The mapping key is the identity.</td><td>Caller convention</td><td><code>name</code></td></tr>
+                <tr><td>Order</td><td>Python insertion order is apply order.</td><td>Caller declaration</td><td>Nothing</td></tr>
+                <tr><td>Immutability</td><td>Never edit an applied body.</td><td>Documentation</td><td>Nothing</td></tr>
+                <tr><td>Completeness</td><td>Keep one append-only canonical mapping.</td><td>Documentation</td><td>An unordered set of names</td></tr>
+                <tr><td>Outcome</td><td>Exceptions identify body failure.</td><td>Runner and logs</td><td>Name and application time after success</td></tr>
+                <tr><td>Concurrency</td><td>MariaDB uses <code>GET_LOCK</code>; SQLite relies on separate writes serializing.</td><td>Backend adapter</td><td>No lock state</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>The neutral runner computes pending work as <code>mapping keys - applied names</code>, then iterates the mapping. This is compact, but set membership cannot represent sequence. See <a href="../snekql/_migrations.py">the current runner</a>, <a href="migrations.md">migration documentation</a>, and <a href="adr/0001-hand-authored-raw-sql-migrations.md">ADR 0001</a>.</p>
+
+          <div class="callout"><strong>Depth assessment.</strong> The public call has good depth. Replacing the mapping with revision classes would enlarge the interface without fixing history integrity by itself. The module should absorb validation and observability instead.</div>
+        </section>
+
+        <section id="validation">
+          <p class="section-number">03 / Validation lab</p>
+          <h2>The current model can certify divergent databases as complete.</h2>
+          <p class="section-lede">These are executable observations from SnekQL's current branch, not hypothetical edge cases. Temporary SQLite databases and the neutral runner were used so no repository data changed.</p>
+
+          <div class="finding">
+            <div class="finding-index">1</div>
+            <div>
+              <h3>A hole is applied out of order</h3>
+              <div class="finding-meta"><span class="severity critical">Critical</span><span class="tag reproduced">Reproduced</span></div>
+              <p>One release applies <code>001, 003</code>. A later release declares <code>001, 002, 003</code>. The existing database skips <code>003</code> and applies <code>002</code> after it. A fresh database applies <code>002</code> before <code>003</code>. Both histories contain all three names.</p>
+              <dl class="output">
+                <dt>Existing database</dt><dd><code>['003', '002']</code></dd>
+                <dt>Fresh database</dt><dd><code>['002', '003']</code></dd>
+              </dl>
+              <p><strong>Required fix:</strong> applied rows must be an exact prefix of the declaration, including stored ordinal. A checksum alone does not catch this.</p>
+            </div>
+          </div>
+
+          <div class="finding">
+            <div class="finding-index">2</div>
+            <div>
+              <h3>An edited body is silently accepted</h3>
+              <div class="finding-meta"><span class="severity critical">Critical</span><span class="tag reproduced">Reproduced</span></div>
+              <p>A migration named <code>001_seed</code> first creates a <code>TEXT</code> column. Its body is edited to create <code>INTEGER</code>. Re-running against the existing database skips it by name; replaying on a fresh database uses the edited body.</p>
+              <dl class="output">
+                <dt>Existing schema</dt><dd><code>TEXT</code></dd>
+                <dt>Fresh replay</dt><dd><code>INTEGER</code></dd>
+              </dl>
+              <p><strong>Required fix:</strong> store and compare a checksum of the exact UTF-8 body for every successful migration. Fail before executing pending SQL when any applied body differs.</p>
+            </div>
+          </div>
+
+          <div class="finding">
+            <div class="finding-index">3</div>
+            <div>
+              <h3>SQLite writer serialization is not a migration lock</h3>
+              <div class="finding-meta"><span class="severity high">High</span><span class="tag reproduced">Reproduced</span><span class="tag caution">Engine constraint</span></div>
+              <p>Two SQLite connections were held at a rendezvous after both read an empty history. Both then attempted the same non-idempotent <code>CREATE TABLE</code>. One succeeded and one raised <code>MigrationError: table race already exists</code>. The busy timeout waited on individual writes, but did not make the read-check-write flow atomic.</p>
+              <dl class="output">
+                <dt>Outcomes</dt><dd><code>['success', 'MigrationError: table race already exists']</code></dd>
+                <dt>History</dt><dd><code>[('001_create_race',)]</code></dd>
+              </dl>
+              <p>SQLite documents one simultaneous writer, not ownership across separate autocommit statements. <a href="https://www.sqlite.org/lang_transaction.html"><code>BEGIN IMMEDIATE</code></a> acquires the write transaction before the history read. A competing runner then waits according to <a href="https://sqlite.org/c3ref/busy_timeout.html">busy timeout</a>, acquires the write transaction after commit, and re-reads the completed row.</p>
+              <p>A prototype gave outcomes <code>['applied', 'skipped']</code> for two simultaneous runners, and a non-idempotent counter changed from <code>0</code> to <code>1</code>. When history insertion was forced to fail after a body created a table, rollback removed the table.</p>
+              <p><strong>Required fix:</strong> run SQLite's history read, one pending body, and its history insert in one <code>BEGIN IMMEDIATE</code> transaction. Repeat from a fresh history read for the next pending body. This serializes cooperating runners without changing the existing per-migration failure boundary.</p>
+            </div>
+          </div>
+
+          <div class="finding">
+            <div class="finding-index">4</div>
+            <div>
+              <h3>Runtime scaffolding mutates history</h3>
+              <div class="finding-meta"><span class="severity critical">Critical</span><span class="tag reproduced">Reproduced</span></div>
+              <p>Public examples call <code>scaffold([User])</code> inside the mapping even though the documentation says to paste and own its output. After adding a model column, that call changes the old migration body. Existing databases skip the changed body and apply the new <code>ALTER</code>; fresh databases create the column from the changed scaffold and then fail when the <code>ALTER</code> adds it again.</p>
+              <dl class="output">
+                <dt>Existing database</dt><dd><code>success</code></dd>
+                <dt>Fresh database</dt><dd><code>MigrationError: duplicate column name: status</code></dd>
+              </dl>
+              <p>A scaffold with indexes emits multiple semicolon-terminated statements, while SQLite's <code>execute</code> path correctly accepts one statement. The migration docs say to split the output into separate bodies, but runtime examples pass the complete scaffold string as one body.</p>
+              <p><strong>Required fix:</strong> examples must paste literal scaffold output and give each statement its own migration name. Do not switch SQLite to <code>executescript</code>: Python's driver commits a pending transaction before running a script, which would release the lock before the body and history row are recorded.</p>
+            </div>
+          </div>
+
+          <div class="finding">
+            <div class="finding-index">5</div>
+            <div>
+              <h3>Model verification cannot prove migration currency</h3>
+              <div class="finding-meta"><span class="severity high">High</span><span class="tag reproduced">Reproduced</span></div>
+              <p>A replica had the schema from <code>001_create_user</code> but not the data-only <code>002_seed_system_user</code>. <code>db.verify([User])</code> passed while the expected row count stayed zero. Defaults, checks, triggers, views, and data migrations have the same blind spot because structural verification intentionally does not inspect them.</p>
+              <dl class="output">
+                <dt>Schema verification</dt><dd><code>passed</code></dd>
+                <dt>Expected migration count</dt><dd><code>2</code></dd>
+                <dt>Actual seeded rows</dt><dd><code>0</code></dd>
+              </dl>
+              <p><strong>Required fix:</strong> non-migrating replicas need a read-only <code>verify_migrations</code> verb in addition to model verification.</p>
+            </div>
+          </div>
+
+          <h3>Invariant check</h3>
+          <p>The proposed history predicate was exhaustively checked over all 65 ordered subsets of a four-migration chain. Only the five valid prefixes, including the empty prefix, were accepted. Reordering and body mutation were rejected. This is a small state model with a complete test oracle:</p>
+          <pre><code>actual_history == expected_history[:len(actual_history)]</code></pre>
+
+          <h3>SQLite transaction check</h3>
+          <p>The transaction design was exercised against two separate <code>aiosqlite</code> connections in autocommit mode. Both started together and used <code>BEGIN IMMEDIATE</code> before reading history. The second runner waited, then skipped the body after observing the first runner's commit. A separate DDL test forced history insertion to fail and confirmed that rollback removed the table created by the body.</p>
+          <dl class="output">
+            <dt>Concurrent outcomes</dt><dd><code>['applied', 'skipped']</code></dd>
+            <dt>Counter after race</dt><dd><code>1</code></dd>
+            <dt>DDL objects after rollback</dt><dd><code>0</code></dd>
+            <dt>Transaction after <code>executescript</code></dt><dd><code>closed</code></dd>
+          </dl>
+        </section>
+
+        <section id="ecosystem">
+          <p class="section-number">04 / Ecosystem scan</p>
+          <h2>Mature tools vary in syntax. Their useful guarantees repeat.</h2>
+          <p class="section-lede">The survey covers Python, Java and JVM tooling, Ruby, JavaScript and TypeScript, C#, Elixir, Go, and Rust. Official documentation was favored over articles and examples.</p>
+
+          <div class="table-wrap">
+            <table class="comparison">
+              <thead>
+                <tr><th>System</th><th>Authoring and order</th><th>Integrity and consistency</th><th>Apply, lock, inspect</th><th>SnekQL fit</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Alembic</strong><br>Python</td>
+                  <td>Python revision files with <code>revision</code> and <code>down_revision</code>; revisions form a graph and may branch.</td>
+                  <td>Graph ancestry constrains normal upgrades, although <code>stamp</code> can deliberately change recorded state without running migrations. No built-in content checksum in the normal version table.</td>
+                  <td>Upgrade and downgrade to targets; current, history, heads, offline SQL; transaction behavior follows dialect configuration. No documented general cross-process lock.</td>
+                  <td><span class="fit fit-medium">Borrow check</span><br>Its current-head check is useful. Its graph and environment machinery are too large for one SnekQL chain.</td>
+                </tr>
+                <tr>
+                  <td><strong>Django</strong><br>Python</td>
+                  <td>Python migration classes with explicit dependencies and operation lists.</td>
+                  <td>Refuses inconsistent history when an applied migration lacks an applied dependency.</td>
+                  <td>Atomic on DDL-transaction backends by default; no DDL transaction on MySQL; migrate plan, show status, SQL preview, reverse operations. No documented general runner lock.</td>
+                  <td><span class="fit fit-high">Borrow invariant</span><br>History consistency is the closest precedent for rejecting SnekQL holes.</td>
+                </tr>
+                <tr>
+                  <td><strong>Yoyo</strong><br>Python</td>
+                  <td>SQL or Python files, explicit dependencies, dependency then filename order, multiple steps per migration.</td>
+                  <td>Globally unique file identity and dependency sorting. Its stored SHA-256 <code>migration_hash</code> hashes the migration identity, not the body.</td>
+                  <td>Per-migration transactions where supported, rollback steps, list and apply plans, migration table lock.</td>
+                  <td><span class="fit fit-medium">Borrow scripts</span><br>Raw SQL and programmatic calls fit. Dependency and rollback support are more than SnekQL needs.</td>
+                </tr>
+                <tr>
+                  <td><strong>Flyway</strong><br>JVM / polyglot</td>
+                  <td>Versioned SQL, Java, or script migrations discovered from configured locations.</td>
+                  <td>Stores checksums; validate fails on changed, missing, type-mismatched, or unresolved applied migrations. Out-of-order is explicit and off by default.</td>
+                  <td>Database locking, per-migration transaction where supported, info and validate, repeatable migrations, repair workflow.</td>
+                  <td><span class="fit fit-high">Borrow checksum</span><br>Checksum plus strict default order directly addresses two reproduced failures. Do not copy repair and repeatables yet.</td>
+                </tr>
+                <tr>
+                  <td><strong>Liquibase</strong><br>JVM / polyglot</td>
+                  <td>Changesets in XML, YAML, JSON, or formatted SQL, identified by id, author, and path.</td>
+                  <td>Stores a changeset checksum and halts on meaningful edits. Supports deliberate <code>runOnChange</code> and accepted checksums.</td>
+                  <td>Dedicated lock table, status, validate, update SQL preview, rollback commands. Stale locks require release.</td>
+                  <td><span class="fit fit-medium">Borrow validation</span><br>Strong precedent for content identity. Its configurable changeset language is the wrong size.</td>
+                </tr>
+                <tr>
+                  <td><strong>Rails Active Record</strong><br>Ruby</td>
+                  <td>Timestamped Ruby classes sorted by version, with reversible <code>change</code> or explicit <code>up/down</code>.</td>
+                  <td>Tracks applied versions but does not make body checksums the normal contract.</td>
+                  <td>Transactions when the database supports DDL transactions, status and rollback tasks, schema dump as current-state artifact.</td>
+                  <td><span class="fit fit-low">Do not copy DSL</span><br>Rollback ergonomics depend on a schema DSL and adapter intelligence SnekQL intentionally avoids.</td>
+                </tr>
+                <tr>
+                  <td><strong>Knex</strong><br>JavaScript</td>
+                  <td>JS or TS files with <code>up/down</code>, sorted from a directory or custom migration source.</td>
+                  <td>Validates that completed migration files still exist; no body checksum in the documented history contract.</td>
+                  <td>Per-migration transactions by default, list/current version, row lock table. Crashes can require manual unlock.</td>
+                  <td><span class="fit fit-medium">Borrow result</span><br>Programmatic list and migration source are useful precedents, but a stale lock repair command is a cost, not a free feature.</td>
+                </tr>
+                <tr>
+                  <td><strong>Prisma Migrate</strong><br>TypeScript / Rust engine</td>
+                  <td>Generated, reviewable SQL files in timestamped directories; migration folder is the source of truth.</td>
+                  <td>The database table detects applied files that were edited or deleted. Development replay uses a shadow database to detect drift.</td>
+                  <td>Deploy and status commands, failed-migration resolution, provider-specific advisory locking.</td>
+                  <td><span class="fit fit-high">Borrow source truth</span><br>Its warning against editing applied SQL exactly matches SnekQL's rule. SnekQL can enforce it without generation or a shadow DB.</td>
+                </tr>
+                <tr>
+                  <td><strong>EF Core</strong><br>C#</td>
+                  <td>Generated C# <code>Up/Down</code> classes plus model snapshot, ordered migration IDs.</td>
+                  <td>Checks pending model changes; history normally stores migration ID and product version rather than body checksum.</td>
+                  <td>Transactions, SQL scripts and bundles, runtime migration lock since EF Core 9. SQLite lock rows can be abandoned after a crash.</td>
+                  <td><span class="fit fit-medium">Borrow deploy split</span><br>Its one-shot deployment guidance fits SnekQL. Its SQLite warning shows why a lock table needs recovery design.</td>
+                </tr>
+                <tr>
+                  <td><strong>Ecto</strong><br>Elixir</td>
+                  <td>Timestamped migration modules or supplied version/module tuples.</td>
+                  <td><code>strict_version_order</code> aborts when an older timestamp appears; otherwise it warns.</td>
+                  <td>Migration table locking, DDL transactions with explicit opt-outs, status tuples, applied version results, target and step strategies.</td>
+                  <td><span class="fit fit-high">Borrow strict order</span><br>Ecto names SnekQL's gap directly. SnekQL should make strict order unconditional rather than configurable.</td>
+                </tr>
+                <tr>
+                  <td><strong>Goose</strong><br>Go</td>
+                  <td>Timestamped or sequential SQL files and Go functions, optional down section.</td>
+                  <td>Missing or out-of-order versions fail by default; allowing them requires an explicit option.</td>
+                  <td>Transactions by default, status and target commands. Provider locking is opt-in through a session locker.</td>
+                  <td><span class="fit fit-high">Borrow default</span><br>The default rejection of <code>1,3,2</code> validates a strict SnekQL prefix rule.</td>
+                </tr>
+                <tr>
+                  <td><strong>SQLx</strong><br>Rust</td>
+                  <td>Versioned SQL files or in-memory <code>Migration</code> values; migrations may be embedded at compile time.</td>
+                  <td><code>run</code> validates previously applied migrations against current source and rejects changed or missing migrations by default.</td>
+                  <td>Database locking on by default, run to target, undo, and typed errors.</td>
+                  <td><span class="fit fit-high">Closest shape</span><br>SQLx proves a small programmatic runner can validate content and locking without becoming an ORM migration framework.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Patterns worth taking</h3>
+          <div class="two-column">
+            <div class="card"><h4>Applied source must still exist</h4><p>Flyway, Prisma, Knex, SQLx, and dependency-based systems reject or report applied migrations that the current source no longer explains.</p></div>
+            <div class="card"><h4>Mutation should be machine-detected</h4><p>Checksums convert an append-only convention into an invariant. This matters more in SnekQL because <code>verify</code> cannot see all schema or data effects.</p></div>
+            <div class="card"><h4>Out-of-order needs an explicit decision</h4><p>Flyway and Goose make it opt-in; Ecto can make it fatal. SnekQL promises one canonical linear chain, so it should reject it with no escape hatch.</p></div>
+            <div class="card"><h4>Read-only inspection is separate</h4><p>Alembic current-head checks, Django plans, Flyway info, Ecto status, and SQLx iteration let deployments inspect without applying.</p></div>
+          </div>
+        </section>
+
+        <section id="options">
+          <p class="section-number">05 / Options assessed</p>
+          <h2>Four plausible shapes, one clear fit.</h2>
+          <p class="section-lede">Scores weigh safety gain, interface cost, fit with the accepted ADRs, and the amount of new implementation callers must understand.</p>
+
+          <div class="two-column">
+            <div class="option recommended">
+              <div class="option-score">9.2<small>/10</small></div>
+              <p class="card-kicker">Recommended</p>
+              <h3>Harden the ordered mapping</h3>
+              <p>Keep the current authoring form. Snapshot it internally, store ordinal and checksum, validate an exact prefix, return an outcome, add read-only verification, and make each SQLite body atomic with its history row.</p>
+              <dl class="score-list"><dt>Safety gain</dt><dd>Very high</dd><dt>Interface cost</dt><dd>One result, one verb, one cutover flag</dd><dt>ADR fit</dt><dd>Good, with amendments</dd><dt>Migration cost</dt><dd>History table v2</dd></dl>
+            </div>
+
+            <div class="option">
+              <div class="option-score">6.4<small>/10</small></div>
+              <p class="card-kicker">Defer</p>
+              <h3>Sequence of Migration values</h3>
+              <p>Use <code>Sequence[Migration]</code> with a name and statement tuple. This can detect duplicate names and leaves room for policy fields, but adds ceremony before another caller-controlled policy has earned its place.</p>
+              <dl class="score-list"><dt>Safety gain</dt><dd>Medium</dd><dt>Interface cost</dt><dd>New authoring type</dd><dt>ADR fit</dt><dd>Good</dd><dt>Reason to wait</dt><dd>No proven varying policy</dd></dl>
+            </div>
+
+            <div class="option">
+              <div class="option-score">5.8<small>/10</small></div>
+              <p class="card-kicker">Optional later</p>
+              <h3>SQL directory loader</h3>
+              <p>Discover versioned <code>.sql</code> files and return the same internal chain. This improves editor and DBA workflows, but introduces packaging, path, naming, and discovery rules unrelated to runner correctness.</p>
+              <dl class="score-list"><dt>Safety gain</dt><dd>Low by itself</dd><dt>Interface cost</dt><dd>Another source adapter</dd><dt>ADR fit</dt><dd>Good</dd><dt>Trigger</dt><dd>Real user demand for files</dd></dl>
+            </div>
+
+            <div class="option">
+              <div class="option-score">2.3<small>/10</small></div>
+              <p class="card-kicker">Reject</p>
+              <h3>Revision graph with up and down</h3>
+              <p>Model dependencies, branches, targets, and rollback bodies like Alembic or Django. It solves multi-package framework workflows at the cost of making every SnekQL caller learn a graph.</p>
+              <dl class="score-list"><dt>Safety gain</dt><dd>High for branches</dd><dt>Interface cost</dt><dd>Very high</dd><dt>ADR fit</dt><dd>Poor</dd><dt>Problem here</dt><dd>Not demonstrated</dd></dl>
+            </div>
+          </div>
+
+          <div class="callout"><strong>Why no new Migration class now?</strong> A frozen value with only <code>name</code> and <code>sql</code> does not detect edits between releases or freeze its surrounding collection. Snapshotting the mapping into an internal tuple before the first <code>await</code> solves runtime mutation. A public type becomes useful when callers need real per-migration policy, such as transaction mode or backend targeting.</div>
+        </section>
+
+        <section id="proposal">
+          <p class="section-number">06 / Proposed contract</p>
+          <h2>A linear chain that can prove it is the same chain.</h2>
+          <p class="section-lede">The proposal makes the existing append-only rule executable. It does not infer schema changes, parse migration names as versions, or add rollback behavior.</p>
+
+          <h3>Caller interface</h3>
+          <pre><code>MIGRATIONS: dict[str, str] = {
+    # Literal output previously copied from scaffold([User]).
+    "001_create_user": 'CREATE TABLE "user" (...) STRICT',
+    "002_index_user_email": (
+        'CREATE INDEX "ix_user_email" ON "user" ("email")'
+    ),
+    "003_add_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
+}
+
+# Deployment job: validates history, applies only the pending suffix.
+result = await db.migrate(MIGRATIONS)
+assert result.applied == ("003_add_status",)
+assert result.already_applied == (
+    "001_create_user",
+    "002_index_user_email",
+)
+
+# Non-migrating replica: read-only and requires the full chain to be current.
+await db.verify_migrations(MIGRATIONS)
+await db.verify([User])</code></pre>
+
+          <h3>History schema</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Column</th><th>Purpose</th><th>Correctness role</th></tr></thead>
+              <tbody>
+                <tr><td><code>position</code></td><td>One-based insertion ordinal</td><td>Detects reordering and holes; unique and not null</td></tr>
+                <tr><td><code>name</code></td><td>Caller-selected stable identity</td><td>Detects rename, removal, or replacement; unique and not null</td></tr>
+                <tr><td><code>checksum</code></td><td>Lowercase SHA-256 of exact UTF-8 SQL</td><td>Detects any body mutation; fixed 64 characters</td></tr>
+                <tr><td><code>applied_at</code></td><td>Server-side UTC timestamp</td><td>Observability only, never ordering</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>Exact bytes are the right first checksum contract. Whitespace-only edits will fail. That is acceptable because an applied migration is immutable, and normalization would create a second language for deciding which SQL edits count. Position and name remain separate columns, so a chained fingerprint adds encoding and versioning rules without detecting another failure.</p>
+          <p>Backend DDL must enforce positive unique positions, exactly 64 lowercase hexadecimal checksum characters, and byte-exact name comparison. On MariaDB, do not rely on a padded text collation to distinguish names or checksums.</p>
+
+          <h3>Apply algorithm</h3>
+          <ol class="algorithm">
+            <li>Synchronously snapshot the mapping into an immutable internal tuple. Validate every item before acquiring a connection or awaiting: non-empty names, a backend-neutral 255-character name limit, and non-empty SQL. Do not return early for an empty mapping; it must fail against non-empty history.</li>
+            <li>Build expected rows by enumerating the snapshot and hashing each exact body.</li>
+            <li>Acquire backend serialization. MariaDB keeps its connection-scoped <code>GET_LOCK</code>. SQLite starts <code>BEGIN IMMEDIATE</code> before each history read.</li>
+            <li>Ensure or upgrade the history table, then fetch rows ordered by <code>position</code>.</li>
+            <li>Require <code>actual == expected[:len(actual)]</code>. Any missing source row, hole, reorder, rename, or checksum mismatch fails before pending SQL runs.</li>
+            <li>Execute only the next pending body and record position, name, checksum, and timestamp. On SQLite, commit those two writes together and repeat from a new <code>BEGIN IMMEDIATE</code> history read. On MariaDB, keep <code>GET_LOCK</code> and commit the body and row together when the engine permits it.</li>
+            <li>Return immutable tuples of names applied by this call and names it found already applied.</li>
+          </ol>
+
+          <h3>Read-only verification</h3>
+          <p><code>verify_migrations</code> runs the same declaration and history checks without creating a table, taking a migration lock, or executing SQL. It also requires the history length to equal the declared chain length. A replica with pending, edited, removed, reordered, or unknown migrations fails startup.</p>
+
+          <div class="two-column">
+            <div class="card">
+              <p class="card-kicker">Migration integrity</p>
+              <h4><code>verify_migrations</code></h4>
+              <p>Proves the database records the exact chain shipped by this build. It covers data migrations and schema details that model inspection cannot see.</p>
+            </div>
+            <div class="card">
+              <p class="card-kicker">Structural compatibility</p>
+              <h4><code>verify</code></h4>
+              <p>Proves the live tables inspected by SnekQL match current model structure. It catches manual drift even when history says migrations ran.</p>
+            </div>
+          </div>
+
+          <h3>One statement and scaffold</h3>
+          <p>Keep each SQLite mapping value to one persistent DDL or DML statement against the main database. This avoids SQL splitting and lets <code>execute</code> keep the body and history insert inside the same transaction. Reject transaction control, <code>VACUUM</code>, <code>ATTACH</code>, <code>DETACH</code>, connection-local PRAGMAs, and temporary objects. Verify that the connection is still in a transaction before inserting history. MariaDB may continue to accept multiple statements, but its body and history row remain non-atomic when DDL implicitly commits.</p>
+          <p><code>scaffold</code> remains a dev-time printer. Documentation and examples must paste its literal result into committed migrations, with the table and each index assigned separate names. Calling <code>scaffold([CurrentModel])</code> at runtime makes old history depend on today's model and must not be presented as valid usage.</p>
+
+          <h3>Concurrency promise</h3>
+          <div class="two-column">
+            <div class="card">
+              <p class="card-kicker">MariaDB</p>
+              <h4>Keep the strong guarantee</h4>
+              <p><code>GET_LOCK</code> holds one connection across preflight, apply, and recording. MariaDB documents that the lock survives commits and releases on connection termination. It coordinates cooperating runners on one server, not writers that bypass the lock or connect to a different writable cluster node.</p>
+            </div>
+            <div class="card">
+              <p class="card-kicker">SQLite</p>
+              <h4>Use the write transaction as the lock</h4>
+              <p><code>BEGIN IMMEDIATE</code> must precede the history read. One body and its row then commit together. Repeating this transaction per pending body preserves partial-chain progress while making concurrent cooperating runners safe.</p>
+            </div>
+          </div>
+
+          <h3>Failure contract</h3>
+          <p>Keep forward retry and the idempotent-body requirement for MariaDB. Its DDL causes implicit commits before execution, so no portable interface can promise atomic body plus history. Do not commit the body before inserting history: DML on transactional tables can then commit with its row, while DDL retains the unavoidable crash window. A dirty marker would stop automatic retry but also require a repair or force interface; do not add one without designing that operator workflow.</p>
+          <p>SQLite can make one statement and its history row atomic, so a failed body or history insert rolls back both. Cleanup must handle cancellation and commit-time <code>SQLITE_BUSY</code> without returning a connection that still holds a write transaction. Because SnekQL uses WAL, scope the atomicity promise to the main database; attached-file transactions are not crash-atomic with <code>main</code>.</p>
+          <p>History mismatch should use a distinct integrity exception, not <code>MigrationError</code>, which currently means a body failed. Definition errors should name the invalid migration before database work starts.</p>
+          <div class="callout"><strong>ADR impact.</strong> The SQLite transaction and combined MariaDB DML commit amend ADR 0001's blanket non-atomicity rule. <code>BEGIN IMMEDIATE</code> also replaces ADR 0002's SQLite best-effort claim. Raw SQL, explicit migration calls, forward retry, and MariaDB's advisory lock remain unchanged.</div>
+        </section>
+
+        <section id="rollout">
+          <p class="section-number">07 / Rollout and tests</p>
+          <h2>Ship the invariant before adding authoring features.</h2>
+          <p class="section-lede">The history table is persisted state from SnekQL 0.4, so its upgrade deserves more care than the Python return type.</p>
+
+          <div class="phase">
+            <div class="phase-name">Phase 0<br>Correctness copy</div>
+            <p>Correct the current SQLite concurrency claim. Replace every runtime <code>scaffold([Model])</code> migration example with literal SQL split into one named migration per statement. Keep the one-statement SQLite contract.</p>
+          </div>
+          <div class="phase">
+            <div class="phase-name">Phase 1<br>History v2</div>
+            <p>Add position and checksum, exact-prefix preflight, integrity errors, SQLite per-migration transactions, the MariaDB DML commit improvement, <code>MigrationResult</code>, and <code>verify_migrations</code>. Amend ADRs 0001 and 0002 with the new backend-specific guarantees.</p>
+          </div>
+          <div class="phase">
+            <div class="phase-name">Phase 2<br>Observe demand</div>
+            <p>Only then consider a read-only status object or SQL directory loader. Both can adapt into the same validated chain without changing the runner.</p>
+          </div>
+
+          <h3>Legacy history adoption</h3>
+          <p>Old rows have no trustworthy application order or historical body. That information cannot be reconstructed after the fact. A non-empty v1 table should make an ordinary <code>migrate</code> call fail with instructions to opt in once, for example with <code>adopt_legacy=True</code>. Adoption means "trust this declaration as the baseline," not "verify what ran."</p>
+          <ol class="algorithm">
+            <li>Run under backend serialization and require <code>legacy_names == set(declared_names[:len(legacy_names)])</code>. Reject unknown names, holes, inserted predecessors, and an empty declaration with non-empty history.</li>
+            <li>Only after explicit consent, assign positions and checksums from the current immutable snapshot. Return and log that legacy content was adopted rather than verified. An empty v1 table can upgrade without consent because it asserts no historical body.</li>
+            <li>Upgrade SQLite atomically under <code>BEGIN IMMEDIATE</code>. Make MariaDB's schema transition a restartable state machine that recognizes only the exact v1, final v2, and known intermediate shapes. Never overwrite a non-null checksum.</li>
+            <li>After adoption, enforce full v2 checks on every call. <code>verify_migrations</code> must fail on v1 and never adopt. Do not expose a general repair or checksum-clear method.</li>
+          </ol>
+          <div class="callout"><strong>Irreducible limit.</strong> Even when all old names match a prefix, old history cannot prove they originally ran in that order or with the current SQL. Applied timestamps are observability fields and cannot reconstruct those facts. During the cutover, only the upgraded migrator may run: an old process can execute a body against the v2 table and then fail to write its name-only row.</div>
+
+          <h3>Required test matrix</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Layer</th><th>Tests</th></tr></thead>
+              <tbody>
+                <tr><td>Pure chain model</td><td>Empty and full prefix; every hole; reorder; renamed key; removed key; edited body; extra history row; empty declaration against non-empty history; empty or overlong name; empty body.</td></tr>
+                <tr><td>Neutral runner</td><td>Mapping snapshot occurs before the first await; no body runs before full preflight passes; exact pending suffix; result tuples; failed body not recorded; changed failed body may retry; lock release.</td></tr>
+                <tr><td>SQLite</td><td><code>BEGIN IMMEDIATE</code> precedes every history read; two-runner apply/skip race; body and history rollback together; prior migration remains committed when a later migration fails; cancellation cleans up; multi-statement, transaction-control, session-only, attached-file, and <code>VACUUM</code> bodies are rejected; explicit v1 adoption; v2 checksum mismatch.</td></tr>
+                <tr><td>MariaDB</td><td>V2 table upgrade is restartable across implicit commits; interrupted intermediate shapes resume or fail closed; DML and history commit together; DDL crash window remains; checksum and name comparison are exact; advisory lock still wraps preflight; long names fail before body execution.</td></tr>
+                <tr><td>Replica lifecycle</td><td>Read-only verification passes only at full head; data-only pending migration fails; structural drift still belongs to model verification.</td></tr>
+                <tr><td>Fresh replay</td><td>Replay current chain on empty SQLite and MariaDB, then compare with an incrementally upgraded database and run model verification.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="rejected">
+          <p class="section-number">08 / What not to add</p>
+          <h2>Useful elsewhere does not mean useful here.</h2>
+
+          <details open>
+            <summary>Down migrations and rollback targets</summary>
+            <div><p>Raw SQL down bodies double authoring work and cannot restore deleted data. MariaDB DDL cannot roll back atomically. Production application rollback also needs expand-contract compatibility, not only reverse DDL. Prefer a new forward repair migration.</p></div>
+          </details>
+          <details>
+            <summary>Revision dependencies and branch heads</summary>
+            <div><p>SnekQL defines one canonical chain per code version. A stored ordinal and strict prefix make branch conflicts fail visibly. Teams can resolve them in source control without making every caller learn topological migration semantics.</p></div>
+          </details>
+          <details>
+            <summary>Autogeneration and schema diffing</summary>
+            <div><p>This remains contrary to ADR 0001, especially for SQLite table rebuilds. The research found no failure that generation would solve. Checksums and history validation strengthen hand-authored SQL without changing authority.</p></div>
+          </details>
+          <details>
+            <summary>Repeatable migrations</summary>
+            <div><p>Flyway and Liquibase use checksum changes to reapply views or procedures. SnekQL's current domain says each migration runs once. Adding a second identity mode would complicate prefix semantics and should wait for a concrete use case.</p></div>
+          </details>
+          <details>
+            <summary>Public repair, force, mark, or stamp</summary>
+            <div><p>These are necessary in tools that record dirty state or adopt arbitrary databases. They can also bless divergence. The one-time v1 adoption flag accepts only SnekQL's exact legacy schema and prefix set; it is not a general repair method. Future repair behavior should start with an operator workflow, not a convenience method.</p></div>
+          </details>
+          <details>
+            <summary>Dry-run SQL generation</summary>
+            <div><p>The caller already owns the exact raw SQL, so rendering it again has little value. A future status snapshot may list pending names, but it must state that another migrator can change the database after the read.</p></div>
+          </details>
+        </section>
+
+        <section id="sources">
+          <p class="section-number">09 / Sources and method</p>
+          <h2>Official docs, current code, executable checks.</h2>
+          <p class="section-lede">Sources were reviewed on 31 August 2026. Product behavior changes over time, so links favor versioned or current official documentation.</p>
+
+          <ol class="sources">
+            <li><span>SnekQL current implementation: <a href="../snekql/_migrations.py"><code>snekql/_migrations.py</code></a>, <a href="../snekql/sqlite/migrations.py"><code>snekql/sqlite/migrations.py</code></a>, <a href="../snekql/mariadb/migrations.py"><code>snekql/mariadb/migrations.py</code></a>, and <a href="migrations.md">migration docs</a>.</span></li>
+            <li><span>Alembic 1.19: <a href="https://alembic.sqlalchemy.org/en/latest/tutorial.html">tutorial</a>, <a href="https://alembic.sqlalchemy.org/en/latest/branches.html">branches</a>, and <a href="https://alembic.sqlalchemy.org/en/latest/cookbook.html#test-current-database-revision-is-at-head-s">current head check</a>.</span></li>
+            <li><span>Django 6.0: <a href="https://docs.djangoproject.com/en/6.0/topics/migrations/">migrations, transactions, dependencies, and history consistency</a>.</span></li>
+            <li><span>Yoyo: <a href="https://ollycope.com/software/yoyo/latest/">migration files, programmatic API, locking, transactions, and rollback</a>.</span></li>
+            <li><span>Flyway: <a href="https://documentation.red-gate.com/fd/versioned-migrations-273973333.html">versioned migrations</a>, <a href="https://documentation.red-gate.com/fd/validate-277578898.html">validate</a>, <a href="https://documentation.red-gate.com/fd/flyway-schema-history-table-273973417.html">history states</a>, and <a href="https://documentation.red-gate.com/fd/migration-transaction-handling-273973399.html">transaction handling</a>.</span></li>
+            <li><span>Liquibase: <a href="https://docs.liquibase.com/oss/user-guide-4-33/what-is-a-changeset-checksum">changeset checksums</a> and <a href="https://docs.liquibase.com/secure/user-guide-5-2-2/what-is-the-database-changelog-lock-table">the changelog lock table</a>.</span></li>
+            <li><span>Rails 8.1: <a href="https://guides.rubyonrails.org/active_record_migrations.html">Active Record migrations</a>.</span></li>
+            <li><span>Knex: <a href="https://knexjs.org/guide/migrations.html">migration API, transactions, list validation, and locks</a>.</span></li>
+            <li><span>Prisma: <a href="https://www.prisma.io/docs/orm/prisma-migrate/understanding-prisma-migrate/migration-histories">migration histories</a> and <a href="https://www.prisma.io/docs/orm/prisma-migrate/workflows/development-and-production">development and production workflow</a>.</span></li>
+            <li><span>EF Core: <a href="https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying">applying migrations, deployment choices, and locking</a>.</span></li>
+            <li><span>Ecto SQL 3.14: <a href="https://hexdocs.pm/ecto_sql/Ecto.Migrator.html"><code>Ecto.Migrator</code></a> and <a href="https://hexdocs.pm/ecto_sql/Ecto.Migration.html"><code>Ecto.Migration</code></a>.</span></li>
+            <li><span>Goose: <a href="https://pressly.github.io/goose/documentation/provider/">provider, missing-version behavior, and session locking</a> plus <a href="https://pressly.github.io/goose/documentation/annotations/">SQL annotations and transactions</a>.</span></li>
+            <li><span>SQLx 0.9: <a href="https://docs.rs/sqlx/latest/sqlx/migrate/struct.Migrator.html"><code>Migrator</code></a> and <a href="https://docs.rs/sqlx/latest/sqlx/migrate/trait.MigrationSource.html"><code>MigrationSource</code></a>.</span></li>
+            <li><span>SQLite and Python: <a href="https://www.sqlite.org/lang_transaction.html">transaction and writer semantics</a>, <a href="https://www.sqlite.org/lang_vacuum.html">the <code>VACUUM</code> transaction restriction</a>, <a href="https://www.sqlite.org/pragma.html#pragma_foreign_keys">PRAGMA transaction behavior</a>, <a href="https://www.sqlite.org/lang_attach.html">attached-database atomicity</a>, <a href="https://sqlite.org/c3ref/busy_timeout.html">busy timeout</a>, and <a href="https://docs.python.org/3/library/sqlite3.html#sqlite3.Cursor.executescript"><code>executescript</code> transaction control</a>.</span></li>
+            <li><span>MariaDB: <a href="https://mariadb.com/docs/server/reference/sql-functions/secondary-functions/miscellaneous-functions/get_lock">GET_LOCK</a>, <a href="https://mariadb.com/docs/server/reference/sql-statements/transactions/sql-statements-that-cause-an-implicit-commit">implicit-commit statements</a>, <a href="https://mariadb.com/docs/server/reference/sql-statements/data-definition/atomic-ddl">atomic DDL</a>, and <a href="https://mariadb.com/docs/server/reference/data-types/string-data-types/varbinary">binary string storage</a>.</span></li>
+          </ol>
+
+          <h3>Method notes</h3>
+          <p>Local checks used temporary databases, current package code through <code>uv run python</code>, and controlled interleavings. The report does not claim performance measurements. It assesses correctness, interface depth, backend feasibility, and consistency with accepted SnekQL decisions.</p>
+          <p class="footnote">Recommendation confidence: high for mapping snapshot, checksum, ordinal, strict prefix, read-only history verification, one-statement SQLite bodies, <code>BEGIN IMMEDIATE</code> serialization, and correcting scaffold examples. The SQLite design still needs implementation tests for cancellation and commit-time <code>SQLITE_BUSY</code>.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer>SnekQL migration interface research / issue 243 / 31 Aug 2026</footer>
+</body>
+</html>
