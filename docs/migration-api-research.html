@@ -693,7 +693,7 @@
       <div class="hero-meta">
         <span>31 Aug 2026</span>
         <span>SQLite + MariaDB</span>
-        <span>12 migration systems surveyed</span>
+        <span>13 migration systems surveyed</span>
         <a href="https://github.com/crpier/snekql/issues/243">Issue #243</a>
       </div>
     </div>
@@ -726,7 +726,7 @@
 
           <div class="metrics" aria-label="Research summary">
             <div class="metric"><strong>5</strong><span>failure modes reproduced against the current implementation</span></div>
-            <div class="metric"><strong>12</strong><span>migration systems compared across Python and six other ecosystems</span></div>
+            <div class="metric"><strong>13</strong><span>migration systems compared across Python and six other ecosystems</span></div>
             <div class="metric"><strong>1</strong><span>new public verb recommended: read-only history verification</span></div>
             <div class="metric"><strong>0</strong><span>need for a revision graph, rollback DSL, or autogenerator</span></div>
           </div>
@@ -973,9 +973,16 @@ await db.verify([User])</code></pre>
                   <td><span class="fit fit-high">Borrow default</span><br>The default rejection of <code>1,3,2</code> validates a strict SnekQL prefix rule.</td>
                 </tr>
                 <tr>
+                  <td><strong>golang-migrate</strong><br>Go</td>
+                  <td>Source drivers provide increasing versioned <code>up</code> and <code>down</code> files.</td>
+                  <td>SQL drivers commonly store one current version and a dirty flag rather than body checksums. A failed migration blocks normal progress.</td>
+                  <td>Driver-specific transactions and locks, target and step commands, and operator <code>force</code> recovery after manual repair.</td>
+                  <td><span class="fit fit-medium">Study dirty state</span><br>It makes ambiguous failure visible, but <code>force</code> shows the operator interface that must ship with such state.</td>
+                </tr>
+                <tr>
                   <td><strong>SQLx</strong><br>Rust</td>
                   <td>Versioned SQL files or in-memory <code>Migration</code> values; migrations may be embedded at compile time.</td>
-                  <td><code>run</code> validates previously applied migrations against current source and rejects changed or missing migrations by default.</td>
+                  <td><code>run</code> validates SHA-384 body checksums against current source and rejects changed, missing, or dirty migrations by default.</td>
                   <td>Database locking on by default, run to target, undo, and typed errors.</td>
                   <td><span class="fit fit-high">Closest shape</span><br>SQLx proves a small programmatic runner can validate content and locking without becoming an ORM migration framework.</td>
                 </tr>
@@ -1113,7 +1120,7 @@ await db.verify([User])</code></pre>
             <div class="card">
               <p class="card-kicker">MariaDB</p>
               <h4>Keep the strong guarantee</h4>
-              <p><code>GET_LOCK</code> holds one connection across preflight, apply, and recording. MariaDB documents that the lock survives commits and releases on connection termination. It coordinates cooperating runners on one server, not writers that bypass the lock or connect to a different writable cluster node.</p>
+              <p><code>GET_LOCK</code> holds one connection across preflight, apply, and recording. MariaDB documents that the lock survives commits and releases on connection termination. It coordinates cooperating runners on one server, not writers that bypass the lock or connect to a different writable cluster node. Cleanup must shield <code>RELEASE_LOCK</code>, check its result, and discard the connection if release cannot be confirmed.</p>
             </div>
             <div class="card">
               <p class="card-kicker">SQLite</p>
@@ -1123,7 +1130,7 @@ await db.verify([User])</code></pre>
           </div>
 
           <h3>Failure contract</h3>
-          <p>Keep forward retry and the idempotent-body requirement for MariaDB. Its DDL causes implicit commits before execution, so no portable interface can promise atomic body plus history. Do not commit the body before inserting history: DML on transactional tables can then commit with its row, while DDL retains the unavoidable crash window. A dirty marker would stop automatic retry but also require a repair or force interface; do not add one without designing that operator workflow.</p>
+          <p>Keep forward retry and the idempotent-body requirement for MariaDB. Its DDL causes implicit commits before execution, so no portable interface can promise atomic body plus history or exactly-once body execution. Do not commit the body before inserting history: DML on transactional tables can then commit with its row, while DDL retains the unavoidable crash window. Recorded rows are skipped, but a crash after DDL and before history insertion may rerun the body.</p>
           <p>SQLite can make one statement and its history row atomic, so a failed body or history insert rolls back both. Cleanup must handle cancellation and commit-time <code>SQLITE_BUSY</code> without returning a connection that still holds a write transaction. Because SnekQL uses WAL, scope the atomicity promise to the main database; attached-file transactions are not crash-atomic with <code>main</code>.</p>
           <p>History mismatch should use a distinct integrity exception, not <code>MigrationError</code>, which currently means a body failed. Definition errors should name the invalid migration before database work starts.</p>
           <div class="callout"><strong>ADR impact.</strong> The SQLite transaction and combined MariaDB DML commit amend ADR 0001's blanket non-atomicity rule. <code>BEGIN IMMEDIATE</code> also replaces ADR 0002's SQLite best-effort claim. Raw SQL, explicit migration calls, forward retry, and MariaDB's advisory lock remain unchanged.</div>
@@ -1165,7 +1172,7 @@ await db.verify([User])</code></pre>
                 <tr><td>Pure chain model</td><td>Empty and full prefix; every hole; reorder; renamed key; removed key; edited body; extra history row; empty declaration against non-empty history; empty or overlong name; empty body.</td></tr>
                 <tr><td>Neutral runner</td><td>Mapping snapshot occurs before the first await; no body runs before full preflight passes; exact pending suffix; result tuples; failed body not recorded; changed failed body may retry; lock release.</td></tr>
                 <tr><td>SQLite</td><td><code>BEGIN IMMEDIATE</code> precedes every history read; two-runner apply/skip race; body and history rollback together; prior migration remains committed when a later migration fails; cancellation cleans up; multi-statement, transaction-control, session-only, attached-file, and <code>VACUUM</code> bodies are rejected; explicit v1 adoption; v2 checksum mismatch.</td></tr>
-                <tr><td>MariaDB</td><td>V2 table upgrade is restartable across implicit commits; interrupted intermediate shapes resume or fail closed; DML and history commit together; DDL crash window remains; checksum and name comparison are exact; advisory lock still wraps preflight; long names fail before body execution.</td></tr>
+                <tr><td>MariaDB</td><td>V2 table upgrade is restartable across implicit commits; interrupted intermediate shapes resume or fail closed; DML and history commit together; DDL crash window remains; checksum and name comparison are exact; advisory lock still wraps preflight; cancellation shields release; unconfirmed release discards the connection; long names fail before body execution.</td></tr>
                 <tr><td>Replica lifecycle</td><td>Read-only verification passes only at full head; data-only pending migration fails; structural drift still belongs to model verification.</td></tr>
                 <tr><td>Fresh replay</td><td>Replay current chain on empty SQLite and MariaDB, then compare with an incrementally upgraded database and run model verification.</td></tr>
               </tbody>
@@ -1192,6 +1199,10 @@ await db.verify([User])</code></pre>
           <details>
             <summary>Repeatable migrations</summary>
             <div><p>Flyway and Liquibase use checksum changes to reapply views or procedures. SnekQL's current domain says each migration runs once. Adding a second identity mode would complicate prefix semantics and should wait for a concrete use case.</p></div>
+          </details>
+          <details>
+            <summary>Durable started and failed states</summary>
+            <div><p>Prisma, golang-migrate, and SQLx persist incomplete work so an ambiguous crash cannot trigger an automatic retry. That is useful for MariaDB DDL, but it changes the current forward-retry contract and requires operator actions such as retry, mark applied, or mark pending. Do not add dirty state without designing and shipping those recovery operations as one feature.</p></div>
           </details>
           <details>
             <summary>Public repair, force, mark, or stamp</summary>
@@ -1221,6 +1232,7 @@ await db.verify([User])</code></pre>
             <li><span>EF Core: <a href="https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying">applying migrations, deployment choices, and locking</a>.</span></li>
             <li><span>Ecto SQL 3.14: <a href="https://hexdocs.pm/ecto_sql/Ecto.Migrator.html"><code>Ecto.Migrator</code></a> and <a href="https://hexdocs.pm/ecto_sql/Ecto.Migration.html"><code>Ecto.Migration</code></a>.</span></li>
             <li><span>Goose: <a href="https://pressly.github.io/goose/documentation/provider/">provider, missing-version behavior, and session locking</a> plus <a href="https://pressly.github.io/goose/documentation/annotations/">SQL annotations and transactions</a>.</span></li>
+            <li><span>golang-migrate: <a href="https://github.com/golang-migrate/migrate/blob/master/MIGRATIONS.md">migration file contract</a> and <a href="https://github.com/golang-migrate/migrate/blob/master/GETTING_STARTED.md#forcing-your-database-version">dirty-state recovery</a>.</span></li>
             <li><span>SQLx 0.9: <a href="https://docs.rs/sqlx/latest/sqlx/migrate/struct.Migrator.html"><code>Migrator</code></a> and <a href="https://docs.rs/sqlx/latest/sqlx/migrate/trait.MigrationSource.html"><code>MigrationSource</code></a>.</span></li>
             <li><span>SQLite and Python: <a href="https://www.sqlite.org/lang_transaction.html">transaction and writer semantics</a>, <a href="https://www.sqlite.org/lang_vacuum.html">the <code>VACUUM</code> transaction restriction</a>, <a href="https://www.sqlite.org/pragma.html#pragma_foreign_keys">PRAGMA transaction behavior</a>, <a href="https://www.sqlite.org/lang_attach.html">attached-database atomicity</a>, <a href="https://sqlite.org/c3ref/busy_timeout.html">busy timeout</a>, and <a href="https://docs.python.org/3/library/sqlite3.html#sqlite3.Cursor.executescript"><code>executescript</code> transaction control</a>.</span></li>
             <li><span>MariaDB: <a href="https://mariadb.com/docs/server/reference/sql-functions/secondary-functions/miscellaneous-functions/get_lock">GET_LOCK</a>, <a href="https://mariadb.com/docs/server/reference/sql-statements/transactions/sql-statements-that-cause-an-implicit-commit">implicit-commit statements</a>, <a href="https://mariadb.com/docs/server/reference/sql-statements/data-definition/atomic-ddl">atomic DDL</a>, and <a href="https://mariadb.com/docs/server/reference/data-types/string-data-types/varbinary">binary string storage</a>.</span></li>
