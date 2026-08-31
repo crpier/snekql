@@ -270,4 +270,7 @@ def require_insert_model(row: object) -> type[Table[Any]]:
         msg = "insert requires a snekql model instance"
         raise QueryConstructionError(msg)
     model_row = cast("Model[Any, Any]", row)
+    if model_row._snekql_state_name() != "Pending":  # noqa: SLF001
+        msg = "insert requires a Pending model instance"
+        raise QueryConstructionError(msg)
     return cast("type[Table[Any]]", model_row.__class__)

@@ -24,6 +24,7 @@ from snekql.sqlite import (
     ModelValidationError,
     Pending,
     PoolTimeoutError,
+    QueryConstructionError,
     Text,
     insert,
     select,
@@ -206,4 +207,24 @@ async def fetch_validates_logical_types_and_can_skip_validation() -> None:
         await database.close()
 
     assert_eq(len(rows), 1)
+    assert isinstance(rows[0], RuntimeReceipt)
     assert_eq(rows[0].amount, -5)
+
+
+@test(mark="medium")
+async def insert_rejects_a_fetched_model() -> None:
+    """Database-materialized rows cannot re-enter the pending insert path."""
+
+    database = await initialized_database(
+        database=":memory:",
+        models=[RuntimeUser],
+    )
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(RuntimeUser(email="alice@example.com")))
+            fetched_user = await tx.fetch_one(select(RuntimeUser).all())
+
+            with assert_raises(QueryConstructionError):
+                _ = insert(fetched_user)  # ty: ignore[no-matching-overload]
+    finally:
+        await database.close()

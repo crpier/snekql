@@ -194,6 +194,15 @@ def backend_namespaces_hide_implementation_types() -> None:
 
 
 @test()
+def result_oriented_query_annotations_are_not_constructors() -> None:
+    """Select and Write name results without exposing constructible query states."""
+
+    for namespace in (sqlite, mariadb):
+        assert not callable(namespace.Select)
+        assert not callable(namespace.Write)
+
+
+@test()
 def storage_declarations_are_functions() -> None:
     """Field specifiers are callable functions rather than constructor classes."""
 
@@ -322,11 +331,11 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     update_query = sqlite.update(MutationUser)
     delete_query = sqlite.delete(MutationUser)
 
-    assert_isinstance(update_query.set(assignment), sqlite.Write)
-    assert_isinstance(update_query.where(predicate), sqlite.Write)
-    assert_isinstance(update_query.all(), sqlite.Write)
-    assert_isinstance(delete_query.where(predicate), sqlite.Write)
-    assert_isinstance(delete_query.all(), sqlite.Write)
+    assert_is(type(update_query.set(assignment)), type(update_query))
+    assert_is(type(update_query.where(predicate)), type(update_query))
+    assert_is(type(update_query.all()), type(update_query))
+    assert_is(type(delete_query.where(predicate)), type(delete_query))
+    assert_is(type(delete_query.all()), type(delete_query))
 
 
 @test()
@@ -338,59 +347,20 @@ def select_query_chain_methods_return_query_objects() -> None:
 
     query = sqlite.select(ChainUser)
 
-    assert_isinstance(query.all(), sqlite.Select)
-    assert_isinstance(query.limit(10), sqlite.Select)
-    assert_isinstance(query.offset(5), sqlite.Select)
-
-
-@test()
-def query_factory_functions_return_public_query_objects() -> None:
-    """Query builder entry points return stable public query classes."""
-
-    class QueryUser[S = sqlite.Pending](sqlite.Model[S, "QueryUser[sqlite.Fetched]"]):
-        """Table model for query factory smoke checks."""
-
-    row = object.__new__(QueryUser)
-
-    assert_isinstance(sqlite.select(QueryUser), sqlite.Select)
-    assert_isinstance(sqlite.insert(row), sqlite.Write)
-    assert_isinstance(sqlite.update(QueryUser), sqlite.Write)
-    assert_isinstance(sqlite.delete(QueryUser), sqlite.Write)
+    assert_is(type(query.all()), type(query))
+    assert_is(type(query.limit(10)), type(query))
+    assert_is(type(query.offset(5)), type(query))
 
 
 @test()
 def write_verbs_diverge_with_backend_specific_docstrings() -> None:
     """insert/update/delete are per-backend verbs that document each driver's writes."""
 
-    class SqliteVerbUser[S = sqlite.Pending](
-        sqlite.Model[S, "SqliteVerbUser[sqlite.Fetched]"],
-    ):
-        """SQLite table model for per-backend verb smoke checks."""
-
-        email: SqliteVerbUser.Col[str] = sqlite.Text(nullable=False)
-
-    class MariaDBVerbUser[S = mariadb.Pending](
-        mariadb.Model[S, "MariaDBVerbUser[mariadb.Fetched]"],
-    ):
-        """MariaDB table model for per-backend verb smoke checks."""
-
-        email: MariaDBVerbUser.Col[str] = mariadb.Text(nullable=False)
-
     # The write verbs are distinct objects per backend, unlike neutral ``select``.
     assert sqlite.insert is not mariadb.insert
     assert sqlite.update is not mariadb.update
     assert sqlite.delete is not mariadb.delete
     assert_is(sqlite.select, mariadb.select)
-
-    # Each backend verb still builds the same public query type.
-    sqlite_row = object.__new__(SqliteVerbUser)
-    mariadb_row = object.__new__(MariaDBVerbUser)
-    assert_isinstance(sqlite.insert(sqlite_row), sqlite.Write)
-    assert_isinstance(sqlite.update(SqliteVerbUser), sqlite.Write)
-    assert_isinstance(sqlite.delete(SqliteVerbUser), sqlite.Write)
-    assert_isinstance(mariadb.insert(mariadb_row), mariadb.Write)
-    assert_isinstance(mariadb.update(MariaDBVerbUser), mariadb.Write)
-    assert_isinstance(mariadb.delete(MariaDBVerbUser), mariadb.Write)
 
     # The docstrings name the backend and explain its affected-row count.
     assert_in("SQLite", sqlite.insert.__doc__ or "")
@@ -435,7 +405,6 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.Real,
         sqlite.SchemaError,
         sqlite.SchemaVerificationError,
-        sqlite.Select,
         sqlite.SnekqlError,
         sqlite.Text,
         sqlite.Transaction,
@@ -443,7 +412,6 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.TransactionNotStartedError,
         sqlite.TransactionReuseError,
         sqlite.TransactionStateError,
-        sqlite.Write,
     )
 
     for documented_class in documented_classes:

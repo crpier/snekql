@@ -66,6 +66,7 @@ class Model[StateT, ReadModelT: Table[Any]](
 
     __snekql_backend__: ClassVar[Literal["mariadb"]] = "mariadb"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_framework_base__: ClassVar[Literal[True]] = True
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 

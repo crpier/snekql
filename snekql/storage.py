@@ -744,13 +744,40 @@ def ForeignKey[Target, T](
     references: Attr[Any, Any, Target, Any, T],
     *,
     primary_key: bool = False,
+    nullable: Literal[True],
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+    default: T,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     on_delete: ReferentialAction | None = None,
     on_update: ReferentialAction | None = None,
     default: T,
-) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, object]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: Literal[True],
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
 
 
 @overload
@@ -822,6 +849,14 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
     )
 
 
+def _contains_forward_ref(annotation: object) -> bool:
+    """Whether an evaluated annotation still contains an unresolved name."""
+
+    if isinstance(annotation, ForwardRef):
+        return True
+    return any(_contains_forward_ref(argument) for argument in get_args(annotation))
+
+
 def _resolve_model_hint(owner: type[object], name: str) -> object | None:
     """Resolve and cache one model annotation without evaluating its siblings.
 
@@ -855,10 +890,11 @@ def _resolve_model_hint(owner: type[object], name: str) -> object | None:
         locals=localns,
         format=annotationlib.Format.FORWARDREF,
     )
-    if cached is None:
-        cached = {}
-        cast("Any", owner).__snekql_hints__ = cached
-    cached[name] = resolved
+    if not _contains_forward_ref(resolved):
+        if cached is None:
+            cached = {}
+            cast("Any", owner).__snekql_hints__ = cached
+        cached[name] = resolved
     return resolved
 
 

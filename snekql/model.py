@@ -40,6 +40,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    _resolve_model_hint,
     _UnboundOwner,
     column_admits_none,
     column_lacks_canonical_decimal,
@@ -91,6 +92,11 @@ class Table[StateT]:
         """Pin model-class inference to this exact owner type."""
 
         return owner
+
+    def __state_type__(self) -> StateT:
+        """Typing-only witness for this model instance's lifecycle state."""
+
+        raise NotImplementedError
 
     @classmethod
     def count_all(cls) -> Aggregate[Self, int]:
@@ -163,7 +169,7 @@ class ModelMeta(type):
         namespace: dict[str, object],
         **kwargs: object,
     ) -> type:
-        is_model_base = name == "Model"
+        is_model_base = namespace.get("__snekql_framework_base__") is True
         if not is_model_base:
             ModelMeta._validate_model_bases(bases)
             ModelMeta._validate_model_namespace(namespace)
@@ -173,8 +179,6 @@ class ModelMeta(type):
             if isinstance(error.__cause__, ModelDeclarationError):
                 raise error.__cause__ from error
             raise
-        annotations = ModelMeta._namespace_annotations(namespace)
-        columns = ModelMeta._bind_columns(model_class, annotations)
         model_metadata = cast("Any", model_class)
         if not is_model_base:
             model_metadata.__tablename__ = ModelMeta._resolve_table_name(
@@ -185,10 +189,11 @@ class ModelMeta(type):
             bases,
             namespace,
         )
-        model_metadata.__snekql_columns__ = columns
         model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
             is_model_base=is_model_base,
         )
+        columns = ModelMeta._bind_columns(model_class)
+        model_metadata.__snekql_columns__ = columns
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -276,7 +281,7 @@ class ModelMeta(type):
 
         for base in bases:
             if isinstance(base, ModelMeta):
-                if base.__name__ != "Model":
+                if vars(base).get("__snekql_framework_base__") is not True:
                     msg = f"cannot subclass concrete model: {base.__name__}"
                     raise ModelDeclarationError(msg)
                 continue
@@ -339,10 +344,9 @@ class ModelMeta(type):
     @staticmethod
     def _bind_columns(
         model_class: type,
-        annotations: dict[str, object],
     ) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
-        for attribute_name, attribute_value in model_class.__dict__.items():
+        for attribute_name, attribute_value in tuple(model_class.__dict__.items()):
             if not isinstance(attribute_value, Attr):
                 continue
             column = cast("Attr[Any, Any, Any, Any, Any]", attribute_value)
@@ -350,7 +354,8 @@ class ModelMeta(type):
                 msg = f"invalid column identifier: {attribute_name!r}"
                 raise ModelDeclarationError(msg)
             column.is_generated = ModelMeta._is_generated_annotation(
-                annotations.get(attribute_name),
+                model_class,
+                attribute_name,
             )
             ModelMeta._validate_column_declaration(attribute_name, column)
             columns[attribute_name] = column
@@ -456,10 +461,16 @@ class ModelMeta(type):
         return table_name
 
     @staticmethod
-    def _is_generated_annotation(annotation: object) -> bool:
-        if annotation is None:
+    def _is_generated_annotation(model_class: type, name: str) -> bool:
+        try:
+            annotation = _resolve_model_hint(model_class, name)
+        except NameError, TypeError:
             return False
-        return "GenCol[" in str(annotation)
+        alias_name = cast(
+            "str | None",
+            getattr(get_origin(annotation), "__name__", None),
+        )
+        return alias_name == "GenCol"
 
     @staticmethod
     def _validate_column_declaration(
@@ -575,6 +586,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_framework_base__: ClassVar[Literal[True]] = True
     __snekql_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]

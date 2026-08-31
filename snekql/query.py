@@ -62,7 +62,7 @@ from snekql.expressions import (
     Predicate,
     Scalar,
 )
-from snekql.model import Table, require_model_columns
+from snekql.model import Pending, Table, require_model_columns
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
@@ -74,7 +74,6 @@ ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
 SelectableOwnerT = TypeVar("SelectableOwnerT", bound=Table[Any])
-SelectableOwnerT_co = TypeVar("SelectableOwnerT_co", bound=Table[Any], covariant=True)
 SelectableReadT_co = TypeVar("SelectableReadT_co", bound=Table[Any], covariant=True)
 T = TypeVar("T")
 T1 = TypeVar("T1")
@@ -100,7 +99,7 @@ class _SelectableModelClass(Protocol[SelectableOwnerT, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
-class InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
+class InsertableModel(Protocol[SelectableOwnerT, SelectableReadT_co]):
     """Structural type for pending model instances accepted by `insert(row)`.
 
     A pending model instance exposes its own writable owner type and the fetched
@@ -112,10 +111,15 @@ class InsertableModel(Protocol[SelectableOwnerT_co, SelectableReadT_co]):
     """
 
     @classmethod
-    def __owner_type__(cls) -> type[SelectableOwnerT_co]: ...
+    def __owner_type__(cls) -> type[SelectableOwnerT]: ...
+
+    @classmethod
+    def __owner_invariant__(cls, owner: SelectableOwnerT) -> SelectableOwnerT: ...
 
     @classmethod
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
+
+    def __state_type__(self) -> Pending: ...
 
 
 class _SelectableValue[OwnerT, ValueT, CompareT](Protocol):
@@ -242,21 +246,7 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
         return self._replace_state(_select_order_by(self.state, ordering))
 
 
-class Select[RowT]:
-    """Public annotation for a select query yielding `RowT` per row.
-
-    Query builders return private state-specific subclasses. Applications can use
-    `Select[RowT]` for stored queries and function boundaries without depending on
-    those implementation classes.
-    """
-
-    def __select_result_type__(self) -> RowT:
-        """Typing-only witness for the materialized row type."""
-
-        raise NotImplementedError
-
-
-class _QueryShape[ScopeT, RefT, RowT](Select[RowT]):
+class _QueryShape[ScopeT, RefT, RowT]:
     """Private nominal carrier for executable select scope and row shape."""
 
     def _pin_scope(self, scope: ScopeT) -> ScopeT:
@@ -277,6 +267,15 @@ class _QueryShape[ScopeT, RefT, RowT](Select[RowT]):
 
 class _OptionalQueryShape[ScopeT, RefT, RowT](_QueryShape[ScopeT, RefT, RowT]):
     """Select shape whose absence is distinct from every possible row value."""
+
+
+type Select[RowT] = _QueryShape[Any, Any, RowT]
+"""Public annotation for a select query yielding `RowT` per row.
+
+The `Any` scope coordinates deliberately erase private builder state at a stored
+query or function boundary. Direct builder calls retain their concrete scope and
+reference coordinates, so the Query Runtime can still reject unjoined references.
+"""
 
 
 class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
@@ -618,21 +617,7 @@ class _BaseInsertQuery(_SqlInspectionMixin):
         self.state = state
 
 
-class Write[ResultT]:
-    """Public annotation for a write query yielding `ResultT` on execution.
-
-    The result is `None` for inserts without `returning`, `int` for plain update
-    and delete statements, and the selected model or projection shape for writes
-    with `returning`.
-    """
-
-    def __write_result_type__(self) -> ResultT:
-        """Typing-only witness for the execution result type."""
-
-        raise NotImplementedError
-
-
-class _ReturningQuery[ResultT](Write[ResultT]):
+class _WriteShape[ResultT]:
     """Private nominal carrier for one write query's execution result."""
 
     def _result_type(self) -> ResultT:
@@ -641,9 +626,22 @@ class _ReturningQuery[ResultT](Write[ResultT]):
         raise NotImplementedError
 
 
+type Write[ResultT] = _WriteShape[ResultT]
+"""Public annotation for a write query yielding `ResultT` on execution.
+
+The result is `None` for inserts without `returning`, `int` for plain update and
+delete statements, and the selected model or projection shape for writes with
+`returning`.
+"""
+
+
+class _ReturningQuery[ResultT](_WriteShape[ResultT]):
+    """Write query that materializes one or more returned rows."""
+
+
 class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
     _BaseInsertQuery,
-    Write[None],
+    _WriteShape[None],
 ):
     """Immutable insert statement for one pending table model instance."""
 
@@ -754,7 +752,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
 
 class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
     _BaseInsertQuery,
-    Write[None],
+    _WriteShape[None],
 ):
     """Immutable bulk insert statement for several pending model instances."""
 
@@ -1074,7 +1072,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
 
 class UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](
     _UpdateQuery[ModelT, ReadT],
-    Write[int],
+    _WriteShape[int],
 ):
     """Update whose execution yields the number of affected rows."""
 
@@ -1216,7 +1214,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
 
 class DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](
     _DeleteQuery[ModelT, ReadT],
-    Write[int],
+    _WriteShape[int],
 ):
     """Delete whose execution yields the number of affected rows."""
 
@@ -1506,7 +1504,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1527,7 +1524,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1554,7 +1550,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1589,7 +1584,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1630,7 +1624,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1684,7 +1677,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1745,7 +1737,6 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | Scalar[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
@@ -1814,6 +1805,9 @@ def select(*args: object) -> object:
         )
         return SelectModelQuery[Any, Any](state)
     fields = tuple(require_selectable(argument) for argument in args)
+    if isinstance(fields[0], Scalar):
+        msg = "a scalar subquery cannot be the first projected field"
+        raise QueryConstructionError(msg)
     # The first projected column/aggregate's table is the implicit FROM anchor;
     # columns from other tables must be brought into scope with
     # join()/left_join(), which the dual-union scope check enforces statically. A
@@ -1905,8 +1899,14 @@ def build_insert(row_or_rows: object, /) -> object:
 
     if isinstance(row_or_rows, Sequence):
         rows = tuple(cast("Sequence[Table[Any]]", row_or_rows))
+        model: type[Table[Any]] | None = None
         for row in rows:
-            _ = require_insert_model(row)
+            row_model = require_insert_model(row)
+            if model is None:
+                model = row_model
+            elif row_model is not model:
+                msg = "bulk insert rows must be instances of the same model"
+                raise QueryConstructionError(msg)
         return InsertManyQuery[Any, Any](InsertState(rows=rows, multi=True))
     _ = require_insert_model(row_or_rows)
     return InsertQuery[Any, Any](

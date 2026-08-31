@@ -34,6 +34,7 @@ from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
+    Aggregate,
     Fetched,
     Integer,
     Model,
@@ -73,6 +74,17 @@ class Account[S = Pending](Model[S, "Account[Fetched]"]):
     )
     email: Account.Col[str] = Text(nullable=False)
     status: Account.Col[str] = Text(nullable=False, default="active")
+
+
+@test(mark="fast")
+def aggregate_function_text_cannot_be_forged() -> None:
+    """Aggregate construction rejects SQL text outside the closed function set."""
+
+    with assert_raises(QueryConstructionError):
+        _ = Aggregate[Account[Pending], int](
+            func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[invalid-argument-type]
+            owner=Account,
+        )
 
 
 def _surviving_tables(database_path: Path) -> set[str]:

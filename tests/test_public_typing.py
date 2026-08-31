@@ -144,6 +144,35 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
 
 if TYPE_CHECKING:
 
+    class ValidForeignKeyDeclarations[S = Pending](
+        Model[S, "ValidForeignKeyDeclarations[Fetched]"]
+    ):
+        """Valid required-nullable and defaulted foreign-key declarations."""
+
+        required_nullable_user_id: FKCol[User, int | None] = ForeignKey(
+            User.id,
+            nullable=True,
+        )
+        defaulted_user_id: FKCol[User, int] = ForeignKey(User.id, default=1)
+        nullable_defaulted_user_id: FKCol[User, int | None] = ForeignKey(
+            User.id,
+            nullable=True,
+            default=1,
+        )
+
+    class ValidMariadbForeignKeyDeclarations[S = Pending](
+        mariadb.Model[S, "ValidMariadbForeignKeyDeclarations[Fetched]"]
+    ):
+        """The shared foreign-key field specifier works in MariaDB models."""
+
+        required_nullable_user_id: mariadb.FKCol[MariadbUser, int | None] = (
+            mariadb.ForeignKey(MariadbUser.id, nullable=True)
+        )
+        defaulted_user_id: mariadb.FKCol[MariadbUser, int] = mariadb.ForeignKey(
+            MariadbUser.id,
+            default=1,
+        )
+
     class InvalidSqliteDefaults[S = Pending](
         Model[S, "InvalidSqliteDefaults[Fetched]"]
     ):
@@ -283,6 +312,7 @@ if TYPE_CHECKING:
         _ = assert_type(fetched_user.id, int)
         _ = assert_type(fetched_user.email, str)
         _ = assert_type(fetched_user.created_at, datetime)
+        _ = insert(fetched_user)  # ty: ignore[no-matching-overload]
 
     _ = assert_type(select(User), SelectModelQuery[User[Pending], User[Fetched]])
     _ = assert_type(
@@ -331,6 +361,10 @@ if TYPE_CHECKING:
     # Aggregates: column methods carry owner + result type; the star form lives
     # on the model. count is int; sum/min/max are nullable; avg is float | None.
     _ = assert_type(User.id.count(), Aggregate[User[Pending], int])
+    _ = Aggregate[User[Pending], int](
+        func="UNSAFE",  # ty: ignore[invalid-argument-type]
+        owner=User,
+    )
     _ = assert_type(User.count_all(), Aggregate[User[Pending], int])
     _ = assert_type(Order.id.sum(), Aggregate[Order[Pending], int | None, int])
     _ = assert_type(Order.id.min(), Aggregate[Order[Pending], int | None, int])
@@ -430,6 +464,11 @@ if TYPE_CHECKING:
     _ = assert_type(
         scalar(select(Order.user_id).where(Order.user_id.eq_col(User.id))),
         Scalar[Any, int | None, int],
+    )
+    _ = select(
+        scalar(select(Order.id).all()),  # ty: ignore[invalid-argument-type]
+        User.id,
+        Region.code,
     )
     _ = assert_type(
         User.id.gt_col(scalar(select(Order.user_id).all())),
@@ -707,6 +746,13 @@ if TYPE_CHECKING:
         )
         _ = assert_type(
             await transaction.execute(
+                insert(pending_user).returning(User.balance),
+                validate=False,
+            ),
+            object,
+        )
+        _ = assert_type(
+            await transaction.execute(
                 insert(pending_user).returning(User.id, User.email)
             ),
             tuple[int, str],
@@ -721,6 +767,19 @@ if TYPE_CHECKING:
             ),
             list[tuple[int, str]],
         )
+
+    async def execute_public_query_annotations(
+        transaction: Transaction,
+        read_query: Select[User[Fetched]],
+        write_query: Write[int],
+    ) -> None:
+        """Result-oriented annotations remain executable after type erasure."""
+
+        _ = assert_type(
+            await transaction.fetch_all(read_query),
+            list[User[Fetched]],
+        )
+        _ = assert_type(await transaction.execute(write_query), int)
 
     async def check_fetch_types(transaction: Transaction) -> None:
         """Runtime fetch overloads preserve selected result shapes."""
@@ -737,6 +796,13 @@ if TYPE_CHECKING:
             await transaction.fetch_all(select(User.email, User.status).all()),
             list[tuple[str, str]],
         )
+        _ = assert_type(
+            await transaction.fetch_all(
+                select(User.balance).all(),
+                validate=False,
+            ),
+            list[object],
+        )
         # fetch_chunks preserves the same per-row shapes, wrapped in a
         # ChunkStream of row batches.
         _ = assert_type(
@@ -751,6 +817,14 @@ if TYPE_CHECKING:
             transaction.fetch_chunks(select(User.email, User.status).all(), size=100),
             ChunkStream[tuple[str, str]],
         )
+        _ = assert_type(
+            transaction.fetch_chunks(
+                select(User.balance).all(),
+                size=100,
+                validate=False,
+            ),
+            ChunkStream[object],
+        )
         # fetch_one is exactly-one: a returned value is never absent, so the
         # single-value result keeps the column read type without ``| None``.
         _ = assert_type(
@@ -761,6 +835,13 @@ if TYPE_CHECKING:
             await transaction.fetch_one(select(User).all()),
             User[Fetched],
         )
+        _ = assert_type(
+            await transaction.fetch_one(
+                select(User.balance).all(),
+                validate=False,
+            ),
+            object,
+        )
         # fetch_one_or_none is zero-or-one for model/tuple/join selects, where
         # ``None`` can only mean a missing row.
         _ = assert_type(
@@ -770,6 +851,13 @@ if TYPE_CHECKING:
         _ = assert_type(
             await transaction.fetch_one_or_none(select(User.email, User.status).all()),
             tuple[str, str] | None,
+        )
+        _ = assert_type(
+            await transaction.fetch_one_or_none(
+                select(User.email, User.status).all(),
+                validate=False,
+            ),
+            object,
         )
         # Projection join: the result tuple comes from the projected columns.
         _ = assert_type(

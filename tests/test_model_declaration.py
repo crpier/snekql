@@ -45,11 +45,64 @@ from snekql.sqlite import (
     Text,
     UtcDatetime,
 )
+from snekql.sqlite import GenCol as GeneratedColumn
 from tests.fixtures.model_without_future_annotations import Memory
 
 type SafeOrderPreservingDatetime = Annotated[datetime, OrderPreserving]
 type SafeCanonicalTextDecimal = Annotated[Decimal, Canonical]
 type SafeOrderPreservingTextDecimal = Annotated[Decimal, OrderPreserving]
+SqliteModelBase = Model
+
+
+class DeferredPayloadRow[S = Pending](Model[S, "DeferredPayloadRow[Fetched]"]):
+    """Model whose logical payload type is defined later in the module."""
+
+    payload: DeferredPayloadRow.Col[DeferredPayload] = Text()
+
+
+class DeferredPayload(BaseModel):
+    """Logical payload defined after the table model that references it."""
+
+    value: str
+
+
+@test(mark="fast")
+def deferred_payload_hint_retries_after_module_population() -> None:
+    """A partial forward-reference result is not cached permanently."""
+
+    row = DeferredPayloadRow(payload=DeferredPayload(value="ready"))
+
+    assert_eq(row.payload, DeferredPayload(value="ready"))
+
+
+@test(mark="fast")
+def generated_column_alias_preserves_lifecycle_behavior() -> None:
+    """An import alias cannot change whether a column is database-generated."""
+
+    class AliasedGenerated[S = Pending](Model[S, "AliasedGenerated[Fetched]"]):
+        """Model using an ordinary import alias for its generated column type."""
+
+        id: GeneratedColumn[int] = Integer(default=PENDING_GENERATION)
+
+    pending = AliasedGenerated()
+
+    assert_true(AliasedGenerated.id.is_generated)
+    assert_is(pending.id, PENDING_GENERATION)
+
+
+@test(mark="fast")
+def application_model_named_model_is_a_concrete_table() -> None:
+    """The public class name Model does not bypass table declaration behavior."""
+
+    class Model[S = Pending](SqliteModelBase[S, "Model[Fetched]"]):
+        """Application table whose domain name happens to be Model."""
+
+        value: Model.Col[str] = Text()
+
+    row = Model(value="ready")
+
+    assert_eq(Model.__tablename__, "model")
+    assert_eq(row.value, "ready")
 
 
 @test(mark="fast")

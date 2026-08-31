@@ -225,6 +225,19 @@ def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
 
 
 @test(mark="fast")
+def scalar_subquery_cannot_anchor_projection() -> None:
+    """A projection must establish its table scope before a scalar slot."""
+
+    with assert_raises(QueryConstructionError):
+        _ = select(
+            scalar(  # ty: ignore[invalid-argument-type]
+                select(Order.amount).all()
+            ),
+            User.id,
+        )
+
+
+@test(mark="fast")
 def scalar_subquery_as_comparison_operand() -> None:
     """A scalar subquery can stand in as a comparison operand."""
 

@@ -68,7 +68,7 @@ from snekql.query import (
     UpdateReturningValueQuery,
     _OptionalQueryShape,
     _QueryShape,
-    _ReturningQuery,
+    _WriteShape,
 )
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
@@ -438,12 +438,33 @@ class Transaction:
                     await self.runtime.release(connection)
                     logger.debug("%s transaction released", self.runtime.backend_family)
 
+    @overload
     async def fetch_all[ScopeT, RowT](
         self,
         query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
+        validate: Literal[True] = True,
+    ) -> list[RowT]: ...
+    @overload
+    async def fetch_all[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: Literal[False],
+    ) -> list[object]: ...
+    @overload
+    async def fetch_all[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: bool,
+    ) -> list[object]: ...
+    async def fetch_all(
+        self,
+        query: object,
+        *,
         validate: bool = True,
-    ) -> list[RowT]:
+    ) -> list[object]:
         """Fetch and materialize every row of a select query into a list.
 
         Intended for bounded result sets. The whole result is loaded into memory
@@ -491,15 +512,39 @@ class Transaction:
                         select_query, tuple(row), validate=validate
                     )
                 )
-            return cast("list[RowT]", materialized)
+            return materialized
 
+    @overload
     def fetch_chunks[ScopeT, RowT](
         self,
         query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
+        validate: Literal[True] = True,
+    ) -> ChunkStream[RowT]: ...
+    @overload
+    def fetch_chunks[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        size: PositiveInt,
+        validate: Literal[False],
+    ) -> ChunkStream[object]: ...
+    @overload
+    def fetch_chunks[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        size: PositiveInt,
+        validate: bool,
+    ) -> ChunkStream[object]: ...
+    def fetch_chunks(
+        self,
+        query: object,
+        *,
+        size: PositiveInt,
         validate: bool = True,
-    ) -> ChunkStream[RowT]:
+    ) -> ChunkStream[object]:
         """Stream a select's rows in batches of at most ``size`` rows.
 
         Unlike ``fetch_all``, rows are fetched incrementally from a server-side
@@ -525,7 +570,7 @@ class Transaction:
         _validate_chunk_size(size=size)
         select_query = self._require_select_query(query)
         self._validate_query_backend(select_query)
-        return ChunkStream[RowT](
+        return ChunkStream[object](
             transaction=self,
             select_query=select_query,
             lock=self._lock,
@@ -575,12 +620,33 @@ class Transaction:
         )
         return select_query, [tuple(row) for row in rows]
 
+    @overload
     async def fetch_one[ScopeT, RowT](
         self,
         query: _QueryShape[ScopeT, ScopeT, RowT],
         *,
+        validate: Literal[True] = True,
+    ) -> RowT: ...
+    @overload
+    async def fetch_one[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: Literal[False],
+    ) -> object: ...
+    @overload
+    async def fetch_one[ScopeT, RowT](
+        self,
+        query: _QueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: bool,
+    ) -> object: ...
+    async def fetch_one(
+        self,
+        query: object,
+        *,
         validate: bool = True,
-    ) -> RowT:
+    ) -> object:
         """Fetch the single row a select must match (exactly-one contract).
 
         Raises ``NoResultError`` when no row matches and ``MultipleResultsError``
@@ -600,19 +666,39 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one found more than one row"
             raise MultipleResultsError(msg)
-        return cast(
-            "RowT",
-            self.runtime.query_codec.materialize_select_row(
-                select_query, rows[0], validate=validate
-            ),
+        return self.runtime.query_codec.materialize_select_row(
+            select_query,
+            rows[0],
+            validate=validate,
         )
 
+    @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
         query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
         *,
+        validate: Literal[True] = True,
+    ) -> RowT | None: ...
+    @overload
+    async def fetch_one_or_none[ScopeT, RowT](
+        self,
+        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: Literal[False],
+    ) -> object: ...
+    @overload
+    async def fetch_one_or_none[ScopeT, RowT](
+        self,
+        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
+        *,
+        validate: bool,
+    ) -> object: ...
+    async def fetch_one_or_none(
+        self,
+        query: object,
+        *,
         validate: bool = True,
-    ) -> RowT | None:
+    ) -> object:
         """Fetch zero or one row, returning ``None`` when none matches.
 
         Raises ``MultipleResultsError`` when more than one row matches. Only
@@ -639,35 +725,39 @@ class Transaction:
         if len(rows) > 1:
             msg = "fetch_one_or_none found more than one row"
             raise MultipleResultsError(msg)
-        return cast(
-            "RowT",
-            self.runtime.query_codec.materialize_select_row(
-                select_query, rows[0], validate=validate
-            ),
+        return self.runtime.query_codec.materialize_select_row(
+            select_query,
+            rows[0],
+            validate=validate,
         )
 
     @overload
     async def execute[ResultT](
         self,
-        query: _ReturningQuery[ResultT],
+        query: _WriteShape[ResultT],
         *,
-        validate: bool = True,
+        validate: Literal[True] = True,
     ) -> ResultT: ...
     @overload
-    async def execute(
+    async def execute[ResultT](
         self,
-        query: UpdateQuery[Any, Any] | DeleteQuery[Any, Any],
+        query: _WriteShape[ResultT],
         *,
-        validate: bool = True,
-    ) -> int: ...
+        validate: Literal[False],
+    ) -> object: ...
     @overload
+    async def execute[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: bool,
+    ) -> object: ...
     async def execute(
         self,
-        query: InsertQuery[Any, Any] | InsertManyQuery[Any, Any],
+        query: object,
         *,
         validate: bool = True,
-    ) -> None: ...
-    async def execute(self, query: object, *, validate: bool = True) -> object:
+    ) -> object:
         """Execute a write query inside this transaction.
 
         The result depends on the query shape; see ``insert`` / ``update`` /

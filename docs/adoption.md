@@ -12,7 +12,7 @@ from the index.
 tmpdir=$(mktemp -d)
 cd "$tmpdir"
 uv init --bare --python 3.14
-uv add snekql
+uv add 'snekql[aiosqlite]'
 cat > smoke.py <<'PY'
 from __future__ import annotations
 
@@ -21,9 +21,11 @@ from datetime import datetime
 
 from snekql.sqlite import (
     PENDING_GENERATION,
+    Col,
     CurrentTimestamp,
     Database,
     Fetched,
+    GenCol,
     Integer,
     Model,
     Pending,
@@ -84,7 +86,7 @@ uv run ty check examples/typed_queries.py
 The first command exercises model declaration, connect-only initialization,
 migrate and verify, insert, select, update, delete, transaction handling, and
 close behavior. The second command verifies public result-shape typing from the
-package root.
+selected backend namespace.
 
 ## Release checklist
 
@@ -98,6 +100,7 @@ Before announcing a release:
    uv run ty check
    uv run ruff check .
    uv run ruff format --check .
+   uv run python scripts/generate_query_overloads.py --check
    ```
 4. Build artifacts:
    ```sh

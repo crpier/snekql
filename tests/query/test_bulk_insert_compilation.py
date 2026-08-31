@@ -116,6 +116,19 @@ def bulk_insert_compiles_one_multi_row_values_statement() -> None:
 
 
 @test(mark="fast")
+def bulk_insert_rejects_rows_from_different_models() -> None:
+    """A batch cannot defer mixed-model rejection until Query Compilation."""
+
+    with assert_raises(QueryConstructionError):
+        _ = insert(
+            [
+                User(email="a@example.com"),
+                Account(name="not a user"),
+            ]
+        )
+
+
+@test(mark="fast")
 def bulk_insert_returning_appends_columns_once() -> None:
     """Bulk returning appends a single RETURNING clause for the whole statement."""
 

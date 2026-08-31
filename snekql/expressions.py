@@ -10,6 +10,8 @@ from warnings import deprecated
 
 from snekql.errors import QueryCompilationError, QueryConstructionError
 
+type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
+
 
 class _ColumnRef[T_co](Protocol):
     """Structural view of a column descriptor's read value type.
@@ -670,9 +672,14 @@ class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT]):
     scope check.
     """
 
-    func: str = ""
+    func: AggregateFunction
     column: object | None = None
     owner: object | None = None
+
+    def __post_init__(self) -> None:
+        if self.func not in {"AVG", "COUNT", "MAX", "MIN", "SUM"}:
+            msg = f"unsupported aggregate function: {self.func!r}"
+            raise QueryConstructionError(msg)
 
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness for singleton-select owner inference."""

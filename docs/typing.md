@@ -50,7 +50,12 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
 
 A bare `User` means the default state, `User[Pending]`; spell `User[Fetched]`
 when a method requires a database-materialized row. The state annotation is for
-static typing only — it does not add a runtime guard.
+static typing and is erased at runtime. The Query Runtime separately tags rows
+it materializes so lifecycle-sensitive operations can reject them.
+
+`insert(...)` is the lifecycle transition: it accepts `Pending` instances only.
+A model returned by the Query Runtime is `Fetched` and is rejected if passed back
+to `insert`; construct a new pending model explicitly when copying a row.
 
 Because `Fetched` is used in string forward references such as
 `Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
@@ -176,6 +181,13 @@ async with tx.fetch_chunks(select(User.email, User.status).all(), size=500) as s
 `snekql.mariadb`) for typed annotations only. Do not construct it directly;
 obtain one from `Transaction.fetch_chunks`.
 
+All Query Runtime reads validate and decode database values by default, so their
+return type preserves the selected logical shape. Passing `validate=False` is a
+raw escape hatch: constraints and some logical conversions are skipped, and the
+static result is therefore widened to `object` (`list[object]` for `fetch_all`,
+`ChunkStream[object]` for `fetch_chunks`). Narrow a raw result explicitly before
+using logical-type operations. The same rule applies to mutation `returning(...)`.
+
 ## Joins
 
 A column may declare the model it references with `FKCol[Target, T]`. The
@@ -288,8 +300,12 @@ The accepted actions are `"CASCADE"`, `"RESTRICT"`, `"SET NULL"`, and
 ```python
 # Owned rows that are meaningless once the parent is gone:
 job_id: FKCol[Job, str] = ForeignKey(Job.id, on_delete="CASCADE")
-# Detach the child instead of deleting it:
-owner_id: FKCol[User, int] = ForeignKey(User.id, on_delete="SET NULL")
+# Detach the child instead of deleting it (nullable but still required):
+owner_id: FKCol[User, int | None] = ForeignKey(
+    User.id,
+    nullable=True,
+    on_delete="SET NULL",
+)
 ```
 
 Because snekql enforces foreign keys, deleting a parent with no action declared
@@ -337,11 +353,16 @@ the type checker will not flag them ahead of time:
 - **`limit`/`offset` bounds.** Their parameter is `NonNegativeInt`, which `ty`
   sees as plain `int`, so a negative literal type-checks; a negative value raises
   `QueryConstructionError` at construction.
+- **Bulk insert homogeneity.** Every row in one `insert([...])` batch must be an
+  instance of the same model. The Query Builder rejects mixed batches at runtime;
+  `ty` may infer `Unknown` rather than diagnose a heterogeneous sequence.
 
 A scalar subquery (`scalar(...)`), by contrast, **is** reflected in the types: it
 evaluates to SQL `NULL` on an empty/no-match result set, so its projected slot is
 typed `... | None` and decodes a no-match to `None` rather than raising, even over
-a `NOT NULL` inner column.
+a `NOT NULL` inner column. A projection must start with a real column, aggregate,
+or dialect expression to establish its `FROM` scope; scalar subqueries may appear
+only in later slots.
 
 ## Backend namespaces
 
@@ -431,6 +452,17 @@ change without notice.
 implementation vocabulary. Build queries through `select`, `insert`, `update`,
 and `delete`; do not instantiate query classes directly. Use
 `ColumnRef[OwnerT, T]` when a helper accepts a read-only model column.
+`Select` and `Write` are annotation-only aliases rather than runtime classes, so
+do not construct them or use them with `isinstance`. An annotated query remains
+executable through `Transaction`:
+
+```python
+async def load_users(
+    tx: Transaction,
+    query: Select[User[Fetched]],
+) -> list[User[Fetched]]:
+    return await tx.fetch_all(query)
+```
 
 Projection and `returning(...)` overloads preserve up to eight selected values.
 Wider calls are rejected statically; project a model or split the query instead.
