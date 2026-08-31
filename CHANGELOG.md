@@ -4,6 +4,19 @@
 
 ### Breaking changes
 
+- Migration declarations now define one complete ordered chain instead of an
+  independently composable name set. `migrate()` rejects removed, reordered,
+  unknown, or edited applied entries by comparing one-based positions and exact
+  SQL SHA-256 checksums. An empty declaration still inspects history. Existing
+  non-empty name-only history must be explicitly accepted once with
+  `migrate(..., adopt_legacy=True)`. SQLite migration bodies must be one
+  persistent main-database statement and cannot contain transaction control,
+  PRAGMAs, `VACUUM`, attachment changes, or temporary objects. MariaDB bodies
+  can still contain multiple statements but cannot issue transaction control,
+  change required session settings, call advisory-lock functions, or execute
+  dynamic SQL. MariaDB now requires an InnoDB page size of at least 8 KiB for
+  byte-exact history-name uniqueness. (#254)
+
 - Public typing now targets `ty==0.0.75` exclusively. Model fields use the
   owner-free forms `Col[T]`, `GenCol[T]`, `FKCol[Target, T]`, and
   `JsonCol[T]`; concrete descriptors, metaclasses, model bounds, and query-state
@@ -62,6 +75,14 @@
 
 ### Fixed
 
+- SQLite now starts `BEGIN IMMEDIATE` before reading Migration History and
+  commits each body with its history row, which closes the cross-instance race
+  and the body/bookkeeping crash gap. MariaDB now commits transactional InnoDB
+  DML with its history row, confirms advisory-lock release, and discards the
+  physical connection when lock cleanup is uncertain. MariaDB DDL retains its
+  documented implicit-commit crash window. Legacy MariaDB upgrades now resume
+  exact staging state without requiring adoption consent a second time. (#254)
+
 - Valid required-nullable and non-`None`-defaulted `ForeignKey` declarations now
   satisfy the field-specifier overloads in both backend namespaces. Public
   `Select[Row]` and `Write[Result]` annotations can now be passed directly to
@@ -94,6 +115,12 @@
   matched zero rows (#203 F10).
 
 ### Added
+
+- `Database.migrate(...)` now returns an immutable `MigrationResult` with
+  ordered `applied` and `already_applied` names plus an explicit legacy-adoption
+  flag. `Database.verify_migrations(...)` performs a read-only exact-head check
+  for replicas and deployment gates. New public migration errors distinguish
+  declaration, history, body, and lock failures. (#254)
 
 - Insert queries now support atomic conflict handling with
   `.on_conflict(..., action=DoUpdate(...))` and

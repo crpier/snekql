@@ -66,6 +66,9 @@ async def session_settings_reject_a_non_strict_sql_mode() -> None:
             "SELECT @@SESSION.sql_mode": "NO_ZERO_DATE",
             "SELECT @@SESSION.time_zone": "+00:00",
             "SELECT @@SESSION.foreign_key_checks": 1,
+            "SELECT @@SESSION.check_constraint_checks": 1,
+            "SELECT @@SESSION.unique_checks": 1,
+            "SELECT @@innodb_page_size": 16384,
         }
     )
 
@@ -88,7 +91,33 @@ async def session_settings_accept_strict_sql_mode_with_extra_flags() -> None:
             ),
             "SELECT @@SESSION.time_zone": "+00:00",
             "SELECT @@SESSION.foreign_key_checks": 1,
+            "SELECT @@SESSION.check_constraint_checks": 1,
+            "SELECT @@SESSION.unique_checks": 1,
+            "SELECT @@innodb_page_size": 16384,
         }
     )
 
     await apply_connection_settings(probe, MARIADB_SESSION_SETTINGS, backend="mariadb")
+
+
+@test(mark="fast")
+async def session_settings_reject_small_innodb_pages() -> None:
+    """History's full byte-exact name index requires at least 8 KiB pages."""
+
+    probe = _FakeProbe(
+        {
+            "SELECT @@SESSION.sql_mode": ("STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION"),
+            "SELECT @@SESSION.time_zone": "+00:00",
+            "SELECT @@SESSION.foreign_key_checks": 1,
+            "SELECT @@SESSION.check_constraint_checks": 1,
+            "SELECT @@SESSION.unique_checks": 1,
+            "SELECT @@innodb_page_size": 4096,
+        }
+    )
+
+    with assert_raises(DatabaseRuntimeError) as caught:
+        await apply_connection_settings(
+            probe, MARIADB_SESSION_SETTINGS, backend="mariadb"
+        )
+
+    assert_true("innodb_page_size" in str(caught.exception))

@@ -21,6 +21,11 @@ from typing import (
 import anyio
 import anyio.lowlevel
 
+from snekql._migrations import (
+    MigrationPlan,
+    MigrationResult,
+    prepare_migrations,
+)
 from snekql._runtime_selection import (
     RuntimeConfig,
     resolve_runtime_config,
@@ -29,6 +34,7 @@ from snekql._runtime_selection import (
 from snekql.errors import (
     DatabaseRuntimeError,
     ExecutionError,
+    MigrationDeclarationError,
     MultipleResultsError,
     NoResultError,
     QueryCompilationError,
@@ -203,7 +209,16 @@ class RuntimeBackend(Protocol):
 
     def check_accepting_work(self) -> None: ...
 
-    async def apply_migrations(self, migrations: dict[str, str]) -> None: ...
+    def validate_migrations(self, migrations: MigrationPlan) -> None: ...
+
+    async def apply_migrations(
+        self,
+        migrations: MigrationPlan,
+        *,
+        adopt_legacy: bool = False,
+    ) -> MigrationResult: ...
+
+    async def verify_migrations(self, migrations: MigrationPlan) -> None: ...
 
     async def verify_schema(
         self,
@@ -971,7 +986,8 @@ class Database:
     **connect-only**: it opens connectivity and a connection pool and hands out
     Transactions, and does no schema work at all (see ADR 0007). Schema comes
     into existence only by applying Migrations with `db.migrate(...)`; the
-    resulting schema is checked against Table Models with `db.verify(...)`.
+    recorded head is checked with `db.verify_migrations(...)`, and the resulting
+    schema is checked against Table Models with `db.verify(...)`.
 
     It is an async context manager: `async with await Database.initialize(...) as
     db:` closes the runtime on block exit; `close()` can also be called directly.
@@ -1011,9 +1027,10 @@ class Database:
         """Open connectivity and a connection pool; do no schema work.
 
         Initialization only proves it can connect and returns a live Database.
-        Apply Migrations with `db.migrate(...)` and verify the schema against
-        Table Models with `db.verify(...)`; a wrong-backend deploy is caught at
-        the first `verify` or query, not here.
+        Apply Migrations with `db.migrate(...)`, check their recorded head with
+        `db.verify_migrations(...)`, and verify the schema against Table Models
+        with `db.verify(...)`; a wrong-backend deploy is caught at the first
+        `verify` or query, not here.
         """
 
         try:
@@ -1043,31 +1060,65 @@ class Database:
         database_instance.runtime = runtime
         return database_instance
 
-    async def migrate(self, migrations: dict[str, str]) -> None:
+    async def migrate(
+        self,
+        migrations: dict[str, str],
+        *,
+        adopt_legacy: bool = False,
+    ) -> MigrationResult:
         """Apply pending Migrations imperatively against this live Database.
 
-        Runs the backend-neutral apply runner: holds the advisory lock, ensures
-        the Migration History, applies each pending body exactly once in declared
-        order, and records each success (ADR 0001, ADR 0002). Migrations are the
-        sole schema-creation authority; a fresh database is built by replaying
-        the whole chain. Pair with `verify(...)`.
+        Snapshots one complete ordered declaration before I/O, checks that
+        ordered checksummed history is its exact prefix, and applies the pending
+        suffix one migration at a time. Migrations are the sole schema-creation
+        authority. Pair with `verify_migrations(...)` and `verify(...)`.
         """
 
+        migration_plan = prepare_migrations(migrations)
+        if type(adopt_legacy) is not bool:
+            msg = "adopt_legacy must be an exact bool"
+            raise MigrationDeclarationError(msg)
+        self.runtime.validate_migrations(migration_plan)
         backend_family = self.runtime.backend_family
         try:
             logger.info(
                 "%s database migrate started: %d migration(s)",
                 backend_family,
-                len(migrations),
+                len(migration_plan),
             )
-            await self.runtime.apply_migrations(migrations)
+            result = await self.runtime.apply_migrations(
+                migration_plan, adopt_legacy=adopt_legacy
+            )
             logger.info(
                 "%s database migrate completed: %d migration(s)",
                 backend_family,
-                len(migrations),
+                len(migration_plan),
             )
         except Exception:
             logger.exception("database migrate failed")
+            raise
+        return result
+
+    async def verify_migrations(self, migrations: dict[str, str]) -> None:
+        """Require read-only Migration History to match a complete declaration."""
+
+        migration_plan = prepare_migrations(migrations)
+        self.runtime.validate_migrations(migration_plan)
+        backend_family = self.runtime.backend_family
+        try:
+            logger.info(
+                "%s migration verification started: %d migration(s)",
+                backend_family,
+                len(migration_plan),
+            )
+            await self.runtime.verify_migrations(migration_plan)
+            logger.info(
+                "%s migration verification completed: %d migration(s)",
+                backend_family,
+                len(migration_plan),
+            )
+        except Exception:
+            logger.exception("migration verification failed")
             raise
 
     async def verify(
@@ -1080,10 +1131,10 @@ class Database:
 
         Inspects each model's live table and reports Schema Drift under the
         Schema Policy (`strict` raises `SchemaVerificationError`, `warn` logs).
-        It is the only feedback loop tying the hand-written Migration chain back
-        to the models; it never creates anything. Verification is deliberately
-        partial and structural -- see ADR 0008 and `docs/schema-drift.md` for what
-        it cannot see (default values, CHECK constraints, triggers, and more).
+        It ties hand-written Migrations back to current model metadata and never
+        creates anything. Verification is deliberately partial and structural --
+        see ADR 0008 and `docs/schema-drift.md` for what it cannot see (default
+        values, CHECK constraints, triggers, and more).
         """
 
         backend_family = self.runtime.backend_family

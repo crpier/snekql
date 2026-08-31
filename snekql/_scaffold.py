@@ -4,8 +4,8 @@ The scaffold removes the tedium of hand-writing the first ``CREATE TABLE`` for a
 Table Model. It reuses the same model->DDL compilation that backs verification's
 expected shape, but only ever emits the *initial create* (table plus its
 indexes). It does no model-vs-live diffing and generates no ``ALTER`` (see the
-ADR 0001 amendment): the output is plain text the author owns and pastes into
-their Migration set, append-only and immutable from the moment it is committed.
+ADR 0001 amendment): the output is plain text the author owns and pastes into a
+Migration Declaration, append-only and immutable once committed.
 """
 
 from __future__ import annotations

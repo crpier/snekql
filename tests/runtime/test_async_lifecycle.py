@@ -9,6 +9,7 @@ import anyio
 import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
+from snekql._migrations import MigrationPlan, MigrationResult
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery
@@ -185,7 +186,20 @@ class _FakeRuntime:
     def check_accepting_work(self) -> None:
         return None
 
-    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+    def validate_migrations(self, migrations: MigrationPlan) -> None:
+        _ = migrations
+
+    async def apply_migrations(
+        self,
+        migrations: MigrationPlan,
+        *,
+        adopt_legacy: bool = False,
+    ) -> MigrationResult:
+        _ = migrations
+        _ = adopt_legacy
+        return MigrationResult(applied=(), already_applied=(), legacy_adopted=False)
+
+    async def verify_migrations(self, migrations: MigrationPlan) -> None:
         _ = migrations
 
     async def verify_schema(

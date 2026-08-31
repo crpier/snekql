@@ -176,10 +176,22 @@ class MigrationError(SnekqlError):
     """
 
 
-class MigrationLockTimeoutError(SnekqlError):
-    """Raised when the migration advisory lock cannot be acquired in time.
+class MigrationDeclarationError(SnekqlError):
+    """Raised before I/O when a Migration declaration is invalid."""
 
-    A concurrent instance held the lock for the full acquire timeout. The losing
-    instance applied nothing; retrying after the holder finishes observes the
-    completed Migration History and applies only what is still pending.
+
+class MigrationHistoryError(SnekqlError):
+    """Raised when Migration History is missing, divergent, or malformed."""
+
+
+class MigrationLockError(SnekqlError):
+    """Raised when migration lock ownership cannot be acquired or released."""
+
+
+class MigrationLockTimeoutError(MigrationLockError):
+    """Raised when backend migration coordination cannot acquire its lock in time.
+
+    Another writer held SQLite's writer lock or MariaDB's advisory lock through
+    the acquisition budget. The losing instance applied nothing; retrying after
+    the holder finishes checks Migration History before applying pending work.
     """

@@ -1,198 +1,235 @@
 # Migrations
 
-snekql applies **migrations**: named, hand-authored, ordered changes — to schema
-or data — that the runtime applies exactly once and records in a snekql-owned
-Migration History. snekql runs and tracks migrations; it never generates them.
+snekql applies named, hand-authored SQL changes and records them in Migration
+History. Migrations are the sole schema-creation authority: a fresh database is
+built by replaying the complete chain. snekql does not generate upgrades or diff
+Table Models against a live database.
 
-Migrations are the **sole schema-creation authority**: a table comes into
-existence only by running a migration body. There is no automatic table creation
-from Table Models. A fresh database is built by **replaying the whole migration
-chain**.
+## Lifecycle
 
-## The lifecycle: initialize → migrate → verify
-
-`Database.initialize(...)` is **connect-only**: it opens connectivity and a
-connection pool and hands out transactions, and does no schema work at all. You
-apply migrations with `db.migrate(...)` and check the resulting schema against
-your models with `db.verify(...)`. Always show `migrate` and `verify` together:
+`Database.initialize(...)` only opens connectivity. A deploy applies and checks
+the complete migration declaration, then separately checks the live schema
+against current Table Models:
 
 ```python
-db = await Database.initialize(database=Path("app.db"))
+MIGRATIONS = {
+    "001_create_user": (
+        'CREATE TABLE "user" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL'
+        ") STRICT"
+    ),
+    "002_add_user_status": (
+        'ALTER TABLE "user" ADD COLUMN "status" TEXT NOT NULL DEFAULT \'active\''
+    ),
+}
 
-await db.migrate(
-    {
-        "001_create_user": 'CREATE TABLE "user" (...) STRICT',
-        "002_add_user_status": 'ALTER TABLE "user" ADD COLUMN "status" TEXT',
-        "003_backfill_status": 'UPDATE "user" SET "status" = \'active\'',
-    },
-)
-await db.verify([User, AuditLog])
+db = await Database.initialize(database=Path("app.db"))
+result = await db.migrate(MIGRATIONS)
+await db.verify_migrations(MIGRATIONS)
+await db.verify([User])
 ```
 
-`db.migrate(migrations)` takes an ordered `dict[str, str]` mapping a migration
-**name** to its raw SQL body. Insertion order is the apply order.
+These checks answer different questions:
 
-### What `db.migrate` does
+- `verify_migrations(MIGRATIONS)` proves that recorded names, positions, and
+  exact SQL checksums are at this code version's complete head.
+- `verify([User])` checks the live tables against the current model
+  contract. It does not prove that data migrations, triggers, or other effects
+  ran.
 
-1. Holds the migration advisory lock (see [Concurrency](#concurrency)).
-2. Ensures the Migration History table (`snekql_migrations`) exists.
-3. Reads the set of already-applied names.
-4. Computes the pending set: mapping keys not yet recorded as applied.
-5. Runs each pending migration's body in mapping insertion order.
-6. Records each migration's name in the Migration History after it succeeds.
+Replicas that do not apply migrations should run `initialize ->
+verify_migrations -> verify` before accepting traffic.
 
-`db.migrate` is models-free: it creates and changes schema, nothing more.
-Checking the schema against your models is the separate job of `db.verify` (see
-[schema-drift.md](schema-drift.md)), which is where the Schema Policy lives.
+## One complete linear chain
 
-## Scaffolding the first CREATE TABLE
+`migrate()` accepts an ordered `dict[str, str]`. Every call supplies the one
+complete canonical declaration for that code version. Mapping insertion order is
+authoritative; names are opaque and are never parsed as versions.
 
-Hand-writing the initial `CREATE TABLE` for a model is tedious, so snekql ships a
-dev-time **scaffold** that emits that DDL as text for you to own. It is a pure
-function — no database, no diffing, no `ALTER` generation. You paste its output
-into your migration set, and from that moment it is hand-authored like any other
-body: append-only and immutable.
+Do not compose independent subsets per feature, environment, or process:
+
+```python
+# Correct: the later code version still declares the complete prefix.
+MIGRATIONS = {
+    "001_create_user": CREATE_USER_SQL,
+    "002_add_status": ADD_STATUS_SQL,
+}
+
+# Incorrect: this is not an independently composable migration subset.
+await db.migrate({"002_add_status": ADD_STATUS_SQL})
+```
+
+The mapping is synchronously copied and validated before connection acquisition.
+Names and bodies must be exact built-in strings and valid UTF-8. Names must be
+non-empty and at most 255 characters; bodies must contain SQL. Later mutations
+of the caller's dictionary cannot alter an in-progress run.
+
+Once a migration has been applied anywhere, never remove, reorder, rename, or
+edit it. Append a new entry instead. A body that failed before its history row
+was recorded remains pending and may be fixed.
+
+## Migration History v2
+
+The `snekql_migrations` table stores one row per migration:
+
+| Column | Meaning |
+| --- | --- |
+| `position` | Positive, unique, one-based declaration ordinal |
+| `name` | Non-empty unique caller identity, compared byte-exactly |
+| `checksum` | Lowercase SHA-256 of the exact UTF-8 SQL body |
+| `applied_at` | Server-side UTC timestamp for observability only |
+
+MariaDB stores names and checksums with unpadded binary comparison. Both
+backends enforce the correctness-bearing shape in their history DDL.
+
+Before pending SQL runs, `migrate()` requires recorded history to equal the
+declaration prefix:
+
+```python
+actual == expected[: len(actual)]
+```
+
+It rejects holes, reordered or removed entries, renamed migrations, edited
+bodies, unknown rows, and history longer than the declaration. An empty
+declaration still inspects history and therefore fails against non-empty
+history.
+
+`migrate()` returns an immutable `MigrationResult`:
+
+```python
+MigrationResult(
+    applied=("003_add_audit",),
+    already_applied=("001_create_user", "002_add_status"),
+    legacy_adopted=False,
+)
+```
+
+Both tuples follow declaration order. `legacy_adopted` is true when the call
+accepted non-empty v1 history as a baseline or completed a previously consented
+MariaDB staging upgrade.
+
+## Read-only verification
+
+`verify_migrations(MIGRATIONS)` requires exact equality with the declaration's
+full head. It does not create the history table, acquire the migration lock,
+upgrade legacy history, adopt a baseline, or execute migration SQL.
+
+It fails when:
+
+- a non-empty declaration has no history table;
+- any migration is pending or divergent;
+- history is v1, an upgrade staging shape, or an unknown shape;
+- an empty declaration encounters non-empty history.
+
+An empty declaration succeeds when no history table exists.
+
+## Failure and transaction behavior
+
+`MigrationDeclarationError` reports invalid declarations before database I/O.
+`MigrationHistoryError` reports malformed, divergent, legacy, or pending
+history. `MigrationError` means a migration body failed. Migration lock failures
+use `MigrationLockError`, with `MigrationLockTimeoutError` for acquisition
+timeouts.
+
+The chain commits one successful migration at a time. If a later migration
+fails, earlier rows and changes stay committed, the failing migration is not
+recorded, and later migrations do not run.
+
+### SQLite
+
+Each pending migration runs in its own transaction:
+
+1. `BEGIN IMMEDIATE` takes the writer lock before history is read.
+2. History is ensured or atomically upgraded and checked again.
+3. The one pending body executes.
+4. Its history row is inserted.
+5. The body and history row commit together.
+
+This serializes cooperating runners across independent connections and makes a
+persistent SQLite body atomic with its history row. Failure and cancellation
+roll back the transaction; a connection whose cleanup cannot be confirmed is
+discarded instead of returned to the pool.
+
+One SQLite body must be one persistent statement against the main database.
+Transaction control, `VACUUM`, `ATTACH`, `DETACH`, PRAGMAs, temporary objects,
+and stacked statements are rejected. Trigger bodies containing internal
+semicolons remain one valid SQLite statement.
+
+### MariaDB
+
+MariaDB holds one connection-scoped `GET_LOCK` across history upgrade,
+preflight, application, recording, and commits. Lock release is shielded and
+must return success; otherwise the physical connection is discarded.
+
+Transactional InnoDB DML and its history insert use one commit. MariaDB DDL
+still commits implicitly, so a crash after successful DDL but before history
+recording can cause that DDL to run again. Keep DDL idempotent where practical.
+Multiple-statement bodies remain supported, and earlier DDL in a body can remain
+committed if a later statement fails. Bodies cannot issue transaction control,
+change required session settings, call advisory-lock functions, or execute
+dynamic SQL because those operations could escape snekql's DML/history
+transaction or leave a pooled connection misconfigured.
+
+## Legacy history adoption
+
+History created before v2 contains only `(name, applied_at)`. It cannot prove
+the original order or SQL bodies. Ordinary `migrate()` therefore rejects a
+non-empty v1 table with instructions to opt in:
+
+```python
+result = await db.migrate(MIGRATIONS, adopt_legacy=True)
+```
+
+Adoption is a one-time statement of trust in the current declaration. It is not
+historical verification. Legacy names must equal the set of names in one
+declared prefix; unknown names, holes, inserted predecessors, and overlong
+history are rejected. Positions and checksums are assigned from the current
+declaration, and existing timestamps are preserved.
+
+SQLite rebuilds v1 atomically. MariaDB uses restartable v1, staging, and final
+v2 shapes because its DDL commits implicitly. Once exact staging exists, a
+restart continues without asking for consent again and never overwrites a
+populated checksum. An empty v1 table may upgrade without consent.
+`verify_migrations()` never adopts or upgrades.
+
+Back up the database and stop old application versions before adoption. An old
+runner does not understand v2 history.
+
+## Scaffolding the first table
+
+`scaffold([Model])` is a development-time printer for initial DDL:
 
 ```python
 from snekql.sqlite import scaffold
 
 print(scaffold([User]))
-# CREATE TABLE "user" ("id" INTEGER PRIMARY KEY AUTOINCREMENT,
-#   "email" TEXT NOT NULL) STRICT;
-# CREATE INDEX "ix_user_email" ON "user" ("email");
 ```
 
-Each statement (the table, then each index) is a separate migration body, because
-a body runs exactly one statement. The scaffold emits only the *initial* create;
-later schema changes are migrations you write by hand.
+Copy its output into source control, split table and index statements into
+separate migration bodies, review it, and then treat the literal SQL as
+immutable. Do not call `scaffold([CurrentModel])` while the application starts.
+Model metadata can legitimately improve over time; recomputing historical SQL
+would then change a v2 checksum.
 
-## One canonical migration set per code version
+Later changes remain hand-authored `ALTER`, `CREATE INDEX`, `UPDATE`, and other
+raw SQL. snekql does not generate model diffs or down migrations.
 
-Keep a single migration mapping per code version — never per-environment
-mappings. The same chain replays everywhere, so every database is built the same
-way. The Migration History is keyed by name, so set difference (pending = keys −
-applied) is all that decides what runs.
+## Deployment and tests
 
-## Deploy and replica topologies
+A release job commonly runs:
 
-The library blesses no deploy topology; the advisory lock keeps every arrangement
-safe. Two common shapes:
+```text
+initialize -> migrate -> verify_migrations -> verify
+```
 
-- **Deploy step.** A release job runs `initialize → migrate → verify` once,
-  applying the chain and confirming it against the models before traffic.
-- **Replica boot.** Each app replica runs `initialize → verify` *without*
-  migrating, confirming the already-migrated schema matches its build and failing
-  fast on a forgotten migration.
+Application replicas commonly run:
 
-You may instead let every replica call `migrate` and trust the lock; the choice
-is yours. Documentation recommends migrating from one place and having replicas
-only `initialize → verify`.
+```text
+initialize -> verify_migrations -> verify
+```
 
-## Identity, ordering, and the append-only rule
-
-- A migration's **identity is its name** (the dict key). Ordering is dict
-  insertion order. There is no numeric/positional identity and no checksum.
-- The mapping is **append-only**. Once a migration has run against any database,
-  never rename it, never reuse its name for different SQL, and never change its
-  body. Renaming makes snekql re-run the "new" name; changing a body silently
-  diverges already-migrated databases from new ones. This is the sharpest
-  correctness constraint migrations push onto you.
-- Duplicate names are impossible by construction (they are `dict` keys).
-
-## Idempotency and failure
-
-snekql does **not** wrap a migration body and its history row in a single
-transaction — you own any transaction control inside your SQL. As a result:
-
-- A migration body and its bookkeeping are applied separately. If the process
-  crashes between a body succeeding and its history row being written, that
-  migration runs again on the next `migrate`. **Write idempotent migrations.**
-- On the first failing migration, `migrate` halts and raises `MigrationError`
-  naming the migration. Migrations that already succeeded stay recorded, so a
-  fixed retry resumes from the failure point.
-- On MariaDB, DDL auto-commits, so a multi-statement DDL body is not atomic;
-  prefer single-statement or idempotent bodies.
-
-### Partial-failure guarantees (both backends)
-
-The apply flow gives the same chain-level guarantee on SQLite and MariaDB. When
-a body in the chain fails:
-
-- Every migration that ran **before** the failure stays applied and stays
-  recorded in the Migration History.
-- The failing migration is **not** recorded, and no later migration in the chain
-  runs.
-- A `migrate` with the failing body fixed re-runs only the still-pending bodies
-  (the failed one and everything after it), so the chain resumes from the
-  failure point rather than re-running the whole set.
-
-What differs between backends is only what a **single failing body** leaves
-behind, and that follows each engine's own DDL transaction semantics:
-
-- **SQLite** runs each body through the driver's single-statement `execute`,
-  which **rejects** a body holding more than one statement (`aiosqlite` raises
-  "You can only execute one statement at a time" before anything runs). A body is
-  therefore structurally limited to one auto-committed statement, so a failed
-  body can never leave a partial object behind: the failure is all-or-nothing per
-  body by driver constraint, not by snekql wrapping it in a transaction.
-- **MariaDB** accepts a multi-statement body and auto-commits each DDL statement
-  server-side, and cannot roll DDL back. snekql does **no** cleanup and tracks
-  **no** managed objects — a body that creates one object and then fails on a
-  later statement leaves the first object behind (the earlier statements stay
-  committed while `migrate` still raises and records nothing). This is the one
-  partial-object outcome SQLite cannot produce, and it is why bodies must be
-  idempotent (e.g.
-  `CREATE TABLE IF NOT EXISTS`, guarded `ALTER`): the resume re-runs the failed
-  body verbatim, and idempotency is what makes that safe over whatever partial
-  state remains.
-
-`initialize` and `verify` never participate in this. `initialize` is
-connect-only (it creates no schema, so a failed `initialize` leaves no partial
-schema state to reason about), and `verify` only reads the live schema and
-creates nothing (see [schema-drift.md](schema-drift.md)), so a failed `verify`
-leaves no schema change on either backend. Migration apply is the only place
-partial schema state can arise.
-
-## Concurrency
-
-snekql coordinates concurrent migration runs so that several instances calling
-`db.migrate(...)` at once are safe. Coordination is always on — there is nothing
-to opt into.
-
-The whole apply flow — ensure history, read applied, run pending, record — runs
-while holding a backend advisory lock. The instance that wins the race applies the
-pending migrations; the instances that lose **wait** for it, then re-read the now
-complete Migration History and apply only what is still pending. No migration is
-applied twice across instances.
-
-**MariaDB** uses a connection-scoped named advisory lock (`GET_LOCK` /
-`RELEASE_LOCK`). This is what makes concurrent `db.migrate(...)` against one
-MariaDB database safe: without it, two instances could read the same empty
-history and both apply the same migration, causing duplicate-DDL or double-data
-errors. The lock name is namespaced per database, so migrations on unrelated
-databases sharing a server do not block each other. A loser waits up to the
-backend's `acquire_timeout`; if the holder never finishes within that window the
-loser raises `MigrationLockTimeoutError` having applied nothing — a retry once the
-holder is done observes the completed history. Because the lock is connection
-scoped, it is released on success, on failure, and on disconnect (a crashed
-instance frees it server-side).
-
-**SQLite** has no advisory-lock primitive. Concurrent runs against one database
-file instead serialize through SQLite's single-writer file lock, and the
-configured `busy_timeout` makes a losing writer wait rather than immediately raise
-"database is locked". This serialization is the de facto coordination on SQLite;
-for a strong single-applier guarantee, still prefer running migrations from one
-place.
-
-## Testing with migrations
-
-Tests build their schema by replaying the migration chain — the same construction
-path as production — so a broken migration fails a test. There is no model-direct
-schema shortcut anywhere in the library. A large suite can build the schema once
-per session and isolate each test cheaply (a documented pattern, not a library
-feature) rather than replaying the chain per test.
-
-## Raw SQL only
-
-Migration bodies are raw SQL in v1 — write `ALTER TABLE`, `CREATE INDEX`,
-`UPDATE`, and so on by hand. A snekql-native schema-change builder may follow.
+Tests should use an isolated database per canonical chain and replay the same
+committed migration declaration as production. A test suite must not rely on
+globally unique names to combine unrelated subsets in one history table; exact
+prefix semantics deliberately reject that composition.

@@ -78,7 +78,8 @@ it.
 - The deploy/release topology is the caller's choice — one deploy step, or every
   replica calling `migrate` and trusting the lock. The library blesses neither;
   the advisory lock (ADR 0002) keeps every arrangement safe. Documentation
-  recommends migrating from one place and having replicas only `init → verify`.
+  recommends migrating from one place and having replicas run
+  `initialize -> verify_migrations -> verify`.
 - Tests and `:memory:` databases replay the migration chain; there is no
   model-direct schema shortcut anywhere in the library.
 - Breaking change. `docs/migrations.md`, `docs/schema-drift.md`,

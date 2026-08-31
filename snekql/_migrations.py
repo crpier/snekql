@@ -1,77 +1,158 @@
-"""Backend-neutral migration runner shared by Backend Runtime Adapters.
-
-snekql Migrations are named, hand-authored, ordered raw-SQL changes applied
-exactly once and recorded in a snekql-owned Migration History. This module owns
-the apply flow — ensure history, compute pending as mapping keys minus applied
-names, run each pending body in insertion order, record each success — while
-backends answer only how to talk to their Migration History and run raw SQL.
-
-snekql never wraps a migration body and its history row in one transaction (see
-ADR 0001): the author owns transactions inside the body, so the body and its
-bookkeeping are non-atomic and migrations must be idempotent.
-
-To make concurrent runs safe (see ADR 0002), the whole apply flow — ensure
-history, read applied, run pending, record — runs while holding a backend
-advisory lock. An instance that loses the race blocks until the holder finishes,
-then re-reads the now-complete Migration History and applies only what is still
-pending, never re-running an already-applied migration.
-"""
+"""Immutable Migration declarations, results, and history comparison."""
 
 from __future__ import annotations
 
-import logging
-from contextlib import AbstractAsyncContextManager
-from typing import Protocol
+from dataclasses import dataclass
+from hashlib import sha256
 
-from snekql.errors import MigrationError
+from snekql.errors import (
+    MigrationDeclarationError,
+    MigrationHistoryError,
+)
 
-logger = logging.getLogger(__name__)
+_MAX_MIGRATION_NAME_LENGTH = 255
 
 
-class MigrationBackend(Protocol):
-    """Backend seam for Migration History bookkeeping and raw-SQL execution.
+@dataclass(frozen=True, slots=True)
+class MigrationResult:
+    """Ordered outcome of applying one complete Migration declaration.
 
-    The apply flow lives in `run_migrations`; backends only hold the advisory
-    lock that serializes concurrent runs, ensure their history table exists,
-    report applied names, run an opaque migration body, and record a name as
-    applied.
+    `applied` names ran during this call. `already_applied` names were found in
+    valid history rather than run by this call. `legacy_adopted` is true when
+    this call adopted v1 history or completed a previously consented staged
+    adoption.
     """
 
-    def migration_lock(self) -> AbstractAsyncContextManager[None]: ...
-
-    async def ensure_history_table(self) -> None: ...
-
-    async def fetch_applied_names(self) -> set[str]: ...
-
-    async def execute_migration_body(self, sql: str) -> None: ...
-
-    async def record_applied(self, name: str) -> None: ...
+    applied: tuple[str, ...]
+    already_applied: tuple[str, ...]
+    legacy_adopted: bool
 
 
-async def run_migrations(
-    backend: MigrationBackend,
-    migrations: dict[str, str],
+@dataclass(frozen=True, slots=True)
+class Migration:
+    """One validated Migration in an immutable declaration snapshot."""
+
+    position: int
+    name: str
+    checksum: str
+    sql: str
+
+    def history_record(self) -> MigrationRecord:
+        """Return the correctness fields persisted in Migration History."""
+
+        return MigrationRecord(
+            position=self.position,
+            name=self.name,
+            checksum=self.checksum,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class MigrationRecord:
+    """Correctness-bearing fields read from one Migration History row."""
+
+    position: int
+    name: str
+    checksum: str
+
+
+type MigrationPlan = tuple[Migration, ...]
+
+
+def prepare_migrations(migrations: dict[str, str]) -> MigrationPlan:
+    """Snapshot and validate one complete linear Migration declaration.
+
+    Exact built-in strings keep names and checksums byte-stable and avoid a
+    mutable or hostile string subclass changing after validation.
+    """
+
+    if type(migrations) is not dict:
+        msg = "migrations must be an exact dict[str, str]"
+        raise MigrationDeclarationError(msg)
+
+    prepared: list[Migration] = []
+    for position, (name, sql) in enumerate(tuple(migrations.items()), start=1):
+        if type(name) is not str:
+            msg = f"migration name at position {position} must be an exact str"
+            raise MigrationDeclarationError(msg)
+        if not name:
+            msg = f"migration name at position {position} must not be empty"
+            raise MigrationDeclarationError(msg)
+        if len(name) > _MAX_MIGRATION_NAME_LENGTH:
+            msg = f"migration name {name!r} exceeds 255 characters"
+            raise MigrationDeclarationError(msg)
+        if type(sql) is not str:
+            msg = f"migration {name!r} body must be an exact str"
+            raise MigrationDeclarationError(msg)
+        if not sql.strip():
+            msg = f"migration {name!r} body must contain SQL"
+            raise MigrationDeclarationError(msg)
+        if "\x00" in name or "\x00" in sql:
+            msg = f"migration {name!r} contains a NUL character"
+            raise MigrationDeclarationError(msg)
+        try:
+            name.encode("utf-8")
+            sql_bytes = sql.encode("utf-8")
+        except UnicodeEncodeError as error:
+            msg = f"migration {name!r} must contain valid UTF-8 text"
+            raise MigrationDeclarationError(msg) from error
+        prepared.append(
+            Migration(
+                position=position,
+                name=name,
+                checksum=sha256(sql_bytes).hexdigest(),
+                sql=sql,
+            )
+        )
+    return tuple(prepared)
+
+
+def validate_history_prefix(
+    actual: tuple[MigrationRecord, ...],
+    expected: MigrationPlan,
+    *,
+    require_head: bool = False,
 ) -> None:
-    """Apply each pending migration exactly once in mapping insertion order.
+    """Require ordered history to equal a valid declaration prefix or head."""
 
-    The advisory lock wraps the entire flow so a losing instance re-reads the
-    completed Migration History after acquiring it and applies nothing already
-    applied. The lock is released on success, failure, and disconnect.
-    """
+    if len(actual) > len(expected):
+        msg = (
+            f"Migration History has {len(actual)} row(s), but the declaration "
+            f"has only {len(expected)}"
+        )
+        raise MigrationHistoryError(msg)
+    for ordinal, record in enumerate(actual, start=1):
+        if record.position != ordinal:
+            msg = (
+                f"Migration History position {record.position} is invalid; "
+                f"expected {ordinal}"
+            )
+            raise MigrationHistoryError(msg)
+        expected_record = expected[ordinal - 1].history_record()
+        if record != expected_record:
+            msg = (
+                f"Migration History diverges at position {ordinal}: "
+                f"recorded {record.name!r}, declared {expected_record.name!r}"
+            )
+            raise MigrationHistoryError(msg)
+    if require_head and len(actual) != len(expected):
+        next_name = expected[len(actual)].name
+        msg = f"Migration History is behind the declaration; {next_name!r} is pending"
+        raise MigrationHistoryError(msg)
 
-    if not migrations:
-        return
-    async with backend.migration_lock():
-        await backend.ensure_history_table()
-        applied = await backend.fetch_applied_names()
-        for name, sql in migrations.items():
-            if name in applied:
-                continue
-            try:
-                await backend.execute_migration_body(sql)
-            except Exception as error:
-                logger.exception("migration %r failed", name)
-                msg = f"migration {name!r} failed"
-                raise MigrationError(msg) from error
-            await backend.record_applied(name)
-            logger.debug("migration %r applied", name)
+
+def validate_legacy_history(
+    legacy_names: set[str],
+    expected: MigrationPlan,
+) -> int:
+    """Require unordered v1 names to equal one complete declared prefix set."""
+
+    if len(legacy_names) > len(expected):
+        msg = "legacy Migration History is longer than the declaration"
+        raise MigrationHistoryError(msg)
+    prefix_length = len(legacy_names)
+    declared_prefix = {migration.name for migration in expected[:prefix_length]}
+    if legacy_names != declared_prefix:
+        msg = "legacy Migration History is not the declared prefix"
+        raise MigrationHistoryError(msg)
+    return prefix_length

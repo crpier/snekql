@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from snektest import fixture
+from snektest import fixture, load_fixture
 
 from snekql._query_codec import DialectQueryCodec
 from snekql.mariadb.schema import scaffold_mariadb_statements
@@ -136,8 +136,8 @@ def capture_snekql_logs() -> Generator[SnekqlLogCapture]:
 
 
 @fixture(scope="session")
-async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
-    """Provide a local MariaDB server for medium integration tests."""
+async def _provide_mariadb_server_session() -> AsyncGenerator[TemporaryMariaDBServer]:
+    """Keep one local MariaDB process alive for the integration-test session."""
 
     async with temporary_mariadb_server(
         data_directory=Path(".snektest/mariadb-data"),
@@ -145,3 +145,12 @@ async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
         transports={"tcp"},
     ) as server:
         yield server
+
+
+@fixture
+async def provide_mariadb_server() -> AsyncGenerator[TemporaryMariaDBServer]:
+    """Provide a clean database so each test owns one canonical Migration chain."""
+
+    server = await load_fixture(_provide_mariadb_server_session())
+    await server.reset_database()
+    yield server

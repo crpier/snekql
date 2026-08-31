@@ -1,7 +1,6 @@
 # Advisory-locked concurrent migrations
 
-snekql coordinates concurrent migration runs with a backend advisory lock so that
-several instances calling `Database.initialize(migrations=...)` or
+snekql coordinates concurrent migration runs so that several instances calling
 `Database.migrate(...)` at once are safe. This reverses the v1 "concurrent runs
 are undefined; migrate from a single place" boundary recorded in
 [ADR 0001](0001-hand-authored-raw-sql-migrations.md).
@@ -52,3 +51,20 @@ removes a sharp-edged "caller's responsibility" with no ergonomic cost.
 - SQLite coordination stays best-effort (write-serialization), so running
   migrations from a single place remains the recommendation there.
 - `docs/migrations.md` documents the coordination model for both backends.
+
+## Migration History v2 amendment
+
+Issue #254 supersedes this ADR's original SQLite and transaction choices.
+MariaDB still uses `GET_LOCK`, but snekql now confirms that `RELEASE_LOCK`
+fully drains ownership under cancellation shielding. It physically discards
+the connection if lock ownership or release is uncertain.
+
+SQLite no longer relies on best-effort autocommit write serialization. Each
+pending migration starts with `BEGIN IMMEDIATE`, reads and checks ordered
+history while holding the writer lock, executes one body, records its checksum,
+and commits both changes together. A competing runner cannot read stale history
+before the winner writes. Successful migrations still commit one at a time, so
+a later failure preserves earlier progress.
+
+MariaDB also commits transactional InnoDB DML and its history row together.
+MariaDB DDL continues to have an implicit-commit crash window.

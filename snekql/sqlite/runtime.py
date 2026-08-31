@@ -8,12 +8,19 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
 from aiosqlite import Connection, Cursor
+from anyio.lowlevel import checkpoint
 
+from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_codec import DialectQueryCodec
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
 from snekql.sqlite.config import Config
-from snekql.sqlite.migrations import apply_sqlite_migrations
+from snekql.sqlite.migrations import (
+    SQLiteMigrationConnectionState,
+    apply_sqlite_migrations,
+    validate_sqlite_migrations,
+    verify_sqlite_migrations,
+)
 from snekql.sqlite.pool import (
     SQLiteConnectionPool,
     normalize_sqlite_database,
@@ -162,14 +169,65 @@ class SQLiteRuntime:
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()
 
-    async def apply_migrations(self, migrations: dict[str, str]) -> None:
+    def validate_migrations(self, migrations: MigrationPlan) -> None:
+        """Reject invalid SQLite bodies before any pool acquisition."""
+
+        validate_sqlite_migrations(migrations)
+
+    async def _release_migration_connection(
+        self,
+        connection: Connection,
+        connection_state: SQLiteMigrationConnectionState,
+    ) -> None:
+        """Return only a transaction-clean migration connection to the pool."""
+
+        discard = False
+        with anyio.CancelScope(shield=True):
+            if connection.in_transaction:
+                try:
+                    await connection.rollback()
+                except Exception:
+                    discard = True
+            if discard or not connection_state.reusable or connection.in_transaction:
+                await self.connection_pool.discard(connection)
+            else:
+                await self.connection_pool.release(connection)
+        await checkpoint()
+
+    async def apply_migrations(
+        self,
+        migrations: MigrationPlan,
+        *,
+        adopt_legacy: bool = False,
+    ) -> MigrationResult:
         """Apply pending migrations on a pooled connection (ADR 0007)."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
+        connection_state = SQLiteMigrationConnectionState()
         try:
-            await apply_sqlite_migrations(connection, migrations)
+            return await apply_sqlite_migrations(
+                connection,
+                connection_state,
+                migrations,
+                adopt_legacy=adopt_legacy,
+                busy_retry_policy=self.busy_retry_policy,
+            )
         finally:
-            await self.connection_pool.release(connection)
+            await self._release_migration_connection(connection, connection_state)
+
+    async def verify_migrations(self, migrations: MigrationPlan) -> None:
+        """Read and compare Migration History without changing it."""
+
+        connection = await self.connection_pool.acquire(self.acquire_timeout)
+        connection_state = SQLiteMigrationConnectionState()
+        try:
+            await verify_sqlite_migrations(
+                connection,
+                connection_state,
+                migrations,
+            )
+        finally:
+            await self._release_migration_connection(connection, connection_state)
 
     async def verify_schema(
         self,

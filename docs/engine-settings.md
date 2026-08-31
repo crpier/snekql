@@ -43,7 +43,8 @@ snekql retries the acquisition with bounded exponential backoff and jitter
 and `Config.busy_max_backoff`) so a collision that outlasts the PRAGMA
 wait is absorbed instead of surfacing. A genuinely stuck lock (for example an
 external process holding the database) still surfaces as an error once the retry
-budget is spent. Retry is applied only to writer-lock acquisition, never to a
+budget is spent. Migration acquisition reports that exhaustion as
+`MigrationLockTimeoutError`. Retry is applied only to writer-lock acquisition, never to a
 statement inside an open transaction, because retrying a write after a
 concurrent commit cannot clear `SQLITE_BUSY_SNAPSHOT`.
 
@@ -71,6 +72,16 @@ The minimum may be lowered as more versions are validated.
 | `sql_mode` | includes `STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION` | `STRICT_ALL_TABLES` is the runtime analogue of SQLite `STRICT` tables: invalid or out-of-range values are rejected, not silently coerced. `NO_ENGINE_SUBSTITUTION` turns a missing storage engine into an error instead of a silent swap. |
 | `time_zone` | `+00:00` | Server-side `CURRENT_TIMESTAMP` defaults are generated in UTC to match snekql's UTC datetime codec. |
 | `foreign_key_checks` | `1` | Keeps the emitted `FOREIGN KEY` constraints enforced. |
+| `check_constraint_checks` | `1` | Keeps Migration History's position, name, and checksum checks enforced. |
+| `unique_checks` | `1` | Keeps Migration History's byte-exact name uniqueness enforced. |
+
+### InnoDB page size
+
+snekql verifies that `innodb_page_size` is at least 8192 bytes. Migration
+History stores migration names as up to 1020 UTF-8 bytes and uses a full unique
+index so name identity stays byte-exact. MariaDB's 4 KiB InnoDB page format
+cannot represent that index and is rejected at initialization instead of
+failing later while the history table is created.
 
 ### Table DDL
 

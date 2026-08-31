@@ -8,6 +8,8 @@ the same correctness posture snekql relies on for SQLite:
   ``STRICT`` tables, and ``NO_ENGINE_SUBSTITUTION`` turns a missing InnoDB into
   an error instead of a silent storage-engine swap that would drop foreign keys.
 * ``foreign_key_checks`` keeps the emitted ``FOREIGN KEY`` constraints enforced.
+* ``check_constraint_checks`` and ``unique_checks`` keep Migration History's
+  database-level integrity rules enforced.
 * ``time_zone`` pins the session to UTC so server-side ``CURRENT_TIMESTAMP``
   defaults match snekql's UTC datetime codec.
 
@@ -40,6 +42,11 @@ _DESIRED_SQL_MODE = (
     "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,"
     "NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"
 )
+_MINIMUM_HISTORY_PAGE_SIZE = 8192
+
+
+def _supports_history_name_index(value: object) -> bool:
+    return isinstance(value, int) and value >= _MINIMUM_HISTORY_PAGE_SIZE
 
 
 def _sql_mode_has_required_flags(value: object) -> bool:
@@ -70,6 +77,26 @@ MARIADB_SESSION_SETTINGS: tuple[ConnectionSetting, ...] = (
         probe_sql="SELECT @@SESSION.foreign_key_checks",
         expected_value=1,
         expectation="1 (ON)",
+    ),
+    ConnectionSetting(
+        name="check_constraint_checks",
+        apply_statements=("SET SESSION check_constraint_checks = 1",),
+        probe_sql="SELECT @@SESSION.check_constraint_checks",
+        expected_value=1,
+        expectation="1 (ON)",
+    ),
+    ConnectionSetting(
+        name="unique_checks",
+        apply_statements=("SET SESSION unique_checks = 1",),
+        probe_sql="SELECT @@SESSION.unique_checks",
+        expected_value=1,
+        expectation="1 (ON)",
+    ),
+    ConnectionSetting(
+        name="innodb_page_size",
+        probe_sql="SELECT @@innodb_page_size",
+        predicate=_supports_history_name_index,
+        expectation="at least 8192 bytes",
     ),
 )
 

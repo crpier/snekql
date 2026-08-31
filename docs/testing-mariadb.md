@@ -5,13 +5,17 @@
 ## Python API
 
 ```python
-from snekql.mariadb import Database, scaffold
+from snekql.mariadb import Database
 from snekql.testing.mariadb import temporary_mariadb_server
+
+# Imported from the application. Values are committed literal MariaDB SQL.
+from my_app.migrations import MIGRATIONS
 
 async with temporary_mariadb_server() as server:
     config = server.config()
     database = await Database.initialize(config)
-    await database.migrate({"0001_create_user": scaffold([User])})
+    await database.migrate(MIGRATIONS)
+    await database.verify_migrations(MIGRATIONS)
     await database.verify([User])
 ```
 
