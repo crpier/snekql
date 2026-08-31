@@ -29,11 +29,13 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import Self
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
+    Aggregate,
     Fetched,
     Integer,
     Model,
@@ -73,6 +75,36 @@ class Account[S = Pending](Model[S, "Account[Fetched]"]):
     )
     email: Account.Col[str] = Text(nullable=False)
     status: Account.Col[str] = Text(nullable=False, default="active")
+
+
+class HostileAggregateFunction(str):
+    """String equal to COUNT whose formatted value is attacker-controlled SQL."""
+
+    __slots__ = ()
+
+    def __new__(cls) -> Self:
+        return super().__new__(cls, "COUNT")
+
+    def __format__(self, format_spec: str) -> str:
+        del format_spec
+        return 'COUNT(*) FROM "account"; DROP TABLE "account"; --'
+
+
+@test(mark="fast")
+def aggregate_function_text_cannot_be_forged() -> None:
+    """Aggregate construction rejects SQL text outside the closed function set."""
+
+    with assert_raises(QueryConstructionError):
+        _ = Aggregate[Account[Pending], int](
+            func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[invalid-argument-type]
+            owner=Account,
+        )
+
+    with assert_raises(QueryConstructionError):
+        _ = Aggregate[Account[Pending], int](
+            func=HostileAggregateFunction(),  # ty: ignore[invalid-argument-type]
+            owner=Account,
+        )
 
 
 def _surviving_tables(database_path: Path) -> set[str]:
@@ -240,9 +272,9 @@ async def limit_and_offset_reject_non_integer_operands() -> None:
 
     for bad in ("1; DROP TABLE account", "1 OR 1=1", "-1"):
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().limit(bad)  # pyright: ignore[reportArgumentType]
+            _ = select(Account).all().limit(bad)  # ty: ignore[invalid-argument-type]
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().offset(bad)  # pyright: ignore[reportArgumentType]
+            _ = select(Account).all().offset(bad)  # ty: ignore[invalid-argument-type]
 
     # A legitimate integer limit binds as a placeholder, not inlined text.
     sql, params = SQLITE_CODEC.compile_select_sql(

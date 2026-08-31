@@ -63,7 +63,7 @@ def _requires_not_null(planned_column: PlannedColumn) -> bool:
     # PRAGMA table_info reports notnull=0). Every other single-column PK (TEXT,
     # BLOB, REAL) is reported notnull=1, so the DDL must emit NOT NULL to match.
     if column.primary_key:
-        return column.storage_class != "INTEGER"
+        return bool(column.storage_class != "INTEGER")
     # The column DDL and the expected shape share this predicate to stay in
     # lockstep.
     return column.nullable is False

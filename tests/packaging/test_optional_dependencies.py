@@ -21,6 +21,23 @@ def _run_python(script: str) -> subprocess.CompletedProcess[str]:
 
 
 @test(mark="medium")
+def package_metadata_declares_only_library_runtime_dependencies() -> None:
+    """Test tooling is absent from the dependencies installed for consumers."""
+
+    requirements = metadata("snekql").get_all("Requires-Dist") or []
+    runtime_dependencies = {
+        item.split(">=", maxsplit=1)[0]
+        for item in requirements
+        if "extra ==" not in item
+    }
+
+    assert_eq(
+        runtime_dependencies,
+        {"annotated-types", "anyio", "pydantic"},
+    )
+
+
+@test(mark="medium")
 def package_metadata_declares_backend_driver_extras() -> None:
     """SQLite and MariaDB drivers are optional backend extras."""
 

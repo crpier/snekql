@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import annotationlib
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -12,13 +14,14 @@ from types import EllipsisType
 from typing import (
     Annotated,
     Any,
+    ForwardRef,
     Literal,
     Self,
     TypeVar,
     cast,
+    evaluate_forward_ref,
     get_args,
     get_origin,
-    get_type_hints,
     overload,
 )
 
@@ -145,7 +148,7 @@ def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None
     if owner is None or name is None:
         return None
     try:
-        annotation = _resolve_model_hints(owner).get(name)
+        annotation = _resolve_model_hint(owner, name)
         return _strip_json_marker(_extract_logical_type(annotation, name))
     except ModelDeclarationError, NameError, TypeError:
         return None
@@ -308,6 +311,10 @@ WriteT = TypeVar("WriteT")
 ReadValueT = TypeVar("ReadValueT")
 
 
+class _UnboundOwner:
+    """Static owner marker for descriptors not yet accessed through a model."""
+
+
 class PendingGeneration:
     """Sentinel type for generated values that are not available yet.
 
@@ -336,7 +343,87 @@ PENDING_GENERATION = PendingGeneration()
 type SchemaPolicy = Literal["strict", "warn"]
 
 
-class Integer:
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Integer[T](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Integer(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """SQLite INTEGER storage primitive for table model fields.
 
     The Python value type is the field annotation, not the constructor: an
@@ -344,203 +431,186 @@ class Integer:
     an integer (a ``bool`` as ``0``/``1``, a custom epoch ``datetime``).
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    ...     id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        auto_increment: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            auto_increment=auto_increment,
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="INTEGER",
-            storage_type_name="Integer",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        auto_increment=auto_increment,
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="INTEGER",
+        storage_type_name="Integer",
+    )
 
 
-class Real:
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Real[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Real(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """SQLite REAL storage primitive for float-like model values.
 
     >>> class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
-    ...     value: Reading.Col[float] = Real(nullable=False)
+    ...     value: Col[float] = Real()
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="REAL",
-            storage_type_name="Real",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="REAL",
+        storage_type_name="Real",
+    )
 
 
-class Text:
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Text[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Text(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """SQLite TEXT storage primitive for string-encoded model values.
 
     The Python value type is the annotation: ``Text()`` may hold a ``str``, a
@@ -548,192 +618,109 @@ class Text:
     ``pydantic.Json[T]`` payload (serialized JSON text).
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: User.Col[str] = Text(nullable=False)
+    ...     email: Col[str] = Text()
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="TEXT",
-            storage_type_name="Text",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Text",
+    )
 
 
-class Blob:
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def Blob[T](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def Blob(  # noqa: N802, PLR0913
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
     """SQLite BLOB storage primitive for bytes-encoded model values.
 
     >>> class File[S = Pending](Model[S, "File[Fetched]"]):
-    ...     content: File.Col[bytes] = Blob(nullable=False)
+    ...     content: Col[bytes] = Blob()
     """
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: PendingGeneration,
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: type[CurrentTimestamp],
-    ) -> Attr[Any, Any, Any, T | PendingGeneration, T]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: None,
-    ) -> Attr[Any, Any, Any, T | None, T | None, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: T,
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__[T](
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default_factory: Callable[[], T],
-    ) -> Attr[Any, Any, Any, T, T, object]: ...
-
-    @overload
-    def __new__(
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any: ...
-
-    def __new__(  # noqa: PLR0913
-        cls,
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        default: object = ...,
-        default_factory: Callable[[], object] | EllipsisType = ...,
-    ) -> Any:
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            default_factory=default_factory,
-            nullable=nullable,
-            primary_key=primary_key,
-            index=index,
-            unique=unique,
-            storage_class="BLOB",
-            storage_type_name="Blob",
-        )
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        primary_key=primary_key,
+        index=index,
+        unique=unique,
+        storage_class="BLOB",
+        storage_type_name="Blob",
+    )
 
 
 class CurrentTimestamp:
@@ -753,7 +740,85 @@ class CurrentTimestamp:
     """
 
 
-class ForeignKey:
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: Literal[True],
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+    default: T,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+    default: T,
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: Literal[True],
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+    default: None,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+
+
+@overload
+def ForeignKey[Target, T](
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
+
+
+def ForeignKey[Target, T](  # noqa: N802, PLR0913
+    references: Attr[Any, Any, Target, Any, T],
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    on_delete: ReferentialAction | None = None,
+    on_update: ReferentialAction | None = None,
+    default: object = ...,
+) -> Any:
     """Foreign-key column declaration that names its target column.
 
     The single way to declare any foreign key: the target column is passed as a
@@ -768,117 +833,89 @@ class ForeignKey:
     identity *is* the referenced column pair.
 
     >>> class Order[S = Pending](Model[S, "Order[Fetched]"]):
-    ...     owner_email: Order.FKCol[User, str] = ForeignKey(
-    ...         User.email, nullable=False
-    ...     )
+    ...     owner_email: FKCol[User, str] = ForeignKey(User.email)
     """
-
-    @overload
-    def __new__[Target, T](
-        cls,
-        references: Attr[Any, Any, Target, Any, T],
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        on_delete: ReferentialAction | None = None,
-        on_update: ReferentialAction | None = None,
-        default: T,
-    ) -> FKAttr[Any, Any, Any, T, T, Target, object]: ...
-
-    @overload
-    def __new__[Target, T](
-        cls,
-        references: Attr[Any, Any, Target, Any, T],
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        on_delete: ReferentialAction | None = None,
-        on_update: ReferentialAction | None = None,
-        default: None,
-    ) -> FKAttr[Any, Any, Any, T | None, T | None, Target, object]: ...
-
-    @overload
-    def __new__[Target, T](
-        cls,
-        references: Attr[Any, Any, Target, Any, T],
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        on_delete: ReferentialAction | None = None,
-        on_update: ReferentialAction | None = None,
-    ) -> FKAttr[Any, Any, Any, T, T, Target]: ...
-
-    def __new__[Target, T](  # noqa: PLR0913
-        cls,
-        references: Attr[Any, Any, Target, Any, T],
-        *,
-        primary_key: bool = False,
-        nullable: bool | None = None,
-        unique: bool = False,
-        index: bool = False,
-        on_delete: ReferentialAction | None = None,
-        on_update: ReferentialAction | None = None,
-        default: object = ...,
-    ) -> Any:
-        target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
-        return FKAttr[Any, Any, Any, Any, Any, Any](
-            default=default,
-            foreign_key_target=target_column,
-            nullable=nullable,
-            on_delete=on_delete,
-            on_update=on_update,
-            primary_key=primary_key,
-            storage_class=target_column.storage_class,
-            storage_type_name=target_column.storage_type_name,
-            index=index,
-            unique=unique,
-        )
+    target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        foreign_key_target=target_column,
+        nullable=nullable,
+        on_delete=on_delete,
+        on_update=on_update,
+        primary_key=primary_key,
+        storage_class=target_column.storage_class,
+        storage_type_name=target_column.storage_type_name,
+        index=index,
+        unique=unique,
+    )
 
 
-def _resolve_model_hints(owner: type[object]) -> dict[str, Any]:
-    """Resolve and cache a model's annotations for per-column validation.
+def _contains_forward_ref(annotation: object) -> bool:
+    """Whether an evaluated annotation still contains an unresolved name."""
+
+    if isinstance(annotation, ForwardRef):
+        return True
+    return any(_contains_forward_ref(argument) for argument in get_args(annotation))
+
+
+def _resolve_model_hint(owner: type[object], name: str) -> object | None:
+    """Resolve and cache one model annotation without evaluating its siblings.
 
     The logical type a column validates against lives only in its annotation
     (`Col[T]` / `GenCol[T]` / `FKCol[Target, T]`), which carries no runtime
     value. Resolving it needs the names visible where the model was declared --
     the captured declaring-scope locals plus the model's own name for
-    self-referential annotations -- so the resolution mirrors foreign-key
-    target resolution. Hints are cached on the owning class so each column does
-    not re-resolve the whole annotation set.
+    self-referential annotations. Each field is evaluated independently so one
+    unresolved forward reference cannot suppress checks on a resolvable sibling.
     """
 
-    cached = cast("dict[str, Any] | None", vars(owner).get("__snekql_hints__"))
-    if cached is not None:
-        return cached
+    cached = cast("dict[str, object] | None", vars(owner).get("__snekql_hints__"))
+    if cached is not None and name in cached:
+        return cached[name]
+    annotations = annotationlib.get_annotations(
+        owner,
+        format=annotationlib.Format.STRING,
+    )
+    annotation = annotations.get(name)
+    if annotation is None:
+        return None
     captured_localns = cast(
         "dict[str, Any] | None",
         getattr(owner, "__snekql_localns__", None),
     )
     localns: dict[str, Any] = {**(captured_localns or {}), owner.__name__: owner}
-    hints = get_type_hints(owner, localns=localns, include_extras=True)
-    cast("Any", owner).__snekql_hints__ = hints
-    return hints
+    resolved = evaluate_forward_ref(
+        ForwardRef(annotation),
+        owner=owner,
+        globals=vars(sys.modules[owner.__module__]),
+        locals=localns,
+        format=annotationlib.Format.FORWARDREF,
+    )
+    contains_forward_ref = _contains_forward_ref(resolved)
+    if contains_forward_ref and "<locals>" in owner.__qualname__:
+        msg = (
+            f"function-local type for column {name!r} must be defined before the model"
+        )
+        raise ModelDeclarationError(msg)
+    if not contains_forward_ref:
+        if cached is None:
+            cached = {}
+            cast("Any", owner).__snekql_hints__ = cached
+        cached[name] = resolved
+    return resolved
 
 
 def _extract_logical_type(annotation: object, name: str) -> object:
     """Pull the validated value type out of a column annotation.
 
-    `Col[T]` and `GenCol[T]` carry the logical type as their only argument;
-    `FKCol[Target, T]` carries it second, after the referenced model.
+    Every public column alias puts its Logical Type last. Earlier arguments
+    carry the declaring model and, for `FKCol`, the referenced model.
     """
 
     alias_name = getattr(get_origin(annotation), "__name__", None)
     arguments = get_args(annotation)
-    if alias_name in {"Col", "GenCol"} and arguments:
-        return arguments[0]
-    if alias_name == "FKCol" and len(arguments) >= 2:  # noqa: PLR2004
-        return arguments[1]
+    if alias_name in {"Col", "FKCol", "GenCol", "JsonCol"} and arguments:
+        return arguments[-1]
     msg = f"cannot determine validated type for column {name!r}"
     raise ModelDeclarationError(msg)
 
@@ -971,6 +1008,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         primary_key: bool = False,
         unique: bool = False,
     ) -> None:
+        if not isinstance(default, EllipsisType) and not isinstance(
+            default_factory, EllipsisType
+        ):
+            msg = "default and default_factory are mutually exclusive"
+            raise ModelDeclarationError(msg)
         self.auto_increment: bool = auto_increment
         self.default: object = default
         self.default_factory: Callable[[], object] | EllipsisType = default_factory
@@ -980,6 +1022,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             foreign_key_target
         )
         self.index: bool = index
+        self.nullable_declared: bool | None = nullable
         self.on_delete: ReferentialAction | None = on_delete
         self.on_update: ReferentialAction | None = on_update
         self.is_generated: bool = False
@@ -1004,16 +1047,25 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self._is_json_cache: bool | None = None
 
     def __set_name__(self, owner: type[object], name: str) -> None:
+        if self.owner is not None and (self.owner is not owner or self.name != name):
+            msg = (
+                f"column descriptor is already bound to "
+                f"{self.owner.__name__}.{self.name}; create a new descriptor for "
+                f"{owner.__name__}.{name}"
+            )
+            raise ModelDeclarationError(msg)
         self.name = name
         self.owner = owner
 
     @overload
-    def __get__(
-        self, instance: None, owner: type[Any]
+    def __get__[AccessOwner](
+        self,
+        instance: None,
+        owner: type[AccessOwner],
     ) -> Attr[
         WriteOwnerT,
         LoadedOwnerT,
-        OwnerT,
+        AccessOwner,
         WriteT,
         ReadValueT,
         SetValueT,
@@ -1154,7 +1206,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         if owner is None:
             msg = "column descriptor is not bound"
             raise ModelDeclarationError(msg)
-        annotation = _resolve_model_hints(owner).get(name)
+        annotation = _resolve_model_hint(owner, name)
         # The pydantic ``Json`` marker only selects the JSON wire codec; the
         # adapter validates and serializes the inner payload type, the same way
         # the MariaDB native ``Json`` column (a plain ``Col[T]`` annotation) does.
@@ -1180,7 +1232,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         owner = self.owner
         if owner is None:
             return False
-        annotation = _resolve_model_hints(owner).get(self._require_name())
+        annotation = _resolve_model_hint(owner, self._require_name())
         try:
             logical = _extract_logical_type(annotation, self._require_name())
         except ModelDeclarationError:
@@ -1419,11 +1471,49 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             msg = f"{self._require_name()!r} is not JSON serializable"
             raise ModelValidationError(msg) from error
 
+    @overload
+    def like(
+        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT],
+        pattern: str,
+    ) -> Predicate[OwnerT]: ...
+
+    @overload
+    def like(
+        self: Attr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            str | None,
+            SetValueT,
+        ],
+        pattern: str,
+    ) -> Predicate[OwnerT]: ...
+
     def like(self, pattern: str) -> Predicate[OwnerT]:
         if not self._is_str_logical():
             msg = "like() is only valid for text columns"
             raise QueryConstructionError(msg)
         return LikePredicate(operand=self, pattern=pattern, negated=False)
+
+    @overload
+    def not_like(
+        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT],
+        pattern: str,
+    ) -> Predicate[OwnerT]: ...
+
+    @overload
+    def not_like(
+        self: Attr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            str | None,
+            SetValueT,
+        ],
+        pattern: str,
+    ) -> Predicate[OwnerT]: ...
 
     def not_like(self, pattern: str) -> Predicate[OwnerT]:
         if not self._is_str_logical():
@@ -1442,7 +1532,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         owner = self.owner
         if owner is None:
             return False
-        annotation = _resolve_model_hints(owner).get(self._require_name())
+        annotation = _resolve_model_hint(owner, self._require_name())
         try:
             logical = _strip_json_marker(
                 _extract_logical_type(annotation, self._require_name())
@@ -1471,7 +1561,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         if owner is None:
             return None
         try:
-            annotation = _resolve_model_hints(owner).get(self._require_name())
+            annotation = _resolve_model_hint(owner, self._require_name())
             return _strip_json_marker(
                 _extract_logical_type(annotation, self._require_name())
             )
@@ -1520,9 +1610,12 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
     def count(self) -> Aggregate[OwnerT, int]:
         """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
 
-        return Aggregate(func="COUNT", column=self, owner=self.owner)
+        return cast(
+            "Aggregate[OwnerT, int]",
+            Aggregate(func="COUNT", column=self, owner=self.owner),
+        )
 
-    def sum(self) -> Aggregate[OwnerT, ReadValueT | None]:
+    def sum(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
         """Aggregate this column as ``SUM(col)`` (``None`` over an empty set).
 
         Rejected on non-numeric columns: ``SUM``/``AVG`` over text coerces to
@@ -1531,28 +1624,40 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         """
 
         self._require_numeric_aggregate("sum")
-        return Aggregate(func="SUM", column=self, owner=self.owner)
+        return cast(
+            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            Aggregate(func="SUM", column=self, owner=self.owner),
+        )
 
-    def avg(self) -> Aggregate[OwnerT, float | None]:
+    def avg(self) -> Aggregate[OwnerT, float | None, float]:
         """Aggregate this column as ``AVG(col)`` (``float``, ``None`` if empty)."""
 
         self._require_numeric_aggregate("avg")
-        return Aggregate(func="AVG", column=self, owner=self.owner)
+        return cast(
+            "Aggregate[OwnerT, float | None, float]",
+            Aggregate(func="AVG", column=self, owner=self.owner),
+        )
 
     def _require_numeric_aggregate(self, func: str) -> None:
         if self._logical_is_numeric() is False:
             msg = f"{func}() is only valid for numeric columns"
             raise QueryConstructionError(msg)
 
-    def min(self) -> Aggregate[OwnerT, ReadValueT | None]:
+    def min(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
 
-        return Aggregate(func="MIN", column=self, owner=self.owner)
+        return cast(
+            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            Aggregate(func="MIN", column=self, owner=self.owner),
+        )
 
-    def max(self) -> Aggregate[OwnerT, ReadValueT | None]:
+    def max(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
 
-        return Aggregate(func="MAX", column=self, owner=self.owner)
+        return cast(
+            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            Aggregate(func="MAX", column=self, owner=self.owner),
+        )
 
     def asc(self) -> OrderBy[OwnerT]:
         return OrderBy(column=self, direction="ASC")
@@ -1591,6 +1696,11 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
 
         raise NotImplementedError
 
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness of this column's model owner."""
+
+        raise NotImplementedError
+
 
 class FKAttr[
     WriteOwnerT,
@@ -1608,7 +1718,7 @@ class FKAttr[
     `references` only accepts a column of the referenced model whose read type
     matches this column's, so a join condition is provably between related
     tables of compatible key type. Every runtime column is an `FKAttr`; only
-    columns annotated as `Model.FKCol[Target, T]` expose `references` to the
+    columns annotated as `FKCol[Target, T]` expose `references` to the
     type checker, which is what makes `.references` on a plain column a typing
     error while still resolving at runtime.
     """
@@ -1616,7 +1726,19 @@ class FKAttr[
     # Class access must keep the FKAttr type (not widen to Attr) so `references`
     # stays visible; the value overloads mirror the base descriptor protocol.
     @overload
-    def __get__(self, instance: None, owner: type[Any]) -> Self: ...
+    def __get__[AccessOwner](
+        self,
+        instance: None,
+        owner: type[AccessOwner],
+    ) -> FKAttr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        AccessOwner,
+        WriteT,
+        ReadValueT,
+        TargetOwnerT,
+        SetValueT,
+    ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
     @overload
@@ -1624,9 +1746,37 @@ class FKAttr[
     def __get__(self, instance: object | None, owner: type[Any]) -> object:
         return cast("object", super().__get__(cast("Any", instance), owner))
 
+    @overload
+    def references[KeyT](
+        self: FKAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            KeyT,
+            KeyT,
+            TargetOwnerT,
+            SetValueT,
+        ],
+        other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
+    ) -> JoinOn[OwnerT, TargetOwnerT]: ...
+
+    @overload
+    def references[KeyT](
+        self: FKAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            KeyT | None,
+            KeyT | None,
+            TargetOwnerT,
+            SetValueT,
+        ],
+        other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
+    ) -> JoinOn[OwnerT, TargetOwnerT]: ...
+
     def references(
         self,
-        other: Attr[Any, Any, TargetOwnerT, Any, ReadValueT],
+        other: Attr[Any, Any, TargetOwnerT, Any, Any],
     ) -> JoinOn[OwnerT, TargetOwnerT]:
         """Build a join condition between this FK column and its target."""
 
@@ -1646,7 +1796,7 @@ def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
     if owner is None or name is None:
         return None
     try:
-        annotation = _resolve_model_hints(owner).get(name)
+        annotation = _resolve_model_hint(owner, name)
         logical = _strip_json_marker(_extract_logical_type(annotation, name))
     except ModelDeclarationError, NameError, TypeError:
         return None

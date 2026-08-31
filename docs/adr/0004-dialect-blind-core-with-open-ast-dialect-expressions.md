@@ -50,7 +50,7 @@ query result purely through the `select` overloads. The `CompileCtx` injected by
 the core is the carrier for the Dialect facts an expression needs to render
 (placeholder style, quoting).
 
-This was validated against `pyright` in a throwaway prototype kept at
+This was validated against the configured type checker in a throwaway prototype kept at
 `proto_open_ast/`: a MariaDB `json_extract_int` operator is type-safe as a
 `WHERE` operand and as a typed `SELECT` projection (`int` / `tuple[str, int]`),
 illegal uses (the operator on a non-JSON column; a wrong-typed comparison; an
@@ -90,7 +90,7 @@ materializes it while importing no Backend Namespace.
   **before** Postgres so Postgres validates the seam rather than reshaping it.
 - This unblocks, but does not mandate, a later split into separate distributions
   (`snekql-core` + per-backend packages) to solve import ergonomics and stop
-  pyright auto-imports crossing backends — viable only once the core provably
+  checker auto-imports crossing backends — viable only once the core provably
   imports no Backend Namespace. That packaging change is explicitly a downstream
   phase, out of scope here.
 

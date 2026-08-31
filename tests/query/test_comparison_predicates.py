@@ -173,12 +173,12 @@ async def comparison_predicates_filter_rows_end_to_end() -> None:
 def comparison_compilation_rejects_none_carried_into_predicate() -> None:
     """A None value reaching compilation is rejected with a null-predicate hint."""
 
-    raw_gt: Predicate[Reading] = ComparisonPredicate(
+    raw_gt: Predicate[Reading] = ComparisonPredicate[Reading](
         operand=Reading.value,
         operator="gt",
         value=None,
     )
-    raw_between: Predicate[Reading] = BetweenPredicate(
+    raw_between: Predicate[Reading] = BetweenPredicate[Reading](
         operand=Reading.value,
         low=1,
         high=None,

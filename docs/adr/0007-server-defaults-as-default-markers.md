@@ -17,11 +17,13 @@ Constructors exposed a `server_default` parameter whose only legal value was
 `default=PENDING_GENERATION`:
 
 ```python
-created_at: GenCol[datetime] = Text(server_default=CurrentTimestamp, default=PENDING_GENERATION)
+created_at: GenCol[datetime] = Text(
+    server_default=CurrentTimestamp, default=PENDING_GENERATION
+)
 ```
 
 The `default=PENDING_GENERATION` looked like redundant boilerplate, but it is **load-bearing
-for the type checker**. Under PEP 681, pyright treats a dataclass-transform field
+for the type checker**. Under PEP 681, `ty` treats a dataclass-transform field
 as optional in `__init__` *only* when the field-specifier call passes one of
 `default` / `default_factory` / `factory`. We verified empirically that nothing
 else works: a field-specifier whose `default` parameter merely *defaults* to a
@@ -37,7 +39,7 @@ redundant pairing on every server-filled column.
 ## Decision
 
 Remove the public `server_default` parameter. Declare a server default by passing
-a marker through `default`, which pyright already recognizes:
+a marker through `default`, which `ty` recognizes:
 
 ```python
 created_at: GenCol[datetime] = Text(default=CurrentTimestamp)
@@ -64,7 +66,7 @@ value-marker).
 - **Make `server_default=` imply an optional field.** Rejected: type-checker
   infeasible. PEP 681 keys field optionality off the `default`/`default_factory`/
   `factory` arguments in the field-specifier call; parameter defaults and
-  overloads do not change it (verified against pyright).
+  overloads do not change it (verified against `ty`).
 - **Keep `server_default=` and `default=PENDING_GENERATION`.** Rejected: the redundancy is
   load-bearing but reads as boilerplate, and the two-channel split is exactly what
   blocked a single-kwarg server-default declaration.

@@ -4,6 +4,20 @@
 
 ### Breaking changes
 
+- Public typing now targets `ty==0.0.75` exclusively. Model fields use the
+  owner-free forms `Col[T]`, `GenCol[T]`, `FKCol[Target, T]`, and
+  `JsonCol[T]`; concrete descriptors, metaclasses, model bounds, and query-state
+  classes are no longer exported. Stored queries use the annotation-only
+  `Select[Row]` and `Write[Result]` aliases, which are not constructors or
+  runtime `isinstance` targets. Projection and mutation `returning(...)`
+  inference is supported through eight selected values. (#241)
+
+- A scalar subquery can no longer be the first item in a multi-value projection.
+  The first projected expression establishes the outer query's `FROM` scope;
+  allowing a scope-free scalar in that slot let static scope checking diverge
+  from Query Compilation. Put a model-owned column, aggregate, or dialect
+  expression first and scalar subqueries in later slots. (#241)
+
 - The column metadata attribute `Attr.sqlite_storage_class` is **renamed to
   `storage_class`** (the ADR-0003 sanctioned backend-neutral name); values are
   unchanged (`"INTEGER" | "REAL" | "TEXT" | "BLOB"`). Code declaring columns
@@ -47,6 +61,30 @@
   left a non-optional column silently nullable. (#203)
 
 ### Fixed
+
+- Valid required-nullable and non-`None`-defaulted `ForeignKey` declarations now
+  satisfy the field-specifier overloads in both backend namespaces. Public
+  `Select[Row]` and `Write[Result]` annotations can now be passed directly to
+  Query Runtime methods without losing their result type. (#241)
+
+- Generated-column detection now resolves the actual annotation rather than
+  searching its source spelling, so an imported alias of `GenCol` preserves
+  pending-generation behavior. Partially resolved forward references are no
+  longer cached permanently; later module-level payload types resolve on retry,
+  while a later function-local payload now fails at declaration with guidance to
+  define it first. An application table named `Model` is treated as a concrete
+  table instead of a framework base. (#241)
+
+- `insert(...)` now rejects database-materialized Fetched models, uninitialized
+  model objects, and mixed-model bulk batches during Query Construction.
+  Aggregate function names must be exact built-in strings even when an
+  expression node is constructed directly, preventing arbitrary function text
+  or hostile string subclasses from reaching SQL compilation. (#241)
+
+- Package metadata no longer installs `snektest` for library consumers, and the
+  source distribution now uses an explicit release-input allowlist instead of
+  including local caches, settings, tests, reports, and research artifacts.
+  (#241)
 
 - `scalar(subquery)` is now typed `Scalar[Any, T | None]` and decodes a no-match
   to `None` instead of raising. A SQL scalar subquery evaluates to `NULL` on an
@@ -136,7 +174,11 @@
 - `ForeignKey(...)` accepts `on_delete=` and `on_update=` referential actions (`"CASCADE"`, `"RESTRICT"`, `"SET NULL"`, `"NO ACTION"`), rendering `ON DELETE`/`ON UPDATE` clauses on the generated constraint so owned child rows can cascade or null out when their parent changes instead of requiring a manual, order-sensitive multi-table delete. Both backends render identically through the shared schema compiler. `SET DEFAULT` is intentionally unsupported: SQLite honors it but InnoDB silently ignores it, so it is not portable. An action left unset renders no clause (the database default `NO ACTION`), keeping existing scaffolds byte-for-byte unchanged. `on_delete`/`on_update` `"SET NULL"` is rejected at declaration on a `NOT NULL` or primary-key foreign-key column, where it could never fire. On SQLite, `verify(...)` now also compares the referential action and reports a model/live mismatch as drift (MariaDB does not verify foreign keys).
 - Centralized engine-settings seam that applies and verifies the connection settings snekql depends on, failing fast when a setting cannot be confirmed. SQLite verifies `foreign_keys`, `busy_timeout`, and UTF-8 `encoding` on every pooled connection; MariaDB verifies a strict `sql_mode` (`STRICT_ALL_TABLES`, `NO_ENGINE_SUBSTITUTION`), UTC `time_zone`, and `foreign_key_checks` on every physical connection, plus a minimum-version guard. Documented in [docs/engine-settings.md](./docs/engine-settings.md).
 - `Model.construct(**values)` classmethod that builds a Pending Model while skipping per-column logical validation, for values already known to satisfy their declared types. Defaults, missing/unknown-field structural checks, and freezing still apply.
-- `validate: bool = True` keyword on `Transaction.fetch_one` and `Transaction.fetch_all` (threaded through row materialization) to skip read-side logical validation for trusted result sets while keeping wire decoding.
+- `validate: bool = True` keyword on Query Runtime fetch methods and mutation
+  execution (threaded through row materialization) to skip read-side logical
+  validation for trusted result sets while keeping wire decoding. Calls with
+  literal `validate=False` are typed as raw `object`-shaped results rather than
+  promising the selected logical type.
 - `Json` columns now serialize and decode through the same per-column pydantic `TypeAdapter` that drives validation (`dump_json` / `validate_json`), making the codec symmetric. Any type the `Col[T]` annotation can validate -- `datetime`, pydantic models, `list[Model]`, and so on -- now round-trips, rather than only `dict`/`list`/primitives. Native payloads keep the same compact, byte-stable text as before. A `validate=False` decode still returns the raw `json.loads` value with no type coercion.
 - Subquery support: a select can now be nested inside another query.
   - `column.in_subquery(select(...))` / `column.not_in_subquery(select(...))` test membership against a single-column subquery (`IN (SELECT ...)` / `NOT IN (...)`). The subquery must project exactly one column whose value type matches the column's, enforced both in the typed surface and at construction.

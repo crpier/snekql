@@ -28,7 +28,7 @@ For package releases:
 
    ```bash
    uv run snektest
-   uv run pyright .
+   uv run ty check
    uv run ruff check .
    uv run ruff format --check .
    ```
@@ -42,12 +42,12 @@ For package releases:
 
 - Use `snektest` for tests.
   - For snektest usage documentation, read its installed distribution metadata with `importlib.metadata.distribution("snektest").read_text("METADATA")`; the `METADATA` file embeds snektest's README.
-- Use `pyright` for static typing validation.
+- Use `ty` for static typing validation.
 - Preferred validation commands:
 
   ```bash
   uv run snektest
-  uv run pyright .
+  uv run ty check
   uv run ruff check .
   uv run ruff format --check .
   ```

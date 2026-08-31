@@ -139,7 +139,7 @@ def _render_selectable(
 
 
 def _compile_scalar_sql(
-    scalar_subquery: Scalar[Any, Any],
+    scalar_subquery: Scalar[Any, Any, Any],
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
@@ -232,7 +232,7 @@ class _PredicateCompileContext:
         """Compile a scalar-subquery operand as a parenthesized select."""
 
         return _compile_scalar_sql(
-            cast("Scalar[Any, Any]", scalar),
+            cast("Scalar[Any, Any, Any]", scalar),
             self.dialect,
             scope=self.scope,
         )

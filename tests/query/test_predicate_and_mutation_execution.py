@@ -63,7 +63,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
         _ = email_not_in("a@example.com", None)
 
     with assert_raises(QueryConstructionError):
-        _ = User.id.like("1%")
+        _ = User.id.like("1%")  # ty: ignore[no-matching-overload]
 
 
 @test(mark="fast")

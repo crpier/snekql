@@ -45,7 +45,13 @@ def select_limit_and_offset_reject_invalid_values_at_boundary() -> None:
 
     with assert_raises(QueryConstructionError):
         # We are intentionally calling offset with the wrong type.
-        _ = select(BoundaryUser).all().offset("1")  # pyright: ignore[reportArgumentType]
+        _ = (
+            select(BoundaryUser)
+            .all()
+            .offset(
+                "1"  # ty: ignore[invalid-argument-type]
+            )
+        )
 
 
 @test(mark="fast")

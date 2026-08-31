@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, cast, get_args, get_origin, get_type_hints
+from typing import Any, cast, get_args, get_origin
 
 from snekql.errors import ModelDeclarationError, SchemaError
 from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
-from snekql.storage import Attr, SchemaPolicy
+from snekql.storage import Attr, SchemaPolicy, _resolve_model_hint
 
 
 @dataclass(frozen=True)
@@ -96,32 +96,26 @@ def _model_indexes(
     table_name: str,
     columns: tuple[PlannedColumn, ...],
 ) -> tuple[NormalizedIndex, ...]:
-    table_indexes = getattr(model, "__snekql_indexes__", ())
+    table_indexes = cast(
+        "tuple[NormalizedIndex, ...]",
+        getattr(model, "__snekql_indexes__", ()),
+    )
     return (*_column_indexes(table_name, columns), *table_indexes)
 
 
 def _resolve_target_model(model: type[Table[Any]], name: str) -> type[Table[Any]]:
     """Resolve the referenced model from a column's ``FKCol`` annotation."""
 
-    # Resolving annotations needs names visible where the model was declared,
-    # plus the model's own name for self-referential column owners
-    # (``Order.GenCol[int]``), which is not yet bound while the class body runs.
-    captured_localns = cast(
-        "dict[str, Any] | None",
-        getattr(model, "__snekql_localns__", None),
-    )
-    localns: dict[str, Any] = {**(captured_localns or {}), model.__name__: model}
     try:
-        hints = get_type_hints(model, localns=localns, include_extras=True)
+        annotation = _resolve_model_hint(model, name)
     except Exception as error:
         msg = f"cannot resolve foreign-key annotation for column {name!r}"
         raise SchemaError(msg) from error
-    annotation = hints.get(name)
     origin = get_origin(annotation)
     if origin is None or getattr(origin, "__name__", None) != "FKCol":
         msg = f"foreign_key column {name!r} must be annotated as FKCol[Target, T]"
         raise SchemaError(msg)
-    target_argument = cast("object", get_args(annotation)[0])
+    target_argument = cast("object", get_args(annotation)[-2])
     target_model = get_origin(target_argument) or target_argument
     if not isinstance(target_model, type) or not issubclass(target_model, Table):
         msg = f"foreign-key target for column {name!r} is not a table model"

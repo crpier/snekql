@@ -101,7 +101,7 @@ def _predicates_for(
         st.tuples(values, values).map(
             # `column`/`values` are deliberately `Any`-typed test infrastructure,
             # so `between` resolves to its None-rejecting overload here.
-            lambda bounds: column.between(*bounds),  # pyright: ignore[reportDeprecated]
+            lambda bounds: column.between(*bounds),
         ),
         st.just(column.is_null()),
         st.just(column.is_not_null()),

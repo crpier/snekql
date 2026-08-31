@@ -240,19 +240,18 @@ def schema_plan_rejects_auto_increment_on_a_composite_primary_key() -> None:
 
 
 @test(mark="fast")
-def schema_plan_rejects_a_nullable_composite_primary_key_column() -> None:
+def model_declaration_rejects_a_nullable_composite_primary_key_column() -> None:
     """A composite-PK column is always NOT NULL, so declared nullable is invalid."""
 
-    class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
-        """Table illegally declaring a composite-PK column nullable."""
-
-        left: CompositeNullable.Col[int | None] = Integer(
-            primary_key=True, nullable=True
-        )
-        right: CompositeNullable.Col[int] = Integer(primary_key=True)
-
     with assert_raises(ModelDeclarationError):
-        _ = build_schema_plan([CompositeNullable])
+
+        class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
+            """Table illegally declaring a composite-PK column nullable."""
+
+            left: CompositeNullable.Col[int | None] = Integer(
+                primary_key=True, nullable=True
+            )
+            right: CompositeNullable.Col[int] = Integer(primary_key=True)
 
 
 @test(mark="fast")
@@ -386,7 +385,7 @@ def schema_plan_rejects_a_foreign_key_whose_target_is_not_on_the_annotated_model
     class Order[S = Pending](Model[S, "Order[Fetched]"]):
         """Table whose annotation and recorded target disagree."""
 
-        owner: Order.FKCol[Region, str] = ForeignKey(User.email)  # type: ignore[arg-type]
+        owner: Order.FKCol[Region, str] = ForeignKey(User.email)
 
     with assert_raises(SchemaError):
         _ = build_schema_plan([User, Region, Order])

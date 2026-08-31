@@ -19,6 +19,7 @@ from snekql.query import (
     InsertManyQuery,
     InsertQuery,
     UpdateQuery,
+    _SelectableModelClass,
     build_insert,
 )
 from snekql.query import (
@@ -53,7 +54,9 @@ def insert(row_or_rows: object, /) -> object:
     return build_insert(row_or_rows)
 
 
-def update[ModelT: Table[Any]](model: type[ModelT], /) -> UpdateQuery[ModelT]:
+def update[ModelT: Table[Any], ReadT: Table[Any]](
+    model: _SelectableModelClass[ModelT, ReadT], /
+) -> UpdateQuery[ModelT, ReadT]:
     """Build a SQLite ``UPDATE`` for a table model.
 
     Executed, it returns the affected-row count. SQLite's ``rowcount`` counts
@@ -65,7 +68,9 @@ def update[ModelT: Table[Any]](model: type[ModelT], /) -> UpdateQuery[ModelT]:
     return build_update(model)
 
 
-def delete[ModelT: Table[Any]](model: type[ModelT], /) -> DeleteQuery[ModelT]:
+def delete[ModelT: Table[Any], ReadT: Table[Any]](
+    model: _SelectableModelClass[ModelT, ReadT], /
+) -> DeleteQuery[ModelT, ReadT]:
     """Build a SQLite ``DELETE`` for a table model.
 
     Executed, it returns the number of rows deleted (SQLite's ``rowcount``).

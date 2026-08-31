@@ -133,7 +133,11 @@ def in_subquery_requires_single_column_select() -> None:
     """A model select projects every column, so it is rejected as an IN set."""
 
     with assert_raises(QueryConstructionError):
-        _ = select(User.id).where(User.id.in_subquery(select(Order)))  # type: ignore[arg-type]
+        _ = select(User.id).where(
+            User.id.in_subquery(
+                select(Order)  # ty: ignore[invalid-argument-type]
+            )
+        )
 
 
 # --- Slice 3: EXISTS / NOT EXISTS (correlated) ------------------------------
@@ -221,6 +225,24 @@ def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
 
 
 @test(mark="fast")
+def scalar_subquery_cannot_anchor_projection() -> None:
+    """A projection must establish its table scope before a scalar slot."""
+
+    with assert_raises(QueryConstructionError):
+        _ = select(  # ty: ignore[no-matching-overload]
+            scalar(select(Order.amount).all())
+        )
+
+    with assert_raises(QueryConstructionError):
+        _ = select(
+            scalar(  # ty: ignore[invalid-argument-type]
+                select(Order.amount).all()
+            ),
+            User.id,
+        )
+
+
+@test(mark="fast")
 def scalar_subquery_as_comparison_operand() -> None:
     """A scalar subquery can stand in as a comparison operand."""
 
@@ -245,7 +267,7 @@ def scalar_requires_single_column_select() -> None:
     """A scalar subquery must project exactly one column."""
 
     with assert_raises(QueryConstructionError):
-        _ = scalar(select(User))  # type: ignore[arg-type]
+        _ = scalar(select(User))  # ty: ignore[invalid-argument-type]
 
 
 # --- Backend portability ----------------------------------------------------

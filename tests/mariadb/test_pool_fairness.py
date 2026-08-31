@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import AsyncGenerator
+from typing import cast
 
 import anyio
 from snektest import assert_eq, fixture, load_fixture, test
@@ -51,7 +52,7 @@ class _UnfairAiomysqlPool:
         return self._free.popleft()
 
     def release(self, connection: object) -> None:
-        self._free.append(connection)  # type: ignore[arg-type]
+        self._free.append(cast("_FakeConnection", connection))
         if self._waiters:
             self._waiters.pop().set()
 

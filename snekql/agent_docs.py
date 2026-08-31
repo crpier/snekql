@@ -27,12 +27,12 @@ from snekql.sqlite import Database, Fetched, Pending, insert, scaffold, select
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
+    email: sqlite.Col[str] = sqlite.Text(unique=True)
 
 
 async def main() -> None:

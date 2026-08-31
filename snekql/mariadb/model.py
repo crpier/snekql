@@ -2,33 +2,75 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, Self, TypeVar
+from typing import Any, ClassVar, Literal, TypeVar, dataclass_transform
 
 from snekql.indexes import NormalizedIndex
-from snekql.mariadb.storage import JsonAttr
+from snekql.mariadb.storage import (
+    Blob,
+    Boolean,
+    DateTime,
+    Decimal,
+    Integer,
+    Json,
+    JsonAttr,
+    Real,
+    Text,
+    Uuid,
+)
+from snekql.model import _MODEL_BASE_MARKER, Fetched, Pending, Table
 from snekql.model import Model as BaseModel
-from snekql.model import ModelMeta, Table
-from snekql.storage import Attr
+from snekql.model import ModelMeta as BaseModelMeta
+from snekql.storage import Attr, ForeignKey, _UnboundOwner
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 
 
-class Model[StateT, ReadModelT: Table[Any]](BaseModel[StateT, ReadModelT]):
+type JsonCol[T] = JsonAttr[
+    Table[Pending],
+    Table[Fetched],
+    _UnboundOwner,
+    T,
+    T,
+]
+
+
+@dataclass_transform(
+    field_specifiers=(
+        Integer,
+        Real,
+        Text,
+        Blob,
+        Decimal,
+        Json,
+        Boolean,
+        DateTime,
+        Uuid,
+        ForeignKey,
+    ),
+    kw_only_default=True,
+)
+class ModelMeta(BaseModelMeta):
+    """Typing hook for MariaDB-specific column declaration functions."""
+
+
+class Model[StateT, ReadModelT: Table[Any]](
+    BaseModel[StateT, ReadModelT],
+    metaclass=ModelMeta,
+):
     """MariaDB table model base for backend-specific declarations.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: User.Col[str] = Text(nullable=False)
+    ...     email: Col[str] = Text()
     """
 
     __snekql_backend__: ClassVar[Literal["mariadb"]] = "mariadb"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    # MariaDB-only JSON column alias: resolves to the JSON column subtype so the
-    # dialect JSON path operators are visible on JSON columns only (ADR 0004).
-    type JsonCol[T] = JsonAttr[Self, ReadModelT, Self, T, T]
+    type JsonCol[T] = JsonAttr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
 
 
-__all__ = ["Model", "ModelMeta"]
+__all__ = ["JsonCol", "Model", "ModelMeta"]

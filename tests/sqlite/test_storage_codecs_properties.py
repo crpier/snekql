@@ -89,7 +89,7 @@ _json_objects = st.dictionaries(_json_text, _json_values, max_size=5)
 _whole_minute_offsets = st.integers(
     min_value=-(23 * 60 + 59), max_value=23 * 60 + 59
 ).map(lambda minutes: timezone(timedelta(minutes=minutes)))
-_datetimes = st.datetimes(
+_datetimes = st.datetimes(  # ty: ignore[no-matching-overload]
     min_value=datetime(1900, 1, 1),  # noqa: DTZ001
     max_value=datetime(2200, 1, 1),  # noqa: DTZ001
     timezones=st.none() | st.just(UTC) | _whole_minute_offsets,

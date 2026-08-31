@@ -7,7 +7,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Annotated, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
 from snektest import (
@@ -45,11 +45,108 @@ from snekql.sqlite import (
     Text,
     UtcDatetime,
 )
+from snekql.sqlite import GenCol as GeneratedColumn
 from tests.fixtures.model_without_future_annotations import Memory
 
 type SafeOrderPreservingDatetime = Annotated[datetime, OrderPreserving]
 type SafeCanonicalTextDecimal = Annotated[Decimal, Canonical]
 type SafeOrderPreservingTextDecimal = Annotated[Decimal, OrderPreserving]
+SqliteModelBase = Model
+
+
+class DeferredPayloadRow[S = Pending](Model[S, "DeferredPayloadRow[Fetched]"]):
+    """Model whose logical payload type is defined later in the module."""
+
+    optional: DeferredPayloadRow.Col[int | None] = Integer(default=None)
+    payload: DeferredPayloadRow.Col[DeferredPayload] = Text()
+
+
+class DeferredPayload(BaseModel):
+    """Logical payload defined after the table model that references it."""
+
+    value: str
+
+
+@test(mark="fast")
+def deferred_payload_hint_retries_after_module_population() -> None:
+    """A partial forward-reference result is not cached permanently."""
+
+    row = DeferredPayloadRow(payload=DeferredPayload(value="ready"))
+
+    assert_is(DeferredPayloadRow.optional.nullable, True)
+    assert_eq(row.payload, DeferredPayload(value="ready"))
+
+
+@test(mark="fast")
+def generated_column_alias_preserves_lifecycle_behavior() -> None:
+    """An import alias cannot change whether a column is database-generated."""
+
+    class AliasedGenerated[S = Pending](Model[S, "AliasedGenerated[Fetched]"]):
+        """Model using an ordinary import alias for its generated column type."""
+
+        id: GeneratedColumn[int] = Integer(default=PENDING_GENERATION)
+
+    pending = AliasedGenerated()
+
+    assert_true(AliasedGenerated.id.is_generated)
+    assert_is(pending.id, PENDING_GENERATION)
+
+
+@test(mark="fast")
+def application_model_named_model_is_a_concrete_table() -> None:
+    """The public class name Model does not bypass table declaration behavior."""
+
+    class Model[S = Pending](SqliteModelBase[S, "Model[Fetched]"]):
+        """Application table whose domain name happens to be Model."""
+
+        value: Model.Col[str] = Text()
+
+    row = Model(value="ready")
+
+    assert_eq(Model.__tablename__, "model")
+    assert_eq(row.value, "ready")
+
+
+@test(mark="fast")
+def framework_base_marker_cannot_be_forged_with_a_boolean() -> None:
+    """Only the internal identity marker bypasses concrete-table setup."""
+
+    class Pretender[S = Pending](SqliteModelBase[S, "Pretender[Fetched]"]):
+        """Application model with a colliding private-looking class variable."""
+
+        __snekql_framework_base__: ClassVar[bool] = True
+        value: Pretender.Col[str] = Text()
+
+    assert_eq(Pretender.__tablename__, "pretender")
+
+
+@test(mark="fast")
+def column_default_and_factory_are_mutually_exclusive() -> None:
+    """A field cannot declare two competing Python default sources."""
+
+    with assert_raises(ModelDeclarationError):
+        _ = Integer(  # ty: ignore[no-matching-overload]
+            default=1, default_factory=lambda: 2
+        )
+
+
+@test(mark="fast")
+def column_descriptor_cannot_be_reused_across_models() -> None:
+    """One descriptor object cannot be rebound to another model field."""
+
+    class Source[S = Pending](Model[S, "Source[Fetched]"]):
+        """Model owning the original descriptor."""
+
+        value: Source.Col[str] = Text()
+
+    descriptor = Source.value
+
+    with assert_raises(ModelDeclarationError):
+
+        class Reused[S = Pending](Model[S, "Reused[Fetched]"]):
+            """Model attempting to steal a bound descriptor."""
+
+            copied: Reused.Col[str] = descriptor  # ty: ignore[invalid-assignment]
 
 
 @test(mark="fast")
@@ -505,19 +602,15 @@ def optional_annotation_requires_nullable_true() -> None:
 
 
 @test(mark="fast")
-def optional_annotation_rejects_unset_nullable() -> None:
-    """A ``| None`` read type with no ``nullable=`` is rejected (#203 F9).
+def optional_annotation_derives_nullable_when_unset() -> None:
+    """An unset ``nullable=`` derives from the field's logical annotation."""
 
-    The unset default now means NOT NULL, so it contradicts an optional read
-    type exactly as ``nullable=False`` does.
-    """
+    class DerivedNullable[S = Pending](Model[S, "DerivedNullable[Fetched]"]):
+        """A `| None` annotation is the source of truth for SQL nullability."""
 
-    with assert_raises(ModelDeclarationError):
+        maybe: DerivedNullable.Col[str | None] = Text(default=None)
 
-        class UnsetNullable[S = Pending](Model[S, "UnsetNullable[Fetched]"]):
-            """A `| None` annotation without nullable=True is a contradiction."""
-
-            maybe: UnsetNullable.Col[str | None] = Text()
+    assert_is(DerivedNullable.maybe.nullable, True)
 
 
 @test(mark="fast")
@@ -540,6 +633,18 @@ def unset_nullable_defaults_to_not_null() -> None:
         name: Account.Col[str] = Text()
 
     assert_is(Account.name.nullable, False)
+
+
+@test(mark="fast")
+def optional_primary_key_annotation_is_rejected() -> None:
+    """A primary key cannot promise ``None`` even when nullability is derived."""
+
+    with assert_raises(ModelDeclarationError):
+
+        class OptionalKey[S = Pending](Model[S, "OptionalKey[Fetched]"]):
+            """Invalid table with an optional primary-key read type."""
+
+            id: OptionalKey.Col[int | None] = Integer(primary_key=True)
 
 
 @test(mark="fast")
@@ -718,23 +823,42 @@ def json_marker_columns_accept_any_payload_type() -> None:
 
 
 @test(mark="fast")
-def forward_ref_json_payload_does_not_block_declaration() -> None:
-    """A forward-referenced JSON payload type binds without resolving it eagerly
-    at declaration time."""
+def later_function_local_payload_is_rejected_at_declaration() -> None:
+    """A local payload must exist before a model can capture its namespace."""
 
-    class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
-        """A forward-ref Json sibling must not block binding the scalar column."""
+    if TYPE_CHECKING:
 
-        count: Mixed.Col[int] = Integer(nullable=False)
-        blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
-        either: Mixed.Col[int | str] = Integer(nullable=False)
+        class Payload(BaseModel):
+            """Typing-only stand-in absent from the runtime local namespace."""
+
+            value: str
+
+    with assert_raises(ModelDeclarationError):
+
+        class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+            """Model referring to a function-local payload declared later."""
+
+            blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
+
+
+@test(mark="fast")
+def defined_function_local_payload_resolves_normally() -> None:
+    """Function-local logical types work when defined before the table model."""
 
     class Payload(BaseModel):
-        """Logical type defined only after the model that annotates it."""
+        """Logical payload type defined before its table model."""
 
-        x: int
+        value: str
 
-    assert_eq(Mixed.__snekql_columns__["count"].storage_type_name, "Integer")
+    class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+        """Optional scalar beside an already-defined local payload."""
+
+        optional: Mixed.Col[int | None] = Integer(default=None)
+        payload: Mixed.Col[Payload] = Text()
+
+    assert_is(Mixed.optional.nullable, True)
+    mixed = Mixed(payload=Payload(value="ready"))
+    assert_eq(mixed.payload, Payload(value="ready"))
 
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
         """Table model with a real column."""

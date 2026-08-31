@@ -1,4 +1,4 @@
-"""Pyright-oriented examples for snekql's public typing surface."""
+"""ty-oriented examples for snekql's public typing surface."""
 
 from __future__ import annotations
 
@@ -8,15 +8,12 @@ from typing import TYPE_CHECKING, assert_type
 from snekql import sqlite
 from snekql.sqlite import (
     Fetched,
-    InsertQuery,
     Pending,
     PendingGeneration,
     Predicate,
-    SelectModelQuery,
-    SelectTupleQuery,
-    SelectValueQuery,
+    Select,
     Transaction,
-    UpdateQuery,
+    Write,
     insert,
     select,
     update,
@@ -26,14 +23,14 @@ from snekql.sqlite import (
 class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
     """Example model focused on static result-shape inference."""
 
-    id: Account.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: Account.Col[str] = sqlite.Text(nullable=False)
-    status: Account.Col[str] = sqlite.Text(nullable=False, default="active")
-    created_at: Account.GenCol[datetime] = sqlite.Text(
+    email: sqlite.Col[str] = sqlite.Text()
+    status: sqlite.Col[str] = sqlite.Text(default="active")
+    created_at: sqlite.GenCol[datetime] = sqlite.Text(
         default=sqlite.CurrentTimestamp,
     )
 
@@ -62,27 +59,12 @@ if TYPE_CHECKING:
         _ = assert_type(fetched_account.created_at, datetime)
         _ = assert_type(fetched_account.cache_key(), str)
 
-    _ = assert_type(
-        select(Account),
-        SelectModelQuery[Account[Pending], Account[Fetched]],
-    )
-    _ = assert_type(
-        select(Account.email),
-        SelectValueQuery[Account[Pending], Account[Pending], str],
-    )
-    _ = assert_type(
-        select(Account.email, Account.status),
-        SelectTupleQuery[Account[Pending], Account[Pending], str, str],
-    )
+    model_query: Select[Account[Fetched]] = select(Account)
+    value_query: Select[str] = select(Account.email)
+    tuple_query: Select[tuple[str, str]] = select(Account.email, Account.status)
     _ = assert_type(Account.email.eq("alice@example.com"), Predicate[Account[Pending]])
-    _ = assert_type(
-        insert(pending_account),
-        InsertQuery[Account[Pending], Account[Fetched]],
-    )
-    _ = assert_type(
-        update(Account).set(Account.status.to("disabled")),
-        UpdateQuery[Account[Pending]],
-    )
+    insert_query: Write[None] = insert(pending_account)
+    update_query: Write[int] = update(Account).set(Account.status.to("disabled"))
 
     async def check_runtime_shapes(transaction: Transaction) -> None:
         """Runtime overloads preserve selected result shapes."""

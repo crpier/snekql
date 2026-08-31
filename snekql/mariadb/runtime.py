@@ -238,7 +238,7 @@ class MariaDBConnectionPool:
             _ = release(connection)
             raise
         try:
-            connection._snekql_configured = True  # type: ignore[attr-defined]  # noqa: SLF001
+            cast("Any", connection)._snekql_configured = True  # noqa: SLF001
         except AttributeError:
             logger.debug("mariadb connection configuration marker unavailable")
 

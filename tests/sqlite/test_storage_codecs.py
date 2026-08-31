@@ -40,7 +40,7 @@ def v1_exposes_only_sqlite_first_storage_classes() -> None:
 
     assert_false(hasattr(snekql, "Varchar"))
     with assert_raises(TypeError):
-        _ = Text()(length=255)
+        _ = Text()(length=255)  # ty: ignore[call-non-callable]
 
 
 @test()
@@ -475,7 +475,7 @@ def uuid_logical_type_round_trips_as_text_and_blocks_like() -> None:
     assert_eq(fetched.id, value)
 
     with assert_raises(QueryConstructionError):
-        _ = Account.id.like("1234%")
+        _ = Account.id.like("1234%")  # ty: ignore[no-matching-overload]
 
 
 @test()
@@ -533,7 +533,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """A server default requires a generated (GenCol) column."""
 
-            created_at: NonGeneratedTimestamp.Col[UtcDatetime] = Text(  # pyright: ignore[reportAssignmentType, reportUnknownVariableType]
+            created_at: NonGeneratedTimestamp.Col[UtcDatetime] = Text(  # ty: ignore[invalid-assignment]
                 default=CurrentTimestamp,
             )
 
@@ -544,7 +544,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
         ):
             """CurrentTimestamp cannot be combined with a Python factory."""
 
-            created_at: TimestampWithFactory.GenCol[UtcDatetime] = Text(
+            created_at: TimestampWithFactory.GenCol[UtcDatetime] = Text(  # ty: ignore[no-matching-overload]
                 default=CurrentTimestamp,
                 default_factory=lambda: datetime(2026, 5, 31, tzinfo=UTC),
             )

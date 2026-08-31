@@ -9,12 +9,12 @@ A table model class is generic in its lifecycle state:
 
 ```python
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = Text(nullable=False)
+    email: Col[str] = Text()
 ```
 
 `Pending` is the default state for direct construction:
@@ -38,8 +38,8 @@ method works for both `User[Pending]` and `User[Fetched]`.
 
 ```python
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
-    email: User.Col[str] = Text(nullable=False)
+    id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    email: Col[str] = Text()
 
     def insert_payload(self: User[Pending]) -> dict[str, str]:
         return {"email": self.email}
@@ -50,19 +50,32 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
 
 A bare `User` means the default state, `User[Pending]`; spell `User[Fetched]`
 when a method requires a database-materialized row. The state annotation is for
-static typing only — it does not add a runtime guard.
+static typing and is erased at runtime. The Query Runtime separately tags rows
+it materializes so lifecycle-sensitive operations can reject them.
+
+`insert(...)` is the lifecycle transition: it accepts `Pending` instances only.
+A model returned by the Query Runtime is `Fetched` and is rejected if passed back
+to `insert`; construct a new pending model explicitly when copying a row.
 
 Because `Fetched` is used in string forward references such as
 `Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
 as used. Projects that lint model declarations with Ruff should allow the
-package-root import:
+qualified backend imports:
 
 ```toml
 [tool.ruff.lint.pyflakes]
 allowed-unused-imports = [
-  "snekql.Fetched",
+  "snekql.sqlite.Fetched",
+  "snekql.mariadb.Fetched",
 ]
 ```
+
+Module-level column annotations may refer to logical payload types declared later
+in the module; snekql retries those unresolved hints after module population. In
+a function-local scope, define payload types before the table model. Python does
+not retain a safe late-binding namespace for names added to a function after the
+model body, so snekql rejects that declaration immediately instead of caching an
+unresolvable type.
 
 ## `Col` and `GenCol`
 
@@ -74,10 +87,10 @@ Use `GenCol[T]` for server-filled/generated values. Pending instances may have
 
 ```python
 pending_user = User(email="alice@example.com")
-pending_user.id      # int | PendingGeneration
+pending_user.id  # int | PendingGeneration
 
 fetched_user: User[Fetched]
-fetched_user.id      # int
+fetched_user.id  # int
 ```
 
 `PENDING_GENERATION` is the singleton sentinel value for generated pending values that have
@@ -85,25 +98,24 @@ not been filled by the database yet.
 
 ### Nullability
 
-A column is **NOT NULL by default**. `nullable=` is unset (the constructor
-default), `nullable=None`, and `nullable=False` all produce a NOT NULL column;
-only `nullable=True` makes it nullable. The read annotation and the flag are
-cross-checked at declaration: a `| None` read type requires `nullable=True`, and
-a non-optional read type forbids it. Each side rejects the contradiction at class
-definition time.
+When `nullable=` is omitted, snekql derives nullability from the field
+annotation: `Col[str]` is `NOT NULL`, while `Col[str | None]` is nullable. An
+explicit `nullable=True` or `nullable=False` is cross-checked against the
+annotation, and contradictory declarations are rejected at class definition.
 
 ```python
-name:     User.Col[str]        = Text()                 # NOT NULL (unset default)
-required: User.Col[str]        = Text(nullable=False)   # NOT NULL (explicit)
-optional: User.Col[str | None] = Text(nullable=True)    # nullable
+required: Col[str] = Text()  # NOT NULL
+optional: Col[str | None] = Text(default=None)  # nullable and omittable
+explicit: Col[str | None] = Text(nullable=True)  # nullable but required
 
-bad:      User.Col[str]        = Text(nullable=True)    # rejected: type vs flag
-bad2:     User.Col[str | None] = Text()                 # rejected: | None needs nullable=True
+bad: Col[str] = Text(nullable=True)  # rejected: type vs flag
+bad2: Col[str | None] = Text(nullable=False)  # rejected: type vs flag
 ```
 
-The NOT NULL default holds even when the cross-check cannot resolve the
-annotation (for example a forward reference it skips): the physical column is
-still NOT NULL, so a non-optional read type is never handed a SQL `NULL`.
+If a field annotation cannot be resolved, snekql keeps the conservative physical
+default of `NOT NULL`. Hint resolution is per field, so one unresolved sibling
+does not suppress validation for the rest of the model. Primary-key annotations
+must always be non-optional.
 
 ## Query result shapes
 
@@ -161,21 +173,28 @@ shape exactly as `fetch_all` does:
 
 ```python
 async with tx.fetch_chunks(select(User).all(), size=500) as stream:
-    async for batch in stream:   # batch: list[User[Fetched]]
+    async for batch in stream:  # batch: list[User[Fetched]]
         ...
 
 async with tx.fetch_chunks(select(User.email).all(), size=500) as stream:
-    async for batch in stream:   # batch: list[str]
+    async for batch in stream:  # batch: list[str]
         ...
 
 async with tx.fetch_chunks(select(User.email, User.status).all(), size=500) as stream:
-    async for batch in stream:   # batch: list[tuple[str, str]]
+    async for batch in stream:  # batch: list[tuple[str, str]]
         ...
 ```
 
 `ChunkStream` is exported from the backend namespaces (`snekql.sqlite`,
-`snekql.mariadb`) for typed annotations only. Like the query classes, do not
-construct it directly — obtain one from `Transaction.fetch_chunks`.
+`snekql.mariadb`) for typed annotations only. Do not construct it directly;
+obtain one from `Transaction.fetch_chunks`.
+
+All Query Runtime reads validate and decode database values by default, so their
+return type preserves the selected logical shape. Passing `validate=False` is a
+raw escape hatch: constraints and some logical conversions are skipped, and the
+static result is therefore widened to `object` (`list[object]` for `fetch_all`,
+`ChunkStream[object]` for `fetch_chunks`). Narrow a raw result explicitly before
+using logical-type operations. The same rule applies to mutation `returning(...)`.
 
 ## Insert conflicts
 
@@ -218,22 +237,22 @@ at zero runtime cost:
 
 ```python
 class User[S = Pending](Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    email: User.Col[str] = Text(nullable=False)
+    email: Col[str] = Text()
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
-    id: Order.GenCol[int] = Integer(
+    id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
-    user_id: Order.FKCol[User, int] = ForeignKey(User.id)
-    note: Order.Col[str] = Text(nullable=False)
+    user_id: FKCol[User, int] = ForeignKey(User.id)
+    note: Col[str] = Text()
 ```
 
 A join condition is built from an FK column against its target with
@@ -242,8 +261,8 @@ type matches, so the condition is provably between related tables of compatible
 key type:
 
 ```python
-Order.user_id.references(User.id)        # ok
-Order.user_id.references(User.email)     # type error: str column vs int FK
+Order.user_id.references(User.id)  # ok
+Order.user_id.references(User.email)  # type error: str column vs int FK
 ```
 
 ### Model-select joins
@@ -275,8 +294,7 @@ table contributes only to the `FROM`/`JOIN` graph:
 
 ```python
 await tx.fetch_all(
-    select(User.email, Order.note)
-    .join(Order, on=Order.user_id.references(User.id)),
+    select(User.email, Order.note).join(Order, on=Order.user_id.references(User.id)),
 )
 # list[tuple[str, str]]
 ```
@@ -289,13 +307,10 @@ select(User.email, Region.code).join(Order, on=Order.user_id.references(User.id)
 # Region is never joined: rejected when fetched
 ```
 
-> **LEFT-join nullability caveat.** For projection-select, a projected column
-> taken from the nullable side of a `left_join` keeps its non-optional read type
-> (for example `str`, not `str | None`), even though an unmatched row yields
-> `None` at runtime — the unmatched value decodes to `None` rather than raising
-> on the column's own `NOT NULL` constraint. Model-select left joins are sound — the whole right model
-> becomes `... | None`. Prefer model-select when you need a left join's
-> nullability reflected in the types.
+Projection-select `left_join(...)` is rejected by both the type checker and the
+runtime because the query shape cannot make only nullable-side projected slots
+optional. Use a model-select left join, where the whole right model becomes
+`... | None`, or use an inner join for projections.
 
 ### Optional foreign-key DDL
 
@@ -307,9 +322,9 @@ column. The column's storage class is derived from that target — never restate
 time:
 
 ```python
-user_id: Order.FKCol[User, int] = ForeignKey(User.id)            # references user(id)
-owner_email: Order.FKCol[User, str] = ForeignKey(User.email)     # references user(email)
-ref_code: Order.FKCol[Region, str] = Text()                      # typed-only soft reference
+user_id: FKCol[User, int] = ForeignKey(User.id)  # references user(id)
+owner_email: FKCol[User, str] = ForeignKey(User.email)  # references user(email)
+ref_code: FKCol[Region, str] = Text()  # typed-only soft reference
 ```
 
 The target column may be any primary key or `unique=True` column. A typed-only
@@ -325,9 +340,13 @@ The accepted actions are `"CASCADE"`, `"RESTRICT"`, `"SET NULL"`, and
 
 ```python
 # Owned rows that are meaningless once the parent is gone:
-job_id: Step.FKCol[Job, str] = ForeignKey(Job.id, nullable=False, on_delete="CASCADE")
-# Detach the child instead of deleting it:
-owner_id: Doc.FKCol[User, int] = ForeignKey(User.id, on_delete="SET NULL")
+job_id: FKCol[Job, str] = ForeignKey(Job.id, on_delete="CASCADE")
+# Detach the child instead of deleting it (nullable but still required):
+owner_id: FKCol[User, int | None] = ForeignKey(
+    User.id,
+    nullable=True,
+    on_delete="SET NULL",
+)
 ```
 
 Because snekql enforces foreign keys, deleting a parent with no action declared
@@ -350,9 +369,9 @@ identity *is* the referenced column pair:
 
 ```python
 class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
-    team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
-    user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
-    role: TeamMember.Col[str] = Text(nullable=False)
+    team_id: FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
+    user_id: FKCol[User, int] = ForeignKey(User.id, primary_key=True)
+    role: Col[str] = Text()
 ```
 
 This emits a single table-level `PRIMARY KEY (team_id, user_id)` constraint in
@@ -372,14 +391,19 @@ the type checker will not flag them ahead of time:
   as an ordinary tuple select, but every non-aggregate projected column must
   appear in `group_by(...)`; a missing one raises `QueryCompilationError` at
   fetch. The type checker cannot track which columns are grouped.
-- **`limit`/`offset` bounds.** Their parameter is `NonNegativeInt`, which Pyright
+- **`limit`/`offset` bounds.** Their parameter is `NonNegativeInt`, which `ty`
   sees as plain `int`, so a negative literal type-checks; a negative value raises
   `QueryConstructionError` at construction.
+- **Bulk insert homogeneity.** Every row in one `insert([...])` batch must be an
+  instance of the same model. The Query Builder rejects mixed batches at runtime;
+  `ty` may infer `Unknown` rather than diagnose a heterogeneous sequence.
 
 A scalar subquery (`scalar(...)`), by contrast, **is** reflected in the types: it
 evaluates to SQL `NULL` on an empty/no-match result set, so its projected slot is
 typed `... | None` and decodes a no-match to `None` rather than raising, even over
-a `NOT NULL` inner column.
+a `NOT NULL` inner column. A projection must start with a real column, aggregate,
+or dialect expression to establish its `FROM` scope; scalar subqueries may appear
+only in later slots.
 
 ## Backend namespaces
 
@@ -393,7 +417,7 @@ from snekql.sqlite import PENDING_GENERATION, Database, Fetched, Pending
 
 
 class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
-    id: SqliteUser.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
@@ -401,16 +425,17 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
 
 
 class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
-    id: MariadbUser.GenCol[int] = mariadb.Integer(
+    id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=PENDING_GENERATION,
     )
 ```
 
-Backend namespaces expose distinct model bases and column declaration classes,
+Backend namespaces expose distinct model bases and column constructor functions,
 so backend-specific options can evolve without pretending the dialects are
-portable.
+portable. The functions are PEP 681 field specifiers, which lets `ty` infer
+required and defaulted constructor fields.
 
 ## Mixed-backend safety
 
@@ -420,7 +445,7 @@ built from another backend's model before SQL is executed. (Initialization is
 connect-only and takes no models, so a wrong-backend deploy is caught at the
 first `verify` or query, not at init.)
 
-Pyright can see the backend namespace types where they are explicit, and runtime
+`ty` can see the backend namespace types where they are explicit, and runtime
 checks cover the remaining cases that Python's type system cannot express yet.
 
 ## Import path
@@ -463,11 +488,25 @@ change without notice.
   Dialect for SQL inspection — see
   [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md).)
 
-**Query classes are return types, not constructors.** The query classes
-(`SelectModelQuery`, `InsertQuery`, the `*Returning*` variants, and the rest)
-are public so you can name them in annotations and `isinstance` checks. Build
-them only through the factory verbs `select`, `insert`, `update`, and `delete`;
-do not instantiate the classes directly.
+**Queries are named by result.** Use `Select[RowT]` for a read query and
+`Write[ResultT]` for a mutation. The state-specific builder classes are private
+implementation vocabulary. Build queries through `select`, `insert`, `update`,
+and `delete`; do not instantiate query classes directly. Use
+`ColumnRef[OwnerT, T]` when a helper accepts a read-only model column.
+`Select` and `Write` are annotation-only aliases rather than runtime classes, so
+do not construct them or use them with `isinstance`. An annotated query remains
+executable through `Transaction`:
+
+```python
+async def load_users(
+    tx: Transaction,
+    query: Select[User[Fetched]],
+) -> list[User[Fetched]]:
+    return await tx.fetch_all(query)
+```
+
+Projection and `returning(...)` overloads preserve up to eight selected values.
+Wider calls are rejected statically; project a model or split the query instead.
 
 **Error contract.** The exceptions in the `SnekqlError` hierarchy re-exported
 from each namespace are the catchable contract — catch `SnekqlError` for a
@@ -494,5 +533,5 @@ The repository keeps a focused public typing example in:
 Run:
 
 ```sh
-uv run pyright examples/typed_queries.py tests/test_public_typing.py
+uv run ty check examples/typed_queries.py tests/test_public_typing.py
 ```

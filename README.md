@@ -51,14 +51,14 @@ from snekql.sqlite import (
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
-    status: User.Col[str] = sqlite.Text(nullable=False, default="active")
-    created_at: User.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
+    email: sqlite.Col[str] = sqlite.Text(unique=True)
+    status: sqlite.Col[str] = sqlite.Text(default="active")
+    created_at: sqlite.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
 
 
 async def main() -> None:
@@ -100,13 +100,13 @@ from snekql.sqlite import Fetched, Pending
 class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
     __tablename__ = "audit_log"
 
-    id: AuditLog.GenCol[int] = sqlite.Integer(
+    id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    message: AuditLog.Col[str] = sqlite.Text(nullable=False)
-    created_at: AuditLog.GenCol[datetime] = sqlite.Text(
+    message: sqlite.Col[str] = sqlite.Text()
+    created_at: sqlite.GenCol[datetime] = sqlite.Text(
         default=sqlite.CurrentTimestamp,
     )
 ```
@@ -129,8 +129,10 @@ fetched-only assumptions, write that state on `self`:
 
 ```python
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
-    id: User.GenCol[int] = sqlite.Integer(primary_key=True, default=sqlite.PENDING_GENERATION)
-    email: User.Col[str] = sqlite.Text(nullable=False)
+    id: sqlite.GenCol[int] = sqlite.Integer(
+        primary_key=True, default=sqlite.PENDING_GENERATION
+    )
+    email: sqlite.Col[str] = sqlite.Text()
 
     def insert_payload(self: User[Pending]) -> dict[str, str]:
         return {"email": self.email}
@@ -236,10 +238,10 @@ them store the same as a plain `Col[uuid.UUID]` and round-trip through both
 forces the factory and the annotation to agree, so a mismatched version fails
 construct-time validation.
 
-All column types accept `unique=True` for column-level unique indexes. SQLite
-allows multiple `NULL` values in a unique index, so use `nullable=False` when
-uniqueness should also require a value. Primary-key columns reject `unique=True`
-because it is redundant.
+All column constructors accept `unique=True` for column-level unique indexes.
+SQLite allows multiple `NULL` values in a unique index, so use a non-optional
+annotation such as `Col[str]` when uniqueness should also require a value.
+Primary-key columns reject `unique=True` because it is redundant.
 
 For a plain non-unique single-column index, pass `index=True` instead — sugar
 for an `Index(col)` entry in `__indexes__` (named `ix_<table>_<col>`). It is
@@ -269,9 +271,9 @@ from snekql.sqlite import Fetched, Pending
 
 
 class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
-    email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
-    status: User.Col[str] = sqlite.Text(nullable=False)
-    tenant_id: User.Col[int] = sqlite.Integer(nullable=False)
+    email: sqlite.Col[str] = sqlite.Text(unique=True)
+    status: sqlite.Col[str] = sqlite.Text()
+    tenant_id: sqlite.Col[int] = sqlite.Integer()
 
     __indexes__ = [
         sqlite.Index(status),
@@ -354,8 +356,7 @@ select(User).where(User.status.eq("active") | User.status.eq("trialing"))
 
 # WHERE tenant_id = 1 AND (status = 'active' OR email LIKE '%@vip.com')
 select(User).where(
-    User.tenant_id.eq(1)
-    & (User.status.eq("active") | User.email.like("%@vip.com")),
+    User.tenant_id.eq(1) & (User.status.eq("active") | User.email.like("%@vip.com")),
 )
 
 # WHERE NOT (status = 'disabled')
@@ -484,12 +485,12 @@ from snekql.mariadb import Database, Fetched, Pending, insert, scaffold, select
 
 
 class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
-    id: Account.GenCol[int] = mariadb.Integer(
+    id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
         default=mariadb.PENDING_GENERATION,
     )
-    email: Account.Col[str] = mariadb.Text(nullable=False, unique=True)
+    email: mariadb.Col[str] = mariadb.Text(unique=True)
 
 
 config = mariadb.Config(
@@ -621,7 +622,7 @@ Runnable examples live in `examples/`:
 
 ```sh
 uv run python -m examples.basic_app
-uv run pyright examples/typed_queries.py
+uv run ty check examples/typed_queries.py
 ```
 
 Local validation uses `uv run snektest`. MariaDB integration tests start a
@@ -643,10 +644,11 @@ The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 (`snekql._*`) and backend submodules (`snekql.sqlite.config`,
 `snekql.sqlite.verbs`, …) are implementation detail and not supported import
 paths — their public symbols are re-exported through the namespace top level.
-Query classes (`SelectModelQuery`, `InsertQuery`, …) are public as return and
-`isinstance` types but are built only through the `select`/`insert`/`update`/
-`delete` factory verbs, never instantiated directly. The catchable error
-contract is the `SnekqlError` hierarchy re-exported from each namespace. See
+Use `Select[Row]` and `Write[Result]` to annotate queries without depending on
+their state-specific implementation classes. Use `ColumnRef[Owner, T]` for a
+read-only column parameter. Queries are built only through the
+`select`/`insert`/`update`/`delete` factory verbs. The catchable error contract
+is the `SnekqlError` hierarchy re-exported from each namespace. See
 [docs/typing.md](docs/typing.md#stability-contract) for the full contract.
 
 Agent navigation map:

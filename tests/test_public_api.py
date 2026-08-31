@@ -9,6 +9,7 @@ as each backend's ``Model`` and column constructors -- is imported from
 from __future__ import annotations
 
 from collections.abc import Callable
+from inspect import isclass
 from typing import cast
 
 from snektest import test
@@ -31,39 +32,25 @@ _NEUTRAL_NAMES = frozenset(
         "PENDING_GENERATION",
         "Aggregate",
         "Assignment",
-        "Attr",
         "Canonical",
         "CanonicalDecimal",
         "ChunkStream",
         "Col",
+        "ColumnRef",
         "Database",
         "DatabaseCloseTimeoutError",
         "DatabaseClosedError",
         "DatabaseClosingError",
         "DatabaseRuntimeError",
-        "DeleteQuery",
-        "DeleteReturningQuery",
-        "DeleteReturningTupleQuery",
-        "DeleteReturningValueQuery",
         "DoNothing",
         "DoUpdate",
         "Duration",
         "ExecutionError",
-        "FKAttr",
         "FKCol",
         "Fetched",
         "FrozenModelError",
         "GenCol",
         "Index",
-        "InsertManyQuery",
-        "InsertManyReturningQuery",
-        "InsertManyReturningTupleQuery",
-        "InsertManyReturningValueQuery",
-        "InsertQuery",
-        "InsertReturningQuery",
-        "InsertReturningTupleQuery",
-        "InsertReturningValueQuery",
-        "JoinModelQuery",
         "JoinOn",
         "LexicalDatetimeWarning",
         "LexicalDecimalWarning",
@@ -73,7 +60,6 @@ _NEUTRAL_NAMES = frozenset(
         "PendingGeneration",
         "ModelDeclarationError",
         "ModelError",
-        "ModelMeta",
         "ModelValidationError",
         "MultipleResultsError",
         "NoResultError",
@@ -89,23 +75,17 @@ _NEUTRAL_NAMES = frozenset(
         "SchemaError",
         "SchemaPolicy",
         "SchemaVerificationError",
-        "SelectModelQuery",
-        "SelectTupleQuery",
-        "SelectValueQuery",
+        "Select",
         "SnekqlError",
         "SnekqlWarning",
-        "Table",
         "Transaction",
         "TransactionClosedError",
         "TransactionMode",
         "TransactionNotStartedError",
         "TransactionReuseError",
         "TransactionStateError",
-        "UpdateQuery",
-        "UpdateReturningQuery",
-        "UpdateReturningTupleQuery",
-        "UpdateReturningValueQuery",
         "UtcDatetime",
+        "Write",
         "exists",
         "not_exists",
         "scalar",
@@ -135,7 +115,7 @@ _DIALECT_NAMES = frozenset(
 # native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
 # column attribute type.
 _MARIADB_ONLY_NAMES = frozenset(
-    {"Boolean", "DateTime", "Decimal", "Json", "JsonAttr", "Uuid"},
+    {"Boolean", "DateTime", "Decimal", "Json", "JsonCol", "Uuid"},
 )
 _SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
@@ -176,6 +156,78 @@ def backend_namespaces_export_canonical_names() -> None:
         assert_is(getattr(sqlite, name), getattr(sqlite, name))
     for name in mariadb.__all__:
         assert_is(getattr(mariadb, name), getattr(mariadb, name))
+
+
+@test()
+def backend_namespaces_hide_implementation_types() -> None:
+    """Descriptors, metaclasses, and state-specific query classes stay internal."""
+
+    hidden_names = (
+        "Attr",
+        "DeleteQuery",
+        "DeleteReturningQuery",
+        "DeleteReturningTupleQuery",
+        "DeleteReturningValueQuery",
+        "FKAttr",
+        "InsertManyQuery",
+        "InsertManyReturningQuery",
+        "InsertManyReturningTupleQuery",
+        "InsertManyReturningValueQuery",
+        "InsertQuery",
+        "InsertReturningQuery",
+        "InsertReturningTupleQuery",
+        "InsertReturningValueQuery",
+        "JoinModelQuery",
+        "ModelMeta",
+        "SelectModelQuery",
+        "SelectTupleQuery",
+        "SelectValueQuery",
+        "Table",
+        "UpdateQuery",
+        "UpdateReturningQuery",
+        "UpdateReturningTupleQuery",
+        "UpdateReturningValueQuery",
+    )
+    for namespace in (sqlite, mariadb):
+        for name in hidden_names:
+            assert_not_in(name, namespace.__all__)
+            assert not hasattr(namespace, name)
+    assert not hasattr(mariadb, "JsonAttr")
+
+
+@test()
+def result_oriented_query_annotations_are_not_constructors() -> None:
+    """Select and Write name results without exposing constructible query states."""
+
+    for namespace in (sqlite, mariadb):
+        assert not callable(namespace.Select)
+        assert not callable(namespace.Write)
+
+
+@test()
+def storage_declarations_are_functions() -> None:
+    """Field specifiers are callable functions rather than constructor classes."""
+
+    constructors = (
+        sqlite.Blob,
+        sqlite.ForeignKey,
+        sqlite.Integer,
+        sqlite.Real,
+        sqlite.Text,
+        mariadb.Blob,
+        mariadb.Boolean,
+        mariadb.DateTime,
+        mariadb.Decimal,
+        mariadb.ForeignKey,
+        mariadb.Integer,
+        mariadb.Json,
+        mariadb.Real,
+        mariadb.Text,
+        mariadb.Uuid,
+    )
+    for constructor in constructors:
+        assert callable(constructor)
+        assert not isclass(constructor)
 
 
 @test()
@@ -221,12 +273,14 @@ def query_factory_functions_reject_empty_selects() -> None:
 def column_declarations_produce_query_attributes() -> None:
     """Column declarations leave public descriptors on table model classes."""
 
-    class AttributeUser(sqlite.Model[sqlite.Pending, "AttributeUser[sqlite.Fetched]"]):
+    class AttributeUser[S = sqlite.Pending](
+        sqlite.Model[S, "AttributeUser[sqlite.Fetched]"]
+    ):
         """Table model for descriptor smoke checks."""
 
         email: AttributeUser.Col[str] = sqlite.Text(nullable=False)
 
-    assert_isinstance(AttributeUser.email, sqlite.Attr)
+    assert_isinstance(AttributeUser.email, sqlite.ColumnRef)
     assert_isinstance(AttributeUser.email.eq("alice@example.com"), sqlite.Predicate)
     assert_isinstance(AttributeUser.email.asc(), sqlite.OrderBy)
     assert_isinstance(AttributeUser.email.to("new@example.com"), sqlite.Assignment)
@@ -239,8 +293,10 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
 
     # Neutral symbols are the very same objects in both namespaces.
     assert_is(sqlite.select, mariadb.select)
-    assert_is(sqlite.Attr, mariadb.Attr)
+    assert_is(sqlite.ColumnRef, mariadb.ColumnRef)
     assert_is(sqlite.Predicate, mariadb.Predicate)
+    assert_is(sqlite.Select, mariadb.Select)
+    assert_is(sqlite.Write, mariadb.Write)
 
     # The Model base differs per backend; the native MariaDB column types
     # (JSON, Boolean, DateTime, Uuid) have no SQLite counterpart.
@@ -249,15 +305,14 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     assert_not_in("Json", sqlite.__all__)
     assert_in("Uuid", mariadb.__all__)
     assert_not_in("Uuid", sqlite.__all__)
-    assert_in("JsonAttr", mariadb.__all__)
-    assert_not_in("JsonAttr", sqlite.__all__)
+    assert_not_in("JsonAttr", mariadb.__all__)
 
-    class SqliteUser(sqlite.Model[sqlite.Pending, "SqliteUser[sqlite.Fetched]"]):
+    class SqliteUser[S = sqlite.Pending](sqlite.Model[S, "SqliteUser[sqlite.Fetched]"]):
         """SQLite table model declared through the SQLite namespace."""
 
         email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
 
-    assert_isinstance(SqliteUser.email, sqlite.Attr)
+    assert_isinstance(SqliteUser.email, sqlite.ColumnRef)
     assert_isinstance(SqliteUser.email.eq("alice@example.com"), sqlite.Predicate)
 
 
@@ -265,7 +320,9 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
 def mutation_query_chain_methods_return_query_objects() -> None:
     """Public update/delete chain methods keep returning mutation query objects."""
 
-    class MutationUser(sqlite.Model[sqlite.Pending, "MutationUser[sqlite.Fetched]"]):
+    class MutationUser[S = sqlite.Pending](
+        sqlite.Model[S, "MutationUser[sqlite.Fetched]"]
+    ):
         """Table model for mutation chain smoke checks."""
 
         email: MutationUser.Col[str] = sqlite.Text(nullable=False)
@@ -277,19 +334,22 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     update_query = sqlite.update(MutationUser)
     delete_query = sqlite.delete(MutationUser)
 
-    assert_isinstance(update_query.set(assignment), sqlite.UpdateQuery)
-    assert_isinstance(update_query.where(predicate), sqlite.UpdateQuery)
-    assert_isinstance(update_query.all(), sqlite.UpdateQuery)
-    assert_isinstance(delete_query.where(predicate), sqlite.DeleteQuery)
-    assert_isinstance(delete_query.all(), sqlite.DeleteQuery)
-    assert_isinstance(
-        sqlite.insert(
-            MutationUser(email="alice@example.com", status="active")
-        ).on_conflict(
-            MutationUser.email,
-            action=sqlite.DoUpdate(MutationUser.status.to_inserted()),
+    assert_is(type(update_query.set(assignment)), type(update_query))
+    assert_is(type(update_query.where(predicate)), type(update_query))
+    assert_is(type(update_query.all()), type(update_query))
+    assert_is(type(delete_query.where(predicate)), type(delete_query))
+    assert_is(type(delete_query.all()), type(delete_query))
+    insert_query = sqlite.insert(
+        MutationUser(email="alice@example.com", status="active")
+    )
+    assert_is(
+        type(
+            insert_query.on_conflict(
+                MutationUser.email,
+                action=sqlite.DoUpdate(MutationUser.status.to_inserted()),
+            )
         ),
-        sqlite.InsertQuery,
+        type(insert_query),
     )
 
 
@@ -297,64 +357,25 @@ def mutation_query_chain_methods_return_query_objects() -> None:
 def select_query_chain_methods_return_query_objects() -> None:
     """Public select chain methods keep returning select query objects."""
 
-    class ChainUser(sqlite.Model[sqlite.Pending, "ChainUser[sqlite.Fetched]"]):
+    class ChainUser[S = sqlite.Pending](sqlite.Model[S, "ChainUser[sqlite.Fetched]"]):
         """Table model for select chain smoke checks."""
 
     query = sqlite.select(ChainUser)
 
-    assert_isinstance(query.all(), sqlite.SelectModelQuery)
-    assert_isinstance(query.limit(10), sqlite.SelectModelQuery)
-    assert_isinstance(query.offset(5), sqlite.SelectModelQuery)
-
-
-@test()
-def query_factory_functions_return_public_query_objects() -> None:
-    """Query builder entry points return stable public query classes."""
-
-    class QueryUser(sqlite.Model[sqlite.Pending, "QueryUser[sqlite.Fetched]"]):
-        """Table model for query factory smoke checks."""
-
-    row = object.__new__(QueryUser)
-
-    assert_isinstance(sqlite.select(QueryUser), sqlite.SelectModelQuery)
-    assert_isinstance(sqlite.insert(row), sqlite.InsertQuery)
-    assert_isinstance(sqlite.update(QueryUser), sqlite.UpdateQuery)
-    assert_isinstance(sqlite.delete(QueryUser), sqlite.DeleteQuery)
+    assert_is(type(query.all()), type(query))
+    assert_is(type(query.limit(10)), type(query))
+    assert_is(type(query.offset(5)), type(query))
 
 
 @test()
 def write_verbs_diverge_with_backend_specific_docstrings() -> None:
     """insert/update/delete are per-backend verbs that document each driver's writes."""
 
-    class SqliteVerbUser(
-        sqlite.Model[sqlite.Pending, "SqliteVerbUser[sqlite.Fetched]"],
-    ):
-        """SQLite table model for per-backend verb smoke checks."""
-
-        email: SqliteVerbUser.Col[str] = sqlite.Text(nullable=False)
-
-    class MariaDBVerbUser(
-        mariadb.Model[mariadb.Pending, "MariaDBVerbUser[mariadb.Fetched]"],
-    ):
-        """MariaDB table model for per-backend verb smoke checks."""
-
-        email: MariaDBVerbUser.Col[str] = mariadb.Text(nullable=False)
-
     # The write verbs are distinct objects per backend, unlike neutral ``select``.
     assert sqlite.insert is not mariadb.insert
     assert sqlite.update is not mariadb.update
     assert sqlite.delete is not mariadb.delete
     assert_is(sqlite.select, mariadb.select)
-
-    # Each backend verb still builds the same public query type.
-    sqlite_row = object.__new__(SqliteVerbUser)
-    mariadb_row = object.__new__(MariaDBVerbUser)
-    assert_isinstance(sqlite.insert(sqlite_row), sqlite.InsertQuery)
-    assert_isinstance(sqlite.update(SqliteVerbUser), sqlite.UpdateQuery)
-    assert_isinstance(sqlite.delete(SqliteVerbUser), sqlite.DeleteQuery)
-    assert_isinstance(mariadb.insert(mariadb_row), mariadb.InsertQuery)
-    assert_isinstance(mariadb.update(MariaDBVerbUser), mariadb.UpdateQuery)
-    assert_isinstance(mariadb.delete(MariaDBVerbUser), mariadb.DeleteQuery)
 
     # The docstrings name the backend and explain its affected-row count.
     assert_in("SQLite", sqlite.insert.__doc__ or "")
@@ -364,30 +385,25 @@ def write_verbs_diverge_with_backend_specific_docstrings() -> None:
 
 
 @test()
-def public_classes_have_specific_docstrings() -> None:
-    """Public marker, error, column, query, and runtime classes explain intent."""
+def public_symbols_have_specific_docstrings() -> None:
+    """Public markers, errors, constructors, and runtime types explain intent."""
 
     documented_classes = (
         sqlite.Assignment,
-        sqlite.Attr,
         sqlite.Blob,
+        sqlite.ColumnRef,
         sqlite.CurrentTimestamp,
         sqlite.Database,
         sqlite.DatabaseClosedError,
         sqlite.DatabaseCloseTimeoutError,
         sqlite.DatabaseClosingError,
         sqlite.DatabaseRuntimeError,
-        sqlite.DeleteQuery,
-        sqlite.DeleteReturningQuery,
-        sqlite.DeleteReturningTupleQuery,
-        sqlite.DeleteReturningValueQuery,
         sqlite.DoNothing,
         sqlite.DoUpdate,
         sqlite.ExecutionError,
         sqlite.Fetched,
         sqlite.FrozenModelError,
         sqlite.Index,
-        sqlite.InsertQuery,
         sqlite.Integer,
         sqlite.MigrationError,
         sqlite.MigrationLockTimeoutError,
@@ -395,7 +411,6 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Model,
         sqlite.ModelDeclarationError,
         sqlite.ModelError,
-        sqlite.ModelMeta,
         sqlite.ModelValidationError,
         sqlite.OrderBy,
         sqlite.Pending,
@@ -407,21 +422,13 @@ def public_classes_have_specific_docstrings() -> None:
         sqlite.Real,
         sqlite.SchemaError,
         sqlite.SchemaVerificationError,
-        sqlite.SelectModelQuery,
-        sqlite.SelectTupleQuery,
-        sqlite.SelectValueQuery,
         sqlite.SnekqlError,
-        sqlite.Table,
         sqlite.Text,
         sqlite.Transaction,
         sqlite.TransactionClosedError,
         sqlite.TransactionNotStartedError,
         sqlite.TransactionReuseError,
         sqlite.TransactionStateError,
-        sqlite.UpdateQuery,
-        sqlite.UpdateReturningQuery,
-        sqlite.UpdateReturningTupleQuery,
-        sqlite.UpdateReturningValueQuery,
     )
 
     for documented_class in documented_classes:

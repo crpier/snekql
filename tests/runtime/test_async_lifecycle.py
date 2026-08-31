@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import anyio
 import anyio.lowlevel
@@ -56,10 +56,10 @@ class _FakeCursor:
 
     async def fetchmany(self, size: int = 1) -> Sequence[Sequence[object]]:
         del size
-        return []
+        return cast("Sequence[Sequence[object]]", [])
 
     async def fetchall(self) -> Sequence[Sequence[object]]:
-        return []
+        return cast("Sequence[Sequence[object]]", [])
 
     async def close(self) -> None:
         return None

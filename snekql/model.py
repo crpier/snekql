@@ -40,6 +40,8 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    _resolve_model_hint,
+    _UnboundOwner,
     column_admits_none,
     column_lacks_canonical_decimal,
     column_lacks_order_preserving_datetime,
@@ -47,6 +49,8 @@ from snekql.storage import (
 )
 
 type BackendFamily = StorageBackend
+
+_MODEL_BASE_MARKER = object()
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound="Table[Any]")
@@ -86,6 +90,17 @@ class Table[StateT]:
         return cls
 
     @classmethod
+    def __owner_invariant__(cls, owner: Self) -> Self:
+        """Pin model-class inference to this exact owner type."""
+
+        return owner
+
+    def __state_type__(self) -> StateT:
+        """Typing-only witness for this model instance's lifecycle state."""
+
+        raise NotImplementedError
+
+    @classmethod
     def count_all(cls) -> Aggregate[Self, int]:
         """Aggregate the whole table as ``COUNT(*)``.
 
@@ -95,57 +110,39 @@ class Table[StateT]:
         user column name -- a column that shadowed it would break the call.
         """
 
-        return Aggregate(func="COUNT", column=None, owner=cls)
+        return cast(
+            "Aggregate[Self, int]",
+            Aggregate(func="COUNT", column=None, owner=cls),
+        )
 
 
-# Private normal persisted-column alias used to build the public Col alias.
-type _Col[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
+# Public column aliases carry query scope as an explicit model argument. Their
+# descriptor instance owners are lifecycle-wide Table types: the descriptor is
+# only reachable through its declaring model, while Pending versus Fetched
+# selects the write or read value overload.
+type Col[T] = Attr[
+    Table[Pending],
+    Table[Fetched],
+    _UnboundOwner,
     T,
     T,
 ]
 
-# Private generated-column alias models pending-generation marker vs fetched T.
-type _GenCol[WriteModelT: Table[Any], FetchedModelT, T] = Attr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
+type GenCol[T] = Attr[
+    Table[Pending],
+    Table[Fetched],
+    _UnboundOwner,
     T | PendingGeneration,
     T,
 ]
 
-# Public normal persisted-column alias for external table model helpers.
-type Col[WriteModelT: Table[Any], FetchedModelT, T] = _Col[
-    WriteModelT,
-    FetchedModelT,
+# Target records the referenced model so `references` can require a matching
+# target column.
+type FKCol[Target, T] = FKAttr[
+    Table[Pending],
+    Table[Fetched],
+    _UnboundOwner,
     T,
-]
-
-# Public generated/server-filled column alias for external model helpers.
-type GenCol[WriteModelT: Table[Any], FetchedModelT, T] = _GenCol[
-    WriteModelT,
-    FetchedModelT,
-    T,
-]
-
-# Private foreign-key column alias used to build the public FKCol alias. The
-# trailing Target records the referenced model so `references` can require a
-# matching target column.
-type _FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = FKAttr[
-    WriteModelT,
-    FetchedModelT,
-    WriteModelT,
-    T,
-    T,
-    Target,
-]
-
-# Public foreign-key column alias for external table model helpers.
-type FKCol[WriteModelT: Table[Any], FetchedModelT, T, Target] = _FKCol[
-    WriteModelT,
-    FetchedModelT,
     T,
     Target,
 ]
@@ -159,7 +156,7 @@ class ModelMeta(type):
     """Typing/runtime hook for direct public column descriptors.
 
     Intended runtime behavior:
-    - treat public column descriptors like `email: User.Col[str] = Text(...)`
+    - treat public column descriptors like `email: Col[str] = Text(...)`
       as both constructor fields and query descriptors
     - use descriptor `__set__` typing for constructor/write values
     - bind public descriptors directly on the model class
@@ -174,13 +171,16 @@ class ModelMeta(type):
         namespace: dict[str, object],
         **kwargs: object,
     ) -> type:
-        is_model_base = name == "Model"
+        is_model_base = namespace.get("__snekql_framework_base__") is _MODEL_BASE_MARKER
         if not is_model_base:
             ModelMeta._validate_model_bases(bases)
             ModelMeta._validate_model_namespace(namespace)
-        model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
-        annotations = ModelMeta._namespace_annotations(namespace)
-        columns = ModelMeta._bind_columns(model_class, annotations)
+        try:
+            model_class = super().__new__(mcls, name, bases, namespace, **kwargs)
+        except RuntimeError as error:
+            if isinstance(error.__cause__, ModelDeclarationError):
+                raise error.__cause__ from error
+            raise
         model_metadata = cast("Any", model_class)
         if not is_model_base:
             model_metadata.__tablename__ = ModelMeta._resolve_table_name(
@@ -191,10 +191,11 @@ class ModelMeta(type):
             bases,
             namespace,
         )
-        model_metadata.__snekql_columns__ = columns
         model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
             is_model_base=is_model_base,
         )
+        columns = ModelMeta._bind_columns(model_class)
+        model_metadata.__snekql_columns__ = columns
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -282,7 +283,10 @@ class ModelMeta(type):
 
         for base in bases:
             if isinstance(base, ModelMeta):
-                if base.__name__ != "Model":
+                if (
+                    vars(base).get("__snekql_framework_base__")
+                    is not _MODEL_BASE_MARKER
+                ):
                     msg = f"cannot subclass concrete model: {base.__name__}"
                     raise ModelDeclarationError(msg)
                 continue
@@ -328,8 +332,7 @@ class ModelMeta(type):
         # into stringized annotations via `from __future__ import annotations`.
         # Resolve via the annotate function when present so generated-column
         # detection works regardless of that opt-in import. STRING format keeps
-        # the existing string-matching approach and never evaluates the
-        # (possibly forward-referencing) annotations.
+        # validation can inspect names without evaluating forward references.
         annotate = annotationlib.get_annotate_from_class_namespace(namespace)
         if annotate is not None:
             annotations_object = annotationlib.call_annotate_function(
@@ -345,10 +348,9 @@ class ModelMeta(type):
     @staticmethod
     def _bind_columns(
         model_class: type,
-        annotations: dict[str, object],
     ) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
         columns: dict[str, Attr[Any, Any, Any, Any, Any]] = {}
-        for attribute_name, attribute_value in model_class.__dict__.items():
+        for attribute_name, attribute_value in tuple(model_class.__dict__.items()):
             if not isinstance(attribute_value, Attr):
                 continue
             column = cast("Attr[Any, Any, Any, Any, Any]", attribute_value)
@@ -356,7 +358,8 @@ class ModelMeta(type):
                 msg = f"invalid column identifier: {attribute_name!r}"
                 raise ModelDeclarationError(msg)
             column.is_generated = ModelMeta._is_generated_annotation(
-                annotations.get(attribute_name),
+                model_class,
+                attribute_name,
             )
             ModelMeta._validate_column_declaration(attribute_name, column)
             columns[attribute_name] = column
@@ -462,10 +465,16 @@ class ModelMeta(type):
         return table_name
 
     @staticmethod
-    def _is_generated_annotation(annotation: object) -> bool:
-        if annotation is None:
+    def _is_generated_annotation(model_class: type, name: str) -> bool:
+        try:
+            annotation = _resolve_model_hint(model_class, name)
+        except NameError, TypeError:
             return False
-        return "GenCol[" in str(annotation)
+        alias_name = cast(
+            "str | None",
+            getattr(get_origin(annotation), "__name__", None),
+        )
+        return alias_name == "GenCol"
 
     @staticmethod
     def _validate_column_declaration(
@@ -510,26 +519,35 @@ class ModelMeta(type):
     ) -> None:
         """Cross-check each column's ``nullable=`` flag against its annotation.
 
-        A column's static read type comes from its ``Col[T]`` annotation while
-        ``NULL`` acceptance at runtime is driven by ``nullable=``; if the two
-        disagree the type promises something the runtime does not honour (a
-        ``Col[str]`` that decodes ``None``, or a ``Col[str | None]`` that never
-        does). Require ``| None`` in the annotation if and only if
-        ``nullable=True``. Columns whose logical type cannot be resolved here
-        (forward references) are skipped rather than guessed.
+        The logical annotation is authoritative. An omitted ``nullable=`` derives
+        from whether that annotation admits ``None``; an explicit flag acts as an
+        assertion and must agree. Resolve fields independently so one unresolved
+        sibling cannot suppress another field's check.
         """
 
         for name, column in columns.items():
             admits_none = column_admits_none(column)
             if admits_none is None:
+                if column.nullable_declared is not None:
+                    continue
+                msg = (
+                    f"column {name!r} annotation cannot be resolved; declare "
+                    "nullable=True or nullable=False explicitly"
+                )
+                raise ModelDeclarationError(msg)
+            if column.primary_key and admits_none:
+                msg = f"primary-key column {name!r} cannot include None"
+                raise ModelDeclarationError(msg)
+            if column.nullable_declared is None:
+                column.nullable = admits_none
                 continue
-            if admits_none and column.nullable is not True:
+            if admits_none and column.nullable_declared is not True:
                 msg = (
                     f"column {name!r} annotation includes None but is not "
                     f"declared nullable=True"
                 )
                 raise ModelDeclarationError(msg)
-            if not admits_none and column.nullable is True:
+            if not admits_none and column.nullable_declared is True:
                 msg = (
                     f"column {name!r} is declared nullable=True but its "
                     f"annotation does not include None"
@@ -567,23 +585,23 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     """Base class for declaring table models.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: User.Col[str] = Text(nullable=False)
+    ...     email: Col[str] = Text()
     """
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    # Normal persisted-column alias scoped to the declaring model class.
-    type Col[T] = Attr[Self, ReadModelT, Self, T, T]
-    # Generated/server-filled column alias scoped to the declaring model class.
-    type GenCol[T] = Attr[Self, ReadModelT, Self, T | PendingGeneration, T]
-    # Foreign-key column alias; Target is the *Pending* owner of the referenced
-    # model (`Order.FKCol[User, int]`). PEP 696 resolves the bare `User` to
-    # `User[Pending]`, so no `[Pending]` suffix is required.
-    type FKCol[Target, T] = FKAttr[Self, ReadModelT, Self, T, T, Target]
+    type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+    type GenCol[T] = Attr[
+        Table[Pending], Table[Fetched], _UnboundOwner, T | PendingGeneration, T
+    ]
+    type FKCol[Target, T] = FKAttr[
+        Table[Pending], Table[Fetched], _UnboundOwner, T, T, Target
+    ]
 
     def __init__(self, **values: object) -> None:
         self._snekql_populate(values, validate=True)
@@ -677,7 +695,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
             "dict[str, object]",
             object.__getattribute__(self, "__dict__"),
         )
-        state = storage.get("_snekql_state", "Pending")
+        state = storage.get("_snekql_state", "Uninitialized")
         return cast("str", state)
 
     @classmethod

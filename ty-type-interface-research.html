@@ -1,0 +1,2098 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ty 0.0.75 and snekql's type interface</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f0e6;
+      --paper-deep: #e8e0cf;
+      --ink: #17222a;
+      --muted: #5d675f;
+      --line: #c9bea8;
+      --navy: #173b4d;
+      --oxide: #ad472f;
+      --teal: #1c706b;
+      --gold: #9a6a16;
+      --green-bg: #dce9dc;
+      --amber-bg: #f2e5c5;
+      --red-bg: #efd8d0;
+      --blue-bg: #d9e6ea;
+      --code: #10222b;
+      --code-ink: #e9efe8;
+      --shadow: 0 18px 50px rgb(23 34 42 / 10%);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --serif: Iowan Old Style, Palatino Linotype, Book Antiqua, Palatino,
+        Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, transparent 31px, rgb(173 71 47 / 7%) 32px,
+          transparent 33px),
+        linear-gradient(var(--paper), var(--paper));
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.62;
+    }
+
+    a { color: var(--teal); text-underline-offset: 0.18em; }
+    a:hover { color: var(--oxide); }
+
+    code, pre, .eyebrow, .chip, .metric b, .rank, nav a, th {
+      font-family: var(--mono);
+    }
+
+    code {
+      padding: 0.08em 0.3em;
+      border-radius: 3px;
+      background: rgb(23 59 77 / 9%);
+      font-size: 0.9em;
+    }
+
+    pre {
+      margin: 1rem 0 1.25rem;
+      padding: 1.15rem 1.25rem;
+      overflow: auto;
+      border-left: 4px solid var(--oxide);
+      border-radius: 0 6px 6px 0;
+      color: var(--code-ink);
+      background: var(--code);
+      box-shadow: inset 0 1px rgb(255 255 255 / 5%);
+      font-size: 0.84rem;
+      line-height: 1.58;
+      tab-size: 4;
+    }
+
+    pre code { padding: 0; color: inherit; background: none; }
+
+    header {
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--line);
+      background: var(--navy);
+      color: #f5f0e4;
+    }
+
+    header::after {
+      position: absolute;
+      right: -5rem;
+      bottom: -8rem;
+      width: 28rem;
+      height: 28rem;
+      border: 4rem solid rgb(244 240 230 / 5%);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 5rem 2.25rem 4.5rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 1.25rem;
+      color: #d7b86b;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, h4 { line-height: 1.12; }
+
+    h1 {
+      max-width: 870px;
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(3rem, 7vw, 6.6rem);
+      font-weight: 500;
+      letter-spacing: -0.055em;
+    }
+
+    .dek {
+      max-width: 790px;
+      margin: 1.5rem 0 0;
+      color: #d8e1df;
+      font-family: var(--serif);
+      font-size: clamp(1.15rem, 2vw, 1.55rem);
+      line-height: 1.48;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 2rem;
+    }
+
+    .hero-meta span {
+      padding: 0.34rem 0.62rem;
+      border: 1px solid rgb(255 255 255 / 22%);
+      border-radius: 999px;
+      color: #ebeee8;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr);
+      gap: 3.25rem;
+      max-width: 1260px;
+      margin: 0 auto;
+      padding: 3.5rem 2.25rem 7rem;
+    }
+
+    nav {
+      position: sticky;
+      top: 1.5rem;
+      align-self: start;
+      padding: 1.2rem 0;
+      border-top: 3px solid var(--oxide);
+      border-bottom: 1px solid var(--line);
+    }
+
+    nav p {
+      margin: 0 0 0.7rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    nav a {
+      display: block;
+      padding: 0.35rem 0;
+      color: var(--ink);
+      font-size: 0.77rem;
+      text-decoration: none;
+    }
+
+    nav a:hover { color: var(--oxide); }
+
+    main { min-width: 0; }
+
+    section {
+      padding: 0 0 4.5rem;
+      scroll-margin-top: 2rem;
+    }
+
+    section + section {
+      padding-top: 4.25rem;
+      border-top: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 1.4rem;
+      font-family: var(--serif);
+      font-size: clamp(2.2rem, 4vw, 3.8rem);
+      font-weight: 500;
+      letter-spacing: -0.04em;
+    }
+
+    h3 {
+      margin: 2.5rem 0 0.7rem;
+      color: var(--navy);
+      font-size: 1.25rem;
+      letter-spacing: -0.015em;
+    }
+
+    h4 {
+      margin: 1.8rem 0 0.45rem;
+      font-size: 1rem;
+    }
+
+    p { max-width: 78ch; }
+    li { margin: 0.42rem 0; }
+
+    .lead {
+      max-width: 72ch;
+      margin: 0 0 1.5rem;
+      color: #34434b;
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      line-height: 1.55;
+    }
+
+    .callout {
+      margin: 1.7rem 0;
+      padding: 1.2rem 1.35rem;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--teal);
+      background: rgb(255 255 255 / 44%);
+      box-shadow: 0 4px 18px rgb(23 34 42 / 5%);
+    }
+
+    .callout.warning { border-left-color: var(--gold); }
+    .callout.danger { border-left-color: var(--oxide); }
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.8rem;
+      margin: 2rem 0 2.4rem;
+    }
+
+    .metric {
+      min-height: 125px;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      background: rgb(255 255 255 / 38%);
+    }
+
+    .metric b {
+      display: block;
+      color: var(--oxide);
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 0.62rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
+    .verdict-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.8rem 0;
+    }
+
+    .verdict-card {
+      padding: 1.25rem 1.3rem;
+      border-top: 4px solid var(--navy);
+      background: rgb(255 255 255 / 46%);
+      box-shadow: var(--shadow);
+    }
+
+    .verdict-card h3 { margin: 0.5rem 0 0.6rem; color: var(--ink); }
+    .verdict-card p { margin: 0; font-size: 0.92rem; }
+
+    .chip {
+      display: inline-block;
+      padding: 0.2rem 0.48rem;
+      border-radius: 999px;
+      font-size: 0.67rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .adopt { color: #24502f; background: var(--green-bg); }
+    .fix { color: #6d4a05; background: var(--amber-bg); }
+    .reject { color: #7a2c1d; background: var(--red-bg); }
+    .later { color: #28536a; background: var(--blue-bg); }
+
+    .table-wrap {
+      margin: 1.3rem 0 2rem;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: rgb(255 255 255 / 38%);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    th, td {
+      padding: 0.78rem 0.82rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #f3eee3;
+      background: var(--navy);
+      font-size: 0.69rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .rank {
+      display: inline-grid;
+      width: 1.75rem;
+      height: 1.75rem;
+      place-items: center;
+      border-radius: 50%;
+      color: #f5f0e4;
+      background: var(--oxide);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .comparison > div {
+      min-width: 0;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      background: rgb(255 255 255 / 35%);
+    }
+
+    .comparison h3 { margin: 0 0 0.55rem; font-size: 0.92rem; }
+    .comparison pre { margin-bottom: 0; }
+
+    .finding {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 1rem;
+      padding: 1.4rem 0;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .finding:last-child { border-bottom: 0; }
+    .finding h3 { margin: 0 0 0.5rem; }
+    .finding p { margin-top: 0.45rem; }
+
+    .checklist {
+      margin: 1.25rem 0;
+      padding: 0;
+      counter-reset: steps;
+      list-style: none;
+    }
+
+    .checklist li {
+      position: relative;
+      min-height: 3rem;
+      margin: 0;
+      padding: 0.75rem 0 0.75rem 3.35rem;
+      border-bottom: 1px solid var(--line);
+      counter-increment: steps;
+    }
+
+    .checklist li::before {
+      position: absolute;
+      top: 0.68rem;
+      left: 0;
+      display: grid;
+      width: 2.25rem;
+      height: 2.25rem;
+      place-items: center;
+      border: 1px solid var(--oxide);
+      border-radius: 50%;
+      color: var(--oxide);
+      content: counter(steps, decimal-leading-zero);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .small { color: var(--muted); font-size: 0.82rem; }
+
+    footer {
+      padding: 2rem 2.25rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      background: var(--paper-deep);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+    }
+
+    footer div { max-width: 1260px; margin: 0 auto; }
+
+    @media (max-width: 920px) {
+      .page { grid-template-columns: 1fr; }
+      nav { position: static; columns: 2; }
+      nav p { column-span: all; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .hero { padding: 3.5rem 1.2rem 3rem; }
+      .page { padding: 2.5rem 1.2rem 5rem; }
+      nav { columns: 1; }
+      .metrics, .verdict-grid, .comparison { grid-template-columns: 1fr; }
+      .finding { grid-template-columns: 34px minmax(0, 1fr); gap: 0.65rem; }
+      th, td { padding: 0.65rem; }
+    }
+
+    @media print {
+      body { background: white; font-size: 10pt; }
+      header { color: var(--ink); background: white; }
+      header::after, nav { display: none; }
+      .hero { padding: 1rem 0 2rem; }
+      .dek { color: var(--ink); }
+      .page { display: block; max-width: none; padding: 0; }
+      section { break-inside: avoid; }
+      pre { white-space: pre-wrap; box-shadow: none; }
+      .verdict-card, .metric { box-shadow: none; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <p class="eyebrow">Research report + implementation follow-up / PR 242 / 31 August 2026</p>
+      <h1>What <em>ty</em> can buy snekql</h1>
+      <p class="dek">
+        The original tested design for model declarations and query inference,
+        extended after implementation into the remaining type, runtime, backend,
+        and packaging work that the new interface made visible.
+      </p>
+      <div class="hero-meta">
+        <span>ty 0.0.75</span>
+        <span>baseline 0a2ef3c</span>
+        <span>follow-up be852ff</span>
+        <span>base 55bcadd</span>
+        <span>Python &gt;= 3.14</span>
+        <span>646 runtime tests</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <nav aria-label="Report contents">
+      <p>Contents</p>
+      <a href="#executive">01 Executive verdict</a>
+      <a href="#baseline">02 Evidence baseline</a>
+      <a href="#declarations">03 Model declarations</a>
+      <a href="#lifecycle">04 Lifecycle model</a>
+      <a href="#queries">05 Query inference</a>
+      <a href="#correctness">06 Correctness findings</a>
+      <a href="#public-interface">07 Public interface</a>
+      <a href="#ty-specific">08 ty-specific findings</a>
+      <a href="#rejected">09 Rejected designs</a>
+      <a href="#roadmap">10 Recommended sequence</a>
+      <a href="#outcome">11 Implementation outcome</a>
+      <a href="#remaining-contract">12 Remaining type contract</a>
+      <a href="#runtime-followup">13 Runtime implications</a>
+      <a href="#deepening">14 Deepening opportunities</a>
+      <a href="#followup-roadmap">15 Follow-up sequence</a>
+      <a href="#appendix">16 Appendix</a>
+    </nav>
+
+    <main>
+      <section id="executive">
+        <p class="eyebrow">01 / Executive verdict</p>
+        <h2>Move to ty, but do not stop at the PR prototype</h2>
+        <p class="lead">
+          The migration is viable. The best declaration under <code>ty 0.0.75</code>
+          is shorter than both main and PR 242, and it keeps the owner checks that
+          motivated the explicit-owner prototype.
+        </p>
+
+        <div class="callout">
+          <p><strong>Recommended declaration:</strong></p>
+          <pre><code class="language-python">class User[S = Pending](Model[S, "User[Fetched]"]):
+    id: GenCol[int] = Integer(
+        primary_key=True,
+        default=PENDING_GENERATION,
+    )
+    email: Col[str] = Text()
+    nickname: Col[str | None] = Text(default=None)
+
+
+class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    user_id: FKCol[User, int] = ForeignKey(User.id)</code></pre>
+          <p>
+            The owner comes from descriptor class access. <code>User.email</code>
+            becomes a column owned by <code>User[Pending]</code>; instance access
+            still selects the pending or fetched value overload.
+          </p>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><b>730</b><span>explicit owner arguments in current Python declarations</span></div>
+          <div class="metric"><b>373</b><span>lifecycle-aware model declarations in the workspace</span></div>
+          <div class="metric"><b>164</b><span>source overloads, 86 in storage constructors</span></div>
+          <div class="metric"><b>1</b><span>file touched by the Pyright-compatibility commit</span></div>
+        </div>
+
+        <div class="verdict-grid">
+          <article class="verdict-card">
+            <span class="chip adopt">Adopt</span>
+            <h3>Owner-rebinding descriptors</h3>
+            <p>
+              Drop the owner argument from <code>Col</code>, <code>GenCol</code>,
+              <code>FKCol</code>, and <code>JsonCol</code>. Infer it in
+              <code>__get__</code> from the class used for access.
+            </p>
+          </article>
+          <article class="verdict-card">
+            <span class="chip fix">Prerequisite</span>
+            <h3>Constructor-field verification</h3>
+            <p>
+              Convert the <code>__new__</code>-only storage factories to overloaded
+              function field specifiers. The validated function form rejects a
+              missing required model field; the current class form accepts it.
+            </p>
+          </article>
+          <article class="verdict-card">
+            <span class="chip later">Prototype</span>
+            <h3>Result-bearing query bases</h3>
+            <p>
+              A focused prototype carried row types on private nominal bases and
+              reduced repeated runtime overloads. Test package-wide integration
+              before adopting it.
+            </p>
+          </article>
+          <article class="verdict-card">
+            <span class="chip reject">Keep as-is</span>
+            <h3>Lifecycle base declaration</h3>
+            <p>
+              No tested design beats <code>Model[S, "User[Fetched]"]</code>
+              without losing narrowing, erasing the model, or adding more syntax.
+            </p>
+          </article>
+        </div>
+
+        <p>
+          Reverting the PR's Pyright-compatibility work offers no product-code
+          simplification. Commit <code>0a2ef3c</code> only moved two suppression
+          comments in <code>tests/sqlite/test_storage_codecs.py</code>. The useful
+          gains require new type designs, not a rollback of that commit.
+        </p>
+      </section>
+
+      <section id="baseline">
+        <p class="eyebrow">02 / Evidence baseline</p>
+        <h2>What was checked</h2>
+        <p class="lead">
+          The report separates runtime behavior, package-source checking, negative
+          consumer probes, and standalone type-system experiments. A passing
+          positive file alone was not treated as proof.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Check</th><th>Observed result</th><th>Interpretation</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>uv run ty --version</code></td>
+                <td><code>ty 0.0.75</code></td>
+                <td>The requested installed version was used.</td>
+              </tr>
+              <tr>
+                <td>Strict package source</td>
+                <td><code>All checks passed!</code></td>
+                <td><code>snekql/</code> passes with all rules enabled except <code>missing-override-decorator</code>.</td>
+              </tr>
+              <tr>
+                <td>Runtime suite</td>
+                <td><code>640 passed in 18.51s</code></td>
+                <td>The prototype's broad mechanical declaration migration preserves runtime behavior.</td>
+              </tr>
+              <tr>
+                <td>Ruff source checks</td>
+                <td>check and format pass</td>
+                <td>Package source remains clean.</td>
+              </tr>
+              <tr>
+                <td>Full repository, strict ty</td>
+                <td>45 test-only diagnostics</td>
+                <td>17 are intentional public negative probes. The rest are negative tests, fixture typing, and test-double cleanup.</td>
+              </tr>
+              <tr>
+                <td>PR diff from <code>55bcadd</code></td>
+                <td>84 files, +982 / -816</td>
+                <td>The owner migration is mechanically broad, which raises the value of getting the final declaration right first.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warning">
+          <p>
+            The observed full-tree count is 45 rather than the 44 recorded in the
+            PR description. The dirty <code>uv.lock</code> updates several test
+            dependencies, including Hypothesis, and one current diagnostic is in a
+            Hypothesis strategy call. Package source still passes. This report did
+            not alter or revert the lockfile.
+          </p>
+        </div>
+
+        <h3>Independent investigations</h3>
+        <p>
+          Five broad investigations covered declarations, lifecycle typing,
+          variadic queries, the public interface, and <code>ty</code> capabilities.
+          A sixth investigation challenged the lifecycle, scalar, join, and
+          nullability findings. A final owner-laundering investigation replaced
+          the original <code>Any</code> owner with a private nominal marker. Strong
+          recommendations below have executable positive and negative probes under
+          <code>/tmp/opencode/</code>.
+        </p>
+      </section>
+
+      <section id="declarations">
+        <p class="eyebrow">03 / Model declarations</p>
+        <h2>Infer the owner at descriptor access</h2>
+        <p class="lead">
+          PR 242 proves that lifecycle-wide descriptor owners work. <code>ty</code>
+          can go one step further: the descriptor can acquire its concrete query
+          owner when Python's descriptor protocol receives the owning class.
+        </p>
+
+        <div class="comparison">
+          <div>
+            <h3>PR 242</h3>
+            <pre><code class="language-python">class User[S = Pending](
+    Model[S, "User[Fetched]"]
+):
+    id: GenCol[User, int] = Integer(...)
+    email: Col[User, str] = Text()</code></pre>
+          </div>
+          <div>
+            <h3>Recommended</h3>
+            <pre><code class="language-python">class User[S = Pending](
+    Model[S, "User[Fetched]"]
+):
+    id: GenCol[int] = Integer(...)
+    email: Col[str] = Text()</code></pre>
+          </div>
+        </div>
+
+        <h3>Mechanism</h3>
+        <pre><code class="language-python">class _UnboundOwner:
+    """Descriptor has not been accessed through a model class."""
+
+
+@overload
+def __get__[AccessOwner](
+    self,
+    instance: None,
+    owner: type[AccessOwner],
+) -&gt; Attr[
+    WriteOwner,
+    ReadOwner,
+    AccessOwner,
+    WriteValue,
+    ReadValue,
+    SetValue,
+]: ...
+
+
+type Col[T] = Attr[
+    Table[Pending],
+    Table[Fetched],
+    _UnboundOwner,       # rebound to AccessOwner on class access
+    T,
+    T,
+]</code></pre>
+
+        <p>
+          This is not the rejected inherited <code>Self</code> alias. The alias
+          stores a private nominal marker that is not a <code>Table</code>. Class
+          access supplies the concrete owner through
+          <code>owner: type[AccessOwner]</code>, a standard descriptor input that
+          <code>ty</code> solves as the class being accessed. Because
+          <code>_UnboundOwner</code> cannot satisfy query-owner bounds, callers
+          cannot assign an accessed <code>Order</code> column back to
+          <code>Col[str]</code> and launder it into a <code>User</code> query.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Guarantee</th><th>Probe result</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Pending generated value</td><td><code>int | PendingGeneration</code></td></tr>
+              <tr><td>Fetched generated value</td><td><code>int</code></td></tr>
+              <tr><td>Class predicate owner</td><td><code>Predicate[User[Pending]]</code></td></tr>
+              <tr><td>Update assignment owner</td><td><code>Assignment[User[Pending]]</code></td></tr>
+              <tr><td>Projection owner and result</td><td>Exact owner and decoded value retained</td></tr>
+              <tr><td>Wrong constructor value</td><td>Rejected</td></tr>
+              <tr><td>Wrong predicate operand</td><td>Rejected</td></tr>
+              <tr><td>Cross-model update</td><td>Rejected</td></tr>
+              <tr><td>Wrong FK target</td><td>Rejected</td></tr>
+              <tr><td>Wrong default type</td><td>Rejected</td></tr>
+              <tr><td>Accessed column assigned to owner-free alias</td><td>Rejected</td></tr>
+              <tr><td>Raw constructor descriptor used in a query</td><td>Rejected</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Constructor return types are part of the boundary</h3>
+        <p>
+          The marker must appear in every storage-constructor overload, including
+          omitted-default and broad fallback arms. Leaving those returns owned by
+          <code>Any</code> lets a raw <code>Text()</code> descriptor satisfy any
+          model-specific update, index, or projection before class access occurs.
+        </p>
+        <pre><code class="language-python">@overload
+def Text[T](..., default: T) -&gt; Attr[
+    Any, Any, _UnboundOwner, T, T, object
+]: ...
+
+@overload
+def Text(...) -&gt; Attr[
+    Any, Any, _UnboundOwner, Any, Any, Any
+]: ...</code></pre>
+
+        <h3>Implementation notes</h3>
+        <ul>
+          <li>Remove owner parameters from the four public column aliases.</li>
+          <li>Change the class-access overload on <code>Attr</code> and mirror it on <code>FKAttr</code>.</li>
+          <li>Add a matching override on <code>JsonAttr</code>, otherwise class access widens away MariaDB JSON methods.</li>
+          <li>Return <code>_UnboundOwner</code> from every SQLite and MariaDB storage-factory overload. Never return an <code>Any</code> owner.</li>
+          <li>Keep runtime descriptor identity unchanged. Class access still returns the same object.</li>
+          <li>Teach runtime logical-type extraction the one-argument aliases. This is simpler than the current last-argument convention.</li>
+          <li>Delete the proposed runtime owner-mismatch check. With no owner in the declaration, that mismatch cannot be written.</li>
+          <li>In <code>Attr.__set_name__</code>, reject a descriptor already bound to another owner or name. Reusing one descriptor object mutates its runtime owner and name even though the nominal marker blocks the static laundering path.</li>
+        </ul>
+
+        <div class="callout warning">
+          <p>
+            <code>Any</code> is not a safe placeholder for the descriptor owner.
+            The first probe passed ordinary class access but allowed assignments
+            and helper functions to erase an accessed column's owner. The final
+            <code>_UnboundOwner</code> probe rejects all tested alias and raw-
+            constructor laundering paths. Hiding <code>Attr</code> and
+            <code>FKAttr</code> from backend exports still reduces access to the
+            low-level six- and seven-parameter forms.
+          </p>
+        </div>
+
+        <h3>Remove nullability repetition</h3>
+        <p>
+          <code>nullable=False</code> is already redundant because the default is
+          NOT NULL. The workspace contains 459 explicit false flags. Documentation
+          should stop teaching them immediately.
+        </p>
+        <p>
+          A more useful follow-up derives effective nullability from
+          <code>Col[T | None]</code>. Keep the constructor's tri-state flag during
+          migration as an optional assertion, not a second source of truth. Resolve
+          each annotation independently before DDL. The current whole-class hint
+          resolution can let one unresolved sibling make every nullability check
+          silently skip.
+        </p>
+      </section>
+
+      <section id="lifecycle">
+        <p class="eyebrow">04 / Lifecycle model</p>
+        <h2>The awkward base argument earns its place</h2>
+        <p class="lead">
+          No experiment found a shorter declaration that retains one nominal model
+          class, generated-value narrowing, exact fetched results, and insert
+          inference.
+        </p>
+
+        <pre><code class="language-python">class User[S = Pending](Model[S, "User[Fetched]"]):
+    ...</code></pre>
+
+        <p>
+          Python typing has no higher-kinded operation that turns an inferred
+          <code>User[Pending]</code> into <code>User[Fetched]</code>. The second
+          model parameter is the explicit witness for that transformation. The
+          owner/read structural methods then pass it through <code>select</code>,
+          <code>insert</code>, joins, and returning writes.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Alternative</th><th>Result</th><th>Verdict</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Self</code> as read type</td><td>Resolves to <code>User[Pending]</code></td><td><span class="chip reject">Reject</span></td></tr>
+              <tr><td><code>Table[Fetched]</code></td><td>Changes state but erases <code>User</code></td><td><span class="chip reject">Reject</span></td></tr>
+              <tr><td>Per-model <code>__read_type__</code></td><td>Works, but replaces one argument with a longer cast-backed method</td><td><span class="chip reject">Reject</span></td></tr>
+              <tr><td>Fetched companion subclass</td><td>Works with materializer and inheritance changes</td><td><span class="chip reject">Worse</span></td></tr>
+              <tr><td>Literal lifecycle state</td><td>Same repetition with less meaningful names</td><td><span class="chip reject">Reject</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Keep <code>Pending</code>, <code>Fetched</code>, PEP 696's default state,
+          and the explicit fetched witness. Spend complexity where it removes
+          repetition from every field, not where it saves one class-base fragment.
+        </p>
+      </section>
+
+      <section id="queries">
+        <p class="eyebrow">05 / Query inference</p>
+        <h2>Carry the result once</h2>
+        <p class="lead">
+          <code>ty</code> cannot map arbitrary projected columns to a tuple of
+          decoded values. It can, however, let each built query carry its row type
+          through one nominal base. An isolated prototype reduced repeated runtime
+          overloads this way; it was not integrated into the full package.
+        </p>
+
+        <h3>Nominal query shape</h3>
+        <pre><code class="language-python">class _QueryShape[ScopeT, RefT, RowT]:
+    def _pin_scope(self, scope: ScopeT) -&gt; ScopeT: ...
+    def _reference_type(self) -&gt; RefT: ...
+    def _row_type(self) -&gt; RowT: ...
+
+
+async def fetch_all[ScopeT, RowT](
+    self,
+    query: _QueryShape[ScopeT, ScopeT, RowT],
+    *,
+    validate: bool = True,
+) -&gt; list[RowT]: ...</code></pre>
+
+        <p>
+          In the focused probe, the invariant scope witness and covariant reference
+          witness preserved the tested dual-union check. The probe rejected a query
+          whose references escaped its join scope. A private nominal base also
+          avoided the structural hole where an unrelated class satisfies a public
+          result protocol and looks executable even though runtime rejects it.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Current family</th><th>Prototype shape</th><th>Focused result</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>fetch_all</code>, 4 overloads</td><td>1 generic shape</td><td>Exact model, scalar, tuple, and join rows</td></tr>
+              <tr><td><code>fetch_one</code>, 4 overloads</td><td>1 generic shape</td><td>Exact single row</td></tr>
+              <tr><td><code>fetch_chunks</code>, 4 overloads</td><td>1 generic shape</td><td><code>ChunkStream[RowT]</code></td></tr>
+              <tr><td><code>fetch_one_or_none</code>, 3 overloads</td><td>1 non-scalar nominal marker</td><td>Still rejects ambiguous scalar absence</td></tr>
+              <tr><td><code>execute</code>, 10 overloads</td><td>returning result marker plus mutation/insert cases</td><td>3 overloads</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warning">
+          <p>
+            Treat this section as evidence for a follow-up, not as a ready patch.
+            The prototype checked representative model, scalar, tuple, join, and
+            write results. It did not replace every query state in snekql or run the
+            full consumer-negative matrix against an integrated implementation.
+          </p>
+        </div>
+
+        <h3>One-field select overload</h3>
+        <p>
+          The current code uses four singleton overloads for columns, aggregates,
+          scalar subqueries, and dialect expressions. <code>ty 0.0.75</code> binds
+          one owner and value variable through a union, so one overload retains
+          exact inference:
+        </p>
+        <pre><code class="language-python">@overload
+def select[OwnerT: Table[Any], ValueT](
+    field: Attr[Any, Any, OwnerT, Any, ValueT]
+    | Aggregate[OwnerT, ValueT]
+    | Scalar[OwnerT, ValueT]
+    | DialectSelectable[OwnerT, ValueT],
+    /,
+) -&gt; SelectValueQuery[OwnerT, OwnerT, ValueT]: ...</code></pre>
+
+        <h3>Arbitrary-width projections remain unavailable</h3>
+        <p>
+          Runtime accepts more than three fields, but static overloads stop at
+          three. A real four-field call produces <code>no-matching-overload</code>.
+          <code>TypeVarTuple</code> can preserve and append packs, which is why
+          arbitrary-depth model joins already work. It cannot map
+          <code>Field[Owner, T]</code> over a pack to recover each <code>T</code>.
+        </p>
+
+        <div class="callout">
+          <p>
+            <strong>Recommendation:</strong> generate finite overloads to a
+            documented width, perhaps 8 or 10, for both <code>select</code> and
+            <code>returning</code>. Keep one implementation. Do not change the
+            pleasant variadic call syntax for a theoretical abstraction that
+            Python typing cannot express.
+          </p>
+        </div>
+
+        <h3>Public query annotations</h3>
+        <p>
+          Consumers should not need twenty concrete query-state class names. If
+          naming built queries remains a supported use case, expose small
+          result-oriented types such as <code>Select[RowT]</code> and
+          <code>Write[ResultT]</code>. Keep builder-state classes private. This
+          makes query annotations describe what execution returns rather than how
+          the implementation reached that state.
+        </p>
+      </section>
+
+      <section id="correctness">
+        <p class="eyebrow">06 / Correctness findings</p>
+        <h2>Fix these while the interface is moving</h2>
+        <p class="lead">
+          The wide audit found type claims that disagree with runtime behavior.
+          These matter more than reducing internal generic syntax.
+        </p>
+
+        <div class="finding">
+          <span class="rank">1</span>
+          <div>
+            <h3>Mutation returning claims Pending, runtime creates Fetched</h3>
+            <span class="chip fix">High</span>
+            <p>
+              <code>await tx.execute(update(User).returning())</code> and delete's
+              equivalent infer <code>list[User[Pending]]</code>. The materializer
+              calls <code>decode_model_row</code>, which explicitly writes
+              <code>_snekql_state = "Fetched"</code>. The incorrect type even lets
+              a returned row pass back into <code>insert</code> statically.
+            </p>
+            <p>
+              Reuse the model class owner/read witness in <code>update</code> and
+              <code>delete</code>. Carry <code>ReadT</code> to whole-row returning,
+              or put <code>list[ReadT]</code> on the returning result marker.
+              The focused prototype infers <code>list[User[Fetched]]</code> with
+              <code>ty 0.0.75</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">2</span>
+          <div>
+            <h3>Scalar comparison erases value compatibility</h3>
+            <span class="chip fix">High</span>
+            <p>
+              An integer column accepts a scalar string subquery in all six
+              <code>*_col</code> methods because the parameter includes
+              <code>Scalar[Any, Any]</code>. There is no runtime type gate; the
+              database decides how to coerce it.
+            </p>
+            <p>
+              A strict <code>Scalar[Any, ValueT | None]</code> check rejects useful
+              integer-versus-AVG comparisons. The viable design separates scalar
+              projection result from comparison domain, for example
+              <code>Scalar[OwnerT, ResultT, CompareT]</code>. A contravariant
+              comparison witness accepted integer and AVG cases and rejected
+              strings in the validation probe.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">3</span>
+          <div>
+            <h3>Nullable foreign keys reject their real target</h3>
+            <span class="chip fix">High</span>
+            <p>
+              <code>FKCol[User, int | None]</code> makes
+              <code>references()</code> demand a target column of
+              <code>int | None</code>. A normal <code>User.id: int</code> is then
+              rejected. Overloads specialized on nullable and non-null self types
+              can preserve the underlying key type and reject a string target.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">4</span>
+          <div>
+            <h3>Projection left joins return None without saying so</h3>
+            <span class="chip fix">High</span>
+            <p>
+              This is already documented as a caveat. A projected NOT NULL column
+              from the nullable side remains typed as <code>str</code>, while
+              materialization returns <code>None</code> for an unmatched row. The
+              current query generic stores value types without per-slot owner
+              relationships, and Python has no mapped variadic operation to fix
+              only the right-side slots.
+            </p>
+            <p>
+              Reject projection <code>left_join</code> for now, or require an
+              explicit wrapper that widens selected values to optional. Model
+              left joins are already sound and should remain the default advice.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">5</span>
+          <div>
+            <h3>Class field specifiers miss required constructor arguments</h3>
+            <span class="chip fix">High</span>
+            <p>
+              <code>ty</code>'s detailed <code>dataclass_transform</code> field
+              behavior currently targets function specifiers. With snekql's
+              classes whose work lives in <code>__new__</code>, wrong values and
+              unknown keywords are diagnosed, but <code>User()</code> can omit a
+              required <code>email</code>. This is a lost static guarantee and must
+              appear in the consumer conformance suite.
+            </p>
+            <p>
+              The validated fix is to expose storage declarations as registered
+              overloaded functions. Call syntax stays <code>Text(...)</code> and
+              <code>Integer(...)</code>; runtime already treats the current classes
+              as factories returning <code>Attr</code> objects. The function probe
+              rejected missing required fields, positional construction, unknown
+              keywords, wrong values, and incompatible defaults.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">6</span>
+          <div>
+            <h3>Joins can certify an unrelated condition</h3>
+            <span class="chip later">Low runtime risk</span>
+            <p>
+              Covariant model-owner inference lets both model and projection
+              joins widen the requested model independently of the owners in
+              <code>on=</code>. <code>ty</code> accepts an Order join whose condition
+              relates Team and Region. The projection variant then puts Team and
+              Region in static scope while omitting Order. Runtime rejects it
+              immediately.
+            </p>
+            <p>
+              A simple tighter union is not enough because <code>ty</code> widens
+              the new owner to a union. A tested static fix needs an invariant
+              model-owner witness and separate structural views for new-owner-on-
+              left and new-owner-on-right. Ship it only if that private machinery
+              remains local; the runtime check already prevents bad SQL.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">7</span>
+          <div>
+            <h3>One unresolved annotation can disable sibling checks</h3>
+            <span class="chip fix">Medium</span>
+            <p>
+              Hint resolution currently evaluates the whole model. One unresolved
+              sibling makes nullability resolution return unknown, and validation
+              silently skips affected columns. A probe accepted
+              <code>Col[int | None] = Integer()</code>, emitted NOT NULL DDL, and
+              then rejected <code>None</code> at construction.
+            </p>
+            <p>
+              Evaluate annotations independently with Python 3.14's forward-ref
+              support. If nullability remains unknowable, require an explicit flag
+              or fail before DDL. Also reject optional primary-key annotations;
+              MariaDB forces primary keys non-null regardless of the read type.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="public-interface">
+        <p class="eyebrow">07 / Public interface</p>
+        <h2>Stop exporting implementation vocabulary</h2>
+        <p class="lead">
+          SQLite exports 92 names and MariaDB 99. Much of that is not useful to a
+          caller writing models or queries.
+        </p>
+
+        <h3>Remove or replace</h3>
+        <ul>
+          <li><code>ModelMeta</code> is implementation, not a caller-facing type.</li>
+          <li><code>Attr</code> and <code>FKAttr</code> expose six and seven generic parameters. A read-only <code>ColumnRef[OwnerT, T]</code> is enough for public annotations.</li>
+          <li><code>Table</code> is mostly an internal generic bound.</li>
+          <li>Concrete query-state classes should give way to result-oriented query types.</li>
+          <li>Duplicate namespace and inherited column aliases should collapse to one documented spelling.</li>
+        </ul>
+
+        <p>
+          No non-test, non-example project code imports <code>Attr</code>,
+          <code>FKAttr</code>, <code>ModelMeta</code>, or <code>Table</code>. PR 242 is
+          already a breaking prototype, so this is the right time to narrow the
+          interface before those names acquire external users.
+        </p>
+
+        <h3>Other inference improvements</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Lead</th><th>ty result</th><th>Recommendation</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Remove broad storage-constructor <code>Any</code> fallback</td><td>Context can infer return-only <code>T</code> from the field annotation</td><td>Replace fallback with an omitted-default overload; reject <code>default</code> plus <code>default_factory</code>.</td></tr>
+              <tr><td>Gate <code>like</code> to string columns</td><td>Explicit-self overloads accept string subclasses and optional strings, reject integers</td><td>Adopt after the descriptor redesign.</td></tr>
+              <tr><td>Index raw-object overload</td><td><code>Index("email")</code> becomes <code>Index[Unknown]</code></td><td>Remove it; accept columns only.</td></tr>
+              <tr><td>Backend identity generic</td><td>Config to Database to Transaction to Query propagation works</td><td>Defer. Useful, but broad and runtime already rejects mismatches.</td></tr>
+              <tr><td>Ready-query aliases</td><td>Sound when scope and references are the same type</td><td>Use result-oriented nominal types instead of aliases containing <code>Any</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Documentation debt in the prototype</h3>
+        <p>
+          The active README and docs still show 42 old owner-free declarations,
+          instruct users to run Pyright, and contain one early example that says
+          exactly-one <code>fetch_one</code> returns an optional model. This is
+          expected for a throwaway PR, but it means examples are not evidence for
+          the current interface. Rewrite them only after choosing the descriptor
+          design.
+        </p>
+      </section>
+
+      <section id="ty-specific">
+        <p class="eyebrow">08 / ty-specific findings</p>
+        <h2>Useful strengths, concrete limits</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Capability</th><th>ty 0.0.75</th><th>Effect on snekql</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PEP 695 aliases</td><td>Generic solving works</td><td>Column and public convenience aliases are viable.</td></tr>
+              <tr><td>PEP 696 defaults</td><td>Works</td><td>Bare <code>User</code> remains <code>User[Pending]</code>.</td></tr>
+              <tr><td>Generic descriptor access</td><td>Works</td><td>Enables owner rebinding and removes owner repetition.</td></tr>
+              <tr><td><code>Self</code> in aliases or bases</td><td>Rejected per typing specification</td><td>Do not return to inherited <code>Self</code> aliases.</td></tr>
+              <tr><td>Class field specifiers</td><td>Incomplete required-field modeling</td><td>Use the validated function field specifiers.</td></tr>
+              <tr><td><code>TypeVarTuple</code> preserve/append</td><td>Works</td><td>Arbitrary-depth joins remain exact.</td></tr>
+              <tr><td>Mapped packs</td><td>Not in Python typing</td><td>Finite projection and returning overloads remain necessary.</td></tr>
+              <tr><td>Generic structural protocols</td><td>Works</td><td>Owner/read witnesses and column/subquery witnesses are sound tools.</td></tr>
+              <tr><td>Intersection narrowing</td><td>Stronger than Pyright in some control flow</td><td>Useful internally, not needed in the public interface.</td></tr>
+              <tr><td>Overlapping overload checks</td><td>Known gaps remain</td><td>Keep negative overload probes; do not rely on checker diagnostics alone.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Configuration</h3>
+        <p>
+          Use the strict posture already exercised by this report: all rules as
+          errors, with only <code>missing-override-decorator</code> disabled by
+          deliberate project policy. Use rule-specific <code>ty</code> suppressions
+          in negative tests and keep unused-ignore checking enabled so probes
+          cannot silently stop testing rejection.
+        </p>
+        <pre><code class="language-bash">uv run ty check \
+  --error all \
+  --ignore missing-override-decorator</code></pre>
+
+        <p>
+          Pin <code>ty==0.0.75</code>, not <code>&gt;=0.0.44</code>, while the project
+          intentionally targets this beta release. Upgrade in a dedicated change
+          that reruns the positive and negative consumer suite. <code>ty</code>
+          remains a <code>0.0.x</code> beta, so accidental checker upgrades should
+          not redefine the supported interface.
+        </p>
+
+        <h3>Watch list</h3>
+        <ul>
+          <li><a href="https://github.com/astral-sh/ty/issues/103">ty #103</a>, overlapping overload diagnostics.</li>
+          <li><a href="https://github.com/astral-sh/ty/issues/3933">ty #3933</a> and <a href="https://github.com/astral-sh/ty/issues/3934">#3934</a>, stronger bidirectional generic inference.</li>
+          <li><a href="https://github.com/astral-sh/ty/issues/4152">ty #4152</a>, TypeVarTuple constraint-solver integration.</li>
+          <li><a href="https://github.com/python/typing/issues/1216">python/typing #1216</a> and <a href="https://github.com/python/typing/issues/1383">#1383</a>, map-like variadic transformations.</li>
+        </ul>
+      </section>
+
+      <section id="rejected">
+        <p class="eyebrow">09 / Rejected designs</p>
+        <h2>Ideas that did not survive a negative probe</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Design</th><th>Failure</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Inherited <code>type Col[T] = Attr[Self, ...]</code></td><td><code>Self</code> is invalid in a type alias.</td></tr>
+              <tr><td>Inherited alias capturing a model generic</td><td>Owner remains <code>Scope@Model</code>, not the concrete model.</td></tr>
+              <tr><td><code>Col[Self, str]</code> in the field</td><td>Predicates retain <code>Self@User</code>, not <code>User[Pending]</code>.</td></tr>
+              <tr><td>Owner defaults to <code>Any</code></td><td>Predicates and assignments become ownerless.</td></tr>
+              <tr><td>Owner-free alias stores <code>Any</code></td><td>An accessed column can be assigned back to the alias and reused in another model's query.</td></tr>
+              <tr><td>Constructor overload returns an <code>Any</code> owner</td><td>A raw storage descriptor can enter any model's query without class access.</td></tr>
+              <tr><td><code>email: str = Text()</code></td><td>Constructor shape works, but <code>User.email</code> is a string with no query methods.</td></tr>
+              <tr><td><code>Annotated[str, Text()]</code></td><td>Metadata does not participate in default or query typing.</td></tr>
+              <tr><td>Unannotated generic factory</td><td>Owner and value infer as <code>Unknown</code>.</td></tr>
+              <tr><td>Class decorator or metaclass injection</td><td>Runtime members do not become static descriptor types.</td></tr>
+              <tr><td>Eliminate fetched witness with <code>Self</code></td><td>Keeps Pending or erases the concrete model.</td></tr>
+              <tr><td>Manual fetched companion class</td><td>Works, but doubles nominal types and requires materializer/inheritance changes.</td></tr>
+              <tr><td>Mapped variadic <code>select</code></td><td><code>Unpack</code> cannot transform each field to its nested value type.</td></tr>
+              <tr><td>Public executable-result protocol</td><td>Unrelated structural lookalikes become statically executable.</td></tr>
+              <tr><td>Naively tie join model to a union condition</td><td><code>ty</code> widens the new owner to a union and still accepts unrelated conditions.</td></tr>
+              <tr><td>Strict scalar result equality</td><td>Rejects valid numeric cases such as integer columns compared with AVG scalars.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="roadmap">
+        <p class="eyebrow">10 / Recommended sequence</p>
+        <h2>Implement in slices that can fail independently</h2>
+        <ol class="checklist">
+          <li>
+            <strong>Freeze the consumer contract.</strong> Add positive and
+            rule-specific negative <code>ty</code> probes for required constructor
+            fields, lifecycle access, owners, defaults, nullable FKs, joins,
+            returning writes, and result shapes. Pin <code>ty==0.0.75</code>.
+          </li>
+          <li>
+            <strong>Restore constructor requiredness.</strong> Convert pure
+            <code>__new__</code> storage factories to registered overloaded
+            function field specifiers, preserving the validated default matrix.
+            Remove the broad <code>Any</code> fallback.
+          </li>
+          <li>
+            <strong>Rebind descriptor owners.</strong> Start with a failing
+            owner-free declaration probe, add <code>_UnboundOwner</code> to aliases
+            and every constructor return, change <code>Attr.__get__</code>, mirror
+            FK and JSON subtype behavior, add the <code>__set_name__</code> reuse
+            guard, then mechanically migrate declarations.
+          </li>
+          <li>
+            <strong>Fix lifecycle and value soundness.</strong> Correct mutation
+            returning, nullable FK targets, scalar comparison domains, and the
+            projection-left-join contract before describing the migration as
+            preserving guarantees.
+          </li>
+          <li>
+            <strong>Deepen query result types.</strong> Introduce private nominal
+            query/result bases and replace repeated transaction overloads. Keep
+            the invariant scope witness and negative unjoined-reference probes.
+          </li>
+          <li>
+            <strong>Simplify low-risk overloads.</strong> Merge singleton select
+            arms into one union overload. Generate finite projection and returning
+            overloads to a documented maximum.
+          </li>
+          <li>
+            <strong>Narrow the public interface.</strong> Remove metaclass and
+            multi-parameter descriptor implementation types from backend exports.
+            Replace concrete query-state annotation names with result-oriented
+            types if callers still need named queries.
+          </li>
+          <li>
+            <strong>Make annotations authoritative.</strong> Resolve per-field
+            hints, derive nullability where possible, reject optional primary keys,
+            and stop teaching redundant <code>nullable=False</code>.
+          </li>
+          <li>
+            <strong>Finish the checker migration.</strong> Add <code>tool.ty</code>
+            rules, convert suppressions, update docs/examples, remove Pyright and
+            Pyrefly, and run an installed-wheel consumer probe before merging.
+          </li>
+        </ol>
+
+        <div class="callout">
+          <p>
+            The smallest high-value production change is owner rebinding plus the
+            three correctness fixes around mutation lifecycle, required fields,
+            and nullable foreign keys. The nominal query base and public export
+            cleanup can follow without changing model syntax again.
+          </p>
+        </div>
+      </section>
+
+      <section id="outcome">
+        <p class="eyebrow">11 / Implementation outcome</p>
+        <h2>The first report became the new baseline</h2>
+        <p class="lead">
+          Commit <code>be852ff</code> implemented nearly every recommendation above.
+          This follow-up does not reopen those decisions. It asks what the chosen
+          interface now makes possible, where its implementation falls short of
+          its own contract, and which previously deferred work has stronger
+          evidence.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Original recommendation</th><th>Outcome at <code>be852ff</code></th><th>Follow-up</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Owner-free columns with descriptor rebinding</td>
+                <td><span class="chip adopt">Implemented</span> <code>Col[T]</code>, <code>GenCol[T]</code>, <code>FKCol[Target, T]</code>, and <code>JsonCol[T]</code> retain owner checks.</td>
+                <td>Replace source-spelling inspection for <code>GenCol</code>; aliased annotations currently change runtime behavior.</td>
+              </tr>
+              <tr>
+                <td>Function field specifiers and authoritative annotations</td>
+                <td><span class="chip adopt">Implemented</span> Required fields and nullability now participate in <code>ty</code>.</td>
+                <td>Repair two <code>ForeignKey</code> overload arms and retry partially resolved forward references.</td>
+              </tr>
+              <tr>
+                <td>Private nominal query result carriers</td>
+                <td><span class="chip adopt">Implemented</span> Runtime overload repetition fell and exact direct-call inference remains.</td>
+                <td>The public <code>Select</code>/<code>Write</code> facades cannot be passed back to the Query Runtime.</td>
+              </tr>
+              <tr>
+                <td>Finite generated overloads</td>
+                <td><span class="chip adopt">Implemented</span> Width eight is generated for projections and returning writes.</td>
+                <td>Keep the finite limit; add the generator check to normal validation and cover update/delete width edges.</td>
+              </tr>
+              <tr>
+                <td>Reject projection left joins</td>
+                <td><span class="chip adopt">Implemented</span> The documented nullable-slot unsoundness is closed.</td>
+                <td>Recover the sound subset later: a preserved-side scalar projection does not need optionalization.</td>
+              </tr>
+              <tr>
+                <td>Narrow backend exports</td>
+                <td><span class="chip adopt">Implemented</span> Concrete query states, descriptors, metaclasses, and table bounds are hidden.</td>
+                <td>Public expression carriers remain directly constructible and can forge owners, result types, and SQL function text.</td>
+              </tr>
+              <tr>
+                <td>Defer backend identity generics</td>
+                <td><span class="chip later">Revisit</span> Runtime rejects a wrong anchor model during execution.</td>
+                <td>Cross-backend verbs, joins, foreign keys, scaffolding, and shared <code>Database</code> handles show the seam is wider than first measured.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Current validation baseline</h3>
+        <ul>
+          <li><code>uv run snektest</code>: 646 passed on the implementation branch.</li>
+          <li><code>uv run ty check</code>: passes with <code>ty==0.0.75</code> and every rule enabled except <code>missing-override-decorator</code>.</li>
+          <li>The generated overload check and built-wheel consumer probes pass.</li>
+          <li>The focused follow-up probes live under <code>/tmp/opencode/snekql-followup</code>; expected passes and failures are recorded in the sections below.</li>
+        </ul>
+
+        <div class="callout warning">
+          <p>
+            A green project-wide checker run is not enough here. Several follow-up
+            probes are intentionally invalid programs that also pass <code>ty</code>:
+            heterogeneous inserts, incomplete queries, scalar-first escaped scope,
+            mixed-backend calls, and direct construction of expression carriers.
+            The conformance suite must test rejected consumers, not only inferred
+            types inside the package.
+          </p>
+        </div>
+      </section>
+
+      <section id="remaining-contract">
+        <p class="eyebrow">12 / Remaining type contract</p>
+        <h2>Finish the abstractions the migration introduced</h2>
+        <p class="lead">
+          The most valuable remaining work is not more generic machinery for its
+          own sake. It is making the public names executable, making typed reads
+          always return their promised logical values, and preventing public
+          annotation carriers from doubling as unchecked constructors.
+        </p>
+
+        <div class="finding">
+          <span class="rank">1</span>
+          <div>
+            <h3><code>Select</code> and <code>Write</code> stop at the function call</h3>
+            <span class="chip fix">High / regression from recommendation</span>
+            <p>
+              The original report recommended result-oriented public annotations
+              so consumers could store a query or pass it through a function
+              without naming builder states. Those classes now exist, but the
+              Query Runtime accepts only private <code>_QueryShape</code>, private
+              <code>_ReturningQuery</code>, or hidden concrete write classes.
+            </p>
+            <pre><code class="language-python">async def read(
+    tx: Transaction,
+    query: Select[User[Fetched]],
+) -&gt; list[User[Fetched]]:
+    return await tx.fetch_all(query)  # rejected
+
+
+async def write(tx: Transaction, query: Write[int]) -&gt; int:
+    return await tx.execute(query)  # rejected</code></pre>
+            <p>
+              Deepen the nominal result module rather than adding another public
+              name. Keep the private scope-aware overload first for direct builder
+              calls, then accept <code>Select[RowT]</code> and
+              <code>Write[ResultT]</code> at an explicitly erased seam. Runtime
+              validation still rejects forged or incomplete objects. Make both
+              public bases non-constructible, with private carriers implementing
+              their typing witnesses.
+            </p>
+            <p>
+              Erasure necessarily loses the dual-union scope proof. That is an
+              honest trade: a function asking only for <code>Select[RowT]</code>
+              has chosen not to inspect builder state. Document it instead of
+              advertising a function-boundary type that cannot cross the boundary.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">2</span>
+          <div>
+            <h3>Two valid foreign-key declarations fail</h3>
+            <span class="chip fix">High / narrow fix</span>
+            <p>
+              Annotation-derived nullability fixed the earlier nullable-target
+              caveat, but the field-specifier overload matrix has two holes. A
+              required nullable FK incorrectly makes the target itself optional,
+              and a normal non-<code>None</code> default changes the invariant set
+              value parameter to <code>object</code>.
+            </p>
+            <pre><code class="language-python"># Both are valid at runtime; both fail ty.
+reviewer_id: FKCol[User, int | None] = ForeignKey(
+    User.id,
+    nullable=True,
+)
+owner_id: FKCol[User, int] = ForeignKey(User.id, default=1)</code></pre>
+            <p>
+              Add a <code>nullable: Literal[True]</code> arm that keeps the target
+              key <code>T</code> while returning a field value of
+              <code>T | None</code>. The ordinary default arm must retain
+              <code>SetValueT=T</code>, not <code>object</code>. Test required,
+              <code>None</code>-defaulted, and non-<code>None</code>-defaulted
+              nullable FKs through both backend namespaces.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">3</span>
+          <div>
+            <h3><code>validate=False</code> invalidates every result annotation</h3>
+            <span class="chip fix">High / contract</span>
+            <p>
+              Every fetch and returning overload promises the same <code>RowT</code>
+              regardless of <code>validate</code>. Primitive decoding returns the
+              driver's raw value when validation is disabled. A projected
+              <code>UUID</code> or <code>CanonicalDecimal</code> is therefore typed as
+              that logical type while the caller receives <code>str</code>; a
+              fetched model can contain values that contradict its annotations.
+            </p>
+            <pre><code class="language-text">raw UUID    '12345678-1234-5678-1234-567812345678' str
+typed UUID  UUID('12345678-1234-5678-1234-567812345678') UUID
+raw decimal '1.50' str
+typed value Decimal('1.5') Decimal</code></pre>
+            <p>
+              The typed Materialization module should make one unconditional
+              promise: wire values become logical values. Either remove the flag
+              from typed methods, or move raw access to a separate interface whose
+              result is explicitly raw. A <code>Literal[False]</code> overload that
+              returns <code>object</code> is safer than today but still awkward for
+              raw models; a separate raw-row operation is the cleaner seam.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">4</span>
+          <div>
+            <h3>Public expression types can forge SQL and phantom types</h3>
+            <span class="chip fix">High / safety</span>
+            <p>
+              <code>Aggregate</code>, <code>Scalar</code>, <code>JoinOn</code>,
+              <code>OrderBy</code>, and <code>Assignment</code> are exported because
+              they are useful annotations. They are also ordinary dataclasses with
+              permissive defaults. A consumer can invent owners, omit required
+              columns, or put arbitrary text in <code>Aggregate.func</code>, which
+              Query Compilation interpolates directly.
+            </p>
+            <pre><code class="language-python">forged = Aggregate[User[Pending], int](
+    func='COUNT(*) FROM "user"; DROP TABLE "user"; --',
+    owner=User,
+)
+select(forged).all()</code></pre>
+            <pre><code class="language-sql">SELECT COUNT(*) FROM "user"; DROP TABLE "user"; --(*) FROM "user"</code></pre>
+            <p>
+              This is not remote injection unless application code constructs the
+              node, but it breaks the Query Builder's safe-construction interface.
+              Put private concrete nodes behind column/factory methods and expose
+              non-constructible nominal annotation bases. Independently restrict
+              aggregate function names to a closed literal set during compilation.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">5</span>
+          <div>
+            <h3>A leading scalar erases projection scope</h3>
+            <span class="chip fix">High / soundness</span>
+            <p>
+              Runtime anchors a projection on its first non-scalar expression.
+              Generated overloads anchor the static scope on argument one. Because
+              <code>scalar(...)</code> currently carries owner <code>Any</code>, it
+              turns the invariant scope coordinate into <code>Any</code> and lets an
+              unrelated table pass the fetch check.
+            </p>
+            <pre><code class="language-python">query = select(
+    scalar(select(Order.id).all()),
+    User.id,
+    Region.code,
+).all()
+
+await tx.fetch_all(query)  # ty accepts; compilation rejects Region</code></pre>
+            <p>
+              Do not add a combinatorial set of scalar-prefix overloads. Introduce
+              a private no-anchor marker instead of <code>Any</code>, then either
+              reject a scalar in the first position or add focused overloads that
+              take the first real selectable separately. Reordering the projection
+              is a small caller cost and the minimal correct first fix.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">6</span>
+          <div>
+            <h3>Mutation inputs do not carry their lifecycle invariant</h3>
+            <span class="chip fix">High / behavior decision</span>
+            <p>
+              <code>InsertableModel</code> is covariant and has no pending-state
+              witness. A heterogeneous sequence infers a union and passes
+              <code>insert</code>; a <code>User[Fetched]</code> also passes. Runtime
+              notices mixed classes only at compilation and does not reject a
+              fetched instance at all.
+            </p>
+            <pre><code class="language-python">insert([User(email="a"), Order(note="n")])  # ty accepts
+
+def reinsert(row: User[Fetched]) -&gt; None:
+    insert(row)  # ty and runtime accept</code></pre>
+            <p>
+              Decide the behavior first. If inserts are pending-only as the public
+              interface says, add an invariant owner witness and a pending-state
+              witness to the insert protocol, then check <code>_snekql_state</code>
+              when constructing the query. Homogeneity should fail in
+              <code>insert(...)</code>, not after the query reaches compilation.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">7</span>
+          <div>
+            <h3>Query completeness remains runtime-only</h3>
+            <span class="chip later">High value / high generic cost</span>
+            <p>
+              The result carrier says what execution returns, but not whether the
+              query is executable. <code>select(User)</code> has no row scope;
+              <code>update(User).all()</code> has no assignment; and
+              <code>delete(User)</code> has no scope. All three type-check when sent
+              to the Query Runtime and are guaranteed compilation failures.
+            </p>
+            <p>
+              A readiness coordinate would let <code>all()</code> and
+              <code>where()</code> transition selects/deletes, while updates would
+              track assignment and row-scope readiness independently. This is real
+              safety, but it expands nearly every fluent return type. Prototype it
+              against joins, returning, and erased <code>Select</code>/<code>Write</code>
+              before committing to the extra interface. Until then, document it as
+              a deliberate runtime check and remove incomplete queries from positive
+              typing examples.
+            </p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <span class="rank">8</span>
+          <div>
+            <h3><code>ColumnRef</code> is an annotation with no useful operations</h3>
+            <span class="chip fix">Medium / usability</span>
+            <p>
+              The narrowed interface recommends <code>ColumnRef[Owner, T]</code>
+              for helper parameters, but it exposes only typing witnesses. A helper
+              cannot call <code>eq</code> and cannot pass the column to
+              <code>select</code>. Existing tests prove assignment to the annotation,
+              not that the annotation can support a helper.
+            </p>
+            <pre><code class="language-python">def by_value[Owner, T](column: ColumnRef[Owner, T], value: T):
+    return column.eq(value)  # unresolved attribute
+
+
+def project[Owner, T](column: ColumnRef[Owner, T]) -&gt; Select[T]:
+    return select(column)  # no matching overload</code></pre>
+            <p>
+              Either deepen <code>ColumnRef</code> with the common read-only column
+              operations and consume it in <code>select</code>, or remove the name
+              and its documentation. A shallow annotation that cannot express its
+              advertised helper is worse than keeping the concrete type private.
+              Keep assignment methods on a separate mutation interface.
+            </p>
+          </div>
+        </div>
+
+        <h3>Lower-cost precision wins</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Current behavior</th><th>Opportunity</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>where()</code>, <code>set()</code>, <code>group_by()</code>, <code>in_()</code>, and peers accept zero arguments statically and raise immediately.</td><td>Use a required first argument plus variadic rest. This mirrors the runtime invariant with little machinery.</td></tr>
+              <tr><td><code>ty</code> does not report deprecated overloads, so <code>nullable.eq(None)</code> passes despite always raising.</td><td>Remove the <code>None</code> overloads under the sole supported checker; make invalid calls ordinary overload errors.</td></tr>
+              <tr><td><code>sum()</code>/<code>avg()</code> appear on text, UUID, datetime, JSON, and boolean columns.</td><td>Specialize their explicit <code>self</code> types for common numeric logical types while retaining runtime validation for custom numerics.</td></tr>
+              <tr><td>A scalar-only projection passes the singleton overload but runtime rejects it because no table can anchor <code>FROM</code>.</td><td>Give scalar-only select an explicit semantic design or reject it statically; do not leave the two layers split.</td></tr>
+              <tr><td>MariaDB builders expose update/delete <code>returning()</code>, then the dialect always rejects it.</td><td>Move capability into backend-specific builder interfaces or hide unsupported fluent methods in MariaDB.</td></tr>
+              <tr><td>Width eight is tested for select and insert returning, not all update/delete edges.</td><td>Complete the generated-edge conformance matrix; do not raise the limit without user evidence.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="runtime-followup">
+        <p class="eyebrow">13 / Runtime implications</p>
+        <h2>Static promises depend on runtime facts</h2>
+        <p class="lead">
+          Owner rebinding and logical annotations made the type interface much
+          stronger. They also made declaration metadata, backend identity, and
+          materialization part of the same promise. The runtime needs to protect
+          those facts with the same care as the checker-facing types.
+        </p>
+
+        <h3>Declaration metadata must be semantic, not lexical</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Finding</th><th>Observed consequence</th><th>Direction</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Generated-column detection searches annotation text for <code>"GenCol["</code>.</td>
+                <td><code>Generated = GenCol</code> type-checks, but <code>id: Generated[int]</code> is treated as non-generated and construction rejects <code>PENDING_GENERATION</code>.</td>
+                <td>Resolve the alias origin and inspect semantic type arguments. Source spelling must not alter runtime behavior.</td>
+              </tr>
+              <tr>
+                <td>Partially evaluated hints are cached.</td>
+                <td>A model referring to a later-defined payload can cache a nested <code>ForwardRef</code>; construction still fails after the payload exists. Optional local references can also derive the wrong nullability.</td>
+                <td>Do not cache a result containing unresolved forward references. Retry after namespace population and represent unresolved nullability as unknown.</td>
+              </tr>
+              <tr>
+                <td>Bound descriptors remain mutable.</td>
+                <td>Changing <code>User.id.nullable</code>, owner, defaults, or key flags after class creation changes schema and decoding behavior behind a stable static type.</td>
+                <td>Freeze public descriptor metadata after metaclass finalization; keep mutation in one private construction path.</td>
+              </tr>
+              <tr>
+                <td>The framework base is detected by the class name <code>"Model"</code>.</td>
+                <td>A user class with that name can skip concrete-model validation; the framework base itself can be instantiated.</td>
+                <td>Use an identity or private marker, never a public class name, to recognize the base.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Backend identity is now worth carrying</h3>
+        <p>
+          The earlier report proved a backend generic was possible but deferred it
+          because execution checked the model at runtime. The wider pass changed
+          the cost-benefit calculation. Both namespaces export the same
+          <code>Database</code> and <code>Transaction</code> classes, their verb
+          functions accept either backend's model, and schema scaffolding will
+          happily compile a model through the wrong dialect. Cross-backend joins
+          and foreign keys have no family check at declaration or construction.
+        </p>
+        <pre><code class="language-python">sqlite.select(MariaUser).all()       # ty accepts
+sqlite.insert(MariaUser(id=1))       # ty accepts
+mariadb.scaffold([SqliteUser])       # ty accepts and emits MariaDB DDL
+
+# The shared legacy initializer can even select SQLite through a MariaDB import.
+await mariadb.Database.initialize(database=Path(":memory:"))</code></pre>
+        <p>
+          Put backend identity at a real seam. A backend parameter carried through
+          Model, Config, Database, Transaction, Select, and Write gives the
+          strongest result, but it is broad. A smaller first slice is to make each
+          backend namespace expose distinct typed Database/Transaction facades and
+          constrain verbs, scaffolding, joins, and foreign keys to the matching
+          model literal. Keep runtime checks because types can always be erased.
+        </p>
+
+        <div class="callout">
+          <p>
+            This is a deepening opportunity, not a request to duplicate the Query
+            Runtime implementation. The shared implementation can remain one
+            module. The public backend seam should carry a family witness so the
+            caller cannot accidentally select a different adapter while every
+            operation behind it stays shared.
+          </p>
+        </div>
+
+        <h3>Logical type is not enough to describe every SQL operation</h3>
+        <p>
+          The migration correctly moved many checks from storage class to logical
+          type. Some operations depend on both. MariaDB
+          <code>Col[str] = Uuid()</code> exposes <code>like()</code> because its
+          logical type is string, then compilation rejects it because UUID storage
+          is not SQL text. SQLite <code>SUM</code> over text-backed
+          <code>CanonicalDecimal</code> is accepted as numeric and typed as Decimal,
+          while SQLite arithmetic returns a floating value and
+          <code>_normalize_sum</code> leaves it unchanged.
+        </p>
+        <p>
+          Add private operation-capability witnesses rather than asking one axis to
+          do two jobs. Comparable logical values, pattern-matchable SQL operands,
+          exactly summable storage, and order-preserving storage are distinct
+          capabilities. Their interface can stay private while column methods use
+          it to expose only coherent operations. For SQLite text decimals, rejecting
+          <code>SUM</code> is safer than silently converting an approximate float
+          back into a Decimal.
+        </p>
+
+        <h3>Recover part of projection left joins, not all of them</h3>
+        <p>
+          The implemented rejection was the correct immediate answer to the old
+          caveat: projected right-side slots become nullable and the current result
+          pack cannot rewrite them selectively. The rejection is broader than the
+          unsoundness. A singleton projection from the preserved left table remains
+          exactly the same type when another table is left-joined only for filtering
+          or ordering.
+        </p>
+        <pre><code class="language-python">select(User.email).left_join(
+    Order,
+    on=Order.user_id.references(User.id),
+)
+# User.email remains str; only Order is nullable.</code></pre>
+        <p>
+          Allow that narrow case first if demand exists. Tuple projections need a
+          separate projected-owner coordinate before the method can prove no slot
+          belongs to the right side. Full right-side projection still needs an
+          explicit optionalizing wrapper or future mapped-pack support.
+        </p>
+
+        <h3>Lifecycle state is a trusted static assertion</h3>
+        <p>
+          <code>User[Fetched](...)</code> is indistinguishable from
+          <code>User(...)</code> at runtime; generic specialization is erased and
+          the constructor always creates a Pending instance. Static access through
+          that spelling nevertheless narrows generated fields. Python offers no
+          clean runtime hook to reject only the specialized call. Tighten the docs:
+          fetched specialization is a trusted type assertion, while Query Runtime
+          materialization is the supported producer. The pending-only insert check
+          above prevents that assertion from leaking back into writes.
+        </p>
+
+        <h3>Correctness work exposed by the wider pass</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Risk</th><th>Evidence</th><th>Recommended module change</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Cursor cleanup can be cancelled.</td><td>Fetch and stream <code>finally</code> blocks await <code>cursor.close()</code> outside a shield; MariaDB advisory-lock release has the same shape.</td><td>Shield cleanup before returning a connection to the pool. Add cancellation tests that prove cursor/lock release completes first.</td></tr>
+              <tr><td>Broken connections return to the normal pool.</td><td>Begin, commit, or rollback failure still calls the ordinary <code>release</code> path.</td><td>Give the pool interface a discard/invalidate operation and never reuse an unknown transaction session.</td></tr>
+              <tr><td>Single insert returning leaks <code>IndexError</code>.</td><td>A trigger that suppresses insertion can return zero rows; execution unconditionally reads <code>models[0]</code>.</td><td>Centralize expected cardinality and raise a package result-cardinality error.</td></tr>
+              <tr><td>External row-shape faults use assertions.</td><td>Select and returning materializers use <code>assert len(row) == ...</code>, which disappears under optimized Python.</td><td>Raise a public materialization/shape error with expected and actual widths.</td></tr>
+              <tr><td>SQLite migration exactly-once is not cross-instance.</td><td>The SQLite migration lock is a no-op; two runtimes can both read an empty history before either records success.</td><td>Add a real database lock or narrow the documented guarantee. Test two independent Database instances with non-idempotent DDL.</td></tr>
+              <tr><td>MariaDB implicit FK indexes may look like drift.</td><td>Live inspection includes non-primary indexes while expected shape includes only declared indexes; MariaDB creates FK support indexes automatically.</td><td>Add a scaffold-then-verify integration test and classify implicit support indexes separately if confirmed.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="deepening">
+        <p class="eyebrow">14 / Deepening opportunities</p>
+        <h2>Carry execution facts in one plan</h2>
+        <p class="lead">
+          The original report deepened query typing by carrying result shape once.
+          The next leverage point is to carry the rest of execution once too:
+          backend family, SQL, parameters, result cardinality, and materialization.
+        </p>
+
+        <h3>1. A compiled execution-plan module</h3>
+        <p>
+          <code>Transaction.execute</code> currently imports and enumerates nearly
+          every concrete write class to decide whether the result is a row count,
+          no value, one returned row, or many returned rows. Backend checking and
+          Materialization separately rediscover model and result facts. This is a
+          shallow module: the Query Runtime must know almost as much builder
+          vocabulary as Query Compilation.
+        </p>
+        <pre><code class="language-python">class SelectPlan[RowT]:
+    sql: str
+    params: tuple[object, ...]
+    backend: BackendFamily
+    materialize: Callable[[Sequence[object]], RowT]
+
+
+class WritePlan[ResultT]:
+    sql: str
+    params: tuple[object, ...]
+    backend: BackendFamily
+    cardinality: Literal["none", "rowcount", "one", "many"]
+    materialize: Callable[[Sequence[Sequence[object]]], ResultT]</code></pre>
+        <p>
+          The exact representation can differ; the seam is the point. Query
+          Compilation should return a typed plan, and the Query Runtime should
+          execute that plan without naming builder classes. The deletion test is
+          strong: adding a new returning query shape should not require editing
+          runtime dispatch. Missing single-row returning results, backend mismatch,
+          raw-versus-typed decoding, and cardinality errors then live behind one
+          interface instead of four modules.
+        </p>
+
+        <h3>2. Model-owned population</h3>
+        <p>
+          Pending construction and fetched Materialization both know how to toggle
+          freezing, populate <code>__dict__</code>, validate columns, and assign a
+          lifecycle label. Fetched construction currently reaches directly into
+          model internals. Put both paths behind one model-owned private interface,
+          parameterized by lifecycle and validation policy. That deepens the Model
+          module and makes metadata freezing, forward-hint retry, and state checks
+          local. The deletion test is removal of direct model-internal writes from
+          <code>_model_materialization.py</code>.
+        </p>
+
+        <h3>3. Typed backend driver adapters</h3>
+        <p>
+          SQLite and MariaDB are two adapters, so the driver seam is real rather
+          than hypothetical. MariaDB runtime, migrations, schema inspection, and
+          settings repeat casts from <code>object</code>/<code>Any</code> and each
+          owns slightly different close behavior. One private typed adapter
+          interface should own execute, cursor close, connection invalidation,
+          cancellation shielding, and optional-driver quirks. Tests should target
+          that interface with a fake adapter and each real adapter, not private
+          driver objects scattered across modules.
+        </p>
+
+        <h3>4. Structured schema verification</h3>
+        <p>
+          Strict verification raises on the first table while warning mode emits
+          strings. A <code>SchemaVerificationReport</code> containing all drift gives
+          tooling one stable interface and lets <code>SchemaVerificationError</code>
+          carry useful data. It also creates a clean place to classify backend-owned
+          artifacts such as MariaDB FK indexes. Keep comparison and normalization
+          behind the report-producing module; callers should not assemble drift
+          from backend rows.
+        </p>
+
+        <div class="callout">
+          <p>
+            These are not requests for more public classes. Depth comes from a
+            smaller interface hiding more behavior. The public Query Builder and
+            Query Runtime should become simpler as private plans, population, and
+            adapters absorb implementation detail.
+          </p>
+        </div>
+      </section>
+
+      <section id="followup-roadmap">
+        <p class="eyebrow">15 / Follow-up sequence</p>
+        <h2>Patch the migration, then deepen deliberately</h2>
+        <p class="lead">
+          Separate defects in the newly advertised interface from older design
+          debt. The first group belongs on PR 242 before merge; the rest should be
+          small tracer changes with their own behavior and type probes.
+        </p>
+
+        <div class="callout">
+          <p>
+            <strong>Implementation update, 2026-08-31.</strong> PR 242 now includes
+            all four pre-merge fixes below. It also makes
+            <code>validate=False</code> results type-honest, whitelists aggregate
+            functions, resolves generated aliases, retries unresolved module hints,
+            rejects later function-local hints at declaration, uses an identity-based
+            framework marker, rejects Fetched, uninitialized, and mixed-model inserts,
+            removes the accidental <code>snektest</code> runtime dependency, merges
+            typed insert-conflict handling from <code>main</code>, and constrains the
+            sdist to release inputs. Descriptor freezing, fully
+            private expression nodes, cheap variadic tightening, backend-family
+            propagation, and the deeper architecture work remain follow-ups.
+          </p>
+        </div>
+
+        <h3>Before merging PR 242</h3>
+        <ol class="checklist">
+          <li>
+            <strong>Repair the FK field-specifier matrix.</strong> Start with failing
+            <code>ty</code> probes for required nullable and non-<code>None</code>
+            defaulted foreign keys in both namespaces, then change only the two
+            overload arms.
+          </li>
+          <li>
+            <strong>Make result-oriented annotations usable.</strong> Add consumer
+            functions that accept and execute <code>Select[RowT]</code> and
+            <code>Write[ResultT]</code>. Make direct construction fail. Preserve the
+            private direct-call overloads so scope checking does not regress.
+          </li>
+          <li>
+            <strong>Close the scalar-first scope escape.</strong> Add a negative
+            projection probe with a leading scalar and an unjoined table. Prefer
+            rejecting first-position scalars over adding <code>Any</code> or a large
+            overload matrix.
+          </li>
+          <li>
+            <strong>Fix the published adoption probe.</strong> Import
+            <code>Col</code>/<code>GenCol</code>, install the SQLite extra, and run the
+            exact document against a freshly built wheel.
+          </li>
+        </ol>
+
+        <h3>First follow-up changes</h3>
+        <ol class="checklist">
+          <li>
+            <strong>Restore the typed Materialization guarantee.</strong> Decide
+            whether <code>validate=False</code> disappears or moves to a raw-row
+            interface. Test UUID, Decimal, datetime, JSON, model, tuple, chunk, and
+            returning results before changing implementation.
+          </li>
+          <li>
+            <strong>Close public constructors.</strong> Move concrete expression
+            nodes private, whitelist aggregate functions, and retain only useful
+            annotation interfaces. Prove normal factories still infer exactly and
+            forged nodes no longer compile.
+          </li>
+          <li>
+            <strong>Make declaration reflection semantic.</strong> Retry unresolved
+            hints, inspect <code>GenCol</code> by origin, freeze bound metadata, and
+            replace name-based Model detection. Each has a small runtime regression
+            test and does not require new public syntax.
+          </li>
+          <li>
+            <strong>Tighten cheap variadics and invalid <code>None</code> calls.</strong>
+            Require a first argument and remove deprecated overload arms that the
+            supported checker does not diagnose.
+          </li>
+        </ol>
+
+        <h3>Prototype before committing</h3>
+        <ol class="checklist">
+          <li>
+            <strong>Backend-family propagation.</strong> Measure a generic witness
+            against distinct namespace facades. Require negative probes for verbs,
+            runtime execution, joins, FKs, and scaffolding before selecting a design.
+          </li>
+          <li>
+            <strong>Executable query state.</strong> Prototype select/delete
+            readiness and update's two-dimensional readiness across joins and
+            returning. Reject the design if the interface cost spreads beyond the
+            builder module without removing a meaningful runtime caveat.
+          </li>
+          <li>
+            <strong>Compiled execution plans.</strong> Prove the deletion test by
+            moving one select and one write path behind plans, then remove concrete
+            query-class dispatch from the Query Runtime incrementally.
+          </li>
+          <li>
+            <strong>Projection left-join subset.</strong> Start with a preserved-side
+            singleton projection. Do not attempt arbitrary tuples without a
+            projected-owner witness or explicit nullable projection syntax.
+          </li>
+        </ol>
+
+        <h3>Release floor</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Finding</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>snektest</code> is a runtime dependency as well as a dev dependency.</td><td>Remove it from project dependencies and assert the production dependency allowlist.</td></tr>
+              <tr><td>A fresh sdist contains <code>.hypothesis</code>, <code>htmlcov</code>, <code>.claude/settings.local.json</code>, and this research report.</td><td>Add an explicit Hatch sdist allowlist/exclusions and test wheel plus sdist contents. The local settings file is a privacy issue.</td></tr>
+              <tr><td>Full-tree Ruff check and format remain red in unrelated files.</td><td>Fix or isolate the existing findings before using the release checklist as a gate.</td></tr>
+              <tr><td>The breaking annotation/checker migration has no changelog entry.</td><td>Document owner-free field syntax, sole-checker support, and removed exports before release.</td></tr>
+              <tr><td>Generator drift is checked manually.</td><td>Add <code>scripts/generate_query_overloads.py --check</code> to the standard validation path.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warning">
+          <p>
+            Do not bundle backend generics, query readiness, execution plans, and
+            raw materialization into one redesign. They touch related facts but
+            have independent seams and failure modes. The smallest correct changes
+            above should land first; deeper modules earn their cost only when each
+            deletes knowledge from its callers.
+          </p>
+        </div>
+      </section>
+
+      <section id="appendix">
+        <p class="eyebrow">16 / Appendix</p>
+        <h2>Commands and references</h2>
+
+        <h3>Current repository checks</h3>
+        <pre><code class="language-bash">uv run ty --version
+uv run ty check
+uv run snektest
+uv run python scripts/generate_query_overloads.py --check
+uv lock --check
+uv build</code></pre>
+
+        <h3>Focused local evidence</h3>
+        <ul>
+          <li><code>/tmp/opencode/snekql-model-declarations</code>, owner rebinding and rejected declaration forms.</li>
+          <li><code>/tmp/opencode/snekql-lifecycle</code>, lifecycle alternatives.</li>
+          <li><code>/tmp/opencode/snekql-variadics</code>, result-bearing queries and variadic limits.</li>
+          <li><code>/tmp/opencode/snekql-public-audit</code>, full public-interface audit.</li>
+          <li><code>/tmp/opencode/snekql-ty-capabilities</code>, checker feature probes and upstream references.</li>
+          <li><code>/tmp/opencode/snekql-soundness-review</code>, independent challenge of lifecycle, scalar, join, and nullability findings.</li>
+          <li><code>/tmp/opencode/snekql-own-probes</code>, current inference failures and focused design proofs.</li>
+          <li><code>/tmp/opencode/snekql-rebound-validation</code>, final <code>_UnboundOwner</code> positive, negative, laundering, constructor, and runtime-reuse probes.</li>
+          <li><code>/tmp/opencode/snekql-field-specifier-validation</code>, class-versus-function <code>dataclass_transform</code> field-specifier probes.</li>
+          <li><code>/tmp/opencode/snekql-followup</code>, post-implementation FK, public result, scope, insert, expression construction, backend, declaration-reflection, storage-operation, materialization, and packaging probes.</li>
+        </ul>
+
+        <div class="callout warning">
+          <p>
+            These <code>/tmp/opencode/</code> directories are working snapshots on
+            the research machine, not versioned project artifacts. The named
+            <code>*-final.txt</code> files from the original research preserve its
+            final diagnostics. Before each follow-up implementation, move the
+            relevant positive and expected-error cases into the repository's
+            conformance suite so normal validation can reproduce them.
+          </p>
+        </div>
+
+        <h3>Final owner-probe commands</h3>
+        <pre><code class="language-bash">cd /tmp/opencode/snekql-rebound-validation/sentinel-repo
+uv run ty check --error all --ignore missing-override-decorator rebound_positive.py
+# The following are expected to fail with the recorded diagnostics.
+uv run ty check --error all --ignore missing-override-decorator rebound_negative.py
+uv run ty check --error all --ignore missing-override-decorator rebound_any_bypasses.py
+uv run ty check --error all --ignore missing-override-decorator sentinel_constructor_any_leaks.py</code></pre>
+
+        <h3>Function field-specifier commands</h3>
+        <pre><code class="language-bash">PROBES=/tmp/opencode/snekql-field-specifier-validation/minimal
+uv run ty check --error all --ignore missing-override-decorator \
+  --extra-search-path "$PROBES" "$PROBES/valid.py"
+# Each remaining file is expected to fail: 1, 5, then 2 diagnostics.
+uv run ty check --error all --ignore missing-override-decorator \
+  --extra-search-path "$PROBES" "$PROBES/required.py"
+uv run ty check --error all --ignore missing-override-decorator \
+  --extra-search-path "$PROBES" "$PROBES/invalid_calls.py"
+uv run ty check --error all --ignore missing-override-decorator \
+  --extra-search-path "$PROBES" "$PROBES/bad_defaults.py"</code></pre>
+
+        <h3>Project references</h3>
+        <ul>
+          <li><a href="https://github.com/crpier/snekql/pull/242">PR 242, Adopt a ty-native type interface</a></li>
+          <li><a href="https://github.com/crpier/snekql/issues/241">Issue 241, Investigate replacing Pyright with ty</a></li>
+          <li><code>snekql/model.py:113-140</code>, owner-free public column aliases.</li>
+          <li><code>snekql/storage.py:742-862</code>, FK overloads and per-field hint resolution.</li>
+          <li><code>snekql/storage.py:940-1173</code>, descriptor access and typed/raw decoding.</li>
+          <li><code>snekql/query.py:245-641</code>, public and private result carriers.</li>
+          <li><code>snekql/query.py:1476-1871</code>, generated projections and scalar construction.</li>
+          <li><code>snekql/runtime.py:441-850</code>, fetch, execute, and backend checks.</li>
+          <li><code>snekql/_query_materialize.py:31-282</code>, aggregate and row Materialization.</li>
+          <li><code>snekql/_model_materialization.py:40-71</code>, fetched row creation.</li>
+        </ul>
+
+        <h3>Confidence</h3>
+        <p>
+          In the original part, high confidence means a positive probe and at least
+          one intended rejection passed under exactly <code>ty 0.0.75</code>. In the
+          follow-up, high confidence means a minimal consumer or runtime probe
+          reproduced the mismatch and the responsible path was inspected. The
+          MariaDB implicit-index concern remains provisional until an integration
+          test runs against a live server. Proposed replacement designs that have
+          not yet survived package-wide probes are explicitly marked prototype or
+          deferred.
+        </p>
+
+        <p class="small">
+          Scope note: sections 01-10 preserve the original evaluation of
+          <code>0a2ef3c</code> against <code>55bcadd</code>. Sections 11-15 build on
+          the implemented owner-free interface at <code>be852ff</code>. They are an
+          extension of the same research, not a replacement audit.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div>snekql / type-interface research / baseline and be852ff follow-up / executable ty 0.0.75 probes</div>
+  </footer>
+</body>
+</html>

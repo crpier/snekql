@@ -90,7 +90,9 @@ def returning_rejects_a_column_from_another_model() -> None:
     with assert_raises(QueryConstructionError):
         # A column from another model is also a static error (the owner is pinned
         # to the written model); the runtime guard is what this test exercises.
-        _ = insert(User(email="a@example.com")).returning(Account.name)  # pyright: ignore[reportArgumentType]
+        _ = insert(User(email="a@example.com")).returning(
+            Account.name  # ty: ignore[invalid-argument-type]
+        )
 
 
 @test(mark="fast")
@@ -111,6 +113,31 @@ def bulk_insert_compiles_one_multi_row_values_statement() -> None:
         'INSERT INTO "user" ("email", "status") VALUES (?, ?), (?, ?)',
     )
     assert_eq(params, ("a@example.com", "active", "b@example.com", "invited"))
+
+
+@test(mark="fast")
+def bulk_insert_rejects_rows_from_different_models() -> None:
+    """A batch cannot defer mixed-model rejection until Query Compilation."""
+
+    with assert_raises(QueryConstructionError):
+        _ = insert(
+            [
+                User(email="a@example.com"),
+                Account(name="not a user"),
+            ]
+        )
+
+
+@test(mark="fast")
+def insert_rejects_uninitialized_model_instances() -> None:
+    """Bypassing model construction cannot manufacture a Pending insert row."""
+
+    uninitialized_user = object.__new__(User)
+
+    with assert_raises(QueryConstructionError):
+        _ = insert(uninitialized_user)
+    with assert_raises(QueryConstructionError):
+        _ = insert([User(email="a@example.com"), uninitialized_user])
 
 
 @test(mark="fast")

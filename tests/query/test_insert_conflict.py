@@ -133,7 +133,7 @@ def conflict_target_requires_an_inserted_model_column() -> None:
 
     with assert_raises(QueryConstructionError):
         _ = insert(User(email="a@example.com")).on_conflict(
-            Account.email,  # pyright: ignore[reportArgumentType]
+            Account.email,  # ty: ignore[invalid-argument-type]
             action=DoNothing,
         )
 
@@ -155,7 +155,7 @@ def conflict_update_requires_inserted_model_assignments() -> None:
     with assert_raises(QueryConstructionError):
         _ = insert(User(email="a@example.com")).on_conflict(
             User.email,
-            action=DoUpdate(Account.status.to("active")),  # pyright: ignore[reportArgumentType]
+            action=DoUpdate(Account.status.to("active")),  # ty: ignore[invalid-argument-type]
         )
 
 

@@ -7,13 +7,21 @@ a tuple of scalars. These tests pin that shared seam directly.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
-from snekql.sqlite import PENDING_GENERATION, Fetched, Integer, Pending, Text, select
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Fetched,
+    Integer,
+    Pending,
+    QueryConstructionError,
+    Text,
+    select,
+)
 
 
 class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
@@ -154,24 +162,15 @@ def projection_join_materializes_a_tuple_of_scalars() -> None:
 
 
 @test(mark="fast")
-def left_join_projection_yields_none_for_an_unmatched_not_null_column() -> None:
-    """A NOT NULL column projected from a left join's nullable side decodes to
-    ``None`` for an unmatched row rather than raising on its own constraint.
-    """
+def projection_left_join_is_rejected_before_materialization() -> None:
+    """Projection left joins cannot promise sound per-slot nullability."""
 
-    query = (
-        select(JoinUser.email, JoinOrder.note)
-        .left_join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-        .all()
-    )
-
-    values = materialize_select_row_for_backend(
-        query.state,
-        ("a@b.c", None),
-        backend="sqlite",
-    )
-
-    assert_eq(values, ("a@b.c", None))
+    query = cast("object", select(JoinUser.email, JoinOrder.note))
+    with assert_raises(QueryConstructionError):
+        cast("Any", query).left_join(
+            JoinOrder,
+            on=JoinOrder.user_id.references(JoinUser.id),
+        )
 
 
 @test(mark="fast")
