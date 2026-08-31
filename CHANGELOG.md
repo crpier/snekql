@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## 0.6.0 - 2026-08-31
+
 ### Breaking changes
 
 - Migration declarations now define one complete ordered chain instead of an
