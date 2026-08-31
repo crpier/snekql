@@ -38,6 +38,7 @@ _names = st.text(min_size=1, max_size=10) | st.text(
     st.sampled_from(['"', "`", "a", "_", "x"]), min_size=1, max_size=8
 )
 _actions = st.none() | st.sampled_from(("CASCADE", "RESTRICT", "SET NULL", "NO ACTION"))
+_action_pairs = st.tuples(_actions, _actions)
 _QUOTERS = (quote_sqlite, quote_mariadb)
 _TABLE_SUFFIX = "MYSUFFIX"
 
@@ -103,21 +104,20 @@ def create_index_quotes_every_identifier(
     _names,
     _names,
     _names,
-    _actions,
-    _actions,
+    _action_pairs,
     mark="fast",
 )
-def foreign_key_constraint_quotes_names_and_appends_actions(  # noqa: PLR0913
+def foreign_key_constraint_quotes_names_and_appends_actions(
     quote: Any,
     column: str,
     target_table: str,
     target_column: str,
-    on_delete: str | None,
-    on_update: str | None,
+    actions: tuple[str | None, str | None],
 ) -> None:
     """A FK constraint quotes all three names and appends only the set actions,
     ON DELETE before ON UPDATE."""
 
+    on_delete, on_update = actions
     foreign_key = PlannedForeignKey(
         column_name=column,
         target_table=target_table,
