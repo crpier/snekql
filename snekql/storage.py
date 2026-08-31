@@ -1672,6 +1672,9 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
     def to(self, value: ReadValueT | type[CurrentTimestamp]) -> Assignment[OwnerT]:
         """Assign a Python value, or ``CurrentTimestamp`` for the server clock.
 
+        Literal values are validated against the column's Logical Type before
+        the assignment is built, matching Pending Model construction.
+
         Passing ``CurrentTimestamp`` renders the backend's current-timestamp SQL
         inline in the ``UPDATE`` (no bound parameter), so a column refreshes to
         the database clock on each update the way ``server_default`` fills it on
@@ -1679,7 +1682,10 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         explicit at the call site and identical across backends.
         """
 
-        return Assignment(column=self, value=value)
+        assigned_value = (
+            value if value is CurrentTimestamp else self.validate_model_value(value)
+        )
+        return Assignment(column=self, value=assigned_value)
 
     def to_inserted(self) -> Assignment[OwnerT]:
         """Assign this column's value from the row whose insert conflicted."""
