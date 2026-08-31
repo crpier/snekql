@@ -7,7 +7,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Annotated, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
 from snektest import (
@@ -57,6 +57,7 @@ SqliteModelBase = Model
 class DeferredPayloadRow[S = Pending](Model[S, "DeferredPayloadRow[Fetched]"]):
     """Model whose logical payload type is defined later in the module."""
 
+    optional: DeferredPayloadRow.Col[int | None] = Integer(default=None)
     payload: DeferredPayloadRow.Col[DeferredPayload] = Text()
 
 
@@ -72,6 +73,7 @@ def deferred_payload_hint_retries_after_module_population() -> None:
 
     row = DeferredPayloadRow(payload=DeferredPayload(value="ready"))
 
+    assert_is(DeferredPayloadRow.optional.nullable, True)
     assert_eq(row.payload, DeferredPayload(value="ready"))
 
 
@@ -103,6 +105,19 @@ def application_model_named_model_is_a_concrete_table() -> None:
 
     assert_eq(Model.__tablename__, "model")
     assert_eq(row.value, "ready")
+
+
+@test(mark="fast")
+def framework_base_marker_cannot_be_forged_with_a_boolean() -> None:
+    """Only the internal identity marker bypasses concrete-table setup."""
+
+    class Pretender[S = Pending](SqliteModelBase[S, "Pretender[Fetched]"]):
+        """Application model with a colliding private-looking class variable."""
+
+        __snekql_framework_base__: ClassVar[bool] = True
+        value: Pretender.Col[str] = Text()
+
+    assert_eq(Pretender.__tablename__, "pretender")
 
 
 @test(mark="fast")
@@ -808,41 +823,42 @@ def json_marker_columns_accept_any_payload_type() -> None:
 
 
 @test(mark="fast")
-def forward_ref_json_payload_does_not_block_declaration() -> None:
-    """A forward-referenced JSON payload type binds without resolving it eagerly
-    at declaration time."""
+def later_function_local_payload_is_rejected_at_declaration() -> None:
+    """A local payload must exist before a model can capture its namespace."""
 
-    class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
-        """A forward-ref Json sibling must not block binding the scalar column."""
+    if TYPE_CHECKING:
 
-        count: Mixed.Col[int] = Integer(nullable=False)
-        blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
-        either: Mixed.Col[int | str] = Integer(nullable=False)
+        class Payload(BaseModel):
+            """Typing-only stand-in absent from the runtime local namespace."""
 
-    class Payload(BaseModel):
-        """Logical type defined only after the model that annotates it."""
+            value: str
 
-        x: int
+    with assert_raises(ModelDeclarationError):
 
-    assert_eq(Mixed.__snekql_columns__["count"].storage_type_name, "Integer")
+        class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+            """Model referring to a function-local payload declared later."""
+
+            blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
 
 
 @test(mark="fast")
-def unresolved_sibling_does_not_hide_derived_nullability() -> None:
-    """Each field resolves independently when a sibling remains a forward ref."""
+def defined_function_local_payload_resolves_normally() -> None:
+    """Function-local logical types work when defined before the table model."""
+
+    class Payload(BaseModel):
+        """Logical payload type defined before its table model."""
+
+        value: str
 
     class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
-        """Optional scalar beside a payload declared later."""
+        """Optional scalar beside an already-defined local payload."""
 
         optional: Mixed.Col[int | None] = Integer(default=None)
         payload: Mixed.Col[Payload] = Text()
 
-    class Payload(BaseModel):
-        """Logical payload type intentionally declared after its model."""
-
-        value: str
-
     assert_is(Mixed.optional.nullable, True)
+    mixed = Mixed(payload=Payload(value="ready"))
+    assert_eq(mixed.payload, Payload(value="ready"))
 
     class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
         """Table model with a real column."""

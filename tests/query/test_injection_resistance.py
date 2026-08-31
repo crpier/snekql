@@ -29,6 +29,7 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import Self
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
@@ -76,6 +77,19 @@ class Account[S = Pending](Model[S, "Account[Fetched]"]):
     status: Account.Col[str] = Text(nullable=False, default="active")
 
 
+class HostileAggregateFunction(str):
+    """String equal to COUNT whose formatted value is attacker-controlled SQL."""
+
+    __slots__ = ()
+
+    def __new__(cls) -> Self:
+        return super().__new__(cls, "COUNT")
+
+    def __format__(self, format_spec: str) -> str:
+        del format_spec
+        return 'COUNT(*) FROM "account"; DROP TABLE "account"; --'
+
+
 @test(mark="fast")
 def aggregate_function_text_cannot_be_forged() -> None:
     """Aggregate construction rejects SQL text outside the closed function set."""
@@ -83,6 +97,12 @@ def aggregate_function_text_cannot_be_forged() -> None:
     with assert_raises(QueryConstructionError):
         _ = Aggregate[Account[Pending], int](
             func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[invalid-argument-type]
+            owner=Account,
+        )
+
+    with assert_raises(QueryConstructionError):
+        _ = Aggregate[Account[Pending], int](
+            func=HostileAggregateFunction(),  # ty: ignore[invalid-argument-type]
             owner=Account,
         )
 

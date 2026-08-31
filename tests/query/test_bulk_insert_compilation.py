@@ -129,6 +129,18 @@ def bulk_insert_rejects_rows_from_different_models() -> None:
 
 
 @test(mark="fast")
+def insert_rejects_uninitialized_model_instances() -> None:
+    """Bypassing model construction cannot manufacture a Pending insert row."""
+
+    uninitialized_user = object.__new__(User)
+
+    with assert_raises(QueryConstructionError):
+        _ = insert(uninitialized_user)
+    with assert_raises(QueryConstructionError):
+        _ = insert([User(email="a@example.com"), uninitialized_user])
+
+
+@test(mark="fast")
 def bulk_insert_returning_appends_columns_once() -> None:
     """Bulk returning appends a single RETURNING clause for the whole statement."""
 

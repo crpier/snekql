@@ -17,7 +17,7 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.model import Fetched, Pending, Table
+from snekql.model import _MODEL_BASE_MARKER, Fetched, Pending, Table
 from snekql.model import Model as BaseModel
 from snekql.model import ModelMeta as BaseModelMeta
 from snekql.storage import Attr, ForeignKey, _UnboundOwner
@@ -66,7 +66,7 @@ class Model[StateT, ReadModelT: Table[Any]](
 
     __snekql_backend__: ClassVar[Literal["mariadb"]] = "mariadb"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
-    __snekql_framework_base__: ClassVar[Literal[True]] = True
+    __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 

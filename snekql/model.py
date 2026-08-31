@@ -50,6 +50,8 @@ from snekql.storage import (
 
 type BackendFamily = StorageBackend
 
+_MODEL_BASE_MARKER = object()
+
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound="Table[Any]")
 T = TypeVar("T")
@@ -169,7 +171,7 @@ class ModelMeta(type):
         namespace: dict[str, object],
         **kwargs: object,
     ) -> type:
-        is_model_base = namespace.get("__snekql_framework_base__") is True
+        is_model_base = namespace.get("__snekql_framework_base__") is _MODEL_BASE_MARKER
         if not is_model_base:
             ModelMeta._validate_model_bases(bases)
             ModelMeta._validate_model_namespace(namespace)
@@ -281,7 +283,10 @@ class ModelMeta(type):
 
         for base in bases:
             if isinstance(base, ModelMeta):
-                if vars(base).get("__snekql_framework_base__") is not True:
+                if (
+                    vars(base).get("__snekql_framework_base__")
+                    is not _MODEL_BASE_MARKER
+                ):
                     msg = f"cannot subclass concrete model: {base.__name__}"
                     raise ModelDeclarationError(msg)
                 continue
@@ -327,8 +332,7 @@ class ModelMeta(type):
         # into stringized annotations via `from __future__ import annotations`.
         # Resolve via the annotate function when present so generated-column
         # detection works regardless of that opt-in import. STRING format keeps
-        # the existing string-matching approach and never evaluates the
-        # (possibly forward-referencing) annotations.
+        # validation can inspect names without evaluating forward references.
         annotate = annotationlib.get_annotate_from_class_namespace(namespace)
         if annotate is not None:
             annotations_object = annotationlib.call_annotate_function(
@@ -586,7 +590,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
-    __snekql_framework_base__: ClassVar[Literal[True]] = True
+    __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
@@ -691,7 +695,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
             "dict[str, object]",
             object.__getattribute__(self, "__dict__"),
         )
-        state = storage.get("_snekql_state", "Pending")
+        state = storage.get("_snekql_state", "Uninitialized")
         return cast("str", state)
 
     @classmethod

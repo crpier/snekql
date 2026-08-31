@@ -1881,10 +1881,12 @@ class WritePlan[ResultT]:
             <strong>Implementation update, 2026-08-31.</strong> PR 242 now includes
             all four pre-merge fixes below. It also makes
             <code>validate=False</code> results type-honest, whitelists aggregate
-            functions, resolves generated aliases, retries unresolved hints, uses a
-            private framework-base marker, rejects Fetched and mixed-model inserts,
-            removes the accidental <code>snektest</code> runtime dependency, and
-            constrains the sdist to release inputs. Descriptor freezing, fully
+            functions, resolves generated aliases, retries unresolved module hints,
+            rejects later function-local hints at declaration, uses an identity-based
+            framework marker, rejects Fetched, uninitialized, and mixed-model inserts,
+            removes the accidental <code>snektest</code> runtime dependency, merges
+            typed insert-conflict handling from <code>main</code>, and constrains the
+            sdist to release inputs. Descriptor freezing, fully
             private expression nodes, cheap variadic tightening, backend-family
             propagation, and the deeper architecture work remain follow-ups.
           </p>

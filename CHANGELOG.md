@@ -70,14 +70,16 @@
 - Generated-column detection now resolves the actual annotation rather than
   searching its source spelling, so an imported alias of `GenCol` preserves
   pending-generation behavior. Partially resolved forward references are no
-  longer cached permanently, and an application table named `Model` is treated
-  as a concrete table instead of a framework base. (#241)
+  longer cached permanently; later module-level payload types resolve on retry,
+  while a later function-local payload now fails at declaration with guidance to
+  define it first. An application table named `Model` is treated as a concrete
+  table instead of a framework base. (#241)
 
-- `insert(...)` now rejects database-materialized Fetched models and mixed-model
-  bulk batches during Query Construction. Aggregate function names are limited
-  to snekql's closed built-in set even when an expression node is constructed
-  directly, preventing arbitrary function text from reaching SQL compilation.
-  (#241)
+- `insert(...)` now rejects database-materialized Fetched models, uninitialized
+  model objects, and mixed-model bulk batches during Query Construction.
+  Aggregate function names must be exact built-in strings even when an
+  expression node is constructed directly, preventing arbitrary function text
+  or hostile string subclasses from reaching SQL compilation. (#241)
 
 - Package metadata no longer installs `snektest` for library consumers, and the
   source distribution now uses an explicit release-input allowlist instead of

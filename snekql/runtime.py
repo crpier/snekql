@@ -732,6 +732,20 @@ class Transaction:
         )
 
     @overload
+    async def execute(
+        self,
+        query: UpdateQuery[Any, Any] | DeleteQuery[Any, Any],
+        *,
+        validate: bool = True,
+    ) -> int: ...
+    @overload
+    async def execute(
+        self,
+        query: InsertQuery[Any, Any] | InsertManyQuery[Any, Any],
+        *,
+        validate: bool = True,
+    ) -> None: ...
+    @overload
     async def execute[ResultT](
         self,
         query: _WriteShape[ResultT],

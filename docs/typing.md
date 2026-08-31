@@ -60,14 +60,22 @@ to `insert`; construct a new pending model explicitly when copying a row.
 Because `Fetched` is used in string forward references such as
 `Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
 as used. Projects that lint model declarations with Ruff should allow the
-package-root import:
+qualified backend imports:
 
 ```toml
 [tool.ruff.lint.pyflakes]
 allowed-unused-imports = [
-  "snekql.Fetched",
+  "snekql.sqlite.Fetched",
+  "snekql.mariadb.Fetched",
 ]
 ```
+
+Module-level column annotations may refer to logical payload types declared later
+in the module; snekql retries those unresolved hints after module population. In
+a function-local scope, define payload types before the table model. Python does
+not retain a safe late-binding namespace for names added to a function after the
+model body, so snekql rejects that declaration immediately instead of caching an
+unresolvable type.
 
 ## `Col` and `GenCol`
 

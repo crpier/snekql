@@ -472,6 +472,9 @@ if TYPE_CHECKING:
         User.id,
         Region.code,
     )
+    _ = select(  # ty: ignore[no-matching-overload]
+        scalar(select(Order.id).all())
+    )
     _ = assert_type(
         User.id.gt_col(scalar(select(Order.user_id).all())),
         Predicate[User[Pending]],
@@ -746,8 +749,20 @@ if TYPE_CHECKING:
 
         _ = assert_type(await transaction.execute(insert(pending_user)), None)
         _ = assert_type(
+            await transaction.execute(insert(pending_user), validate=False),
+            None,
+        )
+        _ = assert_type(
             await transaction.execute(insert([pending_user])),
             None,
+        )
+        _ = assert_type(
+            await transaction.execute(update(User).all(), validate=False),
+            int,
+        )
+        _ = assert_type(
+            await transaction.execute(delete(User).all(), validate=False),
+            int,
         )
         _ = assert_type(
             await transaction.execute(insert(pending_user).returning()),

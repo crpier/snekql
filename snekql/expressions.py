@@ -677,7 +677,13 @@ class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT]):
     owner: object | None = None
 
     def __post_init__(self) -> None:
-        if self.func not in {"AVG", "COUNT", "MAX", "MIN", "SUM"}:
+        if type(self.func) is not str or self.func not in {
+            "AVG",
+            "COUNT",
+            "MAX",
+            "MIN",
+            "SUM",
+        }:
             msg = f"unsupported aggregate function: {self.func!r}"
             raise QueryConstructionError(msg)
 

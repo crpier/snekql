@@ -124,16 +124,6 @@ class InsertableModel(Protocol[SelectableOwnerT, SelectableReadT_co]):
     def __state_type__(self) -> Pending: ...
 
 
-class _SelectableValue[OwnerT, ValueT, CompareT](Protocol):
-    """Structural inference surface shared by singleton select expressions."""
-
-    def __column_owner_type__(self) -> OwnerT: ...
-
-    def __column_value_type__(self) -> ValueT: ...
-
-    def __accepts_comparison__(self, value: CompareT, /) -> None: ...
-
-
 class _SqlInspectionMixin:
     """`repr`/`str` that render a built query's own backend Dialect SQL.
 
@@ -1527,8 +1517,22 @@ def select[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 
 
 @overload
+def select[Owner1T: Table[Any], T1](
+    field1: Attr[Any, Any, Owner1T, Any, T1],
+    /,
+) -> SelectValueQuery[Owner1T, Owner1T, T1, T1]: ...
+
+
+@overload
 def select[Owner1T: Table[Any], T1, CompareT](
-    field1: _SelectableValue[Owner1T, T1, CompareT],
+    field1: Aggregate[Owner1T, T1, CompareT],
+    /,
+) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
+
+
+@overload
+def select[Owner1T: Table[Any], T1, CompareT](
+    field1: DialectSelectable[Owner1T, T1, CompareT],
     /,
 ) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
 
@@ -1537,11 +1541,11 @@ def select[Owner1T: Table[Any], T1, CompareT](
 # seeded with the FIRST column's table (the implicit `FROM` anchor); `RefT` is
 # the union of every column's owner. The dual union is what lets the fetch
 # overloads reject referencing a table that was never joined.
-# Multi-column projections accept a column, an aggregate, or a scalar subquery in
-# each slot: a single union arm per position binds the same `OwnerT`/`T` whichever
-# it is, so grouped projections (`select(User.country, count(User.id))`) and
-# scalar projections (`select(User.id, scalar(...))`) reuse the tuple machinery
-# without a combinatorial overload explosion.
+# Later projection slots also accept a scalar subquery. A single union arm per
+# position binds the same `OwnerT`/`T` whichever expression it is, so grouped
+# projections (`select(User.country, count(User.id))`) and scalar projections
+# (`select(User.id, scalar(...))`) reuse the tuple machinery without a
+# combinatorial overload explosion.
 # BEGIN GENERATED SELECT OVERLOADS
 @overload
 def select[

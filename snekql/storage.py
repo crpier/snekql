@@ -891,7 +891,13 @@ def _resolve_model_hint(owner: type[object], name: str) -> object | None:
         locals=localns,
         format=annotationlib.Format.FORWARDREF,
     )
-    if not _contains_forward_ref(resolved):
+    contains_forward_ref = _contains_forward_ref(resolved)
+    if contains_forward_ref and "<locals>" in owner.__qualname__:
+        msg = (
+            f"function-local type for column {name!r} must be defined before the model"
+        )
+        raise ModelDeclarationError(msg)
+    if not contains_forward_ref:
         if cached is None:
             cached = {}
             cast("Any", owner).__snekql_hints__ = cached

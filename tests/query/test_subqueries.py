@@ -229,6 +229,11 @@ def scalar_subquery_cannot_anchor_projection() -> None:
     """A projection must establish its table scope before a scalar slot."""
 
     with assert_raises(QueryConstructionError):
+        _ = select(  # ty: ignore[no-matching-overload]
+            scalar(select(Order.amount).all())
+        )
+
+    with assert_raises(QueryConstructionError):
         _ = select(
             scalar(  # ty: ignore[invalid-argument-type]
                 select(Order.amount).all()
