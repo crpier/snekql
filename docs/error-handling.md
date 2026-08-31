@@ -176,9 +176,7 @@ treated as permanently unavailable.
 try:
     await tx.execute(statement)
 except ExecutionError as error:
-    logger.warning(
-        "snekql execution failed: %s params=%r", error.sql, error.params
-    )
+    logger.warning("snekql execution failed: %s params=%r", error.sql, error.params)
 ```
 
 `str(error)` includes SQL and parameter reprs for debugging. snekql's own
