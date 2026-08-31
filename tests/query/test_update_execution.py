@@ -6,6 +6,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import cast
 
+from pydantic import NonNegativeInt
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
@@ -14,6 +15,7 @@ from snekql.sqlite import (
     Fetched,
     Integer,
     Model,
+    ModelValidationError,
     Pending,
     QueryConstructionError,
     Text,
@@ -50,6 +52,19 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
     expected_sql = 'UPDATE "select" SET "where" = ?, "status" = ? WHERE ("where" != ?)'
     assert_eq(sql, expected_sql)
     assert_eq(params, ("new", "done", "old"))
+
+
+@test(mark="fast")
+def column_assignment_rejects_invalid_logical_value() -> None:
+    """Column.to() validates literals against the column's Logical Type."""
+
+    class Transcript[S = Pending](Model[S, "Transcript[Fetched]"]):
+        """Table model with a constrained update value."""
+
+        failed_attempts: Transcript.Col[NonNegativeInt] = Integer(nullable=False)
+
+    with assert_raises(ModelValidationError):
+        _ = Transcript.failed_attempts.to(-1)
 
 
 @test(mark="fast")
