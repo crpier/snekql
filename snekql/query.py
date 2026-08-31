@@ -56,6 +56,8 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    DoNothing,
+    DoUpdate,
     ExistencePredicate,
     JoinOn,
     OrderBy,
@@ -608,13 +610,59 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         raise QueryConstructionError(msg)
 
 
-class _BaseInsertQuery(_SqlInspectionMixin):
+class _BaseInsertQuery[OwnerT: Table[Any]](_SqlInspectionMixin):
     """Immutable insert-state plumbing shared by every insert query variant."""
 
     state: InsertState
 
     def __init__(self, state: InsertState) -> None:
         self.state = state
+
+    def on_conflict(
+        self,
+        *targets: Attr[Any, Any, OwnerT, Any, Any],
+        action: DoUpdate[OwnerT] | type[DoNothing],
+    ) -> Self:
+        """Handle an insert conflict with `DoUpdate` or `DoNothing`.
+
+        Targets and assignments must belong to the inserted model. SQLite uses
+        the targets to select a primary key or unique index. MariaDB checks every
+        unique key because its duplicate-key syntax has no target clause.
+
+        ```python
+        insert(User(email=email, status=status)).on_conflict(
+            User.email,
+            action=DoUpdate(User.status.to_inserted()),
+        )
+        ```
+        """
+
+        if not targets:
+            msg = "on_conflict requires at least one target column"
+            raise QueryConstructionError(msg)
+        model = self.state.model()
+        target_model = model or require_column_model(require_field(targets[0]))
+        scope = ScopeResolver(own_models=(target_model,))
+        checked_targets: list[Attr[Any, Any, Any, Any, Any]] = []
+        for target in targets:
+            column = require_field(target)
+            if require_column_model(column) is not target_model:
+                msg = "on_conflict target must belong to the inserted model"
+                raise QueryConstructionError(msg)
+            checked_targets.append(column)
+        if isinstance(action, DoUpdate):
+            for assignment in action.assignments:
+                ensure_assignment_targets_model(assignment, scope)
+        elif action is not DoNothing:
+            msg = "on_conflict action must be DoUpdate(...) or DoNothing"
+            raise QueryConstructionError(msg)
+        return type(self)(
+            replace(
+                self.state,
+                conflict_action=action,
+                conflict_targets=tuple(checked_targets),
+            )
+        )
 
 
 class _WriteShape[ResultT]:
@@ -640,7 +688,7 @@ class _ReturningQuery[ResultT](_WriteShape[ResultT]):
 
 
 class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _WriteShape[None],
 ):
     """Immutable insert statement for one pending table model instance."""
@@ -751,7 +799,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
 
 
 class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _WriteShape[None],
 ):
     """Immutable bulk insert statement for several pending model instances."""
@@ -862,42 +910,42 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
 
 
 class InsertReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[ReadT],
 ):
     """Single insert whose execution yields the Fetched model it produced."""
 
 
 class InsertManyReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[list[ReadT]],
 ):
     """Bulk insert whose execution yields the Fetched models it produced."""
 
 
 class InsertReturningValueQuery[OwnerT: Table[Any], T](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[T],
 ):
     """Single insert whose execution yields one decoded RETURNING column."""
 
 
 class InsertReturningTupleQuery[OwnerT: Table[Any], *Ts](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[tuple[*Ts]],
 ):
     """Single insert whose execution yields a tuple of RETURNING columns."""
 
 
 class InsertManyReturningValueQuery[OwnerT: Table[Any], T](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[list[T]],
 ):
     """Bulk insert whose execution yields one decoded RETURNING column per row."""
 
 
 class InsertManyReturningTupleQuery[OwnerT: Table[Any], *Ts](
-    _BaseInsertQuery,
+    _BaseInsertQuery[OwnerT],
     _ReturningQuery[list[tuple[*Ts]]],
 ):
     """Bulk insert whose execution yields a tuple of RETURNING columns per row."""
@@ -907,9 +955,9 @@ def _insert_returning(
     state: InsertState,
     fields: tuple[object, ...],
     *,
-    model_query: type[_BaseInsertQuery],
-    value_query: type[_BaseInsertQuery],
-    tuple_query: type[_BaseInsertQuery],
+    model_query: type[_BaseInsertQuery[Any]],
+    value_query: type[_BaseInsertQuery[Any]],
+    tuple_query: type[_BaseInsertQuery[Any]],
 ) -> object:
     """Build the right returning query for a (possibly empty) column projection.
 

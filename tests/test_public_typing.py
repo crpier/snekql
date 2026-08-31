@@ -38,6 +38,8 @@ from snekql.sqlite import (
     Col,
     ColumnRef,
     CurrentTimestamp,
+    DoNothing,
+    DoUpdate,
     Duration,
     Fetched,
     FKCol,
@@ -589,6 +591,21 @@ if TYPE_CHECKING:
         InsertManyQuery[User[Pending], User[Fetched]],
     )
     _ = assert_type(
+        DoUpdate(User.email.to_inserted(), User.status.to("active")),
+        DoUpdate[User[Pending]],
+    )
+    _ = assert_type(
+        insert(pending_user).on_conflict(
+            User.email,
+            action=DoUpdate(User.status.to_inserted()),
+        ),
+        InsertQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        insert([pending_user]).on_conflict(User.email, action=DoNothing),
+        InsertManyQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
         insert(pending_user).returning(),
         InsertReturningQuery[User[Pending], User[Fetched]],
     )
@@ -711,6 +728,14 @@ if TYPE_CHECKING:
     # rejected statically (the owner is pinned), matching the runtime guard.
     _ = insert(pending_user).returning(
         Order.note  # ty: ignore[invalid-argument-type]
+    )
+    _ = insert(pending_user).on_conflict(
+        Order.note,  # ty: ignore[invalid-argument-type]
+        action=DoNothing,
+    )
+    _ = insert(pending_user).on_conflict(
+        User.email,
+        action=DoUpdate(Order.note.to_inserted()),  # ty: ignore[invalid-argument-type]
     )
     _ = update(User).returning(
         Order.note  # ty: ignore[invalid-argument-type]

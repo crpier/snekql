@@ -42,6 +42,8 @@ _NEUTRAL_NAMES = frozenset(
         "DatabaseClosedError",
         "DatabaseClosingError",
         "DatabaseRuntimeError",
+        "DoNothing",
+        "DoUpdate",
         "Duration",
         "ExecutionError",
         "FKCol",
@@ -282,6 +284,7 @@ def column_declarations_produce_query_attributes() -> None:
     assert_isinstance(AttributeUser.email.eq("alice@example.com"), sqlite.Predicate)
     assert_isinstance(AttributeUser.email.asc(), sqlite.OrderBy)
     assert_isinstance(AttributeUser.email.to("new@example.com"), sqlite.Assignment)
+    assert_isinstance(AttributeUser.email.to_inserted(), sqlite.Assignment)
 
 
 @test()
@@ -336,6 +339,18 @@ def mutation_query_chain_methods_return_query_objects() -> None:
     assert_is(type(update_query.all()), type(update_query))
     assert_is(type(delete_query.where(predicate)), type(delete_query))
     assert_is(type(delete_query.all()), type(delete_query))
+    insert_query = sqlite.insert(
+        MutationUser(email="alice@example.com", status="active")
+    )
+    assert_is(
+        type(
+            insert_query.on_conflict(
+                MutationUser.email,
+                action=sqlite.DoUpdate(MutationUser.status.to_inserted()),
+            )
+        ),
+        type(insert_query),
+    )
 
 
 @test()
@@ -383,6 +398,8 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.DatabaseCloseTimeoutError,
         sqlite.DatabaseClosingError,
         sqlite.DatabaseRuntimeError,
+        sqlite.DoNothing,
+        sqlite.DoUpdate,
         sqlite.ExecutionError,
         sqlite.Fetched,
         sqlite.FrozenModelError,

@@ -308,6 +308,37 @@ delete(User).where(User.email.eq("retired@example.com"))
 delete(User).all()  # explicit full-table delete
 ```
 
+Inserts can handle a primary-key or unique-index conflict atomically. `DoUpdate`
+accepts one or more assignments. `.to_inserted()` takes the value from the row
+whose insert conflicted, while `.to(...)` assigns a literal or
+`CurrentTimestamp`:
+
+```python
+from snekql.sqlite import DoNothing, DoUpdate, insert
+
+insert(User(email=email, name=name, status=status)).on_conflict(
+    User.email,
+    action=DoUpdate(
+        User.name.to_inserted(),
+        User.status.to("active"),
+    ),
+)
+
+insert(User(email=email, name=name, status=status)).on_conflict(
+    User.email,
+    action=DoNothing,
+)
+```
+
+SQLite compiles these actions as `ON CONFLICT (...) DO UPDATE` or `DO NOTHING`.
+MariaDB compiles them as `ON DUPLICATE KEY UPDATE`. MariaDB checks every primary
+key and unique index, so its SQL cannot limit detection to the columns passed to
+`on_conflict`; those columns select the no-op assignment used for `DoNothing`.
+On SQLite, the target columns must match a primary key or unique index.
+
+`DoNothing` cannot be combined with `.returning(...)` because SQLite may return
+no row. `DoUpdate` supports `.returning(...)` for single and bulk inserts.
+
 Filtering is explicit: `select`, `update`, and `delete` must choose exactly one
 of `.where(...)` or `.all()` before execution. Predicates use methods such as
 `.eq(...)`, `.ne(...)`, `.is_null()`, `.in_(...)`, `.like(...)`,
@@ -523,9 +554,10 @@ Runtime methods:
   more than one. A `None` from a single-value `fetch_one` means SQL `NULL`.
 - `fetch_one_or_none(select(...))` returns the row or `None` for the zero-or-one
   case (model, tuple, and join selects), still raising on more than one row.
-- `execute(insert(...))` returns `None`; `execute(update/delete)` returns the
-  affected-row count. SQLite counts matched rows; MariaDB counts only rows an
-  `UPDATE` actually changed.
+- `execute(insert(...))` returns `None`, including conflict-handled inserts
+  without `.returning(...)`; `execute(update/delete)` returns the affected-row
+  count. SQLite counts matched rows; MariaDB counts only rows an `UPDATE`
+  actually changed.
 - `close()` is async and idempotent after a successful close.
 
 ## Migrations and verification

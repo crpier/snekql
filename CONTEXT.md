@@ -80,6 +80,22 @@ _Avoid_: authentication policy, network service
 A database-supplied column value that is filled in by the database when an insert omits that column.
 _Avoid_: Python default, constructor default
 
+**Insert Conflict**:
+A primary-key or unique-index collision handled atomically as part of an insert instead of surfacing as an execution failure.
+_Avoid_: save-or-update, merge
+
+**Conflict Target**:
+The inserted Table Model columns named by `on_conflict`. SQLite uses them to select the primary key or unique index that can trigger the Conflict Action. MariaDB cannot limit conflict detection to a target and checks every primary key and unique index.
+_Avoid_: lookup columns, match fields
+
+**Conflict Action**:
+The `DoUpdate` or `DoNothing` behavior an insert applies after an Insert Conflict.
+_Avoid_: fallback write, retry
+
+**Attempted Insert Value**:
+A column value from the pending row whose insert encountered an Insert Conflict, referenced by `column.to_inserted()` inside `DoUpdate`.
+_Avoid_: excluded value (backend-specific), incoming value
+
 **Column Type**:
 The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, `Uuid()`, or `Decimal(precision, scale)`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
 _Avoid_: logical type, Python type, value type, storage class

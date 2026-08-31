@@ -728,13 +728,49 @@ class OrderBy[OwnerT]:
     direction: str = ""
 
 
+class DoNothing:
+    """Conflict action that discards an insert instead of raising.
+
+    Pass the bare marker as an `on_conflict` action:
+
+    ```python
+    insert(User(email=email)).on_conflict(User.email, action=DoNothing)
+    ```
+    """
+
+
+class InsertedValue:
+    """Internal marker for the attempted insert value of an assigned column."""
+
+
 @dataclass(frozen=True)
 class Assignment[OwnerT]:
-    """SQL update assignment for one table model.
+    """SQL write assignment for one table model.
 
     `Assignment` values are produced by update-assignable column descriptors via
-    `.to(value)` and consumed by `update(Model).set(...)`.
+    `.to(value)` or `.to_inserted()`. Updates consume literal assignments;
+    conflict updates may also consume attempted-insert assignments.
     """
 
     column: object | None = None
     value: object = None
+
+
+@dataclass(frozen=True, init=False)
+class DoUpdate[OwnerT]:
+    """Conflict action that updates one or more columns.
+
+    Pass assignments built from columns on the inserted model:
+
+    ```python
+    DoUpdate(User.name.to_inserted(), User.status.to("active"))
+    ```
+    """
+
+    assignments: tuple[Assignment[OwnerT], ...]
+
+    def __init__(self, *assignments: Assignment[OwnerT]) -> None:
+        if not assignments:
+            msg = "DoUpdate requires at least one assignment"
+            raise QueryConstructionError(msg)
+        object.__setattr__(self, "assignments", assignments)

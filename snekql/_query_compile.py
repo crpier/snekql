@@ -35,7 +35,15 @@ from snekql._query_state import (
     require_subquery_state,
 )
 from snekql.errors import QueryCompilationError
-from snekql.expressions import Aggregate, OrderBy, Predicate, Scalar
+from snekql.expressions import (
+    Aggregate,
+    DoNothing,
+    DoUpdate,
+    InsertedValue,
+    OrderBy,
+    Predicate,
+    Scalar,
+)
 from snekql.model import (
     Table,
     require_model_backend,
@@ -338,6 +346,48 @@ def _returning_clause(
     return f" RETURNING {rendered}"
 
 
+def _compile_insert_conflict_sql(
+    state: InsertState,
+    model_class: type[Table[Any]],
+    dialect: QueryDialect,
+) -> tuple[str, tuple[object, ...]]:
+    """Compile an insert's optional conflict action and assignment parameters."""
+
+    action = state.conflict_action
+    if action is None:
+        return "", ()
+    quoted_targets = tuple(
+        _render_column_ref(target, dialect) for target in state.conflict_targets
+    )
+    if action is DoNothing:
+        if state.returning:
+            msg = "DoNothing cannot be combined with returning()"
+            raise QueryCompilationError(msg)
+        return dialect.conflict_do_nothing_sql(quoted_targets), ()
+    if not isinstance(action, DoUpdate):
+        msg = "unsupported insert conflict action"
+        raise QueryCompilationError(msg)
+    scope = ScopeResolver(own_models=(model_class,))
+    set_sql_parts: list[str] = []
+    params: tuple[object, ...] = ()
+    for assignment in action.assignments:
+        ensure_assignment_targets_model(assignment, scope)
+        column = require_field(assignment.column)
+        column_name = _render_column_ref(column, dialect)
+        if assignment.value is InsertedValue:
+            assigned_value = dialect.inserted_value_sql(column_name)
+        elif assignment.value is CurrentTimestamp:
+            assigned_value = dialect.current_timestamp_sql
+        else:
+            assigned_value = dialect.placeholder
+            params = (*params, dialect.encode_column_value(column, assignment.value))
+        set_sql_parts.append(f"{column_name} = {assigned_value}")
+    return (
+        dialect.conflict_update_sql(quoted_targets, ", ".join(set_sql_parts)),
+        params,
+    )
+
+
 def _compile_insert_sql(
     state: InsertState,
     dialect: QueryDialect,
@@ -366,16 +416,25 @@ def _compile_insert_sql(
         if len(encoded_rows) > 1:
             msg = "bulk insert requires at least one explicit column"
             raise QueryCompilationError(msg)
+        if state.conflict_action is not None:
+            msg = "on_conflict requires at least one explicit insert column"
+            raise QueryCompilationError(msg)
         return dialect.empty_insert_sql(quoted_table) + returning, ()
     quoted_columns = ", ".join(dialect.quote_identifier(name) for name in names)
     row_placeholder = "(" + ", ".join(dialect.placeholder for _ in names) + ")"
     values_clause = ", ".join(row_placeholder for _ in encoded_rows)
+    params = tuple(row_values[name] for row_values in encoded_rows for name in names)
+    conflict, conflict_params = _compile_insert_conflict_sql(
+        state,
+        model_class,
+        dialect,
+    )
+    params = (*params, *conflict_params)
     sql = (
         "INSERT INTO "  # noqa: S608
         + quoted_table
-        + f" ({quoted_columns}) VALUES {values_clause}{returning}"
+        + f" ({quoted_columns}) VALUES {values_clause}{conflict}{returning}"
     )
-    params = tuple(row_values[name] for row_values in encoded_rows for name in names)
     return sql, params
 
 
@@ -397,6 +456,9 @@ def _compile_update_sql(
         ensure_assignment_targets_model(assignment, scope)
         column = require_field(assignment.column)
         column_name = _render_column_ref(column, dialect)
+        if assignment.value is InsertedValue:
+            msg = "to_inserted() is only valid in a conflict update"
+            raise QueryCompilationError(msg)
         if assignment.value is CurrentTimestamp:
             set_sql_parts.append(f"{column_name} = {dialect.current_timestamp_sql}")
             continue

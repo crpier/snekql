@@ -22,6 +22,8 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    DoNothing,
+    DoUpdate,
     OrderBy,
     Predicate,
     Scalar,
@@ -102,15 +104,19 @@ class InsertState:
     """Immutable insert-statement state shared by every insert query variant.
 
     ``rows`` holds the pending model instances to persist (one for a single
-    insert, many for a bulk insert). ``returning`` records whether the write
-    should yield rows via ``RETURNING``; ``returning_fields`` records an explicit
-    column projection for that clause (empty means project every column and
-    decode each row into a Fetched model). ``multi`` records whether the builder
-    was created from a sequence, so an empty bulk batch stays typed and
-    executable as a no-op even though it carries no rows to read a model from.
+    insert, many for a bulk insert). ``conflict_targets`` and ``conflict_action``
+    describe optional atomic handling for a unique-key collision. ``returning``
+    records whether the write should yield rows via ``RETURNING``;
+    ``returning_fields`` records an explicit column projection for that clause
+    (empty means project every column and decode each row into a Fetched model).
+    ``multi`` records whether the builder was created from a sequence, so an
+    empty bulk batch stays typed and executable as a no-op even though it carries
+    no rows to read a model from.
     """
 
     rows: tuple[Table[Any], ...]
+    conflict_action: DoUpdate[Any] | type[DoNothing] | None = None
+    conflict_targets: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
     multi: bool = False
