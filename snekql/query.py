@@ -227,10 +227,34 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
     the dual-union scope check), so they do not share this surface.
     """
 
+    @overload
+    def where(self, predicate: Predicate[FluentOwnerT], /) -> Self: ...
+
+    @overload
+    def where(
+        self,
+        predicate: Predicate[FluentOwnerT],
+        second: Predicate[FluentOwnerT],
+        /,
+        *predicates: Predicate[FluentOwnerT],
+    ) -> Self: ...
+
     def where(self, *predicates: Predicate[FluentOwnerT]) -> Self:
         """Filter selected rows by AND-combined column predicates."""
 
         return self._replace_state(_select_where(self.state, predicates))
+
+    @overload
+    def order_by(self, ordering: OrderBy[FluentOwnerT], /) -> Self: ...
+
+    @overload
+    def order_by(
+        self,
+        ordering: OrderBy[FluentOwnerT],
+        second: OrderBy[FluentOwnerT],
+        /,
+        *orderings: OrderBy[FluentOwnerT],
+    ) -> Self: ...
 
     def order_by(self, *ordering: OrderBy[FluentOwnerT]) -> Self:
         """Order selected rows by the given column orderings."""
@@ -417,6 +441,22 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
 
         raise NotImplementedError
 
+    @overload
+    def where[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        /,
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
+    @overload
+    def where[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        second: Predicate[RefOwnerT],
+        /,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
     def where[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
@@ -429,6 +469,22 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
                 _select_where(self.state, predicates)
             ),
         )
+
+    @overload
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        ordering: OrderBy[RefOwnerT],
+        /,
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
+    @overload
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        ordering: OrderBy[RefOwnerT],
+        second: OrderBy[RefOwnerT],
+        /,
+        *orderings: OrderBy[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def order_by[RefOwnerT: Table[Any]](
         self,
@@ -443,6 +499,22 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
             ),
         )
 
+    @overload
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        /,
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
+    @overload
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        second: Attr[Any, Any, RefOwnerT, Any, Any],
+        /,
+        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
     def group_by[RefOwnerT: Table[Any]](
         self,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
@@ -455,6 +527,22 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
                 _select_group_by(self.state, columns)
             ),
         )
+
+    @overload
+    def having[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        /,
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+
+    @overload
+    def having[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        second: Predicate[RefOwnerT],
+        /,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
@@ -519,6 +607,22 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
     how tables connect, never the result shape.
     """
 
+    @overload
+    def where[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        /,
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
+    @overload
+    def where[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        second: Predicate[RefOwnerT],
+        /,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
     def where[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
@@ -529,6 +633,22 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
             "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
             SelectTupleQuery[Any, Any, *Ts](_select_where(self.state, predicates)),
         )
+
+    @overload
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        ordering: OrderBy[RefOwnerT],
+        /,
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
+    @overload
+    def order_by[RefOwnerT: Table[Any]](
+        self,
+        ordering: OrderBy[RefOwnerT],
+        second: OrderBy[RefOwnerT],
+        /,
+        *orderings: OrderBy[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def order_by[RefOwnerT: Table[Any]](
         self,
@@ -541,6 +661,22 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
             SelectTupleQuery[Any, Any, *Ts](_select_order_by(self.state, ordering)),
         )
 
+    @overload
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        /,
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
+    @overload
+    def group_by[RefOwnerT: Table[Any]](
+        self,
+        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        second: Attr[Any, Any, RefOwnerT, Any, Any],
+        /,
+        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
     def group_by[RefOwnerT: Table[Any]](
         self,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
@@ -551,6 +687,22 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
             "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
             SelectTupleQuery[Any, Any, *Ts](_select_group_by(self.state, columns)),
         )
+
+    @overload
+    def having[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        /,
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+
+    @overload
+    def having[RefOwnerT: Table[Any]](
+        self,
+        predicate: Predicate[RefOwnerT],
+        second: Predicate[RefOwnerT],
+        /,
+        *predicates: Predicate[RefOwnerT],
+    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
@@ -607,6 +759,25 @@ class _BaseInsertQuery[OwnerT: Table[Any]](_SqlInspectionMixin):
 
     def __init__(self, state: InsertState) -> None:
         self.state = state
+
+    @overload
+    def on_conflict(
+        self,
+        target: Attr[Any, Any, OwnerT, Any, Any],
+        /,
+        *,
+        action: DoUpdate[OwnerT] | type[DoNothing],
+    ) -> Self: ...
+
+    @overload
+    def on_conflict(
+        self,
+        target: Attr[Any, Any, OwnerT, Any, Any],
+        second: Attr[Any, Any, OwnerT, Any, Any],
+        /,
+        *targets: Attr[Any, Any, OwnerT, Any, Any],
+        action: DoUpdate[OwnerT] | type[DoNothing],
+    ) -> Self: ...
 
     def on_conflict(
         self,
@@ -1099,9 +1270,33 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
 
         return _update_returning(self.state, fields)
 
+    @overload
+    def set(self, assignment: Assignment[ModelT], /) -> Self: ...
+
+    @overload
+    def set(
+        self,
+        assignment: Assignment[ModelT],
+        second: Assignment[ModelT],
+        /,
+        *assignments: Assignment[ModelT],
+    ) -> Self: ...
+
     def set(self, *assignments: Assignment[ModelT]) -> Self:
         state = _update_set(self.state, assignments)
         return type(self)(state)
+
+    @overload
+    def where(self, predicate: Predicate[ModelT], /) -> Self: ...
+
+    @overload
+    def where(
+        self,
+        predicate: Predicate[ModelT],
+        second: Predicate[ModelT],
+        /,
+        *predicates: Predicate[ModelT],
+    ) -> Self: ...
 
     def where(self, *predicates: Predicate[ModelT]) -> Self:
         state = _update_where(self.state, predicates)
@@ -1244,6 +1439,18 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         """Return rows produced by SQLite ``DELETE ... RETURNING``."""
 
         return _delete_returning(self.state, fields)
+
+    @overload
+    def where(self, predicate: Predicate[ModelT], /) -> Self: ...
+
+    @overload
+    def where(
+        self,
+        predicate: Predicate[ModelT],
+        second: Predicate[ModelT],
+        /,
+        *predicates: Predicate[ModelT],
+    ) -> Self: ...
 
     def where(self, *predicates: Predicate[ModelT]) -> Self:
         state = _delete_where(self.state, predicates)
@@ -1517,10 +1724,10 @@ def select[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
 
 
 @overload
-def select[Owner1T: Table[Any], T1](
-    field1: Attr[Any, Any, Owner1T, Any, T1],
+def select[Owner1T: Table[Any], T1, CompareT](
+    field1: Attr[Any, Any, Owner1T, Any, T1, Any, CompareT],
     /,
-) -> SelectValueQuery[Owner1T, Owner1T, T1, T1]: ...
+) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
 
 
 @overload
@@ -1556,11 +1763,11 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T, T1, T2]: ...
 
@@ -1576,15 +1783,15 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     /,
 ) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
 
@@ -1602,19 +1809,19 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
-    | DialectSelectable[Owner4T, T4],
+    | DialectSelectable[Owner4T, T4, Any],
     /,
 ) -> SelectTupleQuery[
     Owner1T, Owner1T | Owner2T | Owner3T | Owner4T, T1, T2, T3, T4
@@ -1636,23 +1843,23 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
-    | DialectSelectable[Owner4T, T4],
+    | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
-    | DialectSelectable[Owner5T, T5],
+    | DialectSelectable[Owner5T, T5, Any],
     /,
 ) -> SelectTupleQuery[
     Owner1T, Owner1T | Owner2T | Owner3T | Owner4T | Owner5T, T1, T2, T3, T4, T5
@@ -1676,27 +1883,27 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
-    | DialectSelectable[Owner4T, T4],
+    | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
-    | DialectSelectable[Owner5T, T5],
+    | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
-    | DialectSelectable[Owner6T, T6],
+    | DialectSelectable[Owner6T, T6, Any],
     /,
 ) -> SelectTupleQuery[
     Owner1T,
@@ -1729,31 +1936,31 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
-    | DialectSelectable[Owner4T, T4],
+    | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
-    | DialectSelectable[Owner5T, T5],
+    | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
-    | DialectSelectable[Owner6T, T6],
+    | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
-    | DialectSelectable[Owner7T, T7],
+    | DialectSelectable[Owner7T, T7, Any],
     /,
 ) -> SelectTupleQuery[
     Owner1T,
@@ -1789,35 +1996,35 @@ def select[
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
     | Aggregate[Owner1T, T1, Any]
-    | DialectSelectable[Owner1T, T1],
+    | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
-    | DialectSelectable[Owner2T, T2],
+    | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
-    | DialectSelectable[Owner3T, T3],
+    | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
-    | DialectSelectable[Owner4T, T4],
+    | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
-    | DialectSelectable[Owner5T, T5],
+    | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
-    | DialectSelectable[Owner6T, T6],
+    | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
-    | DialectSelectable[Owner7T, T7],
+    | DialectSelectable[Owner7T, T7, Any],
     field8: Attr[Any, Any, Owner8T, Any, T8]
     | Aggregate[Owner8T, T8, Any]
     | Scalar[Owner8T, T8, Any]
-    | DialectSelectable[Owner8T, T8],
+    | DialectSelectable[Owner8T, T8, Any],
     /,
 ) -> SelectTupleQuery[
     Owner1T,

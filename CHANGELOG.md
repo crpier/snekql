@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fluent query methods whose runtime contract requires at least one value now
+  reject zero-argument calls under `ty`. Nullable columns retain nullable result
+  types while rejecting `None` in literal comparisons; use `is_null()` or
+  `is_not_null()` for SQL NULL checks. Runtime construction guards remain in
+  place for dynamically typed callers. (#247)
+
 ## 0.6.0 - 2026-08-31
 
 ### Breaking changes

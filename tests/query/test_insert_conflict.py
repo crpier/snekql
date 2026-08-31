@@ -99,7 +99,7 @@ def conflict_action_requires_an_assignment() -> None:
         """Table model that anchors the action's owner type."""
 
     with assert_raises(QueryConstructionError):
-        _ = DoUpdate[User[Pending]]()
+        _ = DoUpdate[User[Pending]]()  # ty: ignore[no-matching-overload]
 
 
 @test(mark="fast")
@@ -112,7 +112,7 @@ def conflict_action_requires_a_target_column() -> None:
         status: User.Col[str] = Text(nullable=False)
 
     with assert_raises(QueryConstructionError):
-        _ = insert(User(status="active")).on_conflict(
+        _ = insert(User(status="active")).on_conflict(  # ty: ignore[no-matching-overload]
             action=DoUpdate(User.status.to_inserted())
         )
 

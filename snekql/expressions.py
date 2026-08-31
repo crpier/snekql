@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal, Protocol, cast, overload, runtime_checkable
-from warnings import deprecated
 
 from snekql.errors import QueryCompilationError, QueryConstructionError
 
@@ -455,17 +454,18 @@ class Scalar[OwnerT, T, CompareT = T]:
         raise NotImplementedError
 
 
-class Comparable[OwnerT, ValueT]:
+class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
     """Predicate-building surface shared by columns and aggregates.
 
     Both column descriptors (``Attr``) and :class:`Aggregate` mix this in so a
     comparison builds the same :class:`Predicate` whether it targets a column in
     ``WHERE`` (``Order.amount.gt(5)``) or an aggregate in ``HAVING``
-    (``Order.amount.sum().gt(5)``). ``ValueT`` is the comparison value type -- a
-    column's read type or an aggregate's result type -- and ``OwnerT`` the owning
-    table model the resulting predicate is scoped to. Predicates store the
-    operand as ``column`` (an ``Attr`` or an :class:`Aggregate`); the compiler
-    renders the operand and encodes the value according to which it is.
+    (``Order.amount.sum().gt(5)``). ``ValueT`` is the non-null literal comparison
+    domain, while ``ColumnValueT`` preserves the full read type for comparisons
+    against columns and subqueries. ``OwnerT`` is the owning table model the
+    resulting predicate is scoped to. Predicates store the operand as ``column``
+    (an ``Attr`` or an :class:`Aggregate`); the compiler renders the operand and
+    encodes the value according to which it is.
 
     Text-only helpers (``like``/``not_like``) stay on ``Attr`` since they are not
     meaningful over an aggregate.
@@ -474,23 +474,13 @@ class Comparable[OwnerT, ValueT]:
     def __accepts_comparison__(self, _value: ValueT) -> None:
         """Typing-only contravariant witness for comparison-domain inference."""
 
-    @overload
-    @deprecated("eq(None) is invalid; use is_null()")
-    def eq(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def eq(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def eq(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def eq(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "eq(None) is invalid; use is_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="eq", value=value)
 
-    @overload
-    @deprecated("ne(None) is invalid; use is_not_null()")
-    def ne(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def ne(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def ne(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def ne(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "ne(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
@@ -503,10 +493,15 @@ class Comparable[OwnerT, ValueT]:
         return NullPredicate(operand=self, negated=True)
 
     @overload
-    @deprecated("in_(None) is invalid; use is_null()")
-    def in_(self, value: None, /) -> Predicate[OwnerT]: ...
+    def in_(self, value: ValueT, /) -> Predicate[OwnerT]: ...
     @overload
-    def in_(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def in_(
+        self,
+        value: ValueT,
+        second: ValueT,
+        /,
+        *values: ValueT,
+    ) -> Predicate[OwnerT]: ...
     def in_(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "in_() requires at least one value"
@@ -517,10 +512,15 @@ class Comparable[OwnerT, ValueT]:
         return MembershipPredicate(operand=self, values=values, negated=False)
 
     @overload
-    @deprecated("not_in(None) is invalid; use is_not_null()")
-    def not_in(self, value: None, /) -> Predicate[OwnerT]: ...
+    def not_in(self, value: ValueT, /) -> Predicate[OwnerT]: ...
     @overload
-    def not_in(self, *values: ValueT) -> Predicate[OwnerT]: ...
+    def not_in(
+        self,
+        value: ValueT,
+        second: ValueT,
+        /,
+        *values: ValueT,
+    ) -> Predicate[OwnerT]: ...
     def not_in(self, *values: ValueT | None) -> Predicate[OwnerT]:
         if not values:
             msg = "not_in() requires at least one value"
@@ -530,59 +530,31 @@ class Comparable[OwnerT, ValueT]:
             raise QueryConstructionError(msg)
         return MembershipPredicate(operand=self, values=values, negated=True)
 
-    @overload
-    @deprecated("gt(None) is invalid; use is_not_null()")
-    def gt(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def gt(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def gt(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def gt(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "gt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="gt", value=value)
 
-    @overload
-    @deprecated("gte(None) is invalid; use is_not_null()")
-    def gte(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def gte(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def gte(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def gte(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "gte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="gte", value=value)
 
-    @overload
-    @deprecated("lt(None) is invalid; use is_not_null()")
-    def lt(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def lt(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def lt(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def lt(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "lt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="lt", value=value)
 
-    @overload
-    @deprecated("lte(None) is invalid; use is_not_null()")
-    def lte(self, value: None) -> Predicate[OwnerT]: ...
-    @overload
-    def lte(self, value: ValueT) -> Predicate[OwnerT]: ...
-    def lte(self, value: ValueT | None) -> Predicate[OwnerT]:
+    def lte(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "lte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="lte", value=value)
 
-    @overload
-    @deprecated("between() bounds cannot be None; use is_null()/is_not_null()")
-    def between(self, low: None, high: ValueT) -> Predicate[OwnerT]: ...
-    @overload
-    @deprecated("between() bounds cannot be None; use is_null()/is_not_null()")
-    def between(self, low: ValueT, high: None) -> Predicate[OwnerT]: ...
-    @overload
-    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]: ...
-    def between(self, low: ValueT | None, high: ValueT | None) -> Predicate[OwnerT]:
+    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]:
         if low is None or high is None:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)
@@ -600,43 +572,43 @@ class Comparable[OwnerT, ValueT]:
 
     def eq_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="eq", other=other)
 
     def ne_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
 
     def gt_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
     def gte_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
     def lt_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
     def lte_col(
         self,
-        other: _ColumnRef[ValueT] | Scalar[Any, Any, ValueT],
+        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)
 
     def in_subquery(
         self,
-        subquery: _ColumnSubquery[ValueT],
+        subquery: _ColumnSubquery[ColumnValueT],
     ) -> Predicate[OwnerT]:
         """Test membership against a single-column subquery (``IN (SELECT ...)``)."""
 
@@ -648,7 +620,7 @@ class Comparable[OwnerT, ValueT]:
 
     def not_in_subquery(
         self,
-        subquery: _ColumnSubquery[ValueT],
+        subquery: _ColumnSubquery[ColumnValueT],
     ) -> Predicate[OwnerT]:
         """Negated membership against a single-column subquery (``NOT IN``)."""
 
@@ -660,7 +632,7 @@ class Comparable[OwnerT, ValueT]:
 
 
 @dataclass(frozen=True)
-class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT]):
+class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT, CompareT]):
     """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
 
     Produced by column methods (``Order.amount.sum()``) and the model
@@ -774,6 +746,18 @@ class DoUpdate[OwnerT]:
     """
 
     assignments: tuple[Assignment[OwnerT], ...]
+
+    @overload
+    def __init__(self, assignment: Assignment[OwnerT], /) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        assignment: Assignment[OwnerT],
+        second: Assignment[OwnerT],
+        /,
+        *assignments: Assignment[OwnerT],
+    ) -> None: ...
 
     def __init__(self, *assignments: Assignment[OwnerT]) -> None:
         if not assignments:
