@@ -295,7 +295,7 @@ if TYPE_CHECKING:
     # A missing JSON path yields SQL NULL, so the projection is `int | None`.
     _ = assert_type(
         select(MariadbUser.profile.json_extract_int("$.age")),
-        SelectValueQuery[MariadbUser[Pending], MariadbUser[Pending], int | None],
+        SelectValueQuery[MariadbUser[Pending], MariadbUser[Pending], int | None, int],
     )
     _ = assert_type(
         select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),
@@ -320,6 +320,12 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User.email).where(User.email.eq("alice@example.com")).all(),
         SelectValueQuery[User[Pending], User[Pending], str],
+    )
+    _ = assert_type(
+        select(User)
+        .where(User.email.eq("alice@example.com"), User.status.eq("active"))
+        .order_by(User.email.asc(), User.id.desc()),
+        SelectModelQuery[User[Pending], User[Fetched]],
     )
     _ = assert_type(
         select(User.email, User.status),
@@ -385,6 +391,13 @@ if TYPE_CHECKING:
         select(User.status, User.id.count()).group_by(User.status).all(),
         SelectTupleQuery[User[Pending], User[Pending], str, int],
     )
+    _ = assert_type(
+        select(User.id.count())
+        .group_by(User.status)
+        .having(User.id.count().gt(0))
+        .all(),
+        SelectValueQuery[User[Pending], User[Pending], int],
+    )
     _ = assert_type(User.id.count().desc(), OrderBy[User[Pending]])
     _ = assert_type(
         select(User.status, Order.id.sum())
@@ -435,18 +448,68 @@ if TYPE_CHECKING:
     _ = assert_type(User.email.like("%@example.com"), Predicate[User[Pending]])
     _ = assert_type(User.email.not_like("%@example.com"), Predicate[User[Pending]])
     _ = User.id.like("1")  # ty: ignore[no-matching-overload]
-    # Nullable column: comparing against None is invalid (the runtime rejects it);
-    # the typed surface steers callers to is_null()/is_not_null() with a
-    # deprecation diagnostic, while a real value still type-checks.
+    # Nullable columns retain nullable projection types while their literal
+    # comparison domain excludes None. SQL NULL checks stay explicit.
     _ = assert_type(User.nickname.eq("nick"), Predicate[User[Pending]])
     _ = assert_type(User.nickname.is_null(), Predicate[User[Pending]])
-    _ = User.nickname.eq(None)
-    _ = User.nickname.ne(None)
-    _ = User.nickname.gt(None)
-    _ = User.nickname.between(None, None)
+    _ = assert_type(
+        select(User.nickname),
+        SelectValueQuery[User[Pending], User[Pending], str | None, str],
+    )
+    _ = assert_type(
+        User.nickname.between("a", "z"),
+        Predicate[User[Pending]],
+    )
+    _ = assert_type(
+        Order.reviewer_id.eq_col(Order.reviewer_id),
+        Predicate[Order[Pending]],
+    )
+    _ = assert_type(
+        Order.reviewer_id.in_subquery(select(Order.reviewer_id)),
+        Predicate[Order[Pending]],
+    )
+    _ = assert_type(
+        User.nickname.eq_col(scalar(select(User.nickname))),
+        Predicate[User[Pending]],
+    )
+    _ = User.nickname.eq(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.ne(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.gt(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.gte(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.lt(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.lte(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.between(None, "z")  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.between("a", None)  # ty: ignore[invalid-argument-type]
     _ = assert_type(User.nickname.in_("nick"), Predicate[User[Pending]])
-    _ = User.nickname.in_(None)
-    _ = User.nickname.not_in(None)
+    _ = User.nickname.in_(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.in_("nick", None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.not_in(None)  # ty: ignore[invalid-argument-type]
+    _ = User.nickname.not_in("nick", None)  # ty: ignore[invalid-argument-type]
+    _ = Order.id.sum().eq(None)  # ty: ignore[invalid-argument-type]
+    _ = MariadbUser.profile.json_extract_int("$.age").eq(
+        None  # ty: ignore[invalid-argument-type]
+    )
+
+    # Non-empty fluent APIs reject calls that Query Construction always rejects.
+    _ = select(User).where()  # ty: ignore[no-matching-overload]
+    _ = select(User).order_by()  # ty: ignore[no-matching-overload]
+    _ = select(User.email).where()  # ty: ignore[no-matching-overload]
+    _ = select(User.email).order_by()  # ty: ignore[no-matching-overload]
+    _ = select(User.email).group_by()  # ty: ignore[no-matching-overload]
+    _ = select(User.email).having()  # ty: ignore[no-matching-overload]
+    _ = select(User.email, User.status).where()  # ty: ignore[no-matching-overload]
+    _ = select(User.email, User.status).order_by()  # ty: ignore[no-matching-overload]
+    _ = select(User.email, User.status).group_by()  # ty: ignore[no-matching-overload]
+    _ = select(User.email, User.status).having()  # ty: ignore[no-matching-overload]
+    _ = User.email.in_()  # ty: ignore[no-matching-overload]
+    _ = User.email.not_in()  # ty: ignore[no-matching-overload]
+    _ = DoUpdate[User[Pending]]()  # ty: ignore[no-matching-overload]
+    _ = insert(pending_user).on_conflict(  # ty: ignore[no-matching-overload]
+        action=DoNothing
+    )
+    _ = update(User).set()  # ty: ignore[no-matching-overload]
+    _ = update(User).where()  # ty: ignore[no-matching-overload]
+    _ = delete(User).where()  # ty: ignore[no-matching-overload]
     # Subqueries: a column-vs-column comparison keeps the left column's owner; a
     # single-column subquery types in_subquery; exists() carries no outer column;
     # scalar() carries the projected value type for projections and comparisons.
@@ -680,6 +743,12 @@ if TYPE_CHECKING:
     )
     _ = assert_type(
         update(User).set(User.email.to("new@example.com")),
+        UpdateQuery[User[Pending], User[Fetched]],
+    )
+    _ = assert_type(
+        update(User)
+        .set(User.email.to("new@example.com"), User.status.to("active"))
+        .where(User.id.gt(0), User.nickname.is_not_null()),
         UpdateQuery[User[Pending], User[Fetched]],
     )
     _ = assert_type(

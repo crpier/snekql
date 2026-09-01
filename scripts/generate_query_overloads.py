@@ -66,7 +66,7 @@ def _select_overloads() -> str:
             f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"
             f"    | Aggregate[Owner{index}T, T{index}, Any]\n"
             + ("" if index == 1 else f"    | Scalar[Owner{index}T, T{index}, Any]\n")
-            + f"    | DialectSelectable[Owner{index}T, T{index}],\n"
+            + f"    | DialectSelectable[Owner{index}T, T{index}, Any],\n"
             for index in range(1, width + 1)
         )
         owners = " | ".join(f"Owner{index}T" for index in range(1, width + 1))

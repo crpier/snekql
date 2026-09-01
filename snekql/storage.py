@@ -980,8 +980,16 @@ def _annotation_core_types(annotation: object) -> list[object]:
     return [_unwrap_annotated(member) for member in members if member is not type(None)]
 
 
-class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = WriteT](
-    Comparable[OwnerT, ReadValueT],
+class Attr[
+    WriteOwnerT,
+    LoadedOwnerT,
+    OwnerT,
+    WriteT,
+    ReadValueT,
+    SetValueT = WriteT,
+    CompareT = Any,
+](
+    Comparable[OwnerT, CompareT, ReadValueT],
 ):
     """Typed model column descriptor used for fields and query construction.
 
@@ -1058,8 +1066,38 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         self.owner = owner
 
     @overload
+    def __get__[AccessOwner, NonNullT](
+        self: Attr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            NonNullT | None,
+            SetValueT,
+            Any,
+        ],
+        instance: None,
+        owner: type[AccessOwner],
+    ) -> Attr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        AccessOwner,
+        WriteT,
+        NonNullT | None,
+        SetValueT,
+        NonNullT,
+    ]: ...
+    @overload
     def __get__[AccessOwner](
-        self,
+        self: Attr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            ReadValueT,
+            SetValueT,
+            Any,
+        ],
         instance: None,
         owner: type[AccessOwner],
     ) -> Attr[
@@ -1069,6 +1107,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
         WriteT,
         ReadValueT,
         SetValueT,
+        ReadValueT,
     ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
@@ -1615,7 +1654,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             Aggregate(func="COUNT", column=self, owner=self.owner),
         )
 
-    def sum(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
+    def sum(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
         """Aggregate this column as ``SUM(col)`` (``None`` over an empty set).
 
         Rejected on non-numeric columns: ``SUM``/``AVG`` over text coerces to
@@ -1625,7 +1664,7 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
 
         self._require_numeric_aggregate("sum")
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
             Aggregate(func="SUM", column=self, owner=self.owner),
         )
 
@@ -1643,19 +1682,19 @@ class Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT = Wr
             msg = f"{func}() is only valid for numeric columns"
             raise QueryConstructionError(msg)
 
-    def min(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
+    def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
 
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
             Aggregate(func="MIN", column=self, owner=self.owner),
         )
 
-    def max(self) -> Aggregate[OwnerT, ReadValueT | None, ReadValueT]:
+    def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
 
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, ReadValueT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
             Aggregate(func="MAX", column=self, owner=self.owner),
         )
 
@@ -1716,8 +1755,17 @@ class FKAttr[
     ReadValueT,
     TargetOwnerT,
     SetValueT = WriteT,
+    CompareT = Any,
 ](
-    Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, SetValueT],
+    Attr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        OwnerT,
+        WriteT,
+        ReadValueT,
+        SetValueT,
+        CompareT,
+    ],
 ):
     """Foreign-key column descriptor that declares the model it references.
 
@@ -1732,8 +1780,41 @@ class FKAttr[
     # Class access must keep the FKAttr type (not widen to Attr) so `references`
     # stays visible; the value overloads mirror the base descriptor protocol.
     @overload
+    def __get__[AccessOwner, NonNullT](
+        self: FKAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            NonNullT | None,
+            TargetOwnerT,
+            SetValueT,
+            Any,
+        ],
+        instance: None,
+        owner: type[AccessOwner],
+    ) -> FKAttr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        AccessOwner,
+        WriteT,
+        NonNullT | None,
+        TargetOwnerT,
+        SetValueT,
+        NonNullT,
+    ]: ...
+    @overload
     def __get__[AccessOwner](
-        self,
+        self: FKAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            ReadValueT,
+            TargetOwnerT,
+            SetValueT,
+            Any,
+        ],
         instance: None,
         owner: type[AccessOwner],
     ) -> FKAttr[
@@ -1744,12 +1825,17 @@ class FKAttr[
         ReadValueT,
         TargetOwnerT,
         SetValueT,
+        ReadValueT,
     ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
     @overload
     def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
-    def __get__(self, instance: object | None, owner: type[Any]) -> object:
+    def __get__(  # ty: ignore[invalid-method-override]
+        self,
+        instance: object | None,
+        owner: type[Any],
+    ) -> object:
         return cast("object", super().__get__(cast("Any", instance), owner))
 
     @overload
@@ -1762,6 +1848,7 @@ class FKAttr[
             KeyT,
             TargetOwnerT,
             SetValueT,
+            Any,
         ],
         other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
     ) -> JoinOn[OwnerT, TargetOwnerT]: ...
@@ -1776,6 +1863,7 @@ class FKAttr[
             KeyT | None,
             TargetOwnerT,
             SetValueT,
+            Any,
         ],
         other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
     ) -> JoinOn[OwnerT, TargetOwnerT]: ...

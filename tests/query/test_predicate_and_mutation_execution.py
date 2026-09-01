@@ -57,7 +57,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
         _ = email_ne(None)
 
     with assert_raises(QueryConstructionError):
-        _ = User.email.in_()
+        _ = User.email.in_()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
         _ = email_not_in("a@example.com", None)
@@ -87,10 +87,10 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
     assert_is(all_query.all(), all_query)
 
     with assert_raises(QueryConstructionError):
-        _ = base_query.where()
+        _ = base_query.where()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
-        _ = base_query.order_by()
+        _ = base_query.order_by()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
         _ = all_query.where(User.status.eq("active"))
@@ -133,7 +133,7 @@ def update_compilation_requires_set_and_filter_intent() -> None:
     assert_ne(filtered_query, set_query)
 
     with assert_raises(QueryConstructionError):
-        _ = base_query.set()
+        _ = base_query.set()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
         _ = set_query.all().where(User.email.eq("old@example.com"))
@@ -181,7 +181,7 @@ def delete_compilation_requires_filter_intent() -> None:
     assert_is(all_query.all(), all_query)
 
     with assert_raises(QueryConstructionError):
-        _ = base_query.where()
+        _ = base_query.where()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
         _ = all_query.where(User.status.eq("disabled"))

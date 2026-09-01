@@ -39,13 +39,13 @@ def _json_path_literal(path: str) -> str:
 
 
 @dataclass(frozen=True)
-class _JsonExtractInt[OwnerT](Comparable[OwnerT, "int | None"]):
+class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
     """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
 
     The first dialect-specific operator: it lives entirely in the MariaDB
     namespace and reaches the core only through the structural protocols.
 
-    * ``Comparable[OwnerT, int | None]`` gives it the comparison surface
+    * ``Comparable[OwnerT, int, int | None]`` gives it the comparison surface
       (``.gt(18)``) typed to ``int``, so it works as a ``WHERE`` operand.
     * ``__owner_model__`` / ``__compile_sql__`` satisfy ``SqlCompilable`` (the
       operand-render seam).
@@ -108,8 +108,18 @@ class JsonAttr[
     WriteT,
     ReadValueT,
     SetValueT = WriteT,
+    CompareT = Any,
 ](
-    FKAttr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, ReadValueT, Any, SetValueT],
+    FKAttr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        OwnerT,
+        WriteT,
+        ReadValueT,
+        Any,
+        SetValueT,
+        CompareT,
+    ],
 ):
     """MariaDB JSON column descriptor carrying the JSON path operators.
 
@@ -121,8 +131,39 @@ class JsonAttr[
     """
 
     @overload
+    def __get__[AccessOwner, NonNullT](
+        self: JsonAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            NonNullT | None,
+            SetValueT,
+            Any,
+        ],
+        instance: None,
+        owner: type[AccessOwner],
+    ) -> JsonAttr[
+        WriteOwnerT,
+        LoadedOwnerT,
+        AccessOwner,
+        WriteT,
+        NonNullT | None,
+        SetValueT,
+        NonNullT,
+    ]: ...
+
+    @overload
     def __get__[AccessOwner](
-        self,
+        self: JsonAttr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            ReadValueT,
+            SetValueT,
+            Any,
+        ],
         instance: None,
         owner: type[AccessOwner],
     ) -> JsonAttr[
@@ -132,6 +173,7 @@ class JsonAttr[
         WriteT,
         ReadValueT,
         SetValueT,
+        ReadValueT,
     ]: ...
 
     @overload
@@ -140,7 +182,11 @@ class JsonAttr[
     @overload
     def __get__(self, instance: LoadedOwnerT, owner: type[Any]) -> ReadValueT: ...
 
-    def __get__(self, instance: object | None, owner: type[Any]) -> object:
+    def __get__(  # ty: ignore[invalid-method-override]
+        self,
+        instance: object | None,
+        owner: type[Any],
+    ) -> object:
         return cast("object", super().__get__(cast("Any", instance), owner))
 
     def json_extract_int(self, path: str) -> _JsonExtractInt[OwnerT]:

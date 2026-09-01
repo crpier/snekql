@@ -117,7 +117,7 @@ def delete_requires_exactly_one_filter_intent() -> None:
     assert_is(all_query.all(), all_query)
 
     with assert_raises(QueryConstructionError):
-        _ = base_query.where()
+        _ = base_query.where()  # ty: ignore[no-matching-overload]
 
     with assert_raises(QueryConstructionError):
         _ = filtered_query.all()
