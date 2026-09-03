@@ -26,6 +26,7 @@ from snekql._migrations import (
     MigrationResult,
     prepare_migrations,
 )
+from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql._runtime_selection import (
     RuntimeConfig,
     resolve_runtime_config,
@@ -36,7 +37,6 @@ from snekql.errors import (
     ExecutionError,
     MigrationDeclarationError,
     MultipleResultsError,
-    NoResultError,
     QueryCompilationError,
     QueryConstructionError,
     TransactionClosedError,
@@ -51,27 +51,14 @@ from snekql.model import (
 )
 from snekql.query import (
     AnySelectQuery,
-    AnyWriteQuery,
     DeleteQuery,
-    DeleteReturningQuery,
-    DeleteReturningTupleQuery,
-    DeleteReturningValueQuery,
     InsertManyQuery,
-    InsertManyReturningQuery,
-    InsertManyReturningTupleQuery,
-    InsertManyReturningValueQuery,
     InsertQuery,
-    InsertReturningQuery,
-    InsertReturningTupleQuery,
-    InsertReturningValueQuery,
     JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
-    UpdateReturningQuery,
-    UpdateReturningTupleQuery,
-    UpdateReturningValueQuery,
     _OptionalQueryShape,
     _QueryShape,
     _WriteShape,
@@ -172,7 +159,20 @@ class QueryCodec(Protocol):
         query: AnySelectQuery,
     ) -> tuple[str, tuple[object, ...]]: ...
 
-    def compile_write_sql(self, query: object) -> tuple[str, tuple[object, ...]]: ...
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: bool = True,
+    ) -> SelectPlan[object]: ...
+
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: bool = True,
+    ) -> WritePlan[object]: ...
 
     def materialize_select_row(
         self,
@@ -181,14 +181,6 @@ class QueryCodec(Protocol):
         *,
         validate: bool = True,
     ) -> object: ...
-
-    def materialize_write_rows(
-        self,
-        query: object,
-        rows: Sequence[Sequence[object]],
-        *,
-        validate: bool = True,
-    ) -> list[object]: ...
 
 
 class RuntimeBackend(Protocol):
@@ -672,20 +664,41 @@ class Transaction:
         """
 
         async with self._lock:
-            select_query, rows = await self._fetch_capped_rows(
-                query, method="fetch_one"
+            connection = self.require_connection()
+            plan = self.runtime.query_codec.compile_select_plan(
+                cast("_QueryShape[Any, Any, object]", query),
+                cardinality="one",
+                validate=validate,
             )
-        if not rows:
-            msg = "fetch_one found no row"
-            raise NoResultError(msg)
-        if len(rows) > 1:
-            msg = "fetch_one found more than one row"
-            raise MultipleResultsError(msg)
-        return self.runtime.query_codec.materialize_select_row(
-            select_query,
-            rows[0],
-            validate=validate,
-        )
+            self._validate_plan_backend(plan.backend)
+            try:
+                cursor = await connection.execute(plan.sql, plan.params)
+                try:
+                    raw_rows = await cursor.fetchmany(plan.fetch_limit)
+                finally:
+                    await cursor.close()
+            except Exception as error:
+                logger.exception(
+                    "%s fetch_one query failed: %s params=%r",
+                    self.runtime.backend_family,
+                    plan.sql,
+                    plan.params,
+                )
+                msg = "select failed"
+                raise ExecutionError(
+                    msg,
+                    sql=plan.sql,
+                    params=plan.params,
+                ) from error
+            rows = [tuple(row) for row in raw_rows]
+            logger.debug(
+                "%s fetch_one executed: %s params=%r rows=%d",
+                self.runtime.backend_family,
+                plan.sql,
+                plan.params,
+                len(rows),
+            )
+        return plan.materialize(rows)
 
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
@@ -793,50 +806,22 @@ class Transaction:
         ``delete`` for return-value details.
         """
 
-        write_query: AnyWriteQuery = cast("AnyWriteQuery", query)
-        returning = isinstance(
-            write_query,
-            (
-                InsertReturningQuery,
-                InsertManyReturningQuery,
-                InsertReturningValueQuery,
-                InsertReturningTupleQuery,
-                InsertManyReturningValueQuery,
-                InsertManyReturningTupleQuery,
-                UpdateReturningQuery,
-                UpdateReturningValueQuery,
-                UpdateReturningTupleQuery,
-                DeleteReturningQuery,
-                DeleteReturningValueQuery,
-                DeleteReturningTupleQuery,
-            ),
-        )
-        is_many = isinstance(
-            write_query,
-            (
-                InsertManyQuery,
-                InsertManyReturningQuery,
-                InsertManyReturningValueQuery,
-                InsertManyReturningTupleQuery,
-            ),
-        )
-        affects_rows = (
-            isinstance(write_query, (UpdateQuery, DeleteQuery)) and not returning
-        )
         async with self._lock:
             connection = self.require_connection()
-            if is_many and not self._insert_rows(write_query):
-                return [] if returning else None
-            self._validate_query_backend(cast("object", write_query))
-            sql, params = self.runtime.query_codec.compile_write_sql(
-                cast("object", write_query)
+            plan = self.runtime.query_codec.compile_write_plan(
+                cast("_WriteShape[object]", query),
+                validate=validate,
             )
+            if plan.sql is None:
+                return plan.materialize(rowcount=0, rows=())
+            self._validate_plan_backend(plan.backend)
+            sql = plan.sql
             returned_rows: list[tuple[object, ...]] = []
             affected_rows = 0
             try:
-                cursor = await connection.execute(sql, params)
+                cursor = await connection.execute(sql, plan.params)
                 try:
-                    if returning:
+                    if plan.returns_rows:
                         returned_rows = [tuple(row) for row in await cursor.fetchall()]
                     affected_rows = cursor.rowcount
                 finally:
@@ -846,56 +831,20 @@ class Transaction:
                     "%s write query failed: %s params=%r",
                     self.runtime.backend_family,
                     sql,
-                    params,
+                    plan.params,
                 )
                 msg = "write failed"
-                raise ExecutionError(msg, sql=sql, params=params) from error
+                raise ExecutionError(msg, sql=sql, params=plan.params) from error
             logger.debug(
                 "%s write executed: %s params=%r",
                 self.runtime.backend_family,
                 sql,
-                params,
+                plan.params,
             )
-            if affects_rows:
-                return affected_rows
-            if not returning:
-                return None
-            models = self.runtime.query_codec.materialize_write_rows(
-                cast("object", write_query),
-                returned_rows,
-                validate=validate,
+            return plan.materialize(
+                rowcount=affected_rows,
+                rows=returned_rows,
             )
-            if is_many or isinstance(
-                write_query,
-                (
-                    UpdateReturningQuery,
-                    UpdateReturningValueQuery,
-                    UpdateReturningTupleQuery,
-                    DeleteReturningQuery,
-                    DeleteReturningValueQuery,
-                    DeleteReturningTupleQuery,
-                ),
-            ):
-                return models
-            return models[0]
-
-    @staticmethod
-    def _insert_rows(query: object) -> tuple[Table[Any], ...]:
-        if isinstance(
-            query,
-            (
-                InsertQuery,
-                InsertManyQuery,
-                InsertReturningQuery,
-                InsertManyReturningQuery,
-                InsertReturningValueQuery,
-                InsertReturningTupleQuery,
-                InsertManyReturningValueQuery,
-                InsertManyReturningTupleQuery,
-            ),
-        ):
-            return query.state.rows
-        return ()
 
     def require_connection(self) -> RuntimeConnection:
         """Return the active connection or reject use before start / after close.
@@ -918,6 +867,18 @@ class Transaction:
             raise TransactionNotStartedError(msg)
         return connection
 
+    def _validate_plan_backend(self, received_backend: BackendFamily) -> None:
+        """Reject a compiled plan for a different Backend Runtime Adapter."""
+
+        expected_backend = self.runtime.backend_family
+        if received_backend == expected_backend:
+            return
+        msg = (
+            f"backend mismatch: expected {expected_backend} query, "
+            f"received {received_backend} query"
+        )
+        raise DatabaseRuntimeError(msg)
+
     def _validate_query_backend(self, query: object) -> None:
         query_model = self._query_model(query)
         received_backend = require_model_backend(query_model)
@@ -934,38 +895,10 @@ class Transaction:
     def _query_model(query: object) -> type[Table[Any]]:
         if isinstance(
             query,
-            InsertQuery
-            | InsertManyQuery
-            | InsertReturningQuery
-            | InsertManyReturningQuery
-            | InsertReturningValueQuery
-            | InsertReturningTupleQuery
-            | InsertManyReturningValueQuery
-            | InsertManyReturningTupleQuery,
-        ):
-            model = query.state.model()
-            if model is None:
-                msg = "an empty bulk insert has no model to validate"
-                raise QueryCompilationError(msg)
-            return model
-        if isinstance(
-            query,
             SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
         ):
             return query.state.model
-        if isinstance(
-            query,
-            UpdateQuery
-            | UpdateReturningQuery
-            | UpdateReturningValueQuery
-            | UpdateReturningTupleQuery
-            | DeleteQuery
-            | DeleteReturningQuery
-            | DeleteReturningValueQuery
-            | DeleteReturningTupleQuery,
-        ):
-            return query.state.model
-        msg = "query backend validation requires a snekql query"
+        msg = "query backend validation requires a select query"
         raise QueryCompilationError(msg)
 
     @staticmethod

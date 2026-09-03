@@ -115,7 +115,11 @@ class DatabaseClosingError(DatabaseRuntimeError):
     """Raised when new work starts while Database.close is in progress."""
 
 
-class NoResultError(DatabaseRuntimeError):
+class ResultCardinalityError(DatabaseRuntimeError):
+    """Raised when database rows violate an execution plan's cardinality."""
+
+
+class NoResultError(ResultCardinalityError):
     """Raised when ``fetch_one`` finds no row for a select that must match one.
 
     ``fetch_one`` carries an exactly-one contract; absence is an error rather
@@ -125,7 +129,7 @@ class NoResultError(DatabaseRuntimeError):
     """
 
 
-class MultipleResultsError(DatabaseRuntimeError):
+class MultipleResultsError(ResultCardinalityError):
     """Raised when ``fetch_one``/``fetch_at_most_one`` match more than one row.
 
     Both methods cap cardinality at one. Select ``first of N`` explicitly with

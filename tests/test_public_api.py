@@ -76,6 +76,7 @@ _NEUTRAL_NAMES = frozenset(
         "QueryCompilationError",
         "QueryConstructionError",
         "QueryError",
+        "ResultCardinalityError",
         "Scalar",
         "SchemaError",
         "SchemaPolicy",

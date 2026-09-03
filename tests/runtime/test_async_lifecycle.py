@@ -10,9 +10,10 @@ import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
 from snekql._migrations import MigrationPlan, MigrationResult
+from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
-from snekql.query import AnySelectQuery
+from snekql.query import AnySelectQuery, _QueryShape, _WriteShape
 from snekql.runtime import QueryCodec, RuntimeConnection, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
@@ -31,7 +32,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.validation import NonNegativeFloat
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
@@ -128,6 +129,27 @@ class _CannedQueryCodec:
     def compile_write_sql(self, query: object) -> tuple[str, tuple[object, ...]]:
         _ = query
         return "INSERT INTO async_user VALUES (?)", ("alice@example.com",)
+
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: bool = True,
+    ) -> SelectPlan[object]:
+        return SQLITE_CODEC.compile_select_plan(
+            query,
+            cardinality=cardinality,
+            validate=validate,
+        )
+
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: bool = True,
+    ) -> WritePlan[object]:
+        return SQLITE_CODEC.compile_write_plan(query, validate=validate)
 
     def materialize_select_row(
         self,

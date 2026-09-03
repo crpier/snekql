@@ -92,6 +92,24 @@ async def sqlite_transaction_rejects_mariadb_queries() -> None:
 
 
 @test(mark="medium")
+async def sqlite_transaction_rejects_mariadb_write_plans() -> None:
+    """A write plan carries the query backend and is rejected before execution."""
+
+    sqlite_database = await Database.initialize(database=":memory:")
+    try:
+        async with sqlite_database.transaction() as transaction:
+            with assert_raises(DatabaseRuntimeError) as error:
+                _ = await transaction.execute(
+                    mariadb.insert(MariadbIdentityUser(email="a@example.com")),
+                )
+    finally:
+        await sqlite_database.close()
+
+    assert_in("expected sqlite", str(error.exception))
+    assert_in("received mariadb", str(error.exception))
+
+
+@test(mark="medium")
 async def mariadb_transaction_rejects_sqlite_queries() -> None:
     """MariaDB Transactions reject SQLite queries."""
 

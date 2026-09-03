@@ -10,6 +10,14 @@
   ordering and range operations are rejected; use `UtcDatetime` when those
   operations are required. (#237)
 
+### Changed
+
+- Query Compilation now produces private typed execution plans for `fetch_one`
+  and writes. Plans carry SQL, parameters, backend identity, cardinality, and
+  validation policy, so Query Runtime no longer dispatches writes by concrete
+  builder class. Missing single-row `RETURNING` results now raise
+  `ResultCardinalityError` instead of leaking `IndexError`. (#250)
+
 ### Fixed
 
 - Required nullable enforced foreign keys can be declared as

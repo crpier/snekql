@@ -49,9 +49,11 @@ Runtime errors:
   - `TransactionClosedError`: a transaction was used after it closed.
   - `TransactionNotStartedError`: a query ran before the transaction was entered.
   - `TransactionReuseError`: a transaction was entered more than once.
-- `NoResultError`: `fetch_one` found no row for its exactly-one contract.
-- `MultipleResultsError`: `fetch_one`/`fetch_one_or_none` matched more than one
-  row.
+- `ResultCardinalityError`: database output violated an Execution Plan's row
+  contract, including a single-row `RETURNING` statement that produced no row.
+  - `NoResultError`: `fetch_one` found no row for its exactly-one contract.
+  - `MultipleResultsError`: `fetch_one`/`fetch_one_or_none` matched more than one
+    row.
 - `ExecutionError`: SQLite execution failed and query context is available.
 
 Schema errors:

@@ -129,6 +129,9 @@ class InsertState:
         return type(self.rows[0])
 
 
+type WriteState = InsertState | UpdateState | DeleteState
+
+
 def require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
     if not isinstance(value, Attr):
         msg = "select requires a model or field"
