@@ -22,7 +22,7 @@ from snekql.sqlite import (
 from tests.helpers import capture_snekql_logs
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Sequence
 
     from snekql._schema_plan import PlannedModel
 
@@ -36,7 +36,7 @@ _USER_SHAPE = TableShape(
             nullable=True,
             primary_key=True,
             auto_increment=True,
-            has_server_default=False,
+            server_default=None,
             collation=None,
         ),
         ColumnShape(
@@ -45,7 +45,7 @@ _USER_SHAPE = TableShape(
             nullable=False,
             primary_key=False,
             auto_increment=False,
-            has_server_default=False,
+            server_default=None,
             collation=None,
         ),
     ),
@@ -85,9 +85,23 @@ class _FakeSchemaBackend:
         self.calls.append(("expected_shape", planned_model.table_name))
         return self.expected
 
-    async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
-        self.calls.append(("inspect_shape", planned_model.table_name))
-        return self.actual.get(planned_model.table_name)
+    async def inspect_shapes(
+        self,
+        planned_models: Sequence[PlannedModel],
+    ) -> dict[str, TableShape]:
+        table_names = tuple(model.table_name for model in planned_models)
+        self.calls.append(("inspect_shapes", ",".join(table_names)))
+        return {
+            table_name: self.actual[table_name]
+            for table_name in table_names
+            if table_name in self.actual
+        }
+
+
+class Team[S = Pending](Model[S, "Team[Fetched]"]):
+    """Second table used to prove one bulk catalog inspection."""
+
+    name: Team.Col[str] = Text(nullable=False)
 
 
 class User[S = Pending](Model[S, "User[Fetched]"]):
@@ -203,6 +217,19 @@ async def matching_schema_is_verified_without_mutation() -> None:
         await verify_schema(backend, [User], "strict")
 
     assert_true(logs.has(logging.DEBUG, "schema table and indexes for 'user' verified"))
+
+
+@test(mark="fast")
+async def requested_models_are_inspected_in_one_backend_batch() -> None:
+    """The shared flow gives every planned model to one catalog inspection."""
+
+    backend = _FakeSchemaBackend(
+        actual={"user": _USER_SHAPE, "team": _USER_SHAPE},
+    )
+
+    await verify_schema(backend, [User, Team], "warn")
+
+    assert_eq(backend.calls[0], ("inspect_shapes", "user,team"))
 
 
 @test(mark="fast")

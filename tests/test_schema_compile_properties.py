@@ -26,7 +26,7 @@ from snekql._schema_compile import (
 )
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_plan import PlannedColumn, PlannedForeignKey, PlannedModel
-from snekql._schema_shape import ColumnShape
+from snekql._schema_shape import ColumnShape, IndexShape
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb
 from snekql.sqlite import Integer
@@ -48,7 +48,7 @@ _DUMMY_SHAPE = ColumnShape(
     nullable=True,
     primary_key=False,
     auto_increment=False,
-    has_server_default=False,
+    server_default=None,
     collation=None,
 )
 
@@ -65,6 +65,12 @@ def _dialect(quote: Any) -> SchemaDialect:
         quote_identifier=quote,
         compile_column_definition=lambda column: f"{quote(column.name)} INTEGER",
         expected_column_shape=lambda _column: _DUMMY_SHAPE,
+        expected_index_shape=lambda index: IndexShape(
+            column_names=index.column_names,
+            name=index.name,
+            unique=index.unique,
+        ),
+        normalize_foreign_key_action=lambda action: action or "NO ACTION",
         table_suffix=_TABLE_SUFFIX,
         verifies_foreign_keys=True,
     )

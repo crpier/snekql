@@ -1025,6 +1025,19 @@ if TYPE_CHECKING:
             True,  # ty: ignore[too-many-positional-arguments]
         )
 
+    async def check_schema_verification_types(database: sqlite.Database) -> None:
+        """Schema verification exposes backend-neutral immutable value types."""
+
+        verification = assert_type(
+            await database.verify([User]),
+            sqlite.SchemaVerificationResult,
+        )
+        _ = assert_type(verification.checked_tables, tuple[str, ...])
+        _ = assert_type(verification.issues, tuple[sqlite.SchemaDriftIssue, ...])
+        issue = sqlite.SchemaDriftIssue("user", "table is missing")
+        _ = assert_type(issue.table_name, str)
+        _ = assert_type(issue.detail, str)
+
     async def execute_public_query_annotations(
         transaction: Transaction,
         read_query: Select[User[Fetched]],

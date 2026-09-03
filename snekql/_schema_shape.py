@@ -20,33 +20,38 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ColumnShape:
-    """Semantic column shape compared name-for-name, independent of position."""
+    """Semantic column shape with backend-specific facts normalized when exposed."""
 
     name: str
     storage_type: str
     nullable: bool
     primary_key: bool
     auto_increment: bool
-    has_server_default: bool
+    server_default: str | None
     collation: str | None
+    datetime_precision: int | None = None
+    unsigned: bool | None = None
 
 
 @dataclass(frozen=True)
 class IndexShape:
-    """Semantic index shape compared by name, columns, and uniqueness."""
+    """Semantic index shape including backend-specific completeness and type."""
 
     name: str
     column_names: tuple[str, ...]
     unique: bool
+    partial: bool = False
+    prefix_lengths: tuple[int | None, ...] | None = None
+    index_type: str | None = None
 
 
 @dataclass(frozen=True)
 class ForeignKeyShape:
     """Semantic foreign-key shape compared by local column, target, and actions.
 
-    ``on_delete``/``on_update`` hold the normalized referential action; an FK with
-    no declared action carries ``"NO ACTION"``, matching what the catalog reports,
-    so a missing action and an explicit ``NO ACTION`` compare equal.
+    `on_delete`/`on_update` hold the normalized referential action. An unset
+    action carries `"NO ACTION"`; MariaDB's equivalent `"RESTRICT"` catalog
+    value is normalized to the same token.
     """
 
     column_name: str
@@ -106,15 +111,23 @@ def _column_differences(expected: ColumnShape, actual: ColumnShape) -> list[str]
             f"{expected.auto_increment}, found {actual.auto_increment}"
         )
         differences.append(auto_increment_message)
-    if expected.has_server_default != actual.has_server_default:
-        default_message = (
+    if expected.server_default != actual.server_default:
+        differences.append(
             "server default expected "
-            f"{expected.has_server_default}, found {actual.has_server_default}"
+            f"{expected.server_default!r}, found {actual.server_default!r}"
         )
-        differences.append(default_message)
     if expected.collation != actual.collation:
         differences.append(
             f"collation expected {expected.collation!r}, found {actual.collation!r}"
+        )
+    if expected.datetime_precision != actual.datetime_precision:
+        differences.append(
+            "datetime precision expected "
+            f"{expected.datetime_precision}, found {actual.datetime_precision}"
+        )
+    if expected.unsigned != actual.unsigned:
+        differences.append(
+            f"unsigned expected {expected.unsigned}, found {actual.unsigned}"
         )
     return differences
 
@@ -157,6 +170,20 @@ def _index_differences(expected: IndexShape, actual: IndexShape) -> list[str]:
         differences.append(
             f"uniqueness expected {expected.unique}, found {actual.unique}"
         )
+    if expected.partial != actual.partial:
+        differences.append(
+            f"partial expected {expected.partial}, found {actual.partial}"
+        )
+    if expected.prefix_lengths != actual.prefix_lengths:
+        differences.append(
+            "prefix lengths expected "
+            f"{list(expected.prefix_lengths or ())}, "
+            f"found {list(actual.prefix_lengths or ())}"
+        )
+    if expected.index_type != actual.index_type:
+        differences.append(
+            f"index type expected {expected.index_type!r}, found {actual.index_type!r}"
+        )
     return differences
 
 
@@ -186,11 +213,15 @@ def _diff_indexes(
             issues.append(f"index {name!r} differs: {', '.join(differences)}")
 
 
-def _describe_foreign_key(foreign_key: ForeignKeyShape) -> str:
+def _describe_foreign_key(
+    foreign_key: ForeignKeyShape,
+    *,
+    include_default_actions: bool = False,
+) -> str:
     description = f"{foreign_key.target_table}.{foreign_key.target_column}"
-    if foreign_key.on_delete != "NO ACTION":
+    if include_default_actions or foreign_key.on_delete != "NO ACTION":
         description += f" ON DELETE {foreign_key.on_delete}"
-    if foreign_key.on_update != "NO ACTION":
+    if include_default_actions or foreign_key.on_update != "NO ACTION":
         description += f" ON UPDATE {foreign_key.on_update}"
     return description
 
@@ -223,8 +254,8 @@ def _diff_foreign_keys(
         elif _foreign_key_facts(actual_fk) != _foreign_key_facts(expected_fk):
             differs_message = (
                 f"foreign key on column {column_name!r} differs: "
-                f"expected -> {_describe_foreign_key(expected_fk)}, "
-                f"found -> {_describe_foreign_key(actual_fk)}"
+                f"expected -> {_describe_foreign_key(expected_fk, include_default_actions=True)}, "
+                f"found -> {_describe_foreign_key(actual_fk, include_default_actions=True)}"
             )
             issues.append(differs_message)
     for column_name, actual_fk in actual_by_column.items():

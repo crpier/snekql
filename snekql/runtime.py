@@ -32,6 +32,7 @@ from snekql._runtime_selection import (
     resolve_runtime_config,
     validate_model_backends,
 )
+from snekql._schema_verification import SchemaVerificationResult
 from snekql.errors import (
     DatabaseRuntimeError,
     ExecutionError,
@@ -217,7 +218,7 @@ class RuntimeBackend(Protocol):
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
-    ) -> None: ...
+    ) -> SchemaVerificationResult: ...
 
 
 class ChunkStream[RowT]:
@@ -1060,15 +1061,14 @@ class Database[FamilyT: BackendFamily]:
         models: Sequence[_SelectableModelClass[FamilyT, Any, Any]],
         *,
         policy: SchemaPolicy = "strict",
-    ) -> None:
+    ) -> SchemaVerificationResult:
         """Verify the live schema against Table Models, a partial structural check.
 
-        Inspects each model's live table and reports Schema Drift under the
-        Schema Policy (`strict` raises `SchemaVerificationError`, `warn` logs).
-        It ties hand-written Migrations back to current model metadata and never
-        creates anything. Verification is deliberately partial and structural --
-        see ADR 0008 and `docs/schema-drift.md` for what it cannot see (default
-        values, CHECK constraints, triggers, and more).
+        Inspects every model before applying the Schema Policy. `strict` raises
+        `SchemaVerificationError` with the result attached; `warn` logs drift and
+        returns it. Verification ties hand-written Migrations back to current
+        model metadata and never creates anything. It remains deliberately
+        partial and structural; see `docs/schema-drift.md` for the exact scope.
         """
 
         backend_family = self.runtime.backend_family
@@ -1085,7 +1085,7 @@ class Database[FamilyT: BackendFamily]:
                 table_names,
                 policy,
             )
-            await self.runtime.verify_schema(table_models, policy)
+            verification_result = await self.runtime.verify_schema(table_models, policy)
             logger.info(
                 "%s database verify completed: %d model(s) %r",
                 backend_family,
@@ -1095,6 +1095,7 @@ class Database[FamilyT: BackendFamily]:
         except Exception:
             logger.exception("database verify failed")
             raise
+        return verification_result
 
     def transaction(
         self,

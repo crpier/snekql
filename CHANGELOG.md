@@ -33,6 +33,15 @@
 
 ### Fixed
 
+- `Database.verify(...)` now inspects every requested Table Model before applying
+  policy and returns an immutable, machine-readable `SchemaVerificationResult`;
+  strict failures carry the same result. SQLite verification is cancellation
+  safe and now distinguishes exact `AUTOINCREMENT`, partial indexes, collations,
+  and supported server defaults. MariaDB now verifies foreign keys, signedness,
+  datetime precision, index prefixes/types, and supported server defaults while
+  excluding required implicit FK indexes. Catalog reads are batched where the
+  backends permit. (#253)
+
 - Bound column descriptors now freeze public owner, name, nullability, default,
   key, and storage metadata after Table Model declaration finishes. Attempts to
   assign or delete finalized metadata raise `FrozenModelError`. (#249)

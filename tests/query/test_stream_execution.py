@@ -23,6 +23,7 @@ from snekql.sqlite import (
     QueryCompilationError,
     QueryConstructionError,
     SchemaPolicy,
+    SchemaVerificationResult,
     Text,
     insert,
     select,
@@ -299,9 +300,10 @@ class _CleanupRuntime:
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
-    ) -> None:
+    ) -> SchemaVerificationResult:
         _ = models
         _ = schema_policy
+        return SchemaVerificationResult(checked_tables=(), issues=())
 
 
 def _cleanup_rows(count: int) -> list[tuple[int]]:

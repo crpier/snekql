@@ -28,24 +28,32 @@ and "you rolled the app forward past the migration that feeds it."
 - **A separate imperative verb.** `verify` is not welded to boot. Nothing
   verifies by default; the safety net is recovered by *documentation* —
   `migrate` and `verify` are always shown together, never apart — not by code.
-- **`schema_policy` lives here.** `strict` raises on divergence; `warn` logs it.
-  The policy moved off `initialize` (ADR 0007).
+- **`schema_policy` lives here.** Every requested table is inspected before the
+  policy is applied. `strict` raises with the immutable Schema Verification
+  Result attached; `warn` logs and returns that result. The policy moved off
+  `initialize` (ADR 0007).
 - **Scope is structural and partial, by design.** Comparison is semantic:
   columns and indexes match by name regardless of declaration order, and cosmetic
   DDL differences (identifier quoting, whitespace, column/index ordering) are
   ignored. `verify` compares:
   - table presence;
   - per column: name, storage type / affinity-class, nullability, primary-key,
-    auto-increment, *whether* a server default exists, collation;
-  - per index: name, columns, uniqueness;
+    auto-increment, supported server-default expression, and collation; MariaDB
+    additionally checks numeric signedness and datetime precision;
+  - per index: name, columns, uniqueness, and whether SQLite made it partial;
+    MariaDB additionally checks prefix lengths and index type;
   - per foreign key: local column → target table/column;
   - table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).
 
-  It does **not**, and across backends *cannot*, see: default **values** (only
-  whether a default exists — a changed default value passes), `CHECK`
-  constraints, generated-column expressions, triggers, views, exact SQLite types
-  (affinity collapses `VARCHAR(255)` and `TEXT`), and data. It is a structural
-  net for the drift that breaks queries, not a behavioral guarantee.
+  It does **not**, and across backends *cannot*, represent an expected literal
+  server default; because Table Models cannot declare one, a live literal is
+  drift rather than value-verified. It also cannot see partial-index predicates, `CHECK`
+  constraints, generated-column expressions, triggers, views, exact SQLite
+  types (affinity collapses `VARCHAR(255)` and `TEXT`), and data. MariaDB does
+  not expose whether an FK-supporting index was implicit or explicitly created,
+  so an otherwise-unmanaged index that starts with a foreign-key column is
+  ignored. It is a structural net for the drift that breaks queries, not a
+  behavioral guarantee.
 
 ## Considered Options
 
@@ -57,7 +65,7 @@ and "you rolled the app forward past the migration that feeds it."
   nothing on the existing-database replica boot that never migrates. A separate
   verb is the composable fit and covers both the deploy step (`init → migrate →
   verify`) and the replica boot (`init → verify`).
-- **Widen verification toward full schema equality (default values, CHECK,
+- **Widen verification toward full schema equality (arbitrary defaults, CHECK,
   triggers, generated expressions).** Rejected: fidelity is bounded by each
   backend's catalog introspection. Chasing equality fights SQLite/MariaDB limits
   for diminishing returns and would promise a guarantee that cannot hold uniformly
@@ -67,10 +75,13 @@ and "you rolled the app forward past the migration that feeds it."
 
 - Forgetting `verify` silently drops the only migration↔model net. Mitigated by
   documenting `migrate` and `verify` together everywhere.
-- A migration that sets a wrong default **value**, adds a `CHECK`, or installs a
-  trigger passes verification. This is documented as out of scope, not a bug.
-- The deploy step runs `init → migrate → verify`; replicas run `init → verify` to
-  confirm the already-migrated schema matches this build's models. Both follow
-  the caller's topology (ADR 0007).
+- A changed `CurrentTimestamp` expression is drift. Literal defaults have no
+  corresponding Table Model declaration, so intentional live literals are also
+  drift rather than value-verified; `CHECK` constraints and triggers remain
+  invisible.
+- The deploy step runs `init → migrate → verify_migrations → verify`; replicas
+  run `init → verify_migrations → verify` to confirm recorded history and the
+  already-migrated schema match this build's declarations. Both follow the
+  caller's topology (ADR 0007).
 - `docs/schema-drift.md` and `docs/migrations.md` are updated to describe `verify`
   as a separate, partial step and to relocate `schema_policy` onto it.

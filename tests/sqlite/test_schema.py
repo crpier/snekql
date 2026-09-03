@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
 from typing import Any, ClassVar, cast
 
-from snektest import assert_eq, assert_raises, assert_true, test
+import anyio
+from aiosqlite import Error
+from snektest import assert_eq, assert_false, assert_raises, assert_true, test
 
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
+    CurrentTimestamp,
     Database,
     DatabaseRuntimeError,
     Fetched,
@@ -21,9 +25,12 @@ from snekql.sqlite import (
     Integer,
     Model,
     Pending,
+    SchemaDriftIssue,
     SchemaError,
     SchemaVerificationError,
+    SchemaVerificationResult,
     Text,
+    UtcDatetime,
 )
 from snekql.sqlite._schema_ddl import sqlite_type_affinity
 from snekql.sqlite.schema import verify_sqlite_schema
@@ -93,22 +100,195 @@ class _SchemaCursor:
         self.closed = True
 
 
+class _BlockingSchemaCursor(_SchemaCursor):
+    """Cursor fake that exposes and blocks one catalog read until cancellation."""
+
+    def __init__(self, started: anyio.Event) -> None:
+        super().__init__()
+        self.started: anyio.Event = started
+
+    async def fetchall(self) -> list[tuple[object, ...]]:
+        self.started.set()
+        await anyio.sleep_forever()
+        return []
+
+
 class _SchemaConnection:
     """Connection fake that returns close-observable cursors for every statement."""
 
     def __init__(self) -> None:
         self.cursors: list[_SchemaCursor] = []
+        self.in_transaction: bool = False
+        self.statements: list[str] = []
 
     async def execute(
         self,
         sql: str,
         params: tuple[object, ...] = (),
     ) -> _SchemaCursor:
-        _ = sql
         _ = params
+        self.statements.append(sql)
+        if sql == "BEGIN":
+            self.in_transaction = True
+        elif sql == "ROLLBACK":
+            self.in_transaction = False
         cursor = _SchemaCursor()
         self.cursors.append(cursor)
         return cursor
+
+
+@test(mark="medium")
+async def verify_returns_an_immutable_checked_table_result() -> None:
+    """A matching schema returns the ordered tables checked and no drift."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model used for structured verification output."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "user" ("email" TEXT NOT NULL) STRICT',
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            result = await database.verify([User])
+        finally:
+            await database.close()
+
+    assert_eq(
+        result,
+        SchemaVerificationResult(checked_tables=("user",), issues=()),
+    )
+    with assert_raises(FrozenInstanceError):
+        cast("Any", result).checked_tables = ()
+
+
+@test(mark="medium")
+async def warn_verify_returns_machine_readable_drift() -> None:
+    """Warn policy returns drift while allowing deployment tooling to continue."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model whose live email column has different nullability."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT) STRICT')
+        database = await Database.initialize(database=database_path)
+        try:
+            result = await database.verify([User], policy="warn")
+        finally:
+            await database.close()
+
+    assert_eq(
+        result.issues,
+        (
+            SchemaDriftIssue(
+                detail="column 'email' differs: nullable expected False, found True",
+                table_name="user",
+            ),
+        ),
+    )
+
+
+@test(mark="medium")
+async def verify_rejects_a_changed_supported_server_default() -> None:
+    """A present but different default cannot satisfy `CurrentTimestamp`."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Model requiring snekql's canonical SQLite server clock."""
+
+        created_at: Event.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "event" ("created_at" TEXT NOT NULL '
+            "DEFAULT CURRENT_TIMESTAMP) STRICT",
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([Event])
+        finally:
+            await database.close()
+
+    assert_true("server default" in str(raised.exception))
+    assert_true("CurrentTimestamp" in str(raised.exception))
+    assert_true("CURRENT_TIMESTAMP" in str(raised.exception))
+
+
+@test(mark="medium")
+async def verify_normalizes_the_supported_server_default_expression() -> None:
+    """Equivalent function case and spacing preserve `CurrentTimestamp` semantics."""
+
+    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        """Model requiring snekql's canonical SQLite server clock."""
+
+        created_at: Event.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "event" ("created_at" TEXT NOT NULL DEFAULT '
+            "( STRFTIME ( '%Y-%m-%dT%H:%M:%fZ' , 'NOW' ) )) STRICT",
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            result = await database.verify([Event])
+        finally:
+            await database.close()
+
+    assert_eq(result.issues, ())
+
+
+@test(mark="medium")
+async def strict_verify_reports_drift_across_every_requested_table() -> None:
+    """Strict policy raises only after collecting every requested table's drift."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """First drifting model."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+        """Second drifting model."""
+
+        name: Team.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT) STRICT')
+        _execute_sql(database_path, 'CREATE TABLE "team" ("name" TEXT) STRICT')
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([User, Team])
+        finally:
+            await database.close()
+
+    expected_result = SchemaVerificationResult(
+        checked_tables=("user", "team"),
+        issues=(
+            SchemaDriftIssue(
+                detail="column 'email' differs: nullable expected False, found True",
+                table_name="user",
+            ),
+            SchemaDriftIssue(
+                detail="column 'name' differs: nullable expected False, found True",
+                table_name="team",
+            ),
+        ),
+    )
+    assert_eq(raised.exception.result, expected_result)
+    assert_true("'user'" in str(raised.exception))
+    assert_true("'team'" in str(raised.exception))
 
 
 @test(mark="medium")
@@ -667,6 +847,32 @@ async def sqlite_type_affinity_follows_sqlite_rules() -> None:
 
 
 @test(mark="medium")
+async def quoted_autoincrement_identifier_is_not_the_keyword() -> None:
+    """Quoted identifier text cannot mark a primary key as auto-incrementing."""
+
+    class Token[S = Pending](Model[S, "Token[Fetched]"]):
+        """Model whose ordinary column is named after a SQLite keyword."""
+
+        id: Token.Col[int] = Integer(primary_key=True)
+        autoincrement: Token.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "token" ("id" INTEGER PRIMARY KEY, '
+            '"autoincrement" TEXT NOT NULL) STRICT',
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            result = await database.verify([Token])
+        finally:
+            await database.close()
+
+    assert_eq(result.issues, ())
+
+
+@test(mark="medium")
 async def verify_accepts_sqlite_integer_type_aliases() -> None:
     """A STRICT column declared ``INT`` shares INTEGER affinity and is not drift."""
 
@@ -724,6 +930,31 @@ async def verify_collapses_sqlite_text_affinity_aliases() -> None:
     message = str(raised.exception)
     assert_true("storage options" in message)
     assert_true("'body'" not in message)
+
+
+@test(mark="medium")
+async def sqlite_column_collation_drift_is_reported() -> None:
+    """A live NOCASE column differs from the model's default BINARY collation."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model expecting SQLite's default case-sensitive comparisons."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(
+            database_path,
+            'CREATE TABLE "user" ("email" TEXT COLLATE NOCASE NOT NULL) STRICT',
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([User])
+        finally:
+            await database.close()
+
+    assert_true("collation expected 'BINARY', found 'NOCASE'" in str(raised.exception))
 
 
 @test(mark="medium")
@@ -841,6 +1072,36 @@ async def strict_verify_raises_on_index_drift() -> None:
 
 
 @test(mark="medium")
+async def partial_index_cannot_satisfy_a_full_model_index() -> None:
+    """A SQLite partial index differs from the model's full index contract."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model requiring a full index over every email value."""
+
+        email: User.Col[str | None] = Text(nullable=True)
+        __indexes__: ClassVar[list[Index[Any]]] = [
+            Index(email, name="ix_user_email"),
+        ]
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        _execute_sql(database_path, 'CREATE TABLE "user" ("email" TEXT) STRICT')
+        _execute_sql(
+            database_path,
+            'CREATE INDEX "ix_user_email" ON "user" ("email") '
+            'WHERE "email" IS NOT NULL',
+        )
+        database = await Database.initialize(database=database_path)
+        try:
+            with assert_raises(SchemaVerificationError) as raised:
+                await database.verify([User])
+        finally:
+            await database.close()
+
+    assert_true("partial expected False, found True" in str(raised.exception))
+
+
+@test(mark="medium")
 async def duplicate_resolved_index_names_are_rejected() -> None:
     """Verification rejects duplicate index names across configured models."""
 
@@ -937,6 +1198,85 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
 
 
 @test(mark="fast")
+async def cancelled_sqlite_verification_rolls_back_before_returning() -> None:
+    """Cancellation cannot strand the inspected SQLite connection in a transaction."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model used to enter catalog inspection."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    class BlockingConnection(_SchemaConnection):
+        """Connection fake whose first catalog read waits for cancellation."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.inspection_started: anyio.Event = anyio.Event()
+
+        async def execute(
+            self,
+            sql: str,
+            params: tuple[object, ...] = (),
+        ) -> _SchemaCursor:
+            _ = params
+            self.statements.append(sql)
+            if sql == "BEGIN":
+                self.in_transaction = True
+            elif sql == "ROLLBACK":
+                self.in_transaction = False
+            if sql == "PRAGMA table_list":
+                cursor = _BlockingSchemaCursor(self.inspection_started)
+            else:
+                cursor = _SchemaCursor()
+            self.cursors.append(cursor)
+            return cursor
+
+    connection = BlockingConnection()
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(
+            verify_sqlite_schema,
+            cast("Any", connection),
+            [User],
+            "strict",
+        )
+        await connection.inspection_started.wait()
+        task_group.cancel_scope.cancel()
+
+    assert_false(connection.in_transaction)
+    assert_true("ROLLBACK" in connection.statements)
+
+
+@test(mark="fast")
+async def failed_sqlite_verification_rolls_back_before_returning() -> None:
+    """A catalog driver failure cannot leave its SQLite transaction open."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Model used to enter catalog inspection."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    class FailingConnection(_SchemaConnection):
+        """Connection fake raising from its catalog inspection."""
+
+        async def execute(
+            self,
+            sql: str,
+            params: tuple[object, ...] = (),
+        ) -> _SchemaCursor:
+            if sql == "PRAGMA table_list":
+                raise Error
+            return await super().execute(sql, params)
+
+    connection = FailingConnection()
+
+    with assert_raises(SchemaError):
+        await verify_sqlite_schema(cast("Any", connection), [User], "strict")
+
+    assert_false(connection.in_transaction)
+    assert_true("ROLLBACK" in connection.statements)
+
+
+@test(mark="fast")
 async def schema_verification_closes_control_cursors() -> None:
     """SQLite schema verification closes cursors returned by control statements."""
 
@@ -955,3 +1295,5 @@ async def schema_verification_closes_control_cursors() -> None:
 
     assert connection.cursors
     assert_true(all(cursor.closed for cursor in connection.cursors))
+    assert_false(connection.in_transaction)
+    assert_true("ROLLBACK" in connection.statements)

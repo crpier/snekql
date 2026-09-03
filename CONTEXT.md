@@ -45,11 +45,15 @@ The database-specific SQL compilation behavior — parameter placeholders, ident
 _Avoid_: Driver, runtime
 
 **Schema Drift**:
-A mismatch between a Table Model's declared schema and the live database schema, discovered by the Database's `verify` step. Verification is a partial, structural check, not a proof of schema equality.
+A mismatch between a Table Model's declared schema and the live database schema, discovered by the Database's `verify` step and represented as a table-scoped issue. Verification is a partial, structural check, not a proof of schema equality.
 _Avoid_: schema evolution
 
+**Schema Verification Result**:
+The immutable ordered record of tables inspected by `verify` and every Schema Drift issue found.
+_Avoid_: schema diff, verification log
+
 **Schema Policy**:
-The `verify` choice of how Schema Drift is handled: strict raises, warn logs and continues.
+The `verify` choice applied after all requested tables are inspected: strict raises with the Schema Verification Result, while warn logs and returns it.
 _Avoid_: migration strategy, runtime toggle
 
 **Migration**:

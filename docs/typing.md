@@ -422,8 +422,9 @@ same clauses.
 `SET DEFAULT` is intentionally unsupported: SQLite honors it but InnoDB silently
 ignores it, so it is not portable. `"SET NULL"` is rejected at declaration on a
 `NOT NULL` or primary-key foreign-key column, where the action could never fire.
-On SQLite, `verify(...)` compares the action and reports a model/live mismatch as
-drift; MariaDB does not verify foreign keys.
+On both backends, `verify(...)` compares managed targets and actions and reports
+a model/live mismatch as drift. MariaDB normalizes its equivalent `RESTRICT`
+and `NO ACTION` catalog spellings.
 
 ### Composite primary keys
 
@@ -507,7 +508,9 @@ Table models carry backend identity. `db.verify(...)` rejects a model whose
 backend does not match the runtime config, and `Transaction` rejects a query
 built from another backend's model before SQL is executed. (Initialization is
 connect-only and takes no models, so a wrong-backend deploy is caught at the
-first `verify` or query, not at init.)
+first `verify` or query, not at init.) Both namespaces expose the same
+non-generic `SchemaVerificationResult`; backend-family witnesses remain internal
+and do not appear in deployment-tooling annotations.
 
 `ty` can see the backend namespace types where they are explicit, and runtime
 checks cover the remaining cases that Python's type system cannot express yet.

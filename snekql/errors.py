@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from snekql._schema_verification import SchemaVerificationResult
+
 
 class SnekqlError(Exception):
     """Base class for all intentional package-originated exceptions.
@@ -177,7 +182,16 @@ class SchemaError(SnekqlError):
 
 
 class SchemaVerificationError(SchemaError):
-    """Raised when an existing database table drifts from model DDL."""
+    """Raised after strict verification collects all live-schema drift."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        result: SchemaVerificationResult,
+    ) -> None:
+        super().__init__(message)
+        self.result: SchemaVerificationResult = result
 
 
 class MigrationError(SnekqlError):

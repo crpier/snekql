@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar, cast
 
@@ -22,6 +23,7 @@ from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
     Fetched,
+    ForeignKey,
     Index,
     Pending,
     SchemaError,
@@ -106,6 +108,106 @@ async def database_session(
         yield _DatabaseSession(database=database, server=server)
     finally:
         await database.close()
+
+
+@test(mark="medium")
+async def mariadb_model_foreign_key_verifies_without_implicit_index_drift() -> None:
+    """MariaDB's required FK backing index is not an unexpected managed index."""
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Referenced table."""
+
+        __tablename__ = "issue253_fk_user"
+        id: User.Col[int] = mariadb.Integer(primary_key=True)
+
+    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+        """Table with an enforced foreign key but no declared index."""
+
+        __tablename__ = "issue253_fk_order"
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
+
+    session = await load_fixture(database_session([User, Order]))
+
+    result = await session.database.verify([User, Order])
+
+    assert_eq(result.issues, ())
+
+
+@test(mark="medium")
+async def mariadb_foreign_key_action_drift_is_reported() -> None:
+    """MariaDB compares managed referential actions semantically."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Referenced table."""
+
+        __tablename__ = "issue253_action_user"
+        id: User.Col[int] = mariadb.Integer(primary_key=True)
+
+    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+        """Model requiring cascading deletes."""
+
+        __tablename__ = "issue253_action_order"
+        user_id: Order.FKCol[User, int] = ForeignKey(
+            User.id,
+            nullable=False,
+            on_delete="CASCADE",
+        )
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_action_user "
+        "(id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB"
+    )
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_action_order (user_id BIGINT NOT NULL, "
+        "FOREIGN KEY (user_id) REFERENCES issue253_action_user(id)) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([User, Order])
+    finally:
+        await database.close()
+
+    assert_true("CASCADE" in str(raised.exception))
+    assert_true("NO ACTION" in str(raised.exception))
+
+
+@test(mark="medium")
+async def mariadb_missing_managed_foreign_key_is_reported() -> None:
+    """A model FK absent from the MariaDB catalog is strict drift."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Referenced table."""
+
+        __tablename__ = "issue253_missing_fk_user"
+        id: User.Col[int] = mariadb.Integer(primary_key=True)
+
+    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+        """Model whose managed FK is absent from the live table."""
+
+        __tablename__ = "issue253_missing_fk_order"
+        user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_missing_fk_user "
+        "(id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB"
+    )
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_missing_fk_order (user_id BIGINT NOT NULL) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([User, Order])
+    finally:
+        await database.close()
+
+    assert_true("foreign key on column 'user_id'" in str(raised.exception))
+    assert_true("is missing" in str(raised.exception))
 
 
 @test(mark="medium")
@@ -232,6 +334,115 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 
 
 @test(mark="medium")
+async def mariadb_integer_signedness_drift_is_reported() -> None:
+    """A live unsigned integer differs from snekql's signed Integer storage."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class Counter[S = Pending](mariadb.Model[S, "Counter[Fetched]"]):
+        """Model expecting a signed BIGINT."""
+
+        __tablename__ = "issue253_signedness"
+        value: Counter.Col[int] = mariadb.Integer(nullable=False)
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_signedness "
+        "(value BIGINT UNSIGNED NOT NULL) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([Counter])
+    finally:
+        await database.close()
+
+    assert_true("unsigned expected False, found True" in str(raised.exception))
+
+
+@test(mark="medium")
+async def mariadb_datetime_precision_drift_is_reported() -> None:
+    """A seconds-only DATETIME differs from snekql's millisecond precision."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """Model expecting DATETIME(3)."""
+
+        __tablename__ = "issue253_datetime_precision"
+        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_datetime_precision "
+        "(happened_at DATETIME NOT NULL) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([Event])
+    finally:
+        await database.close()
+
+    assert_true("datetime precision expected 3, found 0" in str(raised.exception))
+
+
+@test(mark="medium")
+async def mariadb_supported_server_default_drift_is_reported() -> None:
+    """A literal default cannot satisfy the `CurrentTimestamp` model marker."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """Model requiring MariaDB's millisecond server clock."""
+
+        __tablename__ = "issue253_server_default"
+        created_at: Event.GenCol[datetime] = mariadb.DateTime(
+            default=mariadb.CurrentTimestamp
+        )
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_server_default "
+        "(created_at DATETIME(3) NOT NULL DEFAULT '2000-01-01 00:00:00.000') "
+        "ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([Event])
+    finally:
+        await database.close()
+
+    assert_true("server default" in str(raised.exception))
+    assert_true("CurrentTimestamp" in str(raised.exception))
+
+
+@test(mark="medium")
+async def mariadb_supported_server_default_is_normalized() -> None:
+    """MariaDB's catalog-normalized `NOW(3)` satisfies `CurrentTimestamp`."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+        """Model requiring MariaDB's millisecond server clock."""
+
+        __tablename__ = "issue253_normalized_default"
+        created_at: Event.GenCol[datetime] = mariadb.DateTime(
+            default=mariadb.CurrentTimestamp
+        )
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_normalized_default "
+        "(created_at DATETIME(3) NOT NULL DEFAULT NOW(3)) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        result = await database.verify([Event])
+    finally:
+        await database.close()
+
+    assert_eq(result.issues, ())
+
+
+@test(mark="medium")
 async def mariadb_decimal_precision_drift_is_reported() -> None:
     """Strict MariaDB schema verification compares Decimal precision and scale."""
 
@@ -307,6 +518,62 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
             await database.verify([User])
     finally:
         await database.close()
+
+
+@test(mark="medium")
+async def mariadb_index_prefix_length_drift_is_reported() -> None:
+    """A prefix index cannot satisfy a model index over the complete value."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Model requiring a full-column email index."""
+
+        __tablename__ = "issue253_index_prefix"
+        email: User.Col[str] = mariadb.Text(nullable=False, index=True)
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_index_prefix "
+        "(email VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, "
+        "INDEX ix_issue253_index_prefix_email (email(10))) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([User])
+    finally:
+        await database.close()
+
+    assert_true("prefix lengths expected [None], found [10]" in str(raised.exception))
+
+
+@test(mark="medium")
+async def mariadb_index_type_drift_is_reported() -> None:
+    """A FULLTEXT index cannot satisfy the model's ordinary BTREE index."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+        """Model requiring an ordinary email index."""
+
+        __tablename__ = "issue253_index_type"
+        email: User.Col[str] = mariadb.Text(nullable=False, index=True)
+
+    _ = await server.run_sql(
+        "CREATE TABLE issue253_index_type "
+        "(email VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, "
+        "FULLTEXT INDEX ix_issue253_index_type_email (email)) ENGINE=InnoDB"
+    )
+    database = await Database.initialize(server.config())
+    try:
+        with assert_raises(SchemaVerificationError) as raised:
+            await database.verify([User])
+    finally:
+        await database.close()
+
+    assert_true(
+        "index type expected 'BTREE', found 'FULLTEXT'" in str(raised.exception)
+    )
 
 
 @test(mark="medium")
