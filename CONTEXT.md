@@ -121,8 +121,12 @@ A Canonical Wire Form whose lexical order additionally equals the logical order 
 _Avoid_: sortable string, lexicographic format, collation
 
 **UtcDatetime**:
-A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; the recommended datetime type for database columns.
+A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; use it when timezone identity has no domain meaning.
 _Avoid_: Instant, AwareDatetime, timestamp, wall-clock datetime
+
+**ZonedDatetime**:
+A snekql-exported curated Logical Type for a civil datetime identified by both its absolute instant and exact IANA timezone identity or fixed UTC offset. Equality requires both the instant and timezone identity to match.
+_Avoid_: timezone-aware datetime, local datetime, timestamp
 
 **CanonicalDecimal**:
 A snekql-exported curated Logical Type for exact decimal values, normalized at validation to the canonical minimal plain form (no exponent, no trailing fractional zeros, no negative zero), so the value held, stored, and fetched back are identical. Serialized in a Canonical Wire Form: equality-safe over text storage, but not order-safe.

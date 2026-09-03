@@ -31,6 +31,14 @@ class LexicalDurationWarning(SnekqlWarning):
     """Warns that a Text duration column compares lexically."""
 
 
+class ZonedDatetimeError(SnekqlError):
+    """Raised when a timezone cannot be preserved by `ZonedDatetime`.
+
+    >>> issubclass(ZonedDatetimeError, SnekqlError)
+    True
+    """
+
+
 class ModelError(SnekqlError):
     """Base class for table model declaration and validation failures."""
 

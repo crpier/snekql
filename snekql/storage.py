@@ -6,9 +6,9 @@ import annotationlib
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from json import JSONDecodeError, loads
+from json import JSONDecodeError, dumps, loads
 from math import isfinite
 from types import EllipsisType
 from typing import (
@@ -24,11 +24,13 @@ from typing import (
     get_origin,
     overload,
 )
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
     AfterValidator,
     AwareDatetime,
     BeforeValidator,
+    GetCoreSchemaHandler,
     PlainSerializer,
     TypeAdapter,
     ValidationError,
@@ -36,7 +38,7 @@ from pydantic import (
 from pydantic import (
     Json as _PydanticJson,
 )
-from pydantic_core import PydanticSerializationError
+from pydantic_core import PydanticSerializationError, core_schema
 
 from snekql.errors import (
     FrozenModelError,
@@ -44,6 +46,7 @@ from snekql.errors import (
     ModelValidationError,
     QueryConstructionError,
     SnekqlError,
+    ZonedDatetimeError,
 )
 from snekql.expressions import (
     Aggregate,
@@ -72,6 +75,7 @@ _JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
 # rejects them with a domain error instead of letting the driver overflow.
 _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
+_ZONED_DATETIME_WIRE_VERSION = 1
 
 
 # Curated logical types. Each curated type keeps its validators, serializer,
@@ -218,6 +222,135 @@ UtcDatetime = Annotated[
     PlainSerializer(_serialize_utc_milliseconds, return_type=str, when_used="json"),
     OrderPreserving,
 ]
+
+
+def _zoned_timezone_identity(value: datetime) -> tuple[str, str | timedelta | None]:
+    """Identify a named IANA zone separately from a fixed UTC offset."""
+
+    if isinstance(value.tzinfo, ZoneInfo):
+        return ("iana", value.tzinfo.key)
+    return ("offset", value.utcoffset())
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class ZonedDatetime:
+    """A datetime paired with its persistent timezone identity.
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> value = ZonedDatetime(
+    ...     datetime(2026, 7, 1, 8, tzinfo=ZoneInfo("America/New_York"))
+    ... )
+    >>> value.datetime.tzinfo == ZoneInfo("America/New_York")
+    True
+    """
+
+    datetime: datetime
+
+    def __post_init__(self) -> None:
+        if self.datetime.utcoffset() is None:
+            msg = "ZonedDatetime requires an aware datetime"
+            raise ZonedDatetimeError(msg)
+        if not isinstance(self.datetime.tzinfo, ZoneInfo | timezone):
+            msg = "ZonedDatetime requires an IANA zone or fixed UTC offset"
+            raise ZonedDatetimeError(msg)
+        if isinstance(self.datetime.tzinfo, ZoneInfo):
+            reconstructed = self.datetime.astimezone(UTC).astimezone(
+                self.datetime.tzinfo
+            )
+            if (
+                reconstructed.replace(tzinfo=None) != self.datetime.replace(tzinfo=None)
+                or reconstructed.fold != self.datetime.fold
+            ):
+                msg = "ZonedDatetime requires an existing IANA civil time and fold"
+                raise ZonedDatetimeError(msg)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ZonedDatetime):
+            return False
+        return self.datetime.astimezone(UTC) == other.datetime.astimezone(
+            UTC
+        ) and _zoned_timezone_identity(self.datetime) == _zoned_timezone_identity(
+            other.datetime
+        )
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.datetime.astimezone(UTC),
+                _zoned_timezone_identity(self.datetime),
+            )
+        )
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        _source_type: object,
+        _handler: GetCoreSchemaHandler,
+    ) -> core_schema.CoreSchema:
+        """Validate instances and decode their canonical text wire form."""
+
+        return core_schema.no_info_plain_validator_function(
+            cls._validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls._serialize,
+                return_schema=core_schema.str_schema(),
+                when_used="json",
+            ),
+        )
+
+    @classmethod
+    def _validate(cls, value: object) -> ZonedDatetime:
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, str):
+            return cls._from_wire(value)
+        msg = "ZonedDatetime value must be a ZonedDatetime or canonical text"
+        raise ValueError(msg)
+
+    @staticmethod
+    def _serialize(value: ZonedDatetime) -> str:
+        instant = value.datetime.astimezone(UTC).isoformat(timespec="microseconds")
+        instant = instant.removesuffix("+00:00") + "Z"
+        timezone_info = value.datetime.tzinfo
+        if isinstance(timezone_info, ZoneInfo):
+            timezone_kind = "iana"
+            timezone_value: str | int = timezone_info.key
+        else:
+            offset = value.datetime.utcoffset()
+            if offset is None:
+                msg = "ZonedDatetime lost its fixed UTC offset"
+                raise ZonedDatetimeError(msg)
+            timezone_kind = "offset"
+            timezone_value = offset // timedelta(microseconds=1)
+        return dumps(
+            [_ZONED_DATETIME_WIRE_VERSION, instant, timezone_kind, timezone_value],
+            ensure_ascii=True,
+            separators=(",", ":"),
+        )
+
+    @classmethod
+    def _from_wire(cls, value: str) -> ZonedDatetime:
+        try:
+            payload = loads(value)
+            if not isinstance(payload, list):
+                raise TypeError  # noqa: TRY301
+            version, instant_text, timezone_kind, timezone_value = payload
+            if version != _ZONED_DATETIME_WIRE_VERSION:
+                raise ValueError  # noqa: TRY301
+            if not isinstance(instant_text, str) or not instant_text.endswith("Z"):
+                raise ValueError  # noqa: TRY301
+            instant = datetime.fromisoformat(instant_text.removesuffix("Z") + "+00:00")
+            if timezone_kind == "iana" and isinstance(timezone_value, str):
+                timezone_info = ZoneInfo(timezone_value)
+            elif timezone_kind == "offset" and type(timezone_value) is int:
+                timezone_info = timezone(timedelta(microseconds=timezone_value))
+            else:
+                raise ValueError  # noqa: TRY301
+            return cls(instant.astimezone(timezone_info))
+        except (JSONDecodeError, TypeError, ValueError, ZoneInfoNotFoundError) as error:
+            msg = "invalid ZonedDatetime canonical text"
+            raise ValueError(msg) from error
 
 
 def column_lacks_order_preserving_datetime(
@@ -1607,6 +1740,12 @@ class Attr[
         except ModelDeclarationError, NameError, TypeError:
             return None
 
+    def _require_ordering(self) -> None:
+        logical = self._resolved_logical_type()
+        if logical is not None and ZonedDatetime in _annotation_core_types(logical):
+            msg = "ZonedDatetime columns do not support ordering or range predicates"
+            raise QueryConstructionError(msg)
+
     def _logical_is_numeric(self) -> bool | None:
         """Whether the logical type is numeric (``int``/``float``, not ``bool``).
 
@@ -1685,6 +1824,7 @@ class Attr[
     def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
 
+        self._require_ordering()
         return cast(
             "Aggregate[OwnerT, ReadValueT | None, CompareT]",
             Aggregate(func="MIN", column=self, owner=self.owner),
@@ -1693,15 +1833,18 @@ class Attr[
     def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
 
+        self._require_ordering()
         return cast(
             "Aggregate[OwnerT, ReadValueT | None, CompareT]",
             Aggregate(func="MAX", column=self, owner=self.owner),
         )
 
     def asc(self) -> OrderBy[OwnerT]:
+        self._require_ordering()
         return OrderBy(column=self, direction="ASC")
 
     def desc(self) -> OrderBy[OwnerT]:
+        self._require_ordering()
         return OrderBy(column=self, direction="DESC")
 
     @overload

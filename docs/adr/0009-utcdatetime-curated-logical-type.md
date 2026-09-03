@@ -36,8 +36,10 @@ time:
   is what makes SQLite `Text()` equality, ordering, and range queries correct.
 - **A database-interaction type, not an application type.** `UtcDatetime` makes no
   claim to be the right datetime for business logic or display; it does not
-  preserve the writer's offset (pydantic `AwareDatetime` keeps that niche for
-  audit/display columns that are never ordered or range-queried).
+  preserve the writer's offset or timezone. `ZonedDatetime`, added by [ADR
+  0012](0012-zoned-datetime-identity.md), preserves timezone identity when that
+  has domain meaning. Pydantic `AwareDatetime` preserves only the serialized
+  offset.
 - **No new server default.** The existing `CurrentTimestamp` marker already
   emits `strftime('%Y-%m-%dT%H:%M:%fZ','now')` (ms + `Z`) on SQLite and
   `CURRENT_TIMESTAMP(3)` into `DATETIME(3)` on MariaDB, so it matches `UtcDatetime`
@@ -90,15 +92,15 @@ and local SQLite:
   Revisit only for a MariaDB-native `DATETIME(6)` use case.
 - **Offset-preserving order-safe wire form** (composite `...Z|+05:30`).
   Rejected: SQL `=` would then disagree with Python's instant-based `==` for
-  equal instants written from different offsets — a real footgun. Users who need
-  the writer's offset back store it explicitly (second column, or a future
-  opt-in composite type that documents the `=` caveat).
+  equal instants written from different offsets. `ZonedDatetime` later made the
+  instant plus exact timezone identity a separate value with matching Python and
+  SQL equality; it deliberately rejects ordering and range operations.
 - **Retiring `AwareDatetime`.** Not ours to retire — it is pydantic's, and
   ADR 0005 lets users annotate any type. `UtcDatetime` supersedes it *as the
   recommendation*, not as a type: `AwareDatetime` does not fix the comparison
-  hazard it is currently suggested for. Its remaining honest niche vs `UtcDatetime`
-  is an audit/display column that preserves the writer's offset and is never
-  ordered or range-queried.
+  hazard it is currently suggested for. Its remaining niche is an audit/display
+  column that needs only the serialized offset, not the IANA timezone identity,
+  and is never ordered or range-queried.
 - **A curated bool.** Rejected: `Col[bool] = Integer()` (0/1) already orders and
   round-trips correctly — no hazard, so no curated type. `Decimal` over `Text()`
   has the same lexical hazard as datetime and is the real next analog; noted,
