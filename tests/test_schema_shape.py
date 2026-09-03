@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from snektest import assert_eq, assert_true, test
 
 from snekql._schema_shape import (
@@ -20,7 +22,7 @@ def _column(  # noqa: PLR0913
     nullable: bool = True,
     primary_key: bool = False,
     auto_increment: bool = False,
-    has_server_default: bool = False,
+    server_default: str | None = None,
     collation: str | None = None,
 ) -> ColumnShape:
     return ColumnShape(
@@ -29,7 +31,7 @@ def _column(  # noqa: PLR0913
         nullable=nullable,
         primary_key=primary_key,
         auto_increment=auto_increment,
-        has_server_default=has_server_default,
+        server_default=server_default,
         collation=collation,
     )
 
@@ -113,6 +115,140 @@ async def mismatched_column_attribute_is_named() -> None:
     assert_eq(
         issues,
         ("column 'email' differs: nullable expected False, found True",),
+    )
+
+
+@test(mark="fast")
+def supported_server_default_expression_drift_is_named() -> None:
+    """Default comparison distinguishes `CurrentTimestamp` from another value."""
+
+    expected = _table(
+        columns=(replace(_column("created_at"), server_default="CurrentTimestamp"),),
+    )
+    actual = _table(
+        columns=(replace(_column("created_at"), server_default="CURRENT_DATE"),),
+    )
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        (
+            (
+                "column 'created_at' differs: server default expected "
+                "'CurrentTimestamp', found 'CURRENT_DATE'"
+            ),
+        ),
+    )
+
+
+@test(mark="fast")
+def column_unsigned_drift_is_named() -> None:
+    """Backend-neutral diffing reports numeric signedness."""
+
+    expected = _table(columns=(replace(_column("value"), unsigned=False),))
+    actual = _table(columns=(replace(_column("value"), unsigned=True),))
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        ("column 'value' differs: unsigned expected False, found True",),
+    )
+
+
+@test(mark="fast")
+def column_datetime_precision_drift_is_named() -> None:
+    """Backend-neutral diffing reports datetime fractional precision."""
+
+    expected = _table(columns=(replace(_column("created_at"), datetime_precision=3),))
+    actual = _table(columns=(replace(_column("created_at"), datetime_precision=0),))
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        ("column 'created_at' differs: datetime precision expected 3, found 0",),
+    )
+
+
+@test(mark="fast")
+def index_partial_drift_is_named() -> None:
+    """Backend-neutral diffing reports full-versus-partial index semantics."""
+
+    expected = _table(
+        indexes=(IndexShape(name="ix_email", column_names=("email",), unique=False),),
+    )
+    actual = _table(
+        indexes=(
+            IndexShape(
+                name="ix_email",
+                column_names=("email",),
+                unique=False,
+                partial=True,
+            ),
+        ),
+    )
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        ("index 'ix_email' differs: partial expected False, found True",),
+    )
+
+
+@test(mark="fast")
+def index_prefix_length_drift_is_named() -> None:
+    """Backend-neutral diffing reports indexed value prefixes."""
+
+    expected = _table(
+        indexes=(
+            IndexShape(
+                name="ix_email",
+                column_names=("email",),
+                unique=False,
+                prefix_lengths=(None,),
+            ),
+        ),
+    )
+    actual = _table(
+        indexes=(
+            IndexShape(
+                name="ix_email",
+                column_names=("email",),
+                unique=False,
+                prefix_lengths=(10,),
+            ),
+        ),
+    )
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        ("index 'ix_email' differs: prefix lengths expected [None], found [10]",),
+    )
+
+
+@test(mark="fast")
+def index_type_drift_is_named() -> None:
+    """Backend-neutral diffing reports backend index implementation types."""
+
+    expected = _table(
+        indexes=(
+            IndexShape(
+                name="ix_email",
+                column_names=("email",),
+                unique=False,
+                index_type="BTREE",
+            ),
+        ),
+    )
+    actual = _table(
+        indexes=(
+            IndexShape(
+                name="ix_email",
+                column_names=("email",),
+                unique=False,
+                index_type="FULLTEXT",
+            ),
+        ),
+    )
+
+    assert_eq(
+        diff_table_shapes(expected, actual),
+        ("index 'ix_email' differs: index type expected 'BTREE', found 'FULLTEXT'",),
     )
 
 

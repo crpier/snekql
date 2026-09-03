@@ -63,7 +63,7 @@ def _fake_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         nullable=True,
         primary_key=False,
         auto_increment=False,
-        has_server_default=False,
+        server_default=None,
         collation=None,
     )
 
@@ -73,6 +73,12 @@ def _dialect(*, verifies_foreign_keys: bool) -> SchemaDialect:
         quote_identifier=lambda name: f'"{name}"',
         compile_column_definition=_fake_column_definition,
         expected_column_shape=_fake_column_shape,
+        expected_index_shape=lambda index: IndexShape(
+            column_names=index.column_names,
+            name=index.name,
+            unique=index.unique,
+        ),
+        normalize_foreign_key_action=lambda action: action or "NO ACTION",
         table_suffix="MYSUFFIX",
         verifies_foreign_keys=verifies_foreign_keys,
     )

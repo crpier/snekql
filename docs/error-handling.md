@@ -59,7 +59,9 @@ Runtime errors:
 
 Schema errors:
 
-- `SchemaVerificationError`: an existing table does not match generated DDL.
+- `SchemaVerificationError`: strict model verification found Schema Drift after
+  inspecting every requested table. Instances expose the immutable
+  `SchemaVerificationResult` as `.result`.
 
 Migration errors:
 

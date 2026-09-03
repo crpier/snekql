@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 
 from snekql._schema_shape import (
     ForeignKeyShape,
-    IndexShape,
     TableShape,
 )
 
@@ -113,10 +112,8 @@ def expected_table_shape(
                 column_name=foreign_key.column_name,
                 target_table=foreign_key.target_table,
                 target_column=foreign_key.target_column,
-                # An unset action defaults to the catalog's NO ACTION so the
-                # expected shape matches what the live PRAGMA reports.
-                on_delete=foreign_key.on_delete or "NO ACTION",
-                on_update=foreign_key.on_update or "NO ACTION",
+                on_delete=dialect.normalize_foreign_key_action(foreign_key.on_delete),
+                on_update=dialect.normalize_foreign_key_action(foreign_key.on_update),
             )
             for foreign_key in planned_model.foreign_keys
         )
@@ -127,12 +124,7 @@ def expected_table_shape(
             for planned_column in planned_model.columns
         ),
         indexes=tuple(
-            IndexShape(
-                name=index.name,
-                column_names=index.column_names,
-                unique=index.unique,
-            )
-            for index in planned_model.indexes
+            dialect.expected_index_shape(index) for index in planned_model.indexes
         ),
         foreign_keys=foreign_keys,
         storage_options=(dialect.table_suffix,),

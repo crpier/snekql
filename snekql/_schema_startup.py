@@ -18,6 +18,7 @@ from snekql._schema_plan import (
     validate_schema_policy as validate_planned_schema_policy,
 )
 from snekql._schema_shape import diff_table_shapes
+from snekql._schema_verification import SchemaDriftIssue, SchemaVerificationResult
 from snekql.errors import SchemaVerificationError
 
 if TYPE_CHECKING:
@@ -46,7 +47,10 @@ class SchemaBackend(Protocol):
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape: ...
 
-    async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None: ...
+    async def inspect_shapes(
+        self,
+        planned_models: Sequence[PlannedModel],
+    ) -> dict[str, TableShape]: ...
 
 
 def validate_schema_models(models: Sequence[type[Table[Any]]]) -> None:
@@ -61,37 +65,60 @@ def validate_schema_policy(schema_policy: SchemaPolicy) -> None:
     validate_planned_schema_policy(schema_policy)
 
 
+def _schema_drift_messages(
+    verification_result: SchemaVerificationResult,
+) -> tuple[str, ...]:
+    """Group machine-readable issues into stable human diagnostics by table."""
+
+    messages: list[str] = []
+    for table_name in verification_result.checked_tables:
+        details = tuple(
+            issue.detail
+            for issue in verification_result.issues
+            if issue.table_name == table_name
+        )
+        if details:
+            messages.append(
+                f"schema drift detected for table {table_name!r}: {'; '.join(details)}"
+            )
+    return tuple(messages)
+
+
 def _report_schema_drift(
     schema_policy: SchemaPolicy,
-    table_name: str,
-    issues: Sequence[str],
+    verification_result: SchemaVerificationResult,
 ) -> None:
-    detail = "; ".join(issues)
-    message = f"schema drift detected for table {table_name!r}: {detail}"
+    messages = _schema_drift_messages(verification_result)
+    if not messages:
+        return
     if schema_policy == "strict":
-        raise SchemaVerificationError(message)
-    logger.warning("%s", message)
+        raise SchemaVerificationError(
+            " | ".join(messages),
+            result=verification_result,
+        )
+    for message in messages:
+        logger.warning("%s", message)
 
 
-async def _verify_model_schema(
+def _verify_model_schema(
     backend: SchemaBackend,
     planned_model: PlannedModel,
     actual_shape: TableShape,
-    schema_policy: SchemaPolicy,
-) -> None:
+) -> tuple[str, ...]:
     expected_shape = backend.expected_shape(planned_model)
     issues = diff_table_shapes(expected_shape, actual_shape)
-    if issues:
-        _report_schema_drift(schema_policy, planned_model.table_name, issues)
-        return
-    logger.debug("schema table and indexes for %r verified", planned_model.table_name)
+    if not issues:
+        logger.debug(
+            "schema table and indexes for %r verified", planned_model.table_name
+        )
+    return issues
 
 
 async def verify_schema(
     backend: SchemaBackend,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-) -> None:
+) -> SchemaVerificationResult:
     """Verify all configured tables against the live schema through one backend.
 
     Migrations are the sole schema-creation authority (ADR 0007): a missing
@@ -102,19 +129,33 @@ async def verify_schema(
     validate_schema_policy(schema_policy)
     plan = build_schema_plan(models)
     if not plan.models:
-        return
+        return SchemaVerificationResult(checked_tables=(), issues=())
     logger.debug("schema verification started for %d model(s)", len(plan.models))
+    drift_issues: list[SchemaDriftIssue] = []
     async with backend.verification_transaction():
+        actual_shapes = await backend.inspect_shapes(plan.models)
         for planned_model in plan.models:
-            actual_shape = await backend.inspect_shape(planned_model)
+            actual_shape = actual_shapes.get(planned_model.table_name)
             if actual_shape is None:
-                _report_schema_drift(
-                    schema_policy,
-                    planned_model.table_name,
-                    ("table is missing from the database",),
+                missing_issue = "table is missing from the database"
+                drift_issues.append(
+                    SchemaDriftIssue(
+                        detail=missing_issue,
+                        table_name=planned_model.table_name,
+                    )
                 )
                 continue
-            await _verify_model_schema(
-                backend, planned_model, actual_shape, schema_policy
+            drift_issues.extend(
+                SchemaDriftIssue(
+                    detail=detail,
+                    table_name=planned_model.table_name,
+                )
+                for detail in _verify_model_schema(backend, planned_model, actual_shape)
             )
+    verification_result = SchemaVerificationResult(
+        checked_tables=tuple(model.table_name for model in plan.models),
+        issues=tuple(drift_issues),
+    )
+    _report_schema_drift(schema_policy, verification_result)
     logger.debug("schema verification completed for %d model(s)", len(plan.models))
+    return verification_result

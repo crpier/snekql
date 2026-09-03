@@ -1,8 +1,10 @@
 # Schema verification and drift
 
 `db.verify(models, *, policy=...)` checks the live schema against your Table
-Models. It is the check that ties hand-written migrations back to current model
-metadata. `db.verify_migrations(migrations)` separately proves that ordered,
+Models and returns an immutable `SchemaVerificationResult` containing the
+ordered checked tables and table-scoped `SchemaDriftIssue` values. It is the
+check that ties hand-written migrations back to current model metadata.
+`db.verify_migrations(migrations)` separately proves that ordered,
 checksummed Migration History is at this code version's exact head. Neither
 method creates application tables. [Migrations](migrations.md) remain the sole
 schema-creation authority.
@@ -31,31 +33,48 @@ recognized as matching whenever it is semantically equal to the model.
 
 - table presence;
 - per column: name, storage type / affinity-class, nullability, primary-key,
-  auto-increment, *whether* a server default exists, collation. Storage type is
+  auto-increment, supported server-default expression, and collation. MariaDB
+  also compares numeric signedness and datetime precision. Storage type is
   compared by each backend's normalized class, not the declared spelling: SQLite
   collapses a column to its [type
   affinity](https://www.sqlite.org/datatype3.html#determination_of_column_affinity)
   (so `INT`/`INTEGER`/`BIGINT` and `VARCHAR(255)`/`TEXT` are equal), and MariaDB
   compares `INFORMATION_SCHEMA.DATA_TYPE` (so `BOOLEAN`≡`TINYINT(1)` and
   `JSON`≡`LONGTEXT`). A genuine affinity/type-class change is still drift;
-- per index: name, columns, uniqueness;
+- per index: name, columns, uniqueness, and SQLite partial/full status; MariaDB
+  also compares prefix lengths and index type;
 - per foreign key: local column → target table/column;
 - table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).
 
 `verify` **does not**, and across backends *cannot*, see:
 
-- default **values** — only *whether* a default exists, so a changed default
-  value passes;
+- an expected literal server default. Table Models cannot declare one, so an
+  intentional live literal is reported as drift rather than value-verified;
+- partial-index predicates, because Table Models declare only full indexes;
 - `CHECK` constraints;
 - generated-column expressions;
 - triggers and views;
 - exact SQLite types (affinity collapses `VARCHAR(255)` and `TEXT`);
+- index-column sort direction or collation, which `Index` cannot declare;
 - data.
 
-A migration that sets a wrong default value, adds a `CHECK`, or installs a
-trigger therefore **passes** verification. This is a bound of each backend's
-catalog introspection, documented and deliberate — not a bug. Treat `verify` as a
-structural net for the drift that breaks queries, not a behavioral guarantee.
+Backend-specific limits are also deliberate:
+
+- SQLite records whether an index is partial but cannot accept an expected
+  partial predicate, so every partial index differs from a model index.
+- MariaDB does not compare integer display widths, the compatibility `CHECK` or
+  backing collation of its `JSON` alias, index visibility, or foreign-key
+  constraint names. Table Models declare none of those facts.
+- MariaDB's catalog cannot distinguish an automatically created FK-supporting
+  index from an explicit index with the same leading columns. Such an
+  otherwise-unmanaged supporting index is ignored; model-named indexes are
+  still compared fully.
+
+`CurrentTimestamp`, the supported server-default marker, is normalized and
+compared semantically. A live literal has no model-side value to compare and is
+therefore drift; `CHECK` constraints and triggers remain outside verification. Treat
+`verify` as a structural net for the drift that breaks queries, not a behavioral
+guarantee.
 
 ## How drift is detected
 
@@ -71,10 +90,12 @@ structural net for the drift that breaks queries, not a behavioral guarantee.
 Because generated SQLite tables are always `STRICT`, an existing SQLite
 non-`STRICT` table is reported as a storage-option divergence; MariaDB likewise
 requires the `InnoDB` engine. Extra, missing, renamed, or uniqueness-changed
-indexes on managed tables are also schema drift. SQLite verifies foreign-key
-constraints against the model; MariaDB foreign keys are created with the table
-but not verified, because MariaDB auto-creates a backing index for each
-constraint.
+indexes on managed tables are also schema drift. Both backends verify managed
+foreign-key targets and referential actions. MariaDB requires a supporting index
+for every foreign key but does not record whether that index was implicit or
+explicit, so verification ignores an otherwise-unmanaged index whose leading
+column supports a live foreign key. A model-declared index remains verified by
+name and full shape.
 
 The Migration History table (`snekql_migrations`) is snekql-owned and is never
 verified; keep it out of the `models` you pass to `verify`.
@@ -92,16 +113,23 @@ only reads, a failed or drift-raising `verify` leaves the schema exactly as
 The Schema Policy lives on `verify` — it is the choice of how the step that
 *detects* drift handles it.
 
-`policy="strict"` is the default. Drift raises `SchemaVerificationError`:
+Every requested model is inspected before either policy is applied.
+`policy="strict"` is the default. Drift raises `SchemaVerificationError`; its
+`.result` contains every issue found:
 
 ```python
-await db.verify([User], policy="strict")
+try:
+    result = await db.verify([User], policy="strict")
+except SchemaVerificationError as error:
+    result = error.result
 ```
 
-`policy="warn"` logs each divergence and continues:
+`policy="warn"` logs each divergent table and returns the result:
 
 ```python
-await db.verify([User], policy="warn")
+result = await db.verify([User], policy="warn")
+for issue in result.issues:
+    print(issue.table_name, issue.detail)
 ```
 
 Use `warn` when adopting snekql in an environment where you want observability

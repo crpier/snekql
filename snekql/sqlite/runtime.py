@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
-from aiosqlite import Connection, Cursor
+from aiosqlite import Connection, Cursor, Error
 from anyio.lowlevel import checkpoint
 
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_codec import DialectQueryCodec
+from snekql._schema_verification import SchemaVerificationResult
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
 from snekql.sqlite.config import Config
@@ -233,14 +235,21 @@ class SQLiteRuntime:
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
-    ) -> None:
+    ) -> SchemaVerificationResult:
         """Verify the live schema against models on a pooled connection."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
         try:
-            await verify_sqlite_schema(connection, models, schema_policy)
+            return await verify_sqlite_schema(connection, models, schema_policy)
         finally:
-            await self.connection_pool.release(connection)
+            with anyio.CancelScope(shield=True):
+                if connection.in_transaction:
+                    with contextlib.suppress(Error):
+                        await connection.rollback()
+                if connection.in_transaction:
+                    await self.connection_pool.discard(connection)
+                else:
+                    await self.connection_pool.release(connection)
 
 
 async def initialize_runtime(config: Config) -> SQLiteRuntime:

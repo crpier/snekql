@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from snekql._scaffold import (
     require_scaffold_models,
@@ -16,8 +16,9 @@ from snekql._schema_compile import (
 )
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_plan import PlannedColumn, PlannedModel
-from snekql._schema_shape import ColumnShape, IndexShape, TableShape
+from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
 from snekql._schema_startup import verify_schema
+from snekql._schema_verification import SchemaVerificationResult
 from snekql.errors import SchemaError
 from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier
@@ -28,6 +29,9 @@ from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 # Case-sensitive, byte-ordered collation chosen so MariaDB string equality and
 # UNIQUE constraints match SQLite's default BINARY collation instead of the
 # case-insensitive utf8mb4 default.
+if TYPE_CHECKING:
+    from snekql.indexes import NormalizedIndex
+
 TEXT_COLLATION = "utf8mb4_bin"
 
 
@@ -91,6 +95,12 @@ def _column_max_length(column: Attr[Any, Any, Any, Any, Any]) -> int | None:
     return None
 
 
+def _column_unsigned(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
+    if column.storage_type_name in {"Boolean", "Decimal", "Integer", "Real"}:
+        return False
+    return None
+
+
 def _column_collation(column: Attr[Any, Any, Any, Any, Any]) -> str | None:
     """Text columns pin a case-sensitive collation; others have none here."""
 
@@ -149,8 +159,22 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         nullable=not _requires_not_null(column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
-        has_server_default=column.server_default is CurrentTimestamp,
+        server_default=(
+            "CurrentTimestamp" if column.server_default is CurrentTimestamp else None
+        ),
         collation=_column_collation(column),
+        datetime_precision=3 if column.storage_type_name == "DateTime" else None,
+        unsigned=_column_unsigned(column),
+    )
+
+
+def _expected_index_shape(index: NormalizedIndex) -> IndexShape:
+    return IndexShape(
+        column_names=index.column_names,
+        name=index.name,
+        prefix_lengths=tuple(None for _ in index.column_names),
+        index_type="BTREE",
+        unique=index.unique,
     )
 
 
@@ -170,16 +194,22 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
     return " ".join(parts)
 
 
-# Foreign keys are not part of the MariaDB shape: MariaDB auto-creates a backing
-# index for each enforced constraint, so verifying foreign keys here would
-# require modeling those implicit indexes. The constraints are still created with
-# the table; verifying them is intentionally out of scope.
+def _normalize_foreign_key_action(action: str | None) -> str:
+    """Normalize MariaDB's equivalent `NO ACTION` and `RESTRICT` spellings."""
+
+    if action is None or action in {"NO ACTION", "RESTRICT"}:
+        return "NO ACTION"
+    return action
+
+
 _SCHEMA_DIALECT = SchemaDialect(
     quote_identifier=quote_identifier,
     compile_column_definition=_compile_column_definition,
     expected_column_shape=_expected_column_shape,
+    expected_index_shape=_expected_index_shape,
+    normalize_foreign_key_action=_normalize_foreign_key_action,
     table_suffix="ENGINE=InnoDB",
-    verifies_foreign_keys=False,
+    verifies_foreign_keys=True,
 )
 
 
@@ -203,63 +233,53 @@ async def _fetchall(
     return [cast("Sequence[object]", row) for row in rows]
 
 
-async def _table_exists(connection: object, table_name: str) -> bool:
-    rows = await _fetchall(
-        connection,
-        """
-        SELECT 1
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = %s
-        """,
-        (table_name,),
+def _table_name_placeholders(table_names: tuple[str, ...]) -> str:
+    """Build one parameter placeholder per validated planned table name."""
+
+    return ", ".join("%s" for _ in table_names)
+
+
+async def _fetch_table_storage_options(
+    connection: object,
+    table_names: tuple[str, ...],
+) -> dict[str, tuple[str, ...]]:
+    tables_sql = (
+        "SELECT TABLE_NAME, ENGINE FROM INFORMATION_SCHEMA.TABLES "  # noqa: S608
+        "WHERE TABLE_SCHEMA = DATABASE() "
+        f"AND TABLE_NAME IN ({_table_name_placeholders(table_names)})"
     )
-    return bool(rows)
-
-
-async def _table_uses_innodb(connection: object, table_name: str) -> bool:
-    """Whether an existing table uses InnoDB, required to enforce foreign keys."""
-
-    rows = await _fetchall(
-        connection,
-        """
-        SELECT ENGINE
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = %s
-        """,
-        (table_name,),
-    )
-    if not rows:
-        return False
-    return str(rows[0][0]).lower() == "innodb"
+    rows = await _fetchall(connection, tables_sql, tuple(table_names))
+    return {
+        str(table_name): ("ENGINE=InnoDB",) if str(engine).lower() == "innodb" else ()
+        for table_name, engine in rows
+    }
 
 
 async def _fetch_existing_column_shapes(
     connection: object,
-    table_name: str,
-) -> tuple[ColumnShape, ...]:
-    rows = await _fetchall(
-        connection,
-        """
-        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH,
-               NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE,
-               COLUMN_KEY, EXTRA, COLLATION_NAME, COLUMN_DEFAULT
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = %s
-        ORDER BY ORDINAL_POSITION
-        """,
-        (table_name,),
+    table_names: tuple[str, ...],
+) -> dict[str, tuple[ColumnShape, ...]]:
+    columns_sql = (
+        "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, "  # noqa: S608
+        "CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, "
+        "DATETIME_PRECISION, IS_NULLABLE, COLUMN_KEY, EXTRA, COLLATION_NAME, "
+        "COLUMN_DEFAULT FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() "
+        f"AND TABLE_NAME IN ({_table_name_placeholders(table_names)}) "
+        "ORDER BY TABLE_NAME, ORDINAL_POSITION"
     )
-    shapes: list[ColumnShape] = []
+    rows = await _fetchall(connection, columns_sql, tuple(table_names))
+    shapes: dict[str, list[ColumnShape]] = {}
     for row in rows:
         (
+            table_name,
             name,
             data_type,
+            column_type,
             max_length,
             numeric_precision,
             numeric_scale,
+            datetime_precision,
             nullable,
             column_key,
             extra,
@@ -275,7 +295,7 @@ async def _fetch_existing_column_shapes(
         parsed_numeric_scale = (
             int(numeric_scale) if isinstance(numeric_scale, int | str) else None
         )
-        shapes.append(
+        shapes.setdefault(str(table_name), []).append(
             ColumnShape(
                 name=str(name),
                 storage_type=_format_storage_type(
@@ -287,42 +307,139 @@ async def _fetch_existing_column_shapes(
                 nullable=nullable == "YES",
                 primary_key=column_key == "PRI",
                 auto_increment="auto_increment" in str(extra),
-                has_server_default=default is not None,
+                server_default=(
+                    "CurrentTimestamp"
+                    if str(default).lower() == "current_timestamp(3)"
+                    else str(default)
+                    if default is not None
+                    else None
+                ),
                 collation=(
                     str(collation)
                     if str(data_type) == "varchar" and collation
                     else None
                 ),
+                datetime_precision=(
+                    int(datetime_precision)
+                    if isinstance(datetime_precision, int | str)
+                    else None
+                ),
+                unsigned=(
+                    str(column_type).lower().endswith(" unsigned")
+                    if str(data_type) in {"bigint", "decimal", "double", "tinyint"}
+                    else None
+                ),
             )
         )
-    return tuple(shapes)
+    return {table_name: tuple(columns) for table_name, columns in shapes.items()}
 
 
 async def _fetch_existing_index_shapes(
     connection: object,
-    table_name: str,
-) -> tuple[IndexShape, ...]:
-    rows = await _fetchall(
-        connection,
-        """
-        SELECT INDEX_NAME, NON_UNIQUE,
-               GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX)
-        FROM INFORMATION_SCHEMA.STATISTICS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = %s
-          AND INDEX_NAME <> 'PRIMARY'
-        GROUP BY INDEX_NAME, NON_UNIQUE
-        ORDER BY INDEX_NAME
-        """,
-        (table_name,),
+    table_names: tuple[str, ...],
+) -> dict[str, tuple[IndexShape, ...]]:
+    indexes_sql = (
+        "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, "  # noqa: S608
+        "SUB_PART, INDEX_TYPE FROM INFORMATION_SCHEMA.STATISTICS "
+        "WHERE TABLE_SCHEMA = DATABASE() "
+        f"AND TABLE_NAME IN ({_table_name_placeholders(table_names)}) "
+        "AND INDEX_NAME <> 'PRIMARY' "
+        "ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX"
     )
-    return tuple(
-        IndexShape(
-            name=str(name),
-            column_names=tuple(str(column_csv).split(",")),
-            unique=non_unique == 0,
+    rows = await _fetchall(connection, indexes_sql, tuple(table_names))
+    grouped_columns: dict[tuple[str, str], list[str]] = {}
+    grouped_prefixes: dict[tuple[str, str], list[int | None]] = {}
+    index_types: dict[tuple[str, str], str] = {}
+    uniqueness: dict[tuple[str, str], bool] = {}
+    for (
+        table_name,
+        name,
+        non_unique,
+        _sequence,
+        column_name,
+        prefix_length,
+        index_type,
+    ) in rows:
+        index_key = (str(table_name), str(name))
+        grouped_columns.setdefault(index_key, []).append(str(column_name))
+        grouped_prefixes.setdefault(index_key, []).append(
+            int(prefix_length) if isinstance(prefix_length, int | str) else None
         )
-        for name, non_unique, column_csv in rows
+        index_types[index_key] = str(index_type).upper()
+        uniqueness[index_key] = non_unique == 0
+    shapes: dict[str, list[IndexShape]] = {}
+    for index_key, column_names in grouped_columns.items():
+        table_name, index_name = index_key
+        shapes.setdefault(table_name, []).append(
+            IndexShape(
+                name=index_name,
+                column_names=tuple(column_names),
+                prefix_lengths=tuple(grouped_prefixes[index_key]),
+                index_type=index_types[index_key],
+                unique=uniqueness[index_key],
+            )
+        )
+    return {table_name: tuple(indexes) for table_name, indexes in shapes.items()}
+
+
+async def _fetch_existing_foreign_key_shapes(
+    connection: object,
+    table_names: tuple[str, ...],
+) -> dict[str, tuple[ForeignKeyShape, ...]]:
+    foreign_keys_sql = (
+        "SELECT key_usage.TABLE_NAME, key_usage.COLUMN_NAME, "  # noqa: S608
+        "key_usage.REFERENCED_TABLE_NAME, key_usage.REFERENCED_COLUMN_NAME, "
+        "referential.UPDATE_RULE, referential.DELETE_RULE "
+        "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS key_usage "
+        "JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS referential "
+        "ON referential.CONSTRAINT_SCHEMA = key_usage.CONSTRAINT_SCHEMA "
+        "AND referential.TABLE_NAME = key_usage.TABLE_NAME "
+        "AND referential.CONSTRAINT_NAME = key_usage.CONSTRAINT_NAME "
+        "WHERE key_usage.TABLE_SCHEMA = DATABASE() "
+        f"AND key_usage.TABLE_NAME IN ({_table_name_placeholders(table_names)}) "
+        "AND key_usage.REFERENCED_TABLE_NAME IS NOT NULL "
+        "ORDER BY key_usage.TABLE_NAME, key_usage.CONSTRAINT_NAME, "
+        "key_usage.ORDINAL_POSITION"
+    )
+    rows = await _fetchall(connection, foreign_keys_sql, tuple(table_names))
+    shapes: dict[str, list[ForeignKeyShape]] = {}
+    for (
+        table_name,
+        column_name,
+        target_table,
+        target_column,
+        on_update,
+        on_delete,
+    ) in rows:
+        shapes.setdefault(str(table_name), []).append(
+            ForeignKeyShape(
+                column_name=str(column_name),
+                target_table=str(target_table),
+                target_column=str(target_column),
+                on_update=_normalize_foreign_key_action(str(on_update)),
+                on_delete=_normalize_foreign_key_action(str(on_delete)),
+            )
+        )
+    return {
+        table_name: tuple(foreign_keys) for table_name, foreign_keys in shapes.items()
+    }
+
+
+def _exclude_implicit_foreign_key_indexes(
+    indexes: tuple[IndexShape, ...],
+    foreign_keys: tuple[ForeignKeyShape, ...],
+    planned_model: PlannedModel,
+) -> tuple[IndexShape, ...]:
+    """Ignore otherwise-unmanaged indexes MariaDB requires to enforce FKs."""
+
+    expected_names = {index.name for index in planned_model.indexes}
+    foreign_key_columns = {foreign_key.column_name for foreign_key in foreign_keys}
+    return tuple(
+        index
+        for index in indexes
+        if index.name in expected_names
+        or not index.column_names
+        or index.column_names[0] not in foreign_key_columns
     )
 
 
@@ -341,28 +458,52 @@ class MariaDBSchemaBackend:
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
         return expected_table_shape(planned_model, _SCHEMA_DIALECT)
 
-    async def inspect_shape(self, planned_model: PlannedModel) -> TableShape | None:
-        table_name = planned_model.table_name
-        if not await _table_exists(self.connection, table_name):
-            return None
-        engine_innodb = await _table_uses_innodb(self.connection, table_name)
-        return TableShape(
-            table_name=table_name,
-            columns=await _fetch_existing_column_shapes(self.connection, table_name),
-            indexes=await _fetch_existing_index_shapes(self.connection, table_name),
-            foreign_keys=(),
-            storage_options=("ENGINE=InnoDB",) if engine_innodb else (),
+    async def inspect_shapes(
+        self,
+        planned_models: Sequence[PlannedModel],
+    ) -> dict[str, TableShape]:
+        table_names = tuple(model.table_name for model in planned_models)
+        storage_options_by_table = await _fetch_table_storage_options(
+            self.connection, table_names
         )
+        columns_by_table = await _fetch_existing_column_shapes(
+            self.connection, table_names
+        )
+        indexes_by_table = await _fetch_existing_index_shapes(
+            self.connection, table_names
+        )
+        foreign_keys_by_table = await _fetch_existing_foreign_key_shapes(
+            self.connection, table_names
+        )
+        shapes: dict[str, TableShape] = {}
+        for planned_model in planned_models:
+            table_name = planned_model.table_name
+            storage_options = storage_options_by_table.get(table_name)
+            if storage_options is None:
+                continue
+            foreign_keys = foreign_keys_by_table.get(table_name, ())
+            shapes[table_name] = TableShape(
+                table_name=table_name,
+                columns=columns_by_table.get(table_name, ()),
+                indexes=_exclude_implicit_foreign_key_indexes(
+                    indexes_by_table.get(table_name, ()),
+                    foreign_keys,
+                    planned_model,
+                ),
+                foreign_keys=foreign_keys,
+                storage_options=storage_options,
+            )
+        return shapes
 
 
 async def verify_mariadb_schema(
     connection: object,
     models: Sequence[type[Table[Any]]],
     schema_policy: SchemaPolicy,
-) -> None:
+) -> SchemaVerificationResult:
     """Verify all configured MariaDB tables against the live schema."""
 
-    await verify_schema(
+    return await verify_schema(
         MariaDBSchemaBackend(connection),
         models,
         schema_policy,

@@ -26,6 +26,7 @@ from snekql.sqlite import (
     Model,
     Pending,
     SchemaPolicy,
+    SchemaVerificationResult,
     Text,
     Transaction,
     insert,
@@ -228,9 +229,10 @@ class _FakeRuntime:
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
-    ) -> None:
+    ) -> SchemaVerificationResult:
         _ = models
         _ = schema_policy
+        return SchemaVerificationResult(checked_tables=(), issues=())
 
 
 class _NeverClosingPool:

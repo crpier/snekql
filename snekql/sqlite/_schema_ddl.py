@@ -16,7 +16,7 @@ from snekql._scaffold import (
     scaffold_statements,
 )
 from snekql._schema_dialect import SchemaDialect
-from snekql._schema_shape import ColumnShape
+from snekql._schema_shape import ColumnShape, IndexShape
 from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import CurrentTimestamp
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from snekql._schema_plan import PlannedColumn
+    from snekql.indexes import NormalizedIndex
 from snekql.sqlite.model import Model
 
 
@@ -97,8 +98,18 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         nullable=not _requires_not_null(planned_column),
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
-        has_server_default=column.server_default is CurrentTimestamp,
-        collation=None,
+        server_default=(
+            "CurrentTimestamp" if column.server_default is CurrentTimestamp else None
+        ),
+        collation="BINARY",
+    )
+
+
+def _expected_index_shape(index: NormalizedIndex) -> IndexShape:
+    return IndexShape(
+        column_names=index.column_names,
+        name=index.name,
+        unique=index.unique,
     )
 
 
@@ -106,6 +117,8 @@ SCHEMA_DIALECT = SchemaDialect(
     quote_identifier=quote_identifier,
     compile_column_definition=_compile_column_definition,
     expected_column_shape=_expected_column_shape,
+    expected_index_shape=_expected_index_shape,
+    normalize_foreign_key_action=lambda action: action or "NO ACTION",
     table_suffix="STRICT",
     verifies_foreign_keys=True,
 )

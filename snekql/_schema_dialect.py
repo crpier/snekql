@@ -17,7 +17,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from snekql._schema_plan import PlannedColumn
-    from snekql._schema_shape import ColumnShape
+    from snekql._schema_shape import ColumnShape, IndexShape
+    from snekql.indexes import NormalizedIndex
 
 
 @dataclass(frozen=True)
@@ -27,5 +28,7 @@ class SchemaDialect:
     quote_identifier: Callable[[str], str]
     compile_column_definition: Callable[[PlannedColumn], str]
     expected_column_shape: Callable[[PlannedColumn], ColumnShape]
+    expected_index_shape: Callable[[NormalizedIndex], IndexShape]
+    normalize_foreign_key_action: Callable[[str | None], str]
     table_suffix: str
     verifies_foreign_keys: bool

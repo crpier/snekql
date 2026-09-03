@@ -13,6 +13,7 @@ from anyio.lowlevel import checkpoint
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
+from snekql._schema_verification import SchemaVerificationResult
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -364,12 +365,12 @@ class MariaDBRuntime:
         self,
         models: Sequence[type[Table[Any]]],
         schema_policy: SchemaPolicy,
-    ) -> None:
+    ) -> SchemaVerificationResult:
         """Verify the live schema against models on a pooled connection."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
         try:
-            await verify_mariadb_schema(connection, models, schema_policy)
+            return await verify_mariadb_schema(connection, models, schema_policy)
         finally:
             await self.connection_pool.release(connection)
 

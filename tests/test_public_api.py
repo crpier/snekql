@@ -78,9 +78,11 @@ _NEUTRAL_NAMES = frozenset(
         "QueryError",
         "ResultCardinalityError",
         "Scalar",
+        "SchemaDriftIssue",
         "SchemaError",
         "SchemaPolicy",
         "SchemaVerificationError",
+        "SchemaVerificationResult",
         "Select",
         "SnekqlError",
         "SnekqlWarning",
@@ -440,8 +442,10 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.QueryConstructionError,
         sqlite.QueryError,
         sqlite.Real,
+        sqlite.SchemaDriftIssue,
         sqlite.SchemaError,
         sqlite.SchemaVerificationError,
+        sqlite.SchemaVerificationResult,
         sqlite.SnekqlError,
         sqlite.Text,
         sqlite.Transaction,
@@ -489,7 +493,10 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
         sqlite.PoolTimeoutError("package-originated failure"),
         sqlite.QueryCompilationError("package-originated failure"),
         sqlite.QueryConstructionError("package-originated failure"),
-        sqlite.SchemaVerificationError("package-originated failure"),
+        sqlite.SchemaVerificationError(
+            "package-originated failure",
+            result=sqlite.SchemaVerificationResult(checked_tables=(), issues=()),
+        ),
         sqlite.TransactionClosedError("package-originated failure"),
         sqlite.TransactionNotStartedError("package-originated failure"),
         sqlite.TransactionReuseError("package-originated failure"),
@@ -503,6 +510,30 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
 
     for catch in catches:
         catch()
+
+
+@test()
+def schema_verification_values_are_immutable() -> None:
+    """Verification results and their nested drift issues are frozen values."""
+
+    issue = sqlite.SchemaDriftIssue("user", "column 'email' is missing")
+    result = sqlite.SchemaVerificationResult(
+        checked_tables=("user",),
+        issues=(issue,),
+    )
+
+    with assert_raises(FrozenInstanceError):
+        cast("Any", issue).detail = "changed"
+    with assert_raises(FrozenInstanceError):
+        cast("Any", result).issues = ()
+
+
+@test()
+def schema_verification_values_are_backend_neutral() -> None:
+    """Both Backend Namespaces expose the same verification value types."""
+
+    assert_is(sqlite.SchemaDriftIssue, mariadb.SchemaDriftIssue)
+    assert_is(sqlite.SchemaVerificationResult, mariadb.SchemaVerificationResult)
 
 
 @test()

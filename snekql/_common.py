@@ -15,6 +15,7 @@ Backend Namespace, so it stays compatible with the dialect-blindness invariant.
 from __future__ import annotations
 
 from snekql._migrations import MigrationResult
+from snekql._schema_verification import SchemaDriftIssue, SchemaVerificationResult
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -139,9 +140,11 @@ __all__ = [
     "QueryError",
     "ResultCardinalityError",
     "Scalar",
+    "SchemaDriftIssue",
     "SchemaError",
     "SchemaPolicy",
     "SchemaVerificationError",
+    "SchemaVerificationResult",
     "Select",
     "SnekqlError",
     "SnekqlWarning",

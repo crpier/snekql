@@ -636,11 +636,14 @@ await db.verify([User], policy="strict")
   from current model metadata.
 - `db.verify_migrations(migrations)` performs a read-only exact-head check. It
   neither applies pending SQL nor upgrades legacy history.
-- `db.verify(models, *, policy=...)` is a partial, structural check that reports
-  Schema Drift between the models and the live schema. `policy="strict"` raises
-  `SchemaVerificationError`; `policy="warn"` logs and continues. It compares
-  columns, indexes, foreign keys, and storage options by name and semantics, and
-  cannot see default values, `CHECK` constraints, triggers, or data.
+- `db.verify(models, *, policy=...)` is a partial, structural check that returns
+  an immutable `SchemaVerificationResult` with checked tables and table-scoped
+  drift issues. Every model is inspected before policy is applied:
+  `policy="strict"` raises `SchemaVerificationError` with the result attached;
+  `policy="warn"` logs and returns it. Verification compares supported column,
+  index, foreign-key, and storage facts by semantics, but cannot represent
+  literal defaults, partial-index predicates, `CHECK` constraints, triggers, or
+  data.
 
 A deploy step runs `initialize -> migrate -> verify_migrations -> verify`; app
 replicas run `initialize -> verify_migrations -> verify`. See
@@ -656,7 +659,7 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 - `QueryConstructionError`, `QueryCompilationError`
 - `DatabaseClosedError`, `PoolTimeoutError`, `TransactionClosedError`,
   `ExecutionError`
-- `SchemaVerificationError`
+- `SchemaVerificationError` (strict Schema Drift; inspect `.result`)
 - `MigrationDeclarationError`, `MigrationHistoryError`, `MigrationError`,
   `MigrationLockError`
 

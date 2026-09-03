@@ -100,8 +100,13 @@ if TYPE_CHECKING:
         await mariadb_transaction.execute(  # ty: ignore[no-matching-overload]
             sqlite.insert(SqliteUser(id=1)),
         )
-        await sqlite_database.verify([SqliteUser])
-        await mariadb_database.verify([MariadbUser])
+        sqlite_verification: sqlite.SchemaVerificationResult = (
+            await sqlite_database.verify([SqliteUser])
+        )
+        mariadb_verification: mariadb.SchemaVerificationResult = (
+            await mariadb_database.verify([MariadbUser])
+        )
+        _ = (mariadb_verification, sqlite_verification)
         await sqlite_database.verify(
             [MariadbUser],  # ty: ignore[invalid-argument-type]
         )
