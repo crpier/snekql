@@ -35,8 +35,10 @@ Query errors:
   `where()` with no predicates, passing a single-value select to
   `fetch_one_or_none` (whose `None` would be ambiguous), or calling
   `fetch_chunks(..., size=N)` with a non-positive `size`.
-- `QueryCompilationError`: a built query cannot compile to valid v1 SQLite SQL,
-  such as executing a select without `.where(...)` or `.all()`.
+- `QueryCompilationError`: a built query cannot compile to valid backend SQL.
+  Typed Query Runtime calls reject guaranteed-incomplete queries statically, but
+  the error remains the runtime backstop for `Any`, casts, untyped callers, and
+  forged state—for example, a select without `.where(...)` or `.all()`.
 
 Runtime errors:
 

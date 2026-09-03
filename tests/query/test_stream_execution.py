@@ -11,7 +11,7 @@ from snektest.assertions import assert_true
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql.model import BackendFamily, Table
-from snekql.query import AnySelectQuery, _QueryShape, _WriteShape
+from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
 from snekql.runtime import QueryCodec, RuntimeConnection, Transaction, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
@@ -215,7 +215,7 @@ class _FirstColumnQueryCodec:
 
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, Any, ResultT],
+        query: _ExecutableSelect[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: bool = True,
@@ -228,7 +228,7 @@ class _FirstColumnQueryCodec:
 
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[Any, ResultT],
+        query: _ExecutableWrite[Any, ResultT],
         *,
         validate: bool = True,
     ) -> WritePlan[object]:

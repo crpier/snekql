@@ -12,6 +12,7 @@ from snektest import assert_eq, assert_isinstance, assert_raises, test
 
 from snekql._query_codec import DialectQueryCodec
 from snekql._query_plan import SelectPlan, WritePlan
+from snekql._query_readiness import _ExecutableQuery
 from snekql.errors import ResultCardinalityError
 from snekql.query import _QueryShape, _WriteShape
 from snekql.sqlite import (
@@ -38,7 +39,7 @@ class Token[S = Pending](Model[S, "Token[Fetched]"]):
     value: Token.Col[UUID] = Text(nullable=False)
 
 
-class _UnlistedSelect[ResultT](_QueryShape[Any, Any, Any, ResultT]):
+class _UnlistedSelect[ResultT](_QueryShape[Any, Any, Any, ResultT, _ExecutableQuery]):
     """Internal query shape proving runtime does not enumerate select builders."""
 
     def __init__(self, state: object) -> None:

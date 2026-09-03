@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from typing import Any, Literal, cast, overload
 
 from snekql._dialect_expr import DialectSelectable
+from snekql._query_readiness import _IncompleteQuery
 from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Aggregate, ColumnRef, Scalar, _Scalar
@@ -95,7 +96,9 @@ def select[
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     /,
-) -> SelectTupleQuery[Literal["sqlite"], Owner1T, Owner1T | Owner2T, T1, T2]: ...
+) -> SelectTupleQuery[
+    Literal["sqlite"], Owner1T, Owner1T | Owner2T, _IncompleteQuery, T1, T2
+]: ...
 
 
 @overload
@@ -123,7 +126,13 @@ def select[
     | DialectSelectable[Owner3T, T3, Any],
     /,
 ) -> SelectTupleQuery[
-    Literal["sqlite"], Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3
+    Literal["sqlite"],
+    Owner1T,
+    Owner1T | Owner2T | Owner3T,
+    _IncompleteQuery,
+    T1,
+    T2,
+    T3,
 ]: ...
 
 
@@ -159,7 +168,14 @@ def select[
     | DialectSelectable[Owner4T, T4, Any],
     /,
 ) -> SelectTupleQuery[
-    Literal["sqlite"], Owner1T, Owner1T | Owner2T | Owner3T | Owner4T, T1, T2, T3, T4
+    Literal["sqlite"],
+    Owner1T,
+    Owner1T | Owner2T | Owner3T | Owner4T,
+    _IncompleteQuery,
+    T1,
+    T2,
+    T3,
+    T4,
 ]: ...
 
 
@@ -205,6 +221,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T,
+    _IncompleteQuery,
     T1,
     T2,
     T3,
@@ -262,6 +279,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T,
+    _IncompleteQuery,
     T1,
     T2,
     T3,
@@ -327,6 +345,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T,
+    _IncompleteQuery,
     T1,
     T2,
     T3,
@@ -400,6 +419,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T | Owner8T,
+    _IncompleteQuery,
     T1,
     T2,
     T3,

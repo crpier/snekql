@@ -38,15 +38,15 @@ if TYPE_CHECKING:
 
     sqlite_model_select: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(
         SqliteUser
-    )
-    sqlite_value_select: sqlite.Select[int] = sqlite.select(SqliteUser.id)
+    ).all()
+    sqlite_value_select: sqlite.Select[int] = sqlite.select(SqliteUser.id).all()
     sqlite_returning: sqlite.Write[SqliteUser[sqlite.Fetched]] = sqlite.insert(
         SqliteUser(id=1)
     ).returning()
     mariadb_model_select: mariadb.Select[MariadbUser[mariadb.Fetched]] = mariadb.select(
         MariadbUser
-    )
-    mariadb_value_select: mariadb.Select[int] = mariadb.select(MariadbUser.id)
+    ).all()
+    mariadb_value_select: mariadb.Select[int] = mariadb.select(MariadbUser.id).all()
     mariadb_returning: mariadb.Write[MariadbUser[mariadb.Fetched]] = mariadb.insert(
         MariadbUser(id=1)
     ).returning()

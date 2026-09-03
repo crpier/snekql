@@ -12,6 +12,13 @@
 
 ### Changed
 
+- Query Builder types now carry private executable-readiness state. `ty` rejects
+  selects and deletes without row scope, updates without both row scope and an
+  assignment, and incomplete nested selects at public `Select`/`Write` and Query
+  Runtime seams. Joins and `returning()` preserve readiness, application-facing
+  annotation arity is unchanged, and runtime completeness checks remain for
+  dynamic callers. (#245)
+
 - Public `Predicate`, `Aggregate`, `Scalar`, `JoinOn`, `OrderBy`, and
   `Assignment` names are now non-constructible annotations backed by private
   Query Builder nodes.

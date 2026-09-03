@@ -31,7 +31,7 @@ from snekql._query_plan import (
 )
 from snekql._query_state import DeleteState, InsertState, UpdateState
 from snekql.errors import QueryCompilationError
-from snekql.query import AnySelectQuery, _QueryShape, _WriteShape
+from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
 from snekql.storage import StorageBackend
 
 
@@ -68,7 +68,7 @@ class DialectQueryCodec:
     @overload
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, Any, ResultT],
+        query: _ExecutableSelect[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: Literal[True] = True,
@@ -77,7 +77,7 @@ class DialectQueryCodec:
     @overload
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, Any, ResultT],
+        query: _ExecutableSelect[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: Literal[False],
@@ -86,7 +86,7 @@ class DialectQueryCodec:
     @overload
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, Any, ResultT],
+        query: _ExecutableSelect[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: bool,
@@ -111,7 +111,7 @@ class DialectQueryCodec:
     @overload
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[Any, ResultT],
+        query: _ExecutableWrite[Any, ResultT],
         *,
         validate: Literal[True] = True,
     ) -> WritePlan[ResultT]: ...
@@ -119,7 +119,7 @@ class DialectQueryCodec:
     @overload
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[Any, ResultT],
+        query: _ExecutableWrite[Any, ResultT],
         *,
         validate: Literal[False],
     ) -> WritePlan[object]: ...
@@ -127,7 +127,7 @@ class DialectQueryCodec:
     @overload
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[Any, ResultT],
+        query: _ExecutableWrite[Any, ResultT],
         *,
         validate: bool,
     ) -> WritePlan[object]: ...
