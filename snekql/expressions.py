@@ -16,6 +16,7 @@ from typing import (
     runtime_checkable,
 )
 
+from snekql._query_readiness import _ExecutableQuery
 from snekql.errors import QueryCompilationError, QueryConstructionError
 
 type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
@@ -57,7 +58,7 @@ class ColumnRef[OwnerT, T](Protocol):
         raise NotImplementedError
 
 
-class _ColumnSubquery[T_co](Protocol):
+class _ColumnSubquery[T_co, ReadinessT_co](Protocol):
     """Structural view of a single-column subquery's projected value type.
 
     Implemented by ``SelectValueQuery`` (via a typing-only witness). Declared
@@ -66,6 +67,8 @@ class _ColumnSubquery[T_co](Protocol):
     """
 
     def __subquery_value_type__(self) -> T_co: ...
+
+    def _readiness_type(self) -> ReadinessT_co: ...
 
 
 # The comparison surface's operator vocabulary, shared by literal comparisons
@@ -685,9 +688,9 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
 
     def in_subquery(
         self,
-        subquery: _ColumnSubquery[ColumnValueT],
+        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery],
     ) -> Predicate[OwnerT]:
-        """Test membership against a single-column subquery (``IN (SELECT ...)``)."""
+        """Test membership against an executable single-column subquery."""
 
         return SubqueryMembershipPredicate(
             operand=self,
@@ -697,9 +700,9 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
 
     def not_in_subquery(
         self,
-        subquery: _ColumnSubquery[ColumnValueT],
+        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery],
     ) -> Predicate[OwnerT]:
-        """Negated membership against a single-column subquery (``NOT IN``)."""
+        """Negated membership against an executable single-column subquery."""
 
         return SubqueryMembershipPredicate(
             operand=self,

@@ -34,7 +34,12 @@ def _replace_generated(source: str, name: str, generated: str) -> str:
 
 
 def _returning_overloads(
-    *, owner: str, read: str | None, value_query: str, tuple_query: str
+    *,
+    owner: str,
+    read: str | None,
+    readiness: str | None,
+    value_query: str,
+    tuple_query: str,
 ) -> str:
     blocks: list[str] = []
     for width in range(1, MAX_PROJECTION_WIDTH + 1):
@@ -46,6 +51,8 @@ def _returning_overloads(
         result_args = ["FamilyT", owner]
         if read is not None:
             result_args.append(read)
+        if readiness is not None:
+            result_args.append(readiness)
         result_args.extend(f"T{index}" for index in range(1, width + 1))
         query = value_query if width == 1 else tuple_query
         blocks.append(
@@ -84,7 +91,7 @@ def _select_overloads() -> str:
             "](\n"
             f"{fields}"
             "    /,\n"
-            f") -> SelectTupleQuery[Any, Owner1T, {owners}, {values}]: ...\n\n\n"
+            f") -> SelectTupleQuery[Any, Owner1T, {owners}, _IncompleteQuery, {values}]: ...\n\n\n"
         )
     return "".join(blocks)
 
@@ -138,7 +145,7 @@ def _backend_select_overloads(backend: str) -> str:
             "](\n"
             f"{fields}"
             "    /,\n"
-            f") -> SelectTupleQuery[{family}, Owner1T, {owners}, {values}]: ...\n\n\n"
+            f") -> SelectTupleQuery[{family}, Owner1T, {owners}, _IncompleteQuery, {values}]: ...\n\n\n"
         )
     return "".join(blocks)
 
@@ -176,6 +183,7 @@ def generated_query_source(source: str) -> str:
         _returning_overloads(
             owner="OwnerT",
             read=None,
+            readiness=None,
             value_query="InsertReturningValueQuery",
             tuple_query="InsertReturningTupleQuery",
         ),
@@ -186,6 +194,7 @@ def generated_query_source(source: str) -> str:
         _returning_overloads(
             owner="OwnerT",
             read=None,
+            readiness=None,
             value_query="InsertManyReturningValueQuery",
             tuple_query="InsertManyReturningTupleQuery",
         ),
@@ -196,6 +205,7 @@ def generated_query_source(source: str) -> str:
         _returning_overloads(
             owner="ModelT",
             read="ReadT",
+            readiness="ReadinessT",
             value_query="UpdateReturningValueQuery",
             tuple_query="UpdateReturningTupleQuery",
         ),
@@ -206,6 +216,7 @@ def generated_query_source(source: str) -> str:
         _returning_overloads(
             owner="ModelT",
             read="ReadT",
+            readiness="ReadinessT",
             value_query="DeleteReturningValueQuery",
             tuple_query="DeleteReturningTupleQuery",
         ),

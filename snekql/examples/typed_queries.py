@@ -59,12 +59,12 @@ if TYPE_CHECKING:
         _ = assert_type(fetched_account.created_at, datetime)
         _ = assert_type(fetched_account.cache_key(), str)
 
-    model_query: Select[Account[Fetched]] = select(Account)
-    value_query: Select[str] = select(Account.email)
-    tuple_query: Select[tuple[str, str]] = select(Account.email, Account.status)
+    model_query: Select[Account[Fetched]] = select(Account).all()
+    value_query: Select[str] = select(Account.email).all()
+    tuple_query: Select[tuple[str, str]] = select(Account.email, Account.status).all()
     _ = assert_type(Account.email.eq("alice@example.com"), Predicate[Account[Pending]])
     insert_query: Write[None] = insert(pending_account)
-    update_query: Write[int] = update(Account).set(Account.status.to("disabled"))
+    update_query: Write[int] = update(Account).set(Account.status.to("disabled")).all()
 
     async def check_runtime_shapes(transaction: Transaction) -> None:
         """Runtime overloads preserve selected result shapes."""

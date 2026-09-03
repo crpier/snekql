@@ -464,7 +464,9 @@ The parameterized form is what executes. The inlined form substitutes the
 encoded parameters as SQL literals for pasting into a database console; it is
 approximate and must not be executed. A query that has not yet chosen
 `.where(...)`/`.all()` renders as `<SelectModelQuery incomplete: ...>` rather
-than raising, so it is always safe to `repr` a query in a debugger.
+than raising, so it is always safe to `repr` a query in a debugger. Such a
+builder cannot be passed to a typed Transaction or stored as `Select[Row]` until
+it becomes executable.
 
 ## Runtime
 
@@ -705,8 +707,12 @@ The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 (`snekql._*`) and backend submodules (`snekql.sqlite.config`,
 `snekql.sqlite.verbs`, …) are implementation detail and not supported import
 paths — their public symbols are re-exported through the namespace top level.
-Use `Select[Row]` and `Write[Result]` to annotate queries without depending on
-their state-specific implementation classes. `Predicate`, `Aggregate`,
+Use `Select[Row]` and `Write[Result]` to annotate executable queries without
+depending on their state-specific implementation classes. Query Readiness is
+tracked privately: selects and deletes need `.all()` or `.where(...)`; updates
+need both `.set(...)` and row scope. `ty` rejects guaranteed-incomplete queries
+at stored-query and Transaction seams, while Query Compilation keeps equivalent
+checks for dynamic callers. `Predicate`, `Aggregate`,
 `Scalar`, `JoinOn`, `OrderBy`, and `Assignment` are likewise annotation-only:
 obtain their values from model/column methods and Query Builder factories,
 never constructors. Use

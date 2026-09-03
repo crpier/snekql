@@ -52,18 +52,16 @@ from snekql.model import (
 )
 from snekql.query import (
     AnySelectQuery,
-    DeleteQuery,
     InsertManyQuery,
     InsertQuery,
     JoinModelQuery,
     SelectModelQuery,
     SelectTupleQuery,
     SelectValueQuery,
-    UpdateQuery,
-    _OptionalQueryShape,
-    _QueryShape,
+    _ExecutableOptionalSelect,
+    _ExecutableSelect,
+    _ExecutableWrite,
     _SelectableModelClass,
-    _WriteShape,
 )
 from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
@@ -163,7 +161,7 @@ class QueryCodec(Protocol):
 
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, Any, ResultT],
+        query: _ExecutableSelect[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: bool = True,
@@ -171,7 +169,7 @@ class QueryCodec(Protocol):
 
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[Any, ResultT],
+        query: _ExecutableWrite[Any, ResultT],
         *,
         validate: bool = True,
     ) -> WritePlan[object]: ...
@@ -450,21 +448,21 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> list[RowT]: ...
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> list[object]: ...
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> list[object]: ...
@@ -526,7 +524,7 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: Literal[True] = True,
@@ -534,7 +532,7 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: Literal[False],
@@ -542,7 +540,7 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: bool,
@@ -632,21 +630,21 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> RowT: ...
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> object: ...
@@ -668,7 +666,7 @@ class Transaction[FamilyT: BackendFamily]:
         async with self._lock:
             connection = self.require_connection()
             plan = self.runtime.query_codec.compile_select_plan(
-                cast("_QueryShape[FamilyT, Any, Any, object]", query),
+                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
                 cardinality="one",
                 validate=validate,
             )
@@ -705,21 +703,21 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableOptionalSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> RowT | None: ...
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableOptionalSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
+        query: _ExecutableOptionalSelect[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> object: ...
@@ -764,7 +762,7 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def execute(
         self,
-        query: UpdateQuery[FamilyT, Any, Any] | DeleteQuery[FamilyT, Any, Any],
+        query: _ExecutableWrite[FamilyT, int],
         *,
         validate: bool = True,
     ) -> int: ...
@@ -778,21 +776,21 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[FamilyT, ResultT],
+        query: _ExecutableWrite[FamilyT, ResultT],
         *,
         validate: Literal[True] = True,
     ) -> ResultT: ...
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[FamilyT, ResultT],
+        query: _ExecutableWrite[FamilyT, ResultT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[FamilyT, ResultT],
+        query: _ExecutableWrite[FamilyT, ResultT],
         *,
         validate: bool,
     ) -> object: ...
@@ -811,7 +809,7 @@ class Transaction[FamilyT: BackendFamily]:
         async with self._lock:
             connection = self.require_connection()
             plan = self.runtime.query_codec.compile_write_plan(
-                cast("_WriteShape[FamilyT, object]", query),
+                cast("_ExecutableWrite[FamilyT, object]", query),
                 validate=validate,
             )
             if plan.sql is None:

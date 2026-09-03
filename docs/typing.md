@@ -86,10 +86,12 @@ retain that namespace's backend family under static typing:
 ```python
 from snekql import mariadb, sqlite
 
-sqlite_query: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(SqliteUser)
+sqlite_query: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(
+    SqliteUser
+).all()
 mariadb_query: mariadb.Select[MariadbUser[mariadb.Fetched]] = mariadb.select(
     MariadbUser
-)
+).all()
 
 await sqlite_tx.fetch_all(mariadb_query)  # type error
 sqlite.select(SqliteUser).join(MariadbUser, on=...)  # type error
@@ -104,6 +106,39 @@ same backend namespace.
 Static isolation supplements runtime validation. Dynamic inputs introduced via
 `Any`, casts, or runtime model loading are still checked by backend verbs, joins,
 foreign keys, Scaffold, Database verification, and Execution Plans.
+
+## Executable query states
+
+The Query Builder tracks Query Readiness as private static state. `select(...)`
+and `delete(...)` start incomplete; `.all()` or `.where(...)` supplies row scope
+and makes them executable. `update(...)` needs both one or more assignments and
+row scope, in either order:
+
+```python
+select(User)  # incomplete
+select(User).all()  # executable
+select(User).where(User.id.eq(1))  # executable
+
+delete(User)  # incomplete
+delete(User).where(User.id.eq(1))  # executable
+
+update(User).all()  # incomplete: no assignment
+update(User).set(User.status.to("inactive"))  # incomplete: no row scope
+update(User).set(User.status.to("inactive")).all()  # executable
+update(User).where(User.id.eq(1)).set(User.status.to("inactive"))  # executable
+```
+
+Joins and `returning(...)` preserve readiness; they do not establish row scope or
+an assignment. Ordering, grouping, limits, offsets, and distinctness likewise
+preserve it. Nested selects passed to `scalar`, `exists`, `not_exists`,
+`in_subquery`, or `not_in_subquery` must already be executable.
+
+`Transaction` accepts only executable `Select[Row]` and `Write[Result]` carriers,
+so `ty` rejects guaranteed-incomplete queries before Query Compilation. The
+readiness coordinate stays private: application annotations retain one result
+type argument. Keep Query Compilation error handling because runtime validation
+still protects dynamic values introduced through `Any`, casts, untyped callers,
+or state forgery.
 
 ## `Col` and `GenCol`
 
@@ -555,8 +590,9 @@ change without notice.
   Dialect for SQL inspection — see
   [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md).)
 
-**Queries and expressions are named by result.** Use `Select[RowT]` for a read
-query and `Write[ResultT]` for a mutation. The state-specific builder classes and
+**Queries and expressions are named by result.** Use `Select[RowT]` for an
+executable read query and `Write[ResultT]` for an executable mutation. The
+state-specific builder classes and
 concrete expression nodes are private implementation vocabulary. Build queries
 through `select`, `insert`, `update`, and `delete`; obtain `Predicate`,
 `Aggregate`, `Scalar`, `JoinOn`, `OrderBy`, and `Assignment` values from
@@ -582,7 +618,9 @@ def user_projection[T](
 ```
 
 `Select` and `Write` are annotation-only aliases rather than runtime classes, so
-do not construct them or use them with `isinstance`. An annotated query remains
+do not construct them or use them with `isinstance`. Incomplete fluent builders
+do not satisfy these aliases; finish their required row scope and assignments
+before storing them at an application seam. An annotated query remains
 executable through `Transaction`:
 
 ```python

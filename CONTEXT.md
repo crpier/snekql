@@ -20,6 +20,10 @@ _Avoid_: ORM session, persistence layer
 The conversion of built query state into parameterized backend Dialect SQL — the write/emit counterpart to Materialization. Operates purely on query state plus a Dialect; the Query Builder produces the state, Query Compilation lowers it.
 _Avoid_: query generation, SQL rendering, codegen
 
+**Query Readiness**:
+The static fact that a query has the minimum explicit intent needed for execution: a select or delete has row scope, while an update has both row scope and an assignment. Query Compilation still validates those facts for dynamic callers.
+_Avoid_: query validity, compiled query
+
 **Materialization**:
 The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Fetched Model; for scalar or tuple selects, it produces decoded Python values.
 _Avoid_: hydration, insert encoding, write compilation
