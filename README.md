@@ -135,6 +135,8 @@ Rules to remember:
   values are `T`.
 - If `__tablename__` is omitted, class names become snake_case table names.
 - Models are immutable after construction/materialization.
+- Column descriptor metadata is finalized with the model declaration and is
+  immutable afterward.
 - Fetched models are produced by database reads only.
 - Instance methods that assume a state should annotate `self`, e.g.
   `self: User[Pending]` or `self: User[Fetched]`.

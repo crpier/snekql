@@ -26,7 +26,8 @@ Model errors:
 
 - `ModelDeclarationError`: invalid table model class or column declaration.
 - `ModelValidationError`: invalid pending or fetched model value.
-- `FrozenModelError`: attempt to mutate an immutable model instance.
+- `FrozenModelError`: attempt to mutate an immutable model instance or finalized
+  column metadata.
 
 Query errors:
 

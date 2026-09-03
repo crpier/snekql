@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
 from snektest import (
+    Param,
     assert_eq,
     assert_false,
     assert_is,
@@ -353,6 +354,86 @@ def model_construction_calls_default_factories_per_instance() -> None:
 
     assert_eq(first.tags, ["first"])
     assert_eq(second.tags, [])
+
+
+@test(
+    [
+        Param(value=("owner", object), name="owner"),
+        Param(value=("name", "renamed"), name="name"),
+        Param(value=("nullable", True), name="nullable"),
+        Param(value=("default", "inactive"), name="default"),
+        Param(value=("primary_key", True), name="primary-key"),
+        Param(value=("unique", True), name="unique"),
+        Param(value=("storage_class", "BLOB"), name="storage-class"),
+        Param(value=("storage_type_name", "Blob"), name="storage-type"),
+    ],
+    mark="fast",
+)
+def bound_column_metadata_is_immutable(
+    metadata_change: tuple[str, object],
+) -> None:
+    """A model's finalized column metadata rejects public mutation."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model with runtime schema metadata."""
+
+        email: User.Col[str] = Text(nullable=False)
+
+    metadata_name, replacement = metadata_change
+    original = getattr(User.email, metadata_name)
+
+    with assert_raises(FrozenModelError) as frozen_error:
+        setattr(User.email, metadata_name, replacement)
+
+    assert_eq(
+        str(frozen_error.exception),
+        f"column metadata for User.email is immutable: {metadata_name}",
+    )
+    assert_is(getattr(User.email, metadata_name), original)
+
+
+@test(mark="fast")
+def bound_column_metadata_cannot_be_deleted() -> None:
+    """Removing finalized metadata raises the same deliberate package error."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        """Table model with default metadata."""
+
+        status: User.Col[str] = Text(default="active")
+
+    with assert_raises(FrozenModelError) as frozen_error:
+        del User.status.default
+
+    assert_eq(
+        str(frozen_error.exception),
+        "column metadata for User.status is immutable: default",
+    )
+    assert_eq(User.status.default, "active")
+
+
+@test(mark="fast")
+def finalized_column_metadata_preserves_declaration_facts() -> None:
+    """Model finalization freezes metadata only after deriving declaration facts."""
+
+    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+        """Table model with derived and explicit column metadata."""
+
+        id: Account.GenCol[int] = Integer(
+            primary_key=True,
+            default=PENDING_GENERATION,
+        )
+        nickname: Account.Col[str | None] = Text(default=None, unique=True)
+
+    assert_is(Account.id.owner, Account)
+    assert_eq(Account.id.name, "id")
+    assert_true(Account.id.is_generated)
+    assert_true(Account.id.primary_key)
+    assert_is(Account.id.default, PENDING_GENERATION)
+    assert_eq(Account.id.storage_class, "INTEGER")
+    assert_eq(Account.id.storage_type_name, "Integer")
+    assert_true(Account.nickname.nullable)
+    assert_is(Account.nickname.default, None)
+    assert_true(Account.nickname.unique)
 
 
 @test(mark="fast")
