@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Required nullable enforced foreign keys can be declared as
+  `FKCol[Target, T | None] = ForeignKey(Target.id, nullable=True)`. Pending
+  construction requires the field while accepting `T` or `None`; add
+  `default=None` to make it omittable. (#236)
+
 - Fluent query methods whose runtime contract requires at least one value now
   reject zero-argument calls under `ty`. Nullable columns retain nullable result
   types while rejecting `None` in literal comparisons; use `is_null()` or

@@ -175,6 +175,32 @@ if TYPE_CHECKING:
             default=1,
         )
 
+    required_nullable_foreign_key = ValidForeignKeyDeclarations(
+        required_nullable_user_id=None,
+    )
+    _ = assert_type(
+        required_nullable_foreign_key.required_nullable_user_id,
+        int | None,
+    )
+    _ = ValidForeignKeyDeclarations(required_nullable_user_id=1)
+    _ = ValidForeignKeyDeclarations()  # ty: ignore[missing-argument]
+
+    omittable_nullable_foreign_key = Order(user_id=1, note="review pending")
+    _ = assert_type(omittable_nullable_foreign_key.reviewer_id, int | None)
+    _ = assert_type(omittable_nullable_foreign_key.user_id, int)
+    _ = Order(note="missing user")  # ty: ignore[missing-argument]
+    _ = Order(
+        user_id=None,  # ty: ignore[invalid-argument-type]
+        note="invalid user",
+    )
+
+    def check_required_nullable_fetched(
+        row: ValidForeignKeyDeclarations[Fetched],
+    ) -> None:
+        """Fetched required-nullable foreign keys retain their optional value."""
+
+        _ = assert_type(row.required_nullable_user_id, int | None)
+
     class InvalidSqliteDefaults[S = Pending](
         Model[S, "InvalidSqliteDefaults[Fetched]"]
     ):
