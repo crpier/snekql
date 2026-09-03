@@ -1,0 +1,54 @@
+"""PROTOTYPE: readiness failures accepted by the current production interface."""
+
+from __future__ import annotations
+
+from snekql import sqlite
+
+
+class User[S = sqlite.Pending](sqlite.Model[S, "User[sqlite.Fetched]"]):
+    """Baseline model."""
+
+    id: User.Col[int] = sqlite.Integer(primary_key=True)
+    name: User.Col[str] = sqlite.Text()
+
+
+class Order[S = sqlite.Pending](sqlite.Model[S, "Order[sqlite.Fetched]"]):
+    """Baseline joined model."""
+
+    id: Order.Col[int] = sqlite.Integer(primary_key=True)
+    user_id: Order.FKCol[User, int] = sqlite.ForeignKey(User.id)
+
+
+incomplete_select: sqlite.Select[User[sqlite.Fetched]] = sqlite.select(User)  # ty: ignore[invalid-assignment]
+incomplete_delete: sqlite.Write[int] = sqlite.delete(User)  # ty: ignore[invalid-assignment]
+assignmentless_update: sqlite.Write[int] = sqlite.update(User).all()  # ty: ignore[invalid-assignment]
+unscoped_update: sqlite.Write[int] = sqlite.update(User).set(  # ty: ignore[invalid-assignment]
+    User.name.to("Ada")
+)
+
+
+async def current_runtime_accepts_incomplete_queries(
+    transaction: sqlite.Transaction,
+) -> None:
+    """Current carriers lack readiness, so each expected rejection is unused."""
+
+    await transaction.fetch_all(sqlite.select(User))  # ty: ignore[invalid-argument-type]
+    await transaction.fetch_all(  # ty: ignore[invalid-argument-type]
+        sqlite.select(User).join(
+            Order,
+            on=Order.user_id.references(User.id),
+        )
+    )
+    await transaction.execute(sqlite.delete(User))  # ty: ignore[invalid-argument-type]
+    await transaction.execute(  # ty: ignore[invalid-argument-type]
+        sqlite.delete(User).returning()
+    )
+    await transaction.execute(  # ty: ignore[invalid-argument-type]
+        sqlite.update(User).all()
+    )
+    await transaction.execute(  # ty: ignore[invalid-argument-type]
+        sqlite.update(User).set(User.name.to("Ada"))
+    )
+    await transaction.execute(  # ty: ignore[invalid-argument-type]
+        sqlite.update(User).returning(User.id).all()
+    )
