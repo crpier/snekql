@@ -65,8 +65,16 @@ A dev-time pure function that emits initial `CREATE TABLE` and index DDL for a T
 _Avoid_: autogenerate, model-vs-live diff, create_all
 
 **Backend Namespace**:
-The public database-family namespace that owns model bases, column declarations, and runtime configuration for one database family.
+The public database-family namespace that owns model bases, column declarations, query verbs, and runtime configuration for one Backend Family.
 _Avoid_: generic portability layer, driver module
+
+**Backend Family**:
+The SQLite or MariaDB identity shared by every model, query, configuration, Database, Transaction, foreign key, and Scaffold input in one operation.
+_Avoid_: Dialect, driver type
+
+**Backend Family Witness**:
+The private static `Literal["sqlite"]` or `Literal["mariadb"]` coordinate propagated through backend-owned values. Backend Namespace aliases hide it from application annotation arity; runtime family checks back-stop erased typing.
+_Avoid_: public backend generic, runtime-only tag
 
 **Backend Runtime Adapter**:
 The internal adapter that lets the Query Runtime acquire connections, compile SQL, and materialize rows for one backend; transaction control runs on the connections it yields.

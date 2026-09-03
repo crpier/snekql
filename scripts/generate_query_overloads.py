@@ -8,13 +8,18 @@ import sys
 from pathlib import Path
 
 MAX_PROJECTION_WIDTH = 8
-QUERY_PATH = Path(__file__).parents[1] / "snekql" / "query.py"
+PACKAGE_ROOT = Path(__file__).parents[1] / "snekql"
+QUERY_PATH = PACKAGE_ROOT / "query.py"
+BACKEND_VERB_PATHS = {
+    "mariadb": PACKAGE_ROOT / "mariadb" / "verbs.py",
+    "sqlite": PACKAGE_ROOT / "sqlite" / "verbs.py",
+}
 
 
 def _replace_generated(source: str, name: str, generated: str) -> str:
     start_marker = f"    # BEGIN GENERATED {name}\n"
     end_marker = f"    # END GENERATED {name}\n"
-    if name == "SELECT OVERLOADS":
+    if name in {"SELECT OVERLOADS", "BACKEND SELECT OVERLOADS"}:
         start_marker = start_marker.removeprefix("    ")
         end_marker = end_marker.removeprefix("    ")
     before, separator, remainder = source.partition(start_marker)
@@ -38,7 +43,7 @@ def _returning_overloads(
             f"        field{index}: Attr[Any, Any, {owner}, Any, T{index}],\n"
             for index in range(1, width + 1)
         )
-        result_args = [owner]
+        result_args = ["FamilyT", owner]
         if read is not None:
             result_args.append(read)
         result_args.extend(f"T{index}" for index in range(1, width + 1))
@@ -78,9 +83,79 @@ def _select_overloads() -> str:
             "](\n"
             f"{fields}"
             "    /,\n"
-            f") -> SelectTupleQuery[Owner1T, {owners}, {values}]: ...\n\n\n"
+            f") -> SelectTupleQuery[Any, Owner1T, {owners}, {values}]: ...\n\n\n"
         )
     return "".join(blocks)
+
+
+def _backend_select_overloads(backend: str) -> str:
+    family = f'Literal["{backend}"]'
+    model_overload = (
+        "@overload\n"
+        "def select[OwnerT: Model[Any, Any], ReadT: Table[Any]](\n"
+        f"    model: _SelectableModelClass[{family}, OwnerT, ReadT],\n"
+        "    /,\n"
+        f") -> SelectModelQuery[{family}, OwnerT, ReadT]: ...\n\n\n"
+    )
+    singleton_overload = (
+        "@overload\n"
+        "def select[OwnerT: Model[Any, Any], ValueT, CompareT](\n"
+        "    field: Attr[Any, Any, OwnerT, Any, ValueT, Any, CompareT]\n"
+        "    | Aggregate[OwnerT, ValueT, CompareT]\n"
+        "    | DialectSelectable[OwnerT, ValueT, CompareT],\n"
+        "    /,\n"
+        f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, CompareT]: ...\n\n\n"
+    )
+    blocks = [model_overload, singleton_overload]
+    for width in range(2, MAX_PROJECTION_WIDTH + 1):
+        type_params = ",\n    ".join(
+            item
+            for index in range(1, width + 1)
+            for item in (f"Owner{index}T: Model[Any, Any]", f"T{index}")
+        )
+        fields = "".join(
+            f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"
+            f"    | Aggregate[Owner{index}T, T{index}, Any]\n"
+            + ("" if index == 1 else f"    | Scalar[Owner{index}T, T{index}, Any]\n")
+            + f"    | DialectSelectable[Owner{index}T, T{index}, Any],\n"
+            for index in range(1, width + 1)
+        )
+        owners = " | ".join(f"Owner{index}T" for index in range(1, width + 1))
+        values = ", ".join(f"T{index}" for index in range(1, width + 1))
+        blocks.append(
+            "@overload\n"
+            "def select[\n"
+            f"    {type_params},\n"
+            "](\n"
+            f"{fields}"
+            "    /,\n"
+            f") -> SelectTupleQuery[{family}, Owner1T, {owners}, {values}]: ...\n\n\n"
+        )
+    return "".join(blocks)
+
+
+def generated_backend_verb_source(source: str, backend: str, path: Path) -> str:
+    """Return one Backend Namespace verb module with refreshed select overloads."""
+
+    source = _replace_generated(
+        source,
+        "BACKEND SELECT OVERLOADS",
+        _backend_select_overloads(backend),
+    )
+    formatted = subprocess.run(  # noqa: S603
+        [
+            str(Path(sys.executable).with_name("ruff")),
+            "format",
+            "--stdin-filename",
+            str(path),
+            "-",
+        ],
+        check=True,
+        capture_output=True,
+        input=source,
+        text=True,
+    )
+    return formatted.stdout
 
 
 def generated_query_source(source: str) -> str:
@@ -149,14 +224,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     arguments = parser.parse_args()
-    source = QUERY_PATH.read_text()
-    generated = generated_query_source(source)
+    sources = {QUERY_PATH: generated_query_source(QUERY_PATH.read_text())}
+    sources.update(
+        {
+            path: generated_backend_verb_source(path.read_text(), backend, path)
+            for backend, path in BACKEND_VERB_PATHS.items()
+        }
+    )
     if arguments.check:
-        if generated != source:
-            message = "snekql/query.py generated overloads are stale"
+        stale_paths = [
+            path for path, generated in sources.items() if generated != path.read_text()
+        ]
+        if stale_paths:
+            message = "generated query overloads are stale: " + ", ".join(
+                str(path.relative_to(Path(__file__).parents[1])) for path in stale_paths
+            )
             raise SystemExit(message)
         return
-    QUERY_PATH.write_text(generated)
+    for path, generated in sources.items():
+        path.write_text(generated)
 
 
 if __name__ == "__main__":

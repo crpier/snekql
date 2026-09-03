@@ -27,7 +27,7 @@ class BackendQueryApi:
     insert: Callable[..., Any]
 
 
-async def seed_rows(api: BackendQueryApi, db: Database, count: int) -> None:
+async def seed_rows(api: BackendQueryApi, db: Database[Any], count: int) -> None:
     """Insert ``count`` rows so point reads and large selects have data."""
 
     batch = 500
@@ -45,7 +45,7 @@ async def seed_rows(api: BackendQueryApi, db: Database, count: int) -> None:
 
 
 def point_read(
-    api: BackendQueryApi, db: Database, row_count: int
+    api: BackendQueryApi, db: Database[Any], row_count: int
 ) -> Callable[[int], Awaitable[None]]:
     """Build a workload that reads one random row by primary key."""
 
@@ -61,7 +61,9 @@ def point_read(
     return op
 
 
-def write_row(api: BackendQueryApi, db: Database) -> Callable[[int], Awaitable[None]]:
+def write_row(
+    api: BackendQueryApi, db: Database[Any]
+) -> Callable[[int], Awaitable[None]]:
     """Build a workload that inserts one row per operation."""
 
     model = api.model
@@ -78,7 +80,7 @@ def write_row(api: BackendQueryApi, db: Database) -> Callable[[int], Awaitable[N
 
 
 def mixed_read_write(
-    api: BackendQueryApi, db: Database, row_count: int
+    api: BackendQueryApi, db: Database[Any], row_count: int
 ) -> Callable[[int], Awaitable[None]]:
     """Build a workload alternating point reads and inserts (~5:1)."""
 
@@ -95,7 +97,7 @@ def mixed_read_write(
 
 
 def large_select(
-    api: BackendQueryApi, db: Database, limit: int
+    api: BackendQueryApi, db: Database[Any], limit: int
 ) -> Callable[[int], Awaitable[None]]:
     """Build a workload that materializes a large result set via fetch_all."""
 

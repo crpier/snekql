@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from snektest import assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
+from snekql.query import insert as untyped_insert
+from snekql.query import select as untyped_select
 from snekql.sqlite import (
     Database,
     DatabaseRuntimeError,
     Fetched,
     Model,
     Pending,
+    QueryConstructionError,
     Text,
     select,
 )
@@ -43,6 +48,36 @@ def _config_from_server(server: TemporaryMariaDBServer) -> mariadb.Config:
     return server.config()
 
 
+@test(mark="fast")
+def backend_verbs_reject_dynamic_cross_family_models() -> None:
+    """Runtime verb guards back-stop casts and other erased typing."""
+
+    maria_row = MariadbIdentityUser(email="a@example.com")
+    sqlite_row = SqliteIdentityUser(email="a@example.com")
+    cross_family_calls = (
+        lambda: sqlite.select(cast("Any", MariadbIdentityUser)),
+        lambda: sqlite.select(
+            SqliteIdentityUser.email,
+            cast("Any", MariadbIdentityUser.email),
+        ),
+        lambda: sqlite.insert(cast("Any", maria_row)),
+        lambda: sqlite.update(cast("Any", MariadbIdentityUser)),
+        lambda: sqlite.delete(cast("Any", MariadbIdentityUser)),
+        lambda: mariadb.select(cast("Any", SqliteIdentityUser)),
+        lambda: mariadb.select(
+            MariadbIdentityUser.email,
+            cast("Any", SqliteIdentityUser.email),
+        ),
+        lambda: mariadb.insert(cast("Any", sqlite_row)),
+        lambda: mariadb.update(cast("Any", SqliteIdentityUser)),
+        lambda: mariadb.delete(cast("Any", SqliteIdentityUser)),
+    )
+
+    for call in cross_family_calls:
+        with assert_raises(QueryConstructionError):
+            _ = call()
+
+
 @test(mark="medium")
 async def sqlite_verify_rejects_mariadb_models() -> None:
     """SQLite Database verify rejects MariaDB Table Models."""
@@ -50,7 +85,7 @@ async def sqlite_verify_rejects_mariadb_models() -> None:
     database = await Database.initialize(database=":memory:")
     try:
         with assert_raises(DatabaseRuntimeError) as error:
-            await database.verify([MariadbIdentityUser])
+            await database.verify(cast("Any", [MariadbIdentityUser]))
     finally:
         await database.close()
 
@@ -64,7 +99,7 @@ async def mariadb_verify_rejects_sqlite_models() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    database = await Database.initialize(_config_from_server(server))
+    database = await Database.initialize(cast("Any", _config_from_server(server)))
     try:
         with assert_raises(DatabaseRuntimeError) as error:
             await database.verify([SqliteIdentityUser])
@@ -83,7 +118,9 @@ async def sqlite_transaction_rejects_mariadb_queries() -> None:
     try:
         async with sqlite_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await tx.fetch_all(select(MariadbIdentityUser).all())
+                _ = await tx.fetch_all(
+                    cast("Any", untyped_select(MariadbIdentityUser).all())
+                )
     finally:
         await sqlite_database.close()
 
@@ -100,7 +137,10 @@ async def sqlite_transaction_rejects_mariadb_write_plans() -> None:
         async with sqlite_database.transaction() as transaction:
             with assert_raises(DatabaseRuntimeError) as error:
                 _ = await transaction.execute(
-                    mariadb.insert(MariadbIdentityUser(email="a@example.com")),
+                    cast(
+                        "Any",
+                        untyped_insert(MariadbIdentityUser(email="a@example.com")),
+                    ),
                 )
     finally:
         await sqlite_database.close()
@@ -115,7 +155,9 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    mariadb_database = await Database.initialize(_config_from_server(server))
+    mariadb_database = await Database.initialize(
+        cast("Any", _config_from_server(server))
+    )
     try:
         async with mariadb_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
@@ -149,10 +191,12 @@ async def mariadb_runtime_query_codec_compiles_with_the_mariadb_dialect() -> Non
 
     server = await load_fixture(provide_mariadb_server())
 
-    database = await Database.initialize(_config_from_server(server))
+    database = await Database.initialize(cast("Any", _config_from_server(server)))
     try:
         sql, params = database.runtime.query_codec.compile_select_sql(
-            select(MariadbIdentityUser.email).where(MariadbIdentityUser.email.eq("a")),
+            untyped_select(MariadbIdentityUser.email).where(
+                MariadbIdentityUser.email.eq("a")
+            ),
         )
     finally:
         await database.close()

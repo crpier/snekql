@@ -6,12 +6,14 @@ import logging
 from collections.abc import AsyncGenerator, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from snektest import fixture, load_fixture
 
 from snekql._query_codec import DialectQueryCodec
+from snekql._runtime_selection import RuntimeConfig
 from snekql.mariadb.schema import scaffold_mariadb_statements
+from snekql.model import BackendFamily
 from snekql.runtime import Database
 from snekql.sqlite._schema_ddl import scaffold_sqlite_statements
 from snekql.storage import SchemaPolicy
@@ -21,7 +23,6 @@ from snekql.testing.mariadb import (
 )
 
 if TYPE_CHECKING:
-    from snekql._runtime_selection import RuntimeConfig
     from snekql.model import Table
 
 # The backend imports above pull in both Backend Namespaces, so each family's
@@ -42,9 +43,9 @@ def scaffold_migrations(
     """
 
     if backend_family == "sqlite":
-        statements = scaffold_sqlite_statements(models)
+        statements = scaffold_sqlite_statements(cast("Any", models))
     elif backend_family == "mariadb":
-        statements = scaffold_mariadb_statements(models)
+        statements = scaffold_mariadb_statements(cast("Any", models))
     else:
         msg = f"unknown backend family {backend_family!r}"
         raise ValueError(msg)
@@ -53,21 +54,45 @@ def scaffold_migrations(
     }
 
 
-async def migrate_models(db: Database, models: Sequence[type[Table[Any]]]) -> None:
+async def migrate_models(db: Database[Any], models: Sequence[type[Table[Any]]]) -> None:
     """Build ``models``' schema on ``db`` by replaying scaffolded Migrations."""
 
     await db.migrate(scaffold_migrations(db.runtime.backend_family, models))
 
 
-async def initialized_database(
-    backend: RuntimeConfig | None = None,
+@overload
+async def initialized_database[FamilyT: BackendFamily](
+    backend: RuntimeConfig[FamilyT],
     *,
     database: Path | Literal[":memory:"] | None = None,
     models: Sequence[type[Table[Any]]] = (),
     verify: bool = False,
     policy: SchemaPolicy = "strict",
     **init_kwargs: Any,
-) -> Database:
+) -> Database[FamilyT]: ...
+
+
+@overload
+async def initialized_database(
+    backend: None = None,
+    *,
+    database: Path | Literal[":memory:"] | None = None,
+    models: Sequence[type[Table[Any]]] = (),
+    verify: bool = False,
+    policy: SchemaPolicy = "strict",
+    **init_kwargs: Any,
+) -> Database[Literal["sqlite"]]: ...
+
+
+async def initialized_database(
+    backend: RuntimeConfig[Any] | None = None,
+    *,
+    database: Path | Literal[":memory:"] | None = None,
+    models: Sequence[type[Table[Any]]] = (),
+    verify: bool = False,
+    policy: SchemaPolicy = "strict",
+    **init_kwargs: Any,
+) -> Database[Any]:
     """Initialize a Database and build ``models``' schema via scaffold+migrate.
 
     Mirrors the old ``Database.initialize(models=...)`` convenience for tests
@@ -83,7 +108,7 @@ async def initialized_database(
     if models:
         await migrate_models(db, models)
         if verify:
-            await db.verify(models, policy=policy)
+            await db.verify(cast("Any", models), policy=policy)
     return db
 
 

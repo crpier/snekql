@@ -266,7 +266,8 @@ if TYPE_CHECKING:
     _ = assert_type(sqlite_user, SqliteUser[Pending])
     _ = assert_type(sqlite_user.account_id, uuid.UUID)
     _ = assert_type(
-        select(SqliteUser), SelectModelQuery[SqliteUser[Pending], SqliteUser[Fetched]]
+        select(SqliteUser),
+        SelectModelQuery[Literal["sqlite"], SqliteUser[Pending], SqliteUser[Fetched]],
     )
 
     _ = assert_type(mariadb.Model.__snekql_backend__, Literal["mariadb"])
@@ -315,8 +316,10 @@ if TYPE_CHECKING:
     # ``default=None`` makes the nullable JSON column omittable and optional.
     _ = assert_type(mariadb_user.prefs, dict[str, object] | None)
     _ = assert_type(
-        select(MariadbUser),
-        SelectModelQuery[MariadbUser[Pending], MariadbUser[Fetched]],
+        mariadb.select(MariadbUser),
+        SelectModelQuery[
+            Literal["mariadb"], MariadbUser[Pending], MariadbUser[Fetched]
+        ],
     )
 
     # Open-AST dialect operator (ADR 0004): the MariaDB JSON path operator is a
@@ -328,12 +331,26 @@ if TYPE_CHECKING:
     )
     # A missing JSON path yields SQL NULL, so the projection is `int | None`.
     _ = assert_type(
-        select(MariadbUser.profile.json_extract_int("$.age")),
-        SelectValueQuery[MariadbUser[Pending], MariadbUser[Pending], int | None, int],
+        mariadb.select(MariadbUser.profile.json_extract_int("$.age")),
+        SelectValueQuery[
+            Literal["mariadb"],
+            MariadbUser[Pending],
+            MariadbUser[Pending],
+            int | None,
+            int,
+        ],
     )
     _ = assert_type(
-        select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),
-        SelectTupleQuery[MariadbUser[Pending], MariadbUser[Pending], str, int | None],
+        mariadb.select(
+            MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")
+        ),
+        SelectTupleQuery[
+            Literal["mariadb"],
+            MariadbUser[Pending],
+            MariadbUser[Pending],
+            str,
+            int | None,
+        ],
     )
 
     zoned_datetime = ZonedDatetime(
@@ -361,20 +378,22 @@ if TYPE_CHECKING:
         _ = assert_type(fetched_user.created_at, datetime)
         _ = insert(fetched_user)  # ty: ignore[no-matching-overload]
 
-    _ = assert_type(select(User), SelectModelQuery[User[Pending], User[Fetched]])
+    _ = assert_type(
+        select(User), SelectModelQuery[Literal["sqlite"], User[Pending], User[Fetched]]
+    )
     _ = assert_type(
         select(User.email).where(User.email.eq("alice@example.com")).all(),
-        SelectValueQuery[User[Pending], User[Pending], str],
+        SelectValueQuery[Literal["sqlite"], User[Pending], User[Pending], str],
     )
     _ = assert_type(
         select(User)
         .where(User.email.eq("alice@example.com"), User.status.eq("active"))
         .order_by(User.email.asc(), User.id.desc()),
-        SelectModelQuery[User[Pending], User[Fetched]],
+        SelectModelQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         select(User.email, User.status),
-        SelectTupleQuery[User[Pending], User[Pending], str, str],
+        SelectTupleQuery[Literal["sqlite"], User[Pending], User[Pending], str, str],
     )
     _ = assert_type(
         select(
@@ -388,6 +407,7 @@ if TYPE_CHECKING:
             User.id,
         ),
         SelectTupleQuery[
+            Literal["sqlite"],
             User[Pending],
             User[Pending],
             int,
@@ -424,24 +444,26 @@ if TYPE_CHECKING:
     _ = assert_type(Order.id.avg(), Aggregate[Order[Pending], float | None, float])
     _ = assert_type(
         select(User.id.count()).all(),
-        SelectValueQuery[User[Pending], User[Pending], int],
+        SelectValueQuery[Literal["sqlite"], User[Pending], User[Pending], int],
     )
     _ = assert_type(
         select(Order.id.sum()).all(),
-        SelectValueQuery[Order[Pending], Order[Pending], int | None, int],
+        SelectValueQuery[
+            Literal["sqlite"], Order[Pending], Order[Pending], int | None, int
+        ],
     )
     # Grouped projection: a column and an aggregate land in a tuple select; the
     # aggregate carries its result type and an aggregate can drive order_by.
     _ = assert_type(
         select(User.status, User.id.count()).group_by(User.status).all(),
-        SelectTupleQuery[User[Pending], User[Pending], str, int],
+        SelectTupleQuery[Literal["sqlite"], User[Pending], User[Pending], str, int],
     )
     _ = assert_type(
         select(User.id.count())
         .group_by(User.status)
         .having(User.id.count().gt(0))
         .all(),
-        SelectValueQuery[User[Pending], User[Pending], int],
+        SelectValueQuery[Literal["sqlite"], User[Pending], User[Pending], int],
     )
     _ = assert_type(User.id.count().desc(), OrderBy[User[Pending]])
     _ = assert_type(
@@ -450,6 +472,7 @@ if TYPE_CHECKING:
         .group_by(User.status)
         .all(),
         SelectTupleQuery[
+            Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             str,
@@ -466,7 +489,7 @@ if TYPE_CHECKING:
         .group_by(User.status)
         .having(User.id.count().gt(5))
         .all(),
-        SelectTupleQuery[User[Pending], User[Pending], str, int],
+        SelectTupleQuery[Literal["sqlite"], User[Pending], User[Pending], str, int],
     )
     _ = assert_type(
         select(User.status, Order.id.sum())
@@ -475,6 +498,7 @@ if TYPE_CHECKING:
         .having(Order.id.sum().gt(5))
         .all(),
         SelectTupleQuery[
+            Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             str,
@@ -499,7 +523,9 @@ if TYPE_CHECKING:
     _ = assert_type(User.nickname.is_null(), Predicate[User[Pending]])
     _ = assert_type(
         select(User.nickname),
-        SelectValueQuery[User[Pending], User[Pending], str | None, str],
+        SelectValueQuery[
+            Literal["sqlite"], User[Pending], User[Pending], str | None, str
+        ],
     )
     _ = assert_type(
         User.nickname.between("a", "z"),
@@ -613,7 +639,12 @@ if TYPE_CHECKING:
     _user_orders = select(User).join(Order, on=Order.user_id.references(User.id))
     _ = assert_type(
         _user_orders,
-        JoinModelQuery[User[Pending] | Order[Pending], User[Fetched], Order[Fetched]],
+        JoinModelQuery[
+            Literal["sqlite"],
+            User[Pending] | Order[Pending],
+            User[Fetched],
+            Order[Fetched],
+        ],
     )
     _ = _user_orders.where(User.email.eq("a@b.c") & Order.note.eq("x"))
     _ = _user_orders.where(Order.note.eq("x"))
@@ -621,6 +652,7 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User).left_join(Order, on=Order.user_id.references(User.id)),
         JoinModelQuery[
+            Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Fetched],
             Order[Fetched] | None,
@@ -660,6 +692,7 @@ if TYPE_CHECKING:
     _ = assert_type(
         _email_notes,
         SelectTupleQuery[
+            Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             str,
@@ -680,6 +713,7 @@ if TYPE_CHECKING:
         .join(Order, on=Order.user_id.references(User.id))
         .where(Order.note.eq("x")),
         SelectValueQuery[
+            Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             str,
@@ -695,11 +729,11 @@ if TYPE_CHECKING:
     _ = Index("email")  # ty: ignore[invalid-argument-type]
     _ = assert_type(
         insert(pending_user),
-        InsertQuery[User[Pending], User[Fetched]],
+        InsertQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         insert([pending_user, pending_user]),
-        InsertManyQuery[User[Pending], User[Fetched]],
+        InsertManyQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         DoUpdate(User.email.to_inserted(), User.status.to("active")),
@@ -710,35 +744,35 @@ if TYPE_CHECKING:
             User.email,
             action=DoUpdate(User.status.to_inserted()),
         ),
-        InsertQuery[User[Pending], User[Fetched]],
+        InsertQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         insert([pending_user]).on_conflict(User.email, action=DoNothing),
-        InsertManyQuery[User[Pending], User[Fetched]],
+        InsertManyQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         insert(pending_user).returning(),
-        InsertReturningQuery[User[Pending], User[Fetched]],
+        InsertReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         insert([pending_user]).returning(),
-        InsertManyReturningQuery[User[Pending], User[Fetched]],
+        InsertManyReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         insert(pending_user).returning(User.id),
-        InsertReturningValueQuery[User[Pending], int],
+        InsertReturningValueQuery[Literal["sqlite"], User[Pending], int],
     )
     _ = assert_type(
         insert(pending_user).returning(User.id, User.email),
-        InsertReturningTupleQuery[User[Pending], int, str],
+        InsertReturningTupleQuery[Literal["sqlite"], User[Pending], int, str],
     )
     _ = assert_type(
         insert([pending_user]).returning(User.id),
-        InsertManyReturningValueQuery[User[Pending], int],
+        InsertManyReturningValueQuery[Literal["sqlite"], User[Pending], int],
     )
     _ = assert_type(
         insert([pending_user]).returning(User.id, User.email),
-        InsertManyReturningTupleQuery[User[Pending], int, str],
+        InsertManyReturningTupleQuery[Literal["sqlite"], User[Pending], int, str],
     )
     _ = assert_type(
         insert(pending_user).returning(
@@ -752,6 +786,7 @@ if TYPE_CHECKING:
             User.id,
         ),
         InsertReturningTupleQuery[
+            Literal["sqlite"],
             User[Pending],
             int,
             str,
@@ -775,6 +810,7 @@ if TYPE_CHECKING:
             User.id,
         ),
         InsertManyReturningTupleQuery[
+            Literal["sqlite"],
             User[Pending],
             int,
             str,
@@ -788,25 +824,25 @@ if TYPE_CHECKING:
     )
     _ = assert_type(
         update(User).set(User.email.to("new@example.com")),
-        UpdateQuery[User[Pending], User[Fetched]],
+        UpdateQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         update(User)
         .set(User.email.to("new@example.com"), User.status.to("active"))
         .where(User.id.gt(0), User.nickname.is_not_null()),
-        UpdateQuery[User[Pending], User[Fetched]],
+        UpdateQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         delete(User).where(User.id.eq(1)),
-        DeleteQuery[User[Pending], User[Fetched]],
+        DeleteQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         update(User).returning(),
-        UpdateReturningQuery[User[Pending], User[Fetched]],
+        UpdateReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         delete(User).returning(),
-        DeleteReturningQuery[User[Pending], User[Fetched]],
+        DeleteReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
     )
     _ = assert_type(
         update(User).returning(
@@ -816,7 +852,7 @@ if TYPE_CHECKING:
             User.nickname,
         ),
         UpdateReturningTupleQuery[
-            User[Pending], User[Fetched], int, str, str, str | None
+            Literal["sqlite"], User[Pending], User[Fetched], int, str, str, str | None
         ],
     )
     _ = assert_type(
@@ -827,7 +863,7 @@ if TYPE_CHECKING:
             User.nickname,
         ),
         DeleteReturningTupleQuery[
-            User[Pending], User[Fetched], int, str, str, str | None
+            Literal["sqlite"], User[Pending], User[Fetched], int, str, str, str | None
         ],
     )
     _ = insert(pending_user).returning(  # ty: ignore[no-matching-overload]

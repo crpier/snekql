@@ -9,11 +9,34 @@ two related columns, which `join()`/`left_join()` later compile into an
 
 from __future__ import annotations
 
-from snektest import assert_eq, test
+from typing import Any, cast
 
-from snekql import sqlite
+from snektest import assert_eq, assert_raises, test
+
+from snekql import mariadb, sqlite
 from snekql.expressions import JoinOn
-from snekql.sqlite import PENDING_GENERATION, Fetched, ForeignKey, Pending
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Fetched,
+    ForeignKey,
+    ModelDeclarationError,
+    Pending,
+)
+
+
+@test(mark="fast")
+def foreign_key_rejects_a_target_from_another_backend_family() -> None:
+    """Dynamic declarations cannot bypass the static FK family bound."""
+
+    class MariaUser[S = mariadb.Pending](
+        mariadb.Model[S, "MariaUser[mariadb.Fetched]"]
+    ):
+        id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
+
+    with assert_raises(ModelDeclarationError):
+
+        class SqliteOrder[S = Pending](sqlite.Model[S, "SqliteOrder[Fetched]"]):
+            user_id: Any = ForeignKey(cast("Any", MariaUser.id))
 
 
 @test(mark="fast")

@@ -10,7 +10,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from snekql._scaffold import scaffold_ddl, scaffold_statements
+from snekql._scaffold import (
+    require_scaffold_models,
+    scaffold_ddl,
+    scaffold_statements,
+)
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_shape import ColumnShape
 from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
@@ -21,7 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from snekql._schema_plan import PlannedColumn
-    from snekql.model import Table
+from snekql.sqlite.model import Model
 
 
 def sqlite_type_affinity(declared_type: str) -> str:
@@ -107,15 +111,17 @@ SCHEMA_DIALECT = SchemaDialect(
 )
 
 
-def scaffold_sqlite_ddl(models: Sequence[type[Table[Any]]]) -> str:
+def scaffold_sqlite_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
     """Emit the initial CREATE TABLE (and index) DDL for SQLite models as text."""
 
+    require_scaffold_models("sqlite", models)
     return scaffold_ddl(models, SCHEMA_DIALECT)
 
 
 def scaffold_sqlite_statements(
-    models: Sequence[type[Table[Any]]],
+    models: Sequence[type[Model[Any, Any]]],
 ) -> list[tuple[str, str]]:
     """Return (label, DDL) statement pairs for SQLite model creation."""
 
+    require_scaffold_models("sqlite", models)
     return scaffold_statements(models, SCHEMA_DIALECT)

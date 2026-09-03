@@ -12,6 +12,7 @@ from __future__ import annotations
 import secrets
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 from snektest import fixture
 
@@ -41,7 +42,7 @@ async def sqlite_benchmark_database(
     *,
     pool_size: int,
     rows: int,
-) -> AsyncGenerator[Database]:
+) -> AsyncGenerator[Database[Any]]:
     """Provide a migrated, seeded file-backed SQLite database.
 
     Each instance gets its own database file, so separate scenarios never share
@@ -65,7 +66,7 @@ async def mariadb_benchmark_database(
     *,
     pool_size: int,
     rows: int,
-) -> AsyncGenerator[Database]:
+) -> AsyncGenerator[Database[Any]]:
     """Provide a migrated, seeded database on a throwaway MariaDB ``server``.
 
     All instances share the one server (and therefore one schema), matching the

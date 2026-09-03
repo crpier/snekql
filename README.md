@@ -128,6 +128,8 @@ class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
 
 Rules to remember:
 
+- Keep models, query verbs, configurations, Transactions, joins, foreign keys,
+  and Scaffold calls in one backend namespace; `ty` rejects cross-family use.
 - `Col[T]` is a normal persisted column.
 - `GenCol[T]` is server/generated; pending values may be `PENDING_GENERATION`, fetched
   values are `T`.
@@ -689,7 +691,9 @@ verbs and builders as well as that backend's `Model` and column constructors.
 There is no flat `snekql.<symbol>` surface; the package root only exposes the
 `sqlite` and `mariadb` namespace handles. This keeps SQLite-only and
 MariaDB-only symbols from colliding and stops auto-imports from landing on the
-wrong backend.
+wrong backend. Static backend-family witnesses also reject mixing models,
+queries, configurations, Transactions, joins, foreign keys, or Scaffold inputs
+across those namespaces; runtime checks remain for dynamically typed callers.
 
 The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 `snekql.testing.mariadb`, each curated in its own `__all__`. Underscored modules

@@ -196,6 +196,10 @@ class ModelMeta(type):
         )
         columns = ModelMeta._bind_columns(model_class)
         model_metadata.__snekql_columns__ = columns
+        if not is_model_base:
+            ModelMeta._validate_foreign_key_backends(
+                cast("type[Table[Any]]", model_class), columns
+            )
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -364,6 +368,32 @@ class ModelMeta(type):
             ModelMeta._validate_column_declaration(attribute_name, column)
             columns[attribute_name] = column
         return columns
+
+    @staticmethod
+    def _validate_foreign_key_backends(
+        model_class: type[Table[Any]],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> None:
+        """Require physical foreign keys to target the declaring backend."""
+
+        backend = require_model_backend(model_class)
+        for name, column in columns.items():
+            target = column.foreign_key_target
+            if target is None:
+                continue
+            target_model = target.owner
+            if target_model is None:
+                msg = f"foreign key target for {name!r} is not bound to a model"
+                raise ModelDeclarationError(msg)
+            target_backend = require_model_backend(
+                cast("type[Table[Any]]", target_model)
+            )
+            if target_backend != backend:
+                msg = (
+                    f"backend mismatch: {backend} model {model_class.__name__} "
+                    f"cannot reference {target_backend} model {target_model.__name__}"
+                )
+                raise ModelDeclarationError(msg)
 
     @staticmethod
     def _bind_indexes(
@@ -697,6 +727,12 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
         )
         state = storage.get("_snekql_state", "Uninitialized")
         return cast("str", state)
+
+    @classmethod
+    def __backend_family_type__(cls) -> BackendFamily:
+        """Typing-only witness for backend-family propagation."""
+
+        return cls.__snekql_backend__
 
     @classmethod
     def __read_type__(cls) -> type[ReadModelT]:

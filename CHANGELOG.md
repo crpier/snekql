@@ -12,6 +12,12 @@
 
 ### Changed
 
+- SQLite and MariaDB APIs now propagate private backend-family type witnesses.
+  `ty` rejects cross-family models, query verbs, configurations, Transactions,
+  stored queries, joins, foreign keys, and Scaffold calls while public `Model`,
+  `Select`, `Write`, and `Transaction` annotations retain their existing arity.
+  Runtime checks remain for dynamically typed callers. (#246)
+
 - Query Compilation now produces private typed execution plans for `fetch_one`
   and writes. Plans carry SQL, parameters, backend identity, cardinality, and
   validation policy, so Query Runtime no longer dispatches writes by concrete

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
-from snektest import assert_eq, assert_true, test
+from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql import mariadb
 from snekql.mariadb import scaffold as scaffold_mariadb
@@ -138,13 +138,37 @@ def mariadb_scaffold_emits_decimal_precision_and_scale() -> None:
 
 @test(mark="fast")
 def mariadb_scaffold_emits_referential_actions() -> None:
-    """MariaDB renders the same referential-action clauses via the shared compiler."""
+    """MariaDB renders referential actions through its family-specific scaffold."""
 
-    ddl = scaffold_mariadb([ScaffoldComment])
+    class User[S = mariadb.Pending](mariadb.Model[S, "User[mariadb.Fetched]"]):
+        id: User.GenCol[int] = mariadb.Integer(primary_key=True)
 
-    assert_true(
-        "REFERENCES `scaffold_user` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT" in ddl
-    )
+    class Comment[S = mariadb.Pending](mariadb.Model[S, "Comment[mariadb.Fetched]"]):
+        author_id: Comment.FKCol[User, int] = mariadb.ForeignKey(
+            User.id,
+            on_delete="CASCADE",
+            on_update="RESTRICT",
+        )
+
+    ddl = scaffold_mariadb([Comment])
+
+    assert_true("ON DELETE CASCADE ON UPDATE RESTRICT" in ddl)
+
+
+@test(mark="fast")
+def scaffold_rejects_models_from_another_backend_family() -> None:
+    """Dynamic scaffold inputs cannot cross Backend Namespace boundaries."""
+
+    with assert_raises(mariadb.ModelDeclarationError):
+        _ = scaffold_mariadb(cast("Any", [ScaffoldUser]))
+
+    class MariaUser[S = mariadb.Pending](
+        mariadb.Model[S, "MariaUser[mariadb.Fetched]"]
+    ):
+        id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
+
+    with assert_raises(mariadb.ModelDeclarationError):
+        _ = scaffold(cast("Any", [MariaUser]))
 
 
 @test(mark="fast")

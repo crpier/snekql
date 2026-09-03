@@ -23,6 +23,7 @@ from hypothesis import strategies as st
 from snektest import assert_eq, assert_raises, assert_true, test, test_hypothesis
 
 from snekql.mariadb import scaffold as scaffold_mariadb_ddl
+from snekql.mariadb import select as select_mariadb
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb
 from snekql.sqlite import Index, Integer, Model, ModelDeclarationError, select
 from snekql.sqlite import scaffold as scaffold_sqlite_ddl
@@ -245,12 +246,13 @@ def awkward_but_valid_table_names_compile_safely_for_both_backends() -> None:
     and scaffold to DDL carrying the table name only in its quoted form."""
 
     for name in _AWKWARD_VALID_IDENTIFIERS:
-        model = _model_with_table_name(name)
+        sqlite_model = _model_with_table_name(name)
+        mariadb_model = _model_with_table_name(name, backend="mariadb")
 
-        sqlite_ddl = scaffold_sqlite_ddl([model])
+        sqlite_ddl = scaffold_sqlite_ddl([sqlite_model])
         assert_true(quote_sqlite(name) in sqlite_ddl)
 
-        mariadb_ddl = scaffold_mariadb_ddl([model])
+        mariadb_ddl = scaffold_mariadb_ddl(cast("Any", [mariadb_model]))
         assert_true(quote_mariadb(name) in mariadb_ddl)
 
 
@@ -260,12 +262,13 @@ def awkward_but_valid_index_names_compile_safely_for_both_backends() -> None:
     scaffolds to a CREATE INDEX statement carrying it only in quoted form."""
 
     for name in _AWKWARD_VALID_IDENTIFIERS:
-        model = _model_with_index_name(name)
+        sqlite_model = _model_with_index_name(name)
+        mariadb_model = _model_with_index_name(name, backend="mariadb")
 
-        sqlite_ddl = scaffold_sqlite_ddl([model])
+        sqlite_ddl = scaffold_sqlite_ddl([sqlite_model])
         assert_true(quote_sqlite(name) in sqlite_ddl)
 
-        mariadb_ddl = scaffold_mariadb_ddl([model])
+        mariadb_ddl = scaffold_mariadb_ddl(cast("Any", [mariadb_model]))
         assert_true(quote_mariadb(name) in mariadb_ddl)
 
 
@@ -276,25 +279,27 @@ def awkward_but_valid_column_names_compile_safely_with_parameterized_values() ->
     the column name and the bound value never share the same SQL token."""
 
     for name in _AWKWARD_VALID_IDENTIFIERS:
-        model = _model_with_column_name(name)
+        sqlite_model = _model_with_column_name(name)
+        mariadb_model = _model_with_column_name(name, backend="mariadb")
 
-        sqlite_ddl = scaffold_sqlite_ddl([model])
+        sqlite_ddl = scaffold_sqlite_ddl([sqlite_model])
         assert_true(quote_sqlite(name) in sqlite_ddl)
 
-        mariadb_ddl = scaffold_mariadb_ddl([model])
+        mariadb_ddl = scaffold_mariadb_ddl(cast("Any", [mariadb_model]))
         assert_true(quote_mariadb(name) in mariadb_ddl)
 
-        predicate = getattr(model, name).eq(1)
+        sqlite_predicate = getattr(sqlite_model, name).eq(1)
 
         sqlite_sql, sqlite_params = SQLITE_CODEC.compile_select_sql(
-            select(model).where(predicate)
+            select(sqlite_model).where(sqlite_predicate)
         )
         assert_true(quote_sqlite(name) in sqlite_sql)
         assert_eq(sqlite_sql.count("?"), 1)
         assert_eq(sqlite_params, (1,))
 
+        mariadb_predicate = getattr(mariadb_model, name).eq(1)
         mariadb_sql, mariadb_params = MARIADB_CODEC.compile_select_sql(
-            select(model).where(predicate)
+            select_mariadb(cast("Any", mariadb_model)).where(mariadb_predicate)
         )
         assert_true(quote_mariadb(name) in mariadb_sql)
         assert_eq(mariadb_sql.count("%s"), 1)

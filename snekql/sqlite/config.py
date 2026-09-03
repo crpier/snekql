@@ -120,7 +120,7 @@ def _build_default_config(
     acquire_timeout: NonNegativeFloat,
     database: Path | Literal[":memory:"],
     pool_size: PositiveInt,
-) -> RuntimeConfig:
+) -> RuntimeConfig[Literal["sqlite"]]:
     """Build a SQLite config for the legacy ``database=`` initializer shape."""
 
     return Config(
