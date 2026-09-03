@@ -69,6 +69,7 @@ def _select_overloads() -> str:
         )
         fields = "".join(
             f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"
+            f"    | ColumnRef[Owner{index}T, T{index}]\n"
             f"    | Aggregate[Owner{index}T, T{index}, Any]\n"
             + ("" if index == 1 else f"    | Scalar[Owner{index}T, T{index}, Any]\n")
             + f"    | DialectSelectable[Owner{index}T, T{index}, Any],\n"
@@ -106,7 +107,14 @@ def _backend_select_overloads(backend: str) -> str:
         "    /,\n"
         f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, CompareT]: ...\n\n\n"
     )
-    blocks = [model_overload, singleton_overload]
+    column_ref_overload = (
+        "@overload\n"
+        "def select[OwnerT: Model[Any, Any], ValueT](\n"
+        "    field: ColumnRef[OwnerT, ValueT],\n"
+        "    /,\n"
+        f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, Any]: ...\n\n\n"
+    )
+    blocks = [model_overload, singleton_overload, column_ref_overload]
     for width in range(2, MAX_PROJECTION_WIDTH + 1):
         type_params = ",\n    ".join(
             item
@@ -115,6 +123,7 @@ def _backend_select_overloads(backend: str) -> str:
         )
         fields = "".join(
             f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"
+            f"    | ColumnRef[Owner{index}T, T{index}]\n"
             f"    | Aggregate[Owner{index}T, T{index}, Any]\n"
             + ("" if index == 1 else f"    | Scalar[Owner{index}T, T{index}, Any]\n")
             + f"    | DialectSelectable[Owner{index}T, T{index}, Any],\n"

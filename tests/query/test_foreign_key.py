@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from snektest import assert_eq, assert_raises, test
+from snektest import assert_eq, assert_in, assert_raises, test
 
 from snekql import mariadb, sqlite
 from snekql.expressions import JoinOn
@@ -41,7 +41,7 @@ def foreign_key_rejects_a_target_from_another_backend_family() -> None:
 
 @test(mark="fast")
 def references_builds_join_condition() -> None:
-    """`references` carries the FK column and its target into a `JoinOn`."""
+    """`references` produces a `JoinOn` accepted by the query builder."""
 
     class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         """Referenced table."""
@@ -67,8 +67,10 @@ def references_builds_join_condition() -> None:
     condition = Order.user_id.references(User.id)
 
     assert isinstance(condition, JoinOn)
-    assert_eq(condition.left_column, Order.user_id)
-    assert_eq(condition.right_column, User.id)
+    assert_in(
+        'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
+        repr(sqlite.select(User).join(Order, on=condition).all()),
+    )
 
 
 @test(mark="fast")

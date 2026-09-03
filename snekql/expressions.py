@@ -5,7 +5,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal, Protocol, cast, overload, runtime_checkable
+from typing import (
+    Any,
+    ClassVar,
+    Literal,
+    Never,
+    Protocol,
+    cast,
+    overload,
+    runtime_checkable,
+)
 
 from snekql.errors import QueryCompilationError, QueryConstructionError
 
@@ -39,6 +48,11 @@ class ColumnRef[OwnerT, T](Protocol):
 
     def __column_value_type__(self) -> T:
         """Typing-only witness for this column's decoded value type."""
+
+        raise NotImplementedError
+
+    def eq(self, value: T) -> Predicate[OwnerT]:
+        """Build an equality predicate for this column."""
 
         raise NotImplementedError
 
@@ -125,18 +139,33 @@ class Predicate[OwnerT](ABC):
     type-erased -- which keeps `Predicate` covariant in its owner type.
     """
 
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
     # Which nested-select shape this node carries, if any; validators read it
     # instead of maintaining kind sets.
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = None
 
     def __and__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate[OwnerT | Other](operator="AND", children=(self, other))
+        return CompoundPredicate[OwnerT | Other](
+            operator="AND",
+            children=(
+                _require_predicate_node(self),
+                _require_predicate_node(other),
+            ),
+        )
 
     def __or__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate[OwnerT | Other](operator="OR", children=(self, other))
+        return CompoundPredicate[OwnerT | Other](
+            operator="OR",
+            children=(
+                _require_predicate_node(self),
+                _require_predicate_node(other),
+            ),
+        )
 
     def __invert__(self) -> Predicate[OwnerT]:
-        return NegatedPredicate(child=self)
+        return NegatedPredicate(child=_require_predicate_node(self))
 
     def __bool__(self) -> bool:
         msg = "predicates cannot be used as booleans"
@@ -165,8 +194,23 @@ class Predicate[OwnerT](ABC):
         return None
 
 
+class _PredicateNode[OwnerT](Predicate[OwnerT], ABC):
+    """Private base proving a predicate came from a supported factory."""
+
+
+def _require_predicate_node[OwnerT](
+    predicate: Predicate[OwnerT],
+) -> _PredicateNode[OwnerT]:
+    """Keep caller-defined predicate implementations out of query state."""
+
+    if not isinstance(predicate, _PredicateNode):
+        msg = "predicates must be built from columns or query factories"
+        raise QueryConstructionError(msg)
+    return predicate
+
+
 @dataclass(frozen=True)
-class ComparisonPredicate[OwnerT](Predicate[OwnerT]):
+class ComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand <op> value`` for ``eq``/``ne``/``gt``/``gte``/``lt``/``lte``."""
 
     operand: object
@@ -195,7 +239,7 @@ class ComparisonPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class NullPredicate[OwnerT](Predicate[OwnerT]):
+class NullPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand IS NULL`` / ``operand IS NOT NULL``."""
 
     operand: object
@@ -213,7 +257,7 @@ class NullPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class MembershipPredicate[OwnerT](Predicate[OwnerT]):
+class MembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand IN (...)`` / ``operand NOT IN (...)`` over literal values."""
 
     operand: object
@@ -242,7 +286,7 @@ class MembershipPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class BetweenPredicate[OwnerT](Predicate[OwnerT]):
+class BetweenPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand BETWEEN low AND high``.
 
     Naming the bounds as two fields makes the "exactly two bounds" malformation
@@ -272,7 +316,7 @@ class BetweenPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class LikePredicate[OwnerT](Predicate[OwnerT]):
+class LikePredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand LIKE pattern`` / ``operand NOT LIKE pattern``."""
 
     operand: object
@@ -299,7 +343,7 @@ class LikePredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class ColumnComparisonPredicate[OwnerT](Predicate[OwnerT]):
+class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand <op> other`` where ``other`` is a column or scalar subquery."""
 
     operand: object
@@ -316,8 +360,8 @@ class ColumnComparisonPredicate[OwnerT](Predicate[OwnerT]):
         rendered = compiler.render_operand(self.operand)
         operator = _COMPARISON_SQL_OPERATORS[self.operator]
         other = self.other
-        if isinstance(other, Scalar):
-            scalar = cast("Scalar[Any, Any, Any]", other)
+        if isinstance(other, _Scalar):
+            scalar = cast("_Scalar[Any, Any, Any]", other)
             operand_sql, operand_params = compiler.compile_scalar(scalar)
             return f"{rendered} {operator} {operand_sql}", operand_params
         other_ref = compiler.render_comparison_operand(other)
@@ -325,7 +369,7 @@ class ColumnComparisonPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class SubqueryMembershipPredicate[OwnerT](Predicate[OwnerT]):
+class SubqueryMembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``operand IN (subquery)`` / ``operand NOT IN (subquery)``."""
 
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = (
@@ -356,7 +400,7 @@ class SubqueryMembershipPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class ExistencePredicate[OwnerT](Predicate[OwnerT]):
+class ExistencePredicate[OwnerT](_PredicateNode[OwnerT]):
     """``EXISTS (subquery)`` / ``NOT EXISTS (subquery)``; carries no operand."""
 
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = "select"
@@ -380,7 +424,7 @@ class ExistencePredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class CompoundPredicate[OwnerT](Predicate[OwnerT]):
+class CompoundPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``(left) AND (right)`` / ``(left) OR (right)``.
 
     Children are type-erased so the recursive field does not pin ``OwnerT`` to
@@ -409,7 +453,7 @@ class CompoundPredicate[OwnerT](Predicate[OwnerT]):
 
 
 @dataclass(frozen=True)
-class NegatedPredicate[OwnerT](Predicate[OwnerT]):
+class NegatedPredicate[OwnerT](_PredicateNode[OwnerT]):
     """``NOT (child)``."""
 
     child: Predicate[object]
@@ -425,32 +469,39 @@ class NegatedPredicate[OwnerT](Predicate[OwnerT]):
         return f"NOT ({child_sql})", child_params
 
 
-@dataclass(frozen=True)
-class Scalar[OwnerT, T, CompareT = T]:
-    """A scalar subquery: a single-column, single-value SELECT used as a value.
+class Scalar[OwnerT, T, CompareT = T](ABC):
+    """Non-constructible annotation for a scalar subquery.
 
-    Produced by the top-level ``scalar(...)`` factory wrapping a one-column
-    select. It is a selectable (usable in a projection, like :class:`Aggregate`)
-    and a comparison operand (the right side of a ``*_col`` comparison). ``T`` is
-    the decoded result type carried for the projection's result shape. The
-    wrapped query is type-erased as ``subquery`` to avoid importing the query
-    layer here; the compiler reads its ``.state`` and decodes through its single
-    projected selectable.
+    Obtain scalar expressions from the public `scalar(...)` query factory.
     """
 
-    subquery: object | None = None
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
 
     def __accepts_comparison__(self, _value: CompareT) -> None:
         """Typing-only contravariant witness for the comparison value domain."""
 
+        del _value
+
+    @abstractmethod
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness for singleton-select owner inference."""
 
-        raise NotImplementedError
-
+    @abstractmethod
     def __column_value_type__(self) -> T:
         """Typing-only witness for singleton-select result inference."""
 
+
+@dataclass(frozen=True)
+class _Scalar[OwnerT, T, CompareT = T](Scalar[OwnerT, T, CompareT]):
+    """Private scalar-subquery node produced only by the Query Builder."""
+
+    subquery: object
+
+    def __column_owner_type__(self) -> OwnerT:
+        raise NotImplementedError
+
+    def __column_value_type__(self) -> T:
         raise NotImplementedError
 
 
@@ -579,18 +630,21 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="eq", other=other)
 
     def ne_col(
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
 
     def gt_col(
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
@@ -598,6 +652,7 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
@@ -605,6 +660,7 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
@@ -612,8 +668,17 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)
+
+    @staticmethod
+    def _require_factory_scalar(other: object) -> None:
+        """Reject scalar annotations not produced by the Query Builder factory."""
+
+        if isinstance(other, Scalar) and not isinstance(other, _Scalar):
+            msg = "scalar operands must be built with scalar()"
+            raise QueryConstructionError(msg)
 
     def _require_ordering(self) -> None:
         """Reject ordered operations when an operand has no logical order."""
@@ -643,22 +708,45 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         )
 
 
-@dataclass(frozen=True)
-class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT, CompareT]):
-    """SQL aggregate over a column (or ``COUNT(*)``), as a selectable expression.
+class Aggregate[OwnerT, T, CompareT = T](
+    Comparable[OwnerT, CompareT, CompareT],
+    ABC,
+):
+    """Non-constructible annotation for a SQL aggregate expression.
 
-    Produced by column methods (``Order.amount.sum()``) and the model
-    ``count_all()`` classmethod for the star form. Fields are type-erased like
-    :class:`Predicate` so the generic params stay phantom: ``OwnerT`` carries the
-    owning table for the scope check, ``T`` the decoded result type. ``column`` is
-    the wrapped column descriptor, or ``None`` for ``COUNT(*)``; ``owner`` is the
-    owning table model, always present so it can anchor the ``FROM`` clause and the
-    scope check.
+    Obtain aggregates from column methods such as `Order.amount.sum()` or the
+    model `count_all()` classmethod.
     """
 
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def __column_owner_type__(self) -> OwnerT:
+        """Typing-only witness for singleton-select owner inference."""
+
+    @abstractmethod
+    def __column_value_type__(self) -> T:
+        """Typing-only witness for singleton-select result inference."""
+
+    def asc(self) -> OrderBy[OwnerT]:
+        """Order rows by this aggregate ascending (e.g. `COUNT(id)`)."""
+
+        return _OrderBy(column=self, direction="ASC")
+
+    def desc(self) -> OrderBy[OwnerT]:
+        """Order rows by this aggregate descending."""
+
+        return _OrderBy(column=self, direction="DESC")
+
+
+@dataclass(frozen=True)
+class _Aggregate[OwnerT, T, CompareT = T](Aggregate[OwnerT, T, CompareT]):
+    """Private aggregate node produced only by model and column methods."""
+
+    column: object | None
     func: AggregateFunction
-    column: object | None = None
-    owner: object | None = None
+    owner: object
 
     def __post_init__(self) -> None:
         if type(self.func) is not str or self.func not in {
@@ -672,50 +760,60 @@ class Aggregate[OwnerT, T, CompareT = T](Comparable[OwnerT, CompareT, CompareT])
             raise QueryConstructionError(msg)
 
     def __column_owner_type__(self) -> OwnerT:
-        """Typing-only witness for singleton-select owner inference."""
-
         raise NotImplementedError
 
     def __column_value_type__(self) -> T:
-        """Typing-only witness for singleton-select result inference."""
-
         raise NotImplementedError
 
-    def asc(self) -> OrderBy[OwnerT]:
-        """Order rows by this aggregate ascending (e.g. ``ORDER BY COUNT(id)``)."""
 
-        return OrderBy(column=self, direction="ASC")
+class JoinOn[LeftOwnerT, RightOwnerT](ABC):
+    """Non-constructible annotation for a model join condition.
 
-    def desc(self) -> OrderBy[OwnerT]:
-        """Order rows by this aggregate descending."""
+    Obtain join conditions from foreign-key column `.references(...)` methods.
+    """
 
-        return OrderBy(column=self, direction="DESC")
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def __join_on_types__(self) -> tuple[LeftOwnerT, RightOwnerT]:
+        """Typing-only witness for the models related by this condition."""
 
 
 @dataclass(frozen=True)
-class JoinOn[LeftOwnerT, RightOwnerT]:
-    """Join condition relating two table models on equal columns.
+class _JoinOn[LeftOwnerT, RightOwnerT](JoinOn[LeftOwnerT, RightOwnerT]):
+    """Private join-condition node produced only by foreign-key columns."""
 
-    Produced by `FKAttr.references` from a foreign-key column against the
-    column it references. The two owner type parameters record which models the
-    condition relates so `join()` can require the new table to be tied to an
-    already-joined one (in either argument order).
+    left_column: object
+    right_column: object
+
+    def __join_on_types__(self) -> tuple[LeftOwnerT, RightOwnerT]:
+        raise NotImplementedError
+
+
+class OrderBy[OwnerT](ABC):
+    """Non-constructible annotation for an SQL ordering expression.
+
+    Obtain orderings from column or aggregate `.asc()` and `.desc()` methods.
     """
 
-    left_column: object | None = None
-    right_column: object | None = None
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def __order_by_owner_type__(self) -> OwnerT:
+        """Typing-only witness for the model owning this ordering."""
 
 
 @dataclass(frozen=True)
-class OrderBy[OwnerT]:
-    """SQL ordering expression for one table model.
+class _OrderBy[OwnerT](OrderBy[OwnerT]):
+    """Private ordering node produced only by columns and aggregates."""
 
-    `OrderBy` values are produced by column descriptor methods like `.asc()` and
-    `.desc()` and consumed by select query builders.
-    """
+    column: object
+    direction: Literal["ASC", "DESC"]
 
-    column: object | None = None
-    direction: str = ""
+    def __order_by_owner_type__(self) -> OwnerT:
+        raise NotImplementedError
 
 
 class DoNothing:
@@ -733,17 +831,30 @@ class InsertedValue:
     """Internal marker for the attempted insert value of an assigned column."""
 
 
-@dataclass(frozen=True)
-class Assignment[OwnerT]:
-    """SQL write assignment for one table model.
+class Assignment[OwnerT](ABC):
+    """Non-constructible annotation for a model-column assignment.
 
-    `Assignment` values are produced by update-assignable column descriptors via
-    `.to(value)` or `.to_inserted()`. Updates consume literal assignments;
-    conflict updates may also consume attempted-insert assignments.
+    Obtain assignments from update-assignable column `.to(...)` and
+    `.to_inserted()` methods.
     """
 
-    column: object | None = None
-    value: object = None
+    def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def __assignment_owner_type__(self) -> OwnerT:
+        """Typing-only witness for the model targeted by this assignment."""
+
+
+@dataclass(frozen=True)
+class _Assignment[OwnerT](Assignment[OwnerT]):
+    """Private assignment node produced only by update-assignable columns."""
+
+    column: object
+    value: object
+
+    def __assignment_owner_type__(self) -> OwnerT:
+        raise NotImplementedError
 
 
 @dataclass(frozen=True, init=False)
@@ -757,7 +868,7 @@ class DoUpdate[OwnerT]:
     ```
     """
 
-    assignments: tuple[Assignment[OwnerT], ...]
+    assignments: tuple[_Assignment[OwnerT], ...]
 
     @overload
     def __init__(self, assignment: Assignment[OwnerT], /) -> None: ...
@@ -775,4 +886,10 @@ class DoUpdate[OwnerT]:
         if not assignments:
             msg = "DoUpdate requires at least one assignment"
             raise QueryConstructionError(msg)
-        object.__setattr__(self, "assignments", assignments)
+        checked: list[_Assignment[OwnerT]] = []
+        for assignment in assignments:
+            if not isinstance(assignment, _Assignment):
+                msg = "assignments must be built from columns"
+                raise QueryConstructionError(msg)
+            checked.append(assignment)
+        object.__setattr__(self, "assignments", tuple(checked))

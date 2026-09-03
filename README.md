@@ -701,9 +701,14 @@ The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 `snekql.sqlite.verbs`, …) are implementation detail and not supported import
 paths — their public symbols are re-exported through the namespace top level.
 Use `Select[Row]` and `Write[Result]` to annotate queries without depending on
-their state-specific implementation classes. Use `ColumnRef[Owner, T]` for a
-read-only column parameter. Queries are built only through the
-`select`/`insert`/`update`/`delete` factory verbs. The catchable error contract
+their state-specific implementation classes. `Predicate`, `Aggregate`,
+`Scalar`, `JoinOn`, `OrderBy`, and `Assignment` are likewise annotation-only:
+obtain their values from model/column methods and Query Builder factories,
+never constructors. Use
+`ColumnRef[Owner, T]` for a read-only column parameter that a helper compares or
+projects; assignment methods intentionally remain on model columns. Queries are
+built only through the `select`/`insert`/`update`/`delete` factory verbs. The
+catchable error contract
 is the `SnekqlError` hierarchy re-exported from each namespace. See
 [docs/typing.md](docs/typing.md#stability-contract) for the full contract.
 

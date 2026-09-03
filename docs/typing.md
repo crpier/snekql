@@ -552,11 +552,32 @@ change without notice.
   Dialect for SQL inspection — see
   [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md).)
 
-**Queries are named by result.** Use `Select[RowT]` for a read query and
-`Write[ResultT]` for a mutation. The state-specific builder classes are private
-implementation vocabulary. Build queries through `select`, `insert`, `update`,
-and `delete`; do not instantiate query classes directly. Use
-`ColumnRef[OwnerT, T]` when a helper accepts a read-only model column.
+**Queries and expressions are named by result.** Use `Select[RowT]` for a read
+query and `Write[ResultT]` for a mutation. The state-specific builder classes and
+concrete expression nodes are private implementation vocabulary. Build queries
+through `select`, `insert`, `update`, and `delete`; obtain `Predicate`,
+`Aggregate`, `Scalar`, `JoinOn`, `OrderBy`, and `Assignment` values from
+model/column methods and expression factories. Those names are
+non-constructible annotations.
+
+Use `ColumnRef[OwnerT, T]` when a helper accepts a read-only model column. It
+supports equality comparisons and projection while intentionally omitting
+mutation operations:
+
+```python
+def user_filter[T](
+    column: ColumnRef[User[Pending], T],
+    value: T,
+) -> Predicate[User[Pending]]:
+    return column.eq(value)
+
+
+def user_projection[T](
+    column: ColumnRef[User[Pending], T],
+) -> Select[T]:
+    return select(column).all()
+```
+
 `Select` and `Write` are annotation-only aliases rather than runtime classes, so
 do not construct them or use them with `isinstance`. An annotated query remains
 executable through `Transaction`:

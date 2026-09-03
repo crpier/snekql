@@ -20,13 +20,13 @@ from snekql.errors import (
     QueryConstructionError,
 )
 from snekql.expressions import (
-    Aggregate,
-    Assignment,
     DoNothing,
     DoUpdate,
-    OrderBy,
-    Predicate,
-    Scalar,
+    _Aggregate,
+    _Assignment,
+    _OrderBy,
+    _PredicateNode,
+    _Scalar,
 )
 from snekql.model import (
     Model,
@@ -40,8 +40,8 @@ from snekql.storage import Attr
 # (e.g. a MariaDB JSON path operator) the core renders/decodes structurally.
 type Selectable = (
     Attr[Any, Any, Any, Any, Any]
-    | Aggregate[Any, Any]
-    | Scalar[Any, Any, Any]
+    | _Aggregate[Any, Any]
+    | _Scalar[Any, Any, Any]
     | SqlCompilable
 )
 
@@ -66,10 +66,10 @@ class SelectState:
     returns_model: bool = False
     explicit_all: bool = False
     distinct: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
+    predicates: tuple[_PredicateNode[Any], ...] = ()
     groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
-    having: tuple[Predicate[Any], ...] = ()
-    orderings: tuple[OrderBy[Any], ...] = ()
+    having: tuple[_PredicateNode[Any], ...] = ()
+    orderings: tuple[_OrderBy[Any], ...] = ()
     limit_value: int | None = None
     offset_value: int | None = None
     joins: tuple[JoinSpec, ...] = ()
@@ -83,9 +83,9 @@ class SelectState:
 @dataclass(frozen=True)
 class UpdateState:
     model: type[Table[Any]]
-    assignments: tuple[Assignment[Any], ...] = ()
+    assignments: tuple[_Assignment[Any], ...] = ()
     explicit_all: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
+    predicates: tuple[_PredicateNode[Any], ...] = ()
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
 
@@ -94,7 +94,7 @@ class UpdateState:
 class DeleteState:
     model: type[Table[Any]]
     explicit_all: bool = False
-    predicates: tuple[Predicate[Any], ...] = ()
+    predicates: tuple[_PredicateNode[Any], ...] = ()
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
 
@@ -148,10 +148,10 @@ def require_selectable(value: object) -> Selectable:
     # reordering selects the same branch for every value.
     if isinstance(value, Attr):
         return cast("Attr[Any, Any, Any, Any, Any]", value)
-    if isinstance(value, Aggregate):
-        return cast("Aggregate[Any, Any]", value)
-    if isinstance(value, Scalar):
-        return cast("Scalar[Any, Any, Any]", value)
+    if isinstance(value, _Aggregate):
+        return cast("_Aggregate[Any, Any]", value)
+    if isinstance(value, _Scalar):
+        return cast("_Scalar[Any, Any, Any]", value)
     if isinstance(value, SqlCompilable):
         return value
     return require_field(value)
@@ -219,7 +219,7 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
     # the fast path never changes which branch a value takes.
     if isinstance(field, Attr):
         return require_column_model(field)
-    if isinstance(field, Scalar):
+    if isinstance(field, _Scalar):
         msg = "a scalar subquery has no single owning table"
         raise QueryConstructionError(msg)
     if isinstance(field, SqlCompilable):

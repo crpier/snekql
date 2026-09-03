@@ -15,7 +15,7 @@ from typing import Any, Literal, cast, overload
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
-from snekql.expressions import Aggregate, Scalar
+from snekql.expressions import Aggregate, ColumnRef, Scalar, _Scalar
 from snekql.model import Table, require_model_backend
 from snekql.query import (
     DeleteQuery,
@@ -72,6 +72,13 @@ def select[OwnerT: Model[Any, Any], ValueT, CompareT](
 
 
 @overload
+def select[OwnerT: Model[Any, Any], ValueT](
+    field: ColumnRef[OwnerT, ValueT],
+    /,
+) -> SelectValueQuery[Literal["sqlite"], OwnerT, OwnerT, ValueT, Any]: ...
+
+
+@overload
 def select[
     Owner1T: Model[Any, Any],
     T1,
@@ -79,9 +86,11 @@ def select[
     T2,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
@@ -99,13 +108,16 @@ def select[
     T3,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
@@ -127,17 +139,21 @@ def select[
     T4,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
@@ -161,21 +177,26 @@ def select[
     T5,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
@@ -208,25 +229,31 @@ def select[
     T6,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
@@ -262,29 +289,36 @@ def select[
     T7,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
+    | ColumnRef[Owner7T, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
     | DialectSelectable[Owner7T, T7, Any],
@@ -323,33 +357,41 @@ def select[
     T8,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
+    | ColumnRef[Owner7T, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
     | DialectSelectable[Owner7T, T7, Any],
     field8: Attr[Any, Any, Owner8T, Any, T8]
+    | ColumnRef[Owner8T, T8]
     | Aggregate[Owner8T, T8, Any]
     | Scalar[Owner8T, T8, Any]
     | DialectSelectable[Owner8T, T8, Any],
@@ -377,7 +419,7 @@ def select(*args: object) -> object:
     state = cast("Any", query).state
     _require_sqlite_model(state.model)
     for field in state.fields:
-        if isinstance(field, Scalar):
+        if isinstance(field, _Scalar):
             _require_sqlite_model(field.subquery.state.model)
         else:
             _require_sqlite_model(selectable_owner_model(field))
