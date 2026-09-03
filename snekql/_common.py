@@ -47,6 +47,7 @@ from snekql.errors import (
     TransactionNotStartedError,
     TransactionReuseError,
     TransactionStateError,
+    ZonedDatetimeError,
 )
 from snekql.expressions import (
     Aggregate,
@@ -85,6 +86,7 @@ from snekql.storage import (
     PendingGeneration,
     SchemaPolicy,
     UtcDatetime,
+    ZonedDatetime,
 )
 
 __all__ = [
@@ -149,6 +151,8 @@ __all__ = [
     "TransactionStateError",
     "UtcDatetime",
     "Write",
+    "ZonedDatetime",
+    "ZonedDatetimeError",
     "exists",
     "not_exists",
     "scalar",

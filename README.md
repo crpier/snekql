@@ -194,8 +194,9 @@ SQLite exposes exactly its four storage classes as column types:
 - `sqlite.Integer` — `INTEGER` storage. A `Col[bool]` stores as `0`/`1`.
 - `sqlite.Real` — `REAL` storage.
 - `sqlite.Text` — `TEXT` storage. Holds `Col[str]`, `Col[UtcDatetime]`
-  (canonical UTC millisecond text), `Col[datetime]` (raw ISO text),
-  `Col[uuid.UUID]` (string form), or a `Col[pydantic.Json[T]]` payload.
+  (canonical UTC millisecond text), `Col[ZonedDatetime]` (canonical instant and
+  timezone identity), `Col[datetime]` (raw ISO text), `Col[uuid.UUID]` (string
+  form), or a `Col[pydantic.Json[T]]` payload.
 - `sqlite.Blob` — `BLOB` storage for `Col[bytes]`.
 
 JSON uses Pydantic's marker, not a snekql type: annotate
@@ -222,6 +223,26 @@ offset-less UTC text: it has no way to record a naive value's zone, so encoding 
 naive `datetime` there is rejected with a `ModelValidationError` rather than
 silently assuming the writer's local zone. Attach a timezone (or annotate
 `Col[UtcDatetime]`) for those columns.
+
+Use `ZonedDatetime` when the timezone itself has domain meaning:
+
+```python
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from snekql.sqlite import Col, Text, ZonedDatetime
+
+starts_at: Col[ZonedDatetime] = Text(nullable=False)
+value = ZonedDatetime(datetime(2026, 7, 1, 8, tzinfo=ZoneInfo("America/New_York")))
+```
+
+It preserves the UTC instant plus the exact IANA key or fixed offset. Equality
+requires both to match, so `America/New_York` differs from a fixed `-04:00` even
+when they identify the same instant. Store it with `Text()` on both backends;
+MariaDB `DateTime()` cannot retain timezone identity. Equality, membership, and
+unique indexes are supported. Ordering, ranges, `MIN`, and `MAX` raise
+`QueryConstructionError`; use `UtcDatetime` when the database must compare
+chronologically.
 
 Decimal storage has the same two-coordinate rule:
 

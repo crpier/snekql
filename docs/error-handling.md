@@ -16,6 +16,12 @@ except SnekqlError as error:
 
 ## Error groups
 
+Logical type errors:
+
+- `ZonedDatetimeError`: `ZonedDatetime` received a naive datetime or a timezone
+  implementation without a stable persistence identity. Use an IANA
+  `zoneinfo.ZoneInfo` or fixed-offset `datetime.timezone`.
+
 Model errors:
 
 - `ModelDeclarationError`: invalid table model class or column declaration.

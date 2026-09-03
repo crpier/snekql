@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, assert_type
+from zoneinfo import ZoneInfo
 
 from snekql import mariadb, sqlite
 from snekql.query import (
@@ -59,6 +60,7 @@ from snekql.sqlite import (
     Transaction,
     UtcDatetime,
     Write,
+    ZonedDatetime,
     delete,
     exists,
     insert,
@@ -84,6 +86,12 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     created_at: GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
     balance: Col[CanonicalDecimal] = Text(nullable=False, default=Decimal(0))
     elapsed: Col[Duration] = Integer(nullable=False, default=timedelta(0))
+
+
+class ZonedEvent[S = Pending](Model[S, "ZonedEvent[Fetched]"]):
+    """Table carrying a timezone-preserving datetime."""
+
+    happened_at: Col[ZonedDatetime] = Text(nullable=False)
 
 
 class Order[S = Pending](Model[S, "Order[Fetched]"]):
@@ -326,6 +334,17 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(MariadbUser.email, MariadbUser.profile.json_extract_int("$.age")),
         SelectTupleQuery[MariadbUser[Pending], MariadbUser[Pending], str, int | None],
+    )
+
+    zoned_datetime = ZonedDatetime(
+        datetime(2026, 7, 1, 8, tzinfo=ZoneInfo("America/New_York"))
+    )
+    pending_zoned_event = ZonedEvent(happened_at=zoned_datetime)
+    _ = assert_type(pending_zoned_event.happened_at, ZonedDatetime)
+    _ = assert_type(pending_zoned_event.happened_at.datetime, datetime)
+    _ = assert_type(
+        ZonedEvent.happened_at.eq(zoned_datetime),
+        Predicate[ZonedEvent[Pending]],
     )
 
     pending_user = User(email="alice@example.com")

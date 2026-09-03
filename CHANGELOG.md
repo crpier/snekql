@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- `ZonedDatetime` preserves an aware datetime's UTC instant and exact IANA zone
+  identity or fixed offset through `Text()` storage on SQLite and MariaDB.
+  Equality requires both the instant and timezone to match. Chronological
+  ordering and range operations are rejected; use `UtcDatetime` when those
+  operations are required. (#237)
+
 ### Fixed
 
 - Required nullable enforced foreign keys can be declared as

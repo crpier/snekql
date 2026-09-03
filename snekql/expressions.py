@@ -534,30 +534,35 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         if value is None:
             msg = "gt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
+        self._require_ordering()
         return ComparisonPredicate(operand=self, operator="gt", value=value)
 
     def gte(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "gte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
+        self._require_ordering()
         return ComparisonPredicate(operand=self, operator="gte", value=value)
 
     def lt(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "lt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
+        self._require_ordering()
         return ComparisonPredicate(operand=self, operator="lt", value=value)
 
     def lte(self, value: ValueT) -> Predicate[OwnerT]:
         if value is None:
             msg = "lte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
+        self._require_ordering()
         return ComparisonPredicate(operand=self, operator="lte", value=value)
 
     def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]:
         if low is None or high is None:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)
+        self._require_ordering()
         return BetweenPredicate(operand=self, low=low, high=high)
 
     # Comparisons against another expression (a column or a scalar subquery)
@@ -586,25 +591,32 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
     def gte_col(
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
     def lt_col(
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
     def lte_col(
         self,
         other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
     ) -> Predicate[OwnerT]:
+        self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)
+
+    def _require_ordering(self) -> None:
+        """Reject ordered operations when an operand has no logical order."""
 
     def in_subquery(
         self,

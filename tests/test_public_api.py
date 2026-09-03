@@ -91,6 +91,8 @@ _NEUTRAL_NAMES = frozenset(
         "TransactionStateError",
         "UtcDatetime",
         "Write",
+        "ZonedDatetime",
+        "ZonedDatetimeError",
         "exists",
         "not_exists",
         "scalar",
@@ -440,6 +442,8 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.TransactionNotStartedError,
         sqlite.TransactionReuseError,
         sqlite.TransactionStateError,
+        sqlite.ZonedDatetime,
+        sqlite.ZonedDatetimeError,
     )
 
     for documented_class in documented_classes:
@@ -483,6 +487,7 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
         sqlite.TransactionNotStartedError("package-originated failure"),
         sqlite.TransactionReuseError("package-originated failure"),
         sqlite.TransactionStateError("package-originated failure"),
+        sqlite.ZonedDatetimeError("package-originated failure"),
     )
 
     catches: tuple[Callable[[], None], ...] = tuple(
