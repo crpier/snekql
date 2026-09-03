@@ -23,7 +23,7 @@ from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Protocol
+from typing import Any, Protocol
 
 from benchmarks import _models_mariadb, _models_sqlite
 from benchmarks._fixtures import (
@@ -54,7 +54,7 @@ class DatabaseFactory(Protocol):
 
     def __call__(
         self, *, pool_size: int, rows: int
-    ) -> AbstractAsyncContextManager[Database]: ...
+    ) -> AbstractAsyncContextManager[Database[Any]]: ...
 
 
 _SQLITE_API = BackendQueryApi(
@@ -155,7 +155,9 @@ async def run_sqlite(config: BenchConfig, directory: Path) -> list[BenchmarkRepo
 
     _section("SQLite (file-backed, WAL)")
 
-    def make_db(*, pool_size: int, rows: int) -> AbstractAsyncContextManager[Database]:
+    def make_db(
+        *, pool_size: int, rows: int
+    ) -> AbstractAsyncContextManager[Database[Any]]:
         return sqlite_benchmark_database(
             directory, _SQLITE_API, pool_size=pool_size, rows=rows
         )
@@ -172,7 +174,7 @@ async def run_mariadb(config: BenchConfig) -> list[BenchmarkReport]:
 
             def make_db(
                 *, pool_size: int, rows: int
-            ) -> AbstractAsyncContextManager[Database]:
+            ) -> AbstractAsyncContextManager[Database[Any]]:
                 return mariadb_benchmark_database(
                     server, _MARIADB_API, pool_size=pool_size, rows=rows
                 )

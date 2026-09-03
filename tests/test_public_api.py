@@ -301,8 +301,8 @@ def column_declarations_produce_query_attributes() -> None:
 def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     """The two namespaces share neutral symbols but own distinct dialect ones."""
 
-    # Neutral symbols are the very same objects in both namespaces.
-    assert_is(sqlite.select, mariadb.select)
+    # Backend-bound builders differ; backend-neutral carriers stay shared.
+    assert sqlite.select is not mariadb.select
     assert_is(sqlite.ColumnRef, mariadb.ColumnRef)
     assert_is(sqlite.Predicate, mariadb.Predicate)
     assert_is(sqlite.Select, mariadb.Select)
@@ -378,14 +378,14 @@ def select_query_chain_methods_return_query_objects() -> None:
 
 
 @test()
-def write_verbs_diverge_with_backend_specific_docstrings() -> None:
-    """insert/update/delete are per-backend verbs that document each driver's writes."""
+def query_verbs_diverge_with_backend_specific_docstrings() -> None:
+    """Backend verbs carry family-specific typing and documentation."""
 
-    # The write verbs are distinct objects per backend, unlike neutral ``select``.
+    # Every query entry point is a distinct Backend Namespace object.
     assert sqlite.insert is not mariadb.insert
     assert sqlite.update is not mariadb.update
     assert sqlite.delete is not mariadb.delete
-    assert_is(sqlite.select, mariadb.select)
+    assert sqlite.select is not mariadb.select
 
     # The docstrings name the backend and explain its affected-row count.
     assert_in("SQLite", sqlite.insert.__doc__ or "")

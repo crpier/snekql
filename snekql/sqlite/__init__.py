@@ -8,6 +8,8 @@ SQLite's write verbs, ``Model`` base, and column constructors. There is no flat
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Literal
+
 from snekql._common import (
     PENDING_GENERATION,
     Aggregate,
@@ -15,9 +17,7 @@ from snekql._common import (
     Canonical,
     CanonicalDecimal,
     ChunkStream,
-    Col,
     ColumnRef,
-    Database,
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
@@ -27,9 +27,7 @@ from snekql._common import (
     Duration,
     ExecutionError,
     Fetched,
-    FKCol,
     FrozenModelError,
-    GenCol,
     Index,
     JoinOn,
     LexicalDatetimeWarning,
@@ -60,32 +58,37 @@ from snekql._common import (
     SchemaError,
     SchemaPolicy,
     SchemaVerificationError,
-    Select,
     SnekqlError,
     SnekqlWarning,
-    Transaction,
     TransactionClosedError,
     TransactionMode,
     TransactionNotStartedError,
     TransactionReuseError,
     TransactionStateError,
     UtcDatetime,
-    Write,
     ZonedDatetime,
     ZonedDatetimeError,
     exists,
     not_exists,
     scalar,
-    select,
 )
-from snekql.model import Model
+from snekql._common import (
+    Select as _RuntimeSelect,
+)
+from snekql._common import (
+    Write as _RuntimeWrite,
+)
+from snekql.query import _Select, _Write
+from snekql.runtime import Database as _Database
+from snekql.runtime import Transaction as _Transaction
 
 # Importing the dialect module registers the SQLite query Dialect so a built
 # SQLite query can render its own SQL for inspection (see _query_dialect).
 from snekql.sqlite import _dialect_sql as _dialect_sql
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
-from snekql.sqlite.verbs import delete, insert, update
+from snekql.sqlite.model import Col, FKCol, GenCol, Model
+from snekql.sqlite.verbs import delete, insert, select, update
 from snekql.storage import (
     Blob,
     CurrentTimestamp,
@@ -94,6 +97,17 @@ from snekql.storage import (
     Real,
     Text,
 )
+
+if TYPE_CHECKING:
+    Database = _Database[Literal["sqlite"]]
+    type Select[RowT] = _Select[Literal["sqlite"], RowT]
+    Transaction = _Transaction[Literal["sqlite"]]
+    type Write[ResultT] = _Write[Literal["sqlite"], ResultT]
+else:
+    Database = _Database
+    Select = _RuntimeSelect
+    Transaction = _Transaction
+    Write = _RuntimeWrite
 
 __all__ = [
     "PENDING_GENERATION",

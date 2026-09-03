@@ -99,7 +99,7 @@ async def database_session(
     try:
         if setup_sql:
             # The table already exists: verify the live schema against the models.
-            await database.verify(models, policy=schema_policy)
+            await database.verify(cast("Any", models), policy=schema_policy)
         elif models:
             # Build the schema by replaying the scaffolded migration chain.
             await migrate_models(database, models)

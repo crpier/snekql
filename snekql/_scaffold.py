@@ -17,12 +17,30 @@ from snekql._schema_compile import (
     compile_create_table_sql,
 )
 from snekql._schema_plan import build_schema_plan
+from snekql.errors import ModelDeclarationError
+from snekql.model import BackendFamily, require_model_backend
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from snekql._schema_dialect import SchemaDialect
     from snekql.model import Table
+
+
+def require_scaffold_models(
+    backend: BackendFamily,
+    models: Sequence[type[Table[Any]]],
+) -> None:
+    """Reject Table Models from another backend before producing DDL."""
+
+    for model in models:
+        received = require_model_backend(model)
+        if received != backend:
+            msg = (
+                f"backend mismatch: expected {backend} model, "
+                f"received {received} model {model.__name__}"
+            )
+            raise ModelDeclarationError(msg)
 
 
 def scaffold_statements(

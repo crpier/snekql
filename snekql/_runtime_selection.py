@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
 
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import require_model_backend
@@ -15,15 +15,18 @@ if TYPE_CHECKING:
     from snekql.model import BackendFamily, Table
 
 
+FamilyT_co = TypeVar("FamilyT_co", bound="BackendFamily", covariant=True)
+
+
 @runtime_checkable
-class RuntimeConfig(Protocol):
+class RuntimeConfig(Protocol[FamilyT_co]):
     """Backend config seam: family identity, pool settings, runtime initializer."""
 
     @property
     def acquire_timeout(self) -> NonNegativeFloat: ...
 
     @property
-    def backend_family(self) -> BackendFamily: ...
+    def backend_family(self) -> FamilyT_co: ...
 
     @property
     def pool_size(self) -> PositiveInt: ...
@@ -47,7 +50,7 @@ class DefaultBackendFactory(Protocol):
         acquire_timeout: NonNegativeFloat,
         database: Path | Literal[":memory:"],
         pool_size: PositiveInt,
-    ) -> RuntimeConfig: ...
+    ) -> RuntimeConfig[Any]: ...
 
 
 _default_backend_factory: DefaultBackendFactory | None = None
@@ -86,7 +89,7 @@ def resolve_runtime_config(
     database: Path | Literal[":memory:"] | None,
     pool_size: PositiveInt,
     acquire_timeout: NonNegativeFloat,
-) -> RuntimeConfig:
+) -> RuntimeConfig[Any]:
     """Resolve public Database.initialize arguments to a backend config."""
 
     if backend is not None:

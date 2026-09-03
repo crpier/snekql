@@ -61,6 +61,7 @@ from snekql.query import (
     UpdateQuery,
     _OptionalQueryShape,
     _QueryShape,
+    _SelectableModelClass,
     _WriteShape,
 )
 from snekql.storage import SchemaPolicy
@@ -161,7 +162,7 @@ class QueryCodec(Protocol):
 
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, ResultT],
+        query: _QueryShape[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: bool = True,
@@ -169,7 +170,7 @@ class QueryCodec(Protocol):
 
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[ResultT],
+        query: _WriteShape[Any, ResultT],
         *,
         validate: bool = True,
     ) -> WritePlan[object]: ...
@@ -233,13 +234,13 @@ class ChunkStream[RowT]:
     def __init__(
         self,
         *,
-        transaction: Transaction,
+        transaction: Transaction[Any],
         select_query: AnySelectQuery,
         lock: anyio.Lock,
         size: PositiveInt,
         validate: bool,
     ) -> None:
-        self._transaction: Transaction = transaction
+        self._transaction: Transaction[Any] = transaction
         self._select_query: AnySelectQuery = select_query
         self._lock: anyio.Lock = lock
         self._size: PositiveInt = size
@@ -337,7 +338,7 @@ class ChunkStream[RowT]:
         ]
 
 
-class Transaction:
+class Transaction[FamilyT: BackendFamily]:
     """Async transaction that executes built snekql queries on one connection.
 
     Single-use and not re-entrant: enter it exactly once with ``async with
@@ -349,7 +350,7 @@ class Transaction:
     connection, so sharing it across tasks is safe but offers no parallelism; open
     separate transactions for concurrent work. See ``docs/error-handling.md``.
 
-    >>> async def create_user(transaction: Transaction, user: User[Pending]) -> None:
+    >>> async def create_user(transaction: Transaction[Any], user: User[Pending]) -> None:
     ...     await transaction.execute(insert(user))
     """
 
@@ -448,21 +449,21 @@ class Transaction:
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> list[RowT]: ...
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> list[object]: ...
     @overload
     async def fetch_all[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> list[object]: ...
@@ -524,7 +525,7 @@ class Transaction:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: Literal[True] = True,
@@ -532,7 +533,7 @@ class Transaction:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: Literal[False],
@@ -540,7 +541,7 @@ class Transaction:
     @overload
     def fetch_chunks[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         size: PositiveInt,
         validate: bool,
@@ -630,21 +631,21 @@ class Transaction:
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> RowT: ...
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def fetch_one[ScopeT, RowT](
         self,
-        query: _QueryShape[ScopeT, ScopeT, RowT],
+        query: _QueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> object: ...
@@ -666,7 +667,7 @@ class Transaction:
         async with self._lock:
             connection = self.require_connection()
             plan = self.runtime.query_codec.compile_select_plan(
-                cast("_QueryShape[Any, Any, object]", query),
+                cast("_QueryShape[FamilyT, Any, Any, object]", query),
                 cardinality="one",
                 validate=validate,
             )
@@ -703,21 +704,21 @@ class Transaction:
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
+        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[True] = True,
     ) -> RowT | None: ...
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
+        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
         self,
-        query: _OptionalQueryShape[ScopeT, ScopeT, RowT],
+        query: _OptionalQueryShape[FamilyT, ScopeT, ScopeT, RowT],
         *,
         validate: bool,
     ) -> object: ...
@@ -762,35 +763,35 @@ class Transaction:
     @overload
     async def execute(
         self,
-        query: UpdateQuery[Any, Any] | DeleteQuery[Any, Any],
+        query: UpdateQuery[FamilyT, Any, Any] | DeleteQuery[FamilyT, Any, Any],
         *,
         validate: bool = True,
     ) -> int: ...
     @overload
     async def execute(
         self,
-        query: InsertQuery[Any, Any] | InsertManyQuery[Any, Any],
+        query: InsertQuery[FamilyT, Any, Any] | InsertManyQuery[FamilyT, Any, Any],
         *,
         validate: bool = True,
     ) -> None: ...
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[ResultT],
+        query: _WriteShape[FamilyT, ResultT],
         *,
         validate: Literal[True] = True,
     ) -> ResultT: ...
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[ResultT],
+        query: _WriteShape[FamilyT, ResultT],
         *,
         validate: Literal[False],
     ) -> object: ...
     @overload
     async def execute[ResultT](
         self,
-        query: _WriteShape[ResultT],
+        query: _WriteShape[FamilyT, ResultT],
         *,
         validate: bool,
     ) -> object: ...
@@ -809,7 +810,7 @@ class Transaction:
         async with self._lock:
             connection = self.require_connection()
             plan = self.runtime.query_codec.compile_write_plan(
-                cast("_WriteShape[object]", query),
+                cast("_WriteShape[FamilyT, object]", query),
                 validate=validate,
             )
             if plan.sql is None:
@@ -912,7 +913,7 @@ class Transaction:
         raise QueryCompilationError(msg)
 
 
-class Database:
+class Database[FamilyT: BackendFamily]:
     """Connected snekql runtime service for database-backed execution.
 
     `Database.initialize(...)` is the only public construction path and is
@@ -935,18 +936,18 @@ class Database:
     @classmethod
     async def initialize(
         cls,
-        backend: RuntimeConfig,
+        backend: RuntimeConfig[FamilyT],
     ) -> Self: ...
 
     @overload
     @classmethod
     async def initialize(
-        cls,
+        cls: type[Database[Literal["sqlite"]]],
         *,
         database: Path | Literal[":memory:"],
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
-    ) -> Self: ...
+    ) -> Database[Literal["sqlite"]]: ...
 
     @classmethod
     async def initialize(
@@ -1056,7 +1057,7 @@ class Database:
 
     async def verify(
         self,
-        models: Sequence[type[Table[Any]]],
+        models: Sequence[_SelectableModelClass[FamilyT, Any, Any]],
         *,
         policy: SchemaPolicy = "strict",
     ) -> None:
@@ -1071,9 +1072,12 @@ class Database:
         """
 
         backend_family = self.runtime.backend_family
+        table_models = cast("Sequence[type[Table[Any]]]", models)
         try:
-            validate_model_backends(backend_family, models)
-            table_names = tuple(require_model_table_name(model) for model in models)
+            validate_model_backends(backend_family, table_models)
+            table_names = tuple(
+                require_model_table_name(model) for model in table_models
+            )
             logger.info(
                 "%s database verify started: %d model(s) %r, policy=%s",
                 backend_family,
@@ -1081,7 +1085,7 @@ class Database:
                 table_names,
                 policy,
             )
-            await self.runtime.verify_schema(models, policy)
+            await self.runtime.verify_schema(table_models, policy)
             logger.info(
                 "%s database verify completed: %d model(s) %r",
                 backend_family,
@@ -1092,13 +1096,12 @@ class Database:
             logger.exception("database verify failed")
             raise
 
-    @validate_boundary(error_type=DatabaseRuntimeError)
     def transaction(
         self,
         *,
         timeout: NonNegativeFloat | None = None,
         mode: TransactionMode = "deferred",
-    ) -> Transaction:
+    ) -> Transaction[FamilyT]:
         """Create a transaction context manager using the runtime backend.
 
         ``mode="immediate"`` declares write intent so the backend acquires the
@@ -1109,11 +1112,25 @@ class Database:
         under contention. It is a no-op on row-locking backends.
         """
 
+        return cast(
+            "Transaction[FamilyT]",
+            self._validated_transaction(timeout=timeout, mode=mode),
+        )
+
+    @validate_boundary(error_type=DatabaseRuntimeError)
+    def _validated_transaction(
+        self,
+        *,
+        timeout: NonNegativeFloat | None = None,
+        mode: TransactionMode = "deferred",
+    ) -> Transaction[Any]:
+        """Validate public transaction arguments outside the generic signature."""
+
         self.runtime.check_accepting_work()
         acquisition_timeout = (
             self.runtime.acquire_timeout if timeout is None else timeout
         )
-        return Transaction(
+        return Transaction[Any](
             runtime=self.runtime,
             timeout=acquisition_timeout,
             mode=mode,

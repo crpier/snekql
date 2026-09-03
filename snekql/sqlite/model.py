@@ -1,76 +1,44 @@
-"""MariaDB table model declaration base."""
+"""SQLite Table Model declaration base and backend-pinned column aliases."""
 
 from __future__ import annotations
 
 from typing import Any, ClassVar, Literal, TypeVar, dataclass_transform
 
 from snekql.indexes import NormalizedIndex
-from snekql.mariadb.storage import (
-    Blob,
-    Boolean,
-    DateTime,
-    Decimal,
-    Integer,
-    Json,
-    JsonAttr,
-    Real,
-    Text,
-    Uuid,
-)
 from snekql.model import _MODEL_BASE_MARKER, Fetched, Pending, Table
 from snekql.model import Model as BaseModel
 from snekql.model import ModelMeta as BaseModelMeta
 from snekql.storage import (
     Attr,
-    FKAttr,
+    Blob,
     ForeignKey,
+    Integer,
     PendingGeneration,
+    Real,
+    Text,
     _UnboundOwner,
 )
+from snekql.storage import FKAttr as _FKAttr
 
 StateT = TypeVar("StateT")
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 
 
-type JsonCol[T] = JsonAttr[
-    Table[Pending],
-    Table[Fetched],
-    _UnboundOwner,
-    T,
-    T,
-]
-
-
 @dataclass_transform(
-    field_specifiers=(
-        Integer,
-        Real,
-        Text,
-        Blob,
-        Decimal,
-        Json,
-        Boolean,
-        DateTime,
-        Uuid,
-        ForeignKey,
-    ),
+    field_specifiers=(Integer, Real, Text, Blob, ForeignKey),
     kw_only_default=True,
 )
 class ModelMeta(BaseModelMeta):
-    """Typing hook for MariaDB-specific column declaration functions."""
+    """Typing hook for SQLite-specific Table Model declarations."""
 
 
 class Model[StateT, ReadModelT: Table[Any]](
     BaseModel[StateT, ReadModelT],
     metaclass=ModelMeta,
 ):
-    """MariaDB table model base for backend-specific declarations.
+    """SQLite Table Model base for backend-specific declarations."""
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: Col[str] = Text()
-    """
-
-    __snekql_backend__: ClassVar[Literal["mariadb"]] = "mariadb"
+    __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
     __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
     __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
@@ -84,7 +52,7 @@ class Model[StateT, ReadModelT: Table[Any]](
         T | PendingGeneration,
         T,
     ]
-    type FKCol[Target: Model[Any, Any], T] = FKAttr[
+    type FKCol[Target: Model[Any, Any], T] = _FKAttr[
         Table[Pending],
         Table[Fetched],
         _UnboundOwner,
@@ -92,20 +60,19 @@ class Model[StateT, ReadModelT: Table[Any]](
         T,
         Target,
     ]
-    type JsonCol[T] = JsonAttr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
 
     @classmethod
-    def __backend_family_type__(cls) -> Literal["mariadb"]:
+    def __backend_family_type__(cls) -> Literal["sqlite"]:
         """Typing-only witness for backend-family propagation."""
 
-        return "mariadb"
+        return "sqlite"
 
 
 type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
 type GenCol[T] = Attr[
     Table[Pending], Table[Fetched], _UnboundOwner, T | PendingGeneration, T
 ]
-type FKCol[Target: Model[Any, Any], T] = FKAttr[
+type FKCol[Target: Model[Any, Any], T] = _FKAttr[
     Table[Pending],
     Table[Fetched],
     _UnboundOwner,
@@ -114,4 +81,4 @@ type FKCol[Target: Model[Any, Any], T] = FKAttr[
     Target,
 ]
 
-__all__ = ["Col", "FKCol", "GenCol", "JsonCol", "Model", "ModelMeta"]
+__all__ = ["Col", "FKCol", "GenCol", "Model", "ModelMeta"]

@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from snektest import assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -45,6 +45,12 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     note: Order.Col[str] = sqlite.Text(nullable=False)
 
 
+class MariaUser[S = mariadb.Pending](mariadb.Model[S, "MariaUser[mariadb.Fetched]"]):
+    """MariaDB model used to exercise the runtime family backstop."""
+
+    id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
+
+
 class Item[S = Pending](sqlite.Model[S, "Item[Fetched]"]):
     """Table with a foreign key to ``Order``."""
 
@@ -54,6 +60,16 @@ class Item[S = Pending](sqlite.Model[S, "Item[Fetched]"]):
         default=PENDING_GENERATION,
     )
     order_id: Item.FKCol[Order, int] = sqlite.ForeignKey(Order.id)
+
+
+@test(mark="fast")
+def join_rejects_a_model_from_another_backend_family() -> None:
+    """Dynamic callers cannot bypass the static join family constraint."""
+
+    query = cast("Any", select(User))
+
+    with assert_raises(QueryConstructionError):
+        _ = query.join(MariaUser, on=cast("Any", Order.user_id.references(User.id)))
 
 
 @test(mark="fast")

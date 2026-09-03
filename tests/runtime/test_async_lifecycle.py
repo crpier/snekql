@@ -132,7 +132,7 @@ class _CannedQueryCodec:
 
     def compile_select_plan[ResultT](
         self,
-        query: _QueryShape[Any, Any, ResultT],
+        query: _QueryShape[Any, Any, Any, ResultT],
         *,
         cardinality: SelectCardinality,
         validate: bool = True,
@@ -145,7 +145,7 @@ class _CannedQueryCodec:
 
     def compile_write_plan[ResultT](
         self,
-        query: _WriteShape[ResultT],
+        query: _WriteShape[Any, ResultT],
         *,
         validate: bool = True,
     ) -> WritePlan[object]:

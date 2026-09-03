@@ -38,14 +38,14 @@ class Token[S = Pending](Model[S, "Token[Fetched]"]):
     value: Token.Col[UUID] = Text(nullable=False)
 
 
-class _UnlistedSelect[ResultT](_QueryShape[Any, Any, ResultT]):
+class _UnlistedSelect[ResultT](_QueryShape[Any, Any, Any, ResultT]):
     """Internal query shape proving runtime does not enumerate select builders."""
 
     def __init__(self, state: object) -> None:
         self.state = state
 
 
-class _UnlistedWrite[ResultT](_WriteShape[ResultT]):
+class _UnlistedWrite[ResultT](_WriteShape[Any, ResultT]):
     """Internal query shape proving runtime does not enumerate write builders."""
 
     def __init__(self, state: object) -> None:

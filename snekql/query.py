@@ -64,13 +64,14 @@ from snekql.expressions import (
     Predicate,
     Scalar,
 )
-from snekql.model import Pending, Table, require_model_columns
+from snekql.model import Pending, Table, require_model_backend, require_model_columns
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
 if TYPE_CHECKING:
     from snekql._query_compile import InspectedQuery
 
+FamilyT_co = TypeVar("FamilyT_co", covariant=True)
 ModelT = TypeVar("ModelT", bound=Table[Any])
 ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
@@ -84,12 +85,15 @@ T3 = TypeVar("T3")
 Ts = TypeVarTuple("Ts")
 
 
-class _SelectableModelClass(Protocol[SelectableOwnerT, SelectableReadT_co]):
+class _SelectableModelClass(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]):
     """Structural type for model classes accepted by `select(Model)`.
 
     The protocol lets the checker connect the writable owner model type with the
     fetched read model type exposed by table model classes.
     """
+
+    @classmethod
+    def __backend_family_type__(cls) -> FamilyT_co: ...
 
     @classmethod
     def __owner_type__(cls) -> type[SelectableOwnerT]: ...
@@ -101,7 +105,7 @@ class _SelectableModelClass(Protocol[SelectableOwnerT, SelectableReadT_co]):
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
 
 
-class InsertableModel(Protocol[SelectableOwnerT, SelectableReadT_co]):
+class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]):
     """Structural type for pending model instances accepted by `insert(row)`.
 
     A pending model instance exposes its own writable owner type and the fetched
@@ -111,6 +115,9 @@ class InsertableModel(Protocol[SelectableOwnerT, SelectableReadT_co]):
     so a `User[Pending]` value binds owner to `User[Pending]` and read to
     `User[Fetched]`.
     """
+
+    @classmethod
+    def __backend_family_type__(cls) -> FamilyT_co: ...
 
     @classmethod
     def __owner_type__(cls) -> type[SelectableOwnerT]: ...
@@ -262,7 +269,7 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
         return self._replace_state(_select_order_by(self.state, ordering))
 
 
-class _QueryShape[ScopeT, RefT, RowT]:
+class _QueryShape[FamilyT, ScopeT, RefT, RowT]:
     """Private nominal carrier for executable select scope and row shape."""
 
     def _pin_scope(self, scope: ScopeT) -> ScopeT:
@@ -281,11 +288,14 @@ class _QueryShape[ScopeT, RefT, RowT]:
         raise NotImplementedError
 
 
-class _OptionalQueryShape[ScopeT, RefT, RowT](_QueryShape[ScopeT, RefT, RowT]):
+class _OptionalQueryShape[FamilyT, ScopeT, RefT, RowT](
+    _QueryShape[FamilyT, ScopeT, RefT, RowT]
+):
     """Select shape whose absence is distinct from every possible row value."""
 
 
-type Select[RowT] = _QueryShape[Any, Any, RowT]
+type _Select[FamilyT, RowT] = _QueryShape[FamilyT, Any, Any, RowT]
+type Select[RowT] = _Select[Any, RowT]
 """Public annotation for a select query yielding `RowT` per row.
 
 The `Any` scope coordinates deliberately erase private builder state at a stored
@@ -294,66 +304,70 @@ reference coordinates, so the Query Runtime can still reject unjoined references
 """
 
 
-class SelectModelQuery[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
+class SelectModelQuery[FamilyT, SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
     _FluentSelectQuery[SelectOwnerT],
-    _OptionalQueryShape[SelectOwnerT, SelectOwnerT, ReadModelT],
+    _OptionalQueryShape[FamilyT, SelectOwnerT, SelectOwnerT, ReadModelT],
 ):
     """Immutable select query that returns fetched table model instances."""
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, SelectOwnerT],
-    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]: ...
+    ) -> JoinModelQuery[FamilyT, SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]: ...
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[SelectOwnerT, NewOwnerT],
-    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]: ...
+    ) -> JoinModelQuery[FamilyT, SelectOwnerT | NewOwnerT, ReadModelT, NewReadT]: ...
 
     def join(
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[Any, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, *tuple[Any, ...]]:
         """Inner-join another table, appending its fetched model to each row."""
 
-        return JoinModelQuery[Any, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, *tuple[Any, ...]](
             _select_join(self.state, model, on, "INNER"),
         )
 
     @overload
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, SelectOwnerT],
-    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]: ...
+    ) -> JoinModelQuery[
+        FamilyT, SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None
+    ]: ...
 
     @overload
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[SelectOwnerT, NewOwnerT],
-    ) -> JoinModelQuery[SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None]: ...
+    ) -> JoinModelQuery[
+        FamilyT, SelectOwnerT | NewOwnerT, ReadModelT, NewReadT | None
+    ]: ...
 
     def left_join(
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[Any, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, *tuple[Any, ...]]:
         """Left-join another table; its fetched model is optional per row."""
 
-        return JoinModelQuery[Any, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, *tuple[Any, ...]](
             _select_join(self.state, model, on, "LEFT"),
         )
 
 
-class JoinModelQuery[JoinOwnerT: Table[Any], *ResultTs](
+class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], *ResultTs](
     _FluentSelectQuery[JoinOwnerT],
-    _OptionalQueryShape[JoinOwnerT, JoinOwnerT, tuple[*ResultTs]],
+    _OptionalQueryShape[FamilyT, JoinOwnerT, JoinOwnerT, tuple[*ResultTs]],
 ):
     """Immutable model-select across joined tables; rows are model tuples.
 
@@ -367,57 +381,61 @@ class JoinModelQuery[JoinOwnerT: Table[Any], *ResultTs](
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, JoinOwnerT],
-    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]: ...
+    ) -> JoinModelQuery[FamilyT, JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]: ...
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[JoinOwnerT, NewOwnerT],
-    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]: ...
+    ) -> JoinModelQuery[FamilyT, JoinOwnerT | NewOwnerT, *ResultTs, NewReadT]: ...
 
     def join(
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[Any, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, *tuple[Any, ...]]:
         """Inner-join another table, appending its fetched model to each row."""
 
-        return JoinModelQuery[Any, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, *tuple[Any, ...]](
             _select_join(self.state, model, on, "INNER"),
         )
 
     @overload
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, JoinOwnerT],
-    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]: ...
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None
+    ]: ...
 
     @overload
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[JoinOwnerT, NewOwnerT],
-    ) -> JoinModelQuery[JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None]: ...
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT | NewOwnerT, *ResultTs, NewReadT | None
+    ]: ...
 
     def left_join(
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[Any, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, *tuple[Any, ...]]:
         """Left-join another table; its fetched model is optional per row."""
 
-        return JoinModelQuery[Any, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, *tuple[Any, ...]](
             _select_join(self.state, model, on, "LEFT"),
         )
 
 
-class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
+class SelectValueQuery[FamilyT, ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
     _BaseSelectQuery,
-    _QueryShape[ScopeT, RefT, T],
+    _QueryShape[FamilyT, ScopeT, RefT, T],
 ):
     """Projection select of one column; fetch yields one scalar value per row.
 
@@ -446,7 +464,7 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         self,
         predicate: Predicate[RefOwnerT],
         /,
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     @overload
     def where[RefOwnerT: Table[Any]](
@@ -455,17 +473,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         second: Predicate[RefOwnerT],
         /,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def where[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]:
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]:
         """Filter rows, widening the referenced-table union by the predicates."""
 
         return cast(
-            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]",
-            SelectValueQuery[Any, Any, T, CompareT](
+            "SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]",
+            SelectValueQuery[FamilyT, Any, Any, T, CompareT](
                 _select_where(self.state, predicates)
             ),
         )
@@ -475,7 +493,7 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         self,
         ordering: OrderBy[RefOwnerT],
         /,
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     @overload
     def order_by[RefOwnerT: Table[Any]](
@@ -484,17 +502,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         second: OrderBy[RefOwnerT],
         /,
         *orderings: OrderBy[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def order_by[RefOwnerT: Table[Any]](
         self,
         *ordering: OrderBy[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]:
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]:
         """Order rows, widening the referenced-table union by the orderings."""
 
         return cast(
-            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]",
-            SelectValueQuery[Any, Any, T, CompareT](
+            "SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]",
+            SelectValueQuery[FamilyT, Any, Any, T, CompareT](
                 _select_order_by(self.state, ordering)
             ),
         )
@@ -504,7 +522,7 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         self,
         column: Attr[Any, Any, RefOwnerT, Any, Any],
         /,
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     @overload
     def group_by[RefOwnerT: Table[Any]](
@@ -513,17 +531,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         second: Attr[Any, Any, RefOwnerT, Any, Any],
         /,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def group_by[RefOwnerT: Table[Any]](
         self,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]:
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]:
         """Group rows by columns, widening the referenced-table union by them."""
 
         return cast(
-            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]",
-            SelectValueQuery[Any, Any, T, CompareT](
+            "SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]",
+            SelectValueQuery[FamilyT, Any, Any, T, CompareT](
                 _select_group_by(self.state, columns)
             ),
         )
@@ -533,7 +551,7 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         self,
         predicate: Predicate[RefOwnerT],
         /,
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     @overload
     def having[RefOwnerT: Table[Any]](
@@ -542,17 +560,17 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         second: Predicate[RefOwnerT],
         /,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]:
+    ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]:
         """Filter groups by aggregate or grouped column, widening the union."""
 
         return cast(
-            "SelectValueQuery[ScopeT, RefT | RefOwnerT, T, CompareT]",
-            SelectValueQuery[Any, Any, T, CompareT](
+            "SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT]",
+            SelectValueQuery[FamilyT, Any, Any, T, CompareT](
                 _select_having(self.state, predicates)
             ),
         )
@@ -560,25 +578,25 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, ScopeT],
-    ) -> SelectValueQuery[ScopeT | NewOwnerT, RefT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT | NewOwnerT, RefT, T, CompareT]: ...
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[ScopeT, NewOwnerT],
-    ) -> SelectValueQuery[ScopeT | NewOwnerT, RefT, T, CompareT]: ...
+    ) -> SelectValueQuery[FamilyT, ScopeT | NewOwnerT, RefT, T, CompareT]: ...
 
     def join(
         self,
         model: object,
         on: object,
-    ) -> SelectValueQuery[Any, Any, T, CompareT]:
+    ) -> SelectValueQuery[FamilyT, Any, Any, T, CompareT]:
         """Inner-join another table into the scope without changing the result."""
 
-        return SelectValueQuery[Any, Any, T, CompareT](
+        return SelectValueQuery[FamilyT, Any, Any, T, CompareT](
             _select_join(self.state, model, on, "INNER", project=True),
         )
 
@@ -594,9 +612,9 @@ class SelectValueQuery[ScopeT: Table[Any], RefT: Table[Any], T, CompareT = T](
         raise QueryConstructionError(msg)
 
 
-class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
+class SelectTupleQuery[FamilyT, ScopeT: Table[Any], RefT: Table[Any], *Ts](
     _BaseSelectQuery,
-    _OptionalQueryShape[ScopeT, RefT, tuple[*Ts]],
+    _OptionalQueryShape[FamilyT, ScopeT, RefT, tuple[*Ts]],
 ):
     """Projection select of several columns; fetch yields a tuple per row.
 
@@ -612,7 +630,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         self,
         predicate: Predicate[RefOwnerT],
         /,
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     @overload
     def where[RefOwnerT: Table[Any]](
@@ -621,17 +639,19 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         second: Predicate[RefOwnerT],
         /,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def where[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]:
         """Filter rows, widening the referenced-table union by the predicates."""
 
         return cast(
-            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
-            SelectTupleQuery[Any, Any, *Ts](_select_where(self.state, predicates)),
+            "SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[FamilyT, Any, Any, *Ts](
+                _select_where(self.state, predicates)
+            ),
         )
 
     @overload
@@ -639,7 +659,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         self,
         ordering: OrderBy[RefOwnerT],
         /,
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     @overload
     def order_by[RefOwnerT: Table[Any]](
@@ -648,17 +668,19 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         second: OrderBy[RefOwnerT],
         /,
         *orderings: OrderBy[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def order_by[RefOwnerT: Table[Any]](
         self,
         *ordering: OrderBy[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]:
         """Order rows, widening the referenced-table union by the orderings."""
 
         return cast(
-            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
-            SelectTupleQuery[Any, Any, *Ts](_select_order_by(self.state, ordering)),
+            "SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[FamilyT, Any, Any, *Ts](
+                _select_order_by(self.state, ordering)
+            ),
         )
 
     @overload
@@ -666,7 +688,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         self,
         column: Attr[Any, Any, RefOwnerT, Any, Any],
         /,
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     @overload
     def group_by[RefOwnerT: Table[Any]](
@@ -675,17 +697,19 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         second: Attr[Any, Any, RefOwnerT, Any, Any],
         /,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def group_by[RefOwnerT: Table[Any]](
         self,
         *columns: Attr[Any, Any, RefOwnerT, Any, Any],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]:
         """Group rows by columns, widening the referenced-table union by them."""
 
         return cast(
-            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
-            SelectTupleQuery[Any, Any, *Ts](_select_group_by(self.state, columns)),
+            "SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[FamilyT, Any, Any, *Ts](
+                _select_group_by(self.state, columns)
+            ),
         )
 
     @overload
@@ -693,7 +717,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         self,
         predicate: Predicate[RefOwnerT],
         /,
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     @overload
     def having[RefOwnerT: Table[Any]](
@@ -702,41 +726,43 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         second: Predicate[RefOwnerT],
         /,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
         *predicates: Predicate[RefOwnerT],
-    ) -> SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]:
+    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]:
         """Filter groups by aggregate or grouped column, widening the union."""
 
         return cast(
-            "SelectTupleQuery[ScopeT, RefT | RefOwnerT, *Ts]",
-            SelectTupleQuery[Any, Any, *Ts](_select_having(self.state, predicates)),
+            "SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, *Ts]",
+            SelectTupleQuery[FamilyT, Any, Any, *Ts](
+                _select_having(self.state, predicates)
+            ),
         )
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, ScopeT],
-    ) -> SelectTupleQuery[ScopeT | NewOwnerT, RefT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT | NewOwnerT, RefT, *Ts]: ...
 
     @overload
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
-        model: _SelectableModelClass[NewOwnerT, NewReadT],
+        model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[ScopeT, NewOwnerT],
-    ) -> SelectTupleQuery[ScopeT | NewOwnerT, RefT, *Ts]: ...
+    ) -> SelectTupleQuery[FamilyT, ScopeT | NewOwnerT, RefT, *Ts]: ...
 
     def join(
         self,
         model: object,
         on: object,
-    ) -> SelectTupleQuery[Any, Any, *Ts]:
+    ) -> SelectTupleQuery[FamilyT, Any, Any, *Ts]:
         """Inner-join another table into the scope without changing the result."""
 
-        return SelectTupleQuery[Any, Any, *Ts](
+        return SelectTupleQuery[FamilyT, Any, Any, *Ts](
             _select_join(self.state, model, on, "INNER", project=True),
         )
 
@@ -752,7 +778,7 @@ class SelectTupleQuery[ScopeT: Table[Any], RefT: Table[Any], *Ts](
         raise QueryConstructionError(msg)
 
 
-class _BaseInsertQuery[OwnerT: Table[Any]](_SqlInspectionMixin):
+class _BaseInsertQuery[FamilyT, OwnerT: Table[Any]](_SqlInspectionMixin):
     """Immutable insert-state plumbing shared by every insert query variant."""
 
     state: InsertState
@@ -826,7 +852,7 @@ class _BaseInsertQuery[OwnerT: Table[Any]](_SqlInspectionMixin):
         )
 
 
-class _WriteShape[ResultT]:
+class _WriteShape[FamilyT, ResultT]:
     """Private nominal carrier for one write query's execution result."""
 
     def _result_type(self) -> ResultT:
@@ -835,7 +861,8 @@ class _WriteShape[ResultT]:
         raise NotImplementedError
 
 
-type Write[ResultT] = _WriteShape[ResultT]
+type _Write[FamilyT, ResultT] = _WriteShape[FamilyT, ResultT]
+type Write[ResultT] = _Write[Any, ResultT]
 """Public annotation for a write query yielding `ResultT` on execution.
 
 The result is `None` for inserts without `returning`, `int` for plain update and
@@ -844,25 +871,25 @@ delete statements, and the selected model or projection shape for writes with
 """
 
 
-class _ReturningQuery[ResultT](_WriteShape[ResultT]):
+class _ReturningQuery[FamilyT, ResultT](_WriteShape[FamilyT, ResultT]):
     """Write query that materializes one or more returned rows."""
 
 
-class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery[OwnerT],
-    _WriteShape[None],
+class InsertQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _WriteShape[FamilyT, None],
 ):
     """Immutable insert statement for one pending table model instance."""
 
     @overload
-    def returning(self) -> InsertReturningQuery[OwnerT, ReadT]: ...
+    def returning(self) -> InsertReturningQuery[FamilyT, OwnerT, ReadT]: ...
     # BEGIN GENERATED INSERT RETURNING OVERLOADS
     @overload
     def returning[T1](
         self,
         field1: Attr[Any, Any, OwnerT, Any, T1],
         /,
-    ) -> InsertReturningValueQuery[OwnerT, T1]: ...
+    ) -> InsertReturningValueQuery[FamilyT, OwnerT, T1]: ...
 
     @overload
     def returning[T1, T2](
@@ -870,7 +897,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field1: Attr[Any, Any, OwnerT, Any, T1],
         field2: Attr[Any, Any, OwnerT, Any, T2],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2]: ...
 
     @overload
     def returning[T1, T2, T3](
@@ -879,7 +906,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field2: Attr[Any, Any, OwnerT, Any, T2],
         field3: Attr[Any, Any, OwnerT, Any, T3],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3]: ...
 
     @overload
     def returning[T1, T2, T3, T4](
@@ -889,7 +916,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field3: Attr[Any, Any, OwnerT, Any, T3],
         field4: Attr[Any, Any, OwnerT, Any, T4],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3, T4]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5](
@@ -900,7 +927,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field4: Attr[Any, Any, OwnerT, Any, T4],
         field5: Attr[Any, Any, OwnerT, Any, T5],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6](
@@ -912,7 +939,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field5: Attr[Any, Any, OwnerT, Any, T5],
         field6: Attr[Any, Any, OwnerT, Any, T6],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5, T6]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7](
@@ -925,7 +952,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field6: Attr[Any, Any, OwnerT, Any, T6],
         field7: Attr[Any, Any, OwnerT, Any, T7],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6, T7]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5, T6, T7]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7, T8](
@@ -939,7 +966,7 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field7: Attr[Any, Any, OwnerT, Any, T7],
         field8: Attr[Any, Any, OwnerT, Any, T8],
         /,
-    ) -> InsertReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6, T7, T8]: ...
+    ) -> InsertReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5, T6, T7, T8]: ...
 
     # END GENERATED INSERT RETURNING OVERLOADS
     def returning(self, *fields: object) -> object:
@@ -953,27 +980,27 @@ class InsertQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         return _insert_returning(
             self.state,
             fields,
-            model_query=InsertReturningQuery[OwnerT, ReadT],
-            value_query=InsertReturningValueQuery[Any, Any],
-            tuple_query=InsertReturningTupleQuery[Any, *tuple[Any, ...]],
+            model_query=InsertReturningQuery[FamilyT, OwnerT, ReadT],
+            value_query=InsertReturningValueQuery[FamilyT, Any, Any],
+            tuple_query=InsertReturningTupleQuery[FamilyT, Any, *tuple[Any, ...]],
         )
 
 
-class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery[OwnerT],
-    _WriteShape[None],
+class InsertManyQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _WriteShape[FamilyT, None],
 ):
     """Immutable bulk insert statement for several pending model instances."""
 
     @overload
-    def returning(self) -> InsertManyReturningQuery[OwnerT, ReadT]: ...
+    def returning(self) -> InsertManyReturningQuery[FamilyT, OwnerT, ReadT]: ...
     # BEGIN GENERATED INSERT MANY RETURNING OVERLOADS
     @overload
     def returning[T1](
         self,
         field1: Attr[Any, Any, OwnerT, Any, T1],
         /,
-    ) -> InsertManyReturningValueQuery[OwnerT, T1]: ...
+    ) -> InsertManyReturningValueQuery[FamilyT, OwnerT, T1]: ...
 
     @overload
     def returning[T1, T2](
@@ -981,7 +1008,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field1: Attr[Any, Any, OwnerT, Any, T1],
         field2: Attr[Any, Any, OwnerT, Any, T2],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2]: ...
 
     @overload
     def returning[T1, T2, T3](
@@ -990,7 +1017,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field2: Attr[Any, Any, OwnerT, Any, T2],
         field3: Attr[Any, Any, OwnerT, Any, T3],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3]: ...
 
     @overload
     def returning[T1, T2, T3, T4](
@@ -1000,7 +1027,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field3: Attr[Any, Any, OwnerT, Any, T3],
         field4: Attr[Any, Any, OwnerT, Any, T4],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3, T4]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5](
@@ -1011,7 +1038,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field4: Attr[Any, Any, OwnerT, Any, T4],
         field5: Attr[Any, Any, OwnerT, Any, T5],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6](
@@ -1023,7 +1050,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field5: Attr[Any, Any, OwnerT, Any, T5],
         field6: Attr[Any, Any, OwnerT, Any, T6],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5, T6]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7](
@@ -1036,7 +1063,7 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field6: Attr[Any, Any, OwnerT, Any, T6],
         field7: Attr[Any, Any, OwnerT, Any, T7],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6, T7]: ...
+    ) -> InsertManyReturningTupleQuery[FamilyT, OwnerT, T1, T2, T3, T4, T5, T6, T7]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7, T8](
@@ -1050,7 +1077,9 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         field7: Attr[Any, Any, OwnerT, Any, T7],
         field8: Attr[Any, Any, OwnerT, Any, T8],
         /,
-    ) -> InsertManyReturningTupleQuery[OwnerT, T1, T2, T3, T4, T5, T6, T7, T8]: ...
+    ) -> InsertManyReturningTupleQuery[
+        FamilyT, OwnerT, T1, T2, T3, T4, T5, T6, T7, T8
+    ]: ...
 
     # END GENERATED INSERT MANY RETURNING OVERLOADS
     def returning(self, *fields: object) -> object:
@@ -1064,50 +1093,50 @@ class InsertManyQuery[OwnerT: Table[Any], ReadT: Table[Any]](
         return _insert_returning(
             self.state,
             fields,
-            model_query=InsertManyReturningQuery[OwnerT, ReadT],
-            value_query=InsertManyReturningValueQuery[Any, Any],
-            tuple_query=InsertManyReturningTupleQuery[Any, *tuple[Any, ...]],
+            model_query=InsertManyReturningQuery[FamilyT, OwnerT, ReadT],
+            value_query=InsertManyReturningValueQuery[FamilyT, Any, Any],
+            tuple_query=InsertManyReturningTupleQuery[FamilyT, Any, *tuple[Any, ...]],
         )
 
 
-class InsertReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[ReadT],
+class InsertReturningQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, ReadT],
 ):
     """Single insert whose execution yields the Fetched model it produced."""
 
 
-class InsertManyReturningQuery[OwnerT: Table[Any], ReadT: Table[Any]](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[list[ReadT]],
+class InsertManyReturningQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, list[ReadT]],
 ):
     """Bulk insert whose execution yields the Fetched models it produced."""
 
 
-class InsertReturningValueQuery[OwnerT: Table[Any], T](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[T],
+class InsertReturningValueQuery[FamilyT, OwnerT: Table[Any], T](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, T],
 ):
     """Single insert whose execution yields one decoded RETURNING column."""
 
 
-class InsertReturningTupleQuery[OwnerT: Table[Any], *Ts](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[tuple[*Ts]],
+class InsertReturningTupleQuery[FamilyT, OwnerT: Table[Any], *Ts](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, tuple[*Ts]],
 ):
     """Single insert whose execution yields a tuple of RETURNING columns."""
 
 
-class InsertManyReturningValueQuery[OwnerT: Table[Any], T](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[list[T]],
+class InsertManyReturningValueQuery[FamilyT, OwnerT: Table[Any], T](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, list[T]],
 ):
     """Bulk insert whose execution yields one decoded RETURNING column per row."""
 
 
-class InsertManyReturningTupleQuery[OwnerT: Table[Any], *Ts](
-    _BaseInsertQuery[OwnerT],
-    _ReturningQuery[list[tuple[*Ts]]],
+class InsertManyReturningTupleQuery[FamilyT, OwnerT: Table[Any], *Ts](
+    _BaseInsertQuery[FamilyT, OwnerT],
+    _ReturningQuery[FamilyT, list[tuple[*Ts]]],
 ):
     """Bulk insert whose execution yields a tuple of RETURNING columns per row."""
 
@@ -1116,9 +1145,9 @@ def _insert_returning(
     state: InsertState,
     fields: tuple[object, ...],
     *,
-    model_query: type[_BaseInsertQuery[Any]],
-    value_query: type[_BaseInsertQuery[Any]],
-    tuple_query: type[_BaseInsertQuery[Any]],
+    model_query: type[_BaseInsertQuery[Any, Any]],
+    value_query: type[_BaseInsertQuery[Any, Any]],
+    tuple_query: type[_BaseInsertQuery[Any, Any]],
 ) -> object:
     """Build the right returning query for a (possibly empty) column projection.
 
@@ -1137,31 +1166,31 @@ def _insert_returning(
 
 
 type AnyInsertQuery = (
-    InsertQuery[Any, Any]
-    | InsertManyQuery[Any, Any]
-    | InsertReturningQuery[Any, Any]
-    | InsertManyReturningQuery[Any, Any]
-    | InsertReturningValueQuery[Any, Any]
-    | InsertReturningTupleQuery[Any, *tuple[Any, ...]]
-    | InsertManyReturningValueQuery[Any, Any]
-    | InsertManyReturningTupleQuery[Any, *tuple[Any, ...]]
+    InsertQuery[Any, Any, Any]
+    | InsertManyQuery[Any, Any, Any]
+    | InsertReturningQuery[Any, Any, Any]
+    | InsertManyReturningQuery[Any, Any, Any]
+    | InsertReturningValueQuery[Any, Any, Any]
+    | InsertReturningTupleQuery[Any, Any, *tuple[Any, ...]]
+    | InsertManyReturningValueQuery[Any, Any, Any]
+    | InsertManyReturningTupleQuery[Any, Any, *tuple[Any, ...]]
 )
 
 
 type AnyWriteQuery = (
     AnyInsertQuery
-    | UpdateQuery[Any, Any]
-    | UpdateReturningQuery[Any, Any]
-    | UpdateReturningValueQuery[Any, Any, Any]
-    | UpdateReturningTupleQuery[Any, Any, *tuple[Any, ...]]
-    | DeleteQuery[Any, Any]
-    | DeleteReturningQuery[Any, Any]
-    | DeleteReturningValueQuery[Any, Any, Any]
-    | DeleteReturningTupleQuery[Any, Any, *tuple[Any, ...]]
+    | UpdateQuery[Any, Any, Any]
+    | UpdateReturningQuery[Any, Any, Any]
+    | UpdateReturningValueQuery[Any, Any, Any, Any]
+    | UpdateReturningTupleQuery[Any, Any, Any, *tuple[Any, ...]]
+    | DeleteQuery[Any, Any, Any]
+    | DeleteReturningQuery[Any, Any, Any]
+    | DeleteReturningValueQuery[Any, Any, Any, Any]
+    | DeleteReturningTupleQuery[Any, Any, Any, *tuple[Any, ...]]
 )
 
 
-class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
+class _UpdateQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
     """Immutable update statement for one table model."""
 
     state: UpdateState
@@ -1178,14 +1207,14 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         return type(self)(state)
 
     @overload
-    def returning(self) -> UpdateReturningQuery[ModelT, ReadT]: ...
+    def returning(self) -> UpdateReturningQuery[FamilyT, ModelT, ReadT]: ...
     # BEGIN GENERATED UPDATE RETURNING OVERLOADS
     @overload
     def returning[T1](
         self,
         field1: Attr[Any, Any, ModelT, Any, T1],
         /,
-    ) -> UpdateReturningValueQuery[ModelT, ReadT, T1]: ...
+    ) -> UpdateReturningValueQuery[FamilyT, ModelT, ReadT, T1]: ...
 
     @overload
     def returning[T1, T2](
@@ -1193,7 +1222,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field1: Attr[Any, Any, ModelT, Any, T1],
         field2: Attr[Any, Any, ModelT, Any, T2],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2]: ...
+    ) -> UpdateReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2]: ...
 
     @overload
     def returning[T1, T2, T3](
@@ -1202,7 +1231,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field2: Attr[Any, Any, ModelT, Any, T2],
         field3: Attr[Any, Any, ModelT, Any, T3],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3]: ...
+    ) -> UpdateReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3]: ...
 
     @overload
     def returning[T1, T2, T3, T4](
@@ -1212,7 +1241,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field3: Attr[Any, Any, ModelT, Any, T3],
         field4: Attr[Any, Any, ModelT, Any, T4],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4]: ...
+    ) -> UpdateReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5](
@@ -1223,7 +1252,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field4: Attr[Any, Any, ModelT, Any, T4],
         field5: Attr[Any, Any, ModelT, Any, T5],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5]: ...
+    ) -> UpdateReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6](
@@ -1235,7 +1264,7 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field5: Attr[Any, Any, ModelT, Any, T5],
         field6: Attr[Any, Any, ModelT, Any, T6],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6]: ...
+    ) -> UpdateReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7](
@@ -1248,7 +1277,9 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field6: Attr[Any, Any, ModelT, Any, T6],
         field7: Attr[Any, Any, ModelT, Any, T7],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7]: ...
+    ) -> UpdateReturningTupleQuery[
+        FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7
+    ]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7, T8](
@@ -1262,7 +1293,9 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field7: Attr[Any, Any, ModelT, Any, T7],
         field8: Attr[Any, Any, ModelT, Any, T8],
         /,
-    ) -> UpdateReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7, T8]: ...
+    ) -> UpdateReturningTupleQuery[
+        FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7, T8
+    ]: ...
 
     # END GENERATED UPDATE RETURNING OVERLOADS
     def returning(self, *fields: object) -> object:
@@ -1303,35 +1336,35 @@ class _UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         return type(self)(state)
 
 
-class UpdateQuery[ModelT: Table[Any], ReadT: Table[Any]](
-    _UpdateQuery[ModelT, ReadT],
-    _WriteShape[int],
+class UpdateQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    _UpdateQuery[FamilyT, ModelT, ReadT],
+    _WriteShape[FamilyT, int],
 ):
     """Update whose execution yields the number of affected rows."""
 
 
-class UpdateReturningQuery[ModelT: Table[Any], ReadT: Table[Any]](
-    _UpdateQuery[ModelT, ReadT],
-    _ReturningQuery[list[ReadT]],
+class UpdateReturningQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    _UpdateQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[ReadT]],
 ):
     """Update whose execution yields a Fetched model for each returned row."""
 
 
-class UpdateReturningValueQuery[ModelT: Table[Any], ReadT: Table[Any], T](
-    _UpdateQuery[ModelT, ReadT],
-    _ReturningQuery[list[T]],
+class UpdateReturningValueQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any], T](
+    _UpdateQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[T]],
 ):
     """Update whose execution yields one decoded RETURNING column per row."""
 
 
-class UpdateReturningTupleQuery[ModelT: Table[Any], ReadT: Table[Any], *Ts](
-    _UpdateQuery[ModelT, ReadT],
-    _ReturningQuery[list[tuple[*Ts]]],
+class UpdateReturningTupleQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any], *Ts](
+    _UpdateQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[tuple[*Ts]]],
 ):
     """Update whose execution yields a tuple of RETURNING columns per row."""
 
 
-class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
+class _DeleteQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
     """Immutable delete statement for one table model."""
 
     state: DeleteState
@@ -1348,14 +1381,14 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         return type(self)(state)
 
     @overload
-    def returning(self) -> DeleteReturningQuery[ModelT, ReadT]: ...
+    def returning(self) -> DeleteReturningQuery[FamilyT, ModelT, ReadT]: ...
     # BEGIN GENERATED DELETE RETURNING OVERLOADS
     @overload
     def returning[T1](
         self,
         field1: Attr[Any, Any, ModelT, Any, T1],
         /,
-    ) -> DeleteReturningValueQuery[ModelT, ReadT, T1]: ...
+    ) -> DeleteReturningValueQuery[FamilyT, ModelT, ReadT, T1]: ...
 
     @overload
     def returning[T1, T2](
@@ -1363,7 +1396,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field1: Attr[Any, Any, ModelT, Any, T1],
         field2: Attr[Any, Any, ModelT, Any, T2],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2]: ...
+    ) -> DeleteReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2]: ...
 
     @overload
     def returning[T1, T2, T3](
@@ -1372,7 +1405,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field2: Attr[Any, Any, ModelT, Any, T2],
         field3: Attr[Any, Any, ModelT, Any, T3],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3]: ...
+    ) -> DeleteReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3]: ...
 
     @overload
     def returning[T1, T2, T3, T4](
@@ -1382,7 +1415,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field3: Attr[Any, Any, ModelT, Any, T3],
         field4: Attr[Any, Any, ModelT, Any, T4],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4]: ...
+    ) -> DeleteReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5](
@@ -1393,7 +1426,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field4: Attr[Any, Any, ModelT, Any, T4],
         field5: Attr[Any, Any, ModelT, Any, T5],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5]: ...
+    ) -> DeleteReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6](
@@ -1405,7 +1438,7 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field5: Attr[Any, Any, ModelT, Any, T5],
         field6: Attr[Any, Any, ModelT, Any, T6],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6]: ...
+    ) -> DeleteReturningTupleQuery[FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7](
@@ -1418,7 +1451,9 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field6: Attr[Any, Any, ModelT, Any, T6],
         field7: Attr[Any, Any, ModelT, Any, T7],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7]: ...
+    ) -> DeleteReturningTupleQuery[
+        FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7
+    ]: ...
 
     @overload
     def returning[T1, T2, T3, T4, T5, T6, T7, T8](
@@ -1432,7 +1467,9 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         field7: Attr[Any, Any, ModelT, Any, T7],
         field8: Attr[Any, Any, ModelT, Any, T8],
         /,
-    ) -> DeleteReturningTupleQuery[ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7, T8]: ...
+    ) -> DeleteReturningTupleQuery[
+        FamilyT, ModelT, ReadT, T1, T2, T3, T4, T5, T6, T7, T8
+    ]: ...
 
     # END GENERATED DELETE RETURNING OVERLOADS
     def returning(self, *fields: object) -> object:
@@ -1457,39 +1494,39 @@ class _DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](_SqlInspectionMixin):
         return type(self)(state)
 
 
-class DeleteQuery[ModelT: Table[Any], ReadT: Table[Any]](
-    _DeleteQuery[ModelT, ReadT],
-    _WriteShape[int],
+class DeleteQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    _DeleteQuery[FamilyT, ModelT, ReadT],
+    _WriteShape[FamilyT, int],
 ):
     """Delete whose execution yields the number of affected rows."""
 
 
-class DeleteReturningQuery[ModelT: Table[Any], ReadT: Table[Any]](
-    _DeleteQuery[ModelT, ReadT],
-    _ReturningQuery[list[ReadT]],
+class DeleteReturningQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    _DeleteQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[ReadT]],
 ):
     """Delete whose execution yields a Fetched model for each returned row."""
 
 
-class DeleteReturningValueQuery[ModelT: Table[Any], ReadT: Table[Any], T](
-    _DeleteQuery[ModelT, ReadT],
-    _ReturningQuery[list[T]],
+class DeleteReturningValueQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any], T](
+    _DeleteQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[T]],
 ):
     """Delete whose execution yields one decoded RETURNING column per row."""
 
 
-class DeleteReturningTupleQuery[ModelT: Table[Any], ReadT: Table[Any], *Ts](
-    _DeleteQuery[ModelT, ReadT],
-    _ReturningQuery[list[tuple[*Ts]]],
+class DeleteReturningTupleQuery[FamilyT, ModelT: Table[Any], ReadT: Table[Any], *Ts](
+    _DeleteQuery[FamilyT, ModelT, ReadT],
+    _ReturningQuery[FamilyT, list[tuple[*Ts]]],
 ):
     """Delete whose execution yields a tuple of RETURNING columns per row."""
 
 
 type AnySelectQuery = (
-    SelectModelQuery[Any, Any]
-    | SelectValueQuery[Any, Any, Any, Any]
-    | SelectTupleQuery[Any, Any, *tuple[Any, ...]]
-    | JoinModelQuery[Any, *tuple[Any, ...]]
+    SelectModelQuery[Any, Any, Any]
+    | SelectValueQuery[Any, Any, Any, Any, Any]
+    | SelectTupleQuery[Any, Any, Any, *tuple[Any, ...]]
+    | JoinModelQuery[Any, Any, *tuple[Any, ...]]
 )
 
 
@@ -1586,6 +1623,14 @@ def _select_join(
     except ModelDeclarationError as error:
         msg = "join requires a table model"
         raise QueryConstructionError(msg) from error
+    anchor_backend = require_model_backend(state.model)
+    joined_backend = require_model_backend(table_model)
+    if joined_backend != anchor_backend:
+        msg = (
+            f"backend mismatch: expected {anchor_backend} model, "
+            f"received {joined_backend} model {table_model.__name__}"
+        )
+        raise QueryConstructionError(msg)
     if not isinstance(on, JoinOn):
         msg = "join requires an on= condition built from references()"
         raise QueryConstructionError(msg)
@@ -1633,24 +1678,24 @@ def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
     """Build the right returning query for an update statement."""
 
     if not fields:
-        return UpdateReturningQuery[Any, Any](replace(state, returning=True))
+        return UpdateReturningQuery[Any, Any, Any](replace(state, returning=True))
     selectables = require_model_returning_fields(state.model, fields)
     projected = replace(state, returning=True, returning_fields=selectables)
     if len(selectables) == 1:
-        return UpdateReturningValueQuery[Any, Any, Any](projected)
-    return UpdateReturningTupleQuery[Any, Any, *tuple[Any, ...]](projected)
+        return UpdateReturningValueQuery[Any, Any, Any, Any](projected)
+    return UpdateReturningTupleQuery[Any, Any, Any, *tuple[Any, ...]](projected)
 
 
 def _delete_returning(state: DeleteState, fields: tuple[object, ...]) -> object:
     """Build the right returning query for a delete statement."""
 
     if not fields:
-        return DeleteReturningQuery[Any, Any](replace(state, returning=True))
+        return DeleteReturningQuery[Any, Any, Any](replace(state, returning=True))
     selectables = require_model_returning_fields(state.model, fields)
     projected = replace(state, returning=True, returning_fields=selectables)
     if len(selectables) == 1:
-        return DeleteReturningValueQuery[Any, Any, Any](projected)
-    return DeleteReturningTupleQuery[Any, Any, *tuple[Any, ...]](projected)
+        return DeleteReturningValueQuery[Any, Any, Any, Any](projected)
+    return DeleteReturningTupleQuery[Any, Any, Any, *tuple[Any, ...]](projected)
 
 
 def _update_all(state: UpdateState) -> UpdateState:
@@ -1717,31 +1762,31 @@ def _delete_where(
 
 
 @overload
-def select[SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
-    model: _SelectableModelClass[SelectOwnerT, ReadModelT],
+def select[FamilyT, SelectOwnerT: Table[Any], ReadModelT: Table[Any]](
+    model: _SelectableModelClass[FamilyT, SelectOwnerT, ReadModelT],
     /,
-) -> SelectModelQuery[SelectOwnerT, ReadModelT]: ...
+) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT]: ...
 
 
 @overload
 def select[Owner1T: Table[Any], T1, CompareT](
     field1: Attr[Any, Any, Owner1T, Any, T1, Any, CompareT],
     /,
-) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
+) -> SelectValueQuery[Any, Owner1T, Owner1T, T1, CompareT]: ...
 
 
 @overload
 def select[Owner1T: Table[Any], T1, CompareT](
     field1: Aggregate[Owner1T, T1, CompareT],
     /,
-) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
+) -> SelectValueQuery[Any, Owner1T, Owner1T, T1, CompareT]: ...
 
 
 @overload
 def select[Owner1T: Table[Any], T1, CompareT](
     field1: DialectSelectable[Owner1T, T1, CompareT],
     /,
-) -> SelectValueQuery[Owner1T, Owner1T, T1, CompareT]: ...
+) -> SelectValueQuery[Any, Owner1T, Owner1T, T1, CompareT]: ...
 
 
 # Projection overloads capture each column's owner separately. `ScopeT` is
@@ -1769,7 +1814,7 @@ def select[
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     /,
-) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T, T1, T2]: ...
+) -> SelectTupleQuery[Any, Owner1T, Owner1T | Owner2T, T1, T2]: ...
 
 
 @overload
@@ -1793,7 +1838,7 @@ def select[
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     /,
-) -> SelectTupleQuery[Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
+) -> SelectTupleQuery[Any, Owner1T, Owner1T | Owner2T | Owner3T, T1, T2, T3]: ...
 
 
 @overload
@@ -1824,7 +1869,7 @@ def select[
     | DialectSelectable[Owner4T, T4, Any],
     /,
 ) -> SelectTupleQuery[
-    Owner1T, Owner1T | Owner2T | Owner3T | Owner4T, T1, T2, T3, T4
+    Any, Owner1T, Owner1T | Owner2T | Owner3T | Owner4T, T1, T2, T3, T4
 ]: ...
 
 
@@ -1862,7 +1907,7 @@ def select[
     | DialectSelectable[Owner5T, T5, Any],
     /,
 ) -> SelectTupleQuery[
-    Owner1T, Owner1T | Owner2T | Owner3T | Owner4T | Owner5T, T1, T2, T3, T4, T5
+    Any, Owner1T, Owner1T | Owner2T | Owner3T | Owner4T | Owner5T, T1, T2, T3, T4, T5
 ]: ...
 
 
@@ -1906,6 +1951,7 @@ def select[
     | DialectSelectable[Owner6T, T6, Any],
     /,
 ) -> SelectTupleQuery[
+    Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T,
     T1,
@@ -1963,6 +2009,7 @@ def select[
     | DialectSelectable[Owner7T, T7, Any],
     /,
 ) -> SelectTupleQuery[
+    Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T,
     T1,
@@ -2027,6 +2074,7 @@ def select[
     | DialectSelectable[Owner8T, T8, Any],
     /,
 ) -> SelectTupleQuery[
+    Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T | Owner8T,
     T1,
@@ -2044,6 +2092,14 @@ def select[
 
 
 def select(*args: object) -> object:
+    """Build a dialect-neutral select with backend-erased typing."""
+
+    return build_select(*args)
+
+
+def build_select(*args: object) -> object:
+    """Build a select without overload narrowing, for Backend Namespace wrappers."""
+
     if len(args) == 0:
         msg = "select requires a model or field"
         raise QueryConstructionError(msg)
@@ -2062,7 +2118,7 @@ def select(*args: object) -> object:
             fields=tuple(columns.values()),
             returns_model=True,
         )
-        return SelectModelQuery[Any, Any](state)
+        return SelectModelQuery[Any, Any, Any](state)
     fields = tuple(require_selectable(argument) for argument in args)
     if isinstance(fields[0], Scalar):
         msg = "a scalar subquery cannot be the first projected field"
@@ -2081,8 +2137,8 @@ def select(*args: object) -> object:
     model = selectable_owner_model(anchor)
     state = SelectState(model=model, fields=fields)
     if len(fields) == 1:
-        return SelectValueQuery[Any, Any, Any](state)
-    return SelectTupleQuery[Any, Any, *tuple[Any, ...]](state)
+        return SelectValueQuery[Any, Any, Any, Any](state)
+    return SelectTupleQuery[Any, Any, Any, *tuple[Any, ...]](state)
 
 
 def exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
@@ -2106,7 +2162,7 @@ def not_exists(subquery: AnySelectQuery, /) -> Predicate[Any]:
 
 
 def scalar[T, CompareT](
-    subquery: SelectValueQuery[Any, Any, T, CompareT], /
+    subquery: SelectValueQuery[Any, Any, Any, T, CompareT], /
 ) -> Scalar[Any, T | None, CompareT]:
     """Wrap a single-column select as a scalar subquery usable as a value.
 
@@ -2125,17 +2181,17 @@ def scalar[T, CompareT](
 
 
 @overload
-def insert[OwnerT: Table[Any], ReadT: Table[Any]](
-    row: InsertableModel[OwnerT, ReadT],
+def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    row: InsertableModel[FamilyT, OwnerT, ReadT],
     /,
-) -> InsertQuery[OwnerT, ReadT]: ...
+) -> InsertQuery[FamilyT, OwnerT, ReadT]: ...
 
 
 @overload
-def insert[OwnerT: Table[Any], ReadT: Table[Any]](
-    rows: Sequence[InsertableModel[OwnerT, ReadT]],
+def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
+    rows: Sequence[InsertableModel[FamilyT, OwnerT, ReadT]],
     /,
-) -> InsertManyQuery[OwnerT, ReadT]: ...
+) -> InsertManyQuery[FamilyT, OwnerT, ReadT]: ...
 
 
 def insert(row_or_rows: object, /) -> object:
@@ -2166,30 +2222,34 @@ def build_insert(row_or_rows: object, /) -> object:
             elif row_model is not model:
                 msg = "bulk insert rows must be instances of the same model"
                 raise QueryConstructionError(msg)
-        return InsertManyQuery[Any, Any](InsertState(rows=rows, multi=True))
+        return InsertManyQuery[Any, Any, Any](InsertState(rows=rows, multi=True))
     _ = require_insert_model(row_or_rows)
-    return InsertQuery[Any, Any](
+    return InsertQuery[Any, Any, Any](
         InsertState(rows=(cast("Table[Any]", row_or_rows),)),
     )
 
 
-def update[ModelT: Table[Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[ModelT, ReadT], /
-) -> UpdateQuery[ModelT, ReadT]:
+def update[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    model: _SelectableModelClass[FamilyT, ModelT, ReadT], /
+) -> UpdateQuery[FamilyT, ModelT, ReadT]:
     try:
         _ = require_model_columns(cast("type[object]", model))
     except ModelDeclarationError as error:
         msg = "update requires a table model"
         raise QueryConstructionError(msg) from error
-    return UpdateQuery(UpdateState(model=cast("type[Table[Any]]", model)))
+    return UpdateQuery[Any, Any, Any](
+        UpdateState(model=cast("type[Table[Any]]", model))
+    )
 
 
-def delete[ModelT: Table[Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[ModelT, ReadT], /
-) -> DeleteQuery[ModelT, ReadT]:
+def delete[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
+    model: _SelectableModelClass[FamilyT, ModelT, ReadT], /
+) -> DeleteQuery[FamilyT, ModelT, ReadT]:
     try:
         _ = require_model_columns(cast("type[object]", model))
     except ModelDeclarationError as error:
         msg = "delete requires a table model"
         raise QueryConstructionError(msg) from error
-    return DeleteQuery(DeleteState(model=cast("type[Table[Any]]", model)))
+    return DeleteQuery[Any, Any, Any](
+        DeleteState(model=cast("type[Table[Any]]", model))
+    )

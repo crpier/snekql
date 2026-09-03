@@ -77,6 +77,34 @@ not retain a safe late-binding namespace for names added to a function after the
 model body, so snekql rejects that declaration immediately instead of caching an
 unresolvable type.
 
+## Backend-family isolation
+
+Build each operation from one backend namespace. Models, query verbs,
+configurations, Database, Transaction, joins, foreign keys, and Scaffold inputs
+retain that namespace's backend family under static typing:
+
+```python
+from snekql import mariadb, sqlite
+
+sqlite_query: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(SqliteUser)
+mariadb_query: mariadb.Select[MariadbUser[mariadb.Fetched]] = mariadb.select(
+    MariadbUser
+)
+
+await sqlite_tx.fetch_all(mariadb_query)  # type error
+sqlite.select(SqliteUser).join(MariadbUser, on=...)  # type error
+sqlite.scaffold([MariadbUser])  # type error
+```
+
+The family coordinate is private. Application annotations keep the public forms
+`Model[State, ReadModel]`, `Select[Row]`, `Write[Result]`, and `Transaction`
+without a backend type argument. Import those names and every query verb from the
+same backend namespace.
+
+Static isolation supplements runtime validation. Dynamic inputs introduced via
+`Any`, casts, or runtime model loading are still checked by backend verbs, joins,
+foreign keys, Scaffold, Database verification, and Execution Plans.
+
 ## `Col` and `GenCol`
 
 Use `Col[T]` for normal persisted values. The pending and fetched value type is

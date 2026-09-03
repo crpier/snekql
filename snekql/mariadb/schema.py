@@ -6,7 +6,11 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from snekql._scaffold import scaffold_ddl, scaffold_statements
+from snekql._scaffold import (
+    require_scaffold_models,
+    scaffold_ddl,
+    scaffold_statements,
+)
 from snekql._schema_compile import (
     expected_table_shape,
 )
@@ -17,6 +21,7 @@ from snekql._schema_startup import verify_schema
 from snekql.errors import SchemaError
 from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.mariadb.identifiers import quote_identifier
+from snekql.mariadb.model import Model
 from snekql.model import Table
 from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 
@@ -364,15 +369,17 @@ async def verify_mariadb_schema(
     )
 
 
-def scaffold_mariadb_ddl(models: Sequence[type[Table[Any]]]) -> str:
+def scaffold_mariadb_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
     """Emit the initial CREATE TABLE (and index) DDL for MariaDB models as text."""
 
+    require_scaffold_models("mariadb", models)
     return scaffold_ddl(models, _SCHEMA_DIALECT)
 
 
 def scaffold_mariadb_statements(
-    models: Sequence[type[Table[Any]]],
+    models: Sequence[type[Model[Any, Any]]],
 ) -> list[tuple[str, str]]:
     """Return (label, DDL) statement pairs for MariaDB model creation."""
 
+    require_scaffold_models("mariadb", models)
     return scaffold_statements(models, _SCHEMA_DIALECT)

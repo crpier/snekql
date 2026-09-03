@@ -9,6 +9,8 @@ a backend namespace and import everything from it.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Literal
+
 from snekql._common import (
     PENDING_GENERATION,
     Aggregate,
@@ -16,9 +18,7 @@ from snekql._common import (
     Canonical,
     CanonicalDecimal,
     ChunkStream,
-    Col,
     ColumnRef,
-    Database,
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
@@ -28,9 +28,7 @@ from snekql._common import (
     Duration,
     ExecutionError,
     Fetched,
-    FKCol,
     FrozenModelError,
-    GenCol,
     Index,
     JoinOn,
     LexicalDatetimeWarning,
@@ -61,30 +59,32 @@ from snekql._common import (
     SchemaError,
     SchemaPolicy,
     SchemaVerificationError,
-    Select,
     SnekqlError,
     SnekqlWarning,
-    Transaction,
     TransactionClosedError,
     TransactionMode,
     TransactionNotStartedError,
     TransactionReuseError,
     TransactionStateError,
     UtcDatetime,
-    Write,
     ZonedDatetime,
     ZonedDatetimeError,
     exists,
     not_exists,
     scalar,
-    select,
+)
+from snekql._common import (
+    Select as _RuntimeSelect,
+)
+from snekql._common import (
+    Write as _RuntimeWrite,
 )
 
 # Importing the dialect module registers the MariaDB query Dialect so a built
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
 from snekql.mariadb import _dialect_sql as _dialect_sql
 from snekql.mariadb.config import Config
-from snekql.mariadb.model import JsonCol, Model
+from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
 from snekql.mariadb.storage import (
     Blob,
@@ -99,7 +99,21 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.mariadb.verbs import delete, insert, update
+from snekql.mariadb.verbs import delete, insert, select, update
+from snekql.query import _Select, _Write
+from snekql.runtime import Database as _Database
+from snekql.runtime import Transaction as _Transaction
+
+if TYPE_CHECKING:
+    Database = _Database[Literal["mariadb"]]
+    type Select[RowT] = _Select[Literal["mariadb"], RowT]
+    Transaction = _Transaction[Literal["mariadb"]]
+    type Write[ResultT] = _Write[Literal["mariadb"], ResultT]
+else:
+    Database = _Database
+    Select = _RuntimeSelect
+    Transaction = _Transaction
+    Write = _RuntimeWrite
 
 __all__ = [
     "PENDING_GENERATION",
