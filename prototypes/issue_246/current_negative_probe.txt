@@ -1,0 +1,110 @@
+"""Expected backend-family rejections against today's public interface.
+
+PROTOTYPE: every ignore should be necessary once static backend-family
+propagation works. Running ty against current main reports the ignores as unused.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from snekql import mariadb, sqlite
+
+
+class SqliteUser[S = sqlite.Pending](
+    sqlite.Model[S, "SqliteUser[sqlite.Fetched]"],
+):
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+
+class MariadbUser[S = mariadb.Pending](
+    mariadb.Model[S, "MariadbUser[mariadb.Fetched]"],
+):
+    id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+
+class SqliteMariaReference[S = sqlite.Pending](
+    sqlite.Model[S, "SqliteMariaReference[sqlite.Fetched]"],
+):
+    maria_user_id: sqlite.FKCol[MariadbUser, int] = sqlite.ForeignKey(  # ty: ignore[invalid-assignment]
+        MariadbUser.id,
+    )
+
+
+class MariadbSqliteReference[S = mariadb.Pending](
+    mariadb.Model[S, "MariadbSqliteReference[mariadb.Fetched]"],
+):
+    sqlite_user_id: mariadb.FKCol[SqliteUser, int] = mariadb.ForeignKey(  # ty: ignore[invalid-assignment]
+        SqliteUser.id,
+    )
+
+
+if TYPE_CHECKING:
+    _ = sqlite.select(MariadbUser)  # ty: ignore[invalid-argument-type]
+    _ = sqlite.select(MariadbUser.id)  # ty: ignore[invalid-argument-type]
+    _ = sqlite.insert(MariadbUser(id=1))  # ty: ignore[invalid-argument-type]
+    _ = sqlite.update(MariadbUser)  # ty: ignore[invalid-argument-type]
+    _ = sqlite.delete(MariadbUser)  # ty: ignore[invalid-argument-type]
+    _ = sqlite.scaffold([MariadbUser])  # ty: ignore[invalid-argument-type]
+
+    _ = mariadb.select(SqliteUser)  # ty: ignore[invalid-argument-type]
+    _ = mariadb.select(SqliteUser.id)  # ty: ignore[invalid-argument-type]
+    _ = mariadb.insert(SqliteUser(id=1))  # ty: ignore[invalid-argument-type]
+    _ = mariadb.update(SqliteUser)  # ty: ignore[invalid-argument-type]
+    _ = mariadb.delete(SqliteUser)  # ty: ignore[invalid-argument-type]
+    _ = mariadb.scaffold([SqliteUser])  # ty: ignore[invalid-argument-type]
+
+    _ = sqlite.select(SqliteMariaReference).join(  # ty: ignore[no-matching-overload]
+        MariadbUser,
+        on=SqliteMariaReference.maria_user_id.references(MariadbUser.id),
+    )
+    _ = mariadb.select(MariadbSqliteReference).join(  # ty: ignore[no-matching-overload]
+        SqliteUser,
+        on=MariadbSqliteReference.sqlite_user_id.references(SqliteUser.id),
+    )
+
+    async def execute_wrong_backend_queries(
+        sqlite_transaction: sqlite.Transaction,
+        mariadb_transaction: mariadb.Transaction,
+    ) -> None:
+        await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            mariadb.select(MariadbUser).all(),
+        )
+        await mariadb_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            sqlite.select(SqliteUser).all(),
+        )
+        await sqlite_transaction.execute(  # ty: ignore[no-matching-overload]
+            mariadb.insert(MariadbUser(id=1)),
+        )
+        await mariadb_transaction.execute(  # ty: ignore[no-matching-overload]
+            sqlite.insert(SqliteUser(id=1)),
+        )
+
+    async def cross_public_query_annotations(
+        sqlite_transaction: sqlite.Transaction,
+        mariadb_query: mariadb.Select[int],
+        mariadb_write: mariadb.Write[int],
+        sqlite_query: sqlite.Select[int],
+        sqlite_write: sqlite.Write[int],
+    ) -> None:
+        await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            mariadb_query,
+        )
+        await sqlite_transaction.execute(  # ty: ignore[no-matching-overload]
+            mariadb_write,
+        )
+        sqlite_query = mariadb_query  # ty: ignore[invalid-assignment]
+        sqlite_write = mariadb_write  # ty: ignore[invalid-assignment]
+        _ = sqlite_query, sqlite_write
+
+    async def initialize_wrong_backend_databases() -> None:
+        await sqlite.Database.initialize(  # ty: ignore[no-matching-overload]
+            mariadb.Config(database="app", user="snekql"),
+        )
+        await mariadb.Database.initialize(  # ty: ignore[no-matching-overload]
+            sqlite.Config(database=Path("app.db")),
+        )
+        await mariadb.Database.initialize(  # ty: ignore[no-matching-overload]
+            database=Path(":memory:"),
+        )
