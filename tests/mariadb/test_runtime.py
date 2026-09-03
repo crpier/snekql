@@ -560,6 +560,37 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
 
 
 @test(mark="medium")
+async def mariadb_required_nullable_foreign_key_round_trips_null() -> None:
+    """A required nullable enforced foreign key stores and reads SQL NULL."""
+
+    class Parent[S = Pending](mariadb.Model[S, "Parent[Fetched]"]):
+        """Referenced MariaDB row."""
+
+        __tablename__ = "issue236_parent"
+
+        id: Parent.Col[str] = mariadb.Text(primary_key=True)
+
+    class Child[S = Pending](mariadb.Model[S, "Child[Fetched]"]):
+        """MariaDB row with a required nullable foreign key."""
+
+        __tablename__ = "issue236_child"
+
+        id: Child.Col[str] = mariadb.Text(primary_key=True)
+        parent_id: Child.FKCol[Parent, str | None] = mariadb.ForeignKey(
+            Parent.id,
+            nullable=True,
+        )
+
+    database = await load_fixture(database_session([Parent, Child]))
+
+    async with database.transaction() as tx:
+        await tx.execute(insert(Child(id="loose", parent_id=None)))
+        rows = await tx.fetch_all(select(Child).all())
+
+    assert_eq([(row.id, row.parent_id) for row in rows], [("loose", None)])
+
+
+@test(mark="medium")
 async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
     """Correlated EXISTS and a scalar subquery keep inner/outer params aligned."""
 

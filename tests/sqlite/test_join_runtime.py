@@ -60,6 +60,16 @@ class Secret[S = Pending](Model[S, "Secret[Fetched]"]):
     )
 
 
+class RequiredSecret[S = Pending](Model[S, "RequiredSecret[Fetched]"]):
+    """Row with a required nullable foreign key to ``Pipeline``."""
+
+    id: RequiredSecret.Col[str] = Text(primary_key=True)
+    pipeline_id: RequiredSecret.FKCol[Pipeline, str | None] = ForeignKey(
+        Pipeline.id,
+        nullable=True,
+    )
+
+
 @test(mark="medium")
 async def inner_join_fetches_tuples_of_fetched_models() -> None:
     """An inner join returns one (user, order) tuple per matching row."""
@@ -178,6 +188,25 @@ async def projection_join_filters_on_a_table_it_does_not_project() -> None:
         await database.close()
 
     assert_eq(rows, ["alice@example.com"])
+
+
+@test(mark="medium")
+async def required_nullable_foreign_key_round_trips_null() -> None:
+    """A required nullable enforced foreign key stores and reads SQL NULL."""
+
+    database = await initialized_database(
+        database=":memory:",
+        models=[Pipeline, RequiredSecret],
+        verify=True,
+    )
+    try:
+        async with database.transaction() as tx:
+            await tx.execute(insert(RequiredSecret(id="loose", pipeline_id=None)))
+            rows = await tx.fetch_all(select(RequiredSecret).all())
+    finally:
+        await database.close()
+
+    assert_eq([(row.id, row.pipeline_id) for row in rows], [("loose", None)])
 
 
 @test(mark="medium")

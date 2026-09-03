@@ -331,6 +331,42 @@ The target column may be any primary key or `unique=True` column. A typed-only
 reference (an `FKCol` annotation with a plain storage specifier) keeps the
 relationship available for joins without enforcing referential integrity.
 
+### Nullable foreign keys
+
+Nullability and omittability are separate. `nullable=True` permits SQL `NULL`
+and requires `T | None` in the annotation. Without a default, callers must still
+provide the field:
+
+```python
+class RequiredChild[S = Pending](Model[S, "RequiredChild[Fetched]"]):
+    parent_id: FKCol[User, int | None] = ForeignKey(
+        User.id,
+        nullable=True,
+    )
+
+
+RequiredChild(parent_id=None)  # ok
+RequiredChild(parent_id=1)  # ok
+RequiredChild()  # type error: parent_id is required
+```
+
+Add `default=None` when omission should supply `None`:
+
+```python
+class OmittableChild[S = Pending](Model[S, "OmittableChild[Fetched]"]):
+    parent_id: FKCol[User, int | None] = ForeignKey(
+        User.id,
+        nullable=True,
+        default=None,
+    )
+
+
+OmittableChild()  # ok: parent_id defaults to None
+```
+
+Both forms materialize `parent_id` as `int | None` on Fetched Models. The
+difference applies only while constructing Pending Models.
+
 ### Referential actions
 
 `ForeignKey(...)` takes optional `on_delete=` and `on_update=` referential
