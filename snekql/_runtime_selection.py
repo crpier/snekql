@@ -29,6 +29,9 @@ class RuntimeConfig(Protocol[FamilyT_co]):
     def backend_family(self) -> FamilyT_co: ...
 
     @property
+    def operation_timeout(self) -> NonNegativeFloat: ...
+
+    @property
     def pool_size(self) -> PositiveInt: ...
 
     async def initialize_runtime(self) -> object: ...
@@ -49,6 +52,7 @@ class DefaultBackendFactory(Protocol):
         *,
         acquire_timeout: NonNegativeFloat,
         database: Path | Literal[":memory:"],
+        operation_timeout: NonNegativeFloat,
         pool_size: PositiveInt,
     ) -> RuntimeConfig[Any]: ...
 
@@ -89,6 +93,7 @@ def resolve_runtime_config(
     database: Path | Literal[":memory:"] | None,
     pool_size: PositiveInt,
     acquire_timeout: NonNegativeFloat,
+    operation_timeout: NonNegativeFloat = 30.0,
 ) -> RuntimeConfig[Any]:
     """Resolve public Database.initialize arguments to a backend config."""
 
@@ -109,5 +114,6 @@ def resolve_runtime_config(
     return _default_backend_factory(
         acquire_timeout=acquire_timeout,
         database=database,
+        operation_timeout=operation_timeout,
         pool_size=pool_size,
     )

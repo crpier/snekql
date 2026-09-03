@@ -45,6 +45,9 @@ Runtime errors:
 - `DatabaseClosedError`: work was requested after a successful close.
 - `DatabaseClosingError`: new work was requested while close is in progress.
 - `DatabaseCloseTimeoutError`: close timed out waiting for checked-out work.
+- `DatabaseOperationTimeoutError`: transaction begin, query I/O, commit, rollback,
+  or cursor cleanup exceeded its operation deadline. `.operation` and `.timeout`
+  identify the failed phase and budget.
 - `PoolTimeoutError`: no connection became available before acquisition timeout.
 - `TransactionStateError`: base for transaction lifecycle misuse; catch it to
   treat every off-path use of a transaction uniformly (see [Transaction
@@ -57,7 +60,8 @@ Runtime errors:
   - `NoResultError`: `fetch_one` found no row for its exactly-one contract.
   - `MultipleResultsError`: `fetch_one`/`fetch_one_or_none` matched more than one
     row.
-- `ExecutionError`: SQLite execution failed and query context is available.
+- `ExecutionError`: backend execution failed and parameterized query context is
+  available. String telemetry redacts bound values by default.
 
 Schema errors:
 
@@ -165,6 +169,30 @@ Off-path use is deliberate and tested (see
   With only one connection available the inner open simply waits for a
   connection and times out with `PoolTimeoutError` — it does not nest.
 
+## Transaction operation deadlines
+
+Both Backend Configs default `operation_timeout` to 30 seconds. With no override,
+connection acquisition uses `acquire_timeout`, while transaction begin, each
+query operation, stream open/fetch/close, commit, and rollback each receive a
+fresh `operation_timeout` budget. The timer does not include application code
+between database calls and is not one deadline for the transaction's total
+lifetime.
+
+`db.transaction(timeout=N)` overrides **both** budgets for that transaction:
+connection acquisition and every driver operation use `N`. This makes one call
+site sufficient for short jobs while keeping pool and operation defaults
+independently configurable.
+
+A timed-out query or transaction-control call leaves physical connection state
+uncertain ([ADR 0017](adr/0017-per-operation-deadlines-fail-closed.md)). The
+Transaction becomes unusable and discards that connection instead
+of returning it to the pool. A commit timeout raises
+`DatabaseOperationTimeoutError`; whether the server committed is necessarily
+ambiguous and must be resolved with an idempotency key or application-level
+read. If rollback times out while an application exception is already active,
+snekql preserves the application exception, logs the cleanup failure, and still
+discards the connection.
+
 ## Close lifecycle and retry semantics
 
 `Database.close()` moves a runtime through three states: accepting work,
@@ -191,21 +219,26 @@ Async services that catch `DatabaseCloseTimeoutError` must account for this:
 on SQLite the runtime may still be usable, while on MariaDB it should be
 treated as permanently unavailable.
 
-## Execution context
+## Execution context and parameter redaction
 
-`ExecutionError` preserves SQL text and raw parameter values:
+`ExecutionError` preserves parameterized SQL and raw values as explicit
+attributes, but its string form and snekql's logs redact values by default:
 
 ```python
 try:
     await tx.execute(statement)
 except ExecutionError as error:
-    logger.warning("snekql execution failed: %s params=%r", error.sql, error.params)
+    logger.warning("snekql execution failed: %s", error)  # params=<redacted:N>
+    inspect_locally(error.sql, error.params)  # explicit access
 ```
 
-`str(error)` includes SQL and parameter reprs for debugging. snekql's own
-runtime logs may also include SQL and params exactly as supplied to the driver.
-snekql does not redact secrets; applications should encrypt or safely represent
-private values before they reach the Query Runtime.
+Use a Backend Config's `parameter_visibility="values"` only in a controlled
+local diagnostic environment when raw values are required. That opt-in affects
+query logs and `ExecutionError.__str__`; `.params` remains available for explicit
+inspection under either policy. By default a chained driver error contributes
+only its exception type, not its potentially value-bearing message. SQL stays
+visible because Query Compilation binds values—including MariaDB JSON paths—
+rather than interpolating them.
 
 ## Agent guidance
 

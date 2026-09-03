@@ -35,9 +35,9 @@ def json_extract_int_renders_as_a_where_operand() -> None:
 
     assert_eq(
         select_sql,
-        "SELECT `name` FROM `_profiled` WHERE (JSON_EXTRACT(`profile`, '$.age') > %s)",
+        "SELECT `name` FROM `_profiled` WHERE (JSON_EXTRACT(`profile`, %s) > %s)",
     )
-    assert_eq(select_params, (18,))
+    assert_eq(select_params, ("$.age", 18))
 
 
 @test(mark="fast")
@@ -51,10 +51,10 @@ def json_extract_int_composes_with_core_predicates() -> None:
         select(_Profiled.name).where(combined),
     )
 
-    where_clause = "WHERE ((`name` = %s) AND (JSON_EXTRACT(`profile`, '$.age') > %s))"
+    where_clause = "WHERE ((`name` = %s) AND (JSON_EXTRACT(`profile`, %s) > %s))"
     expected = f"SELECT `name` FROM `_profiled` {where_clause}"
     assert_eq(select_sql, expected)
-    assert_eq(select_params, ("ada", 18))
+    assert_eq(select_params, ("ada", "$.age", 18))
 
 
 @test(mark="fast")
@@ -67,9 +67,27 @@ def json_extract_int_renders_as_a_projection() -> None:
 
     assert_eq(
         select_sql,
-        "SELECT JSON_EXTRACT(`profile`, '$.age') FROM `_profiled`",
+        "SELECT JSON_EXTRACT(`profile`, %s) FROM `_profiled`",
     )
-    assert_eq(select_params, ())
+    assert_eq(select_params, ("$.age",))
+
+
+@test(mark="fast")
+def json_extract_int_binds_hostile_paths_as_values() -> None:
+    """A path cannot escape JSON_EXTRACT into executable SQL."""
+
+    hostile_path = "$.name') OR 1=1 --"
+    select_sql, select_params = MARIADB_CODEC.compile_select_sql(
+        select(_Profiled.name).where(
+            _Profiled.profile.json_extract_int(hostile_path).gt(18)
+        ),
+    )
+
+    assert_eq(
+        select_sql,
+        "SELECT `name` FROM `_profiled` WHERE (JSON_EXTRACT(`profile`, %s) > %s)",
+    )
+    assert_eq(select_params, (hostile_path, 18))
 
 
 @test(mark="fast")

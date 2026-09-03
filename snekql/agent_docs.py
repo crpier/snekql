@@ -8,6 +8,7 @@ from snekql.errors import SnekqlError
 
 EXAMPLE_FILES: dict[str, str] = {
     "basic": "basic.py",
+    "mariadb": "mariadb.py",
     "typed_queries": "typed_queries.py",
 }
 

@@ -51,13 +51,14 @@ class SqlCompilable(Protocol):
     """A dialect operand the core renders structurally, without naming the leaf.
 
     ``__owner_model__`` lets the core scope-check the operand (which table it
-    belongs to) without knowing the concrete type; ``__compile_sql__`` renders it
-    as a predicate operand against the injected :class:`CompileCtx`.
+    belongs to) without knowing the concrete type. ``__compile_sql__`` returns
+    its SQL and ordered bound values, keeping dialect-specific input out of SQL
+    literals.
     """
 
     def __owner_model__(self) -> type[Table[Any]]: ...
 
-    def __compile_sql__(self, ctx: CompileCtx) -> str: ...
+    def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]: ...
 
 
 @runtime_checkable
@@ -73,9 +74,11 @@ class DialectSelectable[OwnerT: "Table[Any]", T, CompareT = T](Protocol):
 
     def __owner_model__(self) -> type[OwnerT]: ...
 
-    def __compile_sql__(self, ctx: CompileCtx) -> str: ...
+    def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]: ...
 
-    def __compile_select_sql__(self, ctx: CompileCtx) -> str: ...
+    def __compile_select_sql__(
+        self, ctx: CompileCtx
+    ) -> tuple[str, tuple[object, ...]]: ...
 
     def __decode__(self, raw: object) -> T: ...
 

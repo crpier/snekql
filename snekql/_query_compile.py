@@ -119,14 +119,14 @@ def _render_selectable(
     *,
     qualified: bool,
     projection: bool = False,
-) -> str:
+) -> tuple[str, tuple[object, ...]]:
     if isinstance(field, _Scalar):
         # Scalar subqueries carry nested parameters, so the select-list compiler
         # renders them through `_compile_scalar_sql`; they never reach here.
         msg = "scalar subqueries cannot be rendered without their parameters"
         raise QueryCompilationError(msg)
     if isinstance(field, _Aggregate):
-        return _render_aggregate(field, dialect, qualified=qualified)
+        return _render_aggregate(field, dialect, qualified=qualified), ()
     if isinstance(field, SqlCompilable):
         # Open-AST dialect expression: the core renders it structurally through
         # the protocol, never naming the leaf. A projection uses the select seam
@@ -135,7 +135,7 @@ def _render_selectable(
         if projection and isinstance(field, DialectSelectable):
             return field.__compile_select_sql__(ctx)
         return field.__compile_sql__(ctx)
-    return _render_column_ref(field, dialect, qualified=qualified)
+    return _render_column_ref(field, dialect, qualified=qualified), ()
 
 
 def _compile_scalar_sql(
@@ -198,8 +198,8 @@ class _PredicateCompileContext:
     def placeholder(self) -> str:
         return self.dialect.placeholder
 
-    def render_operand(self, operand: object) -> str:
-        """Render a predicate's left-side operand (column or aggregate)."""
+    def render_operand(self, operand: object) -> tuple[str, tuple[object, ...]]:
+        """Render a predicate operand and its ordered bound values."""
 
         return _render_selectable(
             require_selectable(operand),
@@ -288,7 +288,12 @@ def _compile_ordering_sql(
 ) -> str:
     ensure_ordering_targets_models(ordering, scope)
     selectable = require_selectable(ordering.column)
-    column_name = _render_selectable(selectable, dialect, qualified=scope.qualified)
+    column_name, params = _render_selectable(
+        selectable, dialect, qualified=scope.qualified
+    )
+    if params:
+        msg = "dialect expressions with bound values cannot be used for ordering"
+        raise QueryCompilationError(msg)
     return f"{column_name} {ordering.direction}"
 
 
@@ -536,14 +541,14 @@ def _compile_select_list(
             parts.append(scalar_sql)
             params = (*params, *scalar_params)
             continue
-        parts.append(
-            _render_selectable(
-                field,
-                dialect,
-                qualified=scope.qualified,
-                projection=True,
-            ),
+        field_sql, field_params = _render_selectable(
+            field,
+            dialect,
+            qualified=scope.qualified,
+            projection=True,
         )
+        parts.append(field_sql)
+        params = (*params, *field_params)
     return ", ".join(parts), params
 
 

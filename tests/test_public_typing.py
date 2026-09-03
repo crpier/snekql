@@ -317,7 +317,11 @@ if TYPE_CHECKING:
         _raw_column.to("wrong model")
     )
 
-    sqlite_config = sqlite.Config(database=Path("app.db"))
+    sqlite_config = sqlite.Config(
+        database=Path("app.db"),
+        operation_timeout=5.0,
+        parameter_visibility="redacted",
+    )
     _ = assert_type(sqlite_config, sqlite.Config)
     sqlite_index = sqlite.Index(SqliteUser.email)
     _ = assert_type(sqlite_index, Index[SqliteUser[Pending]])
@@ -332,7 +336,19 @@ if TYPE_CHECKING:
     _ = assert_type(mariadb.Model.__snekql_backend__, Literal["mariadb"])
     _ = assert_type(sqlite.Model.__snekql_backend__, Literal["sqlite"])
 
-    mariadb_config = mariadb.Config(database="app", user="snekql")
+    mariadb_tls = mariadb.TLSConfig(
+        ca_file=Path("ca.pem"),
+        cert_file=Path("client.pem"),
+        key_file=Path("client-key.pem"),
+    )
+    _ = assert_type(mariadb_tls, mariadb.TLSConfig)
+    mariadb_config = mariadb.Config(
+        database="app",
+        user="snekql",
+        operation_timeout=5.0,
+        parameter_visibility="redacted",
+        tls=mariadb_tls,
+    )
     _ = assert_type(mariadb_config, mariadb.Config)
     test_server_context = testing_mariadb.temporary_mariadb_server(
         reset_database=True,

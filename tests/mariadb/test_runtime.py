@@ -560,6 +560,26 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
 
 
 @test(mark="medium")
+async def mariadb_json_path_hostile_input_remains_a_bound_value() -> None:
+    """A quote-bearing JSON path cannot alter executable SQL."""
+
+    class Document[S = Pending](mariadb.Model[S, "Document[Fetched]"]):
+        __tablename__ = "issue255_json_path_binding"
+
+        id: Document.Col[int] = mariadb.Integer(primary_key=True)
+        payload: Document.JsonCol[dict[str, object]] = mariadb.Json()
+
+    database = await load_fixture(database_session([Document]))
+    async with database.transaction() as tx:
+        await tx.execute(insert(Document(id=1, payload={"age": 41})))
+        values = await tx.fetch_all(
+            select(Document.payload.json_extract_int('$."age\' OR 1=1 --"')).all()
+        )
+
+    assert_eq(values, [None])
+
+
+@test(mark="medium")
 async def mariadb_required_nullable_foreign_key_round_trips_null() -> None:
     """A required nullable enforced foreign key stores and reads SQL NULL."""
 

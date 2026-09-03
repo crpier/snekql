@@ -17,6 +17,7 @@ from snekql.sqlite import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
+    DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
     Fetched,
     Integer,
@@ -177,12 +178,40 @@ async def timed_out_close_keeps_database_retryable() -> None:
         await database.close()
 
     await transaction.__aexit__(None, None, None)
-    async with database.transaction(timeout=0.0):
+    async with database.transaction():
         pass
     await database.close()
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()
+
+
+@test(mark="medium")
+async def statement_timeout_discards_a_locked_sqlite_connection() -> None:
+    """A blocked write respects the public deadline and the pool recovers."""
+
+    with TemporaryDirectory() as directory:
+        database_path = Path(directory) / "app.db"
+        database = await initialized_database(
+            database=database_path,
+            models=[RuntimeUser],
+        )
+        blocker = connect(database_path)
+        try:
+            _ = blocker.execute("BEGIN IMMEDIATE")
+            with assert_raises(DatabaseOperationTimeoutError) as raised:
+                async with database.transaction(timeout=0.02) as tx:
+                    await tx.execute(insert(RuntimeUser(email="blocked@example.com")))
+            assert_eq(raised.exception.operation, "write")
+            blocker.rollback()
+
+            async with database.transaction() as tx:
+                await tx.execute(insert(RuntimeUser(email="recovered@example.com")))
+        finally:
+            blocker.close()
+            await database.close()
+
+        assert_eq(_count_users(database_path), 1)
 
 
 @test(mark="medium")

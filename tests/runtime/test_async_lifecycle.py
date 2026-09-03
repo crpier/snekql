@@ -11,6 +11,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
+from snekql._telemetry import ParameterVisibility
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
@@ -21,6 +22,8 @@ from snekql.sqlite import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
+    DatabaseOperationTimeoutError,
+    DatabaseRuntimeError,
     Fetched,
     Integer,
     Model,
@@ -90,6 +93,41 @@ class _SlowExecuteConnection:
         _ = params
         self.execute_started.set()
         await self.allow_execute_finish.wait()
+        return _FakeCursor()
+
+    async def execute_stream(self, sql: str, params: tuple[object, ...]) -> _FakeCursor:
+        return await self.execute(sql, params)
+
+
+class _BlockingDriverOperationConnection:
+    """Connection fake that never completes one selected driver operation."""
+
+    def __init__(self, operation: str) -> None:
+        self.operation = operation
+        self.started = anyio.Event()
+
+    async def _block_if_selected(self, operation: str) -> None:
+        if self.operation == operation:
+            self.started.set()
+            await anyio.sleep_forever()
+        if self.operation == f"{operation}-error":
+            msg = f"driver {operation} failed"
+            raise RuntimeError(msg)
+
+    async def begin(self, mode: TransactionMode = "deferred") -> None:
+        _ = mode
+        await self._block_if_selected("begin")
+
+    async def commit(self) -> None:
+        await self._block_if_selected("commit")
+
+    async def rollback(self) -> None:
+        await self._block_if_selected("rollback")
+
+    async def execute(self, sql: str, params: tuple[object, ...]) -> _FakeCursor:
+        _ = sql
+        _ = params
+        await self._block_if_selected("write")
         return _FakeCursor()
 
     async def execute_stream(self, sql: str, params: tuple[object, ...]) -> _FakeCursor:
@@ -184,10 +222,13 @@ class _FakeRuntime:
 
     def __init__(self, connection: RuntimeConnection) -> None:
         self.acquire_timeout: NonNegativeFloat = 1.0
+        self.operation_timeout: NonNegativeFloat = 1.0
+        self.parameter_visibility: ParameterVisibility = "redacted"
         self.connection: RuntimeConnection = connection
         self.query_codec: QueryCodec = _CannedQueryCodec()
         self.release_allowed: anyio.Event = anyio.Event()
         self.release_started: anyio.Event = anyio.Event()
+        self.discarded: bool = False
         self.released: bool = False
 
     async def acquire(
@@ -202,6 +243,10 @@ class _FakeRuntime:
         self.release_started.set()
         await self.release_allowed.wait()
         self.released = True
+
+    async def discard(self, connection: object) -> None:
+        _ = connection
+        self.discarded = True
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         _ = close_timeout
@@ -233,6 +278,18 @@ class _FakeRuntime:
         _ = models
         _ = schema_policy
         return SchemaVerificationResult(checked_tables=(), issues=())
+
+
+class _DeadlineRuntime(_FakeRuntime):
+    """Runtime fake recording whether transaction cleanup releases or discards."""
+
+    async def release(self, connection: object) -> None:
+        _ = connection
+        self.released = True
+
+    async def discard(self, connection: object) -> None:
+        _ = connection
+        self.discarded = True
 
 
 class _NeverClosingPool:
@@ -335,6 +392,127 @@ async def transaction_cleanup_release_is_shielded_from_cancellation() -> None:
         await close_finished.wait()
 
     assert_eq(runtime.released, True)
+
+
+@test(mark="fast")
+async def transaction_statement_timeout_discards_the_connection() -> None:
+    """A timed-out statement fails closed instead of returning unknown state."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("write"))
+    transaction = Transaction(runtime=runtime, timeout=0.01)
+
+    with assert_raises(DatabaseOperationTimeoutError) as raised:
+        async with transaction as tx:
+            await tx.execute(insert(_AsyncUser(email="secret@example.com")))
+
+    assert_eq(raised.exception.operation, "write")
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def cancelled_transaction_statement_discards_the_connection() -> None:
+    """Caller cancellation cannot recycle a connection with in-flight I/O."""
+
+    connection = _BlockingDriverOperationConnection("write")
+    runtime = _DeadlineRuntime(connection)
+    finished = anyio.Event()
+    scope_holder: list[anyio.CancelScope] = []
+
+    async def run_statement() -> None:
+        with anyio.CancelScope() as scope:
+            scope_holder.append(scope)
+            try:
+                async with Transaction(runtime=runtime, timeout=1.0) as transaction:
+                    await transaction.execute(
+                        insert(_AsyncUser(email="secret@example.com"))
+                    )
+            finally:
+                finished.set()
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(run_statement)
+        await connection.started.wait()
+        scope_holder[0].cancel()
+        await finished.wait()
+
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def transaction_begin_timeout_discards_the_connection() -> None:
+    """A timed-out BEGIN cannot return its physical connection to the pool."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("begin"))
+    transaction = Transaction(runtime=runtime, timeout=0.01)
+
+    with assert_raises(DatabaseOperationTimeoutError):
+        _ = await transaction.__aenter__()
+
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def transaction_begin_failure_discards_the_connection() -> None:
+    """A failed BEGIN never recycles a connection in unknown state."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("begin-error"))
+    transaction = Transaction(runtime=runtime, timeout=1.0)
+
+    with assert_raises(DatabaseRuntimeError):
+        _ = await transaction.__aenter__()
+
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def transaction_commit_failure_discards_the_connection() -> None:
+    """A failed commit never recycles a connection with ambiguous outcome."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("commit-error"))
+    transaction = Transaction(runtime=runtime, timeout=1.0)
+
+    with assert_raises(DatabaseRuntimeError):
+        async with transaction:
+            pass
+
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def transaction_commit_timeout_discards_the_connection() -> None:
+    """A timed-out commit reports ambiguity and discards the connection."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("commit"))
+    transaction = Transaction(runtime=runtime, timeout=0.01)
+
+    with assert_raises(DatabaseOperationTimeoutError) as raised:
+        async with transaction:
+            pass
+
+    assert_eq(raised.exception.operation, "transaction commit")
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
+
+
+@test(mark="fast")
+async def transaction_rollback_timeout_preserves_the_body_error() -> None:
+    """Rollback ambiguity discards the connection without hiding the cause."""
+
+    runtime = _DeadlineRuntime(_BlockingDriverOperationConnection("rollback"))
+    transaction = Transaction(runtime=runtime, timeout=0.01)
+
+    with assert_raises(ValueError):
+        async with transaction:
+            msg = "application failed"
+            raise ValueError(msg)
+
+    assert_eq(runtime.discarded, True)
+    assert_eq(runtime.released, False)
 
 
 @test(mark="fast")

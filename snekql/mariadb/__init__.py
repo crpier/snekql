@@ -22,6 +22,7 @@ from snekql._common import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
+    DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
     DoNothing,
     DoUpdate,
@@ -85,7 +86,7 @@ from snekql._common import (
 # Importing the dialect module registers the MariaDB query Dialect so a built
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
 from snekql.mariadb import _dialect_sql as _dialect_sql
-from snekql.mariadb.config import Config
+from snekql.mariadb.config import Config, TLSConfig
 from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
 from snekql.mariadb.storage import (
@@ -134,6 +135,7 @@ __all__ = [
     "DatabaseCloseTimeoutError",
     "DatabaseClosedError",
     "DatabaseClosingError",
+    "DatabaseOperationTimeoutError",
     "DatabaseRuntimeError",
     "DateTime",
     "Decimal",
@@ -186,6 +188,7 @@ __all__ = [
     "Select",
     "SnekqlError",
     "SnekqlWarning",
+    "TLSConfig",
     "Text",
     "Transaction",
     "TransactionClosedError",

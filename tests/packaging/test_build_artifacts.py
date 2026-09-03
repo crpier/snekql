@@ -8,7 +8,7 @@ from tarfile import open as open_tar
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-from snektest import assert_eq, assert_in, test
+from snektest import assert_eq, assert_in, assert_true, test
 
 
 @test(mark="medium")
@@ -46,6 +46,7 @@ def distributions_contain_only_release_inputs_and_typing_metadata() -> None:
         {
             ".gitignore",
             "CHANGELOG.md",
+            "LICENSE",
             "PKG-INFO",
             "README.md",
             "pyproject.toml",
@@ -54,3 +55,6 @@ def distributions_contain_only_release_inputs_and_typing_metadata() -> None:
     )
     assert_in("snekql/py.typed", wheel_entries)
     assert_in("snekql/__init__.pyi", wheel_entries)
+    assert_true(
+        any(name.endswith(".dist-info/licenses/LICENSE") for name in wheel_entries)
+    )

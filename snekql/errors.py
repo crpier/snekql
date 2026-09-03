@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from snekql._telemetry import ParameterVisibility, format_bound_params
+
 if TYPE_CHECKING:
     from snekql._schema_verification import SchemaVerificationResult
 
@@ -116,6 +118,18 @@ class DatabaseCloseTimeoutError(DatabaseRuntimeError):
     """Raised when Database.close cannot finish before its timeout."""
 
 
+class DatabaseOperationTimeoutError(DatabaseRuntimeError):
+    """Raised when a transaction driver operation exceeds its deadline."""
+
+    operation: str
+    timeout: float
+
+    def __init__(self, operation: str, timeout: float) -> None:
+        self.operation = operation
+        self.timeout = timeout
+        super().__init__(f"database {operation} timed out after {timeout} seconds")
+
+
 class DatabaseClosingError(DatabaseRuntimeError):
     """Raised when new work starts while Database.close is in progress."""
 
@@ -149,13 +163,13 @@ class ExecutionError(DatabaseRuntimeError):
     >>> error.sql
     'SELECT ?'
 
-    When raised with ``raise ExecutionError(...) from cause`` the underlying
-    error is folded into ``str()`` so the cause is visible without inspecting
-    ``__cause__`` or the traceback.
+    A chained driver's type is included in ``str()``. Its message is redacted
+    with bound values unless parameter visibility explicitly opts into values.
     """
 
     sql: str
     params: tuple[object, ...]
+    parameter_visibility: ParameterVisibility
 
     def __init__(
         self,
@@ -163,17 +177,22 @@ class ExecutionError(DatabaseRuntimeError):
         *,
         sql: str,
         params: tuple[object, ...],
+        parameter_visibility: ParameterVisibility = "redacted",
     ) -> None:
         super().__init__(message)
         self.sql: str = sql
         self.params: tuple[object, ...] = params
+        self.parameter_visibility: ParameterVisibility = parameter_visibility
 
     def __str__(self) -> str:
         message = super().__str__()
-        text = f"{message} sql={self.sql!r} params={self.params!r}"
+        rendered_params = format_bound_params(self.params, self.parameter_visibility)
+        text = f"{message} sql={self.sql!r} params={rendered_params}"
         cause = self.__cause__
         if cause is not None:
-            text += f" cause={type(cause).__name__}: {cause}"
+            text += f" cause={type(cause).__name__}"
+            if self.parameter_visibility == "values":
+                text += f": {cause}"
         return text
 
 

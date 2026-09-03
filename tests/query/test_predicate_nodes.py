@@ -73,9 +73,9 @@ class _StubCompiler:
     def placeholder(self) -> str:
         return "?"
 
-    def render_operand(self, operand: object) -> str:
+    def render_operand(self, operand: object) -> tuple[str, tuple[object, ...]]:
         self.operands.append(operand)
-        return "operand"
+        return "operand", ()
 
     def value_encoder(self, operand: object) -> Callable[[object], object]:
         self.operands.append(operand)

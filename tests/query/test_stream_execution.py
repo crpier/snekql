@@ -10,6 +10,7 @@ from snektest.assertions import assert_true
 
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
+from snekql._telemetry import ParameterVisibility
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
 from snekql.runtime import QueryCodec, RuntimeConnection, Transaction, TransactionMode
@@ -264,6 +265,8 @@ class _CleanupRuntime:
 
     def __init__(self, connection: RuntimeConnection) -> None:
         self.acquire_timeout: NonNegativeFloat = 1.0
+        self.operation_timeout: NonNegativeFloat = 1.0
+        self.parameter_visibility: ParameterVisibility = "redacted"
         self.connection: RuntimeConnection = connection
         self.query_codec: QueryCodec = _FirstColumnQueryCodec()
 
@@ -272,6 +275,9 @@ class _CleanupRuntime:
         return self.connection
 
     async def release(self, connection: object) -> None:
+        _ = connection
+
+    async def discard(self, connection: object) -> None:
         _ = connection
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:

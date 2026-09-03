@@ -21,6 +21,8 @@ from snektest import (
 )
 
 from snekql import mariadb
+from snekql.examples.mariadb import MIGRATIONS as EXAMPLE_MIGRATIONS
+from snekql.examples.mariadb import User as ExampleUser
 from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
@@ -89,6 +91,44 @@ async def migrate_creates_table_and_records_history() -> None:
             legacy_adopted=False,
         ),
     )
+
+
+@test(mark="medium")
+async def bundled_mariadb_migrations_execute_and_verify() -> None:
+    """The public MariaDB example converges to its Table Model contract."""
+
+    server = await load_fixture(mariadb_server())
+    database = await Database.initialize(server.config())
+    try:
+        await database.migrate(EXAMPLE_MIGRATIONS)
+        await database.verify_migrations(EXAMPLE_MIGRATIONS)
+        await database.verify([ExampleUser])
+    finally:
+        await database.close()
+
+
+@test(mark="medium")
+async def fresh_replay_and_incremental_upgrade_converge_on_mariadb() -> None:
+    """Applying one prefix first yields the same final MariaDB schema."""
+
+    server = await load_fixture(mariadb_server())
+    fresh = await Database.initialize(server.config())
+    await fresh.migrate(EXAMPLE_MIGRATIONS)
+    await fresh.verify([ExampleUser])
+    await fresh.close()
+    fresh_schema = (await server.run_sql("SHOW CREATE TABLE `user`")).stdout
+
+    await server.reset_database()
+    incremental = await Database.initialize(server.config())
+    first_name, first_body = next(iter(EXAMPLE_MIGRATIONS.items()))
+    await incremental.migrate({first_name: first_body})
+    await incremental.migrate(EXAMPLE_MIGRATIONS)
+    await incremental.verify_migrations(EXAMPLE_MIGRATIONS)
+    await incremental.verify([ExampleUser])
+    await incremental.close()
+    incremental_schema = (await server.run_sql("SHOW CREATE TABLE `user`")).stdout
+
+    assert_eq(fresh_schema, incremental_schema)
 
 
 @test(mark="medium")
