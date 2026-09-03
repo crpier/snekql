@@ -37,7 +37,7 @@ A database transaction exposed directly through the library as the unit within w
 _Avoid_: Unit of Work, session
 
 **Table Model**:
-A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata.
+A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata. Its declaration facts are fixed when the class is created.
 _Avoid_: Entity, ORM model
 
 **Dialect**:

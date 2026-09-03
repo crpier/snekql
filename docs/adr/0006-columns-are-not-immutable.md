@@ -50,6 +50,12 @@ change:
   the Pending/Fetched `PendingGeneration` coercion, and gating `server_default` to an
   omittable shape.
 
+“Column” here means the stored value addressed by an update assignment. The
+column descriptor's declaration metadata is a different contract: owner, name,
+nullability, defaults, keys, and storage facts are fixed when the Table Model
+class is finalized. Otherwise later mutation could silently change schema and
+decoding behavior behind the model's unchanged static type.
+
 The canonical managed timestamp becomes a single column:
 
 ```python

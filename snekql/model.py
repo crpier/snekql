@@ -40,6 +40,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    _finalize_model_columns,
     _resolve_model_hint,
     _UnboundOwner,
     column_admits_none,
@@ -217,6 +218,7 @@ class ModelMeta(type):
                 columns,
                 model_metadata.__snekql_backend__,
             )
+        _finalize_model_columns(columns)
         return model_class
 
     @staticmethod

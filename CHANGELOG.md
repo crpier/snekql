@@ -33,6 +33,10 @@
 
 ### Fixed
 
+- Bound column descriptors now freeze public owner, name, nullability, default,
+  key, and storage metadata after Table Model declaration finishes. Attempts to
+  assign or delete finalized metadata raise `FrozenModelError`. (#249)
+
 - Required nullable enforced foreign keys can be declared as
   `FKCol[Target, T | None] = ForeignKey(Target.id, nullable=True)`. Pending
   construction requires the field while accepting `T` or `None`; add

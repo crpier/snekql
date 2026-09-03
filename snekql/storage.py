@@ -1190,6 +1190,15 @@ class Attr[
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
+        self._snekql_metadata_frozen: bool = False
+
+    def __setattr__(self, name: str, value: object) -> None:
+        self._require_mutable_metadata(name)
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name: str) -> None:
+        self._require_mutable_metadata(name)
+        object.__delattr__(self, name)
 
     def __set_name__(self, owner: type[object], name: str) -> None:
         if self.owner is not None and (self.owner is not owner or self.name != name):
@@ -1360,6 +1369,18 @@ class Attr[
             msg = "column descriptor is not bound"
             raise ModelDeclarationError(msg)
         return self.name
+
+    def _require_mutable_metadata(self, name: str) -> None:
+        """Allow only private codec caches after model declaration finishes."""
+
+        frozen = getattr(self, "_snekql_metadata_frozen", False)
+        if not frozen or name in ("_logical_adapter_cache", "_is_json_cache"):
+            return
+        owner = self.owner
+        owner_name = owner.__name__ if owner is not None else "<unbound>"
+        column_name = self.name or "<unnamed>"
+        msg = f"column metadata for {owner_name}.{column_name} is immutable: {name}"
+        raise FrozenModelError(msg)
 
     def _validate_logical_value(self, value: object, *, fetched: bool) -> object:
         if value is PENDING_GENERATION:
@@ -2022,6 +2043,15 @@ class FKAttr[
         """Build a join condition between this FK column and its target."""
 
         return _JoinOn(left_column=self, right_column=other)
+
+
+def _finalize_model_columns(
+    columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+) -> None:
+    """Freeze public metadata once every declaration pass has completed."""
+
+    for column in columns.values():
+        object.__setattr__(column, "_snekql_metadata_frozen", True)
 
 
 def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:

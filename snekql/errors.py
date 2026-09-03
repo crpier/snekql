@@ -52,7 +52,7 @@ class ModelValidationError(ModelError):
 
 
 class FrozenModelError(ModelError):
-    """Raised when code attempts to mutate an immutable table model instance."""
+    """Raised when code mutates a model instance or finalized column metadata."""
 
 
 class QueryError(SnekqlError):
