@@ -35,7 +35,13 @@ from snekql.errors import (
     QueryConstructionError,
     QueryError,
 )
-from snekql.expressions import Aggregate, Assignment, OrderBy, Predicate
+from snekql.expressions import (
+    _Aggregate,
+    _Assignment,
+    _OrderBy,
+    _PredicateNode,
+    _require_predicate_node,
+)
 from snekql.model import Table
 from snekql.storage import Attr
 
@@ -113,8 +119,8 @@ class ScopeResolver:
             if require_column_model(bound) not in models:
                 raise error(out_of_scope)
             return
-        if isinstance(operand, Aggregate):
-            aggregate = cast("Aggregate[Any, Any]", operand)
+        if isinstance(operand, _Aggregate):
+            aggregate = cast("_Aggregate[Any, Any]", operand)
             if selectable_owner_model(aggregate) not in models:
                 raise error(out_of_scope)
             return
@@ -128,7 +134,7 @@ class ScopeResolver:
 
 
 def ensure_predicate_targets_models(
-    predicate: Predicate[Any],
+    predicate: _PredicateNode[Any],
     scope: ScopeResolver,
 ) -> None:
     """Validate a where() predicate tree's operands against the scope.
@@ -148,7 +154,7 @@ def ensure_predicate_targets_models(
         _ = require_single_column_subquery(predicate.__predicate_subquery__())
     operand = predicate.__predicate_operand__()
     if operand is not None:
-        if isinstance(operand, Aggregate):
+        if isinstance(operand, _Aggregate):
             msg = "aggregates cannot appear in where(); use having()"
             raise QueryConstructionError(msg)
         scope.ensure_operand_in_scope(
@@ -157,11 +163,11 @@ def ensure_predicate_targets_models(
             error=QueryConstructionError,
         )
     for child in predicate.__predicate_children__():
-        ensure_predicate_targets_models(child, scope)
+        ensure_predicate_targets_models(_require_predicate_node(child), scope)
 
 
 def ensure_having_targets(
-    predicate: Predicate[Any],
+    predicate: _PredicateNode[Any],
     state: SelectState,
     scope: ScopeResolver,
 ) -> None:
@@ -177,7 +183,7 @@ def ensure_having_targets(
     if operand is not None:
         ensure_having_selectable(operand, state, scope)
     for child in predicate.__predicate_children__():
-        ensure_having_targets(child, state, scope)
+        ensure_having_targets(_require_predicate_node(child), state, scope)
 
 
 def ensure_having_selectable(
@@ -193,7 +199,7 @@ def ensure_having_selectable(
         clause="having",
         error=QueryConstructionError,
     )
-    if isinstance(selectable, Aggregate):
+    if isinstance(selectable, _Aggregate):
         return
     bare_column = require_field(column)
     grouped_keys = {
@@ -207,7 +213,7 @@ def ensure_having_selectable(
 
 
 def ensure_ordering_targets_models(
-    ordering: OrderBy[Any],
+    ordering: _OrderBy[Any],
     scope: ScopeResolver,
 ) -> None:
     """Validate an order_by() entry against the statement's own tables.
@@ -252,7 +258,7 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
     no column, so they never need grouping.
     """
 
-    has_aggregate = any(isinstance(field, Aggregate) for field in state.fields)
+    has_aggregate = any(isinstance(field, _Aggregate) for field in state.fields)
     if not (has_aggregate or state.groupings):
         return
     grouped_keys = {
@@ -271,7 +277,7 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
 
 
 def ensure_assignment_targets_model(
-    assignment: Assignment[Any],
+    assignment: _Assignment[Any],
     scope: ScopeResolver,
 ) -> None:
     """Validate that a set() assignment targets the updated table."""

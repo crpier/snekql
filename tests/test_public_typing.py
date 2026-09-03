@@ -154,6 +154,44 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
 
 if TYPE_CHECKING:
 
+    def _sqlite_predicate_from_column[OwnerT: sqlite.Model[Any, Any], ValueT](
+        column: sqlite.ColumnRef[OwnerT, ValueT],
+        value: ValueT,
+    ) -> sqlite.Predicate[OwnerT]:
+        return column.eq(value)
+
+    def _sqlite_projection_from_column[OwnerT: sqlite.Model[Any, Any], ValueT](
+        column: sqlite.ColumnRef[OwnerT, ValueT],
+    ) -> sqlite.Select[ValueT]:
+        return sqlite.select(column).all()
+
+    def _sqlite_pair_projection_from_columns[
+        OwnerT: sqlite.Model[Any, Any],
+        FirstT,
+        SecondT,
+    ](
+        first: sqlite.ColumnRef[OwnerT, FirstT],
+        second: sqlite.ColumnRef[OwnerT, SecondT],
+    ) -> sqlite.Select[tuple[FirstT, SecondT]]:
+        return sqlite.select(first, second).all()
+
+    def _column_ref_cannot_build_assignments[OwnerT, ValueT](
+        column: sqlite.ColumnRef[OwnerT, ValueT],
+        value: ValueT,
+    ) -> None:
+        _ = column.to(value)  # ty: ignore[unresolved-attribute]
+
+    def _mariadb_predicate_from_column[OwnerT: mariadb.Model[Any, Any], ValueT](
+        column: mariadb.ColumnRef[OwnerT, ValueT],
+        value: ValueT,
+    ) -> mariadb.Predicate[OwnerT]:
+        return column.eq(value)
+
+    def _mariadb_projection_from_column[OwnerT: mariadb.Model[Any, Any], ValueT](
+        column: mariadb.ColumnRef[OwnerT, ValueT],
+    ) -> mariadb.Select[ValueT]:
+        return mariadb.select(column).all()
+
     class ValidForeignKeyDeclarations[S = Pending](
         Model[S, "ValidForeignKeyDeclarations[Fetched]"]
     ):
@@ -431,12 +469,21 @@ if TYPE_CHECKING:
         User.id,
         User.email,
     )
+    # Expression names are annotation-only; supported factories produce their
+    # values, while direct construction is rejected by the public interface.
+    _ = Aggregate[User[Pending], int]()  # ty: ignore[missing-argument]
+    _ = Scalar[User[Pending], int]()  # ty: ignore[missing-argument]
+    _ = JoinOn[Order[Pending], User[Pending]]()  # ty: ignore[missing-argument]
+    _ = OrderBy[User[Pending]]()  # ty: ignore[missing-argument]
+    _ = Predicate[User[Pending]]()  # ty: ignore[missing-argument]
+    _ = sqlite.Assignment[User[Pending]]()  # ty: ignore[missing-argument]
+
     # Aggregates: column methods carry owner + result type; the star form lives
     # on the model. count is int; sum/min/max are nullable; avg is float | None.
     _ = assert_type(User.id.count(), Aggregate[User[Pending], int])
-    _ = Aggregate[User[Pending], int](
-        func="UNSAFE",  # ty: ignore[invalid-argument-type]
-        owner=User,
+    _ = Aggregate[User[Pending], int](  # ty: ignore[missing-argument]
+        func="UNSAFE",  # ty: ignore[unknown-argument]
+        owner=User,  # ty: ignore[unknown-argument]
     )
     _ = assert_type(User.count_all(), Aggregate[User[Pending], int])
     _ = assert_type(Order.id.sum(), Aggregate[Order[Pending], int | None, int])
@@ -660,11 +707,11 @@ if TYPE_CHECKING:
     )
     _ = select(User).join(  # ty: ignore[no-matching-overload]
         Order,
-        on=JoinOn[Region[Pending], User[Pending]](),
+        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument]
     )
     _ = select(User.email).join(  # ty: ignore[no-matching-overload]
         Order,
-        on=JoinOn[Region[Pending], User[Pending]](),
+        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument]
     )
     # Rejection: right table, wrong-type key (int FK vs str column).
     _ = select(User).join(

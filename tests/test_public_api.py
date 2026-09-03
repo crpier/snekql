@@ -168,9 +168,15 @@ def backend_namespaces_export_canonical_names() -> None:
 
 @test()
 def backend_namespaces_hide_implementation_types() -> None:
-    """Descriptors, metaclasses, and state-specific query classes stay internal."""
+    """Concrete expressions, descriptors, and query classes stay internal."""
 
     hidden_names = (
+        "_Aggregate",
+        "_Assignment",
+        "_JoinOn",
+        "_OrderBy",
+        "_PredicateNode",
+        "_Scalar",
         "Attr",
         "DeleteQuery",
         "DeleteReturningQuery",

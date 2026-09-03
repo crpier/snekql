@@ -36,13 +36,13 @@ from snekql._query_state import (
 )
 from snekql.errors import QueryCompilationError
 from snekql.expressions import (
-    Aggregate,
     DoNothing,
     DoUpdate,
     InsertedValue,
-    OrderBy,
     Predicate,
-    Scalar,
+    _Aggregate,
+    _OrderBy,
+    _Scalar,
 )
 from snekql.model import (
     Table,
@@ -76,7 +76,7 @@ def _render_column_ref(
 
 
 def _render_aggregate(
-    aggregate: Aggregate[Any, Any],
+    aggregate: _Aggregate[Any, Any],
     dialect: QueryDialect,
     *,
     qualified: bool,
@@ -120,12 +120,12 @@ def _render_selectable(
     qualified: bool,
     projection: bool = False,
 ) -> str:
-    if isinstance(field, Scalar):
+    if isinstance(field, _Scalar):
         # Scalar subqueries carry nested parameters, so the select-list compiler
         # renders them through `_compile_scalar_sql`; they never reach here.
         msg = "scalar subqueries cannot be rendered without their parameters"
         raise QueryCompilationError(msg)
-    if isinstance(field, Aggregate):
+    if isinstance(field, _Aggregate):
         return _render_aggregate(field, dialect, qualified=qualified)
     if isinstance(field, SqlCompilable):
         # Open-AST dialect expression: the core renders it structurally through
@@ -139,7 +139,7 @@ def _render_selectable(
 
 
 def _compile_scalar_sql(
-    scalar_subquery: Scalar[Any, Any, Any],
+    scalar_subquery: _Scalar[Any, Any, Any],
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
@@ -164,7 +164,7 @@ def _predicate_value_encoder(
     (so e.g. a ``datetime`` ``MIN`` bound is serialized correctly).
     """
 
-    if isinstance(selectable, Scalar):
+    if isinstance(selectable, _Scalar):
         msg = "a scalar subquery is not a value-encoding operand"
         raise QueryCompilationError(msg)
     if isinstance(selectable, SqlCompilable):
@@ -172,7 +172,7 @@ def _predicate_value_encoder(
         # comparison value passes through unencoded; the leaf, not a column codec,
         # defines what that operand compares against.
         return lambda value: value
-    if isinstance(selectable, Aggregate):
+    if isinstance(selectable, _Aggregate):
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
         wrapped = require_field(selectable.column)
@@ -232,7 +232,7 @@ class _PredicateCompileContext:
         """Compile a scalar-subquery operand as a parenthesized select."""
 
         return _compile_scalar_sql(
-            cast("Scalar[Any, Any, Any]", scalar),
+            cast("_Scalar[Any, Any, Any]", scalar),
             self.dialect,
             scope=self.scope,
         )
@@ -282,7 +282,7 @@ def _compile_group_by_sql(
 
 
 def _compile_ordering_sql(
-    ordering: OrderBy[Any],
+    ordering: _OrderBy[Any],
     scope: ScopeResolver,
     dialect: QueryDialect,
 ) -> str:
@@ -527,7 +527,7 @@ def _compile_select_list(
     parts: list[str] = []
     params: tuple[object, ...] = ()
     for field in state.fields:
-        if isinstance(field, Scalar):
+        if isinstance(field, _Scalar):
             scalar_sql, scalar_params = _compile_scalar_sql(
                 field,
                 dialect,
@@ -566,7 +566,7 @@ def _compile_select_state(
         else ScopeResolver(own_models=own_models)
     )
     for column in state.fields:
-        if isinstance(column, Scalar):
+        if isinstance(column, _Scalar):
             continue
         scope.ensure_operand_in_scope(
             column,

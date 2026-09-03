@@ -8,6 +8,10 @@ snekql is a library for declaring relational data contracts and executing typed 
 The layer that declares relational data contracts and builds typed query state — the immutable description of a SQL-shaped operation, lowered to SQL separately by Query Compilation.
 _Avoid_: ORM, repository
 
+**Expression Annotation**:
+A public, non-constructible type for naming a Query Builder expression's owner and result shape across application helper seams. Query expressions come only from Query Builder verbs, model and column methods, and dedicated factories; mutation-capable column operations are not part of read-only column annotations.
+_Avoid_: expression constructor, AST node
+
 **Query Runtime**:
 The layer that executes built queries against a database and owns connection acquisition, transaction lifecycle, and result materialization.
 _Avoid_: ORM session, persistence layer

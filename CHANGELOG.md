@@ -12,6 +12,13 @@
 
 ### Changed
 
+- Public `Predicate`, `Aggregate`, `Scalar`, `JoinOn`, `OrderBy`, and
+  `Assignment` names are now non-constructible annotations backed by private
+  Query Builder nodes.
+  Factory-produced expressions retain exact inference, forged implementations
+  are rejected during Query Construction, and `ColumnRef` now supports typed
+  equality comparisons and projection while excluding mutation methods. (#248)
+
 - SQLite and MariaDB APIs now propagate private backend-family type witnesses.
   `ty` rejects cross-family models, query verbs, configurations, Transactions,
   stored queries, joins, foreign keys, and Scaffold calls while public `Model`,

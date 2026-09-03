@@ -92,18 +92,18 @@ class HostileAggregateFunction(str):
 
 @test(mark="fast")
 def aggregate_function_text_cannot_be_forged() -> None:
-    """Aggregate construction rejects SQL text outside the closed function set."""
+    """The aggregate annotation cannot construct a node from hostile SQL text."""
 
-    with assert_raises(QueryConstructionError):
-        _ = Aggregate[Account[Pending], int](
-            func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[invalid-argument-type]
-            owner=Account,
+    with assert_raises(TypeError):
+        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument]
+            func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[unknown-argument]
+            owner=Account,  # ty: ignore[unknown-argument]
         )
 
-    with assert_raises(QueryConstructionError):
-        _ = Aggregate[Account[Pending], int](
-            func=HostileAggregateFunction(),  # ty: ignore[invalid-argument-type]
-            owner=Account,
+    with assert_raises(TypeError):
+        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument]
+            func=HostileAggregateFunction(),  # ty: ignore[unknown-argument]
+            owner=Account,  # ty: ignore[unknown-argument]
         )
 
 

@@ -56,6 +56,7 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    ColumnRef,
     DoNothing,
     DoUpdate,
     ExistencePredicate,
@@ -63,6 +64,12 @@ from snekql.expressions import (
     OrderBy,
     Predicate,
     Scalar,
+    _Assignment,
+    _JoinOn,
+    _OrderBy,
+    _PredicateNode,
+    _require_predicate_node,
+    _Scalar,
 )
 from snekql.model import Pending, Table, require_model_backend, require_model_columns
 from snekql.storage import Attr
@@ -1549,6 +1556,14 @@ def _select_distinct(state: SelectState) -> SelectState:
     return replace(state, distinct=True)
 
 
+def _require_factory_predicates(
+    predicates: tuple[Predicate[Any], ...],
+) -> tuple[_PredicateNode[Any], ...]:
+    """Keep caller-defined predicate implementations out of query state."""
+
+    return tuple(_require_predicate_node(predicate) for predicate in predicates)
+
+
 def _select_where(
     state: SelectState,
     predicates: tuple[Predicate[Any], ...],
@@ -1560,9 +1575,10 @@ def _select_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=state.result_models())
-    for predicate in predicates:
+    checked_predicates = _require_factory_predicates(predicates)
+    for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *predicates))
+    return replace(state, predicates=(*state.predicates, *checked_predicates))
 
 
 def _select_order_by(
@@ -1573,9 +1589,14 @@ def _select_order_by(
         msg = "order_by() requires at least one ordering"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=state.result_models())
+    checked_orderings: list[_OrderBy[Any]] = []
     for ordering in orderings:
+        if not isinstance(ordering, _OrderBy):
+            msg = "orderings must be built from columns"
+            raise QueryConstructionError(msg)
         ensure_ordering_targets_models(ordering, scope)
-    return replace(state, orderings=(*state.orderings, *orderings))
+        checked_orderings.append(ordering)
+    return replace(state, orderings=(*state.orderings, *checked_orderings))
 
 
 def _select_group_by(
@@ -1601,9 +1622,10 @@ def _select_having(
         msg = "having() requires at least one predicate"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=state.result_models())
-    for predicate in predicates:
+    checked_predicates = _require_factory_predicates(predicates)
+    for predicate in checked_predicates:
         ensure_having_targets(predicate, state, scope)
-    return replace(state, having=(*state.having, *predicates))
+    return replace(state, having=(*state.having, *checked_predicates))
 
 
 def _select_join(
@@ -1631,10 +1653,10 @@ def _select_join(
             f"received {joined_backend} model {table_model.__name__}"
         )
         raise QueryConstructionError(msg)
-    if not isinstance(on, JoinOn):
+    if not isinstance(on, _JoinOn):
         msg = "join requires an on= condition built from references()"
         raise QueryConstructionError(msg)
-    condition = cast("JoinOn[Any, Any]", on)
+    condition = cast("_JoinOn[Any, Any]", on)
     left_column = require_field(condition.left_column)
     right_column = require_field(condition.right_column)
     related = {require_column_model(left_column), require_column_model(right_column)}
@@ -1715,9 +1737,14 @@ def _update_set(
         msg = "set() requires at least one assignment"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=(state.model,))
+    checked_assignments: list[_Assignment[Any]] = []
     for assignment in assignments:
+        if not isinstance(assignment, _Assignment):
+            msg = "assignments must be built from columns"
+            raise QueryConstructionError(msg)
         ensure_assignment_targets_model(assignment, scope)
-    return replace(state, assignments=(*state.assignments, *assignments))
+        checked_assignments.append(assignment)
+    return replace(state, assignments=(*state.assignments, *checked_assignments))
 
 
 def _update_where(
@@ -1731,9 +1758,10 @@ def _update_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=(state.model,))
-    for predicate in predicates:
+    checked_predicates = _require_factory_predicates(predicates)
+    for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *predicates))
+    return replace(state, predicates=(*state.predicates, *checked_predicates))
 
 
 def _delete_all(state: DeleteState) -> DeleteState:
@@ -1756,9 +1784,10 @@ def _delete_where(
         msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=(state.model,))
-    for predicate in predicates:
+    checked_predicates = _require_factory_predicates(predicates)
+    for predicate in checked_predicates:
         ensure_predicate_targets_models(predicate, scope)
-    return replace(state, predicates=(*state.predicates, *predicates))
+    return replace(state, predicates=(*state.predicates, *checked_predicates))
 
 
 @overload
@@ -1807,9 +1836,11 @@ def select[
     T2,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
@@ -1827,13 +1858,16 @@ def select[
     T3,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
@@ -1853,17 +1887,21 @@ def select[
     T4,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
@@ -1887,21 +1925,26 @@ def select[
     T5,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
@@ -1927,25 +1970,31 @@ def select[
     T6,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
@@ -1981,29 +2030,36 @@ def select[
     T7,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
+    | ColumnRef[Owner7T, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
     | DialectSelectable[Owner7T, T7, Any],
@@ -2042,33 +2098,41 @@ def select[
     T8,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
+    | ColumnRef[Owner1T, T1]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
+    | ColumnRef[Owner2T, T2]
     | Aggregate[Owner2T, T2, Any]
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
+    | ColumnRef[Owner3T, T3]
     | Aggregate[Owner3T, T3, Any]
     | Scalar[Owner3T, T3, Any]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
+    | ColumnRef[Owner4T, T4]
     | Aggregate[Owner4T, T4, Any]
     | Scalar[Owner4T, T4, Any]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
+    | ColumnRef[Owner5T, T5]
     | Aggregate[Owner5T, T5, Any]
     | Scalar[Owner5T, T5, Any]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
+    | ColumnRef[Owner6T, T6]
     | Aggregate[Owner6T, T6, Any]
     | Scalar[Owner6T, T6, Any]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
+    | ColumnRef[Owner7T, T7]
     | Aggregate[Owner7T, T7, Any]
     | Scalar[Owner7T, T7, Any]
     | DialectSelectable[Owner7T, T7, Any],
     field8: Attr[Any, Any, Owner8T, Any, T8]
+    | ColumnRef[Owner8T, T8]
     | Aggregate[Owner8T, T8, Any]
     | Scalar[Owner8T, T8, Any]
     | DialectSelectable[Owner8T, T8, Any],
@@ -2120,7 +2184,7 @@ def build_select(*args: object) -> object:
         )
         return SelectModelQuery[Any, Any, Any](state)
     fields = tuple(require_selectable(argument) for argument in args)
-    if isinstance(fields[0], Scalar):
+    if isinstance(fields[0], _Scalar):
         msg = "a scalar subquery cannot be the first projected field"
         raise QueryConstructionError(msg)
     # The first projected column/aggregate's table is the implicit FROM anchor;
@@ -2128,7 +2192,7 @@ def build_select(*args: object) -> object:
     # join()/left_join(), which the dual-union scope check enforces statically. A
     # scalar subquery has no owning table, so it can never anchor the FROM.
     anchor = next(
-        (field for field in fields if not isinstance(field, Scalar)),
+        (field for field in fields if not isinstance(field, _Scalar)),
         None,
     )
     if anchor is None:
@@ -2177,7 +2241,7 @@ def scalar[T, CompareT](
     """
 
     _ = require_single_column_subquery(subquery)
-    return Scalar(subquery=subquery)
+    return _Scalar(subquery=subquery)
 
 
 @overload

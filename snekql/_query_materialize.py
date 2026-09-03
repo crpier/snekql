@@ -22,13 +22,13 @@ from snekql._query_state import (
     require_single_column_subquery,
 )
 from snekql.errors import QueryCompilationError
-from snekql.expressions import Aggregate, Scalar
+from snekql.expressions import _Aggregate, _Scalar
 from snekql.model import require_model_columns
 from snekql.storage import Attr, StorageBackend
 
 
 def _decode_aggregate(
-    aggregate: Aggregate[Any, Any],
+    aggregate: _Aggregate[Any, Any],
     value: object,
     *,
     backend: StorageBackend,
@@ -80,7 +80,7 @@ def _decode_selectable(
     backend: StorageBackend,
     validate: bool,
 ) -> object:
-    if isinstance(field, Scalar):
+    if isinstance(field, _Scalar):
         # A scalar subquery evaluates to SQL NULL on an empty/no-match result
         # set, even over a NOT NULL inner column, so a NULL decodes to None
         # rather than through the inner column's null rejection (#203 F10).
@@ -95,7 +95,7 @@ def _decode_selectable(
             backend=backend,
             validate=validate,
         )
-    if isinstance(field, Aggregate):
+    if isinstance(field, _Aggregate):
         return _decode_aggregate(field, value, backend=backend)
     if isinstance(field, DialectSelectable):
         # Open-AST dialect expression: decode through the leaf's own seam, so the

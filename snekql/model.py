@@ -26,7 +26,7 @@ from snekql.errors import (
     ModelValidationError,
     SnekqlError,
 )
-from snekql.expressions import Aggregate
+from snekql.expressions import Aggregate, _Aggregate
 from snekql.indexes import NormalizedIndex, require_index_declaration
 from snekql.storage import (
     PENDING_GENERATION,
@@ -112,7 +112,7 @@ class Table[StateT]:
 
         return cast(
             "Aggregate[Self, int]",
-            Aggregate(func="COUNT", column=None, owner=cls),
+            _Aggregate(func="COUNT", column=None, owner=cls),
         )
 
 

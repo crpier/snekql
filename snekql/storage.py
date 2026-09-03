@@ -57,6 +57,10 @@ from snekql.expressions import (
     LikePredicate,
     OrderBy,
     Predicate,
+    _Aggregate,
+    _Assignment,
+    _JoinOn,
+    _OrderBy,
 )
 
 type StorageClass = Literal["INTEGER", "REAL", "TEXT", "BLOB"]
@@ -1790,7 +1794,7 @@ class Attr[
 
         return cast(
             "Aggregate[OwnerT, int]",
-            Aggregate(func="COUNT", column=self, owner=self.owner),
+            _Aggregate(func="COUNT", column=self, owner=self.owner),
         )
 
     def sum(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
@@ -1804,7 +1808,7 @@ class Attr[
         self._require_numeric_aggregate("sum")
         return cast(
             "Aggregate[OwnerT, ReadValueT | None, CompareT]",
-            Aggregate(func="SUM", column=self, owner=self.owner),
+            _Aggregate(func="SUM", column=self, owner=self.owner),
         )
 
     def avg(self) -> Aggregate[OwnerT, float | None, float]:
@@ -1813,7 +1817,7 @@ class Attr[
         self._require_numeric_aggregate("avg")
         return cast(
             "Aggregate[OwnerT, float | None, float]",
-            Aggregate(func="AVG", column=self, owner=self.owner),
+            _Aggregate(func="AVG", column=self, owner=self.owner),
         )
 
     def _require_numeric_aggregate(self, func: str) -> None:
@@ -1827,7 +1831,7 @@ class Attr[
         self._require_ordering()
         return cast(
             "Aggregate[OwnerT, ReadValueT | None, CompareT]",
-            Aggregate(func="MIN", column=self, owner=self.owner),
+            _Aggregate(func="MIN", column=self, owner=self.owner),
         )
 
     def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
@@ -1836,16 +1840,16 @@ class Attr[
         self._require_ordering()
         return cast(
             "Aggregate[OwnerT, ReadValueT | None, CompareT]",
-            Aggregate(func="MAX", column=self, owner=self.owner),
+            _Aggregate(func="MAX", column=self, owner=self.owner),
         )
 
     def asc(self) -> OrderBy[OwnerT]:
         self._require_ordering()
-        return OrderBy(column=self, direction="ASC")
+        return _OrderBy(column=self, direction="ASC")
 
     def desc(self) -> OrderBy[OwnerT]:
         self._require_ordering()
-        return OrderBy(column=self, direction="DESC")
+        return _OrderBy(column=self, direction="DESC")
 
     @overload
     def to(self, value: type[CurrentTimestamp]) -> Assignment[OwnerT]: ...
@@ -1867,12 +1871,12 @@ class Attr[
         assigned_value = (
             value if value is CurrentTimestamp else self.validate_model_value(value)
         )
-        return Assignment(column=self, value=assigned_value)
+        return _Assignment(column=self, value=assigned_value)
 
     def to_inserted(self) -> Assignment[OwnerT]:
         """Assign this column's value from the row whose insert conflicted."""
 
-        return Assignment(column=self, value=InsertedValue)
+        return _Assignment(column=self, value=InsertedValue)
 
     def __column_value_type__(self) -> ReadValueT:
         """Typing-only witness of this column's read value type.
@@ -2017,7 +2021,7 @@ class FKAttr[
     ) -> JoinOn[OwnerT, TargetOwnerT]:
         """Build a join condition between this FK column and its target."""
 
-        return JoinOn(left_column=self, right_column=other)
+        return _JoinOn(left_column=self, right_column=other)
 
 
 def column_admits_none(column: Attr[Any, Any, Any, Any, Any]) -> bool | None:
