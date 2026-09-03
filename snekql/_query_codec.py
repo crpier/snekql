@@ -1,16 +1,17 @@
 """Dialect-bound query codec used by Backend Runtime Adapters.
 
-Bundles the shared compile and materialize seams behind one object resolved
-from the query-dialect registry, so an adapter carries a single ``query_codec``
-attribute instead of restating four pass-through methods. The core stays
-dialect-blind (ADR 0004): this module only consults the registry that each
-Backend Namespace populates on import.
+Bundles the shared compile, plan, and materialize seams behind one object
+resolved from the query-dialect registry. The core stays dialect-blind (ADR
+0004): this module only consults the registry that each Backend Namespace
+populates on import. Legacy select paths still use the direct methods while they
+migrate incrementally to plans.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any, Literal, overload
 
 from snekql._query_compile import (
     compile_select_sql_for_dialect,
@@ -21,7 +22,16 @@ from snekql._query_materialize import (
     materialize_select_row_for_backend,
     materialize_write_returning_rows_for_backend,
 )
-from snekql.query import AnySelectQuery
+from snekql._query_plan import (
+    SelectCardinality,
+    SelectPlan,
+    WritePlan,
+    compile_select_plan_for_dialect,
+    compile_write_plan_for_dialect,
+)
+from snekql._query_state import DeleteState, InsertState, UpdateState
+from snekql.errors import QueryCompilationError
+from snekql.query import AnySelectQuery, _QueryShape, _WriteShape
 from snekql.storage import StorageBackend
 
 
@@ -55,6 +65,88 @@ class DialectQueryCodec:
 
         return compile_write_sql_for_dialect(query, self.dialect)
 
+    @overload
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: Literal[True] = True,
+    ) -> SelectPlan[ResultT]: ...
+
+    @overload
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: Literal[False],
+    ) -> SelectPlan[object]: ...
+
+    @overload
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: bool,
+    ) -> SelectPlan[object]: ...
+
+    def compile_select_plan(
+        self,
+        query: object,
+        *,
+        cardinality: SelectCardinality,
+        validate: bool = True,
+    ) -> SelectPlan[object]:
+        """Compile a select and capture its execution policy in one plan."""
+
+        return compile_select_plan_for_dialect(
+            query,
+            self.dialect,
+            cardinality=cardinality,
+            validate=validate,
+        )
+
+    @overload
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: Literal[True] = True,
+    ) -> WritePlan[ResultT]: ...
+
+    @overload
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: Literal[False],
+    ) -> WritePlan[object]: ...
+
+    @overload
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: bool,
+    ) -> WritePlan[object]: ...
+
+    def compile_write_plan(
+        self,
+        query: object,
+        *,
+        validate: bool = True,
+    ) -> WritePlan[object]:
+        """Compile a write and capture its execution policy in one plan."""
+
+        return compile_write_plan_for_dialect(
+            query,
+            self.dialect,
+            default_backend=self.backend,
+            validate=validate,
+        )
+
     def materialize_select_row(
         self,
         query: AnySelectQuery,
@@ -80,8 +172,12 @@ class DialectQueryCodec:
     ) -> list[object]:
         """Decode ``RETURNING`` rows from a write query."""
 
+        state = getattr(query, "state", None)
+        if not isinstance(state, InsertState | UpdateState | DeleteState):
+            msg = "materialize requires a returning write query"
+            raise QueryCompilationError(msg)
         return materialize_write_returning_rows_for_backend(
-            query,
+            state,
             rows,
             backend=self.backend,
             validate=validate,

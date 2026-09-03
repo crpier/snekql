@@ -20,6 +20,10 @@ _Avoid_: query generation, SQL rendering, codegen
 The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Fetched Model; for scalar or tuple selects, it produces decoded Python values.
 _Avoid_: hydration, insert encoding, write compilation
 
+**Execution Plan**:
+The private typed instruction Query Compilation gives Query Runtime. It carries parameterized SQL, backend identity, result cardinality, and validation-aware Materialization policy, so runtime execution does not inspect Query Builder classes.
+_Avoid_: public query object, driver command, compiled statement cache
+
 **Database**:
 A connected snekql runtime service that owns database connectivity and transaction entry, and exposes the explicit schema verbs `migrate`, `verify_migrations`, and `verify`. Initialization is connect-only and does no schema work.
 _Avoid_: Pool, uninitialized database config

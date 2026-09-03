@@ -9,8 +9,9 @@ from snektest import assert_eq, assert_raises, test
 from snektest.assertions import assert_true
 
 from snekql._migrations import MigrationPlan, MigrationResult
+from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql.model import BackendFamily, Table
-from snekql.query import AnySelectQuery
+from snekql.query import AnySelectQuery, _QueryShape, _WriteShape
 from snekql.runtime import QueryCodec, RuntimeConnection, Transaction, TransactionMode
 from snekql.sqlite import (
     PENDING_GENERATION,
@@ -27,7 +28,7 @@ from snekql.sqlite import (
     select,
 )
 from snekql.validation import NonNegativeFloat
-from tests.helpers import initialized_database
+from tests.helpers import SQLITE_CODEC, initialized_database
 
 
 class _StreamUser[S = Pending](Model[S, "_StreamUser[Fetched]"]):
@@ -210,6 +211,27 @@ class _FirstColumnQueryCodec:
     def compile_write_sql(self, query: object) -> tuple[str, tuple[object, ...]]:
         _ = query
         return "SELECT 1", ()
+
+    def compile_select_plan[ResultT](
+        self,
+        query: _QueryShape[Any, Any, ResultT],
+        *,
+        cardinality: SelectCardinality,
+        validate: bool = True,
+    ) -> SelectPlan[object]:
+        return SQLITE_CODEC.compile_select_plan(
+            query,
+            cardinality=cardinality,
+            validate=validate,
+        )
+
+    def compile_write_plan[ResultT](
+        self,
+        query: _WriteShape[ResultT],
+        *,
+        validate: bool = True,
+    ) -> WritePlan[object]:
+        return SQLITE_CODEC.compile_write_plan(query, validate=validate)
 
     def materialize_select_row(
         self,

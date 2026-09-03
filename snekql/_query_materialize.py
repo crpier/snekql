@@ -13,11 +13,10 @@ from typing import Any, cast
 from snekql._dialect_expr import DialectSelectable
 from snekql._model_materialization import decode_model_row
 from snekql._query_state import (
-    DeleteState,
     InsertState,
     Selectable,
     SelectState,
-    UpdateState,
+    WriteState,
     require_column_name,
     require_field,
     require_single_column_subquery,
@@ -239,7 +238,7 @@ def _materialize_insert_returning_fields(
 
 
 def materialize_write_returning_rows_for_backend(
-    query: object,
+    state: WriteState,
     rows: Sequence[Sequence[object]],
     *,
     backend: StorageBackend,
@@ -252,16 +251,8 @@ def materialize_write_returning_rows_for_backend(
     select. An explicit projection mirrors a projection select.
     """
 
-    state = getattr(query, "state", None)
-    if isinstance(state, InsertState):
-        model_class = state.model()
-        returning_fields = state.returning_fields
-    elif isinstance(state, UpdateState | DeleteState):
-        model_class = state.model
-        returning_fields = state.returning_fields
-    else:
-        msg = "materialize requires a returning write query"
-        raise QueryCompilationError(msg)
+    model_class = state.model() if isinstance(state, InsertState) else state.model
+    returning_fields = state.returning_fields
     if returning_fields:
         return _materialize_insert_returning_fields(
             returning_fields, rows, backend=backend, validate=validate
