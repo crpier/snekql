@@ -197,8 +197,8 @@ class _BaseSelectQuery(_SqlInspectionMixin):
     """Immutable select-state plumbing shared by every select query.
 
     Holds the state object and the transitions that never change a query's
-    generic shape (`all`, `limit`, `offset`). Subclasses add the typed surface
-    (`where`/`order_by`/`join`) whose return types depend on their parameters.
+    generic shape (`distinct`, `limit`, `offset`). Subclasses add readiness-
+    changing and typed transitions whose return types depend on their parameters.
     """
 
     state: SelectState
@@ -210,14 +210,6 @@ class _BaseSelectQuery(_SqlInspectionMixin):
 
     def _replace_state(self, state: SelectState) -> Self:
         return type(self)(state)
-
-    def all(self) -> Self:
-        """Select every row explicitly instead of providing predicates."""
-
-        state = _select_all(self.state)
-        if state is self.state:
-            return self
-        return self._replace_state(state)
 
     def distinct(self) -> Self:
         """Collapse duplicate rows by emitting ``SELECT DISTINCT``."""
@@ -241,30 +233,15 @@ class _BaseSelectQuery(_SqlInspectionMixin):
 
 
 class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
-    """Model-select fluent surface whose `where`/`order_by` are owner-scoped.
+    """Model-select fluent surface whose ordering is owner-scoped.
 
     Used by model selects (`SelectModelQuery`, `JoinModelQuery`): the owner
-    union types `where`/`order_by` directly, rejecting out-of-scope predicates
-    at the call site. Projection selects defer that check to fetch instead (see
-    the dual-union scope check), so they do not share this surface.
+    union types `order_by` directly, rejecting out-of-scope orderings at the
+    call site. Projection selects defer that check to fetch instead (see the
+    dual-union scope check), so they do not share this surface. Readiness-
+    changing `where` transitions remain on the concrete builders because their
+    result cannot satisfy a `Self`-preserving base method contract.
     """
-
-    @overload
-    def where(self, predicate: Predicate[FluentOwnerT], /) -> Self: ...
-
-    @overload
-    def where(
-        self,
-        predicate: Predicate[FluentOwnerT],
-        second: Predicate[FluentOwnerT],
-        /,
-        *predicates: Predicate[FluentOwnerT],
-    ) -> Self: ...
-
-    def where(self, *predicates: Predicate[FluentOwnerT]) -> Self:
-        """Filter selected rows by AND-combined column predicates."""
-
-        return self._replace_state(_select_where(self.state, predicates))
 
     @overload
     def order_by(self, ordering: OrderBy[FluentOwnerT], /) -> Self: ...

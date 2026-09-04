@@ -35,7 +35,7 @@ dev = [
     "aiosqlite>=0.22.1",
     "ruff>=0.15.15",
     "snektest>=0.16.0",
-    "ty==0.0.75",
+    "ty==0.0.77",
 ]
 
 [build-system]
