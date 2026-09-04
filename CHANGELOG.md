@@ -34,6 +34,10 @@
 
 ### Changed
 
+- Public typing validation and adoption guidance now target `ty==0.0.77`.
+  Artifact smoke tests derive that exact pin from project metadata so release
+  validation cannot silently use an outdated checker.
+
 - Query logs and `ExecutionError` strings redact bound values by default while
   preserving explicit `.sql` and `.params` inspection. Set
   `parameter_visibility="values"` only for controlled local diagnostics. (#255)

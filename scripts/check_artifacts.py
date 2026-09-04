@@ -29,6 +29,11 @@ def main() -> None:
         raise SystemExit(msg)
     metadata = tomllib.loads((project_root / "pyproject.toml").read_text())
     expected_version = metadata["project"]["version"]
+    type_checker_requirement = next(
+        requirement
+        for requirement in metadata["dependency-groups"]["dev"]
+        if requirement.startswith("ty==")
+    )
 
     with TemporaryDirectory() as directory_name:
         directory = Path(directory_name)
@@ -43,7 +48,7 @@ def main() -> None:
             "--python",
             str(python),
             f"{wheels[0]}[aiosqlite]",
-            "ty==0.0.75",
+            type_checker_requirement,
             cwd=directory,
         )
         runtime_smoke = directory / "runtime_smoke.py"

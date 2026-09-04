@@ -75,7 +75,7 @@ async def main() -> None:
 asyncio.run(main())
 PY
 uv run python smoke.py
-uv add --dev ty==0.0.75
+uv add --dev ty==0.0.77
 uv run ty check smoke.py
 ```
 
