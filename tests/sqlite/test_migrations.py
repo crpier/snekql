@@ -12,6 +12,8 @@ import anyio
 import anyio.lowlevel
 from snektest import assert_eq, assert_raises, assert_true, test
 
+from snekql.examples.basic import MIGRATIONS as EXAMPLE_MIGRATIONS
+from snekql.examples.basic import User as ExampleUser
 from snekql.sqlite import (
     PENDING_GENERATION,
     Config,
@@ -83,6 +85,19 @@ def _table_exists(database_path: Path, table_name: str) -> bool:
         connection.close()
 
 
+def _schema_sql(database_path: Path) -> list[tuple[str, str, str]]:
+    connection = connect(database_path)
+    try:
+        cursor = connection.execute(
+            "SELECT type, name, sql FROM sqlite_master "
+            "WHERE name != 'snekql_migrations' AND name NOT LIKE 'sqlite_%' "
+            "ORDER BY type, name"
+        )
+        return [(str(kind), str(name), str(sql)) for kind, name, sql in cursor]
+    finally:
+        connection.close()
+
+
 def _create_v1_history(database_path: Path, names: tuple[str, ...]) -> None:
     connection = connect(database_path)
     try:
@@ -128,6 +143,44 @@ async def migrate_creates_table_and_records_history() -> None:
                 )
             ],
         )
+
+
+@test(mark="medium")
+async def bundled_sqlite_migrations_execute_and_verify() -> None:
+    """The public example's immutable one-statement bodies are executable."""
+
+    database = await Database.initialize(database=":memory:")
+    try:
+        await database.migrate(EXAMPLE_MIGRATIONS)
+        await database.verify_migrations(EXAMPLE_MIGRATIONS)
+        await database.verify([ExampleUser])
+    finally:
+        await database.close()
+
+
+@test(mark="medium")
+async def fresh_replay_and_incremental_upgrade_converge_on_sqlite() -> None:
+    """Applying one prefix first yields the same final SQLite schema."""
+
+    with TemporaryDirectory() as directory_name:
+        directory = Path(directory_name)
+        fresh_path = directory / "fresh.db"
+        incremental_path = directory / "incremental.db"
+
+        fresh = await Database.initialize(database=fresh_path)
+        await fresh.migrate(EXAMPLE_MIGRATIONS)
+        await fresh.verify([ExampleUser])
+        await fresh.close()
+
+        incremental = await Database.initialize(database=incremental_path)
+        first_name, first_body = next(iter(EXAMPLE_MIGRATIONS.items()))
+        await incremental.migrate({first_name: first_body})
+        await incremental.migrate(EXAMPLE_MIGRATIONS)
+        await incremental.verify_migrations(EXAMPLE_MIGRATIONS)
+        await incremental.verify([ExampleUser])
+        await incremental.close()
+
+        assert_eq(_schema_sql(fresh_path), _schema_sql(incremental_path))
 
 
 @test(mark="medium")

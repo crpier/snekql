@@ -42,6 +42,7 @@ _NEUTRAL_NAMES = frozenset(
         "DatabaseCloseTimeoutError",
         "DatabaseClosedError",
         "DatabaseClosingError",
+        "DatabaseOperationTimeoutError",
         "DatabaseRuntimeError",
         "DoNothing",
         "DoUpdate",
@@ -125,7 +126,7 @@ _DIALECT_NAMES = frozenset(
 # native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
 # column attribute type.
 _MARIADB_ONLY_NAMES = frozenset(
-    {"Boolean", "DateTime", "Decimal", "Json", "JsonCol", "Uuid"},
+    {"Boolean", "DateTime", "Decimal", "Json", "JsonCol", "TLSConfig", "Uuid"},
 )
 _SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
@@ -415,6 +416,7 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.DatabaseClosedError,
         sqlite.DatabaseCloseTimeoutError,
         sqlite.DatabaseClosingError,
+        sqlite.DatabaseOperationTimeoutError,
         sqlite.DatabaseRuntimeError,
         sqlite.DoNothing,
         sqlite.DoUpdate,
@@ -448,6 +450,7 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.SchemaVerificationResult,
         sqlite.SnekqlError,
         sqlite.Text,
+        mariadb.TLSConfig,
         sqlite.Transaction,
         sqlite.TransactionClosedError,
         sqlite.TransactionNotStartedError,
@@ -477,6 +480,7 @@ def public_error_hierarchy_is_rooted_at_snekql_error() -> None:
         sqlite.DatabaseClosedError("package-originated failure"),
         sqlite.DatabaseCloseTimeoutError("package-originated failure"),
         sqlite.DatabaseClosingError("package-originated failure"),
+        sqlite.DatabaseOperationTimeoutError("write", 1.0),
         sqlite.ExecutionError(
             "package-originated failure",
             sql="SELECT ?",
@@ -551,8 +555,8 @@ def migration_result_is_an_immutable_public_value() -> None:
 
 
 @test()
-def execution_error_preserves_sql_and_params() -> None:
-    """Execution failures expose query context through the public exception."""
+def execution_error_preserves_context_but_redacts_string_telemetry() -> None:
+    """Raw params remain inspectable while default exception text is safe."""
 
     error = sqlite.ExecutionError(
         "insert failed",
@@ -564,25 +568,44 @@ def execution_error_preserves_sql_and_params() -> None:
     assert_eq(error.params, ("alice@example.com",))
     assert_in("insert failed", str(error))
     assert_in('INSERT INTO "user"', str(error))
-    assert_in("alice@example.com", str(error))
+    assert_in("params=<redacted:1>", str(error))
+    assert_not_in("alice@example.com", str(error))
 
 
 @test()
-def execution_error_folds_cause_into_str() -> None:
-    """A chained cause is visible in ``str()`` without inspecting __cause__."""
+def execution_error_can_explicitly_render_parameter_values() -> None:
+    """Unsafe parameter telemetry requires an explicit values policy."""
+
+    error = sqlite.ExecutionError(
+        "insert failed",
+        sql="SELECT ?",
+        params=("diagnostic-value",),
+        parameter_visibility="values",
+    )
+    error.__cause__ = ValueError("diagnostic driver message")
+
+    assert_in("params=('diagnostic-value',)", str(error))
+    assert_in("cause=ValueError: diagnostic driver message", str(error))
+
+
+@test()
+def execution_error_redacts_chained_cause_text_by_default() -> None:
+    """A driver cause cannot echo a bound secret through safe telemetry."""
 
     error = sqlite.ExecutionError(
         "write failed",
         sql="INSERT INTO memories DEFAULT VALUES",
-        params=(),
+        params=("secret@example.com",),
     )
     # ``raise ExecutionError(...) from cause`` sets ``__cause__`` to exactly this.
-    error.__cause__ = ValueError("no such table: memories")
+    error.__cause__ = ValueError("driver echoed secret@example.com")
 
     rendered = str(error)
 
     assert_in("write failed", rendered)
-    assert_in("cause=ValueError: no such table: memories", rendered)
+    assert_in("cause=ValueError", rendered)
+    assert_not_in("secret@example.com", rendered)
+    assert_not_in("driver echoed", rendered)
 
 
 @test()

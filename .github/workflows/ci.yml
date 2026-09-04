@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.26"
+          enable-cache: true
+      - name: Install Python 3.14
+        run: uv python install 3.14
+      - name: Install MariaDB 12
+        run: |
+          curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup \
+            | sudo bash -s -- --mariadb-server-version=mariadb-12.rolling
+          sudo apt-get update
+          sudo apt-get install --yes mariadb-client mariadb-server
+          sudo systemctl stop mariadb.service || true
+          mariadbd --version
+      - name: Sync locked environment
+        run: uv sync --locked --all-extras
+      - name: Test
+        run: uv run snektest
+      - name: Type check
+        run: uv run ty check
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Generated interface check
+        run: uv run python scripts/generate_query_overloads.py --check
+      - name: Lock check
+        run: uv lock --check
+      - name: Build clean artifacts
+        run: |
+          rm -f dist/*.whl dist/*.tar.gz
+          uv build
+      - name: Isolated artifact smoke test
+        run: uv run python scripts/check_artifacts.py
+
+  minimum-mariadb:
+    name: MariaDB 12.2
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:12.2@sha256:6a4c4bbf0447c2247801309513fcc0dd17c3f35390368139ce419387fdd1144d
+        env:
+          MARIADB_DATABASE: snekql
+          MARIADB_USER: snekql
+          MARIADB_PASSWORD: snekql
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.26"
+          enable-cache: true
+      - name: Install Python 3.14
+        run: uv python install 3.14
+      - name: Sync locked environment
+        run: uv sync --locked --all-extras
+      - name: Exercise minimum MariaDB
+        run: |
+          uv run python - <<'PY'
+          import asyncio
+
+          from snekql import mariadb
+          from snekql.examples.mariadb import run
+
+          config = mariadb.Config(
+              database="snekql",
+              host="127.0.0.1",
+              password="snekql",
+              user="snekql",
+          )
+          asyncio.run(run(config))
+          PY

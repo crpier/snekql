@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from pathlib import Path
 from types import TracebackType
 from typing import (
@@ -33,7 +33,9 @@ from snekql._runtime_selection import (
     validate_model_backends,
 )
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._telemetry import ParameterVisibility, format_bound_params
 from snekql.errors import (
+    DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
     ExecutionError,
     MigrationDeclarationError,
@@ -67,6 +69,24 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
+
+
+def _log_query_failure(
+    backend_family: BackendFamily,
+    operation: str,
+    sql: str,
+    rendered_params: str,
+) -> None:
+    """Log safe query context without copying a driver's exception message."""
+
+    logger.error(
+        "%s %s query failed: %s params=%s",
+        backend_family,
+        operation,
+        sql,
+        rendered_params,
+    )
+
 
 # Transaction begin mode. ``deferred`` opens a plain transaction that acquires
 # no lock until its first write (the SQL default); ``immediate`` declares write
@@ -188,6 +208,8 @@ class RuntimeBackend(Protocol):
 
     acquire_timeout: NonNegativeFloat
     backend_family: BackendFamily
+    operation_timeout: NonNegativeFloat
+    parameter_visibility: ParameterVisibility
     query_codec: QueryCodec
 
     async def acquire(
@@ -196,6 +218,8 @@ class RuntimeBackend(Protocol):
     ) -> RuntimeConnection: ...
 
     async def release(self, connection: object) -> None: ...
+
+    async def discard(self, connection: object) -> None: ...
 
     async def close(self, close_timeout: NonNegativeFloat) -> None: ...
 
@@ -262,16 +286,23 @@ class ChunkStream[RowT]:
                 transaction.runtime.query_codec.compile_select_sql(self._select_query)
             )
             try:
-                self._cursor = await connection.execute_stream(self._sql, self._params)
+                self._cursor = await transaction._run_driver_operation(  # noqa: SLF001
+                    "fetch_chunks execution",
+                    lambda: connection.execute_stream(self._sql, self._params),
+                )
+            except DatabaseOperationTimeoutError:
+                raise
             except Exception as error:
-                logger.exception(
-                    "%s fetch_chunks query failed: %s params=%r",
+                _log_query_failure(
                     transaction.runtime.backend_family,
+                    "fetch_chunks",
                     self._sql,
-                    self._params,
+                    transaction._format_bound_params(self._params),  # noqa: SLF001
                 )
                 msg = "select failed"
-                raise ExecutionError(msg, sql=self._sql, params=self._params) from error
+                raise transaction._execution_error(  # noqa: SLF001
+                    msg, sql=self._sql, params=self._params
+                ) from error
         except BaseException:
             self._lock.release()
             raise
@@ -290,7 +321,10 @@ class ChunkStream[RowT]:
             cursor = self._cursor
             self._cursor = None
             if cursor is not None:
-                await cursor.close()
+                await self._transaction._run_driver_operation(  # noqa: SLF001
+                    "cursor close",
+                    cursor.close,
+                )
         finally:
             self._lock.release()
 
@@ -304,23 +338,30 @@ class ChunkStream[RowT]:
             raise DatabaseRuntimeError(msg)
         transaction = self._transaction
         try:
-            rows = await cursor.fetchmany(self._size)
+            rows = await transaction._run_driver_operation(  # noqa: SLF001
+                "fetch_chunks fetch",
+                lambda: cursor.fetchmany(self._size),
+            )
+        except DatabaseOperationTimeoutError:
+            raise
         except Exception as error:
-            logger.exception(
-                "%s fetch_chunks fetch failed: %s params=%r",
+            _log_query_failure(
                 transaction.runtime.backend_family,
+                "fetch_chunks fetch",
                 self._sql,
-                self._params,
+                transaction._format_bound_params(self._params),  # noqa: SLF001
             )
             msg = "select failed"
-            raise ExecutionError(msg, sql=self._sql, params=self._params) from error
+            raise transaction._execution_error(  # noqa: SLF001
+                msg, sql=self._sql, params=self._params
+            ) from error
         if not rows:
             raise StopAsyncIteration
         logger.debug(
-            "%s fetch_chunks batch: %s params=%r rows=%d",
+            "%s fetch_chunks batch: %s params=%s rows=%d",
             transaction.runtime.backend_family,
             self._sql,
-            self._params,
+            transaction._format_bound_params(self._params),  # noqa: SLF001
             len(rows),
         )
         # Materialization runs outside the fetch try/except, mirroring
@@ -358,6 +399,7 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         runtime: RuntimeBackend | None = None,
         timeout: NonNegativeFloat = 0.0,
+        acquisition_timeout: NonNegativeFloat | None = None,
         mode: TransactionMode = "deferred",
     ) -> None:
         if runtime is None:
@@ -367,7 +409,11 @@ class Transaction[FamilyT: BackendFamily]:
         self.connection: RuntimeConnection | None = None
         self.runtime: RuntimeBackend = runtime
         self.timeout: NonNegativeFloat = timeout
+        self.acquisition_timeout: NonNegativeFloat = (
+            timeout if acquisition_timeout is None else acquisition_timeout
+        )
         self.mode: TransactionMode = mode
+        self._connection_reusable: bool = True
         self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
@@ -389,18 +435,27 @@ class Transaction[FamilyT: BackendFamily]:
         logger.debug(
             "%s transaction acquiring connection (timeout=%s, mode=%s)",
             self.runtime.backend_family,
-            self.timeout,
+            self.acquisition_timeout,
             self.mode,
         )
-        connection = await self.runtime.acquire(self.timeout)
+        connection = await self.runtime.acquire(self.acquisition_timeout)
         try:
-            await connection.begin(self.mode)
-        except Exception as error:
+            await self._run_driver_operation(
+                "transaction begin",
+                lambda: connection.begin(self.mode),
+            )
+        except BaseException as error:
             logger.exception("%s transaction begin failed", self.runtime.backend_family)
             with anyio.CancelScope(shield=True):
-                await self.runtime.release(connection)
-            msg = "could not begin transaction"
-            raise DatabaseRuntimeError(msg) from error
+                await self.runtime.discard(connection)
+            self._connection_reusable = False
+            self.closed = True
+            if isinstance(error, DatabaseOperationTimeoutError):
+                raise
+            if isinstance(error, Exception):
+                msg = "could not begin transaction"
+                raise DatabaseRuntimeError(msg) from error
+            raise
         self.connection = connection
         logger.debug("%s transaction begin", self.runtime.backend_family)
         return self
@@ -421,29 +476,53 @@ class Transaction[FamilyT: BackendFamily]:
                     raise TransactionClosedError(msg)
                 self.connection = None
                 self.closed = True
+                if not self._connection_reusable:
+                    await self.runtime.discard(connection)
+                    logger.warning(
+                        "%s transaction discarded after unsafe operation",
+                        self.runtime.backend_family,
+                    )
+                    return
                 try:
                     if exc_type is None:
-                        await connection.commit()
+                        await self._run_driver_operation(
+                            "transaction commit",
+                            connection.commit,
+                        )
                         logger.debug(
                             "%s transaction commit", self.runtime.backend_family
                         )
                     else:
-                        await connection.rollback()
+                        await self._run_driver_operation(
+                            "transaction rollback",
+                            connection.rollback,
+                        )
                         logger.debug(
                             "%s transaction rollback (%s)",
                             self.runtime.backend_family,
                             exc_type.__name__,
                         )
                 except Exception as error:
+                    self._connection_reusable = False
                     logger.exception(
                         "%s transaction close failed", self.runtime.backend_family
                     )
                     if exc_type is None:
+                        if isinstance(error, DatabaseOperationTimeoutError):
+                            raise
                         msg = "could not close transaction"
                         raise DatabaseRuntimeError(msg) from error
                 finally:
-                    await self.runtime.release(connection)
-                    logger.debug("%s transaction released", self.runtime.backend_family)
+                    if self._connection_reusable:
+                        await self.runtime.release(connection)
+                        logger.debug(
+                            "%s transaction released", self.runtime.backend_family
+                        )
+                    else:
+                        await self.runtime.discard(connection)
+                        logger.warning(
+                            "%s transaction discarded", self.runtime.backend_family
+                        )
 
     @overload
     async def fetch_all[ScopeT, RowT](
@@ -488,26 +567,32 @@ class Transaction[FamilyT: BackendFamily]:
             select_query = self._require_select_query(query)
             self._validate_query_backend(select_query)
             sql, params = self.runtime.query_codec.compile_select_sql(select_query)
-            try:
+
+            async def fetch_rows() -> Sequence[Sequence[object]]:
                 cursor = await connection.execute(sql, params)
                 try:
-                    rows = await cursor.fetchall()
+                    return await cursor.fetchall()
                 finally:
                     await cursor.close()
+
+            try:
+                rows = await self._run_driver_operation("fetch_all", fetch_rows)
+            except DatabaseOperationTimeoutError:
+                raise
             except Exception as error:
-                logger.exception(
-                    "%s fetch_all query failed: %s params=%r",
+                _log_query_failure(
                     self.runtime.backend_family,
+                    "fetch_all",
                     sql,
-                    params,
+                    self._format_bound_params(params),
                 )
                 msg = "select failed"
-                raise ExecutionError(msg, sql=sql, params=params) from error
+                raise self._execution_error(msg, sql=sql, params=params) from error
             logger.debug(
-                "%s fetch_all executed: %s params=%r rows=%d",
+                "%s fetch_all executed: %s params=%s rows=%d",
                 self.runtime.backend_family,
                 sql,
-                params,
+                self._format_bound_params(params),
                 len(rows),
             )
             materialized: list[object] = []
@@ -601,28 +686,33 @@ class Transaction[FamilyT: BackendFamily]:
         select_query = self._require_select_query(query)
         self._validate_query_backend(select_query)
         sql, params = self.runtime.query_codec.compile_select_sql(select_query)
-        try:
+
+        async def fetch_rows() -> Sequence[Sequence[object]]:
             cursor = await connection.execute(sql, params)
             try:
-                rows = await cursor.fetchmany(2)
+                return await cursor.fetchmany(2)
             finally:
                 await cursor.close()
+
+        try:
+            rows = await self._run_driver_operation(method, fetch_rows)
+        except DatabaseOperationTimeoutError:
+            raise
         except Exception as error:
-            logger.exception(
-                "%s %s query failed: %s params=%r",
+            _log_query_failure(
                 self.runtime.backend_family,
                 method,
                 sql,
-                params,
+                self._format_bound_params(params),
             )
             msg = "select failed"
-            raise ExecutionError(msg, sql=sql, params=params) from error
+            raise self._execution_error(msg, sql=sql, params=params) from error
         logger.debug(
-            "%s %s executed: %s params=%r rows=%d",
+            "%s %s executed: %s params=%s rows=%d",
             self.runtime.backend_family,
             method,
             sql,
-            params,
+            self._format_bound_params(params),
             len(rows),
         )
         return select_query, [tuple(row) for row in rows]
@@ -671,31 +761,37 @@ class Transaction[FamilyT: BackendFamily]:
                 validate=validate,
             )
             self._validate_plan_backend(plan.backend)
-            try:
+
+            async def fetch_rows() -> Sequence[Sequence[object]]:
                 cursor = await connection.execute(plan.sql, plan.params)
                 try:
-                    raw_rows = await cursor.fetchmany(plan.fetch_limit)
+                    return await cursor.fetchmany(plan.fetch_limit)
                 finally:
                     await cursor.close()
+
+            try:
+                raw_rows = await self._run_driver_operation("fetch_one", fetch_rows)
+            except DatabaseOperationTimeoutError:
+                raise
             except Exception as error:
-                logger.exception(
-                    "%s fetch_one query failed: %s params=%r",
+                _log_query_failure(
                     self.runtime.backend_family,
+                    "fetch_one",
                     plan.sql,
-                    plan.params,
+                    self._format_bound_params(plan.params),
                 )
                 msg = "select failed"
-                raise ExecutionError(
+                raise self._execution_error(
                     msg,
                     sql=plan.sql,
                     params=plan.params,
                 ) from error
             rows = [tuple(row) for row in raw_rows]
             logger.debug(
-                "%s fetch_one executed: %s params=%r rows=%d",
+                "%s fetch_one executed: %s params=%s rows=%d",
                 self.runtime.backend_family,
                 plan.sql,
-                plan.params,
+                self._format_bound_params(plan.params),
                 len(rows),
             )
         return plan.materialize(rows)
@@ -818,33 +914,89 @@ class Transaction[FamilyT: BackendFamily]:
             sql = plan.sql
             returned_rows: list[tuple[object, ...]] = []
             affected_rows = 0
-            try:
+
+            async def execute_write() -> tuple[int, list[tuple[object, ...]]]:
                 cursor = await connection.execute(sql, plan.params)
                 try:
-                    if plan.returns_rows:
-                        returned_rows = [tuple(row) for row in await cursor.fetchall()]
-                    affected_rows = cursor.rowcount
+                    rows = (
+                        [tuple(row) for row in await cursor.fetchall()]
+                        if plan.returns_rows
+                        else []
+                    )
+                    return cursor.rowcount, rows
                 finally:
                     await cursor.close()
+
+            try:
+                affected_rows, returned_rows = await self._run_driver_operation(
+                    "write",
+                    execute_write,
+                )
+            except DatabaseOperationTimeoutError:
+                raise
             except Exception as error:
-                logger.exception(
-                    "%s write query failed: %s params=%r",
+                _log_query_failure(
                     self.runtime.backend_family,
+                    "write",
                     sql,
-                    plan.params,
+                    self._format_bound_params(plan.params),
                 )
                 msg = "write failed"
-                raise ExecutionError(msg, sql=sql, params=plan.params) from error
+                raise self._execution_error(msg, sql=sql, params=plan.params) from error
             logger.debug(
-                "%s write executed: %s params=%r",
+                "%s write executed: %s params=%s",
                 self.runtime.backend_family,
                 sql,
-                plan.params,
+                self._format_bound_params(plan.params),
             )
             return plan.materialize(
                 rowcount=affected_rows,
                 rows=returned_rows,
             )
+
+    async def _run_driver_operation[ResultT](
+        self,
+        operation: str,
+        operation_call: Callable[[], Awaitable[ResultT]],
+    ) -> ResultT:
+        """Run one driver operation within the transaction's timeout."""
+
+        try:
+            with anyio.fail_after(self.timeout):
+                return await operation_call()
+        except TimeoutError as error:
+            self._connection_reusable = False
+            logger.warning(
+                "%s %s timed out (timeout=%s)",
+                self.runtime.backend_family,
+                operation,
+                self.timeout,
+            )
+            raise DatabaseOperationTimeoutError(operation, self.timeout) from error
+        except BaseException:
+            self._connection_reusable = False
+            raise
+
+    def _format_bound_params(self, params: tuple[object, ...]) -> str:
+        """Apply this runtime's parameter visibility policy to telemetry."""
+
+        return format_bound_params(params, self.runtime.parameter_visibility)
+
+    def _execution_error(
+        self,
+        message: str,
+        *,
+        sql: str,
+        params: tuple[object, ...],
+    ) -> ExecutionError:
+        """Build an execution failure carrying the runtime telemetry policy."""
+
+        return ExecutionError(
+            message,
+            sql=sql,
+            params=params,
+            parameter_visibility=self.runtime.parameter_visibility,
+        )
 
     def require_connection(self) -> RuntimeConnection:
         """Return the active connection or reject use before start / after close.
@@ -865,6 +1017,9 @@ class Transaction[FamilyT: BackendFamily]:
                 "'async with db.transaction()'"
             )
             raise TransactionNotStartedError(msg)
+        if not self._connection_reusable:
+            msg = "transaction connection is unsafe after a timed-out operation"
+            raise DatabaseRuntimeError(msg)
         return connection
 
     def _validate_plan_backend(self, received_backend: BackendFamily) -> None:
@@ -946,6 +1101,7 @@ class Database[FamilyT: BackendFamily]:
         database: Path | Literal[":memory:"],
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
+        operation_timeout: NonNegativeFloat = 30.0,
     ) -> Database[Literal["sqlite"]]: ...
 
     @classmethod
@@ -956,6 +1112,7 @@ class Database[FamilyT: BackendFamily]:
         database: Path | Literal[":memory:"] | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
+        operation_timeout: NonNegativeFloat = 30.0,
     ) -> Self:
         """Open connectivity and a connection pool; do no schema work.
 
@@ -972,6 +1129,7 @@ class Database[FamilyT: BackendFamily]:
                 database=database,
                 pool_size=pool_size,
                 acquire_timeout=acquire_timeout,
+                operation_timeout=operation_timeout,
             )
             backend_family = runtime_config.backend_family
             logger.info("%s database initialization started", backend_family)
@@ -1129,9 +1287,13 @@ class Database[FamilyT: BackendFamily]:
         acquisition_timeout = (
             self.runtime.acquire_timeout if timeout is None else timeout
         )
+        operation_timeout = (
+            self.runtime.operation_timeout if timeout is None else timeout
+        )
         return Transaction[Any](
             runtime=self.runtime,
-            timeout=acquisition_timeout,
+            timeout=operation_timeout,
+            acquisition_timeout=acquisition_timeout,
             mode=mode,
         )
 

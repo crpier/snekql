@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from collections.abc import Sequence
 from pathlib import Path
@@ -37,8 +39,9 @@ def normalize_sqlite_database(database: object) -> str:
 
 
 async def open_sqlite_connection(database_path: str) -> Connection:
-    """Open and prove an async SQLite connection."""
+    """Open and prove an async SQLite connection without leaking partial state."""
 
+    connection: Connection | None = None
     try:
         connection = await connect(database_path, isolation_level=None)
         cursor = await connection.execute("SELECT 1")
@@ -50,11 +53,16 @@ async def open_sqlite_connection(database_path: str) -> Connection:
             connection,
             file_backed=database_path != ":memory:",
         )
-    except Error as error:
-        msg = "could not initialize SQLite connection"
-        raise DatabaseRuntimeError(msg) from error
-    else:
-        return connection
+    except BaseException as error:
+        if connection is not None:
+            with anyio.CancelScope(shield=True):
+                with contextlib.suppress(Exception):
+                    await connection.close()
+        if isinstance(error, Error):
+            msg = "could not initialize SQLite connection"
+            raise DatabaseRuntimeError(msg) from error
+        raise
+    return connection
 
 
 async def close_sqlite_connection(connection: Connection) -> None:
@@ -87,6 +95,7 @@ class SQLiteConnectionPool:
     gate: FairAdmissionGate
     idle_connections: list[Connection]
     pool_size: PositiveInt
+    discard_tasks: set[asyncio.Task[None]]
 
     def __init__(
         self,
@@ -100,6 +109,7 @@ class SQLiteConnectionPool:
         self.database_path: str = database_path
         self.idle_connections: list[Connection] = [initial_connection]
         self.pool_size: PositiveInt = pool_size
+        self.discard_tasks: set[asyncio.Task[None]] = set()
         self.gate: FairAdmissionGate = FairAdmissionGate(
             capacity=pool_size,
             check_accepting_work=self.check_accepting_work,
@@ -173,14 +183,32 @@ class SQLiteConnectionPool:
                 await close_sqlite_connection(connection)
 
     async def discard(self, connection: Connection) -> None:
-        """Close an unsafe checked-out connection instead of pooling it."""
+        """Detach unsafe state immediately and close it in the background."""
 
         with anyio.CancelScope(shield=True):
-            try:
-                await close_sqlite_connection(connection)
-            finally:
-                await self.gate.release()
+            with contextlib.suppress(Exception):
+                await connection.interrupt()
+            task = asyncio.create_task(self._close_discarded(connection))
+            self.discard_tasks.add(task)
+            task.add_done_callback(self._discard_finished)
             logger.warning("sqlite connection discarded")
+
+    async def _close_discarded(self, connection: Connection) -> None:
+        """Close a detached connection before releasing its capacity slot."""
+
+        try:
+            await close_sqlite_connection(connection)
+        finally:
+            await self.gate.release()
+
+    def _discard_finished(self, task: asyncio.Task[None]) -> None:
+        """Consume detached-close failures and release the task reference."""
+
+        self.discard_tasks.discard(task)
+        try:
+            task.result()
+        except Exception:
+            logger.exception("sqlite discarded connection close failed")
 
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
         """Close idle connections and wait for checked-out work to finish."""

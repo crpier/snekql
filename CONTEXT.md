@@ -40,6 +40,18 @@ _Avoid_: Pool, uninitialized database config
 A database transaction exposed directly through the library as the unit within which reads and writes are executed.
 _Avoid_: Unit of Work, session
 
+**Operation Deadline**:
+The maximum time allowed for one database-driver interaction. Each interaction receives its own budget; application work between interactions is outside it.
+_Avoid_: transaction lifetime, query scheduler
+
+**Parameter Visibility**:
+The telemetry policy deciding whether bound query values are redacted or shown. Redaction is the normal production posture; value visibility is an explicit diagnostic choice.
+_Avoid_: query validation, encryption
+
+**Verified TLS**:
+A TCP transport whose server certificate chain and hostname are checked against trusted roots before database work begins.
+_Avoid_: encrypted-only transport, Unix-socket security
+
 **Table Model**:
 A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata. Its declaration facts are fixed when the class is created.
 _Avoid_: Entity, ORM model

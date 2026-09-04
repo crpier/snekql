@@ -30,6 +30,52 @@ class _FakeConnection:
         self._snekql_configured: bool = True
 
 
+class _BlockingConfigCursor:
+    """Cursor that exposes cancellation during first-use configuration."""
+
+    def __init__(self, started: anyio.Event) -> None:
+        self.started = started
+
+    async def execute(self, sql: str) -> None:
+        _ = sql
+        self.started.set()
+        await anyio.sleep_forever()
+
+    async def fetchone(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+
+class _PartiallyConfiguredConnection:
+    """Connection recording physical close after configuration cancellation."""
+
+    def __init__(self, started: anyio.Event) -> None:
+        self.closed = False
+        self.started = started
+
+    async def cursor(self) -> _BlockingConfigCursor:
+        return _BlockingConfigCursor(self.started)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _TrackingAiomysqlPool:
+    """Driver pool recording release of one partially configured connection."""
+
+    def __init__(self, connection: _PartiallyConfiguredConnection) -> None:
+        self.connection = connection
+        self.released: list[object] = []
+
+    async def acquire(self) -> object:
+        return self.connection
+
+    def release(self, connection: object) -> None:
+        self.released.append(connection)
+
+
 class _UnfairAiomysqlPool:
     """Bounded pool that wakes blocked acquirers LIFO, like aiomysql.
 
@@ -72,6 +118,36 @@ async def single_connection_pool() -> AsyncGenerator[MariaDBConnectionPool]:
         yield pool
     finally:
         await pool.close(_TIMEOUT)
+
+
+@test(mark="medium")
+async def cancelled_first_use_configuration_discards_the_connection() -> None:
+    """Partial initialization cannot leak or recycle a physical connection."""
+
+    started = anyio.Event()
+    connection = _PartiallyConfiguredConnection(started)
+    driver_pool = _TrackingAiomysqlPool(connection)
+    pool = MariaDBConnectionPool(driver_pool)
+    finished = anyio.Event()
+    scope_holder: list[anyio.CancelScope] = []
+
+    async def acquire() -> None:
+        with anyio.CancelScope() as scope:
+            scope_holder.append(scope)
+            try:
+                _ = await pool.acquire(_TIMEOUT)
+            finally:
+                finished.set()
+
+    async with anyio.create_task_group() as task_group:
+        task_group.start_soon(acquire)
+        await started.wait()
+        scope_holder[0].cancel()
+        await finished.wait()
+
+    assert_eq(connection.closed, True)
+    assert_eq(driver_pool.released, [connection])
+    assert_eq(pool.gate.admitted, 0)
 
 
 @test(mark="medium")

@@ -14,6 +14,7 @@ from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._telemetry import ParameterVisibility
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -239,7 +240,8 @@ class MariaDBConnectionPool:
             return
         try:
             await configure_mariadb_connection(connection)
-        except Exception:
+        except BaseException:
+            cast("Any", connection).close()
             release = cast("Any", self.pool).release
             _ = release(connection)
             raise
@@ -311,10 +313,14 @@ class MariaDBRuntime:
         self,
         *,
         acquire_timeout: NonNegativeFloat,
+        operation_timeout: NonNegativeFloat = 30.0,
         connection_pool: MariaDBConnectionPool,
         migration_lock_name: str,
+        parameter_visibility: ParameterVisibility = "redacted",
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
+        self.operation_timeout: NonNegativeFloat = operation_timeout
+        self.parameter_visibility: ParameterVisibility = parameter_visibility
         self.connection_pool: MariaDBConnectionPool = connection_pool
         self.migration_lock_name: str = migration_lock_name
         self.query_codec: DialectQueryCodec = DialectQueryCodec.for_backend("mariadb")
@@ -381,6 +387,15 @@ class MariaDBRuntime:
         with anyio.CancelScope(shield=True):
             await self.connection_pool.release(connection.connection)
 
+    async def discard(self, connection: object) -> None:
+        """Physically close a connection whose driver state is uncertain."""
+
+        if not isinstance(connection, MariaDBConnectionAdapter):
+            msg = "MariaDB runtime cannot discard a foreign connection"
+            raise DatabaseRuntimeError(msg)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.discard(connection.connection)
+
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         with anyio.CancelScope(shield=True):
             await self.connection_pool.close(close_timeout)
@@ -392,6 +407,21 @@ class MariaDBRuntime:
         """Reject bodies that can escape the owned transaction or lock."""
 
         validate_mariadb_migrations(migrations)
+
+
+async def _close_partial_pool(
+    pool: object,
+    close_timeout: NonNegativeFloat,
+) -> None:
+    """Bound cleanup of a pool that cannot be returned from initialization."""
+
+    driver_pool = cast("Any", pool)
+    driver_pool.close()
+    wait_closed = cast("Callable[[], Awaitable[None]]", driver_pool.wait_closed)
+    with anyio.move_on_after(close_timeout, shield=True) as cancel_scope:
+        await wait_closed()
+    if cancel_scope.cancel_called:
+        logger.error("mariadb partial pool cleanup timed out")
 
 
 async def initialize_runtime(config: Config) -> MariaDBRuntime:
@@ -414,17 +444,28 @@ async def initialize_runtime(config: Config) -> MariaDBRuntime:
         minsize=1,
         password=config.password,
         port=config.port,
+        ssl=(
+            config.tls._create_ssl_context()  # noqa: SLF001
+            if config.tls is not None
+            else None
+        ),
         unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
         user=config.user,
     )
     connection_pool = MariaDBConnectionPool(pool, pool_size=config.pool_size)
-    # Prove connectivity (and apply session settings once) before returning.
-    connection = await connection_pool.acquire(config.acquire_timeout)
-    await connection_pool.release(connection)
+    try:
+        # Prove connectivity (and apply session settings once) before returning.
+        connection = await connection_pool.acquire(config.acquire_timeout)
+        await connection_pool.release(connection)
+    except BaseException:
+        await _close_partial_pool(pool, config.operation_timeout)
+        raise
     return MariaDBRuntime(
         acquire_timeout=config.acquire_timeout,
+        operation_timeout=config.operation_timeout,
         connection_pool=connection_pool,
         migration_lock_name=build_migration_lock_name(config.database),
+        parameter_visibility=config.parameter_visibility,
     )
 
 

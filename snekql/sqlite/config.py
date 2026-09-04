@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from snekql._runtime_selection import register_default_backend_factory
+from snekql._telemetry import ParameterVisibility
 from snekql.errors import DatabaseRuntimeError
 from snekql.sqlite.retry import (
     DEFAULT_BUSY_BASE_BACKOFF,
@@ -44,7 +45,9 @@ def _validate_sqlite_config(  # noqa: PLR0913
     busy_max_backoff: NonNegativeFloat,
     busy_max_retries: NonNegativeInt,
     database: Path | Literal[":memory:"],
+    operation_timeout: NonNegativeFloat,
     pool_size: PositiveInt,
+    parameter_visibility: ParameterVisibility,
 ) -> None:
     """Validate SQLite configuration at construction time.
 
@@ -54,7 +57,7 @@ def _validate_sqlite_config(  # noqa: PLR0913
     """
 
     del acquire_timeout, busy_base_backoff, busy_max_backoff, busy_max_retries
-    del database, pool_size
+    del database, operation_timeout, parameter_visibility, pool_size
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,7 +72,9 @@ class Config:
 
     database: Path | Literal[":memory:"]
     acquire_timeout: NonNegativeFloat = 30.0
+    operation_timeout: NonNegativeFloat = 30.0
     pool_size: PositiveInt = 5
+    parameter_visibility: ParameterVisibility = "redacted"
     # Retries layered on top of the per-connection ``busy_timeout`` PRAGMA when
     # a ``mode="immediate"`` transaction loses the writer-lock race. Bounds how
     # much in-process write contention is absorbed before a busy lock surfaces.
@@ -87,7 +92,9 @@ class Config:
             busy_max_backoff=self.busy_max_backoff,
             busy_max_retries=self.busy_max_retries,
             database=self.database,
+            operation_timeout=self.operation_timeout,
             pool_size=self.pool_size,
+            parameter_visibility=self.parameter_visibility,
         )
         pool_size = _resolve_pool_size(self.database, self.pool_size)
         object.__setattr__(self, "pool_size", pool_size)
@@ -119,6 +126,7 @@ def _build_default_config(
     *,
     acquire_timeout: NonNegativeFloat,
     database: Path | Literal[":memory:"],
+    operation_timeout: NonNegativeFloat,
     pool_size: PositiveInt,
 ) -> RuntimeConfig[Literal["sqlite"]]:
     """Build a SQLite config for the legacy ``database=`` initializer shape."""
@@ -126,6 +134,7 @@ def _build_default_config(
     return Config(
         acquire_timeout=acquire_timeout,
         database=database,
+        operation_timeout=operation_timeout,
         pool_size=pool_size,
     )
 

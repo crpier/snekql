@@ -19,6 +19,7 @@ from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
+    Config,
     Database,
     ExecutionError,
     Fetched,
@@ -158,8 +159,8 @@ async def warn_verify_policy_logs_drift() -> None:
 
 
 @test(mark="medium")
-async def transaction_execution_logs_query_context() -> None:
-    """Transaction logging includes SQL and params without redaction."""
+async def transaction_execution_logs_redacted_query_context() -> None:
+    """Normal query logs retain SQL while redacting parameter values."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model used to observe query execution logging."""
@@ -188,15 +189,21 @@ async def transaction_execution_logs_query_context() -> None:
     assert_eq(row, "secret@example.com")
     write = logs.find(logging.DEBUG, "write executed")
     fetched = logs.find(logging.DEBUG, "fetch_one executed")
-    assert_true("secret@example.com" in write)
-    assert_true("secret@example.com" in fetched)
+    assert_true("params=<redacted:1>" in write)
+    assert_true("params=<redacted:1>" in fetched)
+    assert_true(
+        all(
+            "secret@example.com" not in message
+            for message in logs.messages(logging.DEBUG)
+        )
+    )
     assert_true(logs.has(logging.DEBUG, "transaction begin"))
     assert_true(logs.has(logging.DEBUG, "transaction commit"))
 
 
 @test(mark="medium")
-async def query_failure_logs_error_context() -> None:
-    """Execution failures log SQL and params before raising ExecutionError."""
+async def query_failure_logs_redacted_error_context() -> None:
+    """Execution failures keep bound values out of normal error telemetry."""
 
     class User[S = Pending](Model[S, "User[Fetched]"]):
         """Table model with a unique field used to force a write failure."""
@@ -211,13 +218,40 @@ async def query_failure_logs_error_context() -> None:
         try:
             async with database.transaction() as tx:
                 await tx.execute(insert(User(email="duplicate@example.com")))
-                with assert_raises(ExecutionError):
+                with assert_raises(ExecutionError) as raised:
                     await tx.execute(insert(User(email="duplicate@example.com")))
         finally:
             await database.close()
 
     failure = logs.find(logging.ERROR, "write query failed")
-    assert_true("duplicate@example.com" in failure)
+    assert_true("params=<redacted:1>" in failure)
+    assert_true("duplicate@example.com" not in failure)
+    assert_true("duplicate@example.com" not in str(raised.exception))
+    assert_eq(raised.exception.params, ("duplicate@example.com",))
+
+
+@test(mark="medium")
+async def parameter_values_require_an_explicit_runtime_opt_in() -> None:
+    """The values policy restores raw diagnostics only when requested."""
+
+    class User[S = Pending](Model[S, "User[Fetched]"]):
+        email: User.Col[str] = Text(nullable=False, unique=True)
+
+    with _capture_snekql_logs() as logs:
+        database = await initialized_database(
+            Config(database=":memory:", parameter_visibility="values"),
+            models=[User],
+        )
+        try:
+            async with database.transaction() as tx:
+                await tx.execute(insert(User(email="visible@example.com")))
+                with assert_raises(ExecutionError) as raised:
+                    await tx.execute(insert(User(email="visible@example.com")))
+        finally:
+            await database.close()
+
+    assert_true("visible@example.com" in logs.find(logging.ERROR, "write query failed"))
+    assert_true("visible@example.com" in str(raised.exception))
 
 
 @test(mark="medium")

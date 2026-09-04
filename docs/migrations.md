@@ -233,3 +233,10 @@ Tests should use an isolated database per canonical chain and replay the same
 committed migration declaration as production. A test suite must not rely on
 globally unique names to combine unrelated subsets in one history table; exact
 prefix semantics deliberately reject that composition.
+
+The bundled `basic` (SQLite) and `mariadb` examples contain committed,
+one-statement Migration bodies and run the complete migrate → verify-history →
+verify-schema path. Print them with `snekql --example basic` and
+`snekql --example mariadb`. The repository suite executes both declarations and
+checks that fresh replay and prefix-then-upgrade produce the same final catalog
+shape on each backend.

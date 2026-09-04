@@ -27,17 +27,6 @@ _DECIMAL_MAX_PRECISION = 65
 _DECIMAL_MAX_SCALE = 30
 
 
-def _json_path_literal(path: str) -> str:
-    """Render a JSON path as a single-quoted SQL string literal.
-
-    Paths are developer-provided constants (``"$.age"``); single quotes are
-    doubled so a literal renders safely inside the ``JSON_EXTRACT`` call.
-    """
-
-    escaped = path.replace("'", "''")
-    return f"'{escaped}'"
-
-
 @dataclass(frozen=True)
 class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
     """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
@@ -76,10 +65,11 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
     def __owner_model__(self) -> type[OwnerT]:
         return cast("type[OwnerT]", require_column_model(self.column))
 
-    def __compile_sql__(self, ctx: CompileCtx) -> str:
-        return f"JSON_EXTRACT({ctx.render_column(self.column)}, {_json_path_literal(self.path)})"
+    def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]:
+        sql = f"JSON_EXTRACT({ctx.render_column(self.column)}, {ctx.placeholder})"
+        return sql, (self.path,)
 
-    def __compile_select_sql__(self, ctx: CompileCtx) -> str:
+    def __compile_select_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]:
         return self.__compile_sql__(ctx)
 
     def __decode__(self, raw: object) -> int | None:

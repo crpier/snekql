@@ -112,30 +112,35 @@ Before announcing a release:
    uv run ruff format --check .
    uv run python scripts/generate_query_overloads.py --check
    ```
-4. Build artifacts:
+4. Confirm the lock and generated interface are current:
    ```sh
-   rm -rf dist
+   uv lock --check
+   uv run python scripts/generate_query_overloads.py --check
+   ```
+5. Build and smoke-test clean artifacts:
+   ```sh
+   rm -f dist/*.whl dist/*.tar.gz
    uv build
+   uv run python scripts/check_artifacts.py
    ```
-5. Inspect the wheel for typing support:
-   ```sh
-   python - <<'PY'
-   from pathlib import Path
-   from zipfile import ZipFile
-
-   wheel = next(Path("dist").glob("*.whl"))
-   with ZipFile(wheel) as archive:
-       names = set(archive.namelist())
-       assert "snekql/py.typed" in names
-       assert "snekql/__init__.pyi" in names
-   PY
-   ```
-6. Publish to the package index.
-7. Run the published-package smoke test above.
-8. Create and push a version tag, then create a GitHub release from the
-   changelog entry.
+   The script requires exactly one wheel and sdist, installs the wheel outside
+   the checkout, then checks imports, CLI startup, SQLite runtime startup, and
+   public typing.
+6. Merge the release PR. Tag that exact commit as `v<project version>` and push
+   the tag. Never reuse or move a release tag.
+7. Create the GitHub release from that tag. The protected `pypi` environment
+   builds from the tag, verifies tag/version equality, records a GitHub build
+   provenance attestation, and publishes through PyPI Trusted Publishing with
+   attestations. No long-lived package token is stored.
+8. Run the published-package smoke test above and attach the dated changelog
+   entry to the GitHub release.
 
 ## Adoption expectations
+
+Security reports use the private process in [`SECURITY.md`](../SECURITY.md).
+CI reproduces the full validation and artifact smoke path on Python 3.14 with a
+live MariaDB 12 server and separately exercises the public example against the
+exact MariaDB 12.2 minimum.
 
 snekql v1 is a good fit when an application wants:
 

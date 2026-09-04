@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 
 from snekql import sqlite
 from snekql.sqlite import Database, Fetched, Pending, insert, select
@@ -18,7 +17,9 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
         default=sqlite.PENDING_GENERATION,
     )
     email: sqlite.Col[str] = sqlite.Text(unique=True)
-    created_at: sqlite.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
+    created_at: sqlite.GenCol[sqlite.UtcDatetime] = sqlite.Text(
+        default=sqlite.CurrentTimestamp
+    )
 
 
 MIGRATIONS = {

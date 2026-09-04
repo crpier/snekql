@@ -2,7 +2,29 @@
 
 ## [Unreleased]
 
+## 0.7.0 - 2026-09-04
+
 ### Added
+
+- MariaDB TCP configuration supports certificate-verifying TLS through
+  `TLSConfig`, including system or explicit CA roots and optional mutual-TLS
+  client credentials. Hostname verification, certificate verification, and TLS
+  1.2 or newer are mandatory on this path. (#255)
+
+- Transaction driver operations now have bounded deadlines. Backend Configs
+  separate `operation_timeout` from `acquire_timeout`, while an explicit
+  `transaction(timeout=N)` applies to both. Timeouts raise
+  `DatabaseOperationTimeoutError` and discard uncertain physical connections.
+  (#255)
+
+- Required CI now covers the full test, typing, lint, generated-interface, lock,
+  build, and isolated-wheel smoke path on Python 3.14 and live MariaDB 12, plus
+  a separate example run on the exact MariaDB 12.2 minimum. CodeQL, dependency
+  review, Dependabot, private security reporting guidance,
+  trusted release publishing, and artifact provenance are configured. (#255)
+
+- The project is MIT licensed; the SPDX expression and license text are included
+  in distribution metadata and artifacts. (#255)
 
 - `ZonedDatetime` preserves an aware datetime's UTC instant and exact IANA zone
   identity or fixed offset through `Text()` storage on SQLite and MariaDB.
@@ -11,6 +33,16 @@
   operations are required. (#237)
 
 ### Changed
+
+- Query logs and `ExecutionError` strings redact bound values by default while
+  preserving explicit `.sql` and `.params` inspection. Set
+  `parameter_visibility="values"` only for controlled local diagnostics. (#255)
+
+- The bundled SQLite and MariaDB Migration examples use immutable,
+  one-statement bodies. Both declarations are executed in tests, with fresh
+  replay versus incremental-upgrade convergence checks. SQLite operations
+  documentation now states and justifies the runtime's fixed file-backed WAL
+  and `synchronous=NORMAL` durability profile. (#255)
 
 - Query Builder types now carry private executable-readiness state. `ty` rejects
   selects and deletes without row scope, updates without both row scope and an
@@ -39,6 +71,12 @@
   `ResultCardinalityError` instead of leaking `IndexError`. (#250)
 
 ### Fixed
+
+- MariaDB `json_extract_int()` binds JSON paths as driver parameters instead of
+  interpolating SQL literals, including hostile quote-bearing input. Partial
+  initialization, cancelled configuration, timed-out queries, and failed
+  begin/commit/rollback paths now close or discard physical connections rather
+  than leaking or pooling unknown state. (#255)
 
 - `Database.verify(...)` now inspects every requested Table Model before applying
   policy and returns an immutable, machine-readable `SchemaVerificationResult`;

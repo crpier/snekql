@@ -14,6 +14,7 @@ from anyio.lowlevel import checkpoint
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_codec import DialectQueryCodec
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._telemetry import ParameterVisibility
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
 from snekql.sqlite.config import Config
@@ -142,10 +143,14 @@ class SQLiteRuntime:
         self,
         *,
         acquire_timeout: NonNegativeFloat,
+        operation_timeout: NonNegativeFloat = 30.0,
         connection_pool: SQLiteConnectionPool,
+        parameter_visibility: ParameterVisibility = "redacted",
         busy_retry_policy: BusyRetryPolicy = DEFAULT_BUSY_RETRY_POLICY,
     ) -> None:
         self.acquire_timeout: NonNegativeFloat = acquire_timeout
+        self.operation_timeout: NonNegativeFloat = operation_timeout
+        self.parameter_visibility: ParameterVisibility = parameter_visibility
         self.connection_pool: SQLiteConnectionPool = connection_pool
         self.busy_retry_policy: BusyRetryPolicy = busy_retry_policy
         self.query_codec: DialectQueryCodec = DialectQueryCodec.for_backend("sqlite")
@@ -163,6 +168,15 @@ class SQLiteRuntime:
             raise DatabaseRuntimeError(msg)
         with anyio.CancelScope(shield=True):
             await self.connection_pool.release(connection.connection)
+
+    async def discard(self, connection: object) -> None:
+        """Physically close a connection whose driver state is uncertain."""
+
+        if not isinstance(connection, SQLiteConnectionAdapter):
+            msg = "SQLite runtime cannot discard a foreign connection"
+            raise DatabaseRuntimeError(msg)
+        with anyio.CancelScope(shield=True):
+            await self.connection_pool.discard(connection.connection)
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
         with anyio.CancelScope(shield=True):
@@ -265,11 +279,13 @@ async def initialize_runtime(config: Config) -> SQLiteRuntime:
     connection = await open_sqlite_connection(database_path)
     return SQLiteRuntime(
         acquire_timeout=config.acquire_timeout,
+        operation_timeout=config.operation_timeout,
         connection_pool=SQLiteConnectionPool(
             database_path=database_path,
             initial_connection=connection,
             pool_size=config.pool_size,
         ),
+        parameter_visibility=config.parameter_visibility,
         busy_retry_policy=BusyRetryPolicy(
             max_retries=config.busy_max_retries,
             base_backoff=config.busy_base_backoff,

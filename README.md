@@ -567,6 +567,10 @@ async with await Database.initialize(config) as db:
         )
 ```
 
+For production TCP, set `tls=mariadb.TLSConfig(...)`; certificate verification,
+hostname checks, and TLS 1.2+ are mandatory on that path. See
+[engine settings](docs/engine-settings.md#verified-tls).
+
 Use transactions for all work:
 
 ```python
@@ -616,6 +620,13 @@ Runtime methods:
   actually changed.
 - `close()` is async and idempotent after a successful close.
 
+Backend Configs separate pool waiting (`acquire_timeout`) from driver I/O
+(`operation_timeout`), both defaulting to 30 seconds. Passing
+`db.transaction(timeout=N)` overrides both for that transaction. Each driver
+operation gets a fresh budget; application code between calls is not timed.
+Timed-out operations discard the uncertain physical connection. Commit timeout
+outcomes are ambiguous and require application-level reconciliation.
+
 ## Migrations and verification
 
 Initialization does no schema work. A live `Database` applies the complete
@@ -659,15 +670,16 @@ Use `SnekqlError` to catch all snekql failures, or catch narrower subclasses:
 
 - `ModelDeclarationError`, `ModelValidationError`, `FrozenModelError`
 - `QueryConstructionError`, `QueryCompilationError`
-- `DatabaseClosedError`, `PoolTimeoutError`, `TransactionClosedError`,
-  `ExecutionError`
+- `DatabaseClosedError`, `PoolTimeoutError`, `DatabaseOperationTimeoutError`,
+  `TransactionClosedError`, `ExecutionError`
 - `SchemaVerificationError` (strict Schema Drift; inspect `.result`)
 - `MigrationDeclarationError`, `MigrationHistoryError`, `MigrationError`,
   `MigrationLockError`
 
-`ExecutionError` preserves `sql` and `params` for debugging. Structured query
-logs may also include SQL and params exactly as supplied to the database driver;
-snekql does not redact secrets.
+`ExecutionError` preserves parameterized `sql` and raw `.params` for explicit
+inspection. Its string form and normal query logs render
+`params=<redacted:N>` by default. Set a Backend Config's
+`parameter_visibility="values"` only for controlled local diagnostics.
 
 ## Further reading
 

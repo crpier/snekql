@@ -110,7 +110,7 @@ class PredicateCompiler(Protocol):
     @property
     def placeholder(self) -> str: ...
 
-    def render_operand(self, operand: object) -> str: ...
+    def render_operand(self, operand: object) -> tuple[str, tuple[object, ...]]: ...
 
     def value_encoder(self, operand: object) -> Callable[[object], object]: ...
 
@@ -232,12 +232,12 @@ class ComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
             if self.operator == "eq":
                 msg = "eq(None) is invalid; use is_null()"
             raise QueryCompilationError(msg)
-        rendered = compiler.render_operand(self.operand)
+        rendered, operand_params = compiler.render_operand(self.operand)
         encode = compiler.value_encoder(self.operand)
         operator = _COMPARISON_SQL_OPERATORS[self.operator]
         return (
             f"{rendered} {operator} {compiler.placeholder}",
-            (encode(self.value),),
+            (*operand_params, encode(self.value)),
         )
 
 
@@ -256,7 +256,8 @@ class NullPredicate[OwnerT](_PredicateNode[OwnerT]):
         compiler: PredicateCompiler,
     ) -> tuple[str, tuple[object, ...]]:
         operator = "IS NOT NULL" if self.negated else "IS NULL"
-        return f"{compiler.render_operand(self.operand)} {operator}", ()
+        rendered, operand_params = compiler.render_operand(self.operand)
+        return f"{rendered} {operator}", operand_params
 
 
 @dataclass(frozen=True)
@@ -280,11 +281,11 @@ class MembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
         if any(value is None for value in self.values):
             msg = "IN predicate values cannot be None"
             raise QueryCompilationError(msg)
-        rendered = compiler.render_operand(self.operand)
+        rendered, operand_params = compiler.render_operand(self.operand)
         encode = compiler.value_encoder(self.operand)
         placeholders = ", ".join(compiler.placeholder for _ in self.values)
         operator = "NOT IN" if self.negated else "IN"
-        params = tuple(encode(value) for value in self.values)
+        params = (*operand_params, *(encode(value) for value in self.values))
         return f"{rendered} {operator} ({placeholders})", params
 
 
@@ -310,11 +311,11 @@ class BetweenPredicate[OwnerT](_PredicateNode[OwnerT]):
         if self.low is None or self.high is None:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryCompilationError(msg)
-        rendered = compiler.render_operand(self.operand)
+        rendered, operand_params = compiler.render_operand(self.operand)
         encode = compiler.value_encoder(self.operand)
         return (
             f"{rendered} BETWEEN {compiler.placeholder} AND {compiler.placeholder}",
-            (encode(self.low), encode(self.high)),
+            (*operand_params, encode(self.low), encode(self.high)),
         )
 
 
@@ -339,10 +340,13 @@ class LikePredicate[OwnerT](_PredicateNode[OwnerT]):
             name = "not_like" if self.negated else "like"
             msg = f"{name}() is only valid for text columns"
             raise QueryCompilationError(msg)
-        rendered = compiler.render_operand(self.operand)
+        rendered, operand_params = compiler.render_operand(self.operand)
         encode = compiler.value_encoder(self.operand)
         operator = "NOT LIKE" if self.negated else "LIKE"
-        return f"{rendered} {operator} {compiler.placeholder}", (encode(self.pattern),)
+        return (
+            f"{rendered} {operator} {compiler.placeholder}",
+            (*operand_params, encode(self.pattern)),
+        )
 
 
 @dataclass(frozen=True)
@@ -360,15 +364,18 @@ class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
         self,
         compiler: PredicateCompiler,
     ) -> tuple[str, tuple[object, ...]]:
-        rendered = compiler.render_operand(self.operand)
+        rendered, rendered_params = compiler.render_operand(self.operand)
         operator = _COMPARISON_SQL_OPERATORS[self.operator]
         other = self.other
         if isinstance(other, _Scalar):
             scalar = cast("_Scalar[Any, Any, Any]", other)
             operand_sql, operand_params = compiler.compile_scalar(scalar)
-            return f"{rendered} {operator} {operand_sql}", operand_params
+            return (
+                f"{rendered} {operator} {operand_sql}",
+                (*rendered_params, *operand_params),
+            )
         other_ref = compiler.render_comparison_operand(other)
-        return f"{rendered} {operator} {other_ref}", ()
+        return f"{rendered} {operator} {other_ref}", rendered_params
 
 
 @dataclass(frozen=True)
@@ -393,13 +400,16 @@ class SubqueryMembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
         self,
         compiler: PredicateCompiler,
     ) -> tuple[str, tuple[object, ...]]:
-        rendered = compiler.render_operand(self.operand)
+        rendered, operand_params = compiler.render_operand(self.operand)
         sub_sql, sub_params = compiler.compile_subquery(
             self.subquery,
             single_column=True,
         )
         operator = "NOT IN" if self.negated else "IN"
-        return f"{rendered} {operator} ({sub_sql})", sub_params
+        return (
+            f"{rendered} {operator} ({sub_sql})",
+            (*operand_params, *sub_params),
+        )
 
 
 @dataclass(frozen=True)

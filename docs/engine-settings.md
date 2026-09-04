@@ -15,6 +15,8 @@ Applied and verified in `open_sqlite_connection`:
 
 | Setting | Value | Why |
 | --- | --- | --- |
+| `PRAGMA journal_mode` | `WAL` (file-backed databases) | Gives pooled readers and the single writer predictable concurrency. This setting persists on the database file. |
+| `PRAGMA synchronous` | `NORMAL` (file-backed databases) | Under WAL, committed data survives application crashes; an operating-system crash or power loss can lose the latest transaction. |
 | `PRAGMA foreign_keys` | `ON` | SQLite does not enforce `FOREIGN KEY` constraints unless this is on. Without it the emitted constraints are inert. |
 | `PRAGMA busy_timeout` | `5000` ms | The pool opens several connections to one database file; a busy timeout lets writers serialize instead of failing immediately with "database is locked". |
 | `PRAGMA encoding` | `UTF-8` | Verified (not set): snekql stores and compares text as UTF-8. |
@@ -54,10 +56,39 @@ so there is no single writer lock to acquire eagerly.
 `STRICT` tables are enforced at DDL-compile time and checked during schema drift
 verification; see [schema-drift.md](./schema-drift.md).
 
-`journal_mode` (WAL) and `synchronous` are **not** managed by snekql. They are
-performance/durability trade-offs left to the application to tune.
+For file-backed databases, WAL plus `synchronous=NORMAL` is snekql's fixed
+concurrency/durability profile: every opened connection applies and verifies it.
+It is not currently configurable. Deployments requiring durability of the
+latest commit across an operating-system crash or power loss need a different
+SQLite policy and must not assume `FULL` remains in effect while snekql is
+connected. Test restore procedures and choose the MariaDB backend when this
+fixed trade-off does not meet the service's durability target.
 
 ## MariaDB
+
+### Verified TLS
+
+MariaDB TCP connections can require certificate verification through the typed
+`TLSConfig` path:
+
+```python
+from pathlib import Path
+from snekql import mariadb
+
+config = mariadb.Config(
+    database="app",
+    host="db.internal.example",
+    user="snekql",
+    password="from-secret-store",
+    tls=mariadb.TLSConfig(ca_file=Path("/etc/app/database-ca.pem")),
+)
+```
+
+`TLSConfig` always uses `CERT_REQUIRED`, hostname checking, and TLS 1.2 or newer.
+Omit `ca_file` to use system trust roots. Mutual TLS is available by supplying
+both `cert_file` and `key_file`; supplying only one is rejected.
+TLS is a TCP policy and cannot be combined with `unix_socket`. A failed trust or
+hostname check prevents initialization.
 
 ### Minimum version
 
