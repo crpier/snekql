@@ -248,3 +248,19 @@ When adding intentional failures inside snekql:
 2. Wrap external exceptions with exception chaining:
    `raise SnekqlErrorSubclass(message) from error`.
 3. Preserve query context in `ExecutionError` when SQLite execution fails.
+
+## Decimal precision and existing data
+
+`CanonicalDecimal` normalization and native MariaDB `Decimal(precision, scale)`
+checks are independent of Python's active decimal context. Canonical text keeps
+all significant digits, removes fractional trailing zeros and writes signed zero
+as `0`. Native decimal columns reject values that need rounding or exceed their
+integer capacity; they do not silently round values to fit.
+
+Versions affected by context-sensitive normalization, including 0.7.0, could
+round canonical text or accept native values MariaDB then rounded. The corrected
+code does not rewrite existing rows. Lost digits cannot be recovered from the
+stored value alone. Audit affected data against a trusted source and reconcile it
+through explicit application migrations. Check equality queries and unique keys
+when repairing previously rounded values. Normal in-range canonical wire forms
+remain unchanged; no blanket data conversion is required.
