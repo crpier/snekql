@@ -258,6 +258,9 @@ raw escape hatch: constraints and some logical conversions are skipped, and the
 static result is therefore widened to `object` (`list[object]` for `fetch_all`,
 `ChunkStream[object]` for `fetch_chunks`). Narrow a raw result explicitly before
 using logical-type operations. The same rule applies to mutation `returning(...)`.
+MIN/MAX honor this policy, including in scalar subqueries and chunked reads.
+COUNT/SUM/AVG retain their numeric normalization under either policy; empty
+MIN/MAX/SUM/AVG results are `None`.
 
 ## Insert conflicts
 
