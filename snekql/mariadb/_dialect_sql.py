@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from snekql._query_dialect import QueryDialect, register_query_dialect
+from snekql.errors import ModelValidationError
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.storage import Attr
 
@@ -33,6 +35,20 @@ def _encode_column_value(
     return column.encode(value, backend="mariadb")
 
 
+def _encode_sum_value(
+    column: Attr[Any, Any, Any, Any, Any],
+    value: object,
+) -> object:
+    """Native Decimal SUM bounds have no input-column precision/scale ceiling."""
+
+    if column.storage_type_name != "Decimal" or value is None:
+        return _encode_column_value(column, value)
+    if not isinstance(value, Decimal) or not value.is_finite():
+        msg = "native Decimal SUM comparison requires a finite Decimal"
+        raise ModelValidationError(msg)
+    return value
+
+
 def _inserted_value_sql(quoted_column: str) -> str:
     return f"VALUES({quoted_column})"
 
@@ -43,6 +59,7 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_empty_insert_sql,
     encode_column_value=_encode_column_value,
+    encode_sum_value=_encode_sum_value,
     inserted_value_sql=_inserted_value_sql,
     placeholder="%s",
     quote_identifier=quote_identifier,

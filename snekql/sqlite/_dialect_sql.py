@@ -43,6 +43,7 @@ SQLITE_QUERY_DIALECT = QueryDialect(
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_empty_insert_sql,
     encode_column_value=_encode_column_value,
+    encode_sum_value=_encode_column_value,
     inserted_value_sql=_inserted_value_sql,
     placeholder="?",
     quote_identifier=quote_identifier,

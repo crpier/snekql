@@ -25,6 +25,7 @@ class QueryDialect:
     current_timestamp_sql: str
     empty_insert_sql: Callable[[str], str]
     encode_column_value: QueryValueEncoder
+    encode_sum_value: QueryValueEncoder
     inserted_value_sql: InsertedValueRenderer
     placeholder: str
     quote_identifier: Callable[[str], str]

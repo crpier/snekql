@@ -258,9 +258,11 @@ Decimal storage has the same two-coordinate rule:
 - On SQLite, store integer minor units (`Col[int] = Integer()`, e.g. cents) when
   the database must order, range-filter, or aggregate decimal quantities.
 - On MariaDB, use `Col[decimal.Decimal] = mariadb.Decimal(precision, scale)` for
-  native numeric equality, ordering, range predicates, and aggregation. Values
-  that would overflow or require rounding for the declared `(precision, scale)`
-  are rejected before they reach the driver.
+  native numeric equality, ordering, range predicates, and aggregation. Stored
+  values that would overflow or require rounding for the declared
+  `(precision, scale)` are rejected before they reach the driver. Native Decimal
+  `SUM` comparison bounds accept exact finite `Decimal` values beyond the input
+  column's precision and scale; they are not rounded to that column's shape.
 
 Bare `Col[decimal.Decimal] = Text()` emits `LexicalDecimalWarning` on both
 backends because Pydantic's default decimal text can represent the same value in

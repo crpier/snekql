@@ -158,10 +158,11 @@ def _predicate_value_encoder(
     """Build the value encoder for a predicate operand.
 
     A column encodes comparison values through its own logical codec. An
-    aggregate's comparison value follows its result type: ``COUNT``/``AVG``
-    compare against a plain ``int``/``float`` and pass through unencoded, while
-    ``SUM``/``MIN``/``MAX`` share the wrapped column's type and reuse its encoder
-    (so e.g. a ``datetime`` ``MIN`` bound is serialized correctly).
+    aggregate's comparison value follows its result type: `COUNT`/`AVG`
+    compare against a plain `int`/`float` and pass through unencoded, while
+    `MIN`/`MAX` reuse the wrapped column's encoder (so a `datetime` `MIN`
+    bound is serialized correctly). `SUM` uses the dialect's result-domain
+    encoder because native numeric totals can outgrow their input storage.
     """
 
     if isinstance(selectable, _Scalar):
@@ -176,6 +177,8 @@ def _predicate_value_encoder(
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
         wrapped = require_field(selectable.column)
+        if selectable.func == "SUM":
+            return lambda value: dialect.encode_sum_value(wrapped, value)
         return lambda value: dialect.encode_column_value(wrapped, value)
     column = selectable
     return lambda value: dialect.encode_column_value(column, value)
