@@ -199,11 +199,17 @@ class MariaDBConnectionPool:
             await self.gate.release()
             raise
         try:
-            await self._ensure_configured(connection)
-        except BaseException:
-            # ``_ensure_configured`` returns the connection to the underlying
-            # pool on failure; free our admission slot so a waiter can proceed.
+            with anyio.fail_after(deadline - anyio.current_time()):
+                await self._ensure_configured(connection)
+        except BaseException as error:
+            # Configuration discards the physical connection on failure, then
+            # this releases admission capacity. Checkout and configuration use
+            # the same deadline rather than granting configuration a new budget.
             await self.gate.release()
+            if isinstance(error, TimeoutError):
+                logger.warning("mariadb connection configuration timed out")
+                msg = "timed out acquiring database connection"
+                raise PoolTimeoutError(msg) from error
             raise
         logger.debug("mariadb connection acquired")
         return connection
