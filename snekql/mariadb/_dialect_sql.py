@@ -44,6 +44,8 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     empty_insert_sql=_empty_insert_sql,
     encode_column_value=_encode_column_value,
     inserted_value_sql=_inserted_value_sql,
+    # MariaDB uses the maximum unsigned LIMIT to select all remaining rows.
+    offset_only_limit_sql="LIMIT 18446744073709551615",
     placeholder="%s",
     quote_identifier=quote_identifier,
 )

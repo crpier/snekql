@@ -630,6 +630,8 @@ def _compile_limit_offset_sql(
     state: SelectState,
     dialect: QueryDialect,
 ) -> tuple[list[str], tuple[object, ...]]:
+    """Bind explicit bounds and use dialect syntax when offset has no limit."""
+
     parts: list[str] = []
     params: tuple[object, ...] = ()
     if state.limit_value is not None:
@@ -637,7 +639,7 @@ def _compile_limit_offset_sql(
         params = (*params, state.limit_value)
     if state.offset_value is not None:
         if state.limit_value is None:
-            parts.append("LIMIT -1")
+            parts.append(dialect.offset_only_limit_sql)
         parts.append(f"OFFSET {dialect.placeholder}")
         params = (*params, state.offset_value)
     return parts, params

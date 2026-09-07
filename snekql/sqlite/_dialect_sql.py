@@ -44,6 +44,7 @@ SQLITE_QUERY_DIALECT = QueryDialect(
     empty_insert_sql=_empty_insert_sql,
     encode_column_value=_encode_column_value,
     inserted_value_sql=_inserted_value_sql,
+    offset_only_limit_sql="LIMIT -1",
     placeholder="?",
     quote_identifier=quote_identifier,
     supports_delete_returning=True,
