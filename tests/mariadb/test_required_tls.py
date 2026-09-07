@@ -197,7 +197,6 @@ async def required_tls_rejects_plaintext_server() -> None:
                     pass
 
 
-
 @test(mark="slow")
 async def required_tls_sends_no_authentication_to_plaintext_peer() -> None:
     """An SSL-stripped greeting receives no client response, not even auth metadata."""
