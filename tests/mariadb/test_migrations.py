@@ -12,6 +12,7 @@ from hashlib import sha256
 
 import anyio
 from snektest import (
+    Param,
     assert_eq,
     assert_raises,
     assert_true,
@@ -610,3 +611,56 @@ async def verify_passes_against_migration_created_schema() -> None:
     await database.close()
 
     assert_true("mig_verify_users" in await _fetch_applied_names(server))
+
+
+@test(
+    [
+        Param(value="SELECT 1 AS `label\\`; COMMIT; -- `", name="backslash"),
+        Param(
+            value="SELECT 1 AS `label``\\`; COMMIT; -- `",
+            name="doubled_backtick",
+        ),
+        Param(
+            value="SELECT 1 AS `label\\`; /*! COMMIT */; -- `",
+            name="executable_comment",
+        ),
+        Param(
+            value="SELECT 1 AS `label\\`; /*M! COMMIT */; -- `",
+            name="mariadb_executable_comment",
+        ),
+    ],
+    mark="slow",
+)
+async def backslash_ending_identifier_cannot_hide_commit(body: str) -> None:
+    """A backtick closes after a literal backslash, exposing transaction control."""
+
+    server = await load_fixture(mariadb_server())
+    async with (
+        await Database.initialize(
+            server.config(pool_size=1, acquire_timeout=0.01)
+        ) as database,
+        database.transaction(),
+    ):
+        with assert_raises(MigrationDeclarationError):
+            await database.migrate({"invalid_body": body})
+
+
+@test(
+    [
+        Param(value="SELECT 1 AS `label\\`", name="backslash_identifier"),
+        Param(value="SELECT 1 AS `label``\\`", name="doubled_backtick"),
+        Param(value="SELECT 'it\\'s COMMIT'", name="single_quoted_literal"),
+        Param(value='SELECT "it\\"s COMMIT"', name="double_quoted_literal"),
+        Param(value="SELECT 'it''s COMMIT'", name="doubled_quote_literal"),
+    ],
+    mark="slow",
+)
+async def quoted_migration_text_preserves_sql_escaping(body: str) -> None:
+    """Valid identifier escapes and transaction words inside literals stay legal."""
+
+    server = await load_fixture(mariadb_server())
+    async with await Database.initialize(server.config()) as database:
+        migrated = await database.migrate({"quoted_body": body})
+        await database.verify_migrations({"quoted_body": body})
+
+    assert_eq(migrated.applied, ("quoted_body",))
