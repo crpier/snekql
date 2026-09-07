@@ -179,8 +179,7 @@ def ensure_having_targets(
     already in scope).
     """
 
-    operand = predicate.__predicate_operand__()
-    if operand is not None:
+    for operand in predicate.__predicate_grouping_operands__():
         ensure_having_selectable(operand, state, scope)
     for child in predicate.__predicate_children__():
         ensure_having_targets(_require_predicate_node(child), state, scope)

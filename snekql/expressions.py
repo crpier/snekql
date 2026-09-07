@@ -200,6 +200,16 @@ class Predicate[OwnerT](ABC):
 class _PredicateNode[OwnerT](Predicate[OwnerT], ABC):
     """Private base proving a predicate came from a supported factory."""
 
+    def __predicate_grouping_operands__(self) -> tuple[object, ...]:
+        """Direct HAVING operands, excluding columns inside nested SELECTs.
+
+        WHERE keeps its separate traversal because right-hand columns can
+        correlate to an outer query whose scope is only known at compilation.
+        """
+
+        operand = self.__predicate_operand__()
+        return () if operand is None else (operand,)
+
 
 def _require_predicate_node[OwnerT](
     predicate: Predicate[OwnerT],
@@ -359,6 +369,13 @@ class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
 
     def __predicate_operand__(self) -> object | None:
         return self.operand
+
+    def __predicate_grouping_operands__(self) -> tuple[object, ...]:
+        """Check both columns without treating a nested SELECT as an outer key."""
+
+        if isinstance(self.other, _Scalar):
+            return (self.operand,)
+        return (self.operand, self.other)
 
     def __compile_predicate_sql__(
         self,

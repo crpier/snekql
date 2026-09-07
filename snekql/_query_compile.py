@@ -18,6 +18,7 @@ from snekql._query_scope import (
     ScopeResolver,
     ensure_assignment_targets_model,
     ensure_grouping_covers_projection,
+    ensure_having_targets,
     ensure_ordering_targets_models,
 )
 from snekql._query_state import (
@@ -607,6 +608,8 @@ def _compile_select_state(
             _compile_group_by_sql(state, dialect, qualified=scope.qualified)
         )
     if state.having:
+        for predicate in state.having:
+            ensure_having_targets(predicate, state, scope)
         having_sql, having_params = _compile_predicates_sql(
             state.having,
             dialect,
