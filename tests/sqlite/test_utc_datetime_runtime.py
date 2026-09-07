@@ -72,3 +72,19 @@ async def utc_datetime_text_queries_compare_by_instant() -> None:
     assert_eq(equal_ids, [1, 2, 3])
     assert_eq(ordered_ids, [1, 2, 3, 4])
     assert_eq(range_ids, [4])
+
+
+@test(mark="medium")
+async def utc_datetime_preserves_three_digit_years() -> None:
+    """Early years need four-digit ISO text to survive storage and decoding."""
+    happened_at = datetime(900, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)
+    async with await initialized_database(
+        database=":memory:", models=[TimedEvent]
+    ) as database:
+        async with database.transaction() as tx:
+            await tx.execute(insert(TimedEvent(id=1, happened_at=happened_at)))
+
+        async with database.transaction() as tx:
+            stored_instant = await tx.fetch_one(select(TimedEvent.happened_at).all())
+
+    assert_eq(stored_instant, happened_at)

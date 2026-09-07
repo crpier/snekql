@@ -44,3 +44,19 @@ async def canonical_decimal_text_queries_compare_by_value_equality() -> None:
         await database.close()
 
     assert_eq(equal_ids, [1])
+
+
+@test(mark="medium")
+async def canonical_decimal_preserves_large_coefficients() -> None:
+    """Persisting an exact decimal must not round to the decimal context precision."""
+    amount = Decimal("12345678901234567890.1234567890123456789")
+    async with await initialized_database(
+        database=":memory:", models=[Price]
+    ) as database:
+        async with database.transaction() as tx:
+            await tx.execute(insert(Price(id=1, amount=amount)))
+
+        async with database.transaction() as tx:
+            stored_amount = await tx.fetch_one(select(Price.amount).all())
+
+    assert_eq(stored_amount, amount)

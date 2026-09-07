@@ -24,6 +24,7 @@ from typing import (
     get_origin,
     overload,
 )
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -165,18 +166,17 @@ def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None
 def _normalize_canonical_decimal(value: Decimal) -> Decimal:
     """Canonicalize decimals to minimal finite plain values.
 
-    `Decimal.normalize()` may produce exponent notation for whole powers of ten;
-    re-quantizing those values preserves the number while keeping plain text
-    serialization stable. Zero is special-cased so `-0` becomes `0`.
+    Decimal arithmetic uses the caller's precision and rounding context. Plain
+    formatting and string construction preserve every digit without arithmetic.
+    Zero is special-cased so `-0` becomes `0`.
     """
 
     if not value:
         return Decimal(0)
-    normalized = value.normalize()
-    exponent = normalized.as_tuple().exponent
-    if isinstance(exponent, int) and exponent > 0:
-        return normalized.quantize(Decimal(1))
-    return normalized
+    plain = format(value, "f")
+    if "." in plain:
+        plain = plain.rstrip("0").rstrip(".")
+    return Decimal(plain)
 
 
 def _serialize_canonical_decimal(value: Decimal) -> str:
@@ -1086,7 +1086,17 @@ def _strip_json_marker(annotation: object) -> object:
     """
 
     if _carries_json_marker(annotation):
-        return cast("Any", annotation).__origin__
+        # Json selects the wire codec, but neighboring metadata still defines
+        # payload validation and serialization. Keep that metadata in order.
+        logical = cast("Any", annotation).__origin__
+        metadata = tuple(
+            item
+            for item in cast("Any", annotation).__metadata__
+            if item is not _PydanticJson and not isinstance(item, _JSON_MARKER_TYPE)
+        )
+        if metadata:
+            return Annotated[(logical, *metadata)]
+        return logical
     return annotation
 
 
@@ -1571,13 +1581,19 @@ class Attr[
             raise ModelValidationError(msg)
         if decimal_value == 0:
             return decimal_value
-        normalized = decimal_value.copy_abs().normalize()
-        exponent = normalized.as_tuple().exponent
+        _, digits, exponent = decimal_value.as_tuple()
         if not isinstance(exponent, int):
             msg = f"{self._require_name()!r} non-finite decimal values cannot be stored"
             raise ModelValidationError(msg)
-        integer_digits = max(normalized.adjusted() + 1, 0)
-        fractional_digits = max(-exponent, 0)
+        integer_digits = max(len(digits) + exponent, 0)
+        # Trailing coefficient zeros do not require fractional storage. Inspect
+        # the tuple rather than rounding away low-order digits with normalize().
+        trailing_zeros = 0
+        for digit in reversed(digits):
+            if digit != 0:
+                break
+            trailing_zeros += 1
+        fractional_digits = max(-exponent - trailing_zeros, 0)
         if integer_digits > precision - scale or fractional_digits > scale:
             msg = (
                 f"{self._require_name()!r} decimal value does not fit "
@@ -1597,6 +1613,10 @@ class Attr[
         adapter = self._logical_adapter()
         if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
+            # Pydantic leaves UUID objects intact in python mode. Drivers need
+            # the binary representation promised by a UUID/Blob pairing.
+            if isinstance(encoded, UUID):
+                encoded = encoded.bytes
             if (
                 codec.max_blob_bytes is not None
                 and isinstance(encoded, bytes | bytearray)

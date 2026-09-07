@@ -520,3 +520,18 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
     assert_eq(event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
     assert_eq(event.message, "created")
     assert_eq(event.payload, {"count": 2, "ok": True})
+
+
+@test(mark="fast")
+def decimal_scale_check_preserves_low_order_digits() -> None:
+    """Digits beyond context precision still count toward the storage scale."""
+
+    class Price[S = Pending](mariadb.Model[S, "Price[Fetched]"]):
+        """A fixed-point amount that cannot store extra fractional digits."""
+
+        amount: Price.Col[Decimal] = mariadb.Decimal(5, 2)
+
+    with assert_raises(ModelValidationError):
+        Price.amount.encode(
+            Decimal("1.00000000000000000000000000001"), backend="mariadb"
+        )

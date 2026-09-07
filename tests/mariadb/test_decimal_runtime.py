@@ -70,3 +70,31 @@ async def mariadb_decimal_sum_returns_decimal_value() -> None:
         await database.close()
 
     assert_eq(total, Decimal("3.75"))
+
+
+@test(mark="slow")
+async def mariadb_decimal_preserves_full_declared_precision() -> None:
+    """A 65-digit amount must not be rejected by a 28-digit arithmetic context."""
+    server = await load_fixture(provide_mariadb_server())
+
+    class PrecisePrice[S = Pending](mariadb.Model[S, "PrecisePrice[Fetched]"]):
+        """An amount using the largest supported fixed-point precision."""
+
+        __tablename__ = "full_precision_price"
+
+        amount: PrecisePrice.Col[Decimal] = mariadb.Decimal(65, 30)
+        id: PrecisePrice.Col[int] = mariadb.Integer(primary_key=True)
+
+    amount = Decimal(
+        "99999999999999999999999999999999999.123456789012345678901234567891"
+    )
+    async with await initialized_database(
+        server.config(), models=[PrecisePrice]
+    ) as database:
+        async with database.transaction() as tx:
+            await tx.execute(insert(PrecisePrice(amount=amount, id=1)))
+
+        async with database.transaction() as tx:
+            stored_amount = await tx.fetch_one(select(PrecisePrice.amount).all())
+
+    assert_eq(stored_amount, amount)
