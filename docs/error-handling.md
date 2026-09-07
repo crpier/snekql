@@ -240,6 +240,20 @@ only its exception type, not its potentially value-bearing message. SQL stays
 visible because Query Compilation binds values—including MariaDB JSON paths—
 rather than interpolating them.
 
+## JSON annotation enforcement
+
+`pydantic.Json[T]` selects the JSON wire codec. Other `Annotated` metadata,
+including constraints, validators and serializers, still applies to `T` in its
+original order. This holds for SQLite text and MariaDB JSON/text storage.
+
+Versions affected by metadata stripping, including 0.7.0, could accept values
+that violated these rules or ignore a custom serializer. Corrected validation
+can reject existing invalid rows during normal reads. Audit and repair those
+rows explicitly; the fix does not rewrite stored data. Restoring a serializer
+can also change future wire output, so check that old rows remain readable and
+plan any required data migration. `validate=False` remains an explicit read-side
+escape hatch for controlled inspection, not a substitute for repairing data.
+
 ## Agent guidance
 
 When adding intentional failures inside snekql:

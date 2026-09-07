@@ -1078,16 +1078,23 @@ def _carries_json_marker(annotation: object) -> bool:
 
 
 def _strip_json_marker(annotation: object) -> object:
-    """Drop the ``pydantic.Json`` marker, exposing the inner payload type.
+    """Remove only the JSON wire marker, preserving logical metadata in order.
 
-    The marker only selects the JSON wire codec; validation and serialization run
-    against the inner ``T`` (a ``dict``, a pydantic model, ...) through the same
-    adapter the MariaDB native ``Json`` column already uses.
+    Constraints, validators and serializers still belong to the payload type.
+    Nested payload annotations are not field-level wire markers and stay intact.
     """
 
-    if _carries_json_marker(annotation):
-        return cast("Any", annotation).__origin__
-    return annotation
+    if not _carries_json_marker(annotation):
+        return annotation
+    payload, *metadata = get_args(annotation)
+    retained = tuple(
+        item
+        for item in metadata
+        if item is not _PydanticJson and not isinstance(item, _JSON_MARKER_TYPE)
+    )
+    if retained:
+        return Annotated[(payload, *retained)]
+    return payload
 
 
 def _unwrap_annotated(annotation: object) -> object:
