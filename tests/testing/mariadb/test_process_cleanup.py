@@ -98,7 +98,11 @@ class _CancellationGate:
         blocked = (
             (self.phase == "installer" and args[0] == "mariadb-install-db")
             or (self.phase == "readiness" and args[-1] == "SELECT 1")
-            or (self.phase == "bootstrap" and "ALTER USER" in args[-1])
+            or (
+                self.phase == "bootstrap"
+                and args[0] == "mariadb"
+                and kwargs.get("stdin") == asyncio.subprocess.PIPE
+            )
             or (self.phase == "reset" and "snekql_views_to_drop" in args[-1])
             or (self.phase == "sql" and args[-1] == "SELECT SLEEP(60)")
         )

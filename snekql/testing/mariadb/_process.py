@@ -83,6 +83,7 @@ async def _finish_cleanup(
 async def owned_process(
     *arguments: str,
     capture: bool = False,
+    pipe_stdin: bool = False,
     env: Mapping[str, str] | None = None,
 ) -> AsyncGenerator[asyncio.subprocess.Process]:
     """Keep ownership even if cancellation interrupts process creation's await."""
@@ -91,6 +92,7 @@ async def owned_process(
         asyncio.create_subprocess_exec(
             *arguments,
             env=dict(env) if env is not None else None,
+            stdin=asyncio.subprocess.PIPE if pipe_stdin else None,
             stdout=asyncio.subprocess.PIPE if capture else asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE if capture else asyncio.subprocess.DEVNULL,
             start_new_session=os.name == "posix",

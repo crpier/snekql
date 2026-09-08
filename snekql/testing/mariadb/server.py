@@ -434,8 +434,8 @@ async def _start_process(
         try:
             process = await lifetime.enter_async_context(owned_process(*arguments))
         except OSError as error:
-            msg = f"failed to start mariadbd: {error}"
-            raise TemporaryMariaDBServerError(msg) from error
+            msg = f"failed to start mariadbd {str(options.mariadbd)!r} (errno {error.errno})"
+            raise TemporaryMariaDBServerError(msg) from None
         yield process
 
 
@@ -453,13 +453,18 @@ async def _wait_until_ready(  # noqa: PLR0913
     user: str,
     auth: MariaDBAuth,
     error_log_path: Path,
+    sensitive: bool = False,
 ) -> None:
     """Poll the MariaDB CLI until the server accepts local connections."""
 
     deadline = anyio.current_time() + startup_timeout
     while anyio.current_time() < deadline:
         if process.returncode is not None:
-            error_log = await _read_error_log(error_log_path)
+            error_log = (
+                "diagnostics suppressed for password-auth startup"
+                if sensitive
+                else await _read_error_log(error_log_path)
+            )
             msg = f"mariadbd exited before becoming ready\n{error_log}"
             raise TemporaryMariaDBServerError(msg)
         result = await _run_client_sql(
@@ -477,7 +482,11 @@ async def _wait_until_ready(  # noqa: PLR0913
         if result.returncode == 0:
             return
         await anyio.sleep(0.25)
-    error_log = await _read_error_log(error_log_path)
+    error_log = (
+        "diagnostics suppressed for password-auth startup"
+        if sensitive
+        else await _read_error_log(error_log_path)
+    )
     msg = f"mariadbd did not become ready\n{error_log}"
     raise TemporaryMariaDBServerError(msg)
 
@@ -494,21 +503,37 @@ async def _read_error_log(error_log_path: Path) -> str:
 async def _run_command(
     *arguments: str,
     env: Mapping[str, str] | None = None,
+    stdin_data: bytes | None = None,
 ) -> MariaDBCommandResult:
-    """Run one subprocess command and capture decoded output."""
+    """Run a command with owned pipes, never rendering SQL in exec diagnostics."""
 
     try:
-        async with owned_process(*arguments, env=env, capture=True) as process:
-            stdout, stderr = await process.communicate()
+        async with owned_process(
+            *arguments, env=env, capture=True, pipe_stdin=stdin_data is not None
+        ) as process:
+            stdout, stderr = await process.communicate(stdin_data)
             return MariaDBCommandResult(
                 returncode=process.returncode if process.returncode is not None else -1,
                 stderr=stderr.decode(),
                 stdout=stdout.decode(),
             )
     except OSError as error:
-        command = " ".join(arguments)
-        msg = f"failed to run command: {command}: {error}"
-        raise TemporaryMariaDBServerError(msg) from error
+        msg = f"failed to run MariaDB command {arguments[0]!r} (errno {error.errno})"
+        # OS/driver exception messages can echo arguments. Do not chain them.
+        raise TemporaryMariaDBServerError(msg) from None
+    except asyncio.CancelledError as error:
+        if stdin_data is not None:
+            if getattr(error, "__notes__", None):
+                error.__notes__ = [
+                    "sensitive client cleanup failed; diagnostics suppressed"
+                ]
+            raise error from None
+        raise
+    except Exception:
+        if stdin_data is None:
+            raise
+        msg = "password-bootstrap client operation failed; diagnostics suppressed"
+        raise TemporaryMariaDBServerError(msg) from None
 
 
 async def _run_client_sql(  # noqa: PLR0913
@@ -523,6 +548,7 @@ async def _run_client_sql(  # noqa: PLR0913
     sql: str,
     transport: MariaDBTransport,
     user: str,
+    sensitive: bool = False,
 ) -> MariaDBCommandResult:
     """Execute SQL through the configured MariaDB CLI transport."""
 
@@ -537,6 +563,10 @@ async def _run_client_sql(  # noqa: PLR0913
         transport=transport,
         user=user,
     )
+    if sensitive:
+        return await _run_command(
+            *command.arguments(), stdin_data=sql.encode(), env=command.environment()
+        )
     return await _run_command(
         *command.arguments(),
         "-e",
@@ -584,6 +614,7 @@ async def _bootstrap_password_auth(plan: _StartupPlan) -> None:
     ) as process:
         await _wait_until_ready(
             auth="insecure",
+            sensitive=True,
             client=plan.options.client,
             database=None,
             error_log_path=plan.paths.error_log_path,
@@ -610,11 +641,12 @@ async def _bootstrap_password_auth(plan: _StartupPlan) -> None:
             port=None,
             socket_path=plan.paths.internal_socket_path,
             sql=bootstrap_sql,
+            sensitive=True,
             transport="unix_socket",
             user="root",
         )
         if result.returncode != 0:
-            msg = f"failed to bootstrap MariaDB password auth\n{result.stderr}"
+            msg = f"failed to bootstrap MariaDB password auth (exit {result.returncode}); diagnostics suppressed"
             raise TemporaryMariaDBServerError(msg)
 
 
@@ -631,6 +663,7 @@ async def _start_ready_server(plan: _StartupPlan) -> AsyncGenerator[None]:
     ) as process:
         await _wait_until_ready(
             auth=plan.options.auth,
+            sensitive=plan.options.auth == "password",
             client=plan.options.client,
             database=None,
             error_log_path=plan.paths.error_log_path,
