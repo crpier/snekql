@@ -39,7 +39,10 @@ def _encode_sum_value(
     column: Attr[Any, Any, Any, Any, Any],
     value: object,
 ) -> object:
-    """Native Decimal SUM bounds have no input-column precision/scale ceiling."""
+    """Exact SUM bounds retain serialization without the input column's ceiling."""
+
+    if column.storage_type_name == "Integer":
+        return column.encode(value, backend="mariadb", integer_sum=True)
 
     if column.storage_type_name != "Decimal" or value is None:
         return _encode_column_value(column, value)
