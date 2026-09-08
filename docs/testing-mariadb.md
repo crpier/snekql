@@ -164,3 +164,8 @@ To use `server.config()` with `Database.initialize`, install the existing MariaD
 ```sh
 uv add 'snekql[aiomysql]'
 ```
+
+Password bootstrap sets `NO_BACKSLASH_ESCAPES` only in its private client
+session before parsing quote-doubled password literals. Supplied backslashes
+and quotes therefore survive either server SQL mode. The final server and
+application sessions keep the caller's configured SQL mode.
