@@ -1415,18 +1415,26 @@ class Attr[
                 msg,
             ) from error
 
-    def encode(self, value: object, *, backend: StorageBackend) -> object:
+    def encode(
+        self, value: object, *, backend: StorageBackend, integer_sum: bool = False
+    ) -> object:
         """Encode a logical Python value through this column's backend codec.
 
         Encoding performs only Layer 1 wire conversion (including the UTC and
         millisecond canonicalization for timestamps); logical type validation
         happens when the Pending Model is constructed, not here.
+        `integer_sum` widens only MariaDB Integer aggregate bounds; serialization
+        remains unchanged and SQLite keeps its signed-64-bit parameter limit.
         """
 
         try:
             if value is PENDING_GENERATION:
                 return PENDING_GENERATION
-            return self._encode_value(value, codec=_BACKEND_CODECS[backend])
+            return self._encode_value(
+                value,
+                codec=_BACKEND_CODECS[backend],
+                integer_sum=integer_sum and backend == "mariadb",
+            )
         except SnekqlError:
             raise
         except Exception as error:
@@ -1604,7 +1612,9 @@ class Attr[
         msg = f"{self._require_name()!r} database value must be 0 or 1"
         raise ModelValidationError(msg)
 
-    def _encode_value(self, value: object, *, codec: _BackendCodec) -> object:
+    def _encode_value(
+        self, value: object, *, codec: _BackendCodec, integer_sum: bool = False
+    ) -> object:
         """Wire-encode a logical value (Layer 1) for a backend.
 
         Json and Boolean encoding are backend-independent; only the ``DateTime``
@@ -1639,7 +1649,7 @@ class Attr[
                 + f"{timestamp.microsecond // 1000:03d}"
                 + codec.datetime_encode_suffix
             )
-        return self._encode_primitive(value, codec=codec)
+        return self._encode_primitive(value, codec=codec, integer_sum=integer_sum)
 
     def _encode_decimal(self, value: object) -> Decimal:
         """Reject DECIMAL values that cannot be stored without numeric change."""
@@ -1676,7 +1686,9 @@ class Attr[
             raise ModelValidationError(msg)
         return decimal_value
 
-    def _encode_primitive(self, value: object, *, codec: _BackendCodec) -> object:
+    def _encode_primitive(
+        self, value: object, *, codec: _BackendCodec, integer_sum: bool = False
+    ) -> object:
         """Wire-encode a primitive-storage value through pydantic serialization.
 
         ``mode="json"`` turns datetimes/UUIDs into bare strings and passes
@@ -1724,6 +1736,7 @@ class Attr[
         if (
             self.storage_type_name == "Integer"
             and type(encoded) is int
+            and not integer_sum
             and not (_INT64_MIN <= encoded <= _INT64_MAX)
         ):
             msg = f"{self._require_name()!r} integer value exceeds the 64-bit range"
