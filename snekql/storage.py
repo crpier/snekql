@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from json import JSONDecodeError, dumps, loads
 from math import isfinite
-from types import EllipsisType
+from types import EllipsisType, UnionType
 from typing import (
     Annotated,
     Any,
@@ -1057,44 +1057,44 @@ def _extract_logical_type(annotation: object, name: str) -> object:
     raise ModelDeclarationError(msg)
 
 
-def _carries_json_marker(annotation: object) -> bool:
-    """Whether a logical annotation is a ``pydantic.Json[T]`` payload.
+def _json_payload_annotation(annotation: object) -> tuple[bool, object]:
+    """Resolve a field-level JSON marker through Annotated and optional wrappers.
 
-    ``pydantic.Json[T]`` desugars to ``Annotated[T, pydantic.Json]``; the marker
-    is the ``Json`` class sitting in the annotation metadata. Detecting it is how
-    a plain ``Text()`` column opts into JSON serialization without a dedicated
-    ``Json`` constructor (SQLite has no native JSON storage class).
+    A marker owns its entire payload: nested containers and nested Json payloads
+    are not rewritten. Metadata other than the wire marker keeps its order.
+    Mixed marked/unmarked union alternatives cannot choose one field wire codec.
     """
 
-    metadata = getattr(annotation, "__metadata__", None)
-    if not metadata:
-        return False
-    # ``pydantic.Json[T]`` puts a ``Json()`` instance in the metadata; a bare
-    # ``Json`` annotation would put the class itself.
-    return any(
-        item is _PydanticJson or isinstance(item, _JSON_MARKER_TYPE)
-        for item in metadata
-    )
+    if get_origin(annotation) is Annotated:
+        payload, *metadata = get_args(annotation)
+        retained = tuple(
+            item
+            for item in metadata
+            if item is not _PydanticJson and not isinstance(item, _JSON_MARKER_TYPE)
+        )
+        if len(retained) != len(metadata):
+            return True, Annotated[(payload, *retained)] if retained else payload
+        marked, normalized = _json_payload_annotation(payload)
+        if marked:
+            return True, Annotated[(normalized, *metadata)]
+        return False, annotation
+    if get_origin(annotation) is UnionType:
+        alternatives = get_args(annotation)
+        resolved = tuple(_json_payload_annotation(item) for item in alternatives)
+        if any(marked for marked, _ in resolved):
+            non_null = [item for item in alternatives if item is not type(None)]
+            if len(non_null) != 1:
+                msg = "a field-level Json union may only add None; wrap the entire union in Json[...]"
+                raise ModelDeclarationError(msg)
+            payload = next(payload for marked, payload in resolved if marked)
+            return True, cast("Any", payload) | None
+    return False, annotation
 
 
 def _strip_json_marker(annotation: object) -> object:
-    """Remove only the JSON wire marker, preserving logical metadata in order.
+    """Expose the logical payload without changing unrelated annotation metadata."""
 
-    Constraints, validators and serializers still belong to the payload type.
-    Nested payload annotations are not field-level wire markers and stay intact.
-    """
-
-    if not _carries_json_marker(annotation):
-        return annotation
-    payload, *metadata = get_args(annotation)
-    retained = tuple(
-        item
-        for item in metadata
-        if item is not _PydanticJson and not isinstance(item, _JSON_MARKER_TYPE)
-    )
-    if retained:
-        return Annotated[(payload, *retained)]
-    return payload
+    return _json_payload_annotation(annotation)[1]
 
 
 def _unwrap_annotated(annotation: object) -> object:
@@ -1441,7 +1441,7 @@ class Attr[
             logical = _extract_logical_type(annotation, self._require_name())
         except ModelDeclarationError:
             logical = None
-        result = _carries_json_marker(logical)
+        result, _ = _json_payload_annotation(logical)
         self._is_json_cache = result
         return result
 
