@@ -24,6 +24,7 @@ from typing import (
     get_origin,
     overload,
 )
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -163,20 +164,19 @@ def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None
 
 
 def _normalize_canonical_decimal(value: Decimal) -> Decimal:
-    """Canonicalize decimals to minimal finite plain values.
+    """Canonicalize without arithmetic that can round under the decimal context.
 
-    `Decimal.normalize()` may produce exponent notation for whole powers of ten;
-    re-quantizing those values preserves the number while keeping plain text
-    serialization stable. Zero is special-cased so `-0` becomes `0`.
+    Plain formatting and string construction are exact regardless of precision,
+    exponent limits or rounding traps. Remove only fractional trailing zeros;
+    zero is special-cased so negative zero has the same wire form as zero.
     """
 
-    if not value:
+    if value.is_zero():
         return Decimal(0)
-    normalized = value.normalize()
-    exponent = normalized.as_tuple().exponent
-    if isinstance(exponent, int) and exponent > 0:
-        return normalized.quantize(Decimal(1))
-    return normalized
+    plain = format(value, "f")
+    if "." in plain:
+        plain = plain.rstrip("0").rstrip(".")
+    return Decimal(plain)
 
 
 def _serialize_canonical_decimal(value: Decimal) -> str:
@@ -1578,12 +1578,18 @@ class Attr[
             raise ModelValidationError(msg)
         if decimal_value == 0:
             return decimal_value
-        normalized = decimal_value.copy_abs().normalize()
-        exponent = normalized.as_tuple().exponent
+        decimal_tuple = decimal_value.as_tuple()
+        exponent = decimal_tuple.exponent
         if not isinstance(exponent, int):
             msg = f"{self._require_name()!r} non-finite decimal values cannot be stored"
             raise ModelValidationError(msg)
-        integer_digits = max(normalized.adjusted() + 1, 0)
+        integer_digits = max(decimal_value.adjusted() + 1, 0)
+        # Trailing coefficient zeros do not require fractional storage. Count
+        # them without normalize(), which can discard nonzero digits by rounding.
+        significant_digits = len(decimal_tuple.digits)
+        while decimal_tuple.digits[significant_digits - 1] == 0:
+            significant_digits -= 1
+            exponent += 1
         fractional_digits = max(-exponent, 0)
         if integer_digits > precision - scale or fractional_digits > scale:
             msg = (
@@ -1604,6 +1610,8 @@ class Attr[
         adapter = self._logical_adapter()
         if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
+            if isinstance(encoded, UUID):
+                encoded = encoded.bytes
             if (
                 codec.max_blob_bytes is not None
                 and isinstance(encoded, bytes | bytearray)

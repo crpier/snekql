@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Decimal, Inexact, Rounded, localcontext
 
 from snektest import assert_eq, load_fixture, test
 
@@ -70,3 +70,31 @@ async def mariadb_decimal_sum_returns_decimal_value() -> None:
         await database.close()
 
     assert_eq(total, Decimal("3.75"))
+
+
+@test(mark="slow")
+async def mariadb_decimal_round_trip_preserves_maximum_precision() -> None:
+    """Native DECIMAL(65,30) values do not depend on the application's decimal context."""
+
+    server = await load_fixture(provide_mariadb_server())
+
+    class PrecisePrice[S = Pending](mariadb.Model[S, "PrecisePrice[Fetched]"]):
+        """A native decimal at the backend's maximum declared precision."""
+
+        amount: PrecisePrice.Col[Decimal] = mariadb.Decimal(65, 30)
+
+    async with await initialized_database(
+        server.config(), models=[PrecisePrice]
+    ) as database:
+        exact = Decimal(
+            "12345678901234567890123456789012345.123456789012345678901234567890"
+        )
+        with localcontext(prec=6, Emax=9, Emin=-9) as context:
+            context.traps[Inexact] = True
+            context.traps[Rounded] = True
+            async with database.transaction() as transaction:
+                await transaction.execute(insert(PrecisePrice(amount=exact)))
+            async with database.transaction() as transaction:
+                stored = await transaction.fetch_one(select(PrecisePrice.amount).all())
+
+    assert_eq(stored, exact)

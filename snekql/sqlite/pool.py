@@ -18,6 +18,7 @@ from snekql.errors import (
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
     DatabaseRuntimeError,
+    PoolTimeoutError,
 )
 from snekql.sqlite.settings import apply_sqlite_connection_settings
 from snekql.validation import NonNegativeFloat, PositiveInt
@@ -110,6 +111,7 @@ class SQLiteConnectionPool:
         self.idle_connections: list[Connection] = [initial_connection]
         self.pool_size: PositiveInt = pool_size
         self.discard_tasks: set[asyncio.Task[None]] = set()
+        self._close_task: asyncio.Task[None] | None = None
         self.gate: FairAdmissionGate = FairAdmissionGate(
             capacity=pool_size,
             check_accepting_work=self.check_accepting_work,
@@ -136,27 +138,58 @@ class SQLiteConnectionPool:
         )
         deadline = anyio.current_time() + acquisition_timeout
         await self.gate.admit(deadline, acquisition_timeout)
+        opening: asyncio.Task[Connection] | None = None
         try:
             async with self.gate.condition:
                 if self.idle_connections:
                     connection = self.idle_connections.pop()
                     logger.debug("sqlite connection acquired from idle pool")
                     return connection
-            opened_connection = await open_sqlite_connection(self.database_path)
-            async with self.gate.condition:
-                if not self.closed and not self.closing:
-                    logger.debug(
-                        "sqlite connection acquired from newly opened connection"
-                    )
-                    return opened_connection
-            # Shutdown began while we were opening: discard the fresh
-            # connection and reject the acquisition.
-            await close_sqlite_connection(opened_connection)
+            opening = asyncio.create_task(open_sqlite_connection(self.database_path))
+            with anyio.fail_after(deadline - anyio.current_time()):
+                opened_connection = await asyncio.shield(opening)
+                async with self.gate.condition:
+                    if not self.closed and not self.closing:
+                        logger.debug(
+                            "sqlite connection acquired from newly opened connection"
+                        )
+                        return opened_connection
             self.check_accepting_work()
             self._reject_closed_during_open()
-        except BaseException:
-            await self.gate.release()
+        except BaseException as error:
+            if opening is None:
+                await self.gate.release()
+            else:
+                # Opening/cleanup may be waiting on SQLite's worker thread.
+                # Detach from the caller's deadline, but retain capacity until
+                # the opening task and any resulting connection are closed.
+                opening.cancel()
+                task = asyncio.create_task(self._close_opening(opening))
+                self.discard_tasks.add(task)
+                task.add_done_callback(self._discard_finished)
+            if isinstance(error, TimeoutError):
+                logger.warning("sqlite connection acquisition timed out")
+                msg = "timed out acquiring database connection"
+                raise PoolTimeoutError(msg) from error
             raise
+
+    async def _close_opening(self, opening: asyncio.Task[Connection]) -> None:
+        """Reap failed opening or close a completed connection before freeing its slot."""
+
+        try:
+            try:
+                connection = await opening
+            except asyncio.CancelledError:
+                return
+            except Exception:
+                # The opener already cleans partial state before raising.
+                # This is an opening failure, not a failure of the detached
+                # connection-close operation.
+                logger.debug("sqlite discarded opening failed", exc_info=True)
+                return
+            await close_sqlite_connection(connection)
+        finally:
+            await self.gate.release()
 
     @staticmethod
     def _reject_closed_during_open() -> NoReturn:
@@ -211,6 +244,33 @@ class SQLiteConnectionPool:
             logger.exception("sqlite discarded connection close failed")
 
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
+        """Join one owned shutdown operation without propagating caller cancellation.
+
+        AnyIO shielding alone does not stop native Task.cancel(). Keeping the
+        operation in a separate task preserves ownership of detached idle
+        connections and lets later callers await the same shutdown.
+        """
+
+        if self._close_task is None or self._close_task.done():
+            if self.closed:
+                logger.debug("sqlite database close skipped: already closed")
+                return
+            self._close_task = asyncio.create_task(self._close(close_timeout))
+            self._close_task.add_done_callback(self._close_finished)
+        await asyncio.shield(self._close_task)
+
+    @staticmethod
+    def _close_finished(task: asyncio.Task[None]) -> None:
+        """Observe failures even when all close callers have been cancelled."""
+
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            logger.exception("sqlite close operation failed")
+
+    async def _close(self, close_timeout: NonNegativeFloat) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 
         logger.debug("sqlite database close started")

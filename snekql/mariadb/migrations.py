@@ -212,12 +212,16 @@ def _executable_comment_tokens(
 
 
 def _read_quoted(sql: str, index: int, quote: str) -> tuple[str, int]:
-    """Read one MariaDB quoted value, resolving doubled and escaped characters."""
+    """Read quoted text, treating backslashes literally inside backtick identifiers.
+
+    String literals support backslash escapes; identifiers escape a backtick
+    only by doubling it. Confusing these rules can hide transaction control.
+    """
 
     value: list[str] = []
     index += 1
     while index < len(sql):
-        if sql[index] == "\\" and index + 1 < len(sql):
+        if quote != "`" and sql[index] == "\\" and index + 1 < len(sql):
             value.append(sql[index + 1])
             index += 2
             continue
@@ -337,8 +341,14 @@ async def _close_cursor(cursor: object) -> None:
 async def _execute(
     connection: object,
     sql: str,
-    params: tuple[object, ...] = (),
+    params: tuple[object, ...] | None = None,
 ) -> None:
+    """Execute raw SQL unless internal statements explicitly supply bound values.
+
+    aiomysql interpolates percent signs even with an empty argument tuple.
+    None preserves a hand-authored migration body exactly as declared.
+    """
+
     cursor = await cast("Any", connection).cursor()
     try:
         _ = await cursor.execute(sql, params)

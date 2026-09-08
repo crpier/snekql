@@ -18,6 +18,7 @@ from snekql._query_scope import (
     ScopeResolver,
     ensure_assignment_targets_model,
     ensure_grouping_covers_projection,
+    ensure_having_targets,
     ensure_ordering_targets_models,
 )
 from snekql._query_state import (
@@ -158,10 +159,11 @@ def _predicate_value_encoder(
     """Build the value encoder for a predicate operand.
 
     A column encodes comparison values through its own logical codec. An
-    aggregate's comparison value follows its result type: ``COUNT``/``AVG``
-    compare against a plain ``int``/``float`` and pass through unencoded, while
-    ``SUM``/``MIN``/``MAX`` share the wrapped column's type and reuse its encoder
-    (so e.g. a ``datetime`` ``MIN`` bound is serialized correctly).
+    aggregate's comparison value follows its result type: `COUNT`/`AVG`
+    compare against a plain `int`/`float` and pass through unencoded, while
+    `MIN`/`MAX` reuse the wrapped column's encoder (so a `datetime` `MIN`
+    bound is serialized correctly). `SUM` uses the dialect's result-domain
+    encoder because native numeric totals can outgrow their input storage.
     """
 
     if isinstance(selectable, _Scalar):
@@ -176,6 +178,8 @@ def _predicate_value_encoder(
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
         wrapped = require_field(selectable.column)
+        if selectable.func == "SUM":
+            return lambda value: dialect.encode_sum_value(wrapped, value)
         return lambda value: dialect.encode_column_value(wrapped, value)
     column = selectable
     return lambda value: dialect.encode_column_value(column, value)
@@ -607,6 +611,8 @@ def _compile_select_state(
             _compile_group_by_sql(state, dialect, qualified=scope.qualified)
         )
     if state.having:
+        for predicate in state.having:
+            ensure_having_targets(predicate, state, scope)
         having_sql, having_params = _compile_predicates_sql(
             state.having,
             dialect,
@@ -630,6 +636,8 @@ def _compile_limit_offset_sql(
     state: SelectState,
     dialect: QueryDialect,
 ) -> tuple[list[str], tuple[object, ...]]:
+    """Bind explicit bounds and use dialect syntax when offset has no limit."""
+
     parts: list[str] = []
     params: tuple[object, ...] = ()
     if state.limit_value is not None:
@@ -637,7 +645,7 @@ def _compile_limit_offset_sql(
         params = (*params, state.limit_value)
     if state.offset_value is not None:
         if state.limit_value is None:
-            parts.append("LIMIT -1")
+            parts.append(dialect.offset_only_limit_sql)
         parts.append(f"OFFSET {dialect.placeholder}")
         params = (*params, state.offset_value)
     return parts, params

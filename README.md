@@ -213,7 +213,9 @@ JSON uses Pydantic's marker, not a snekql type: annotate
 MariaDB additionally exposes its native types as column types — `mariadb.Json`,
 `mariadb.Boolean`, `mariadb.DateTime`, `mariadb.Uuid` (native `UUID`), and
 `mariadb.Decimal(precision, scale)` (native `DECIMAL(p,s)`). To store a UUID as
-raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
+raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`. Existing text-encoded
+MariaDB UUID Blob rows need an explicit [data migration](docs/binary-uuid-migration.md)
+before binary UUID predicates can match them.
 
 There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.
@@ -260,9 +262,11 @@ Decimal storage has the same two-coordinate rule:
 - On SQLite, store integer minor units (`Col[int] = Integer()`, e.g. cents) when
   the database must order, range-filter, or aggregate decimal quantities.
 - On MariaDB, use `Col[decimal.Decimal] = mariadb.Decimal(precision, scale)` for
-  native numeric equality, ordering, range predicates, and aggregation. Values
-  that would overflow or require rounding for the declared `(precision, scale)`
-  are rejected before they reach the driver.
+  native numeric equality, ordering, range predicates, and aggregation. Stored
+  values that would overflow or require rounding for the declared
+  `(precision, scale)` are rejected before they reach the driver. Native Decimal
+  `SUM` comparison bounds accept exact finite `Decimal` values beyond the input
+  column's precision and scale; they are not rounded to that column's shape.
 
 Bare `Col[decimal.Decimal] = Text()` emits `LexicalDecimalWarning` on both
 backends because Pydantic's default decimal text can represent the same value in
@@ -619,7 +623,11 @@ Runtime methods:
 - `execute(insert(...))` returns `None`, including conflict-handled inserts
   without `.returning(...)`; `execute(update/delete)` returns the affected-row
   count. SQLite counts matched rows; MariaDB counts only rows an `UPDATE`
-  actually changed.
+  actually changed. On SQLite UPDATE/DELETE, `.returning()` returns Fetched
+  models, one explicit returning column yields scalars, and multiple columns
+  yield tuples. Each `.returning(...)` call replaces the previous projection;
+  a final `.returning()` restores whole-model results. The MariaDB adapter
+  currently rejects UPDATE/DELETE RETURNING.
 - `close()` is async and idempotent after a successful close.
 
 Backend Configs separate pool waiting (`acquire_timeout`) from driver I/O
