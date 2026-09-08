@@ -178,6 +178,19 @@ fresh `operation_timeout` budget. The timer does not include application code
 between database calls and is not one deadline for the transaction's total
 lifetime.
 
+Pool acquisition uses one deadline for queueing, lazy connection checkout/opening
+and first-use connection settings. Configuration does not get a fresh budget
+after checkout. Expiry raises `PoolTimeoutError`, not an operation timeout.
+SQLite retains its immediate idle-connection fast path, including a zero
+acquisition budget; opening a new connection requires time in the budget.
+
+When SQLite opening times out or is cancelled, cleanup runs in a tracked task so
+waiting for its worker thread cannot hold the caller past the acquisition
+deadline. That pool slot remains occupied until cleanup finishes; another
+acquisition can therefore time out rather than exceed `pool_size`. Database close
+also waits for these opening/cleanup tasks through the admission count. MariaDB
+closes an unsuccessfully configured socket before releasing its slot.
+
 `db.transaction(timeout=N)` overrides **both** budgets for that transaction:
 connection acquisition and every driver operation use `N`. This makes one call
 site sufficient for short jobs while keeping pool and operation defaults
