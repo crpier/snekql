@@ -111,6 +111,7 @@ class SQLiteConnectionPool:
         self.idle_connections: list[Connection] = [initial_connection]
         self.pool_size: PositiveInt = pool_size
         self.discard_tasks: set[asyncio.Task[None]] = set()
+        self._close_task: asyncio.Task[None] | None = None
         self.gate: FairAdmissionGate = FairAdmissionGate(
             capacity=pool_size,
             check_accepting_work=self.check_accepting_work,
@@ -243,6 +244,33 @@ class SQLiteConnectionPool:
             logger.exception("sqlite discarded connection close failed")
 
     async def close(self, close_timeout: NonNegativeFloat, /) -> None:
+        """Join one owned shutdown operation without propagating caller cancellation.
+
+        AnyIO shielding alone does not stop native Task.cancel(). Keeping the
+        operation in a separate task preserves ownership of detached idle
+        connections and lets later callers await the same shutdown.
+        """
+
+        if self._close_task is None or self._close_task.done():
+            if self.closed:
+                logger.debug("sqlite database close skipped: already closed")
+                return
+            self._close_task = asyncio.create_task(self._close(close_timeout))
+            self._close_task.add_done_callback(self._close_finished)
+        await asyncio.shield(self._close_task)
+
+    @staticmethod
+    def _close_finished(task: asyncio.Task[None]) -> None:
+        """Observe failures even when all close callers have been cancelled."""
+
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            logger.exception("sqlite close operation failed")
+
+    async def _close(self, close_timeout: NonNegativeFloat) -> None:
         """Close idle connections and wait for checked-out work to finish."""
 
         logger.debug("sqlite database close started")

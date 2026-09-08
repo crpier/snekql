@@ -219,6 +219,16 @@ closing, and closed. While closing, new transactions are rejected with
 `DatabaseClosedError`. A successful `close()` is idempotent — calling it again
 returns immediately.
 
+SQLite close callers share one owned shutdown operation. Native
+`asyncio.Task.cancel()` cancels a caller's wait, not that shutdown operation.
+The database continues rejecting work while shutdown runs; another `close()`
+call joins the same operation instead of failing merely because it is closing.
+Concurrent callers share its outcome, and joining does not restart its wait
+budget. If all callers cancel, shutdown still finishes or times out, and an
+otherwise unobserved failure is logged. A later call can retry after a timed-out
+operation as described below. Cancelling a waiter does not forcibly stop a
+SQLite worker thread that is still performing physical close.
+
 A close waits up to `acquire_timeout` for checked-out work to return. If that
 wait elapses, `close()` raises `DatabaseCloseTimeoutError`. Behavior after a
 timeout differs by backend, because the underlying drivers differ:
