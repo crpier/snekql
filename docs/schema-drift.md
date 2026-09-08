@@ -165,3 +165,7 @@ Both follow the caller's topology (see [migrations.md](migrations.md)).
 To evolve a table, write a [migration](migrations.md) and apply it with
 `db.migrate({...})`; then `db.verify` confirms the post-migration schema against
 your models.
+
+For nullable MariaDB columns, catalog SQL `NULL` defaults are equivalent to an
+absent server default. Quoted text `'NULL'`, other literals and expression
+defaults remain distinct and can report drift. Verification never rewrites them.
