@@ -32,14 +32,13 @@ def _decode_aggregate(
     value: object,
     *,
     backend: StorageBackend,
+    validate: bool,
 ) -> object:
     """Decode an aggregate value, normalizing across backends.
 
-    Aggregates are not real columns: ``COUNT`` is always an ``int``; ``AVG`` is a
-    ``float``; ``SUM`` mirrors the wrapped column's logical type (so MariaDB's
-    ``DECIMAL`` and SQLite's integer agree); ``MIN``/``MAX`` decode through the
-    column's full codec so the result carries the column's logical type. ``NULL``
-    over an empty set decodes to ``None`` for everything but ``COUNT``.
+    COUNT is always an int; AVG is a float; SUM normalizes native numeric
+    results. MIN/MAX use the wrapped column's codec and the caller's validation
+    policy. NULL over an empty set decodes to None for everything but COUNT.
     """
 
     if value is None:
@@ -51,12 +50,9 @@ def _decode_aggregate(
     column = require_field(aggregate.column)
     if aggregate.func == "SUM":
         return _normalize_sum(column, value)
-    # MIN/MAX yield a real stored column value, so the wire->logical coercion
-    # (ISO text -> datetime, text -> UUID/Decimal/enum, 1 -> bool) must run for
-    # the result to match the column's logical read type. A MIN/MAX value already
-    # satisfies the column's constraints, so validation here is a coercion, not a
-    # gate (the NULL-over-empty-set case returned above).
-    return column.decode(value, backend=backend, validate=True)
+    # Stored values may violate logical constraints after unchecked/external
+    # writes. MIN/MAX use the same validation policy as a direct column read.
+    return column.decode(value, backend=backend, validate=validate)
 
 
 def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
@@ -96,7 +92,7 @@ def _decode_selectable(
             validate=validate,
         )
     if isinstance(field, _Aggregate):
-        return _decode_aggregate(field, value, backend=backend)
+        return _decode_aggregate(field, value, backend=backend, validate=validate)
     if isinstance(field, DialectSelectable):
         # Open-AST dialect expression: decode through the leaf's own seam, so the
         # raw driver value becomes the typed value the projection promised without
