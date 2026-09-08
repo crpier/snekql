@@ -7,7 +7,7 @@ import secrets
 import shutil
 import socket
 from collections.abc import AsyncGenerator, Mapping
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
@@ -74,7 +74,6 @@ EXECUTE snekql_drop_tables_statement;
 DEALLOCATE PREPARE snekql_drop_tables_statement;
 SET FOREIGN_KEY_CHECKS = 1;
 """
-_SHUTDOWN_TIMEOUT = 10.0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -396,6 +395,7 @@ async def _initialize_data_directory(
         raise TemporaryMariaDBServerError(message)
 
 
+@asynccontextmanager
 async def _start_process(
     *,
     options: _TemporaryMariaDBServerOptions,
@@ -403,7 +403,7 @@ async def _start_process(
     port: int | None,
     skip_grant_tables: bool,
     tcp_enabled: bool,
-) -> asyncio.subprocess.Process:
+) -> AsyncGenerator[asyncio.subprocess.Process]:
     """Start mariadbd with managed local-test lifecycle arguments."""
 
     arguments = [
@@ -430,31 +430,13 @@ async def _start_process(
     if skip_grant_tables:
         arguments.append("--skip-grant-tables")
     arguments.extend(options.server_args)
-    try:
-        return await asyncio.create_subprocess_exec(
-            *arguments,
-            stderr=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.DEVNULL,
-        )
-    except OSError as error:
-        msg = (
-            f"failed to start mariadbd {str(options.mariadbd)!r} (errno {error.errno})"
-        )
-        raise TemporaryMariaDBServerError(msg) from None
-
-
-async def _stop_process(process: asyncio.subprocess.Process) -> None:
-    """Terminate a child server process without deleting retained data."""
-
-    if process.returncode is not None:
-        return
-    process.terminate()
-    try:
-        with anyio.fail_after(_SHUTDOWN_TIMEOUT):
-            _ = await process.wait()
-    except TimeoutError:
-        process.kill()
-        _ = await process.wait()
+    async with AsyncExitStack() as lifetime:
+        try:
+            process = await lifetime.enter_async_context(owned_process(*arguments))
+        except OSError as error:
+            msg = f"failed to start mariadbd {str(options.mariadbd)!r} (errno {error.errno})"
+            raise TemporaryMariaDBServerError(msg) from None
+        yield process
 
 
 async def _wait_until_ready(  # noqa: PLR0913
@@ -596,7 +578,6 @@ async def _run_client_sql(  # noqa: PLR0913
 async def _create_database(
     *,
     plan: _StartupPlan,
-    process: asyncio.subprocess.Process,
 ) -> None:
     """Create the requested test database after the server is reachable."""
 
@@ -617,7 +598,6 @@ async def _create_database(
         user=plan.options.user,
     )
     if result.returncode != 0:
-        await _stop_process(process)
         msg = f"failed to create MariaDB test database\n{result.stderr}"
         raise TemporaryMariaDBServerError(msg)
 
@@ -625,14 +605,13 @@ async def _create_database(
 async def _bootstrap_password_auth(plan: _StartupPlan) -> None:
     """Use a short insecure local bootstrap server to set password auth."""
 
-    process = await _start_process(
+    async with _start_process(
         options=plan.options,
         paths=plan.paths,
         port=None,
         skip_grant_tables=True,
         tcp_enabled=False,
-    )
-    try:
+    ) as process:
         await _wait_until_ready(
             auth="insecure",
             sensitive=True,
@@ -669,21 +648,19 @@ async def _bootstrap_password_auth(plan: _StartupPlan) -> None:
         if result.returncode != 0:
             msg = f"failed to bootstrap MariaDB password auth (exit {result.returncode}); diagnostics suppressed"
             raise TemporaryMariaDBServerError(msg)
-    finally:
-        await _stop_process(process)
 
 
-async def _start_ready_server(plan: _StartupPlan) -> asyncio.subprocess.Process:
+@asynccontextmanager
+async def _start_ready_server(plan: _StartupPlan) -> AsyncGenerator[None]:
     """Start the final server and wait on its preferred public transport."""
 
-    process = await _start_process(
+    async with _start_process(
         options=plan.options,
         paths=plan.paths,
         port=plan.port,
         skip_grant_tables=plan.options.auth == "insecure",
         tcp_enabled=plan.tcp_enabled,
-    )
-    try:
+    ) as process:
         await _wait_until_ready(
             auth=plan.options.auth,
             sensitive=plan.options.auth == "password",
@@ -704,12 +681,8 @@ async def _start_ready_server(plan: _StartupPlan) -> asyncio.subprocess.Process:
             user=plan.options.user,
         )
         if plan.options.auth == "insecure":
-            await _create_database(plan=plan, process=process)
-    except TemporaryMariaDBServerError:
-        await _stop_process(process)
-        raise
-    else:
-        return process
+            await _create_database(plan=plan)
+        yield
 
 
 @asynccontextmanager
@@ -721,14 +694,11 @@ async def _temporary_mariadb_server_context(
     plan = await _build_startup_plan(options)
     if options.auth == "password":
         await _bootstrap_password_auth(plan)
-    process = await _start_ready_server(plan)
-    server = plan.server()
-    if options.reset_database:
-        await server.reset_database()
-    try:
+    async with _start_ready_server(plan):
+        server = plan.server()
+        if options.reset_database:
+            await server.reset_database()
         yield server
-    finally:
-        await _stop_process(process)
 
 
 def _contains_managed_server_option(server_args: tuple[str, ...]) -> str | None:

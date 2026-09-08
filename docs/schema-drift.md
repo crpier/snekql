@@ -43,7 +43,11 @@ recognized as matching whenever it is semantically equal to the model.
   `JSON`≡`LONGTEXT`). A genuine affinity/type-class change is still drift;
 - per index: name, columns, uniqueness, and SQLite partial/full status; MariaDB
   also compares prefix lengths and index type;
-- per foreign key: local column → target table/column;
+- per foreign key: local column, target table/column and referential actions.
+  Every represented relationship is compared, including multiple constraints on
+  one local column. Extra occurrences are drift even when their facts duplicate
+  another constraint. Constraint names are ignored; diagnostics do not depend on
+  catalog row order;
 - table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).
 
 `verify` **does not**, and across backends *cannot*, see:
@@ -57,6 +61,11 @@ recognized as matching whenever it is semantically equal to the model.
 - exact SQLite types (affinity collapses `VARCHAR(255)` and `TEXT`);
 - index-column sort direction or collation, which `Index` cannot declare;
 - data.
+
+Foreign-key comparison operates on the catalog's scalar column relationships.
+Composite constraint grouping is not represented by this comparison, so it does
+not certify equivalence between a composite constraint and separate scalar
+constraints. Reporting all same-column relationships does not expand that scope.
 
 Backend-specific limits are also deliberate:
 

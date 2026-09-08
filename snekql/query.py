@@ -2004,7 +2004,9 @@ def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
     """Build the right returning query for an update statement."""
 
     if not fields:
-        return UpdateReturningQuery[Any, Any, Any, Any](replace(state, returning=True))
+        return UpdateReturningQuery[Any, Any, Any, Any](
+            replace(state, returning=True, returning_fields=())
+        )
     selectables = require_model_returning_fields(state.model, fields)
     projected = replace(state, returning=True, returning_fields=selectables)
     if len(selectables) == 1:
@@ -2016,7 +2018,9 @@ def _delete_returning(state: DeleteState, fields: tuple[object, ...]) -> object:
     """Build the right returning query for a delete statement."""
 
     if not fields:
-        return DeleteReturningQuery[Any, Any, Any, Any](replace(state, returning=True))
+        return DeleteReturningQuery[Any, Any, Any, Any](
+            replace(state, returning=True, returning_fields=())
+        )
     selectables = require_model_returning_fields(state.model, fields)
     projected = replace(state, returning=True, returning_fields=selectables)
     if len(selectables) == 1:

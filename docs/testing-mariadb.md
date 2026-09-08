@@ -21,6 +21,26 @@ async with temporary_mariadb_server() as server:
 
 The context manager starts an unprivileged local `mariadbd`, waits until it is ready, creates the requested test database, yields connection details, and stops the server when the context exits.
 
+Process ownership covers startup, password bootstrap and pre-yield database reset,
+not just the yielded context. Installer and SQL-client subprocesses also remain
+owned when their caller fails or is cancelled. Cleanup waits through AnyIO scope
+cancellation and repeated native `asyncio.Task.cancel()` calls, then propagates the
+original error or cancellation.
+
+Shutdown allows ten seconds after termination, then escalates to kill with another
+ten-second wait/reap budget. Captured pipes are drained during cleanup. On POSIX,
+each child starts in its own session and signals target its process group so
+installer subprocesses receive them too. Detached descendants are outside that
+process group; non-POSIX cleanup targets the direct child.
+
+If the operating system refuses cleanup or the kill/reap budget expires, cleanup
+raises `TemporaryMariaDBServerError`. When another error or cancellation is already
+in flight, cleanup failure is attached as an exception note rather than replacing
+it. A reported cleanup failure may require manual intervention for the reported
+PID. Cancellation during process creation waits for creation to settle before
+stopping the child; the shutdown budgets begin after creation completes. There is
+no promise of a total deadline for a stalled operating-system spawn operation.
+
 The default database name is `test`. Unix socket transport is enabled by default. TCP must be requested explicitly:
 
 ```python

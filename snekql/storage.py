@@ -10,13 +10,14 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from json import JSONDecodeError, dumps, loads
 from math import isfinite
-from types import EllipsisType
+from types import EllipsisType, UnionType
 from typing import (
     Annotated,
     Any,
     ForwardRef,
     Literal,
     Self,
+    TypeAliasType,
     TypeVar,
     cast,
     evaluate_forward_ref,
@@ -24,6 +25,7 @@ from typing import (
     get_origin,
     overload,
 )
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -163,20 +165,19 @@ def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None
 
 
 def _normalize_canonical_decimal(value: Decimal) -> Decimal:
-    """Canonicalize decimals to minimal finite plain values.
+    """Canonicalize without arithmetic that can round under the decimal context.
 
-    `Decimal.normalize()` may produce exponent notation for whole powers of ten;
-    re-quantizing those values preserves the number while keeping plain text
-    serialization stable. Zero is special-cased so `-0` becomes `0`.
+    Plain formatting and string construction are exact regardless of precision,
+    exponent limits or rounding traps. Remove only fractional trailing zeros;
+    zero is special-cased so negative zero has the same wire form as zero.
     """
 
-    if not value:
+    if value.is_zero():
         return Decimal(0)
-    normalized = value.normalize()
-    exponent = normalized.as_tuple().exponent
-    if isinstance(exponent, int) and exponent > 0:
-        return normalized.quantize(Decimal(1))
-    return normalized
+    plain = format(value, "f")
+    if "." in plain:
+        plain = plain.rstrip("0").rstrip(".")
+    return Decimal(plain)
 
 
 def _serialize_canonical_decimal(value: Decimal) -> str:
@@ -1057,37 +1058,44 @@ def _extract_logical_type(annotation: object, name: str) -> object:
     raise ModelDeclarationError(msg)
 
 
-def _carries_json_marker(annotation: object) -> bool:
-    """Whether a logical annotation is a ``pydantic.Json[T]`` payload.
+def _json_payload_annotation(annotation: object) -> tuple[bool, object]:
+    """Resolve a field-level JSON marker through Annotated and optional wrappers.
 
-    ``pydantic.Json[T]`` desugars to ``Annotated[T, pydantic.Json]``; the marker
-    is the ``Json`` class sitting in the annotation metadata. Detecting it is how
-    a plain ``Text()`` column opts into JSON serialization without a dedicated
-    ``Json`` constructor (SQLite has no native JSON storage class).
+    A marker owns its entire payload: nested containers and nested Json payloads
+    are not rewritten. Metadata other than the wire marker keeps its order.
+    Mixed marked/unmarked union alternatives cannot choose one field wire codec.
     """
 
-    metadata = getattr(annotation, "__metadata__", None)
-    if not metadata:
-        return False
-    # ``pydantic.Json[T]`` puts a ``Json()`` instance in the metadata; a bare
-    # ``Json`` annotation would put the class itself.
-    return any(
-        item is _PydanticJson or isinstance(item, _JSON_MARKER_TYPE)
-        for item in metadata
-    )
+    if get_origin(annotation) is Annotated:
+        payload, *metadata = get_args(annotation)
+        retained = tuple(
+            item
+            for item in metadata
+            if item is not _PydanticJson and not isinstance(item, _JSON_MARKER_TYPE)
+        )
+        if len(retained) != len(metadata):
+            return True, Annotated[(payload, *retained)] if retained else payload
+        marked, normalized = _json_payload_annotation(payload)
+        if marked:
+            return True, Annotated[(normalized, *metadata)]
+        return False, annotation
+    if get_origin(annotation) is UnionType:
+        alternatives = get_args(annotation)
+        resolved = tuple(_json_payload_annotation(item) for item in alternatives)
+        if any(marked for marked, _ in resolved):
+            non_null = [item for item in alternatives if item is not type(None)]
+            if len(non_null) != 1:
+                msg = "a field-level Json union may only add None; wrap the entire union in Json[...]"
+                raise ModelDeclarationError(msg)
+            payload = next(payload for marked, payload in resolved if marked)
+            return True, cast("Any", payload) | None
+    return False, annotation
 
 
 def _strip_json_marker(annotation: object) -> object:
-    """Drop the ``pydantic.Json`` marker, exposing the inner payload type.
+    """Expose the logical payload without changing unrelated annotation metadata."""
 
-    The marker only selects the JSON wire codec; validation and serialization run
-    against the inner ``T`` (a ``dict``, a pydantic model, ...) through the same
-    adapter the MariaDB native ``Json`` column already uses.
-    """
-
-    if _carries_json_marker(annotation):
-        return cast("Any", annotation).__origin__
-    return annotation
+    return _json_payload_annotation(annotation)[1]
 
 
 def _unwrap_annotated(annotation: object) -> object:
@@ -1098,14 +1106,90 @@ def _unwrap_annotated(annotation: object) -> object:
     return annotation
 
 
-def _annotation_admits_none(annotation: object) -> bool:
-    """Whether a logical annotation includes ``None`` (``T | None``)."""
+def _alias_admits_none(
+    alias: TypeAliasType,
+    arguments: tuple[object, ...],
+    bindings: dict[TypeVar, bool | None],
+    active: frozenset[int],
+    remaining: int,
+) -> bool | None:
+    """Bind nullability facts before inspecting an alias, retaining caller scope."""
 
+    if id(alias) in active or len(arguments) > len(alias.__type_params__):
+        return None
+    specialized = dict(bindings)
+    try:
+        for index, parameter in enumerate(alias.__type_params__):
+            if not isinstance(parameter, TypeVar):
+                return None
+            if index < len(arguments):
+                specialized[parameter] = _annotation_admits_none(
+                    arguments[index], bindings, active, remaining, alias_scope=True
+                )
+            elif parameter.has_default():
+                specialized[parameter] = _annotation_admits_none(
+                    parameter.__default__,
+                    specialized,
+                    active,
+                    remaining,
+                    alias_scope=True,
+                )
+            elif arguments:
+                return None
+            else:
+                specialized[parameter] = None
+        value = alias.__value__
+    except NameError, TypeError, RecursionError:
+        return None
+    return _annotation_admits_none(
+        value, specialized, active | {id(alias)}, remaining, alias_scope=True
+    )
+
+
+def _annotation_admits_none(
+    annotation: object,
+    bindings: dict[TypeVar, bool | None] | None = None,
+    active: frozenset[int] = frozenset(),
+    remaining: int = 64,
+    *,
+    alias_scope: bool = False,
+) -> bool | None:
+    """Inspect field-level nullability without running logical validators.
+
+    Alias parameters carry nullability facts, not rewritten annotations. Containers
+    stop traversal: optional elements do not make the container itself nullable.
+    Indeterminate alias paths stay unknown rather than implying NOT NULL.
+    """
+
+    if remaining <= 0:
+        return None
+    bindings = bindings if bindings is not None else {}
     annotation = _unwrap_annotated(annotation)
-    arguments = get_args(annotation)
-    if arguments:
-        return any(argument is type(None) for argument in arguments)
-    return annotation is type(None)
+    if annotation is None or annotation is type(None):
+        return True
+    if isinstance(annotation, TypeVar | str | ForwardRef):
+        # Preserve direct partial-hint deferral. Only unresolved alias facts
+        # opt into the unknown policy rather than inferring NOT NULL.
+        return (
+            (bindings.get(annotation) if isinstance(annotation, TypeVar) else None)
+            if alias_scope
+            else False
+        )
+    origin = get_origin(annotation)
+    if origin is UnionType:
+        outcomes = [
+            _annotation_admits_none(
+                member, bindings, active, remaining - 1, alias_scope=alias_scope
+            )
+            for member in get_args(annotation)
+        ]
+        return True if True in outcomes else None if None in outcomes else False
+    alias = origin if isinstance(origin, TypeAliasType) else annotation
+    if isinstance(alias, TypeAliasType):
+        return _alias_admits_none(
+            alias, get_args(annotation), bindings, active, remaining - 1
+        )
+    return False
 
 
 def _annotation_core_types(annotation: object) -> list[object]:
@@ -1434,7 +1518,7 @@ class Attr[
             logical = _extract_logical_type(annotation, self._require_name())
         except ModelDeclarationError:
             logical = None
-        result = _carries_json_marker(logical)
+        result, _ = _json_payload_annotation(logical)
         self._is_json_cache = result
         return result
 
@@ -1571,12 +1655,18 @@ class Attr[
             raise ModelValidationError(msg)
         if decimal_value == 0:
             return decimal_value
-        normalized = decimal_value.copy_abs().normalize()
-        exponent = normalized.as_tuple().exponent
+        decimal_tuple = decimal_value.as_tuple()
+        exponent = decimal_tuple.exponent
         if not isinstance(exponent, int):
             msg = f"{self._require_name()!r} non-finite decimal values cannot be stored"
             raise ModelValidationError(msg)
-        integer_digits = max(normalized.adjusted() + 1, 0)
+        integer_digits = max(decimal_value.adjusted() + 1, 0)
+        # Trailing coefficient zeros do not require fractional storage. Count
+        # them without normalize(), which can discard nonzero digits by rounding.
+        significant_digits = len(decimal_tuple.digits)
+        while decimal_tuple.digits[significant_digits - 1] == 0:
+            significant_digits -= 1
+            exponent += 1
         fractional_digits = max(-exponent, 0)
         if integer_digits > precision - scale or fractional_digits > scale:
             msg = (
@@ -1597,6 +1687,8 @@ class Attr[
         adapter = self._logical_adapter()
         if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
+            if isinstance(encoded, UUID):
+                encoded = encoded.bytes
             if (
                 codec.max_blob_bytes is not None
                 and isinstance(encoded, bytes | bytearray)

@@ -151,9 +151,14 @@ Off-path use is deliberate and tested (see
   with `async with` is rejected.
 - **Query after closing** → `TransactionClosedError`. The transaction released
   its connection on exit; reach for a new `db.transaction()`.
-- **Entering twice** → `TransactionReuseError`, whether the transaction is still
-  open (`already in progress`) or already used and closed. A transaction cannot
-  be restarted.
+- **Entering twice** → `TransactionReuseError`, including while the first caller
+  is acquiring a connection or running `BEGIN`, while it is open (`already in
+  progress`), or after it has been used and closed. A competing entry is rejected
+  immediately rather than queued as another physical transaction. If pool
+  acquisition itself fails or is cancelled, its entry reservation is released
+  and the same object may retry acquisition. Failure during `BEGIN` retains the
+  existing terminal failure behavior; a successfully used transaction cannot be
+  restarted.
 - **Closing twice** → `TransactionClosedError`. The first exit already
   committed or rolled back; a second `__aexit__` has nothing left to close.
 - **Sharing one transaction across concurrent tasks** is *safe but serialized*.
@@ -178,6 +183,19 @@ fresh `operation_timeout` budget. The timer does not include application code
 between database calls and is not one deadline for the transaction's total
 lifetime.
 
+Pool acquisition uses one deadline for queueing, lazy connection checkout/opening
+and first-use connection settings. Configuration does not get a fresh budget
+after checkout. Expiry raises `PoolTimeoutError`, not an operation timeout.
+SQLite retains its immediate idle-connection fast path, including a zero
+acquisition budget; opening a new connection requires time in the budget.
+
+When SQLite opening times out or is cancelled, cleanup runs in a tracked task so
+waiting for its worker thread cannot hold the caller past the acquisition
+deadline. That pool slot remains occupied until cleanup finishes; another
+acquisition can therefore time out rather than exceed `pool_size`. Database close
+also waits for these opening/cleanup tasks through the admission count. MariaDB
+closes an unsuccessfully configured socket before releasing its slot.
+
 `db.transaction(timeout=N)` overrides **both** budgets for that transaction:
 connection acquisition and every driver operation use `N`. This makes one call
 site sufficient for short jobs while keeping pool and operation defaults
@@ -200,6 +218,16 @@ closing, and closed. While closing, new transactions are rejected with
 `DatabaseClosingError`; after a successful close they are rejected with
 `DatabaseClosedError`. A successful `close()` is idempotent — calling it again
 returns immediately.
+
+SQLite close callers share one owned shutdown operation. Native
+`asyncio.Task.cancel()` cancels a caller's wait, not that shutdown operation.
+The database continues rejecting work while shutdown runs; another `close()`
+call joins the same operation instead of failing merely because it is closing.
+Concurrent callers share its outcome, and joining does not restart its wait
+budget. If all callers cancel, shutdown still finishes or times out, and an
+otherwise unobserved failure is logged. A later call can retry after a timed-out
+operation as described below. Cancelling a waiter does not forcibly stop a
+SQLite worker thread that is still performing physical close.
 
 A close waits up to `acquire_timeout` for checked-out work to return. If that
 wait elapses, `close()` raises `DatabaseCloseTimeoutError`. Behavior after a
@@ -240,6 +268,20 @@ only its exception type, not its potentially value-bearing message. SQL stays
 visible because Query Compilation binds values—including MariaDB JSON paths—
 rather than interpolating them.
 
+## JSON annotation enforcement
+
+`pydantic.Json[T]` selects the JSON wire codec. Other `Annotated` metadata,
+including constraints, validators and serializers, still applies to `T` in its
+original order. This holds for SQLite text and MariaDB JSON/text storage.
+
+Versions affected by metadata stripping, including 0.7.0, could accept values
+that violated these rules or ignore a custom serializer. Corrected validation
+can reject existing invalid rows during normal reads. Audit and repair those
+rows explicitly; the fix does not rewrite stored data. Restoring a serializer
+can also change future wire output, so check that old rows remain readable and
+plan any required data migration. `validate=False` remains an explicit read-side
+escape hatch for controlled inspection, not a substitute for repairing data.
+
 ## Agent guidance
 
 When adding intentional failures inside snekql:
@@ -248,3 +290,19 @@ When adding intentional failures inside snekql:
 2. Wrap external exceptions with exception chaining:
    `raise SnekqlErrorSubclass(message) from error`.
 3. Preserve query context in `ExecutionError` when SQLite execution fails.
+
+## Decimal precision and existing data
+
+`CanonicalDecimal` normalization and native MariaDB `Decimal(precision, scale)`
+checks are independent of Python's active decimal context. Canonical text keeps
+all significant digits, removes fractional trailing zeros and writes signed zero
+as `0`. Native decimal columns reject values that need rounding or exceed their
+integer capacity; they do not silently round values to fit.
+
+Versions affected by context-sensitive normalization, including 0.7.0, could
+round canonical text or accept native values MariaDB then rounded. The corrected
+code does not rewrite existing rows. Lost digits cannot be recovered from the
+stored value alone. Audit affected data against a trusted source and reconcile it
+through explicit application migrations. Check equality queries and unique keys
+when repairing previously rounded values. Normal in-range canonical wire forms
+remain unchanged; no blanket data conversion is required.

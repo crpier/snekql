@@ -206,12 +206,16 @@ SQLite exposes exactly its four storage classes as column types:
 JSON uses Pydantic's marker, not a snekql type: annotate
 `Col[pydantic.Json[T]] = Text()`. Serialization and validation both run through
 `T`, so any type Pydantic can validate (`datetime`, Pydantic models,
-`list[Model]`, ...) round-trips, not just `dict`/`list`/primitives.
+`list[Model]`, ...) round-trips, not just `dict`/`list`/primitives. Optional `Json[T] | None` and
+`Json[T | None]` fields also accept decoded payloads. See
+[optional JSON fields](docs/optional-json.md) for metadata and SQL NULL semantics.
 
 MariaDB additionally exposes its native types as column types — `mariadb.Json`,
 `mariadb.Boolean`, `mariadb.DateTime`, `mariadb.Uuid` (native `UUID`), and
 `mariadb.Decimal(precision, scale)` (native `DECIMAL(p,s)`). To store a UUID as
-raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
+raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`. Existing text-encoded
+MariaDB UUID Blob rows need an explicit [data migration](docs/binary-uuid-migration.md)
+before binary UUID predicates can match them.
 
 There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.
@@ -258,9 +262,11 @@ Decimal storage has the same two-coordinate rule:
 - On SQLite, store integer minor units (`Col[int] = Integer()`, e.g. cents) when
   the database must order, range-filter, or aggregate decimal quantities.
 - On MariaDB, use `Col[decimal.Decimal] = mariadb.Decimal(precision, scale)` for
-  native numeric equality, ordering, range predicates, and aggregation. Values
-  that would overflow or require rounding for the declared `(precision, scale)`
-  are rejected before they reach the driver.
+  native numeric equality, ordering, range predicates, and aggregation. Stored
+  values that would overflow or require rounding for the declared
+  `(precision, scale)` are rejected before they reach the driver. Native Decimal
+  `SUM` comparison bounds accept exact finite `Decimal` values beyond the input
+  column's precision and scale; they are not rounded to that column's shape.
 
 Bare `Col[decimal.Decimal] = Text()` emits `LexicalDecimalWarning` on both
 backends because Pydantic's default decimal text can represent the same value in
@@ -281,7 +287,16 @@ construct-time validation.
 All column constructors accept `unique=True` for column-level unique indexes.
 SQLite allows multiple `NULL` values in a unique index, so use a non-optional
 annotation such as `Col[str]` when uniqueness should also require a value.
-Primary-key columns reject `unique=True` because it is redundant.
+Primary-key columns reject `unique=True`; use a table-level unique `Index` when
+a composite-key component also needs independent uniqueness.
+
+A scalar `ForeignKey(Target.column)` requires a single-column primary key,
+`unique=True` on a non-primary column, or a singleton `Index(column, unique=True)`.
+Membership in a composite primary key or multi-column unique index is not enough.
+This rule applies during scaffolding and schema verification on both backends.
+Do not add a singleton unique constraint if repeated values are legitimate;
+choose an independently unique target instead. Composite foreign-key declarations
+are not introduced by this rule, and existing schemas are not rewritten.
 
 For a plain non-unique single-column index, pass `index=True` instead — sugar
 for an `Index(col)` entry in `__indexes__` (named `ix_<table>_<col>`). It is
@@ -617,7 +632,11 @@ Runtime methods:
 - `execute(insert(...))` returns `None`, including conflict-handled inserts
   without `.returning(...)`; `execute(update/delete)` returns the affected-row
   count. SQLite counts matched rows; MariaDB counts only rows an `UPDATE`
-  actually changed.
+  actually changed. On SQLite UPDATE/DELETE, `.returning()` returns Fetched
+  models, one explicit returning column yields scalars, and multiple columns
+  yield tuples. Each `.returning(...)` call replaces the previous projection;
+  a final `.returning()` restores whole-model results. The MariaDB adapter
+  currently rejects UPDATE/DELETE RETURNING.
 - `close()` is async and idempotent after a successful close.
 
 Backend Configs separate pool waiting (`acquire_timeout`) from driver I/O

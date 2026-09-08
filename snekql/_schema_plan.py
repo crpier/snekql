@@ -132,15 +132,16 @@ def _resolve_target_column(
 
     The target column is the descriptor passed to ``ForeignKey(Target.col)``; it
     must belong to the annotation's target model (identity, not just name match)
-    and be a primary key or carry a unique constraint, since a foreign key can
-    only reference a uniquely indexed column.
+    and have an independent single-column unique key. Membership in a composite
+    primary key or unique index does not establish scalar uniqueness.
     """
 
     target_table = require_model_table_name(target_model)
+    target_columns = require_model_columns(target_model)
     target_column_name = next(
         (
             column_name
-            for column_name, column in require_model_columns(target_model).items()
+            for column_name, column in target_columns.items()
             if column is target_column
         ),
         None,
@@ -151,10 +152,21 @@ def _resolve_target_column(
             f"target table {target_table!r}"
         )
         raise SchemaError(msg)
-    if not (target_column.primary_key or target_column.unique):
+    singleton_primary_key = (
+        target_column.primary_key
+        and sum(column.primary_key for column in target_columns.values()) == 1
+    )
+    indexes = cast(
+        "tuple[NormalizedIndex, ...]", getattr(target_model, "__snekql_indexes__", ())
+    )
+    singleton_unique_index = any(
+        index.unique and index.column_names == (target_column_name,)
+        for index in indexes
+    )
+    if not (singleton_primary_key or target_column.unique or singleton_unique_index):
         msg = (
             f"foreign-key column {name!r} target "
-            f"{target_table}.{target_column_name} must be a primary key or unique"
+            f"{target_table}.{target_column_name} must be a single-column primary key or independently unique"
         )
         raise SchemaError(msg)
     return target_column_name
