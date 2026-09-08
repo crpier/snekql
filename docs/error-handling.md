@@ -151,9 +151,14 @@ Off-path use is deliberate and tested (see
   with `async with` is rejected.
 - **Query after closing** → `TransactionClosedError`. The transaction released
   its connection on exit; reach for a new `db.transaction()`.
-- **Entering twice** → `TransactionReuseError`, whether the transaction is still
-  open (`already in progress`) or already used and closed. A transaction cannot
-  be restarted.
+- **Entering twice** → `TransactionReuseError`, including while the first caller
+  is acquiring a connection or running `BEGIN`, while it is open (`already in
+  progress`), or after it has been used and closed. A competing entry is rejected
+  immediately rather than queued as another physical transaction. If pool
+  acquisition itself fails or is cancelled, its entry reservation is released
+  and the same object may retry acquisition. Failure during `BEGIN` retains the
+  existing terminal failure behavior; a successfully used transaction cannot be
+  restarted.
 - **Closing twice** → `TransactionClosedError`. The first exit already
   committed or rolled back; a second `__aexit__` has nothing left to close.
 - **Sharing one transaction across concurrent tasks** is *safe but serialized*.

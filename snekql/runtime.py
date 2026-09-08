@@ -414,13 +414,14 @@ class Transaction[FamilyT: BackendFamily]:
         )
         self.mode: TransactionMode = mode
         self._connection_reusable: bool = True
+        self._entering: bool = False
         self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
         # A Transaction is single-use and not re-entrant: it is entered exactly
         # once and cannot be restarted. Re-entering one that is still open, or
         # one already used and closed, is reuse rather than a closed-use error.
-        if self.connection is not None:
+        if self._entering or self.connection is not None:
             msg = (
                 "transaction is already in progress; a Transaction is "
                 "single-use and not re-entrant"
@@ -438,27 +439,35 @@ class Transaction[FamilyT: BackendFamily]:
             self.acquisition_timeout,
             self.mode,
         )
-        connection = await self.runtime.acquire(self.acquisition_timeout)
+        # Reserve entry before the first await. A rejected competing caller
+        # must not acquire a connection or reset the owner's reservation.
+        self._entering = True
         try:
-            await self._run_driver_operation(
-                "transaction begin",
-                lambda: connection.begin(self.mode),
-            )
-        except BaseException as error:
-            logger.exception("%s transaction begin failed", self.runtime.backend_family)
-            with anyio.CancelScope(shield=True):
-                await self.runtime.discard(connection)
-            self._connection_reusable = False
-            self.closed = True
-            if isinstance(error, DatabaseOperationTimeoutError):
+            connection = await self.runtime.acquire(self.acquisition_timeout)
+            try:
+                await self._run_driver_operation(
+                    "transaction begin",
+                    lambda: connection.begin(self.mode),
+                )
+            except BaseException as error:
+                logger.exception(
+                    "%s transaction begin failed", self.runtime.backend_family
+                )
+                with anyio.CancelScope(shield=True):
+                    await self.runtime.discard(connection)
+                self._connection_reusable = False
+                self.closed = True
+                if isinstance(error, DatabaseOperationTimeoutError):
+                    raise
+                if isinstance(error, Exception):
+                    msg = "could not begin transaction"
+                    raise DatabaseRuntimeError(msg) from error
                 raise
-            if isinstance(error, Exception):
-                msg = "could not begin transaction"
-                raise DatabaseRuntimeError(msg) from error
-            raise
-        self.connection = connection
-        logger.debug("%s transaction begin", self.runtime.backend_family)
-        return self
+            self.connection = connection
+            logger.debug("%s transaction begin", self.runtime.backend_family)
+            return self
+        finally:
+            self._entering = False
 
     async def __aexit__(
         self,
