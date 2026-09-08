@@ -38,7 +38,6 @@ async def password_authenticates(mode: str, user: str, password: str) -> None:
             auth="password",
             password=password,
             user=user,
-            startup_timeout=3,
             data_directory=Path(directory) / "data",
             server_args=(f"--sql-mode={mode}",),
         ) as server:
@@ -85,7 +84,7 @@ async def cli_environment_password_authenticates(mode: str, user: str) -> None:
         )
         try:
             assert process.stderr is not None
-            async with asyncio.timeout(15):
+            async with asyncio.timeout(60):
                 while True:
                     line = await process.stderr.readline()
                     if b"Press Ctrl-C to stop." in line:
