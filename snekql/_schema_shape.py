@@ -15,6 +15,7 @@ it.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 
 
@@ -240,32 +241,47 @@ def _diff_foreign_keys(
     actual: TableShape,
     issues: list[str],
 ) -> None:
-    expected_by_column = {fk.column_name: fk for fk in expected.foreign_keys}
-    actual_by_column = {fk.column_name: fk for fk in actual.foreign_keys}
-    for column_name, expected_fk in expected_by_column.items():
-        actual_fk = actual_by_column.get(column_name)
-        if actual_fk is None:
-            missing_message = (
-                f"foreign key on column {column_name!r} -> "
-                f"{_describe_foreign_key(expected_fk)} is missing from the "
-                "database table"
-            )
-            issues.append(missing_message)
-        elif _foreign_key_facts(actual_fk) != _foreign_key_facts(expected_fk):
-            differs_message = (
+    """Match complete per-column multisets before reporting remaining differences."""
+
+    expected_by_column: defaultdict[str, list[ForeignKeyShape]] = defaultdict(list)
+    actual_by_column: defaultdict[str, list[ForeignKeyShape]] = defaultdict(list)
+    for foreign_key in expected.foreign_keys:
+        expected_by_column[foreign_key.column_name].append(foreign_key)
+    for foreign_key in actual.foreign_keys:
+        actual_by_column[foreign_key.column_name].append(foreign_key)
+    for column_name in sorted(expected_by_column.keys() | actual_by_column.keys()):
+        remaining_actual = sorted(actual_by_column[column_name], key=_foreign_key_facts)
+        remaining_expected: list[ForeignKeyShape] = []
+        # Remove exact matches first, one occurrence at a time. A set would
+        # hide duplicate constraints, and pairing first could obscure a match.
+        for expected_fk in sorted(
+            expected_by_column[column_name], key=_foreign_key_facts
+        ):
+            if expected_fk in remaining_actual:
+                remaining_actual.remove(expected_fk)
+            else:
+                remaining_expected.append(expected_fk)
+        paired = min(len(remaining_expected), len(remaining_actual))
+        for expected_fk, actual_fk in zip(
+            remaining_expected[:paired], remaining_actual[:paired], strict=True
+        ):
+            issues.append(
                 f"foreign key on column {column_name!r} differs: "
                 f"expected -> {_describe_foreign_key(expected_fk, include_default_actions=True)}, "
                 f"found -> {_describe_foreign_key(actual_fk, include_default_actions=True)}"
             )
-            issues.append(differs_message)
-    for column_name, actual_fk in actual_by_column.items():
-        if column_name not in expected_by_column:
-            unexpected_message = (
-                f"foreign key on column {column_name!r} -> "
-                f"{_describe_foreign_key(actual_fk)} exists in the database but "
-                "not in the model"
-            )
-            issues.append(unexpected_message)
+        issues.extend(
+            f"foreign key on column {column_name!r} -> "
+            f"{_describe_foreign_key(expected_fk)} is missing from the "
+            "database table"
+            for expected_fk in remaining_expected[paired:]
+        )
+        issues.extend(
+            f"foreign key on column {column_name!r} -> "
+            f"{_describe_foreign_key(actual_fk)} exists in the database but "
+            "not in the model"
+            for actual_fk in remaining_actual[paired:]
+        )
 
 
 def diff_table_shapes(expected: TableShape, actual: TableShape) -> tuple[str, ...]:
