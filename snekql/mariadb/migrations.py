@@ -341,8 +341,14 @@ async def _close_cursor(cursor: object) -> None:
 async def _execute(
     connection: object,
     sql: str,
-    params: tuple[object, ...] = (),
+    params: tuple[object, ...] | None = None,
 ) -> None:
+    """Execute raw SQL unless internal statements explicitly supply bound values.
+
+    aiomysql interpolates percent signs even with an empty argument tuple.
+    None preserves a hand-authored migration body exactly as declared.
+    """
+
     cursor = await cast("Any", connection).cursor()
     try:
         _ = await cursor.execute(sql, params)

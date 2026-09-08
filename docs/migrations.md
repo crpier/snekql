@@ -171,6 +171,34 @@ change required session settings, call advisory-lock functions, or execute
 dynamic SQL because those operations could escape snekql's DML/history
 transaction or leave a pooled connection misconfigured.
 
+### Raw SQL and percent signs
+
+MariaDB migration bodies are sent as raw SQL, without driver parameter
+interpolation. Write literal percent signs, `LIKE 'prefix%'` and modulo
+expressions such as `11 % 4` normally. Do not double percent signs for the
+driver: SQL `'100%%'` stores two percent signs. Internal history and lock queries
+still use bound parameters, including opaque migration names containing `%`.
+
+Before upgrading from an affected version such as 0.7.0, audit historical bodies
+for doubled-percent workarounds. Those versions incorrectly collapsed `%%` to
+`%`. The corrected runner preserves both characters, so fresh replay can produce
+different data or schema defaults even though the body checksum is unchanged.
+Already-recorded bodies are not executed again; history verification does not
+prove that an old database and a fresh replay have equivalent data.
+
+Never edit applied bodies or recorded checksums to hide that difference. When the
+historical bodies remain valid raw SQL, append an explicit migration that brings
+both old and freshly replayed states to the intended result, and test both paths.
+Do not apply a blanket percent replacement to application data.
+
+If a workaround made a historical expression invalid as raw SQL, for example
+`11 %% 4`, a corrective tail cannot repair a fresh replay that fails earlier.
+Plan a controlled legacy-runner bootstrap followed by upgrade at the verified
+head, or a separately managed baseline/rebuild procedure, before deploying the
+new runner for that chain. snekql does not automatically rewrite history or infer
+which percent signs were workarounds. Existing installations can skip already
+recorded bodies, but fresh-install procedures still need this explicit plan.
+
 ## Legacy history adoption
 
 History created before v2 contains only `(name, applied_at)`. It cannot prove
