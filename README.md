@@ -206,7 +206,9 @@ SQLite exposes exactly its four storage classes as column types:
 JSON uses Pydantic's marker, not a snekql type: annotate
 `Col[pydantic.Json[T]] = Text()`. Serialization and validation both run through
 `T`, so any type Pydantic can validate (`datetime`, Pydantic models,
-`list[Model]`, ...) round-trips, not just `dict`/`list`/primitives.
+`list[Model]`, ...) round-trips, not just `dict`/`list`/primitives. Optional `Json[T] | None` and
+`Json[T | None]` fields also accept decoded payloads. See
+[optional JSON fields](docs/optional-json.md) for metadata and SQL NULL semantics.
 
 MariaDB additionally exposes its native types as column types — `mariadb.Json`,
 `mariadb.Boolean`, `mariadb.DateTime`, `mariadb.Uuid` (native `UUID`), and
