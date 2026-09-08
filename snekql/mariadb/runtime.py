@@ -434,7 +434,10 @@ async def initialize_runtime(config: Config) -> MariaDBRuntime:
 
     aiomysql = _import_aiomysql()
     logger.debug("mariadb pool opening: %s:%s", config.host, config.port)
-    pool = await aiomysql.create_pool(
+    create_pool = aiomysql.create_pool
+    if config.tls is not None:
+        create_pool = import_module("snekql.mariadb._required_tls").create_pool
+    pool = await create_pool(
         autocommit=False,
         charset=config.charset,
         connect_timeout=config.acquire_timeout,

@@ -87,6 +87,16 @@ config = mariadb.Config(
 `TLSConfig` always uses `CERT_REQUIRED`, hostname checking, and TLS 1.2 or newer.
 Omit `ca_file` to use system trust roots. Mutual TLS is available by supplying
 both `cert_file` and `key_file`; supplying only one is rejected.
+TLS is required on every physical connection, including pool growth and
+replacement. A server greeting without TLS support is rejected before sending
+authentication data; snekql never retries that connection in plaintext.
+`tls=None` retains the existing non-TLS behavior.
+
+The required-TLS path uses an isolated aiomysql handshake/pool adaptation because
+aiomysql 0.3.2 otherwise treats an SSL context opportunistically. The driver extra
+is constrained to `>=0.3.2,<0.4`; widening it requires rechecking the handshake and
+pool-lifecycle tests. This adaptation does not change global driver behavior.
+
 TLS is a TCP policy and cannot be combined with `unix_socket`. A failed trust or
 hostname check prevents initialization.
 

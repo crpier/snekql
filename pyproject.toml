@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 aiomysql = [
-    "aiomysql>=0.3.2",
+    "aiomysql>=0.3.2,<0.4",
 ]
 aiosqlite = [
     "aiosqlite>=0.22.1",
@@ -31,7 +31,7 @@ Repository = "https://github.com/crpier/snekql"
 
 [dependency-groups]
 dev = [
-    "aiomysql>=0.3.2",
+    "aiomysql>=0.3.2,<0.4",
     "aiosqlite>=0.22.1",
     "ruff>=0.15.15",
     "snektest>=0.16.0",
