@@ -212,12 +212,16 @@ def _executable_comment_tokens(
 
 
 def _read_quoted(sql: str, index: int, quote: str) -> tuple[str, int]:
-    """Read one MariaDB quoted value, resolving doubled and escaped characters."""
+    """Read quoted text, treating backslashes literally inside backtick identifiers.
+
+    String literals support backslash escapes; identifiers escape a backtick
+    only by doubling it. Confusing these rules can hide transaction control.
+    """
 
     value: list[str] = []
     index += 1
     while index < len(sql):
-        if sql[index] == "\\" and index + 1 < len(sql):
+        if quote != "`" and sql[index] == "\\" and index + 1 < len(sql):
             value.append(sql[index + 1])
             index += 2
             continue
