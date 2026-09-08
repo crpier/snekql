@@ -26,6 +26,7 @@ class QueryDialect:
     empty_insert_sql: Callable[[str], str]
     encode_column_value: QueryValueEncoder
     inserted_value_sql: InsertedValueRenderer
+    offset_only_limit_sql: str
     placeholder: str
     quote_identifier: Callable[[str], str]
     supports_delete_returning: bool = False
