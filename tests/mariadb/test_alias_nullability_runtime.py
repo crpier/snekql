@@ -40,21 +40,8 @@ async def optional_alias_round_trip(value: int | None) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await migrate_models(database, [Entry])
-        verification = await database.verify([Entry], policy="warn")
-        # Implicit SQL NULL defaults have a separate catalog normalization gap.
-        # Permit that known default-only diagnostic, never a nullability mismatch.
-        assert_eq(
-            [
-                issue.detail
-                for issue in verification.issues
-                if issue.detail
-                not in {
-                    "column 'value' differs: server default expected None, found 'NULL'",
-                    "column 'generic' differs: server default expected None, found 'NULL'",
-                }
-            ],
-            [],
-        )
+        verification = await database.verify([Entry])
+        assert_eq(verification.issues, ())
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(
