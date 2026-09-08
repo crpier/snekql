@@ -267,6 +267,9 @@ Decimal storage has the same two-coordinate rule:
   `(precision, scale)` are rejected before they reach the driver. Native Decimal
   `SUM` comparison bounds accept exact finite `Decimal` values beyond the input
   column's precision and scale; they are not rounded to that column's shape.
+  Integer `SUM` bounds likewise preserve exact integer serialization beyond
+  signed BIGINT, while individual writes retain their 64-bit limit. SQLite's
+  integer SUM overflow and parameter limits are unchanged.
 
 Bare `Col[decimal.Decimal] = Text()` emits `LexicalDecimalWarning` on both
 backends because Pydantic's default decimal text can represent the same value in

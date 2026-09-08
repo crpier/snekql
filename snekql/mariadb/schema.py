@@ -295,6 +295,10 @@ async def _fetch_existing_column_shapes(
         parsed_numeric_scale = (
             int(numeric_scale) if isinstance(numeric_scale, int | str) else None
         )
+        # MariaDB reports implicit SQL NULL as the unquoted string NULL.
+        # Quoted text 'NULL' and all other defaults must remain distinguishable.
+        if nullable == "YES" and default == "NULL":
+            default = None
         shapes.setdefault(str(table_name), []).append(
             ColumnShape(
                 name=str(name),
