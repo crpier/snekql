@@ -17,6 +17,7 @@ from typing import (
     ForwardRef,
     Literal,
     Self,
+    TypeAliasType,
     TypeVar,
     cast,
     evaluate_forward_ref,
@@ -1105,14 +1106,90 @@ def _unwrap_annotated(annotation: object) -> object:
     return annotation
 
 
-def _annotation_admits_none(annotation: object) -> bool:
-    """Whether a logical annotation includes ``None`` (``T | None``)."""
+def _alias_admits_none(
+    alias: TypeAliasType,
+    arguments: tuple[object, ...],
+    bindings: dict[TypeVar, bool | None],
+    active: frozenset[int],
+    remaining: int,
+) -> bool | None:
+    """Bind nullability facts before inspecting an alias, retaining caller scope."""
 
+    if id(alias) in active or len(arguments) > len(alias.__type_params__):
+        return None
+    specialized = dict(bindings)
+    try:
+        for index, parameter in enumerate(alias.__type_params__):
+            if not isinstance(parameter, TypeVar):
+                return None
+            if index < len(arguments):
+                specialized[parameter] = _annotation_admits_none(
+                    arguments[index], bindings, active, remaining, alias_scope=True
+                )
+            elif parameter.has_default():
+                specialized[parameter] = _annotation_admits_none(
+                    parameter.__default__,
+                    specialized,
+                    active,
+                    remaining,
+                    alias_scope=True,
+                )
+            elif arguments:
+                return None
+            else:
+                specialized[parameter] = None
+        value = alias.__value__
+    except NameError, TypeError, RecursionError:
+        return None
+    return _annotation_admits_none(
+        value, specialized, active | {id(alias)}, remaining, alias_scope=True
+    )
+
+
+def _annotation_admits_none(
+    annotation: object,
+    bindings: dict[TypeVar, bool | None] | None = None,
+    active: frozenset[int] = frozenset(),
+    remaining: int = 64,
+    *,
+    alias_scope: bool = False,
+) -> bool | None:
+    """Inspect field-level nullability without running logical validators.
+
+    Alias parameters carry nullability facts, not rewritten annotations. Containers
+    stop traversal: optional elements do not make the container itself nullable.
+    Indeterminate alias paths stay unknown rather than implying NOT NULL.
+    """
+
+    if remaining <= 0:
+        return None
+    bindings = bindings if bindings is not None else {}
     annotation = _unwrap_annotated(annotation)
-    arguments = get_args(annotation)
-    if arguments:
-        return any(argument is type(None) for argument in arguments)
-    return annotation is type(None)
+    if annotation is None or annotation is type(None):
+        return True
+    if isinstance(annotation, TypeVar | str | ForwardRef):
+        # Preserve direct partial-hint deferral. Only unresolved alias facts
+        # opt into the unknown policy rather than inferring NOT NULL.
+        return (
+            (bindings.get(annotation) if isinstance(annotation, TypeVar) else None)
+            if alias_scope
+            else False
+        )
+    origin = get_origin(annotation)
+    if origin is UnionType:
+        outcomes = [
+            _annotation_admits_none(
+                member, bindings, active, remaining - 1, alias_scope=alias_scope
+            )
+            for member in get_args(annotation)
+        ]
+        return True if True in outcomes else None if None in outcomes else False
+    alias = origin if isinstance(origin, TypeAliasType) else annotation
+    if isinstance(alias, TypeAliasType):
+        return _alias_admits_none(
+            alias, get_args(annotation), bindings, active, remaining - 1
+        )
+    return False
 
 
 def _annotation_core_types(annotation: object) -> list[object]:
