@@ -40,6 +40,25 @@ Two auth policies are supported:
 
 Password auth can be used with Unix socket transport, TCP transport, or both. MariaDB's OS-user-based Unix socket authentication plugin is not supported.
 
+Password-bootstrap SQL is sent through the client's stdin pipe, not its process
+arguments. The pipe and client remain owned through completion and cancellation.
+Bootstrap statement-error output and password-auth readiness logs are suppressed
+in package errors because MariaDB can echo password-bearing statements. Exec
+errors report the executable and errno, not SQL, argument lists or raw chained
+OS diagnostics. Sensitive-client cleanup notes also suppress diagnostic text.
+
+This protects the bootstrap argument/diagnostic path, not every local observation
+channel. Authenticated client calls still use `MYSQL_PWD`; privileged observers,
+process memory and retained server logs are outside this protection. The CLI's
+explicit password display below remains intentional. Public `run_sql` results and
+raw SQL transport remain unchanged, so caller-supplied SQL is not automatically
+confidential.
+
+Stdin transport does not change SQL literal escaping. Generated passwords and
+provided passwords containing single quotes are covered; backslashes still have
+a separate correctness limitation under ordinary backslash-escaping SQL modes.
+Use generated credentials when fixed test passwords are unnecessary.
+
 ## Data directories
 
 Data directories are retained after shutdown so failed tests can be inspected.
