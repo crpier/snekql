@@ -281,7 +281,16 @@ construct-time validation.
 All column constructors accept `unique=True` for column-level unique indexes.
 SQLite allows multiple `NULL` values in a unique index, so use a non-optional
 annotation such as `Col[str]` when uniqueness should also require a value.
-Primary-key columns reject `unique=True` because it is redundant.
+Primary-key columns reject `unique=True`; use a table-level unique `Index` when
+a composite-key component also needs independent uniqueness.
+
+A scalar `ForeignKey(Target.column)` requires a single-column primary key,
+`unique=True` on a non-primary column, or a singleton `Index(column, unique=True)`.
+Membership in a composite primary key or multi-column unique index is not enough.
+This rule applies during scaffolding and schema verification on both backends.
+Do not add a singleton unique constraint if repeated values are legitimate;
+choose an independently unique target instead. Composite foreign-key declarations
+are not introduced by this rule, and existing schemas are not rewritten.
 
 For a plain non-unique single-column index, pass `index=True` instead — sugar
 for an `Index(col)` entry in `__indexes__` (named `ix_<table>_<col>`). It is
