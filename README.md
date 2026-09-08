@@ -619,7 +619,11 @@ Runtime methods:
 - `execute(insert(...))` returns `None`, including conflict-handled inserts
   without `.returning(...)`; `execute(update/delete)` returns the affected-row
   count. SQLite counts matched rows; MariaDB counts only rows an `UPDATE`
-  actually changed.
+  actually changed. On SQLite UPDATE/DELETE, `.returning()` returns Fetched
+  models, one explicit returning column yields scalars, and multiple columns
+  yield tuples. Each `.returning(...)` call replaces the previous projection;
+  a final `.returning()` restores whole-model results. The MariaDB adapter
+  currently rejects UPDATE/DELETE RETURNING.
 - `close()` is async and idempotent after a successful close.
 
 Backend Configs separate pool waiting (`acquire_timeout`) from driver I/O
