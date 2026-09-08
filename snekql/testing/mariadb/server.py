@@ -748,6 +748,8 @@ def _normalize_transports(
 def _password_bootstrap_sql(*, database: str, password: str, user: str) -> str:
     """Build idempotent bootstrap SQL for the narrow validated identifier set."""
 
+    # This client session owns only bootstrap SQL. Disable backslash escapes
+    # before parsing its quote-doubled literals, independent of server SQL mode.
     escaped_password = password.replace("'", "''")
     if user == "root":
         user_sql = f"ALTER USER 'root'@'localhost' IDENTIFIED BY '{escaped_password}';"
@@ -764,6 +766,7 @@ def _password_bootstrap_sql(*, database: str, password: str, user: str) -> str:
         )
     return "".join(
         (
+            "SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES';",
             "FLUSH PRIVILEGES;",
             f"CREATE DATABASE IF NOT EXISTS `{database}`;",
             user_sql,
