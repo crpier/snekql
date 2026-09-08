@@ -166,6 +166,33 @@ annotation: `Col[str]` is `NOT NULL`, while `Col[str | None]` is nullable. An
 explicit `nullable=True` or `nullable=False` is cross-checked against the
 annotation, and contradictory declarations are rejected at class definition.
 
+Named aliases follow the same rule, including alias chains, `Annotated` wrappers
+and fixed-arity generic specialization:
+
+```python
+type OptionalInteger = int | None
+type Identity[T] = T
+
+value: Col[OptionalInteger] = Integer(default=None)
+other: Col[Identity[int | None]] = Integer(nullable=True)
+```
+
+Inspection checks only field-level None membership. A `list[int | None]` is not
+itself nullable. The declared logical annotation and its validators/serializers
+stay intact; inspection never runs a validator on a synthetic None value.
+Generic arguments and defaults supply the nullability facts of type parameters.
+When unresolved references, field-level cycles, unsupported variadic parameters
+or inspection depth prevent a decision about an alias, nullability remains
+unknown. The existing unknown-result policy requires an explicit `nullable=`
+flag or raises `ModelDeclarationError`. Such a flag does not make an invalid
+logical type valid for subsequent Pydantic validation.
+
+Earlier versions could infer NOT NULL for an optional named alias. Corrected
+inference can expose nullability drift in an existing database. Review the
+scaffold, write an explicit migration when needed, then verify again. Neither
+model declaration nor verification alters existing tables. This change does not
+expand JSON wire-marker support or normalize catalog server defaults.
+
 ```python
 required: Col[str] = Text()  # NOT NULL
 optional: Col[str | None] = Text(default=None)  # nullable and omittable
