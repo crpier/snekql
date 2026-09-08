@@ -211,7 +211,9 @@ JSON uses Pydantic's marker, not a snekql type: annotate
 MariaDB additionally exposes its native types as column types — `mariadb.Json`,
 `mariadb.Boolean`, `mariadb.DateTime`, `mariadb.Uuid` (native `UUID`), and
 `mariadb.Decimal(precision, scale)` (native `DECIMAL(p,s)`). To store a UUID as
-raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`.
+raw bytes instead, pair `Col[uuid.UUID]` with `Blob()`. Existing text-encoded
+MariaDB UUID Blob rows need an explicit [data migration](docs/binary-uuid-migration.md)
+before binary UUID predicates can match them.
 
 There is no declaration-time storage/logical compatibility check: any pairing is
 allowed and an impossible one fails at encode/decode via a Pydantic error.

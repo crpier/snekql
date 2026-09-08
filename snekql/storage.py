@@ -24,6 +24,7 @@ from typing import (
     get_origin,
     overload,
 )
+from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
@@ -1609,6 +1610,8 @@ class Attr[
         adapter = self._logical_adapter()
         if self.storage_class == "BLOB":
             encoded = adapter.dump_python(value, mode="python")
+            if isinstance(encoded, UUID):
+                encoded = encoded.bytes
             if (
                 codec.max_blob_bytes is not None
                 and isinstance(encoded, bytes | bytearray)
