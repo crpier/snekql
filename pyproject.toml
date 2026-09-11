@@ -37,6 +37,10 @@ dev = [
     "snektest>=0.16.0",
     "ty==0.0.77",
 ]
+research = [
+    "pymysql==1.1.2",
+    "sqlalchemy==2.0.43",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -110,3 +114,10 @@ allowed-unused-imports = [
 [tool.ty.rules]
 all = "error"
 missing-override-decorator = "ignore"
+
+# Preserve SQLAlchemy's documented Mapped[T] = mapped_column(...) idiom.
+# Its factory returns MappedColumn[Any], which ty's strict rule rejects.
+[[tool.ty.overrides]]
+include = ["research/schema_comparison/sqlalchemy_models.py"]
+[tool.ty.overrides.rules]
+unsound-assignment = "ignore"
