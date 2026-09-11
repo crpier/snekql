@@ -77,6 +77,7 @@ _NEUTRAL_NAMES = frozenset(
         "QueryCompilationError",
         "QueryConstructionError",
         "QueryError",
+        "RawResultShapeError",
         "ResultCardinalityError",
         "Scalar",
         "SchemaDriftIssue",
@@ -117,8 +118,10 @@ _DIALECT_NAMES = frozenset(
         "ForeignKey",
         "Integer",
         "Model",
+        "RawStatement",
         "Real",
         "Text",
+        "raw",
         "scaffold",
     },
 )

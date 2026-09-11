@@ -1267,24 +1267,24 @@ if TYPE_CHECKING:
             await transaction.fetch_all(select(User).all()),
             list[User[Fetched]],
         )
-        _ = await transaction.fetch_all(
-            select(User)  # ty: ignore[invalid-argument-type]
+        _ = await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            select(User)
         )
-        _ = await transaction.fetch_all(
-            select(User).join(  # ty: ignore[invalid-argument-type]
+        _ = await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            select(User).join(
                 Order,
                 on=Order.user_id.references(User.id),
             )
         )
-        _ = transaction.fetch_chunks(
-            select(User),  # ty: ignore[invalid-argument-type]
+        _ = transaction.fetch_chunks(  # ty: ignore[no-matching-overload]
+            select(User),
             size=100,
         )
-        _ = await transaction.fetch_one(
-            select(User)  # ty: ignore[invalid-argument-type]
+        _ = await transaction.fetch_one(  # ty: ignore[no-matching-overload]
+            select(User)
         )
-        _ = await transaction.fetch_one_or_none(
-            select(User)  # ty: ignore[invalid-argument-type]
+        _ = await transaction.fetch_one_or_none(  # ty: ignore[no-matching-overload]
+            select(User)
         )
         _ = assert_type(
             await transaction.fetch_all(select(User.email).all()),
@@ -1384,8 +1384,8 @@ if TYPE_CHECKING:
             Order,
             on=Order.user_id.references(User.id),
         )
-        await transaction.fetch_all(
-            _unjoined_select  # ty: ignore[invalid-argument-type]
+        await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            _unjoined_select
         )
         # Same check for filtering an unjoined table.
         _unjoined_filter = (
@@ -1393,11 +1393,11 @@ if TYPE_CHECKING:
             .join(Order, on=Order.user_id.references(User.id))
             .where(Region.code.eq("EU"))
         )
-        await transaction.fetch_all(
-            _unjoined_filter  # ty: ignore[invalid-argument-type]
+        await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            _unjoined_filter
         )
         # Projecting two tables but joining nothing is rejected too.
         _no_join = select(User.email, Order.note)
-        await transaction.fetch_all(
-            _no_join  # ty: ignore[invalid-argument-type]
+        await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            _no_join
         )

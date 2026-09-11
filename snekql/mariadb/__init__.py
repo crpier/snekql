@@ -55,6 +55,7 @@ from snekql._common import (
     QueryCompilationError,
     QueryConstructionError,
     QueryError,
+    RawResultShapeError,
     ResultCardinalityError,
     Scalar,
     SchemaDriftIssue,
@@ -86,6 +87,7 @@ from snekql._common import (
 # Importing the dialect module registers the MariaDB query Dialect so a built
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
 from snekql.mariadb import _dialect_sql as _dialect_sql
+from snekql.mariadb._raw import RawStatement, raw
 from snekql.mariadb.config import Config, TLSConfig
 from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
@@ -177,6 +179,8 @@ __all__ = [
     "QueryCompilationError",
     "QueryConstructionError",
     "QueryError",
+    "RawResultShapeError",
+    "RawStatement",
     "Real",
     "ResultCardinalityError",
     "Scalar",
@@ -205,6 +209,7 @@ __all__ = [
     "exists",
     "insert",
     "not_exists",
+    "raw",
     "scaffold",
     "scalar",
     "select",

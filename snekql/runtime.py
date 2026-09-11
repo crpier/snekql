@@ -33,6 +33,7 @@ from snekql._query_plan import (
     select_query_backend,
     validate_select_consumption,
 )
+from snekql._raw import NativeParameters, RawPlan, RawStatement, lower_raw
 from snekql._runtime_selection import (
     RuntimeConfig,
     resolve_runtime_config,
@@ -170,6 +171,29 @@ class RuntimeConnection(Protocol):
         ...
 
 
+class RawRuntimeCursor(RuntimeCursor, Protocol):
+    """Raw cursors expose only normalized first-result metadata."""
+
+    @property
+    def columns(self) -> tuple[str, ...] | None: ...
+
+    async def complete(self) -> bool:
+        """Close the first result, reporting extras without buffering them."""
+        ...
+
+
+class RawRuntimeConnection(Protocol):
+    """Adapter-owned native binding path, separate from builder diagnostics."""
+
+    async def execute_raw(
+        self,
+        sql: str,
+        params: NativeParameters,
+        *,
+        stream: bool = False,
+    ) -> RawRuntimeCursor: ...
+
+
 class QueryCodec(Protocol):
     """Query compile/materialize seam a backend adapter exposes as one object."""
 
@@ -243,12 +267,12 @@ class RuntimeBackend(Protocol):
 
 
 class ChunkStream[RowT]:
-    """Incremental batch reader over one select, bound to a transaction.
+    """Incremental batch reader over one result, bound to a transaction.
 
     Created by ``Transaction.fetch_chunks``. It is both an async context manager
-    and an async iterator: entering acquires the transaction connection and opens
+    and an async iterator: entering locks the transaction connection and opens
     a streaming cursor, iterating yields lists of up to ``size`` materialized
-    rows, and exiting closes the cursor and releases the connection regardless of
+    rows, and exiting closes the cursor and releases the transaction lock regardless of
     how iteration ended. Use it inside ``async with`` rather than iterating the
     bare object so cleanup is deterministic.
     """
@@ -257,17 +281,18 @@ class ChunkStream[RowT]:
         self,
         *,
         transaction: Transaction[Any],
-        plan_factory: Callable[[], SelectPlan[object]],
+        plan_factory: Callable[[], SelectPlan[object] | RawPlan],
         lock: anyio.Lock,
         size: PositiveInt,
     ) -> None:
         self._transaction: Transaction[Any] = transaction
-        self._plan_factory: Callable[[], SelectPlan[object]] = plan_factory
-        self._plan: SelectPlan[object] | None = None
+        self._plan_factory: Callable[[], SelectPlan[object] | RawPlan] = plan_factory
+        self._plan: SelectPlan[object] | RawPlan | None = None
         self._lock: anyio.Lock = lock
         self._size: PositiveInt = size
         self._cursor: RuntimeCursor | None = None
         self._entered: bool = False
+        self._owner_task: int | None = None
 
     async def __aenter__(self) -> Self:
         if self._entered:
@@ -276,6 +301,7 @@ class ChunkStream[RowT]:
         self._entered = True
         transaction = self._transaction
         await self._lock.acquire()
+        self._owner_task = anyio.get_current_task().id
         try:
             connection = transaction.require_connection()
             plan = self._plan_factory()
@@ -283,11 +309,17 @@ class ChunkStream[RowT]:
             transaction._validate_plan_backend(plan.backend)  # noqa: SLF001
             self._cursor = await transaction._run_query_operation(  # noqa: SLF001
                 "fetch_chunks execution",
-                lambda: connection.execute_stream(plan.sql, plan.params),
+                lambda: transaction._open_cursor(connection, plan, stream=True),  # noqa: SLF001
                 plan.diagnostics,
             )
-        except BaseException:
-            self._lock.release()
+            if isinstance(plan, RawPlan):
+                plan.check_shape()
+        except BaseException as error:
+            try:
+                if isinstance(self._plan, RawPlan):
+                    await self._finish_raw(error)
+            finally:
+                self._lock.release()
             raise
         return self
 
@@ -298,52 +330,97 @@ class ChunkStream[RowT]:
         traceback: TracebackType | None,
     ) -> None:
         _ = exc_type
-        _ = exc_value
         _ = traceback
+        self._check_raw_owner()
         try:
-            cursor = self._cursor
-            self._cursor = None
-            if cursor is not None:
-                await self._transaction._run_driver_operation(  # noqa: SLF001
-                    "cursor close",
-                    cursor.close,
-                )
+            if isinstance(self._plan, RawPlan):
+                await self._finish_raw(exc_value)
+            else:
+                cursor = self._cursor
+                self._cursor = None
+                if cursor is not None:
+                    await self._transaction._run_driver_operation(  # noqa: SLF001
+                        "cursor close",
+                        cursor.close,
+                    )
         finally:
             self._lock.release()
+
+    def _check_raw_owner(self) -> None:
+        """Reject cross-task raw cursor use without touching its owner's resources."""
+
+        if (
+            isinstance(self._plan, RawPlan)
+            and self._owner_task != anyio.get_current_task().id
+        ):
+            msg = "raw stream must be consumed by its owning task"
+            raise DatabaseRuntimeError(msg)
+
+    async def _finish_raw(self, pending: BaseException | None = None) -> None:
+        """A completed raw stream cannot resume, including after caught failures."""
+
+        cursor = self._cursor
+        self._cursor = None
+        plan = self._plan
+        if cursor is None or not isinstance(plan, RawPlan):
+            return
+        control_flow = pending is not None and not isinstance(pending, Exception)
+        try:
+            with anyio.CancelScope(shield=True):
+                await self._transaction._complete_raw_cursor(cursor, plan)  # noqa: SLF001
+        except BaseException:
+            if not control_flow:
+                raise
+            return
+        if not control_flow:
+            try:
+                plan.check_shape()
+            except Exception as error:
+                raise error from None
 
     def __aiter__(self) -> AsyncIterator[list[RowT]]:
         return self
 
     async def __anext__(self) -> list[RowT]:
+        self._check_raw_owner()
         cursor = self._cursor
         plan = self._plan
+        if cursor is None and isinstance(plan, RawPlan):
+            raise StopAsyncIteration
         if cursor is None or plan is None:
             msg = "chunk stream is not open; use 'async with tx.fetch_chunks(...)'"
             raise DatabaseRuntimeError(msg)
         transaction = self._transaction
-        rows = await transaction._run_query_operation(  # noqa: SLF001
-            "fetch_chunks fetch",
-            lambda: cursor.fetchmany(self._size),
-            plan.diagnostics,
-        )
-        if not rows:
-            raise StopAsyncIteration
-        logger.debug(
-            "%s fetch_chunks batch: %s params=%s rows=%d",
-            transaction.runtime.backend_family,
-            plan.diagnostics.sql,
-            transaction._format_bound_params(plan.diagnostics.params),  # noqa: SLF001
-            len(rows),
-        )
-        # Application decoding stays outside the driver-error boundary, so a
-        # validation failure does not become an ExecutionError.
-        return [
-            cast(
-                "RowT",
-                plan.materialize_row(tuple(row)),
+        try:
+            rows = await transaction._run_query_operation(  # noqa: SLF001
+                "fetch_chunks fetch",
+                lambda: cursor.fetchmany(self._size),
+                plan.diagnostics,
             )
-            for row in rows
-        ]
+            if not rows:
+                if isinstance(plan, RawPlan):
+                    await self._finish_raw()
+                raise StopAsyncIteration  # noqa: TRY301 - cleanup precedes iteration termination
+            logger.debug(
+                "%s fetch_chunks batch: %s params=%s rows=%d",
+                transaction.runtime.backend_family,
+                plan.diagnostics.sql,
+                transaction._format_bound_params(plan.diagnostics.params),  # noqa: SLF001
+                len(rows),
+            )
+            # Application decoding stays outside the driver-error boundary, so a
+            # validation failure does not become an ExecutionError.
+            return [
+                cast(
+                    "RowT",
+                    plan.materialize_row(tuple(row)),
+                )
+                for row in rows
+            ]
+        except BaseException as error:
+            if isinstance(plan, RawPlan):
+                await self._finish_raw(error)
+            raise
 
 
 class Transaction[FamilyT: BackendFamily]:
@@ -382,6 +459,7 @@ class Transaction[FamilyT: BackendFamily]:
         )
         self.mode: TransactionMode = mode
         self._connection_reusable: bool = True
+        self._raw_diagnostics: bool = False
         self._entering: bool = False
         self._lock: anyio.Lock = anyio.Lock()
 
@@ -481,14 +559,7 @@ class Transaction[FamilyT: BackendFamily]:
                         )
                 except Exception as error:
                     self._connection_reusable = False
-                    logger.exception(
-                        "%s transaction close failed", self.runtime.backend_family
-                    )
-                    if exc_type is None:
-                        if isinstance(error, DatabaseOperationTimeoutError):
-                            raise
-                        msg = "could not close transaction"
-                        raise DatabaseRuntimeError(msg) from error
+                    self._report_close_failure(error, during_error=exc_type is not None)
                 finally:
                     if self._connection_reusable:
                         await self.runtime.release(connection)
@@ -522,13 +593,21 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         validate: bool,
     ) -> list[object]: ...
+    @overload
+    async def fetch_all[RowT](
+        self,
+        query: RawStatement[FamilyT, RowT],
+        *,
+        validate: Literal[True] = True,
+    ) -> list[RowT]: ...
+
     async def fetch_all(
         self,
         query: object,
         *,
         validate: bool = True,
     ) -> list[object]:
-        """Fetch and materialize every row of a select query into a list.
+        """Fetch all rows from a builder select or raw statement into a list.
 
         Intended for bounded result sets. The whole result is loaded into memory
         and each row is validated synchronously on the event loop; the loop
@@ -541,13 +620,21 @@ class Transaction[FamilyT: BackendFamily]:
 
         async with self._lock:
             connection = self.require_connection()
-            self._validate_plan_backend(select_query_backend(query))
-            plan = self.runtime.query_codec.compile_select_plan(
-                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
-                cardinality="many",
-                validate=validate,
-            )
-            self._validate_plan_backend(plan.backend)
+            if isinstance(query, RawStatement):
+                plan = lower_raw(
+                    query,
+                    backend=self.runtime.backend_family,
+                    operation="fetch_all",
+                    validate=validate,
+                )
+            else:
+                self._validate_plan_backend(select_query_backend(query))
+                plan = self.runtime.query_codec.compile_select_plan(
+                    cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                    cardinality="many",
+                    validate=validate,
+                )
+                self._validate_plan_backend(plan.backend)
             _, rows = await self._execute_buffered(
                 connection,
                 plan=plan,
@@ -584,6 +671,15 @@ class Transaction[FamilyT: BackendFamily]:
         size: PositiveInt,
         validate: bool,
     ) -> ChunkStream[object]: ...
+    @overload
+    def fetch_chunks[RowT](
+        self,
+        query: RawStatement[FamilyT, RowT],
+        *,
+        size: PositiveInt,
+        validate: Literal[True] = True,
+    ) -> ChunkStream[RowT]: ...
+
     def fetch_chunks(
         self,
         query: object,
@@ -613,15 +709,39 @@ class Transaction[FamilyT: BackendFamily]:
         within one task.
         """
 
-        _validate_chunk_size(size=size)
-        self._validate_plan_backend(select_query_backend(query))
-        return ChunkStream[object](
-            transaction=self,
-            plan_factory=lambda: self.runtime.query_codec.compile_select_plan(
+        if isinstance(query, RawStatement):
+            try:
+                _validate_chunk_size(size=size)
+            except Exception:
+                msg = "raw stream size must be a positive integer"
+                raise QueryConstructionError(msg) from None
+            lower_raw(
+                query,
+                backend=self.runtime.backend_family,
+                operation="fetch_chunks",
+                validate=validate,
+            )
+        else:
+            _validate_chunk_size(size=size)
+            self._validate_plan_backend(select_query_backend(query))
+
+        def plan_factory() -> SelectPlan[object] | RawPlan:
+            if isinstance(query, RawStatement):
+                return lower_raw(
+                    query,
+                    backend=self.runtime.backend_family,
+                    operation="fetch_chunks",
+                    validate=validate,
+                )
+            return self.runtime.query_codec.compile_select_plan(
                 cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
                 cardinality="many",
                 validate=validate,
-            ),
+            )
+
+        return ChunkStream[object](
+            transaction=self,
+            plan_factory=plan_factory,
             lock=self._lock,
             size=size,
         )
@@ -647,6 +767,14 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         validate: bool,
     ) -> object: ...
+    @overload
+    async def fetch_one[RowT](
+        self,
+        query: RawStatement[FamilyT, RowT],
+        *,
+        validate: Literal[True] = True,
+    ) -> RowT: ...
+
     async def fetch_one(
         self,
         query: object,
@@ -664,13 +792,20 @@ class Transaction[FamilyT: BackendFamily]:
 
         async with self._lock:
             connection = self.require_connection()
-            plan = self.runtime.query_codec.compile_select_plan(
-                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
-                cardinality="one",
-                validate=validate,
-            )
-            self._validate_plan_backend(plan.backend)
-
+            if isinstance(query, RawStatement):
+                plan = lower_raw(
+                    query,
+                    backend=self.runtime.backend_family,
+                    operation="fetch_one",
+                    validate=validate,
+                )
+            else:
+                plan = self.runtime.query_codec.compile_select_plan(
+                    cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                    cardinality="one",
+                    validate=validate,
+                )
+                self._validate_plan_backend(plan.backend)
             _, raw_rows = await self._execute_buffered(
                 connection,
                 plan=plan,
@@ -700,6 +835,14 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         validate: bool,
     ) -> object: ...
+    @overload
+    async def fetch_one_or_none[RowT](
+        self,
+        query: RawStatement[FamilyT, RowT],
+        *,
+        validate: Literal[True] = True,
+    ) -> RowT | None: ...
+
     async def fetch_one_or_none(
         self,
         query: object,
@@ -708,24 +851,33 @@ class Transaction[FamilyT: BackendFamily]:
     ) -> object:
         """Fetch zero or one row, returning ``None`` when none matches.
 
-        Raises ``MultipleResultsError`` when more than one row matches. Only
-        model, tuple, and join selects are accepted: for these ``None`` can only
+        Raises ``MultipleResultsError`` when more than one row matches. Builder
+        selects accept model, tuple, and join rows: for these ``None`` can only
         mean a missing row. Single-value selects are rejected because their
         ``None`` would also mean SQL ``NULL`` -- reach for ``fetch_one``, or for
         the zero-or-one case ``fetch_all`` or a tuple select that includes a
-        non-nullable column.
+        non-nullable column. Raw statements use their declared row mode and
+        require result columns, without the builder's scalar restriction.
         """
 
         validate_select_consumption(query, cardinality="one_or_none")
         async with self._lock:
             connection = self.require_connection()
-            self._validate_plan_backend(select_query_backend(query))
-            plan = self.runtime.query_codec.compile_select_plan(
-                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
-                cardinality="one_or_none",
-                validate=validate,
-            )
-            self._validate_plan_backend(plan.backend)
+            if isinstance(query, RawStatement):
+                plan = lower_raw(
+                    query,
+                    backend=self.runtime.backend_family,
+                    operation="fetch_one_or_none",
+                    validate=validate,
+                )
+            else:
+                self._validate_plan_backend(select_query_backend(query))
+                plan = self.runtime.query_codec.compile_select_plan(
+                    cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                    cardinality="one_or_none",
+                    validate=validate,
+                )
+                self._validate_plan_backend(plan.backend)
             _, rows = await self._execute_buffered(
                 connection,
                 plan=plan,
@@ -768,40 +920,136 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         validate: bool,
     ) -> object: ...
+    @overload
+    async def execute[RowT](
+        self,
+        query: RawStatement[FamilyT, RowT],
+        *,
+        validate: Literal[True] = True,
+    ) -> int: ...
+
     async def execute(
         self,
         query: object,
         *,
         validate: bool = True,
     ) -> object:
-        """Execute a write query inside this transaction.
+        """Execute a builder write or raw no-column command in this transaction.
 
-        The result depends on the query shape; see ``insert`` / ``update`` /
+        Raw statements return the connector's rowcount. Builder results depend
+        on query shape; see ``insert`` / ``update`` /
         ``delete`` for return-value details.
         """
 
         async with self._lock:
             connection = self.require_connection()
-            plan = self.runtime.query_codec.compile_write_plan(
-                cast("_ExecutableWrite[FamilyT, object]", query),
-                validate=validate,
-            )
-            self._validate_plan_backend(plan.backend)
+            if isinstance(query, RawStatement):
+                plan = lower_raw(
+                    query,
+                    backend=self.runtime.backend_family,
+                    operation="execute",
+                    validate=validate,
+                )
+            else:
+                plan = self.runtime.query_codec.compile_write_plan(
+                    cast("_ExecutableWrite[FamilyT, object]", query),
+                    validate=validate,
+                )
+                self._validate_plan_backend(plan.backend)
             affected_rows, returned_rows = await self._execute_buffered(
                 connection,
                 plan=plan,
                 operation="write",
             )
+            if isinstance(plan, RawPlan):
+                return affected_rows
             return plan.materialize(
                 rowcount=affected_rows,
                 rows=returned_rows,
             )
 
+    def _report_close_failure(self, error: Exception, *, during_error: bool) -> None:
+        """Rollback preserves pending errors; raw lifecycle diagnostics stay safe."""
+
+        if self._raw_diagnostics:
+            logger.error(
+                "raw transaction close failed",
+                extra={"backend": self.runtime.backend_family},
+            )
+        else:
+            logger.error(
+                "%s transaction close failed",
+                self.runtime.backend_family,
+                exc_info=error,
+            )
+        if during_error:
+            return
+        if isinstance(error, DatabaseOperationTimeoutError):
+            if self._raw_diagnostics:
+                raise error from None
+            raise error
+        msg = "could not close transaction"
+        if self._raw_diagnostics:
+            raise DatabaseRuntimeError(msg) from None
+        raise DatabaseRuntimeError(msg) from error
+
+    async def _open_cursor(
+        self,
+        connection: RuntimeConnection,
+        plan: SelectPlan[object] | WritePlan[object] | RawPlan,
+        *,
+        stream: bool = False,
+    ) -> RuntimeCursor:
+        """Choose the adapter's native raw path without another connection."""
+
+        if isinstance(plan, RawPlan):
+            self._raw_diagnostics = True
+            # Both supported adapters implement this additional native boundary.
+            cursor = await cast("RawRuntimeConnection", connection).execute_raw(
+                plan.sql,
+                plan.params,
+                stream=stream,
+            )
+            try:
+                plan.columns = cursor.columns
+            except BaseException as error:
+                await self._complete_raw_cursor(cursor, plan, pending=error)
+                raise
+            return cursor
+        if plan.sql is None:
+            msg = "cannot open a cursor for an empty execution plan"
+            raise DatabaseRuntimeError(msg)
+        if stream:
+            return await connection.execute_stream(plan.sql, plan.params)
+        return await connection.execute(plan.sql, plan.params)
+
+    async def _complete_raw_cursor(
+        self,
+        cursor: RuntimeCursor,
+        plan: RawPlan,
+        *,
+        pending: BaseException | None = None,
+    ) -> None:
+        """Cleanup errors supersede result errors, but never cancellation."""
+
+        try:
+            plan.additional_results = await self._run_query_operation(
+                "raw cursor completion",
+                cast("RawRuntimeCursor", cursor).complete,
+                plan.diagnostics,
+            )
+        except BaseException:
+            if pending is not None and not isinstance(pending, Exception):
+                raise pending from None
+            raise
+        if plan.additional_results:
+            self._connection_reusable = False
+
     async def _execute_buffered(
         self,
         connection: RuntimeConnection,
         *,
-        plan: SelectPlan[object] | WritePlan[object],
+        plan: SelectPlan[object] | WritePlan[object] | RawPlan,
         operation: str,
     ) -> tuple[int, Sequence[Sequence[object]]]:
         """Collect driver output and close before application materialization.
@@ -818,7 +1066,8 @@ class Transaction[FamilyT: BackendFamily]:
         fetch_limit = plan.fetch_limit
 
         async def collect() -> tuple[int, Sequence[Sequence[object]]]:
-            cursor = await connection.execute(sql, plan.params)
+            cursor = await self._open_cursor(connection, plan)
+            pending: BaseException | None = None
             try:
                 if fetch_limit is None:
                     rows = await cursor.fetchall()
@@ -826,11 +1075,21 @@ class Transaction[FamilyT: BackendFamily]:
                     rows = await cursor.fetchmany(fetch_limit)
                 else:
                     rows = ()
-                return cursor.rowcount, rows
+                rowcount = cursor.rowcount
+            except BaseException as error:
+                pending = error
+                raise
+            else:
+                return rowcount, rows
             finally:
-                await cursor.close()
+                if isinstance(plan, RawPlan):
+                    await self._complete_raw_cursor(cursor, plan, pending=pending)
+                else:
+                    await cursor.close()
 
         output = await self._run_query_operation(operation, collect, diagnostics)
+        if isinstance(plan, RawPlan):
+            plan.check_shape()
         logger.debug(
             "%s %s executed: %s params=%s rows=%d",
             self.runtime.backend_family,
@@ -855,9 +1114,22 @@ class Transaction[FamilyT: BackendFamily]:
 
         try:
             return await self._run_driver_operation(operation, operation_call)
-        except DatabaseOperationTimeoutError:
+        except DatabaseOperationTimeoutError as error:
+            if diagnostics.raw:
+                raise error from None
             raise
         except Exception as error:
+            if diagnostics.raw:
+                logger.error(  # noqa: TRY400 - exception text may contain raw SQL
+                    "raw driver operation failed",
+                    extra={
+                        "operation": operation,
+                        "backend": self.runtime.backend_family,
+                    },
+                )
+                raise self._execution_error(
+                    diagnostics.failure_message, sql="", params=()
+                ) from None
             _log_query_failure(
                 self.runtime.backend_family,
                 operation,

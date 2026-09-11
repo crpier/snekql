@@ -710,6 +710,7 @@ inspection. Its string form and normal query logs render
 - [Typing guide](docs/typing.md)
 - [Schema startup and drift](docs/schema-drift.md)
 - [Temporary MariaDB Test Server](docs/testing-mariadb.md)
+- [Raw SQL](docs/raw-sql.md)
 - [Error handling guide](docs/error-handling.md)
 - [MariaDB integration PRD](https://github.com/crpier/snekql/issues/34)
 
