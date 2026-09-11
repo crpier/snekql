@@ -1,10 +1,9 @@
 """Dialect-bound query codec used by Backend Runtime Adapters.
 
 Bundles the shared compile, plan, and materialize seams behind one object
-resolved from the query-dialect registry. The core stays dialect-blind (ADR
-0004): this module only consults the registry that each Backend Namespace
-populates on import. Legacy select paths still use the direct methods while they
-migrate incrementally to plans.
+resolved from the query-dialect registry. This module only consults the registry
+that each Backend Namespace populates on import. Query Runtime consumes plans;
+direct compilation and materialization helpers remain for internal callers.
 """
 
 from __future__ import annotations

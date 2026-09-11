@@ -26,21 +26,25 @@ from snekql._migrations import (
     MigrationResult,
     prepare_migrations,
 )
-from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
+from snekql._query_plan import (
+    SelectCardinality,
+    SelectPlan,
+    WritePlan,
+    select_query_backend,
+    validate_select_consumption,
+)
 from snekql._runtime_selection import (
     RuntimeConfig,
     resolve_runtime_config,
     validate_model_backends,
 )
 from snekql._schema_verification import SchemaVerificationResult
-from snekql._telemetry import ParameterVisibility, format_bound_params
+from snekql._telemetry import ParameterVisibility, QueryDiagnostics, format_bound_params
 from snekql.errors import (
     DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
     ExecutionError,
     MigrationDeclarationError,
-    MultipleResultsError,
-    QueryCompilationError,
     QueryConstructionError,
     TransactionClosedError,
     TransactionNotStartedError,
@@ -49,17 +53,12 @@ from snekql.errors import (
 from snekql.model import (
     BackendFamily,
     Table,
-    require_model_backend,
     require_model_table_name,
 )
 from snekql.query import (
     AnySelectQuery,
     InsertManyQuery,
     InsertQuery,
-    JoinModelQuery,
-    SelectModelQuery,
-    SelectTupleQuery,
-    SelectValueQuery,
     _ExecutableOptionalSelect,
     _ExecutableSelect,
     _ExecutableWrite,
@@ -258,20 +257,17 @@ class ChunkStream[RowT]:
         self,
         *,
         transaction: Transaction[Any],
-        select_query: AnySelectQuery,
+        plan_factory: Callable[[], SelectPlan[object]],
         lock: anyio.Lock,
         size: PositiveInt,
-        validate: bool,
     ) -> None:
         self._transaction: Transaction[Any] = transaction
-        self._select_query: AnySelectQuery = select_query
+        self._plan_factory: Callable[[], SelectPlan[object]] = plan_factory
+        self._plan: SelectPlan[object] | None = None
         self._lock: anyio.Lock = lock
         self._size: PositiveInt = size
-        self._validate: bool = validate
         self._cursor: RuntimeCursor | None = None
         self._entered: bool = False
-        self._sql: str = ""
-        self._params: tuple[object, ...] = ()
 
     async def __aenter__(self) -> Self:
         if self._entered:
@@ -282,27 +278,14 @@ class ChunkStream[RowT]:
         await self._lock.acquire()
         try:
             connection = transaction.require_connection()
-            self._sql, self._params = (
-                transaction.runtime.query_codec.compile_select_sql(self._select_query)
+            plan = self._plan_factory()
+            self._plan = plan
+            transaction._validate_plan_backend(plan.backend)  # noqa: SLF001
+            self._cursor = await transaction._run_query_operation(  # noqa: SLF001
+                "fetch_chunks execution",
+                lambda: connection.execute_stream(plan.sql, plan.params),
+                plan.diagnostics,
             )
-            try:
-                self._cursor = await transaction._run_driver_operation(  # noqa: SLF001
-                    "fetch_chunks execution",
-                    lambda: connection.execute_stream(self._sql, self._params),
-                )
-            except DatabaseOperationTimeoutError:
-                raise
-            except Exception as error:
-                _log_query_failure(
-                    transaction.runtime.backend_family,
-                    "fetch_chunks",
-                    self._sql,
-                    transaction._format_bound_params(self._params),  # noqa: SLF001
-                )
-                msg = "select failed"
-                raise transaction._execution_error(  # noqa: SLF001
-                    msg, sql=self._sql, params=self._params
-                ) from error
         except BaseException:
             self._lock.release()
             raise
@@ -333,46 +316,31 @@ class ChunkStream[RowT]:
 
     async def __anext__(self) -> list[RowT]:
         cursor = self._cursor
-        if cursor is None:
+        plan = self._plan
+        if cursor is None or plan is None:
             msg = "chunk stream is not open; use 'async with tx.fetch_chunks(...)'"
             raise DatabaseRuntimeError(msg)
         transaction = self._transaction
-        try:
-            rows = await transaction._run_driver_operation(  # noqa: SLF001
-                "fetch_chunks fetch",
-                lambda: cursor.fetchmany(self._size),
-            )
-        except DatabaseOperationTimeoutError:
-            raise
-        except Exception as error:
-            _log_query_failure(
-                transaction.runtime.backend_family,
-                "fetch_chunks fetch",
-                self._sql,
-                transaction._format_bound_params(self._params),  # noqa: SLF001
-            )
-            msg = "select failed"
-            raise transaction._execution_error(  # noqa: SLF001
-                msg, sql=self._sql, params=self._params
-            ) from error
+        rows = await transaction._run_query_operation(  # noqa: SLF001
+            "fetch_chunks fetch",
+            lambda: cursor.fetchmany(self._size),
+            plan.diagnostics,
+        )
         if not rows:
             raise StopAsyncIteration
         logger.debug(
             "%s fetch_chunks batch: %s params=%s rows=%d",
             transaction.runtime.backend_family,
-            self._sql,
-            transaction._format_bound_params(self._params),  # noqa: SLF001
+            plan.diagnostics.sql,
+            transaction._format_bound_params(plan.diagnostics.params),  # noqa: SLF001
             len(rows),
         )
-        # Materialization runs outside the fetch try/except, mirroring
-        # ``fetch_all``: a decode/validation failure surfaces as its own error
-        # type rather than being wrapped as a fetch-level ``ExecutionError``.
+        # Application decoding stays outside the driver-error boundary, so a
+        # validation failure does not become an ExecutionError.
         return [
             cast(
                 "RowT",
-                transaction.runtime.query_codec.materialize_select_row(
-                    self._select_query, tuple(row), validate=self._validate
-                ),
+                plan.materialize_row(tuple(row)),
             )
             for row in rows
         ]
@@ -573,46 +541,23 @@ class Transaction[FamilyT: BackendFamily]:
 
         async with self._lock:
             connection = self.require_connection()
-            select_query = self._require_select_query(query)
-            self._validate_query_backend(select_query)
-            sql, params = self.runtime.query_codec.compile_select_sql(select_query)
-
-            async def fetch_rows() -> Sequence[Sequence[object]]:
-                cursor = await connection.execute(sql, params)
-                try:
-                    return await cursor.fetchall()
-                finally:
-                    await cursor.close()
-
-            try:
-                rows = await self._run_driver_operation("fetch_all", fetch_rows)
-            except DatabaseOperationTimeoutError:
-                raise
-            except Exception as error:
-                _log_query_failure(
-                    self.runtime.backend_family,
-                    "fetch_all",
-                    sql,
-                    self._format_bound_params(params),
-                )
-                msg = "select failed"
-                raise self._execution_error(msg, sql=sql, params=params) from error
-            logger.debug(
-                "%s fetch_all executed: %s params=%s rows=%d",
-                self.runtime.backend_family,
-                sql,
-                self._format_bound_params(params),
-                len(rows),
+            self._validate_plan_backend(select_query_backend(query))
+            plan = self.runtime.query_codec.compile_select_plan(
+                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                cardinality="many",
+                validate=validate,
+            )
+            self._validate_plan_backend(plan.backend)
+            _, rows = await self._execute_buffered(
+                connection,
+                plan=plan,
+                operation="fetch_all",
             )
             materialized: list[object] = []
             for index, row in enumerate(rows):
                 if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
                     await anyio.lowlevel.checkpoint()
-                materialized.append(
-                    self.runtime.query_codec.materialize_select_row(
-                        select_query, tuple(row), validate=validate
-                    )
-                )
+                materialized.append(plan.materialize_row(tuple(row)))
             return materialized
 
     @overload
@@ -669,62 +614,17 @@ class Transaction[FamilyT: BackendFamily]:
         """
 
         _validate_chunk_size(size=size)
-        select_query = self._require_select_query(query)
-        self._validate_query_backend(select_query)
+        self._validate_plan_backend(select_query_backend(query))
         return ChunkStream[object](
             transaction=self,
-            select_query=select_query,
+            plan_factory=lambda: self.runtime.query_codec.compile_select_plan(
+                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                cardinality="many",
+                validate=validate,
+            ),
             lock=self._lock,
             size=size,
-            validate=validate,
         )
-
-    async def _fetch_capped_rows(
-        self, query: object, *, method: str
-    ) -> tuple[AnySelectQuery, list[tuple[object, ...]]]:
-        """Run a select and fetch at most two rows for a cardinality-capped read.
-
-        Both ``fetch_one`` and ``fetch_one_or_none`` cap result cardinality at
-        one. Fetching two rows is the cheapest way to tell ``0`` from ``1`` from
-        ``many`` without materializing an unbounded result set; the caller maps
-        the row count onto its own contract. Runs under the held connection
-        lock acquired by the caller.
-        """
-
-        connection = self.require_connection()
-        select_query = self._require_select_query(query)
-        self._validate_query_backend(select_query)
-        sql, params = self.runtime.query_codec.compile_select_sql(select_query)
-
-        async def fetch_rows() -> Sequence[Sequence[object]]:
-            cursor = await connection.execute(sql, params)
-            try:
-                return await cursor.fetchmany(2)
-            finally:
-                await cursor.close()
-
-        try:
-            rows = await self._run_driver_operation(method, fetch_rows)
-        except DatabaseOperationTimeoutError:
-            raise
-        except Exception as error:
-            _log_query_failure(
-                self.runtime.backend_family,
-                method,
-                sql,
-                self._format_bound_params(params),
-            )
-            msg = "select failed"
-            raise self._execution_error(msg, sql=sql, params=params) from error
-        logger.debug(
-            "%s %s executed: %s params=%s rows=%d",
-            self.runtime.backend_family,
-            method,
-            sql,
-            self._format_bound_params(params),
-            len(rows),
-        )
-        return select_query, [tuple(row) for row in rows]
 
     @overload
     async def fetch_one[ScopeT, RowT](
@@ -771,38 +671,12 @@ class Transaction[FamilyT: BackendFamily]:
             )
             self._validate_plan_backend(plan.backend)
 
-            async def fetch_rows() -> Sequence[Sequence[object]]:
-                cursor = await connection.execute(plan.sql, plan.params)
-                try:
-                    return await cursor.fetchmany(plan.fetch_limit)
-                finally:
-                    await cursor.close()
-
-            try:
-                raw_rows = await self._run_driver_operation("fetch_one", fetch_rows)
-            except DatabaseOperationTimeoutError:
-                raise
-            except Exception as error:
-                _log_query_failure(
-                    self.runtime.backend_family,
-                    "fetch_one",
-                    plan.sql,
-                    self._format_bound_params(plan.params),
-                )
-                msg = "select failed"
-                raise self._execution_error(
-                    msg,
-                    sql=plan.sql,
-                    params=plan.params,
-                ) from error
-            rows = [tuple(row) for row in raw_rows]
-            logger.debug(
-                "%s fetch_one executed: %s params=%s rows=%d",
-                self.runtime.backend_family,
-                plan.sql,
-                self._format_bound_params(plan.params),
-                len(rows),
+            _, raw_rows = await self._execute_buffered(
+                connection,
+                plan=plan,
+                operation="fetch_one",
             )
+            rows = [tuple(row) for row in raw_rows]
         return plan.materialize(rows)
 
     @overload
@@ -842,27 +716,22 @@ class Transaction[FamilyT: BackendFamily]:
         non-nullable column.
         """
 
-        if isinstance(query, SelectValueQuery):
-            msg = (
-                "fetch_one_or_none cannot disambiguate a missing row from a SQL "
-                "NULL value for a single-value select; use fetch_one, or "
-                "fetch_all / a tuple select including a non-nullable column"
-            )
-            raise QueryConstructionError(msg)
+        validate_select_consumption(query, cardinality="one_or_none")
         async with self._lock:
-            select_query, rows = await self._fetch_capped_rows(
-                query, method="fetch_one_or_none"
+            connection = self.require_connection()
+            self._validate_plan_backend(select_query_backend(query))
+            plan = self.runtime.query_codec.compile_select_plan(
+                cast("_ExecutableSelect[FamilyT, Any, Any, object]", query),
+                cardinality="one_or_none",
+                validate=validate,
             )
-        if not rows:
-            return None
-        if len(rows) > 1:
-            msg = "fetch_one_or_none found more than one row"
-            raise MultipleResultsError(msg)
-        return self.runtime.query_codec.materialize_select_row(
-            select_query,
-            rows[0],
-            validate=validate,
-        )
+            self._validate_plan_backend(plan.backend)
+            _, rows = await self._execute_buffered(
+                connection,
+                plan=plan,
+                operation="fetch_one_or_none",
+            )
+        return plan.materialize(rows)
 
     @overload
     async def execute(
@@ -917,51 +786,89 @@ class Transaction[FamilyT: BackendFamily]:
                 cast("_ExecutableWrite[FamilyT, object]", query),
                 validate=validate,
             )
-            if plan.sql is None:
-                return plan.materialize(rowcount=0, rows=())
             self._validate_plan_backend(plan.backend)
-            sql = plan.sql
-            returned_rows: list[tuple[object, ...]] = []
-            affected_rows = 0
-
-            async def execute_write() -> tuple[int, list[tuple[object, ...]]]:
-                cursor = await connection.execute(sql, plan.params)
-                try:
-                    rows = (
-                        [tuple(row) for row in await cursor.fetchall()]
-                        if plan.returns_rows
-                        else []
-                    )
-                    return cursor.rowcount, rows
-                finally:
-                    await cursor.close()
-
-            try:
-                affected_rows, returned_rows = await self._run_driver_operation(
-                    "write",
-                    execute_write,
-                )
-            except DatabaseOperationTimeoutError:
-                raise
-            except Exception as error:
-                _log_query_failure(
-                    self.runtime.backend_family,
-                    "write",
-                    sql,
-                    self._format_bound_params(plan.params),
-                )
-                msg = "write failed"
-                raise self._execution_error(msg, sql=sql, params=plan.params) from error
-            logger.debug(
-                "%s write executed: %s params=%s",
-                self.runtime.backend_family,
-                sql,
-                self._format_bound_params(plan.params),
+            affected_rows, returned_rows = await self._execute_buffered(
+                connection,
+                plan=plan,
+                operation="write",
             )
             return plan.materialize(
                 rowcount=affected_rows,
                 rows=returned_rows,
             )
+
+    async def _execute_buffered(
+        self,
+        connection: RuntimeConnection,
+        *,
+        plan: SelectPlan[object] | WritePlan[object],
+        operation: str,
+    ) -> tuple[int, Sequence[Sequence[object]]]:
+        """Collect driver output and close before application materialization.
+
+        A zero limit skips fetching for a command; None collects every row.
+        Execution, fetch, and close share the buffered operation's deadline.
+        Cardinality and decoding run outside the driver-error boundary.
+        """
+
+        sql = plan.sql
+        if sql is None:
+            return 0, ()
+        diagnostics = plan.diagnostics
+        fetch_limit = plan.fetch_limit
+
+        async def collect() -> tuple[int, Sequence[Sequence[object]]]:
+            cursor = await connection.execute(sql, plan.params)
+            try:
+                if fetch_limit is None:
+                    rows = await cursor.fetchall()
+                elif fetch_limit:
+                    rows = await cursor.fetchmany(fetch_limit)
+                else:
+                    rows = ()
+                return cursor.rowcount, rows
+            finally:
+                await cursor.close()
+
+        output = await self._run_query_operation(operation, collect, diagnostics)
+        logger.debug(
+            "%s %s executed: %s params=%s rows=%d",
+            self.runtime.backend_family,
+            operation,
+            diagnostics.sql,
+            self._format_bound_params(diagnostics.params),
+            len(output[1]),
+        )
+        return output
+
+    async def _run_query_operation[ResultT](
+        self,
+        operation: str,
+        operation_call: Callable[[], Awaitable[ResultT]],
+        diagnostics: QueryDiagnostics,
+    ) -> ResultT:
+        """Translate query driver failures without catching row materialization.
+
+        Buffered execution and stream interactions share classification and
+        logging. Transaction control retains its separate lifecycle handling.
+        """
+
+        try:
+            return await self._run_driver_operation(operation, operation_call)
+        except DatabaseOperationTimeoutError:
+            raise
+        except Exception as error:
+            _log_query_failure(
+                self.runtime.backend_family,
+                operation,
+                diagnostics.sql,
+                self._format_bound_params(diagnostics.params),
+            )
+            raise self._execution_error(
+                diagnostics.failure_message,
+                sql=diagnostics.sql,
+                params=diagnostics.params,
+            ) from error
 
     async def _run_driver_operation[ResultT](
         self,
@@ -1042,38 +949,6 @@ class Transaction[FamilyT: BackendFamily]:
             f"received {received_backend} query"
         )
         raise DatabaseRuntimeError(msg)
-
-    def _validate_query_backend(self, query: object) -> None:
-        query_model = self._query_model(query)
-        received_backend = require_model_backend(query_model)
-        expected_backend = self.runtime.backend_family
-        if received_backend == expected_backend:
-            return
-        msg = (
-            f"backend mismatch: expected {expected_backend} query, "
-            f"received {received_backend} query for {query_model.__name__}"
-        )
-        raise DatabaseRuntimeError(msg)
-
-    @staticmethod
-    def _query_model(query: object) -> type[Table[Any]]:
-        if isinstance(
-            query,
-            SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
-        ):
-            return query.state.model
-        msg = "query backend validation requires a select query"
-        raise QueryCompilationError(msg)
-
-    @staticmethod
-    def _require_select_query(query: object) -> AnySelectQuery:
-        if isinstance(
-            query,
-            SelectModelQuery | SelectValueQuery | SelectTupleQuery | JoinModelQuery,
-        ):
-            return cast("AnySelectQuery", query)
-        msg = "fetch requires a select query"
-        raise QueryCompilationError(msg)
 
 
 class Database[FamilyT: BackendFamily]:
