@@ -13,6 +13,7 @@ from anyio.lowlevel import checkpoint
 
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_codec import DialectQueryCodec
+from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
 from snekql._telemetry import ParameterVisibility
 from snekql.errors import DatabaseRuntimeError
@@ -51,6 +52,13 @@ class SQLiteCursorAdapter:
         self.cursor: Cursor = cursor
 
     @property
+    def columns(self) -> tuple[str, ...] | None:
+        description = self.cursor.description
+        return (
+            None if description is None else tuple(column[0] for column in description)
+        )
+
+    @property
     def rowcount(self) -> int:
         return self.cursor.rowcount
 
@@ -67,6 +75,12 @@ class SQLiteCursorAdapter:
     async def fetchall(self) -> Sequence[Sequence[object]]:
         rows = await self.cursor.fetchall()
         return [cast("Sequence[object]", row) for row in rows]
+
+    async def complete(self) -> bool:
+        """SQLite execute accepts one statement and has no additional responses."""
+
+        await self.cursor.close()
+        return False
 
     async def close(self) -> None:
         await self.cursor.close()
@@ -125,6 +139,23 @@ class SQLiteConnectionAdapter:
         # aiosqlite's default cursor already yields rows lazily, so incremental
         # fetchmany over it streams without buffering the full result set.
         return await self.execute(sql, params)
+
+    async def execute_raw(
+        self,
+        sql: str,
+        params: NativeParameters,
+        *,
+        stream: bool = False,
+    ) -> SQLiteCursorAdapter:
+        """Omitted parameters remain omitted at the native connector boundary."""
+
+        del stream
+        cursor = (
+            await self.connection.execute(sql)
+            if params is None
+            else await self.connection.execute(sql, params)
+        )
+        return SQLiteCursorAdapter(cursor)
 
     async def _execute_control_sql(self, sql: str) -> None:
         cursor = await self.connection.execute(sql, ())

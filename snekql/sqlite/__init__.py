@@ -54,6 +54,7 @@ from snekql._common import (
     QueryCompilationError,
     QueryConstructionError,
     QueryError,
+    RawResultShapeError,
     ResultCardinalityError,
     Scalar,
     SchemaDriftIssue,
@@ -88,6 +89,7 @@ from snekql.runtime import Transaction as _Transaction
 # Importing the dialect module registers the SQLite query Dialect so a built
 # SQLite query can render its own SQL for inspection (see _query_dialect).
 from snekql.sqlite import _dialect_sql as _dialect_sql
+from snekql.sqlite._raw import RawStatement, raw
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
 from snekql.sqlite.model import Col, FKCol, GenCol, Model
@@ -166,6 +168,8 @@ __all__ = [
     "QueryCompilationError",
     "QueryConstructionError",
     "QueryError",
+    "RawResultShapeError",
+    "RawStatement",
     "Real",
     "ResultCardinalityError",
     "Scalar",
@@ -192,6 +196,7 @@ __all__ = [
     "exists",
     "insert",
     "not_exists",
+    "raw",
     "scaffold",
     "scalar",
     "select",

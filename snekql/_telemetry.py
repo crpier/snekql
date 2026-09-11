@@ -21,12 +21,13 @@ def format_bound_params(
 
 @dataclass(frozen=True)
 class QueryDiagnostics:
-    """Builder-owned diagnostic context, separate from driver execution inputs.
+    """Plan-owned diagnostics, separate from the actual driver execution inputs.
 
-    Execution plans supply the message and statement context. The runtime must
-    not infer an SQL verb to choose either the error message or diagnostic data.
+    Builders supply SQL context. Raw plans supply fixed safe data and require
+    suppressed driver exception chaining. Neither policy infers an SQL verb.
     """
 
     failure_message: str
     params: tuple[object, ...]
     sql: str
+    raw: bool = False

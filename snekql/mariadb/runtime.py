@@ -13,6 +13,7 @@ from anyio.lowlevel import checkpoint
 from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
+from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
 from snekql._telemetry import ParameterVisibility
 from snekql.errors import (
@@ -61,6 +62,16 @@ class MariaDBCursorAdapter:
         self.cursor: object = cursor
 
     @property
+    def columns(self) -> tuple[str, ...] | None:
+        description = cast(
+            "tuple[tuple[str, object, object, object, object, object, object], ...] | None",
+            cast("Any", self.cursor).description,
+        )
+        return (
+            None if description is None else tuple(column[0] for column in description)
+        )
+
+    @property
     def rowcount(self) -> int:
         return cast("int", cast("Any", self.cursor).rowcount)
 
@@ -77,6 +88,26 @@ class MariaDBCursorAdapter:
     async def fetchall(self) -> Sequence[Sequence[object]]:
         rows = await cast("Any", self.cursor).fetchall()
         return [cast("Sequence[object]", row) for row in rows]
+
+    async def complete(self) -> bool:
+        """Finish only the first result; never load the next to detect it.
+
+        aiomysql cursor.close calls nextset and can buffer subsequent results.
+        Its private result status is the adapter's isolated protocol boundary.
+        Finishing an unbuffered first result makes its trailing status visible.
+        """
+
+        cursor = cast("Any", self.cursor)
+        result = cursor._result  # noqa: SLF001
+        if result is not None:
+            if result.unbuffered_active:
+                await result._finish_unbuffered_query()  # noqa: SLF001
+            if result.has_next:
+                cursor._connection.close()  # noqa: SLF001
+                cursor._connection = None  # noqa: SLF001
+                return True
+        await self.close()
+        return False
 
     async def close(self) -> None:
         close_result = cast("Any", self.cursor).close()
@@ -126,6 +157,36 @@ class MariaDBConnectionAdapter:
         ss_cursor = cast("Any", import_module("aiomysql")).SSCursor
         cursor = await cast("Any", self.connection).cursor(ss_cursor)
         return await self._run_on_cursor(cursor, sql, params)
+
+    async def execute_raw(
+        self,
+        sql: str,
+        params: NativeParameters,
+        *,
+        stream: bool = False,
+    ) -> MariaDBCursorAdapter:
+        """Use native binding without forwarding server warning text."""
+
+        driver = _import_aiomysql()
+        base = driver.SSCursor if stream else driver.Cursor
+
+        class RawCursor(base):
+            async def _show_warnings(self, connection: object) -> None:
+                # aiomysql's default implementation emits server text and runs
+                # SHOW WARNINGS, which also interferes with result completion.
+                del connection
+
+        cursor = await cast("Any", self.connection).cursor(RawCursor)
+        try:
+            if params is None:
+                await cursor.execute(sql)
+            else:
+                await cursor.execute(sql, params)
+        except BaseException:
+            # Do not ask cursor.close to consume unknown additional results.
+            cast("Any", self.connection).close()
+            raise
+        return MariaDBCursorAdapter(cursor)
 
     @staticmethod
     async def _run_on_cursor(

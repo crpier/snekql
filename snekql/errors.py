@@ -196,6 +196,10 @@ class ExecutionError(DatabaseRuntimeError):
         return text
 
 
+class RawResultShapeError(DatabaseRuntimeError):
+    """Raw result metadata or row structure violates its consumption contract."""
+
+
 class SchemaError(SnekqlError):
     """Base class for schema creation and verification failures."""
 

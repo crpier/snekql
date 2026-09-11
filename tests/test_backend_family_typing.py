@@ -88,11 +88,11 @@ if TYPE_CHECKING:
         mariadb_database: mariadb.Database,
         mariadb_transaction: mariadb.Transaction,
     ) -> None:
-        await sqlite_transaction.fetch_all(
-            mariadb.select(MariadbUser).all(),  # ty: ignore[invalid-argument-type]
+        await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            mariadb.select(MariadbUser).all(),
         )
-        await mariadb_transaction.fetch_all(
-            sqlite.select(SqliteUser).all(),  # ty: ignore[invalid-argument-type]
+        await mariadb_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            sqlite.select(SqliteUser).all(),
         )
         await sqlite_transaction.execute(  # ty: ignore[no-matching-overload]
             mariadb.insert(MariadbUser(id=1)),
@@ -121,8 +121,8 @@ if TYPE_CHECKING:
         sqlite_select: sqlite.Select[int],
         sqlite_write: sqlite.Write[int],
     ) -> None:
-        await sqlite_transaction.fetch_all(
-            mariadb_select,  # ty: ignore[invalid-argument-type]
+        await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]
+            mariadb_select,
         )
         await sqlite_transaction.execute(  # ty: ignore[no-matching-overload]
             mariadb_write,
