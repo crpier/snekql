@@ -27,21 +27,24 @@ from snekql._query_state import (
     UpdateState,
     WriteState,
 )
+from snekql._telemetry import QueryDiagnostics
 from snekql.errors import (
     MultipleResultsError,
     NoResultError,
     QueryCompilationError,
+    QueryConstructionError,
     ResultCardinalityError,
 )
 from snekql.model import BackendFamily, require_model_backend
+from snekql.query import SelectValueQuery
 
-type SelectCardinality = Literal["one"]
+type SelectCardinality = Literal["one", "one_or_none", "many"]
 type WriteCardinality = Literal["none", "rowcount", "one", "many"]
 
 
 @dataclass(frozen=True)
 class SelectPlan[ResultT]:
-    """One compiled select plus its exact result and validation policy."""
+    """One compiled select plus its row decoding and consumption policy."""
 
     sql: str
     params: tuple[object, ...]
@@ -51,23 +54,36 @@ class SelectPlan[ResultT]:
     _validate: bool = field(repr=False)
 
     @property
-    def fetch_limit(self) -> int:
+    def diagnostics(self) -> QueryDiagnostics:
+        """Builder selects retain their existing SQL and parameter diagnostics."""
+
+        return QueryDiagnostics("select failed", self.params, self.sql)
+
+    @property
+    def fetch_limit(self) -> int | None:
         """Rows needed to distinguish zero, one, and excess results."""
 
-        return 2
+        return None if self.cardinality == "many" else 2
 
-    def materialize(self, rows: Sequence[Sequence[object]]) -> ResultT:
-        """Enforce plan cardinality and decode its result."""
+    def materialize(self, rows: Sequence[Sequence[object]]) -> ResultT | None:
+        """Materialize a capped result; many-row reads use `materialize_row`."""
 
         if not rows:
+            if self.cardinality == "one_or_none":
+                return None
             msg = "fetch_one found no row"
             raise NoResultError(msg)
         if len(rows) > 1:
-            msg = "fetch_one found more than one row"
+            msg = f"fetch_{self.cardinality} found more than one row"
             raise MultipleResultsError(msg)
+        return self.materialize_row(rows[0])
+
+    def materialize_row(self, row: Sequence[object]) -> ResultT:
+        """Decode a row using the validation policy captured at compilation."""
+
         result = materialize_select_row_for_backend(
             self._state,
-            rows[0],
+            row,
             backend=self.backend,
             validate=self._validate,
         )
@@ -84,6 +100,18 @@ class WritePlan[ResultT]:
     cardinality: WriteCardinality
     _state: WriteState = field(repr=False)
     _validate: bool = field(repr=False)
+
+    @property
+    def diagnostics(self) -> QueryDiagnostics:
+        """Builder writes retain their existing SQL and parameter diagnostics."""
+
+        return QueryDiagnostics("write failed", self.params, self.sql or "")
+
+    @property
+    def fetch_limit(self) -> int | None:
+        """Collect RETURNING rows; skip fetching for commands without rows."""
+
+        return None if self.returns_rows else 0
 
     @property
     def returns_rows(self) -> bool:
@@ -120,6 +148,30 @@ class WritePlan[ResultT]:
         return cast("ResultT", materialized[0])
 
 
+def validate_select_consumption(
+    query: object, *, cardinality: SelectCardinality
+) -> None:
+    """Reject an optional scalar read whose SQL NULL could mean an absent row."""
+
+    if cardinality == "one_or_none" and isinstance(query, SelectValueQuery):
+        msg = (
+            "fetch_one_or_none cannot disambiguate a missing row from a SQL "
+            "NULL value for a single-value select; use fetch_one, or "
+            "fetch_all / a tuple select including a non-nullable column"
+        )
+        raise QueryConstructionError(msg)
+
+
+def select_query_backend(query: object) -> BackendFamily:
+    """Check select shape and family without compiling SQL or opening a cursor."""
+
+    state = getattr(query, "state", None)
+    if not isinstance(state, SelectState):
+        msg = "fetch requires a select query"
+        raise QueryCompilationError(msg)
+    return require_model_backend(state.model)
+
+
 def compile_select_plan_for_dialect(
     query: object,
     dialect: QueryDialect,
@@ -129,6 +181,7 @@ def compile_select_plan_for_dialect(
 ) -> SelectPlan[object]:
     """Lower one select shape into a typed execution plan."""
 
+    validate_select_consumption(query, cardinality=cardinality)
     state = getattr(query, "state", None)
     if not isinstance(state, SelectState):
         msg = "fetch requires a select query"

@@ -14,7 +14,7 @@ from snekql._query_codec import DialectQueryCodec
 from snekql._query_plan import SelectPlan, WritePlan
 from snekql._query_readiness import _ExecutableQuery
 from snekql.errors import ResultCardinalityError
-from snekql.query import _QueryShape, _WriteShape
+from snekql.query import _OptionalQueryShape, _QueryShape, _WriteShape
 from snekql.sqlite import (
     PENDING_GENERATION,
     Fetched,
@@ -212,3 +212,70 @@ async def ignored_insert_returning_raises_package_cardinality_error() -> None:
                     )
         finally:
             await database.close()
+
+
+@test(mark="medium")
+async def fetch_all_executes_select_state_without_builder_dispatch() -> None:
+    """Buffered reads accept new select shapes through the existing plan seam."""
+
+    source = uuid4()
+    async with await initialized_database(
+        database=":memory:", models=[Token]
+    ) as database:
+        async with database.transaction() as transaction:
+            await transaction.execute(insert(Token(value=source)))
+        query = _UnlistedSelect[UUID](select(Token.value).all().state)
+
+        async with database.transaction() as transaction:
+            fetched = await transaction.fetch_all(query)
+
+    assert_eq(fetched, [source])
+
+
+class _UnlistedOptionalSelect[ResultT](
+    _OptionalQueryShape[Any, Any, Any, ResultT, _ExecutableQuery]
+):
+    """Optional select shape with no runtime-specific dispatch registration."""
+
+    def __init__(self, state: object) -> None:
+        self.state: object = state
+
+
+@test(mark="medium")
+async def optional_fetch_executes_select_state_without_builder_dispatch() -> None:
+    """Optional cardinality uses the compiled row contract for new shapes."""
+
+    source = uuid4()
+    async with await initialized_database(
+        database=":memory:", models=[Token]
+    ) as database:
+        async with database.transaction() as transaction:
+            await transaction.execute(insert(Token(value=source)))
+        query = _UnlistedOptionalSelect[Token[Fetched]](select(Token).all().state)
+
+        async with database.transaction() as transaction:
+            fetched = await transaction.fetch_one_or_none(query)
+
+    assert fetched is not None
+    assert_eq(fetched.value, source)
+
+
+@test(mark="medium")
+async def stream_executes_select_state_without_builder_dispatch() -> None:
+    """Streaming reads use the same plan-owned row decoder as buffered reads."""
+
+    source = uuid4()
+    async with await initialized_database(
+        database=":memory:", models=[Token]
+    ) as database:
+        async with database.transaction() as transaction:
+            await transaction.execute(insert(Token(value=source)))
+        query = _UnlistedSelect[UUID](select(Token.value).all().state)
+
+        async with (
+            database.transaction() as transaction,
+            transaction.fetch_chunks(query, size=1) as chunks,
+        ):
+            fetched = [chunk async for chunk in chunks]
+
+    assert_eq(fetched, [[source]])
