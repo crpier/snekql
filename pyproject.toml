@@ -110,3 +110,13 @@ allowed-unused-imports = [
 [tool.ty.rules]
 all = "error"
 missing-override-decorator = "ignore"
+
+# SQLAlchemy's documented factory returns MappedColumn[Any]. Keep its idiom
+# intact in research declarations without weakening the package's typing rules.
+[[tool.ty.overrides]]
+include = [
+  "research/commerce/sqlalchemy_models.py",
+  "research/commerce/database_rules.py",
+]
+[tool.ty.overrides.rules]
+unsound-assignment = "ignore"
