@@ -1,0 +1,19 @@
+CREATE TABLE products (
+	id INTEGER NOT NULL, 
+	price NUMERIC(10, 2) NOT NULL, 
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE cent_products (
+	id INTEGER NOT NULL, 
+	price_cents INTEGER NOT NULL, 
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE orders (
+	id INTEGER NOT NULL, 
+	quantity INTEGER NOT NULL, 
+	status VARCHAR(255) NOT NULL, 
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	PRIMARY KEY (id)
+);
