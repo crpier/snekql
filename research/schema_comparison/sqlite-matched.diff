@@ -1,0 +1,115 @@
+--- snekql
++++ sqlalchemy
+@@ -59,7 +59,7 @@
+           "user_id"
+         ],
+         "dialect_options": {},
+-        "name": "ix_memberships_user_id",
++        "name": "ix_memberships_user",
+         "unique": 0
+       },
+       {
+@@ -68,7 +68,7 @@
+           "alias"
+         ],
+         "dialect_options": {},
+-        "name": "ux_memberships_team_id_alias",
++        "name": "ux_memberships_team_alias",
+         "unique": 1
+       }
+     ],
+@@ -86,7 +86,7 @@
+       {
+         "default": null,
+         "name": "user_id",
+-        "nullable": true,
++        "nullable": false,
+         "primary_key": 1,
+         "type": "INTEGER"
+       },
+@@ -128,7 +128,7 @@
+       {
+         "default": null,
+         "name": "id",
+-        "nullable": true,
++        "nullable": false,
+         "primary_key": 1,
+         "type": "INTEGER"
+       },
+@@ -141,30 +141,28 @@
+       }
+     ],
+     "foreign_keys": [],
+-    "indexes": [
++    "indexes": [],
++    "primary_key": {
++      "constrained_columns": [
++        "id"
++      ],
++      "name": null
++    },
++    "unique_constraints": [
+       {
+         "column_names": [
+           "name"
+         ],
+-        "dialect_options": {},
+-        "name": "ux_teams_name",
+-        "unique": 1
+-      }
+-    ],
+-    "primary_key": {
+-      "constrained_columns": [
+-        "id"
+-      ],
+-      "name": null
+-    },
+-    "unique_constraints": []
++        "name": null
++      }
++    ]
+   },
+   "users": {
+     "columns": [
+       {
+         "default": null,
+         "name": "id",
+-        "nullable": true,
++        "nullable": false,
+         "primary_key": 1,
+         "type": "INTEGER"
+       },
+@@ -191,22 +189,20 @@
+       }
+     ],
+     "foreign_keys": [],
+-    "indexes": [
++    "indexes": [],
++    "primary_key": {
++      "constrained_columns": [
++        "id"
++      ],
++      "name": null
++    },
++    "unique_constraints": [
+       {
+         "column_names": [
+           "email"
+         ],
+-        "dialect_options": {},
+-        "name": "ux_users_email",
+-        "unique": 1
+-      }
+-    ],
+-    "primary_key": {
+-      "constrained_columns": [
+-        "id"
+-      ],
+-      "name": null
+-    },
+-    "unique_constraints": []
++        "name": null
++      }
++    ]
+   }
+ }
