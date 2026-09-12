@@ -1,0 +1,7 @@
+CREATE TABLE orders (
+        id BIGINT PRIMARY KEY AUTO_INCREMENT,
+        price_cents BIGINT NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),
+        quantity BIGINT NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),
+        status VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'pending',
+        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+    ) ENGINE=InnoDB;
