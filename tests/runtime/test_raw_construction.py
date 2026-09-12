@@ -1,6 +1,6 @@
 """Backend-owned raw declarations and their public inspection boundary."""
 
-from typing import Any
+from typing import Any, ForwardRef
 
 from snektest import Param, assert_eq, assert_not_in, assert_raises, test
 
@@ -81,21 +81,24 @@ def parameters_reject_unsupported_containers(params: object) -> None:
 
 
 @test(mark="fast")
-def validation_contract_is_explicitly_unavailable() -> None:
-    """An intermediate unvalidated factory never silently ignores a contract."""
+def invalid_validation_contract_fails_at_construction() -> None:
+    """Invalid declarations fail before any consumption method can execute SQL."""
 
     with assert_raises(sqlite.QueryConstructionError):
-        dynamic_raw("SELECT 1", validate=int)
+        dynamic_raw("SELECT 1", validate=object())
 
 
 @test(
-    [Param(value=name, name=name) for name in ("sql", "backend", "row_mode")],
+    [
+        Param(value=name, name=name)
+        for name in ("sql", "backend", "row_mode", "validate")
+    ],
     mark="fast",
 )
 def statement_fields_cannot_be_reassigned(name: str) -> None:
     """Execution policy and parameter membership are frozen after construction."""
 
-    statement = sqlite.raw("SELECT 1", params={})
+    statement = sqlite.raw("SELECT 1", params={}, validate=dict[str, int])
 
     with assert_raises(AttributeError):
         setattr(statement, name, "replacement")
@@ -112,3 +115,13 @@ def rejected_parameter_keys_are_never_rendered() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         dynamic_raw("SELECT 1", params={SecretKey(): 1})
+
+
+@test(mark="fast")
+def unresolved_annotation_fails_before_execution() -> None:
+    """A deferred adapter must not postpone an invalid declaration until fetching."""
+
+    with assert_raises(sqlite.QueryConstructionError):
+        dynamic_raw(
+            "CREATE TABLE unused (value INT)", validate=ForwardRef("MissingContract")
+        )

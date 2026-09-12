@@ -12,6 +12,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PYTHON_CONTEXT_AWARE_WARNINGS: "1"
+
 jobs:
   validate:
     name: Validate

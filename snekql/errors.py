@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 from snekql._telemetry import ParameterVisibility, format_bound_params
 
@@ -198,6 +199,38 @@ class ExecutionError(DatabaseRuntimeError):
 
 class RawResultShapeError(DatabaseRuntimeError):
     """Raw result metadata or row structure violates its consumption contract."""
+
+
+@dataclass(frozen=True)
+class _RawValidationDetail:
+    """A fixed error code and redacted path, never original validator data."""
+
+    code: str
+    location: tuple[Literal["<redacted>"], ...]
+
+
+class RawResultValidationError(DatabaseRuntimeError):
+    """A fetched raw row failed its declared result contract.
+
+    `details` contains only redacted locations and package-approved error codes.
+    `row_index` is zero-based across the entire operation, including streams.
+    """
+
+    def __init__(
+        self,
+        *,
+        operation: Literal[
+            "fetch_all", "fetch_one", "fetch_one_or_none", "fetch_chunks"
+        ],
+        row_index: int,
+        details: tuple[_RawValidationDetail, ...],
+    ) -> None:
+        super().__init__("raw result validation failed")
+        self.operation: Literal[
+            "fetch_all", "fetch_one", "fetch_one_or_none", "fetch_chunks"
+        ] = operation
+        self.row_index: int = row_index
+        self.details: tuple[_RawValidationDetail, ...] = details
 
 
 class SchemaError(SnekqlError):

@@ -359,16 +359,20 @@ async def execute_rejects_result_columns(backend: BackendFamily, sql: str) -> No
             "fetch_chunks",
         )
     ],
+    [
+        Param[object](value=None, name="unvalidated"),
+        Param[object](value=dict[str, int], name="validated"),
+    ],
     mark="slow",
 )
 async def wrong_backend_is_rejected_before_execution(
-    backend: BackendFamily, method: str
+    backend: BackendFamily, method: str, contract: object
 ) -> None:
     """All consumption methods preserve namespace identity without poisoning the transaction."""
 
     case = await load_fixture(provide_raw_case(backend))
     foreign = mariadb if backend == "sqlite" else sqlite
-    statement = foreign.raw("SELECT 1")
+    statement = foreign.raw("SELECT 1", validate=contract)
 
     async with case.database.transaction() as transaction:
         with assert_raises(case.namespace.QueryConstructionError):
@@ -397,15 +401,19 @@ async def wrong_backend_is_rejected_before_execution(
             "fetch_chunks",
         )
     ],
+    [
+        Param[object](value=None, name="unvalidated"),
+        Param[object](value=dict[str, int], name="validated"),
+    ],
     mark="slow",
 )
 async def transaction_validation_cannot_disable_statement_policy(
-    backend: BackendFamily, method: str
+    backend: BackendFamily, method: str, contract: object
 ) -> None:
     """False is rejected even for an unvalidated raw statement."""
 
     case = await load_fixture(provide_raw_case(backend))
-    statement = case.namespace.raw("SELECT 1")
+    statement = case.namespace.raw("SELECT 1", validate=contract)
 
     async with case.database.transaction() as transaction:
         with assert_raises(case.namespace.QueryConstructionError):

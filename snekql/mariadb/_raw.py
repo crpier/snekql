@@ -39,18 +39,39 @@ def raw(
 ) -> RawStatement[dict[str, object] | tuple[object, ...]]: ...
 
 
+@overload
+def raw[RowT](
+    sql: str,
+    *,
+    params: Mapping[str, object] | Sequence[object] | None = None,
+    validate: type[RowT],
+    row_mode: RowMode = "mapping",
+) -> RawStatement[RowT]: ...
+
+
+@overload
 def raw(
     sql: str,
     *,
     params: Mapping[str, object] | Sequence[object] | None = None,
-    validate: None = None,
+    validate: object,
     row_mode: RowMode = "mapping",
-) -> RawStatement[dict[str, object] | tuple[object, ...]]:
+) -> RawStatement[object]: ...
+
+
+def raw(
+    sql: str,
+    *,
+    params: Mapping[str, object] | Sequence[object] | None = None,
+    validate: object = None,
+    row_mode: RowMode = "mapping",
+) -> RawStatement[object]:
     """Declare trusted SQL with native parameters, without database IO.
 
     Values belong in parameters, never interpolated into SQL. Each Transaction
     call executes anew. Omitted parameters differ from supplied empty containers.
     Transaction-control SQL and changes to runtime session settings are unsupported.
+    Non-None result contracts require Python context_aware_warnings=1 at startup.
 
     >>> raw("SELECT 1 AS answer").sql
     'SELECT 1 AS answer'
