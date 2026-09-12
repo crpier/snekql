@@ -110,3 +110,9 @@ allowed-unused-imports = [
 [tool.ty.rules]
 all = "error"
 missing-override-decorator = "ignore"
+
+# SQLAlchemy's documented mapped_column factory returns MappedColumn[Any].
+[[tool.ty.overrides]]
+include = ["research/contracts/sqlalchemy_models.py"]
+[tool.ty.overrides.rules]
+unsound-assignment = "ignore"
