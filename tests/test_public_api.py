@@ -78,6 +78,7 @@ _NEUTRAL_NAMES = frozenset(
         "QueryConstructionError",
         "QueryError",
         "RawResultShapeError",
+        "RawResultValidationError",
         "ResultCardinalityError",
         "Scalar",
         "SchemaDriftIssue",
