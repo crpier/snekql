@@ -5,8 +5,9 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from snekql._query_dialect import QueryDialect, register_query_dialect
-from snekql.errors import ModelValidationError
+from snekql._query_dialect import ExplainMode, QueryDialect, register_query_dialect
+from snekql._query_state import InsertState, SelectState, WriteState
+from snekql.errors import ModelValidationError, QueryCompilationError
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.storage import Attr
 
@@ -56,11 +57,21 @@ def _inserted_value_sql(quoted_column: str) -> str:
     return f"VALUES({quoted_column})"
 
 
+def _explain_sql(state: SelectState | WriteState, sql: str, mode: ExplainMode) -> str:
+    """MariaDB uses ANALYZE, not EXPLAIN ANALYZE, for execution statistics."""
+
+    if isinstance(state, InsertState):
+        msg = "MariaDB plan inspection supports SELECT, UPDATE, and DELETE only"
+        raise QueryCompilationError(msg)
+    return ("ANALYZE " if mode == "analyze" else "EXPLAIN ") + sql
+
+
 MARIADB_QUERY_DIALECT = QueryDialect(
     conflict_do_nothing_sql=_conflict_do_nothing_sql,
     conflict_update_sql=_conflict_update_sql,
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_empty_insert_sql,
+    explain_sql=_explain_sql,
     encode_column_value=_encode_column_value,
     encode_sum_value=_encode_sum_value,
     inserted_value_sql=_inserted_value_sql,

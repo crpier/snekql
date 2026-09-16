@@ -21,6 +21,7 @@ from typing import (
 import anyio
 import anyio.lowlevel
 
+from snekql._explain import ExplainResult, compile_explain_plan
 from snekql._migrations import (
     MigrationPlan,
     MigrationResult,
@@ -966,6 +967,52 @@ class Transaction[FamilyT: BackendFamily]:
             return plan.materialize(
                 rowcount=affected_rows,
                 rows=returned_rows,
+            )
+
+    async def explain[ScopeT, RowT, ResultT](
+        self,
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT]
+        | _ExecutableWrite[FamilyT, ResultT],
+    ) -> ExplainResult:
+        """Inspect a built query's backend-native plan without executing its writes.
+
+        SQLite uses `EXPLAIN QUERY PLAN`; MariaDB uses `EXPLAIN`.
+        Results contain native columns and rows, not the query's result type.
+        """
+
+        return await self._explain(query, analyze=False)
+
+    async def explain_analyze[ScopeT, RowT, ResultT](
+        self,
+        query: _ExecutableSelect[FamilyT, ScopeT, ScopeT, RowT]
+        | _ExecutableWrite[FamilyT, ResultT],
+    ) -> ExplainResult:
+        """Execute a query to collect MariaDB's actual optimizer statistics.
+
+        Writes really run in this Transaction and commit on its normal exit.
+        This method does not create a savepoint or automatically roll back.
+        SQLite and unsupported statement shapes raise `QueryCompilationError`.
+        """
+
+        return await self._explain(query, analyze=True)
+
+    async def _explain(self, query: object, *, analyze: bool) -> ExplainResult:
+        """Share transaction locking, deadlines, cleanup, and safe raw diagnostics."""
+
+        async with self._lock:
+            connection = self.require_connection()
+            plan = compile_explain_plan(
+                query, backend=self.runtime.backend_family, analyze=analyze
+            )
+            _, rows = await self._execute_buffered(
+                connection,
+                plan=plan,
+                operation="explain_analyze" if analyze else "explain",
+            )
+            return ExplainResult(
+                backend=plan.backend,
+                columns=plan.columns or (),
+                rows=tuple(tuple(row) for row in rows),
             )
 
     def _report_close_failure(self, error: Exception, *, during_error: bool) -> None:

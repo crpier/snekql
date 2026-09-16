@@ -8,6 +8,12 @@
   SQL, ordered encoded bindings, and backend identity. Both backend namespaces
   export the frozen result type; its text representation redacts bindings.
   Incomplete queries and empty bulk inserts raise `QueryCompilationError`. (#276)
+- `Transaction.explain(query)` returns frozen `ExplainResult` with native
+  optimizer columns and rows for SQLite and MariaDB. The separate
+  `explain_analyze(query)` executes supported MariaDB queries, including writes,
+  under normal transaction rules. SQLite ANALYZE and unsupported statement
+  shapes fail before query IO. Plan text and execution diagnostics omit
+  sensitive output and bindings. (#276)
 
 ## 0.7.0 - 2026-09-04
 

@@ -49,6 +49,7 @@ _NEUTRAL_NAMES = frozenset(
         "DoUpdate",
         "Duration",
         "ExecutionError",
+        "ExplainResult",
         "FKCol",
         "Fetched",
         "FrozenModelError",

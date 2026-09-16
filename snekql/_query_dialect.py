@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
+from snekql._query_state import SelectState, WriteState
 from snekql.errors import QueryCompilationError
 from snekql.storage import Attr
 
@@ -13,6 +14,8 @@ type QueryColumn = Attr[Any, Any, Any, Any, Any]
 type ConflictDoNothingCompiler = Callable[[tuple[str, ...]], str]
 type ConflictUpdateCompiler = Callable[[tuple[str, ...], str], str]
 type InsertedValueRenderer = Callable[[str], str]
+type ExplainMode = Literal["explain", "analyze"]
+type ExplainSqlCompiler = Callable[[SelectState | WriteState, str, ExplainMode], str]
 type QueryValueEncoder = Callable[[QueryColumn, object], object]
 
 
@@ -30,6 +33,7 @@ class QueryDialect:
     offset_only_limit_sql: str
     placeholder: str
     quote_identifier: Callable[[str], str]
+    explain_sql: ExplainSqlCompiler | None = None
     supports_delete_returning: bool = False
     supports_update_returning: bool = False
 
