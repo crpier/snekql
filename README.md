@@ -455,6 +455,39 @@ subquery nor an enclosing query is rejected when the query compiles.
 
 ### Inspecting the generated SQL
 
+Use `query.compile()` for structured inspection without a `Database` or
+transaction:
+
+```python
+from snekql.sqlite import CompiledQuery
+
+compiled: CompiledQuery = select(User.email).where(User.status.eq("active")).compile()
+compiled.sql  # 'SELECT "email" FROM "user" WHERE ("status" = ?)'
+compiled.params  # ('active',)
+compiled.backend  # 'sqlite'
+```
+
+Both backend namespaces export `CompiledQuery`. Its fields are frozen, and
+`params` is an ordered tuple of dialect-encoded bindings. SQLite uses `?`
+placeholders; MariaDB uses `%s` and backtick-quoted identifiers. The query's
+models determine the backend; compilation cannot retarget a query.
+
+Compiled output is inspection-only. Pass the original query to a Transaction,
+not `CompiledQuery`. Compilation neither executes SQL nor includes private
+execution plans, row decoders, or result-cardinality policy. It does not verify
+that tables exist on a server. Incomplete queries raise `QueryCompilationError`.
+Empty bulk inserts also raise because they have no model or SQL to compile,
+even though executing an empty bulk insert is a no-op.
+
+`repr(compiled)` and `str(compiled)` redact bound values as `<redacted:N>`.
+Accessing `.params` explicitly reveals them. SQL text remains visible, including
+identifiers and any literals supplied by custom dialect expressions.
+
+#### Debug text
+
+Unlike compiled output, query `repr()` and `str()` expose parameter values.
+Use them only for deliberate debugging, not production logging.
+
 Any query object renders its own SQL through `repr()` and `str()`, resolving the
 dialect from its model's backend — no `Database` or transaction needed. Because
 queries are immutable, the object you hold after composing (`query =
@@ -485,6 +518,68 @@ approximate and must not be executed. A query that has not yet chosen
 than raising, so it is always safe to `repr` a query in a debugger. Such a
 builder cannot be passed to a typed Transaction or stored as `Select[Row]` until
 it becomes executable.
+
+### Explaining query plans
+
+`await transaction.explain(query)` asks the active backend for a query plan.
+It does not apply the query's writes. The query must be a complete builder
+from the Transaction's backend, not `raw(...)` or a `CompiledQuery`.
+
+```python
+from snekql.sqlite import ExplainResult
+
+async with db.transaction() as transaction:
+    plan: ExplainResult = await transaction.explain(
+        select(User.email).where(User.status.eq("active"))
+    )
+
+plan.backend  # 'sqlite'
+plan.columns  # ('id', 'parent', 'notused', 'detail')
+for row in plan.rows:
+    print(dict(zip(plan.columns, row, strict=True)))  # Deliberate inspection
+```
+
+Both namespaces export frozen `ExplainResult` with `.backend`, `.columns`,
+and `.rows`. Columns are a tuple of native column names. Rows are a tuple of
+row tuples in column order, with native driver values and no model decoding.
+SQLite returns `EXPLAIN QUERY PLAN` output, which can be empty for writes.
+MariaDB returns native optimizer columns such as `select_type`, `key`, `rows`,
+and `Extra`. Column sets, row order, estimates, and detail text depend on the
+query and server version. There is no portable optimizer schema.
+
+| Backend | `explain(query)` | `explain_analyze(query)` |
+| --- | --- | --- |
+| SQLite | `EXPLAIN QUERY PLAN` for SELECT, INSERT, UPDATE, DELETE | Rejected |
+| MariaDB | `EXPLAIN` for SELECT, UPDATE, DELETE without RETURNING | `ANALYZE` for the same supported queries |
+
+`explain_analyze` **executes the query**, including UPDATE and DELETE. It returns
+execution statistics instead of application rows. MariaDB calls this statement
+`ANALYZE`, not `EXPLAIN ANALYZE`; its output includes observed statistics such
+as `r_rows` and `r_filtered`. SQLite's unrelated `ANALYZE` command is never used
+as a substitute. MariaDB INSERT plans are outside this interface's supported
+statement set.
+
+```python
+# MariaDB only. This DELETE really runs and commits on normal transaction exit.
+async with db.transaction() as transaction:
+    plan = await transaction.explain_analyze(
+        delete(User).where(User.status.eq("disabled"))
+    )
+```
+
+There is no automatic rollback or savepoint around ANALYZE. It uses the active
+Transaction's normal commit, rollback, locking, and operation-deadline rules.
+Even plain EXPLAIN performs database IO and can acquire metadata locks.
+
+Incomplete queries, empty bulk inserts, and unsupported statement combinations
+raise `QueryCompilationError` before query IO. Backend mismatches raise
+`DatabaseRuntimeError`. Transaction lifecycle errors remain unchanged.
+
+Plan cells can contain sensitive values. Result `repr` and `str` show only the
+backend and column/row counts; accessing `.rows` or `.columns` reveals the
+native output. EXPLAIN execution logs and driver-error text omit SQL and bound
+values even with `parameter_visibility="values"`. This does not redact a
+caller's own logging or server-side instrumentation.
 
 ## Runtime
 

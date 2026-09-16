@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, cast
 
+from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._query_dialect import QueryDialect, query_dialect_for_backend
 from snekql._query_scope import (
@@ -697,33 +698,6 @@ class InspectedQuery:
     inlined_sql: str
 
 
-def _query_dialect_for_model(model: type[Table[Any]]) -> QueryDialect:
-    return query_dialect_for_backend(require_model_backend(model))
-
-
-def _compile_state_for_inspection(
-    state: object,
-) -> tuple[str, tuple[object, ...], QueryDialect]:
-    if isinstance(state, SelectState):
-        dialect = _query_dialect_for_model(state.model)
-        return (*_compile_select_state(state, dialect), dialect)
-    if isinstance(state, UpdateState):
-        dialect = _query_dialect_for_model(state.model)
-        return (*_compile_update_sql(state, dialect), dialect)
-    if isinstance(state, DeleteState):
-        dialect = _query_dialect_for_model(state.model)
-        return (*_compile_delete_sql(state, dialect), dialect)
-    if isinstance(state, InsertState):
-        model = state.model()
-        if model is None:
-            msg = "an empty bulk insert has no SQL to compile"
-            raise QueryCompilationError(msg)
-        dialect = _query_dialect_for_model(model)
-        return (*_compile_insert_sql(state, dialect), dialect)
-    msg = "SQL inspection requires a snekql query"
-    raise QueryCompilationError(msg)
-
-
 def _render_sql_literal(value: object) -> str:
     """Render an already-encoded parameter as an approximate SQL literal."""
 
@@ -762,6 +736,30 @@ def _inline_sql_params(
     return "".join(rendered)
 
 
+def compile_query_sql(query: object) -> CompiledQuery:
+    """Compile a built query using its model's Backend Family, without IO."""
+
+    state = getattr(query, "state", None)
+    if isinstance(state, (SelectState, UpdateState, DeleteState)):
+        model = state.model
+    elif isinstance(state, InsertState):
+        model = state.model()
+        if model is None:
+            msg = "an empty bulk insert has no SQL to compile"
+            raise QueryCompilationError(msg)
+    else:
+        msg = "SQL compilation requires a snekql query"
+        raise QueryCompilationError(msg)
+
+    backend = require_model_backend(model)
+    dialect = query_dialect_for_backend(backend)
+    if isinstance(state, SelectState):
+        sql, params = compile_select_sql_for_dialect(state, dialect)
+    else:
+        sql, params = compile_write_sql_for_dialect(query, dialect)
+    return CompiledQuery(backend=backend, params=params, sql=sql)
+
+
 def inspect_query_sql(query: object) -> InspectedQuery:
     """Lower any built query to its backend Dialect SQL for inspection.
 
@@ -771,6 +769,7 @@ def inspect_query_sql(query: object) -> InspectedQuery:
     not raise -- like ``repr`` -- catch that and report the reason.
     """
 
-    sql, params, dialect = _compile_state_for_inspection(getattr(query, "state", None))
-    inlined = _inline_sql_params(sql, params, dialect.placeholder)
-    return InspectedQuery(sql=sql, params=params, inlined_sql=inlined)
+    compiled = compile_query_sql(query)
+    dialect = query_dialect_for_backend(compiled.backend)
+    inlined = _inline_sql_params(compiled.sql, compiled.params, dialect.placeholder)
+    return InspectedQuery(sql=compiled.sql, params=compiled.params, inlined_sql=inlined)

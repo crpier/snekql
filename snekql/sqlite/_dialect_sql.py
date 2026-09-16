@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from snekql._query_dialect import QueryDialect, register_query_dialect
+from snekql._query_dialect import ExplainMode, QueryDialect, register_query_dialect
+from snekql._query_state import SelectState, WriteState
+from snekql.errors import QueryCompilationError
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import Attr
 
@@ -37,11 +39,21 @@ def _inserted_value_sql(quoted_column: str) -> str:
     return f"excluded.{quoted_column}"
 
 
+def _explain_sql(_state: SelectState | WriteState, sql: str, mode: ExplainMode) -> str:
+    """SQLite exposes query plans but no executing ANALYZE statement."""
+
+    if mode == "analyze":
+        msg = "SQLite does not support EXPLAIN ANALYZE"
+        raise QueryCompilationError(msg)
+    return "EXPLAIN QUERY PLAN " + sql
+
+
 SQLITE_QUERY_DIALECT = QueryDialect(
     conflict_do_nothing_sql=_conflict_do_nothing_sql,
     conflict_update_sql=_conflict_update_sql,
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_empty_insert_sql,
+    explain_sql=_explain_sql,
     encode_column_value=_encode_column_value,
     encode_sum_value=_encode_column_value,
     inserted_value_sql=_inserted_value_sql,
