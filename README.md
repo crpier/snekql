@@ -455,6 +455,39 @@ subquery nor an enclosing query is rejected when the query compiles.
 
 ### Inspecting the generated SQL
 
+Use `query.compile()` for structured inspection without a `Database` or
+transaction:
+
+```python
+from snekql.sqlite import CompiledQuery
+
+compiled: CompiledQuery = select(User.email).where(User.status.eq("active")).compile()
+compiled.sql  # 'SELECT "email" FROM "user" WHERE ("status" = ?)'
+compiled.params  # ('active',)
+compiled.backend  # 'sqlite'
+```
+
+Both backend namespaces export `CompiledQuery`. Its fields are frozen, and
+`params` is an ordered tuple of dialect-encoded bindings. SQLite uses `?`
+placeholders; MariaDB uses `%s` and backtick-quoted identifiers. The query's
+models determine the backend; compilation cannot retarget a query.
+
+Compiled output is inspection-only. Pass the original query to a Transaction,
+not `CompiledQuery`. Compilation neither executes SQL nor includes private
+execution plans, row decoders, or result-cardinality policy. It does not verify
+that tables exist on a server. Incomplete queries raise `QueryCompilationError`.
+Empty bulk inserts also raise because they have no model or SQL to compile,
+even though executing an empty bulk insert is a no-op.
+
+`repr(compiled)` and `str(compiled)` redact bound values as `<redacted:N>`.
+Accessing `.params` explicitly reveals them. SQL text remains visible, including
+identifiers and any literals supplied by custom dialect expressions.
+
+#### Debug text
+
+Unlike compiled output, query `repr()` and `str()` expose parameter values.
+Use them only for deliberate debugging, not production logging.
+
 Any query object renders its own SQL through `repr()` and `str()`, resolving the
 dialect from its model's backend — no `Database` or transaction needed. Because
 queries are immutable, the object you hold after composing (`query =

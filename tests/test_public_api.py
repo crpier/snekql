@@ -38,6 +38,7 @@ _NEUTRAL_NAMES = frozenset(
         "ChunkStream",
         "Col",
         "ColumnRef",
+        "CompiledQuery",
         "Database",
         "DatabaseCloseTimeoutError",
         "DatabaseClosedError",

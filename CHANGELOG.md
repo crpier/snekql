@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- `query.compile()` returns inspection-only `CompiledQuery` with parameterized
+  SQL, ordered encoded bindings, and backend identity. Both backend namespaces
+  export the frozen result type; its text representation redacts bindings.
+  Incomplete queries and empty bulk inserts raise `QueryCompilationError`. (#276)
+
 ## 0.7.0 - 2026-09-04
 
 ### Added

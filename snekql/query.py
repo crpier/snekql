@@ -22,6 +22,7 @@ from typing import (
     overload,
 )
 
+from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import (
     _AssignedUpdate,
@@ -162,6 +163,17 @@ class _SqlInspectionMixin:
     compilation).
     """
 
+    def compile(self) -> CompiledQuery:
+        """Return parameterized SQL for inspection, without database IO.
+
+        Raises `QueryCompilationError` for incomplete queries, including empty
+        bulk inserts. Execute the original query, not the compiled result.
+        """
+
+        from snekql._query_compile import compile_query_sql  # noqa: PLC0415
+
+        return compile_query_sql(self)
+
     def _inspected_sql(self) -> InspectedQuery:
         # Lazy import so this module carries no load-time dependency on Query
         # Compilation; the dependency stays builder -> state <- compilation.
@@ -261,7 +273,7 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
         return self._replace_state(_select_order_by(self.state, ordering))
 
 
-class _QueryShape[FamilyT, ScopeT, RefT, RowT, ReadinessT]:
+class _QueryShape[FamilyT, ScopeT, RefT, RowT, ReadinessT](_SqlInspectionMixin):
     """Private nominal carrier for select scope, row shape, and readiness."""
 
     def _pin_scope(self, scope: ScopeT) -> ScopeT:
@@ -1026,7 +1038,7 @@ class _BaseInsertQuery[FamilyT, OwnerT: Table[Any]](_SqlInspectionMixin):
         )
 
 
-class _WriteShape[FamilyT, ResultT, ReadinessT = _ExecutableQuery]:
+class _WriteShape[FamilyT, ResultT, ReadinessT = _ExecutableQuery](_SqlInspectionMixin):
     """Private nominal carrier for one write result and its readiness."""
 
     def _result_type(self) -> ResultT:
@@ -1382,7 +1394,6 @@ class _UpdateQuery[
     ResultT,
     ReadinessT,
 ](
-    _SqlInspectionMixin,
     _WriteShape[FamilyT, ResultT, ReadinessT],
 ):
     """Immutable update statement carrying result and readiness state."""
@@ -1639,7 +1650,6 @@ class _DeleteQuery[
     ResultT,
     ReadinessT,
 ](
-    _SqlInspectionMixin,
     _WriteShape[FamilyT, ResultT, ReadinessT],
 ):
     """Immutable delete statement carrying result and readiness state."""
