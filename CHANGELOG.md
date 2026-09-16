@@ -4,6 +4,12 @@
 
 ### Added
 
+- Joins accept ordinary ON predicates without foreign-key declarations, including
+  compound comparisons, filters, and correlated subqueries. Left-join ON filters
+  preserve unmatched rows. Each ON clause sees only its join prefix and enclosing
+  scopes; later joins are not visible. Existing `.references(...)` conditions
+  remain supported. Typed aliases and repeated-table joins are deferred to the
+  next part of #277.
 - `query.compile()` returns inspection-only `CompiledQuery` with parameterized
   SQL, ordered encoded bindings, and backend identity. Both backend namespaces
   export the frozen result type; its text representation redacts bindings.

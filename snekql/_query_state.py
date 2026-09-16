@@ -51,12 +51,11 @@ type JoinType = Literal["INNER", "LEFT"]
 
 @dataclass(frozen=True)
 class JoinSpec:
-    """One joined table and the equality condition that brings it into scope."""
+    """One joined table and the ON predicate that brings it into scope."""
 
     model: type[Table[Any]]
     join_type: JoinType
-    left_column: Attr[Any, Any, Any, Any, Any]
-    right_column: Attr[Any, Any, Any, Any, Any]
+    predicate: _PredicateNode[Any]
 
 
 @dataclass(frozen=True)

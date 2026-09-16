@@ -421,6 +421,41 @@ select(User).where(
 select(User).where(~User.status.eq("disabled"))
 ```
 
+### Joins
+
+`join(..., on=...)` and model-select `left_join(..., on=...)` accept ordinary
+predicates as well as FK-column `.references(...)` conditions. No foreign-key
+declaration is required for a predicate join:
+
+```python
+select(User).left_join(
+    Order,
+    on=(
+        Order.user_id.eq_col(User.id)
+        & Order.tenant_id.eq_col(User.tenant_id)
+        & Order.status.ne("cancelled")
+    ),
+).all()
+# Select[tuple[User[Fetched], Order[Fetched] | None]]
+```
+
+ON supports column comparisons, literal filters, `&`, `|`, `~`, and subqueries.
+Bindings use the column's normal codec. Conditions may filter only one side;
+they do not assert that a foreign-key relationship exists. An ON filter on a
+left join keeps unmatched left rows, unlike the same filter in WHERE.
+
+Each ON clause can reference the FROM anchor, preceding joins, and its newly
+joined table, but not later joins. Nested subqueries inherit that scope.
+Right-hand column references and correlations are checked during compilation.
+Aggregates cannot filter ON directly; use an aggregate subquery instead.
+
+Joins preserve readiness, so choose `.all()` or `.where(...)` before execution.
+Projection inner joins keep their selected result types. Projection left joins
+remain unsupported because their nullable result slots cannot yet be typed.
+Repeated joins to the same table still require the forthcoming alias support.
+
+### Subqueries
+
 A select can be nested inside another query as a subquery:
 
 ```python

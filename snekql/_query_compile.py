@@ -592,13 +592,17 @@ def _compile_select_state(
     sql_parts = [
         f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
-    for join in state.joins:
+    for index, join in enumerate(state.joins):
         join_table = dialect.quote_identifier(require_model_table_name(join.model))
-        left_ref = _render_column_ref(join.left_column, dialect, qualified=True)
-        right_ref = _render_column_ref(join.right_column, dialect, qualified=True)
-        sql_parts.append(
-            f"{join.join_type} JOIN {join_table} ON {left_ref} = {right_ref}"
+        # ON can see the FROM anchor and preceding joins, never a later join.
+        join_scope = ScopeResolver(
+            own_models=own_models[: index + 2], outer_models=scope.outer_models
         )
+        on_sql, on_params = _compile_predicate_sql(
+            join.predicate, dialect, scope=join_scope
+        )
+        sql_parts.append(f"{join.join_type} JOIN {join_table} ON {on_sql}")
+        params = (*params, *on_params)
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,

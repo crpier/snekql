@@ -1401,3 +1401,39 @@ if TYPE_CHECKING:
         await transaction.fetch_all(  # ty: ignore[no-matching-overload]
             _no_join
         )
+
+
+if TYPE_CHECKING:
+
+    async def check_general_join_results(transaction: Transaction) -> None:
+        """Predicate ON keeps model, optional-model, and projection result types."""
+        condition = Order.user_id.eq_col(User.id) & Order.note.ne("hidden")
+        assert_type(
+            await transaction.fetch_all(select(User).join(Order, on=condition).all()),
+            list[tuple[User[Fetched], Order[Fetched]]],
+        )
+        assert_type(
+            await transaction.fetch_all(
+                select(User).left_join(Order, on=condition).all()
+            ),
+            list[tuple[User[Fetched], Order[Fetched] | None]],
+        )
+        assert_type(
+            await transaction.fetch_all(
+                select(User.email).join(Order, on=condition).all()
+            ),
+            list[str],
+        )
+        assert_type(
+            await transaction.fetch_all(
+                select(User.email, Order.note).join(Order, on=condition).all()
+            ),
+            list[tuple[str, str]],
+        )
+        # ON does not establish row scope or weaken backend isolation.
+        await transaction.fetch_all(select(User).join(Order, on=condition))  # ty: ignore[no-matching-overload]
+        select(User).join(MariadbUser, on=User.id.eq(1))  # ty: ignore[no-matching-overload]
+        select(User).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
+        select(User.email).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
+        select(User.email, Order.note).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
+        select(User).left_join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]

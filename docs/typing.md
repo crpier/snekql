@@ -358,6 +358,34 @@ Order.user_id.references(User.id)  # ok
 Order.user_id.references(User.email)  # type error: str column vs int FK
 ```
 
+### General ON predicates
+
+`join` and model-select `left_join` also accept ordinary `Predicate` values,
+without requiring `FKCol` declarations:
+
+```python
+select(User).join(
+    Order,
+    on=Order.user_id.eq_col(User.id) & Order.note.ne("hidden"),
+).all()
+```
+
+Predicates retain their owner types. ON accepts predicate owners from the FROM
+anchor, preceding joins, and the newly joined model. An unrelated predicate
+owner or a mixed-backend join is a type error, with runtime checks for dynamic
+callers. Joining preserves Query Readiness and the existing result shapes.
+
+The existing `*_col` comparison annotations retain the left operand's owner;
+they do not statically track the right operand's owner, which may correlate to
+an enclosing query. Query Compilation checks those right-hand references using
+the ON clause's scope, not the final join graph. Subqueries in ON inherit that
+same scope, so neither direct comparisons nor nested correlations may reach a
+later join. Aggregate filters directly in ON are rejected at construction.
+
+A predicate may filter only one side of the join. It is explicit SQL, not a
+foreign-key assertion. Existing `.references(...)` conditions retain their
+relationship checks.
+
 ### Model-select joins
 
 A model-select join accumulates a tuple of `Fetched` models. `left_join` makes
