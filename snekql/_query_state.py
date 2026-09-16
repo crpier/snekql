@@ -189,7 +189,7 @@ def require_column_name(column: Attr[Any, Any, Any, Any, Any]) -> str:
 
 
 def require_column_model(column: Attr[Any, Any, Any, Any, Any]) -> type[Table[Any]]:
-    owner = column.owner
+    owner = getattr(column, "_query_relation", column.owner)
     if owner is None:
         msg = "field is not bound to a model"
         raise QueryConstructionError(msg)
@@ -226,6 +226,8 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
         # it through this seam without knowing the concrete leaf type.
         return field.__owner_model__()
     # Only an aggregate remains: it carries its owning table directly.
+    if isinstance(field.column, Attr):
+        return require_column_model(field.column)
     owner = field.owner
     if owner is None:
         msg = "aggregate is not bound to a table model"

@@ -107,7 +107,7 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.mariadb.verbs import delete, insert, select, update
+from snekql.mariadb.verbs import alias, delete, insert, select, update
 from snekql.query import _Select, _Write
 from snekql.runtime import Database as _Database
 from snekql.runtime import Transaction as _Transaction
@@ -211,6 +211,7 @@ __all__ = [
     "Write",
     "ZonedDatetime",
     "ZonedDatetimeError",
+    "alias",
     "delete",
     "exists",
     "insert",

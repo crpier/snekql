@@ -452,7 +452,51 @@ Aggregates cannot filter ON directly; use an aggregate subquery instead.
 Joins preserve readiness, so choose `.all()` or `.where(...)` before execution.
 Projection inner joins keep their selected result types. Projection left joins
 remain unsupported because their nullable result slots cannot yet be typed.
-Repeated joins to the same table still require the forthcoming alias support.
+
+### Table aliases and self-joins
+
+Use a role marker class to distinguish aliases statically, and `name=` to choose
+an SQL identifier. Both backend namespaces export `alias`:
+
+```python
+from snekql.sqlite import alias
+
+
+class ManagerRole:
+    pass
+
+
+manager = alias(User, ManagerRole, name="manager")
+
+query = (
+    select(User)
+    .left_join(
+        manager,
+        on=User.manager_id.eq_col(manager.column(User.id)),
+    )
+    .all()
+)
+# Select[tuple[User[Fetched], User[Fetched] | None]]
+```
+
+`manager.column(User.email)` retains the column's value type and codec while
+referencing `manager` in SQL. Pass an original column of the aliased model;
+columns from another model or alias are rejected. `select(manager)` returns
+original `User[Fetched]` instances. Alias columns also support projections,
+ordering, comparisons, and aggregates.
+
+Give every repeated role a distinct marker class and SQL name. Aliases can be
+reused in separate queries, but the same model/role pair cannot appear twice
+in one visible scope. Names must be ASCII SQL identifiers and must not collide
+case-insensitively with another visible source, including enclosing queries.
+Compilation rejects collisions rather than silently shadowing a correlated
+reference.
+
+Aliases are immutable, query-only values. They do not declare tables or change
+model metadata. Mutation and schema operations reject aliases, and assignments
+from alias columns cannot target the underlying model. Scope checks distinguish
+an alias from its original table and from other roles of that table. As with
+ordinary columns, right-hand `*_col` references are checked during compilation.
 
 ### Subqueries
 

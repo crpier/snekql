@@ -433,6 +433,49 @@ runtime because the query shape cannot make only nullable-side projected slots
 optional. Use a model-select left join, where the whole right model becomes
 `... | None`, or use an inner join for projections.
 
+### Typed table aliases
+
+A role marker gives each use of a table its own nominal scope type. The SQL
+name alone is not a static identity:
+
+```python
+from snekql.sqlite import alias
+
+
+class ManagerRole:
+    pass
+
+
+class ReviewerRole:
+    pass
+
+
+manager = alias(User, ManagerRole, name="manager")
+reviewer = alias(User, ReviewerRole, name="reviewer")
+
+select(manager).where(manager.column(User.email).eq("a@b.c"))  # Valid
+select(manager).where(reviewer.column(User.email).eq("a@b.c"))  # Type error
+select(manager).where(User.email.eq("a@b.c"))  # Type error
+manager.column(Order.note)  # Type error
+```
+
+`alias` infers the model owner and Fetched result type. `column(...)` requires
+an original descriptor from that model and retains its logical read and
+comparison types. An alias select returns the original Fetched Model; a model
+join appends that same model type, optional on the right of a left join. Alias
+columns also retain scalar and tuple projection types.
+
+The backend and role scope coordinates remain private. Store completed queries
+at existing `Select[Row]` helper seams. Aliases are not mutation or schema
+targets, and an alias-owned assignment cannot update the physical model.
+
+Runtime checks supplement the types. SQL names must be distinct within visible
+scopes, including enclosing queries, using case-insensitive comparison. A
+model/role pair may appear only once per visible scope, even if two alias values
+use different SQL names. Separate queries may reuse the same alias and role.
+Right-hand comparison references and correlated references retain the existing
+compilation-time validation described above.
+
 ### Optional foreign-key DDL
 
 An `FKCol[...]` annotation controls typing only. Emitting an actual

@@ -97,17 +97,18 @@ def _select_overloads() -> str:
 
 
 def _backend_select_overloads(backend: str) -> str:
+    owner_bound = f'Model[Any, Any] | _AliasOwner[Literal["{backend}"], Any, Any]'
     family = f'Literal["{backend}"]'
     model_overload = (
         "@overload\n"
-        "def select[OwnerT: Model[Any, Any], ReadT: Table[Any]](\n"
+        f"def select[OwnerT: {owner_bound}, ReadT: Table[Any]](\n"
         f"    model: _SelectableModelClass[{family}, OwnerT, ReadT],\n"
         "    /,\n"
         f") -> SelectModelQuery[{family}, OwnerT, ReadT]: ...\n\n\n"
     )
     singleton_overload = (
         "@overload\n"
-        "def select[OwnerT: Model[Any, Any], ValueT, CompareT](\n"
+        f"def select[OwnerT: {owner_bound}, ValueT, CompareT](\n"
         "    field: Attr[Any, Any, OwnerT, Any, ValueT, Any, CompareT]\n"
         "    | Aggregate[OwnerT, ValueT, CompareT]\n"
         "    | DialectSelectable[OwnerT, ValueT, CompareT],\n"
@@ -116,7 +117,7 @@ def _backend_select_overloads(backend: str) -> str:
     )
     column_ref_overload = (
         "@overload\n"
-        "def select[OwnerT: Model[Any, Any], ValueT](\n"
+        f"def select[OwnerT: {owner_bound}, ValueT](\n"
         "    field: ColumnRef[OwnerT, ValueT],\n"
         "    /,\n"
         f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, Any]: ...\n\n\n"
@@ -126,7 +127,7 @@ def _backend_select_overloads(backend: str) -> str:
         type_params = ",\n    ".join(
             item
             for index in range(1, width + 1)
-            for item in (f"Owner{index}T: Model[Any, Any]", f"T{index}")
+            for item in (f"Owner{index}T: {owner_bound}", f"T{index}")
         )
         fields = "".join(
             f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"

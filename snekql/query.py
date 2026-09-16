@@ -22,6 +22,7 @@ from typing import (
     overload,
 )
 
+from snekql._aliases import TableAlias, require_query_source
 from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import (
@@ -1951,15 +1952,8 @@ def _select_join(
     *,
     project: bool = False,
 ) -> SelectState:
-    if not isinstance(model, type):
-        msg = "join requires a table model"
-        raise QueryConstructionError(msg)
-    table_model = cast("type[Table[Any]]", model)
-    try:
-        new_columns = require_model_columns(table_model)
-    except ModelDeclarationError as error:
-        msg = "join requires a table model"
-        raise QueryConstructionError(msg) from error
+    table_model = require_query_source(model)
+    new_columns = require_model_columns(table_model)
     anchor_backend = require_model_backend(state.model)
     joined_backend = require_model_backend(table_model)
     if joined_backend != anchor_backend:
@@ -2514,11 +2508,11 @@ def build_select(*args: object) -> object:
     if len(args) == 0:
         msg = "select requires a model or field"
         raise QueryConstructionError(msg)
-    if any(isinstance(argument, type) for argument in args):
-        if len(args) != 1 or not isinstance(args[0], type):
+    if any(isinstance(argument, (type, TableAlias)) for argument in args):
+        if len(args) != 1:
             msg = "mixed model and field selection is invalid"
             raise QueryConstructionError(msg)
-        model = cast("type[Table[Any]]", args[0])
+        model = require_query_source(args[0])
         try:
             columns = require_model_columns(model)
         except ModelDeclarationError as error:
