@@ -358,6 +358,34 @@ Order.user_id.references(User.id)  # ok
 Order.user_id.references(User.email)  # type error: str column vs int FK
 ```
 
+### General ON predicates
+
+`join` and model-select `left_join` also accept ordinary `Predicate` values,
+without requiring `FKCol` declarations:
+
+```python
+select(User).join(
+    Order,
+    on=Order.user_id.eq_col(User.id) & Order.note.ne("hidden"),
+).all()
+```
+
+Predicates retain their owner types. ON accepts predicate owners from the FROM
+anchor, preceding joins, and the newly joined model. An unrelated predicate
+owner or a mixed-backend join is a type error, with runtime checks for dynamic
+callers. Joining preserves Query Readiness and the existing result shapes.
+
+The existing `*_col` comparison annotations retain the left operand's owner;
+they do not statically track the right operand's owner, which may correlate to
+an enclosing query. Query Compilation checks those right-hand references using
+the ON clause's scope, not the final join graph. Subqueries in ON inherit that
+same scope, so neither direct comparisons nor nested correlations may reach a
+later join. Aggregate filters directly in ON are rejected at construction.
+
+A predicate may filter only one side of the join. It is explicit SQL, not a
+foreign-key assertion. Existing `.references(...)` conditions retain their
+relationship checks.
+
 ### Model-select joins
 
 A model-select join accumulates a tuple of `Fetched` models. `left_join` makes
@@ -404,6 +432,49 @@ Projection-select `left_join(...)` is rejected by both the type checker and the
 runtime because the query shape cannot make only nullable-side projected slots
 optional. Use a model-select left join, where the whole right model becomes
 `... | None`, or use an inner join for projections.
+
+### Typed table aliases
+
+A role marker gives each use of a table its own nominal scope type. The SQL
+name alone is not a static identity:
+
+```python
+from snekql.sqlite import alias
+
+
+class ManagerRole:
+    pass
+
+
+class ReviewerRole:
+    pass
+
+
+manager = alias(User, ManagerRole, name="manager")
+reviewer = alias(User, ReviewerRole, name="reviewer")
+
+select(manager).where(manager.column(User.email).eq("a@b.c"))  # Valid
+select(manager).where(reviewer.column(User.email).eq("a@b.c"))  # Type error
+select(manager).where(User.email.eq("a@b.c"))  # Type error
+manager.column(Order.note)  # Type error
+```
+
+`alias` infers the model owner and Fetched result type. `column(...)` requires
+an original descriptor from that model and retains its logical read and
+comparison types. An alias select returns the original Fetched Model; a model
+join appends that same model type, optional on the right of a left join. Alias
+columns also retain scalar and tuple projection types.
+
+The backend and role scope coordinates remain private. Store completed queries
+at existing `Select[Row]` helper seams. Aliases are not mutation or schema
+targets, and an alias-owned assignment cannot update the physical model.
+
+Runtime checks supplement the types. SQL names must be distinct within visible
+scopes, including enclosing queries, using case-insensitive comparison. A
+model/role pair may appear only once per visible scope, even if two alias values
+use different SQL names. Separate queries may reuse the same alias and role.
+Right-hand comparison references and correlated references retain the existing
+compilation-time validation described above.
 
 ### Optional foreign-key DDL
 

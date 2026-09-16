@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, cast
 
+from snekql._aliases import _AliasRelation
 from snekql._dialect_expr import SqlCompilable
 from snekql._query_state import (
     SelectState,
@@ -42,7 +43,7 @@ from snekql.expressions import (
     _PredicateNode,
     _require_predicate_node,
 )
-from snekql.model import Table
+from snekql.model import Table, require_model_table_name
 from snekql.storage import Attr
 
 
@@ -76,6 +77,27 @@ class ScopeResolver:
         """
 
         return len(self.own_models) > 1 or bool(self.outer_models)
+
+    def ensure_unambiguous_aliases(self) -> None:
+        """Reject SQL shadowing and indistinguishable role types in visible scopes."""
+        names: dict[str, type[Table[Any]]] = {}
+        roles: set[tuple[type[Table[Any]], type[object]]] = set()
+        for model in self.models:
+            name = require_model_table_name(model).casefold()
+            previous = names.get(name)
+            if previous is not None and (
+                issubclass(model, _AliasRelation)
+                or issubclass(previous, _AliasRelation)
+            ):
+                msg = "alias name collides with a visible query source"
+                raise QueryCompilationError(msg)
+            names[name] = model
+            if issubclass(model, _AliasRelation):
+                role = (model.source_model, model.role)
+                if role in roles:
+                    msg = "alias role is already visible in this query scope"
+                    raise QueryCompilationError(msg)
+                roles.add(role)
 
     def enter_subquery(
         self,

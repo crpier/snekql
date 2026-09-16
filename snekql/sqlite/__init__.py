@@ -96,7 +96,7 @@ from snekql.sqlite._raw import RawStatement, raw
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
 from snekql.sqlite.model import Col, FKCol, GenCol, Model
-from snekql.sqlite.verbs import delete, insert, select, update
+from snekql.sqlite.verbs import alias, delete, insert, select, update
 from snekql.storage import (
     Blob,
     CurrentTimestamp,
@@ -198,6 +198,7 @@ __all__ = [
     "Write",
     "ZonedDatetime",
     "ZonedDatetimeError",
+    "alias",
     "delete",
     "exists",
     "insert",

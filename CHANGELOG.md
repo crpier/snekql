@@ -4,6 +4,16 @@
 
 ### Added
 
+- Joins accept ordinary ON predicates without foreign-key declarations, including
+  compound comparisons, filters, and correlated subqueries. Left-join ON filters
+  preserve unmatched rows. Each ON clause sees only its join prefix and enclosing
+  scopes; later joins are not visible. Existing `.references(...)` conditions
+  remain supported. (#277)
+- `alias(Model, Role, name=...)` gives a table a typed query role for self-joins,
+  repeated joins, and correlated subqueries. Alias columns preserve logical
+  codecs; model results remain original Fetched Models with optional left-join
+  slots. Compilation rejects visible SQL-name and role collisions. Aliases are
+  query-only, not schema declarations or mutation targets. (#277)
 - `query.compile()` returns inspection-only `CompiledQuery` with parameterized
   SQL, ordered encoded bindings, and backend identity. Both backend namespaces
   export the frozen result type; its text representation redacts bindings.

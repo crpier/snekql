@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, cast
 
+from snekql._aliases import _AliasRelation
 from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._query_dialect import QueryDialect, query_dialect_for_backend
@@ -557,6 +558,17 @@ def _compile_select_list(
     return ", ".join(parts), params
 
 
+def _compile_source_sql(model: type[Table[Any]], dialect: QueryDialect) -> str:
+    """Render a physical table with its independent query-role name, if any."""
+    name = dialect.quote_identifier(require_model_table_name(model))
+    if issubclass(model, _AliasRelation):
+        physical = dialect.quote_identifier(
+            require_model_table_name(model.source_model)
+        )
+        return f"{physical} AS {name}"
+    return name
+
+
 def _compile_select_state(
     state: SelectState,
     dialect: QueryDialect,
@@ -575,6 +587,7 @@ def _compile_select_state(
         if outer is not None
         else ScopeResolver(own_models=own_models)
     )
+    scope.ensure_unambiguous_aliases()
     for column in state.fields:
         if isinstance(column, _Scalar):
             continue
@@ -585,20 +598,23 @@ def _compile_select_state(
             own_only=True,
         )
     ensure_grouping_covers_projection(state)
-    table_name = require_model_table_name(state.model)
     quoted_columns, params = _compile_select_list(state, dialect, scope=scope)
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
-    quoted_table = dialect.quote_identifier(table_name)
+    quoted_table = _compile_source_sql(state.model, dialect)
     sql_parts = [
         f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
-    for join in state.joins:
-        join_table = dialect.quote_identifier(require_model_table_name(join.model))
-        left_ref = _render_column_ref(join.left_column, dialect, qualified=True)
-        right_ref = _render_column_ref(join.right_column, dialect, qualified=True)
-        sql_parts.append(
-            f"{join.join_type} JOIN {join_table} ON {left_ref} = {right_ref}"
+    for index, join in enumerate(state.joins):
+        join_table = _compile_source_sql(join.model, dialect)
+        # ON can see the FROM anchor and preceding joins, never a later join.
+        join_scope = ScopeResolver(
+            own_models=own_models[: index + 2], outer_models=scope.outer_models
         )
+        on_sql, on_params = _compile_predicate_sql(
+            join.predicate, dialect, scope=join_scope
+        )
+        sql_parts.append(f"{join.join_type} JOIN {join_table} ON {on_sql}")
+        params = (*params, *on_params)
     if state.predicates:
         predicate_sql, predicate_params = _compile_predicates_sql(
             state.predicates,

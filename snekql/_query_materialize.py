@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, cast
 
+from snekql._aliases import _AliasRelation
 from snekql._dialect_expr import DialectSelectable
 from snekql._model_materialization import decode_model_row
 from snekql._query_state import (
@@ -131,7 +132,12 @@ def _materialize_join_row(
             continue
         values = {name: chunk[position] for position, name in enumerate(columns)}
         elements.append(
-            decode_model_row(model, values, backend=backend, validate=validate),
+            decode_model_row(
+                model.source_model if issubclass(model, _AliasRelation) else model,
+                values,
+                backend=backend,
+                validate=validate,
+            ),
         )
     return tuple(elements)
 
@@ -162,7 +168,12 @@ def materialize_select_row_for_backend(
             require_column_name(require_field(column)): row[index]
             for index, column in enumerate(state.fields)
         }
-        return decode_model_row(state.model, values, backend=backend, validate=validate)
+        model = (
+            state.model.source_model
+            if issubclass(state.model, _AliasRelation)
+            else state.model
+        )
+        return decode_model_row(model, values, backend=backend, validate=validate)
     nullable_models = _left_joined_models(state)
     decoded_values = tuple(
         _decode_projection_field(

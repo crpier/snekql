@@ -22,6 +22,7 @@ from typing import (
     overload,
 )
 
+from snekql._aliases import TableAlias, require_query_source
 from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import (
@@ -65,6 +66,7 @@ from snekql.errors import (
 from snekql.expressions import (
     Aggregate,
     Assignment,
+    ColumnComparisonPredicate,
     ColumnRef,
     DoNothing,
     DoUpdate,
@@ -376,7 +378,7 @@ class SelectModelQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, SelectOwnerT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
@@ -413,7 +415,7 @@ class SelectModelQuery[
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, SelectOwnerT],
+        on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
@@ -499,7 +501,7 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, JoinOwnerT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
     ) -> JoinModelQuery[
         FamilyT, JoinOwnerT | NewOwnerT, ReadinessT, *ResultTs, NewReadT
     ]: ...
@@ -528,7 +530,7 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, JoinOwnerT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
     ) -> JoinModelQuery[
         FamilyT,
         JoinOwnerT | NewOwnerT,
@@ -744,7 +746,7 @@ class SelectValueQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, ScopeT],
+        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT | NewOwnerT, RefT, T, CompareT, ReadinessT
     ]: ...
@@ -931,7 +933,7 @@ class SelectTupleQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, ScopeT],
+        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
     ) -> SelectTupleQuery[FamilyT, ScopeT | NewOwnerT, RefT, ReadinessT, *Ts]: ...
 
     @overload
@@ -1950,15 +1952,8 @@ def _select_join(
     *,
     project: bool = False,
 ) -> SelectState:
-    if not isinstance(model, type):
-        msg = "join requires a table model"
-        raise QueryConstructionError(msg)
-    table_model = cast("type[Table[Any]]", model)
-    try:
-        new_columns = require_model_columns(table_model)
-    except ModelDeclarationError as error:
-        msg = "join requires a table model"
-        raise QueryConstructionError(msg) from error
+    table_model = require_query_source(model)
+    new_columns = require_model_columns(table_model)
     anchor_backend = require_model_backend(state.model)
     joined_backend = require_model_backend(table_model)
     if joined_backend != anchor_backend:
@@ -1967,29 +1962,37 @@ def _select_join(
             f"received {joined_backend} model {table_model.__name__}"
         )
         raise QueryConstructionError(msg)
-    if not isinstance(on, _JoinOn):
-        msg = "join requires an on= condition built from references()"
-        raise QueryConstructionError(msg)
-    condition = cast("_JoinOn[Any, Any]", on)
-    left_column = require_field(condition.left_column)
-    right_column = require_field(condition.right_column)
-    related = {require_column_model(left_column), require_column_model(right_column)}
-    if table_model not in related:
-        msg = "join condition must reference the joined table"
-        raise QueryConstructionError(msg)
     already_joined = set(state.result_models())
     if table_model in already_joined:
         msg = "table is already joined"
         raise QueryConstructionError(msg)
-    if not (related - {table_model}) <= already_joined:
-        msg = "join condition must relate the joined table to an already-joined table"
+    if isinstance(on, _JoinOn):
+        left_column = require_field(on.left_column)
+        right_column = require_field(on.right_column)
+        related = {
+            require_column_model(left_column),
+            require_column_model(right_column),
+        }
+        if table_model not in related:
+            msg = "join condition must reference the joined table"
+            raise QueryConstructionError(msg)
+        if not (related - {table_model}) <= already_joined:
+            msg = (
+                "join condition must relate the joined table to an already-joined table"
+            )
+            raise QueryConstructionError(msg)
+        predicate = ColumnComparisonPredicate[Any](
+            operand=left_column, operator="eq", other=right_column
+        )
+    elif isinstance(on, _PredicateNode):
+        predicate = on
+        ensure_predicate_targets_models(
+            predicate, ScopeResolver(own_models=(*state.result_models(), table_model))
+        )
+    else:
+        msg = "join requires an on= predicate or references() condition"
         raise QueryConstructionError(msg)
-    spec = JoinSpec(
-        model=table_model,
-        join_type=join_type,
-        left_column=left_column,
-        right_column=right_column,
-    )
+    spec = JoinSpec(model=table_model, join_type=join_type, predicate=predicate)
     if project:
         # Projection selects keep their fixed projected columns; a join only
         # brings the table into the FROM graph, it never widens the SELECT list.
@@ -2505,11 +2508,11 @@ def build_select(*args: object) -> object:
     if len(args) == 0:
         msg = "select requires a model or field"
         raise QueryConstructionError(msg)
-    if any(isinstance(argument, type) for argument in args):
-        if len(args) != 1 or not isinstance(args[0], type):
+    if any(isinstance(argument, (type, TableAlias)) for argument in args):
+        if len(args) != 1:
             msg = "mixed model and field selection is invalid"
             raise QueryConstructionError(msg)
-        model = cast("type[Table[Any]]", args[0])
+        model = require_query_source(args[0])
         try:
             columns = require_model_columns(model)
         except ModelDeclarationError as error:

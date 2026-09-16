@@ -124,6 +124,7 @@ _DIALECT_NAMES = frozenset(
         "RawStatement",
         "Real",
         "Text",
+        "alias",
         "raw",
         "scaffold",
     },
