@@ -88,6 +88,10 @@ _Avoid_: migration set, feature migration subset, revision graph
 The Database's durable ordered record of applied Migration identities and exact-body checksums. `migrate` requires it to match a Migration Declaration prefix; `verify_migrations` requires it to match the complete declaration by default, or the complete declaration followed by an explicitly approved later prefix.
 _Avoid_: version table, version pointer, schema log
 
+**Reviewed Baseline**:
+An initial Migration whose intended schema and data invariants have been reviewed against an existing, untracked Database. The same declaration creates the intended schema on fresh replay and preserves matching existing objects; it does not claim that older migrations ran.
+_Avoid_: stamp, skipped migration history, legacy history adoption
+
 **Approved Migration Suffix**:
 An ordered sequence of later Migrations that an application version explicitly permits after its complete Migration Declaration. Approval identifies exact changes but does not prove schema or application compatibility.
 _Avoid_: allow unknown migrations, compatibility proof, independent migration chain

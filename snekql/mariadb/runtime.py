@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import anyio
 from anyio.lowlevel import checkpoint
 
-from snekql._migrations import MigrationPlan, MigrationResult
+from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
@@ -608,12 +608,12 @@ class MariaDBRuntime:
 
     async def verify_migrations(
         self, migrations: MigrationPlan, *, minimum_applied: int | None = None
-    ) -> None:
+    ) -> MigrationStatus:
         """Verify Migration History without changing it."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
         try:
-            await verify_mariadb_migrations(
+            return await verify_mariadb_migrations(
                 connection, migrations, minimum_applied=minimum_applied
             )
         finally:

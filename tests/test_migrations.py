@@ -47,9 +47,7 @@ def declaration_rejects_invalid_names_and_bodies() -> None:
     )
     for declaration in invalid_declarations:
         with assert_raises(MigrationDeclarationError):
-            prepare_migrations(
-                declaration  # ty: ignore[invalid-argument-type]
-            )
+            prepare_migrations(declaration)
 
 
 @test(mark="fast")

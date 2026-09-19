@@ -9,7 +9,7 @@ import anyio
 import anyio.lowlevel
 from snektest import assert_eq, assert_raises, test
 
-from snekql._migrations import MigrationPlan, MigrationResult
+from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
 from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql._telemetry import ParameterVisibility
 from snekql.mariadb.runtime import MariaDBConnectionPool
@@ -306,8 +306,13 @@ class _FakeRuntime:
 
     async def verify_migrations(
         self, migrations: MigrationPlan, *, minimum_applied: int | None = None
-    ) -> None:
-        _ = migrations, minimum_applied
+    ) -> MigrationStatus:
+        _ = minimum_applied
+        return MigrationStatus(
+            applied=(),
+            history_present=False,
+            pending=tuple(migration.name for migration in migrations),
+        )
 
     async def verify_schema(
         self,

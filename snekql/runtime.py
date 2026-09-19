@@ -26,6 +26,7 @@ from snekql._explain import ExplainResult, compile_explain_plan
 from snekql._migrations import (
     MigrationPlan,
     MigrationResult,
+    MigrationStatus,
     prepare_migrations,
 )
 from snekql._query_plan import (
@@ -291,7 +292,7 @@ class RuntimeBackend(Protocol):
 
     async def verify_migrations(
         self, migrations: MigrationPlan, *, minimum_applied: int | None = None
-    ) -> None: ...
+    ) -> MigrationStatus: ...
 
     async def verify_schema(
         self,
@@ -1668,6 +1669,19 @@ class Database[FamilyT: BackendFamily]:
             logger.exception("database migrate failed")
             raise
         return result
+
+    async def migration_status(self, migrations: dict[str, str]) -> MigrationStatus:
+        """Inspect a complete declaration without applying or adopting migrations.
+
+        `status = await db.migration_status(MIGRATIONS)` returns immutable ordered
+        `applied` and `pending` names plus `history_present`. Missing history means
+        all declarations are pending, not that the database is empty. Malformed,
+        legacy, and divergent history raise `MigrationHistoryError`.
+        """
+
+        migration_plan = prepare_migrations(migrations)
+        self.runtime.validate_migrations(migration_plan)
+        return await self.runtime.verify_migrations(migration_plan, minimum_applied=0)
 
     async def verify_migrations(
         self,

@@ -4,6 +4,20 @@
 
 ### Added
 
+- MariaDB migration-recovery runbook and tested reconciliation example for DDL
+  committed without history, including lost commit replies and unsafe mixed
+  DML/DDL replay. Expand/contract examples include bounded, resumable backfills
+  with atomic data/checkpoint commits on both backends. (#290)
+
+- Reviewed baseline adoption example and checklist for existing SQLite/MariaDB
+  databases without history. Preflight checks reject unreviewed schema and invalid
+  data before ordinary migration execution; no history-stamping verb. Part of #290.
+
+- `Database.migration_status()` reports immutable applied/pending migration names
+  and history presence without applying or adopting changes on SQLite/MariaDB.
+  `snekql migrations status` and `plan` load trusted application database contexts,
+  support JSON, and show pending SQL only with `plan --sql`. Part of #290.
+
 - SQLite migration bodies support multiple statements in one atomic unit with
   one exact-body checksum and history row. SQLite-aware statement boundaries
   preserve triggers, comments, and quoted semicolons. Every statement retains

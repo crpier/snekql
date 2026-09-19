@@ -1,4 +1,4 @@
-"""Command line access to bundled snekql documentation."""
+"""Command line documentation and read-only migration inspection."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ EXAMPLE_COMMAND_PARTS = 2
 HELP_TEXT = """Usage: snekql [OPTIONS]
        snekql examples
        snekql example NAME
+       snekql migrations {status,plan} --database MODULE:FACTORY --migrations MODULE:DECLARATION
 
 Print bundled snekql documentation.
 
@@ -50,9 +51,15 @@ def _print_example(example_name: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the snekql documentation CLI."""
+    """Run documentation commands or read-only migration inspection."""
 
-    namespace = _build_parser().parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ["migrations"]:
+        # Documentation commands do not need runtime imports.
+        from snekql._migration_cli import run_migrations_cli  # noqa: PLC0415
+
+        return run_migrations_cli(arguments[1:])
+    namespace = _build_parser().parse_args(arguments)
     example_name = namespace.example
     if namespace.command[:1] == ["example"]:
         if len(namespace.command) < EXAMPLE_COMMAND_PARTS:

@@ -48,6 +48,7 @@ from snekql._migrations import (
     MigrationPlan,
     MigrationRecord,
     MigrationResult,
+    MigrationStatus,
     validate_history_prefix,
     validate_legacy_history,
 )
@@ -819,7 +820,7 @@ async def verify_sqlite_migrations(
     migrations: MigrationPlan,
     *,
     minimum_applied: int | None = None,
-) -> None:
+) -> MigrationStatus:
     """Verify v2 history within the approved range without locks or mutation."""
 
     transaction_started = False
@@ -833,12 +834,21 @@ async def verify_sqlite_migrations(
             if minimum_applied:
                 msg = "Migration History is missing"
                 raise MigrationHistoryError(msg)
-            return
+            return MigrationStatus(
+                applied=(),
+                history_present=False,
+                pending=tuple(migration.name for migration in migrations),
+            )
         if shape != "v2":
             msg = f"Migration History uses unsupported SQLite shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)
         validate_history_prefix(history, migrations, minimum_applied=minimum_applied)
+        return MigrationStatus(
+            applied=tuple(record.name for record in history),
+            history_present=True,
+            pending=tuple(migration.name for migration in migrations[len(history) :]),
+        )
     finally:
         if transaction_started:
             await _rollback_if_open(connection)

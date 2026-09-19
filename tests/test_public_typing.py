@@ -1224,6 +1224,13 @@ if TYPE_CHECKING:
             await database.migrate(migrations),
             sqlite.MigrationResult,
         )
+        migration_status = assert_type(
+            await database.migration_status(migrations), sqlite.MigrationStatus
+        )
+        _ = assert_type(migration_status.applied, tuple[str, ...])
+        _ = assert_type(migration_status.pending, tuple[str, ...])
+        _ = assert_type(migration_status.history_present, bool)
+        await database.migration_status([])  # ty: ignore[invalid-argument-type]
         _ = assert_type(migration_result.applied, tuple[str, ...])
         _ = assert_type(migration_result.already_applied, tuple[str, ...])
         _ = assert_type(migration_result.legacy_adopted, bool)
