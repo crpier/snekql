@@ -289,7 +289,9 @@ class RuntimeBackend(Protocol):
         adopt_legacy: bool = False,
     ) -> MigrationResult: ...
 
-    async def verify_migrations(self, migrations: MigrationPlan) -> None: ...
+    async def verify_migrations(
+        self, migrations: MigrationPlan, *, minimum_applied: int | None = None
+    ) -> None: ...
 
     async def verify_schema(
         self,
@@ -1667,10 +1669,52 @@ class Database[FamilyT: BackendFamily]:
             raise
         return result
 
-    async def verify_migrations(self, migrations: dict[str, str]) -> None:
-        """Require read-only Migration History to match a complete declaration."""
+    async def verify_migrations(
+        self,
+        migrations: dict[str, str],
+        *,
+        policy: Literal["strict", "compatible"] = "strict",
+        approved_later: dict[str, str] | None = None,
+    ) -> None:
+        """Verify history without executing SQL bodies or changing the schema.
+
+        `policy="strict"` requires the exact declared head. `policy="compatible"`
+        requires the entire known declaration followed by zero or more approved
+        later migrations in order, with matching SQL checksums. Approvals are
+        application-specific assertions, not proof of schema compatibility.
+
+        ```python
+        await db.verify_migrations(known, policy="strict")
+        await db.verify_migrations(
+            known, policy="compatible", approved_later=reviewed_suffix
+        )
+        ```
+        """
 
         migration_plan = prepare_migrations(migrations)
+        minimum_applied: int | None = None
+        if type(policy) is not str or policy not in {"strict", "compatible"}:
+            msg = "migration verification policy must be strict or compatible"
+            raise MigrationDeclarationError(msg)
+        if policy == "strict" and approved_later is not None:
+            msg = "strict verification does not accept approved_later"
+            raise MigrationDeclarationError(msg)
+        if policy == "compatible":
+            if approved_later is None:
+                msg = "compatible verification requires approved_later"
+                raise MigrationDeclarationError(msg)
+            later_plan = prepare_migrations(approved_later)
+            known_names = {migration.name for migration in migration_plan}
+            if any(migration.name in known_names for migration in later_plan):
+                msg = "approved_later must not repeat a known migration name"
+                raise MigrationDeclarationError(msg)
+            minimum_applied = len(migration_plan)
+            migration_plan = prepare_migrations(
+                {
+                    migration.name: migration.sql
+                    for migration in (*migration_plan, *later_plan)
+                }
+            )
         self.runtime.validate_migrations(migration_plan)
         backend_family = self.runtime.backend_family
         try:
@@ -1679,7 +1723,9 @@ class Database[FamilyT: BackendFamily]:
                 backend_family,
                 len(migration_plan),
             )
-            await self.runtime.verify_migrations(migration_plan)
+            await self.runtime.verify_migrations(
+                migration_plan, minimum_applied=minimum_applied
+            )
             logger.info(
                 "%s migration verification completed: %d migration(s)",
                 backend_family,

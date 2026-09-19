@@ -831,13 +831,17 @@ async def apply_mariadb_migrations(
 async def verify_mariadb_migrations(
     connection: object,
     migrations: MigrationPlan,
+    *,
+    minimum_applied: int | None = None,
 ) -> None:
-    """Require exact final v2 history without locking or changing its schema."""
+    """Verify final v2 history within the approved range without mutation."""
 
+    if minimum_applied is None:
+        minimum_applied = len(migrations)
     try:
         shape = await _fetch_history_shape(connection)
         if shape == "absent":
-            if migrations:
+            if minimum_applied:
                 msg = "Migration History is missing"
                 raise MigrationHistoryError(msg)
             return
@@ -845,7 +849,7 @@ async def verify_mariadb_migrations(
             msg = f"Migration History uses unsupported MariaDB shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)
-        validate_history_prefix(history, migrations, require_head=True)
+        validate_history_prefix(history, migrations, minimum_applied=minimum_applied)
     finally:
         await _rollback(connection)
 

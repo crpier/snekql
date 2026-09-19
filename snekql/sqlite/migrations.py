@@ -771,16 +771,20 @@ async def verify_sqlite_migrations(
     connection: Connection,
     connection_state: SQLiteMigrationConnectionState,
     migrations: MigrationPlan,
+    *,
+    minimum_applied: int | None = None,
 ) -> None:
-    """Verify v2 history at its exact head without taking locks or mutating it."""
+    """Verify v2 history within the approved range without locks or mutation."""
 
     transaction_started = False
+    if minimum_applied is None:
+        minimum_applied = len(migrations)
     try:
         await _execute(connection, "BEGIN")
         transaction_started = True
         shape = await _fetch_history_shape(connection)
         if shape == "absent":
-            if migrations:
+            if minimum_applied:
                 msg = "Migration History is missing"
                 raise MigrationHistoryError(msg)
             return
@@ -788,7 +792,7 @@ async def verify_sqlite_migrations(
             msg = f"Migration History uses unsupported SQLite shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)
-        validate_history_prefix(history, migrations, require_head=True)
+        validate_history_prefix(history, migrations, minimum_applied=minimum_applied)
     finally:
         if transaction_started:
             await _rollback_if_open(connection)

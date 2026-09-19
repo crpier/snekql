@@ -85,8 +85,12 @@ The complete ordered Migration chain supplied by one code version. Every declara
 _Avoid_: migration set, feature migration subset, revision graph
 
 **Migration History**:
-The Database's durable ordered record of applied Migration identities and exact-body checksums. `migrate` requires it to match a Migration Declaration prefix; `verify_migrations` requires it to match the complete declaration.
+The Database's durable ordered record of applied Migration identities and exact-body checksums. `migrate` requires it to match a Migration Declaration prefix; `verify_migrations` requires it to match the complete declaration by default, or the complete declaration followed by an explicitly approved later prefix.
 _Avoid_: version table, version pointer, schema log
+
+**Approved Migration Suffix**:
+An ordered sequence of later Migrations that an application version explicitly permits after its complete Migration Declaration. Approval identifies exact changes but does not prove schema or application compatibility.
+_Avoid_: allow unknown migrations, compatibility proof, independent migration chain
 
 **Scaffold**:
 A dev-time pure function that emits initial `CREATE TABLE` and index DDL for a Table Model as text the author owns and pastes into a Migration Declaration. It never diffs the live schema and never generates `ALTER`.

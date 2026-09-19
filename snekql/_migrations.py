@@ -112,8 +112,9 @@ def validate_history_prefix(
     expected: MigrationPlan,
     *,
     require_head: bool = False,
+    minimum_applied: int = 0,
 ) -> None:
-    """Require ordered history to equal a valid declaration prefix or head."""
+    """Require an unchanged ordered prefix containing every mandatory migration."""
 
     if len(actual) > len(expected):
         msg = (
@@ -135,7 +136,9 @@ def validate_history_prefix(
                 f"recorded {record.name!r}, declared {expected_record.name!r}"
             )
             raise MigrationHistoryError(msg)
-    if require_head and len(actual) != len(expected):
+    if require_head:
+        minimum_applied = len(expected)
+    if len(actual) < minimum_applied:
         next_name = expected[len(actual)].name
         msg = f"Migration History is behind the declaration; {next_name!r} is pending"
         raise MigrationHistoryError(msg)

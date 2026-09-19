@@ -5,8 +5,10 @@ Models and returns an immutable `SchemaVerificationResult` containing the
 ordered checked tables and table-scoped `SchemaDriftIssue` values. It is the
 check that ties hand-written migrations back to current model metadata.
 `db.verify_migrations(migrations)` separately proves that ordered,
-checksummed Migration History is at this code version's exact head. Neither
-method creates application tables. [Migrations](migrations.md) remain the sole
+checksummed Migration History is at this code version's exact head by default.
+Its opt-in [rolling-deployment policy](migrations.md#rolling-deployments) permits
+an explicitly approved later prefix, without relaxing schema verification.
+Neither method creates application tables. [Migrations](migrations.md) remain the sole
 schema-creation authority.
 
 Run both checks after `migrate`:

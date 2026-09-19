@@ -606,12 +606,16 @@ class MariaDBRuntime:
             else:
                 await self.connection_pool.discard(connection)
 
-    async def verify_migrations(self, migrations: MigrationPlan) -> None:
+    async def verify_migrations(
+        self, migrations: MigrationPlan, *, minimum_applied: int | None = None
+    ) -> None:
         """Verify Migration History without changing it."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
         try:
-            await verify_mariadb_migrations(connection, migrations)
+            await verify_mariadb_migrations(
+                connection, migrations, minimum_applied=minimum_applied
+            )
         finally:
             await self.connection_pool.release(connection)
 

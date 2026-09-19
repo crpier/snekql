@@ -111,8 +111,8 @@ MariaDB staging upgrade.
 
 ## Read-only verification
 
-`verify_migrations(MIGRATIONS)` requires exact equality with the declaration's
-full head. It does not create the history table, acquire the migration lock,
+`verify_migrations(MIGRATIONS)` defaults to `policy="strict"`, requiring exact
+equality with the declaration's full head. It does not create the history table, acquire the migration lock,
 upgrade legacy history, adopt a baseline, or execute migration SQL.
 
 It fails when:
@@ -123,6 +123,92 @@ It fails when:
 - an empty declaration encounters non-empty history.
 
 An empty declaration succeeds when no history table exists.
+
+## Rolling deployments
+
+Strict verification remains the default and can be requested explicitly:
+
+```python
+await db.verify_migrations(MIGRATIONS, policy="strict")
+```
+
+An older application can permit specific later changes without accepting unknown
+history. Supply its complete known declaration and a separately reviewed,
+ordered suffix:
+
+```python
+KNOWN = {
+    "001_entries": "CREATE TABLE entries (id INTEGER PRIMARY KEY)",
+}
+APPROVED_LATER = {
+    "002_note": "ALTER TABLE entries ADD COLUMN note TEXT",
+}
+
+await db.verify_migrations(
+    KNOWN,
+    policy="compatible",
+    approved_later=APPROVED_LATER,
+)
+```
+
+The check requires all of `KNOWN` to be applied, followed by zero or more entries
+from the start of `APPROVED_LATER`. Every recorded position, name, and exact SQL
+checksum must match. It rejects missing known migrations, holes, changed or
+reordered history, skipped approvals, and anything beyond the approved suffix.
+Names remain opaque; there is no version-name comparison or wildcard approval.
+
+`approved_later` is required with `policy="compatible"`. An empty dictionary
+permits no later history. Strict policy rejects any non-`None` approval argument,
+including `{}`, rather than silently ignoring it. Both declarations use the
+existing declaration and backend body validation rules, and their names must not
+overlap. Both are snapshotted before connection acquisition. Invalid arguments
+raise `MigrationDeclarationError`; rejected history raises `MigrationHistoryError`.
+An empty known chain needs no history table, even if later migrations are approved.
+Legacy or malformed history still fails.
+
+Verification remains read-only. It does not execute pending approvals, acquire
+the migration lock, create history, or adopt a baseline. `migrate()` still
+requires the complete canonical chain and does not accept these policy arguments.
+Old application replicas should verify, not run their shorter chain as migrators.
+
+A rolling deployment can follow this order:
+
+1. Review the next changes against every application version that will remain
+   active or be eligible for rollback. Ship exact suffix approvals with those
+   applications or through a controlled deployment configuration.
+2. Run one deploy job with the complete new declaration. Apply it using
+   `migrate()` and verify its exact head using strict policy.
+3. Start new replicas. Old replicas can restart or roll back their application
+   code while recorded history stays within their approved range.
+4. Before a breaking contract migration, drain the incompatible application
+   versions and remove them from rollback eligibility. Do not approve the
+   contract migration for those versions. Their later startup checks will fail.
+
+An approval is an application-specific decision, not a claim that SQL is additive
+or backward compatible. snekql does not analyze migration bodies to make that
+judgment. An incorrectly approved breaking migration can pass history verification.
+Application rollback does not undo migrations or data changes.
+
+### Interaction with schema verification
+
+`db.verify([Model])` remains a separate structural check with its own policy.
+Compatible migration history does not relax it. An extra column or index on a
+modeled table can still fail strict schema verification, even if the migration
+was approved for rolling deployment. Changes to unmodeled tables may not appear
+in that check at all.
+
+Keep strict schema verification where the model still matches. If a rollout
+intentionally changes modeled structure, inspect the result of
+`db.verify(..., policy="warn")` and apply an explicit application decision about
+acceptable drift. Warning mode reports drift but does not enforce that only
+approved differences occurred. Do not treat it as a blanket compatibility gate.
+Test old and new reads, writes, defaults, constraints, and data semantics against
+the migrated database; neither history approval nor schema verification proves
+those behaviors.
+
+Verification is a point-in-time check, not a migration lock held while the
+application serves traffic. Deployment coordination must prevent a later breaking
+migration from racing with incompatible running replicas.
 
 ## Failure and transaction behavior
 

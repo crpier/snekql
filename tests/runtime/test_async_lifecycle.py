@@ -304,8 +304,10 @@ class _FakeRuntime:
         _ = adopt_legacy
         return MigrationResult(applied=(), already_applied=(), legacy_adopted=False)
 
-    async def verify_migrations(self, migrations: MigrationPlan) -> None:
-        _ = migrations
+    async def verify_migrations(
+        self, migrations: MigrationPlan, *, minimum_applied: int | None = None
+    ) -> None:
+        _ = migrations, minimum_applied
 
     async def verify_schema(
         self,
