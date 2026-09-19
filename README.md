@@ -980,6 +980,11 @@ For production TCP, set `tls=mariadb.TLSConfig(...)`; certificate verification,
 hostname checks, and TLS 1.2+ are mandatory on that path. See
 [engine settings](docs/engine-settings.md#verified-tls).
 
+MariaDB also supports optional `max_connection_lifetime`, `max_connection_idle`,
+and `health_check="checkout"` policies. See
+[connection lifecycle](docs/connection-lifecycle.md) for recycling, credential
+rotation through a replacement Database, and graceful shutdown.
+
 Use transactions for all work:
 
 ```python

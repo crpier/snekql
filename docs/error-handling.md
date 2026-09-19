@@ -575,7 +575,7 @@ closing, and closed. While closing, new transactions are rejected with
 `DatabaseClosedError`. A successful `close()` is idempotent — calling it again
 returns immediately.
 
-SQLite close callers share one owned shutdown operation. Native
+Both backends share one owned shutdown operation across close callers. Native
 `asyncio.Task.cancel()` cancels a caller's wait, not that shutdown operation.
 The database continues rejecting work while shutdown runs; another `close()`
 call joins the same operation instead of failing merely because it is closing.
@@ -585,23 +585,41 @@ otherwise unobserved failure is logged. A later call can retry after a timed-out
 operation as described below. Cancelling a waiter does not forcibly stop a
 SQLite worker thread that is still performing physical close.
 
+When closing idle SQLite connections, a driver close failure does not skip the
+remaining connections. The first failure is reported, failed handles remain
+owned by the Database, and new work stays rejected. Call `close()` again to retry
+those handles. Shutdown is not reported as successful until their cleanup
+succeeds. This differs from a timeout waiting for checked-out work below.
+
+Connections returned during SQLite shutdown use owned background cleanup too.
+Shutdown waits for that cleanup instead of treating the returned lease as already
+closed. A cancelled shutdown waiter does not abandon it. If physical discard or
+returned-connection cleanup fails, the Database retains the failed handle and
+rejects new work until `close()` can finish cleanup. A timeout waiting for other
+Transactions does not clear this failed-cleanup state.
+
 A close waits up to `acquire_timeout` for checked-out work to return. If that
 wait elapses, `close()` raises `DatabaseCloseTimeoutError`. Behavior after a
 timeout differs by backend, because the underlying drivers differ:
 
-- **SQLite**: a timed-out close leaves the database **retryable**. The runtime
-  returns to accepting work once checked-out connections come back, so callers
+- **SQLite**: a timed-out close leaves the database **retryable**, provided no
+  failed physical cleanup remains. The runtime returns to accepting work once
+  checked-out connections come back, so callers
   can resume work or call `close()` again. (See
   `timed_out_close_keeps_database_retryable` in `tests/sqlite/test_runtime.py`.)
 - **MariaDB**: a timed-out close is **terminal**. aiomysql's `pool.close()` is
   irreversible, so the runtime stays in the closing state and keeps rejecting
-  work with `DatabaseClosingError`; it cannot be re-admitted. (See
+  work with `DatabaseClosingError`; it cannot be re-admitted. A later `close()`
+  can still finish resource cleanup. (See
   `mariadb_close_timeout_keeps_pool_rejecting_new_work` in
   `tests/runtime/test_async_lifecycle.py`.)
 
 Async services that catch `DatabaseCloseTimeoutError` must account for this:
 on SQLite the runtime may still be usable, while on MariaDB it should be
 treated as permanently unavailable.
+
+See [connection lifecycle](connection-lifecycle.md) for the driver audit,
+replacement policy, credential rotation, and application shutdown ordering.
 
 ## Execution context and parameter redaction
 

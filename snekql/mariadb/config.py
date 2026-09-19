@@ -6,11 +6,16 @@ from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
 from ssl import Purpose, SSLContext, TLSVersion, create_default_context
-from typing import Any, Literal, cast
+from typing import Annotated, Any, Literal, cast
+
+from annotated_types import Gt
+from pydantic import FiniteFloat
 
 from snekql._telemetry import ParameterVisibility
 from snekql.errors import DatabaseRuntimeError
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+
+type _ConnectionDuration = Annotated[FiniteFloat, Gt(0)]
 
 _MAX_TCP_PORT = 65535
 
@@ -49,17 +54,21 @@ class TLSConfig:
 
 
 @validate_boundary(error_type=DatabaseRuntimeError)
-def _validate_numeric_config(
+def _validate_config(  # noqa: PLR0913
     *,
     acquire_timeout: NonNegativeFloat,
     operation_timeout: NonNegativeFloat,
+    health_check: Literal["passive", "checkout"],
+    max_connection_idle: _ConnectionDuration | None,
+    max_connection_lifetime: _ConnectionDuration | None,
     pool_size: PositiveInt,
     port: PositiveInt,
     parameter_visibility: ParameterVisibility,
 ) -> None:
-    """Validate numeric settings before semantic connection checks run."""
+    """Validate numeric options and policy choices before connection checks."""
 
     del acquire_timeout, operation_timeout, parameter_visibility, pool_size, port
+    del health_check, max_connection_idle, max_connection_lifetime
 
 
 def _validate_non_empty_string(name: str, value: str) -> None:
@@ -85,13 +94,23 @@ class Config:
     >>> config = Config(database="app", user="snekql")
     >>> config.port
     3306
+    >>> Config(database="app", user="snekql", health_check="checkout").health_check
+    'checkout'
+
+    Recycling limits are finite positive seconds or None to disable. Lifetime
+    starts at physical connection establishment; idle time starts on pool return.
+    Policies run before checkout, never during a Transaction. Checkout health
+    probes cannot reconnect the existing session or replay transaction work.
     """
 
     database: str
     acquire_timeout: NonNegativeFloat = 30.0
     operation_timeout: NonNegativeFloat = 30.0
     charset: str = "utf8mb4"
+    health_check: Literal["passive", "checkout"] = "passive"
     host: str = "127.0.0.1"
+    max_connection_idle: _ConnectionDuration | None = None
+    max_connection_lifetime: _ConnectionDuration | None = None
     password: str = field(default="", repr=False)
     pool_size: PositiveInt = 5
     parameter_visibility: ParameterVisibility = "redacted"
@@ -101,9 +120,12 @@ class Config:
     user: str
 
     def __post_init__(self) -> None:
-        _validate_numeric_config(
+        _validate_config(
             acquire_timeout=self.acquire_timeout,
             operation_timeout=self.operation_timeout,
+            health_check=self.health_check,
+            max_connection_idle=self.max_connection_idle,
+            max_connection_lifetime=self.max_connection_lifetime,
             pool_size=self.pool_size,
             port=self.port,
             parameter_visibility=self.parameter_visibility,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
@@ -295,10 +296,17 @@ class MariaDBConnectionPool:
         pool: object,
         *,
         pool_size: PositiveInt = 1,
+        health_check: Literal["passive", "checkout"] = "passive",
+        max_connection_idle: float | None = None,
+        max_connection_lifetime: float | None = None,
     ) -> None:
         self.closed: bool = False
         self.closing: bool = False
+        self._close_task: asyncio.Task[None] | None = None
         self.pool: object = pool
+        self.health_check: Literal["passive", "checkout"] = health_check
+        self.max_connection_idle: float | None = max_connection_idle
+        self.max_connection_lifetime: float | None = max_connection_lifetime
         self.pool_size: PositiveInt = pool_size
         self.gate: FairAdmissionGate = FairAdmissionGate(
             capacity=pool_size,
@@ -344,6 +352,11 @@ class MariaDBConnectionPool:
                 msg = "timed out acquiring database connection"
                 raise PoolTimeoutError(msg) from error
             raise
+        try:
+            self.check_accepting_work()
+        except BaseException:
+            await self.discard(connection)
+            raise
         logger.debug("mariadb connection acquired")
         return connection
 
@@ -354,8 +367,8 @@ class MariaDBConnectionPool:
     ) -> object:
         """Check a connection out of the underlying aiomysql pool.
 
-        The admission gate guarantees a free connection, so this should not
-        block; the deadline only guards against a misbehaving driver.
+        Recycling, physical replacement, and an optional health probe share the
+        caller's remaining acquisition budget. No Transaction has begun here.
         """
 
         try:
@@ -363,7 +376,38 @@ class MariaDBConnectionPool:
             acquire = cast("Callable[[], Awaitable[object]]", pool.acquire)
             remaining = deadline - anyio.current_time()
             with anyio.fail_after(remaining):
-                return await acquire()
+                while True:
+                    connection = await acquire()
+                    # aiomysql's connected_time uses the event loop clock. Its
+                    # last_usage instead tracks cursor creation, not idle time.
+                    driver_connection = cast("Any", connection)
+                    now = asyncio.get_running_loop().time()
+                    returned_at = getattr(connection, "_snekql_returned_at", None)
+                    lifetime_expired = (
+                        self.max_connection_lifetime is not None
+                        and now - driver_connection.connected_time
+                        >= self.max_connection_lifetime
+                    )
+                    idle_expired = (
+                        self.max_connection_idle is not None
+                        and returned_at is not None
+                        and now - returned_at >= self.max_connection_idle
+                    )
+                    if lifetime_expired or idle_expired:
+                        driver_connection.close()
+                        _ = pool.release(connection)
+                        await checkpoint()
+                        continue
+                    if self.health_check == "checkout":
+                        try:
+                            # Reconnection on this object would retain the old
+                            # session-configuration marker for a new server session.
+                            await driver_connection.ping(reconnect=False)
+                        except BaseException:
+                            driver_connection.close()
+                            _ = pool.release(connection)
+                            raise
+                    return connection
         except TimeoutError as error:
             logger.warning(
                 "mariadb connection acquisition timed out (timeout=%s)",
@@ -398,6 +442,9 @@ class MariaDBConnectionPool:
         """
 
         with anyio.CancelScope(shield=True):
+            if self.max_connection_idle is not None:
+                returned_at = asyncio.get_running_loop().time()
+                cast("Any", connection)._snekql_returned_at = returned_at  # noqa: SLF001
             release = cast("Any", self.pool).release
             _ = release(connection)
             await self.gate.release()
@@ -416,6 +463,27 @@ class MariaDBConnectionPool:
         await checkpoint()
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
+        """Join owned shutdown without passing caller cancellation to cleanup."""
+
+        if self._close_task is None or self._close_task.done():
+            if self.closed:
+                return
+            self._close_task = asyncio.create_task(self._close(close_timeout))
+            self._close_task.add_done_callback(self._close_finished)
+        await asyncio.shield(self._close_task)
+
+    @staticmethod
+    def _close_finished(task: asyncio.Task[None]) -> None:
+        """Observe failure even if all shutdown waiters have cancelled."""
+
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            logger.error("mariadb shutdown failed")  # noqa: TRY400 - omit driver secrets
+
+    async def _close(self, close_timeout: NonNegativeFloat) -> None:
         """Close the underlying aiomysql pool and wait for connections."""
 
         logger.debug("mariadb database close started")
@@ -432,6 +500,11 @@ class MariaDBConnectionPool:
             pool.close()
             wait_closed = cast("Callable[[], Awaitable[None]]", pool.wait_closed)
             with anyio.fail_after(close_timeout):
+                # Driver release does not notify wait_closed for an already
+                # closed socket. Our gate tracks those returns and in-flight opens.
+                async with self.gate.condition:
+                    while self.gate.admitted:
+                        await self.gate.condition.wait()
                 await wait_closed()
         except TimeoutError as error:
             logger.warning("mariadb database close timed out")
@@ -572,8 +645,12 @@ class MariaDBRuntime:
             await self.connection_pool.discard(connection.connection)
 
     async def close(self, close_timeout: NonNegativeFloat) -> None:
-        with anyio.CancelScope(shield=True):
-            await self.connection_pool.close(close_timeout)
+        try:
+            with anyio.CancelScope(shield=True):
+                await self.connection_pool.close(close_timeout)
+        except _import_aiomysql().Error as e:
+            msg = "could not close MariaDB database"
+            raise DatabaseRuntimeError(msg, failure=self.classify_failure(e)) from e
 
     def check_accepting_work(self) -> None:
         self.connection_pool.check_accepting_work()
@@ -607,12 +684,11 @@ async def initialize_runtime(config: Config) -> MariaDBRuntime:
     and verification are explicit verbs on the Database.
     """
 
-    aiomysql = _import_aiomysql()
+    _import_aiomysql()
     logger.debug("mariadb pool opening: %s:%s", config.host, config.port)
-    create_pool = aiomysql.create_pool
-    if config.tls is not None:
-        create_pool = import_module("snekql.mariadb._required_tls").create_pool
+    create_pool = import_module("snekql.mariadb._pool").create_pool
     pool = await create_pool(
+        require_tls=config.tls is not None,
         autocommit=False,
         charset=config.charset,
         connect_timeout=config.acquire_timeout,
@@ -630,13 +706,22 @@ async def initialize_runtime(config: Config) -> MariaDBRuntime:
         unix_socket=str(config.unix_socket) if config.unix_socket is not None else None,
         user=config.user,
     )
-    connection_pool = MariaDBConnectionPool(pool, pool_size=config.pool_size)
+    connection_pool = MariaDBConnectionPool(
+        pool,
+        pool_size=config.pool_size,
+        health_check=config.health_check,
+        max_connection_idle=config.max_connection_idle,
+        max_connection_lifetime=config.max_connection_lifetime,
+    )
     try:
         # Prove connectivity (and apply session settings once) before returning.
         connection = await connection_pool.acquire(config.acquire_timeout)
         await connection_pool.release(connection)
     except BaseException:
-        await _close_partial_pool(pool, config.operation_timeout)
+        try:
+            await _close_partial_pool(pool, config.operation_timeout)
+        except Exception:
+            logger.error("mariadb partial pool cleanup failed")  # noqa: TRY400 - omit driver secrets
         raise
     return MariaDBRuntime(
         acquire_timeout=config.acquire_timeout,

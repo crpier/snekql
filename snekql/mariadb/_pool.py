@@ -1,9 +1,8 @@
-"""Isolated aiomysql 0.3.x adaptation for mandatory pre-authentication TLS.
+"""Owned aiomysql 0.3.x connection creation and mandatory TLS enforcement.
 
-aiomysql has no connection-factory hook or required-TLS option. Only this
-module depends on its private handshake and pool-fill methods. Import it
-lazily, after the optional driver has been loaded. Remove the adaptation when
-the driver provides a tested fail-closed handshake for all pooled connections.
+The driver does not close partial sockets on native cancellation and offers no
+connection-factory hook. Keep its pool-fill adaptation local and preserve its
+stale-reader checks. Import lazily after the optional driver is available.
 """
 
 from __future__ import annotations
@@ -28,8 +27,29 @@ class _RequiredTLSConnection(Connection):
         await super()._request_authentication()
 
 
-class _RequiredTLSPool(Pool):
-    """Use the guarded connection for initial checkout, growth and replacement."""
+class _OwnedPool(Pool):
+    """Own every socket before awaiting authentication or session initialization."""
+
+    def __init__(self, *, require_tls: bool, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._require_tls: bool = require_tls
+
+    async def wait_closed(self) -> None:
+        """Retain idle sockets until close succeeds rather than popping them first."""
+
+        if self._closing:
+            first_error: Exception | None = None
+            for connection in tuple(self._free):
+                try:
+                    connection.close()
+                except Exception as e:
+                    if first_error is None:
+                        first_error = e
+                else:
+                    self._free.remove(connection)
+            if first_error is not None:
+                raise first_error
+        await super().wait_closed()
 
     async def _fill_free_pool(self, override_min: bool) -> None:  # noqa: FBT001
         # Called under the driver's condition lock. Preserve its stale-socket
@@ -58,15 +78,20 @@ class _RequiredTLSPool(Pool):
         ):
             self._acquiring += 1
             try:
-                connection = _RequiredTLSConnection(
+                connection_type = (
+                    _RequiredTLSConnection if self._require_tls else Connection
+                )
+                connection = connection_type(
                     echo=self._echo, loop=self._loop, **self._conn_kwargs
                 )
                 try:
                     await connection._connect()  # noqa: SLF001
                 except BaseException as error:
                     connection.close()
-                    if isinstance(error, Exception) and not isinstance(
-                        error, DatabaseRuntimeError
+                    if (
+                        self._require_tls
+                        and isinstance(error, Exception)
+                        and not isinstance(error, DatabaseRuntimeError)
                     ):
                         msg = "MariaDB required TLS connection failed"
                         raise DatabaseRuntimeError(msg) from error
@@ -77,14 +102,15 @@ class _RequiredTLSPool(Pool):
                 self._acquiring -= 1
 
 
-async def create_pool(**kwargs: Any) -> Pool:
+async def create_pool(*, require_tls: bool, **kwargs: Any) -> Pool:
     """Return an owned pool before opening sockets so startup failure can clean up.
 
     The runtime immediately acquires and configures its first connection inside
     its partial-pool cleanup region. Further connections use the same guard.
     """
 
-    return _RequiredTLSPool(
+    return _OwnedPool(
+        require_tls=require_tls,
         echo=False,
         pool_recycle=-1,
         loop=asyncio.get_running_loop(),

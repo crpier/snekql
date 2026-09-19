@@ -130,13 +130,59 @@ replacement. A server greeting without TLS support is rejected before sending
 authentication data; snekql never retries that connection in plaintext.
 `tls=None` retains the existing non-TLS behavior.
 
-The required-TLS path uses an isolated aiomysql handshake/pool adaptation because
-aiomysql 0.3.2 otherwise treats an SSL context opportunistically. The driver extra
-is constrained to `>=0.3.2,<0.4`; widening it requires rechecking the handshake and
-pool-lifecycle tests. This adaptation does not change global driver behavior.
+An isolated aiomysql pool adaptation owns partial connections on both paths and
+adds a guarded handshake for required TLS. aiomysql 0.3.2 otherwise treats an SSL
+context opportunistically and can leave a socket open on native cancellation.
+The driver extra is constrained to `>=0.3.2,<0.4`; widening it requires rechecking
+the handshake and pool-lifecycle tests. This adaptation does not change global
+driver behavior. See the [driver audit](connection-lifecycle.md#driver-audit).
 
 TLS is a TCP policy and cannot be combined with `unix_socket`. A failed trust or
 hostname check prevents initialization.
+
+### Connection recycling and health
+
+```python
+config = mariadb.Config(
+    database="app",
+    user="snekql",
+    max_connection_lifetime=3600,
+    max_connection_idle=300,
+    health_check="checkout",
+)
+```
+
+Both duration limits default to `None`, disabling age-based recycling. Enabled
+limits must be finite positive seconds. Zero, negative values, infinity, NaN,
+booleans, and numeric strings are rejected.
+
+- `max_connection_lifetime` measures age since successful physical connection
+  establishment, even when that connection is used frequently.
+- `max_connection_idle` measures time since the last return to the pool. Time
+  spent in an active Transaction does not count as idle time.
+- The default `health_check="passive"` preserves aiomysql's detection of observed
+  EOF and socket errors without adding a ping round trip.
+- `health_check="checkout"` sends a ping before handing out each connection.
+  Ping uses `reconnect=False`. A failed probe closes and discards the connection
+  and fails acquisition. It does not silently retry that acquisition. A later
+  Transaction may acquire a fresh connection.
+
+Recycling runs only when acquiring a connection. There is no background reaper
+or maximum Transaction duration. An expired connection is replaced before work
+begins; an active Transaction is never interrupted to enforce an age limit.
+Admission, replacement, health checking, and required session configuration
+share the acquisition deadline. Very short lifetime limits can exhaust that
+budget by repeatedly expiring newly opened connections.
+
+New physical connections reapply and verify the required session settings.
+Required TLS remains required on every replacement. These policies apply to
+ordinary Transactions and other operations acquiring connections from the same
+Database, including migrations. Health checks do not guarantee that a server
+will remain available after checkout. A failure during an active Transaction
+still fails closed; no statement or Transaction is automatically replayed.
+
+SQLite has no automatic age-based recycling or checkout health policy. In
+particular, replacing its sole in-memory connection would destroy its database.
 
 ### Minimum version
 
