@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from snekql._query_state import SelectState, WriteState
+from snekql._query_state import LockWait, SelectState, WriteState
 from snekql.errors import QueryCompilationError
 from snekql.storage import Attr
 
@@ -35,6 +35,7 @@ class QueryDialect:
     quote_identifier: Callable[[str], str]
     explain_sql: ExplainSqlCompiler | None = None
     char_length_function: str | None = None
+    for_update_sql: Callable[[LockWait], str] | None = None
     supports_delete_returning: bool = False
     supports_update_returning: bool = False
 

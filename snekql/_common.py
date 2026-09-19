@@ -83,7 +83,13 @@ from snekql.query import (
     scalar,
     select,
 )
-from snekql.runtime import ChunkStream, Database, Transaction, TransactionMode
+from snekql.runtime import (
+    ChunkStream,
+    Database,
+    IsolationLevel,
+    Transaction,
+    TransactionMode,
+)
 from snekql.storage import (
     PENDING_GENERATION,
     Canonical,
@@ -122,6 +128,7 @@ __all__ = [
     "FrozenModelError",
     "GenCol",
     "Index",
+    "IsolationLevel",
     "JoinOn",
     "LexicalDatetimeWarning",
     "LexicalDecimalWarning",

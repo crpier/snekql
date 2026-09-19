@@ -174,6 +174,120 @@ Off-path use is deliberate and tested (see
   With only one connection available the inner open simply waits for a
   connection and times out with `PoolTimeoutError` — it does not nest.
 
+## Transaction isolation and access mode
+
+Transaction policies are explicit and apply to one outer Transaction:
+
+```python
+async with db.transaction(isolation="serializable", read_only=True) as tx:
+    rows = await tx.fetch_all(query)
+```
+
+Both namespaces export `IsolationLevel` for helper annotations. Supported levels
+are `"read_uncommitted"`, `"read_committed"`, `"repeatable_read"`, and
+`"serializable"` on MariaDB. SQLite accepts only `"serializable"`; requesting
+another level raises `DatabaseRuntimeError` before connection acquisition.
+SQLite also rejects `read_only=True` combined with `mode="immediate"`, which
+requests a writer reservation. The existing MariaDB `mode` behavior is unchanged.
+
+`isolation=None` and `read_only=None` preserve existing backend/connection defaults.
+`read_only=False` explicitly requests read-write access, even if the inherited
+default is read-only. Neither isolation nor read-only options can be changed by
+`begin_nested()`; savepoints inherit the outer Transaction's policy.
+
+MariaDB applies next-transaction characteristics before BEGIN rather than changing
+session defaults. SQLite temporarily sets `query_only` for access mode and disables
+`read_uncommitted` for explicit serializable isolation. Commit or rollback restores
+the actual previous SQLite settings before the connection returns to the pool.
+Ordinary transactions with no explicit options do not change these settings.
+
+The existing begin deadline covers policy setup and BEGIN. Commit/rollback
+deadlines include SQLite policy restoration. Interrupted setup or failed restoration
+causes connection discard, not reuse with uncertain settings. Cancellation between
+driver calls follows ordinary shielded rollback and restoration rules.
+
+**A restoration failure may occur after the database has committed.** A runtime
+error from transaction exit is not proof that the writes rolled back. Do not retry
+non-idempotent writes blindly. During an existing application failure, restoration
+errors do not replace that failure, and the connection is still discarded.
+
+Read-only is a database policy, not a security sandbox. It covers ordinary builder
+and raw writes, but backend-specific exceptions remain, such as MariaDB temporary
+table operations. Do not use arbitrary raw SQL to change session settings,
+autocommit, transaction boundaries, or SQLite PRAGMAs inside managed transactions.
+The runtime does not parse raw SQL to prevent callers from overriding policy.
+
+Isolation also retains engine-specific semantics. InnoDB read-committed reads see
+later commits, repeatable-read reads retain their consistent snapshot, and
+serializable reads can block conflicting writes. SQLite serializable isolation
+does not add row locks or concurrent writers. Application deadlines and explicit
+transaction retry decisions remain necessary under contention.
+
+## Locking SELECTs
+
+MariaDB supports explicit row locking on a completed single-table SELECT:
+
+```python
+claim = (
+    mariadb.select(Job)
+    .where(Job.id.gt(0), Job.status.eq("pending"))
+    .order_by(Job.id.asc())
+    .limit(1)
+    .for_update(wait="skip_locked")
+)
+
+async with database.transaction(isolation="read_committed") as tx:
+    job = await tx.fetch_one_or_none(claim)
+    if job is not None:
+        await tx.execute(
+            mariadb.update(Job).where(Job.id.eq(job.id)).set(Job.status.to("claimed"))
+        )
+```
+
+The fetch and claim update belong in the same Transaction. Committing the fetch
+before updating loses its lock protection. This is an atomic claim example, not
+an exactly-once processing system; lease expiry and crash recovery remain
+application concerns.
+
+`for_update()` defaults to `wait="block"`. Other choices are `"nowait"`, which
+reports a conflicting row lock as `ExecutionError`, and `"skip_locked"`, which
+omits locked rows. A skipped result can be empty. These options do not eliminate
+network, metadata, or other resource waits; operation deadlines still apply.
+NOWAIT errors remain terminal under the current failure policy. Start a new
+Transaction for a subsequent attempt rather than continuing after that error.
+
+Locking modifiers preserve backend identity, result contracts, parameter order,
+and readiness. They do not replace `where()` or `all()`. Model, scalar, tuple,
+named, and single-table alias projections are supported. Reapplying the modifier
+replaces its wait choice without mutating the original query.
+
+SQLite rejects locking clauses during compilation. There is no emulation using
+`BEGIN IMMEDIATE`: that requests SQLite write intent, not row-level locking.
+Joins, DISTINCT, GROUP BY/HAVING, aggregate projections/orderings, and locking
+SELECTs embedded as subqueries are also rejected during compilation. A lock on
+an outer query does not add locking clauses to its ordinary subqueries.
+
+The runtime rejects locking SELECTs in read-only transactions before driver IO,
+including inherited read-only defaults and streaming. Rejection does not poison
+the Transaction. The check uses the server's active transaction status rather
+than assuming its session default or the caller's requested options are current.
+Raw SQL is not parsed and still relies on server enforcement.
+
+Locks belong to the outer Transaction. Finishing a fetch, closing a stream, or
+successfully releasing a savepoint does not commit or release its row locks.
+Do not rely on rolling back a savepoint to release all InnoDB locks either.
+Choose indexes deliberately: InnoDB may lock scanned records or index ranges
+beyond the rows ultimately returned. SKIP LOCKED does not promise fairness or a
+complete, consistent snapshot. These guarantees require transactional tables,
+such as InnoDB; nontransactional storage engines are not a portable substitute.
+
+**EXPLAIN is not a lock-free inspection method.** MariaDB can lock a row while
+optimizing an EXPLAIN of a locking SELECT, even without executing its writes.
+Both `explain()` and `explain_analyze()` therefore require a read-write Transaction
+for these queries. ANALYZE executes the query and acquires its native locks.
+Neither method adds automatic rollback. Use `.compile()` for inspection without
+connection acquisition or database IO.
+
 ## Explicit nested transactions
 
 Use `tx.begin_nested()` to create a savepoint on an already-open Transaction:

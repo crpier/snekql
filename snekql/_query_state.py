@@ -48,6 +48,7 @@ type Selectable = (
 
 
 type JoinType = Literal["INNER", "LEFT"]
+type LockWait = Literal["block", "nowait", "skip_locked"]
 
 
 @dataclass(frozen=True)
@@ -67,6 +68,7 @@ class SelectState:
     returns_model: bool = False
     explicit_all: bool = False
     distinct: bool = False
+    lock_wait: LockWait | None = None
     predicates: tuple[_PredicateNode[Any], ...] = ()
     groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
     having: tuple[_PredicateNode[Any], ...] = ()

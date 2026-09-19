@@ -4,6 +4,19 @@
 
 ### Added
 
+- MariaDB SELECTs support `for_update(wait="block" | "nowait" | "skip_locked")`
+  for single-table model, scalar, tuple, named, and alias projections. SQLite,
+  joins, grouped/aggregate queries, DISTINCT, and locking subqueries fail
+  compilation. Read-only transactions reject locking queries, including native
+  EXPLAIN/ANALYZE, before IO. MariaDB EXPLAIN can itself acquire row locks while
+  optimizing a locking SELECT; use `compile()` for inspection without IO. (#283)
+
+- `Database.transaction(isolation=..., read_only=...)` provides explicit outer
+  transaction policy. MariaDB supports four isolation levels; SQLite supports
+  serializable isolation and rejects unsupported combinations before acquisition.
+  SQLite restores temporary connection settings before pool reuse, while MariaDB
+  uses next-transaction settings. Both namespaces export `IsolationLevel`. (#283)
+
 - Explicit `Transaction.begin_nested()` savepoint contexts reuse the outer
   connection, roll back nested failures, and release without committing.
   Recognized immediate constraint errors can recover after rollback/release;

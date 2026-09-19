@@ -50,7 +50,7 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
-    from snekql.runtime import TransactionMode
+    from snekql.runtime import IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
 
@@ -107,8 +107,21 @@ class SQLiteConnectionAdapter:
     ) -> None:
         self.connection: Connection = connection
         self.retry_policy: BusyRetryPolicy = retry_policy
+        self._previous_transaction_settings: dict[
+            Literal["query_only", "read_uncommitted"], bool
+        ] = {}
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
+        if read_only is not None:
+            await self._set_transaction_pragma("query_only", enabled=read_only)
+        if isolation is not None:
+            await self._set_transaction_pragma("read_uncommitted", enabled=False)
         if mode == "immediate":
             # ``BEGIN IMMEDIATE`` takes the single writer lock now, so a losing
             # writer contends here -- before doing any read work -- rather than
@@ -129,9 +142,11 @@ class SQLiteConnectionAdapter:
 
     async def commit(self) -> None:
         await self._execute_control_sql("COMMIT")
+        await self._restore_transaction_policy()
 
     async def rollback(self) -> None:
         await self._execute_control_sql("ROLLBACK")
+        await self._restore_transaction_policy()
 
     async def execute(
         self,
@@ -189,6 +204,30 @@ class SQLiteConnectionAdapter:
             SQLITE_CONSTRAINT_ROWID,
             SQLITE_CONSTRAINT_UNIQUE,
         }
+
+    async def _set_transaction_pragma(
+        self,
+        pragma: Literal["query_only", "read_uncommitted"],
+        *,
+        enabled: bool,
+    ) -> None:
+        """Snapshot the actual leased setting before applying a transaction override."""
+        cursor = await self.connection.execute(f"PRAGMA {pragma}")
+        try:
+            row = await cursor.fetchone()
+        finally:
+            await cursor.close()
+        if row is None or row[0] not in (0, 1):
+            msg = f"could not determine SQLite {pragma} state"
+            raise DatabaseRuntimeError(msg)
+        self._previous_transaction_settings[pragma] = bool(row[0])
+        await self._execute_control_sql(f"PRAGMA {pragma} = {int(enabled)}")
+
+    async def _restore_transaction_policy(self) -> None:
+        """Restore leased connection settings before it can return to the pool."""
+        for pragma, enabled in self._previous_transaction_settings.items():
+            await self._execute_control_sql(f"PRAGMA {pragma} = {int(enabled)}")
+        self._previous_transaction_settings.clear()
 
     async def _execute_control_sql(self, sql: str) -> None:
         cursor = await self.connection.execute(sql, ())

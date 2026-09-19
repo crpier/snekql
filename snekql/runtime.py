@@ -99,6 +99,9 @@ def _log_query_failure(
 # SQLite honors this as ``BEGIN`` vs ``BEGIN IMMEDIATE``; row-locking backends
 # treat it as a no-op (see each adapter's ``begin``).
 type TransactionMode = Literal["deferred", "immediate"]
+type IsolationLevel = Literal[
+    "read_uncommitted", "read_committed", "repeatable_read", "serializable"
+]
 
 # ``fetch_all`` materializes and validates every row synchronously on the event
 # loop. For large result sets that is a CPU-bound stretch that starves every
@@ -147,7 +150,13 @@ class RuntimeCursor(Protocol):
 class RuntimeConnection(Protocol):
     """Connection behavior required by backend-neutral transactions."""
 
-    async def begin(self, mode: TransactionMode) -> None: ...
+    async def begin(
+        self,
+        mode: TransactionMode,
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None: ...
 
     async def commit(self) -> None: ...
 
@@ -173,6 +182,12 @@ class RuntimeConnection(Protocol):
         connection.
         """
         ...
+
+
+class LockingRuntimeConnection(Protocol):
+    """Backends emitting locking SELECTs expose effective transaction access mode."""
+
+    def is_read_only(self) -> bool: ...
 
 
 class RawRuntimeCursor(RuntimeCursor, Protocol):
@@ -313,6 +328,7 @@ class ChunkStream[RowT]:
             plan = self._plan_factory()
             self._plan = plan
             transaction._validate_plan_backend(plan.backend)  # noqa: SLF001
+            transaction._validate_locking_policy(connection, plan)  # noqa: SLF001
             self._cursor = await transaction._run_query_operation(  # noqa: SLF001
                 "fetch_chunks execution",
                 lambda: transaction._open_cursor(connection, plan, stream=True),  # noqa: SLF001
@@ -552,17 +568,26 @@ class Transaction[FamilyT: BackendFamily]:
     ...     await transaction.execute(insert(user))
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - explicit budgets and transaction policies
         self,
         *,
         runtime: RuntimeBackend | None = None,
         timeout: NonNegativeFloat = 0.0,
         acquisition_timeout: NonNegativeFloat | None = None,
         mode: TransactionMode = "deferred",
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
     ) -> None:
         if runtime is None:
             msg = "use db.transaction(...) to start a transaction"
             raise DatabaseRuntimeError(msg)
+        if runtime.backend_family == "sqlite":
+            if isolation not in (None, "serializable"):
+                msg = "SQLite supports only serializable isolation"
+                raise DatabaseRuntimeError(msg)
+            if read_only is True and mode == "immediate":
+                msg = "SQLite read-only transactions cannot request immediate write intent"
+                raise DatabaseRuntimeError(msg)
         self.closed: bool = False
         self.connection: RuntimeConnection | None = None
         self.runtime: RuntimeBackend = runtime
@@ -571,6 +596,8 @@ class Transaction[FamilyT: BackendFamily]:
             timeout if acquisition_timeout is None else acquisition_timeout
         )
         self.mode: TransactionMode = mode
+        self.read_only: bool | None = read_only
+        self.isolation: IsolationLevel | None = isolation
         self._connection_reusable: bool = True
         self._raw_diagnostics: bool = False
         self._entering: bool = False
@@ -610,7 +637,9 @@ class Transaction[FamilyT: BackendFamily]:
             try:
                 await self._run_driver_operation(
                     "transaction begin",
-                    lambda: connection.begin(self.mode),
+                    lambda: connection.begin(
+                        self.mode, read_only=self.read_only, isolation=self.isolation
+                    ),
                 )
             except BaseException as error:
                 logger.exception(
@@ -1129,6 +1158,8 @@ class Transaction[FamilyT: BackendFamily]:
 
         SQLite uses `EXPLAIN QUERY PLAN`; MariaDB uses `EXPLAIN`.
         Results contain native columns and rows, not the query's result type.
+        MariaDB may acquire row locks while optimizing FOR UPDATE queries;
+        those plans require a read-write Transaction. Use `compile()` for no IO.
         """
 
         return await self._explain(query, analyze=False)
@@ -1254,6 +1285,20 @@ class Transaction[FamilyT: BackendFamily]:
         if plan.additional_results:
             self._connection_reusable = False
 
+    @staticmethod
+    def _validate_locking_policy(
+        connection: RuntimeConnection,
+        plan: SelectPlan[object] | WritePlan[object] | RawPlan,
+    ) -> None:
+        """Reject locking before driver handling can mark the connection unsafe."""
+        if (
+            isinstance(plan, (SelectPlan, RawPlan))
+            and plan.requires_write_transaction
+            and cast("LockingRuntimeConnection", connection).is_read_only()
+        ):
+            msg = "locking SELECT requires a read-write transaction"
+            raise TransactionStateError(msg)
+
     async def _execute_buffered(
         self,
         connection: RuntimeConnection,
@@ -1268,6 +1313,7 @@ class Transaction[FamilyT: BackendFamily]:
         Cardinality and decoding run outside the driver-error boundary.
         """
 
+        self._validate_locking_policy(connection, plan)
         sql = plan.sql
         if sql is None:
             return 0, ()
@@ -1636,6 +1682,8 @@ class Database[FamilyT: BackendFamily]:
         *,
         timeout: NonNegativeFloat | None = None,
         mode: TransactionMode = "deferred",
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
     ) -> Transaction[FamilyT]:
         """Create a transaction context manager using the runtime backend.
 
@@ -1645,11 +1693,19 @@ class Database[FamilyT: BackendFamily]:
         single writer lock and lets a losing writer be retried at acquisition
         rather than failing mid-transaction; prefer it for write transactions
         under contention. It is a no-op on row-locking backends.
+
+        Omitted isolation/access options preserve connection defaults. Explicit
+        policies apply to this outer Transaction and its savepoints only. SQLite
+        supports serializable isolation and rejects read-only immediate mode.
+        Policy setup and restoration share begin/commit/rollback deadlines;
+        restoration failure can occur after a successful commit.
         """
 
         return cast(
             "Transaction[FamilyT]",
-            self._validated_transaction(timeout=timeout, mode=mode),
+            self._validated_transaction(
+                timeout=timeout, mode=mode, read_only=read_only, isolation=isolation
+            ),
         )
 
     @validate_boundary(error_type=DatabaseRuntimeError)
@@ -1658,6 +1714,8 @@ class Database[FamilyT: BackendFamily]:
         *,
         timeout: NonNegativeFloat | None = None,
         mode: TransactionMode = "deferred",
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
     ) -> Transaction[Any]:
         """Validate public transaction arguments outside the generic signature."""
 
@@ -1673,6 +1731,8 @@ class Database[FamilyT: BackendFamily]:
             timeout=operation_timeout,
             acquisition_timeout=acquisition_timeout,
             mode=mode,
+            read_only=read_only,
+            isolation=isolation,
         )
 
     async def close(self) -> None:

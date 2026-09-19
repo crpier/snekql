@@ -39,9 +39,12 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
-    from snekql.runtime import TransactionMode
+    from snekql.runtime import IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
+
+_SERVER_STATUS_IN_TRANS_READONLY = 0x2000
+"""MariaDB protocol flag for the active transaction, not its session default."""
 
 
 def _import_aiomysql() -> Any:
@@ -122,14 +125,46 @@ class MariaDBConnectionAdapter:
     def __init__(self, connection: object) -> None:
         self.connection: object = connection
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
         # InnoDB serializes writers with row-level locks rather than one global
         # writer lock, so there is no eager writer-lock acquisition to request:
         # ``immediate`` and ``deferred`` both open an ordinary transaction. The
         # parameter exists to satisfy the backend-neutral ``RuntimeConnection``
         # seam (and is a no-op here).
         del mode
+        if isolation is not None:
+            isolation_sql = {
+                "read_uncommitted": "READ UNCOMMITTED",
+                "read_committed": "READ COMMITTED",
+                "repeatable_read": "REPEATABLE READ",
+                "serializable": "SERIALIZABLE",
+            }[isolation]
+            cursor = await self.execute(
+                f"SET TRANSACTION ISOLATION LEVEL {isolation_sql}", ()
+            )
+            await cursor.close()
+        if read_only is not None:
+            cursor = await self.execute(
+                "SET TRANSACTION READ ONLY"
+                if read_only
+                else "SET TRANSACTION READ WRITE",
+                (),
+            )
+            await cursor.close()
         await cast("Any", self.connection).begin()
+
+    def is_read_only(self) -> bool:
+        """Use server status so inherited and next-transaction overrides both count."""
+        return bool(
+            cast("Any", self.connection).server_status
+            & _SERVER_STATUS_IN_TRANS_READONLY
+        )
 
     async def commit(self) -> None:
         await cast("Any", self.connection).commit()

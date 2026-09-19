@@ -49,6 +49,7 @@ from snekql._query_state import (
     InsertState,
     JoinSpec,
     JoinType,
+    LockWait,
     SelectState,
     UpdateState,
     require_column_model,
@@ -214,7 +215,7 @@ class _BaseSelectQuery(_SqlInspectionMixin):
     """Immutable select-state plumbing shared by every select query.
 
     Holds the state object and the transitions that never change a query's
-    generic shape (`distinct`, `limit`, `offset`). Subclasses add readiness-
+    generic shape (`distinct`, `limit`, `offset`, `for_update`). Subclasses add readiness-
     changing and typed transitions whose return types depend on their parameters.
     """
 
@@ -227,6 +228,18 @@ class _BaseSelectQuery(_SqlInspectionMixin):
 
     def _replace_state(self, state: SelectState) -> Self:
         return type(self)(state)
+
+    @validate_boundary(error_type=QueryConstructionError)
+    def for_update(self, *, wait: LockWait = "block") -> Self:
+        """Lock selected rows until the outer transaction ends.
+
+        MariaDB supports blocking, NOWAIT, and SKIP LOCKED behavior. SQLite and
+        unsupported query shapes fail compilation. This does not establish row
+        scope: use `where()` or `all()` as for an ordinary SELECT.
+
+        >>> query = select(User).where(User.id.eq(1)).for_update(wait="nowait")
+        """
+        return self._replace_state(replace(self.state, lock_wait=wait))
 
     def distinct(self) -> Self:
         """Collapse duplicate rows by emitting ``SELECT DISTINCT``."""

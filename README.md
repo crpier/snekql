@@ -863,6 +863,9 @@ async with db.transaction() as transaction:
 There is no automatic rollback or savepoint around ANALYZE. It uses the active
 Transaction's normal commit, rollback, locking, and operation-deadline rules.
 Even plain EXPLAIN performs database IO and can acquire metadata locks.
+For MariaDB `FOR UPDATE` queries, its optimizer can also acquire row locks;
+EXPLAIN and ANALYZE of these queries require a read-write Transaction. Use
+`.compile()` when inspection must perform no IO or acquire no locks.
 
 Incomplete queries, empty bulk inserts, and unsupported statement combinations
 raise `QueryCompilationError` before query IO. Backend mismatches raise
@@ -987,6 +990,19 @@ async with db.transaction() as tx:
     )
     await tx.execute(update(User).set(User.status.to("inactive")).all())
 ```
+
+Pass `isolation="serializable"` and/or `read_only=True` to `db.transaction()`
+for explicit transaction policy. Omitted options preserve defaults; MariaDB also
+supports read-uncommitted, read-committed, and repeatable-read isolation. See
+[transaction isolation and access mode](docs/error-handling.md#transaction-isolation-and-access-mode)
+for capability checks, pooled-setting restoration, and recovery limits.
+
+MariaDB SELECTs support `.for_update()` with `wait="block"`, `"nowait"`, or
+`"skip_locked"`. Keep the locking read and its update in the same Transaction.
+SQLite and unsupported query shapes fail compilation; read-only transactions
+reject locking queries before IO. See
+[locking SELECTs](docs/error-handling.md#locking-selects) for a queue-claim example
+and lock-lifetime limits.
 
 Runtime methods:
 

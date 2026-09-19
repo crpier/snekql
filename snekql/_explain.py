@@ -67,6 +67,8 @@ def compile_explain_plan(
         operation="fetch_all",
         params=compiled.params,
         row_mode="tuple",
+        requires_write_transaction=isinstance(state, SelectState)
+        and state.lock_wait is not None,
         sql=dialect.explain_sql(
             state, compiled.sql, "analyze" if analyze else "explain"
         ),
