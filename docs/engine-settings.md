@@ -4,7 +4,8 @@ snekql's correctness guarantees depend on a small set of database engine
 settings being in effect. Rather than assuming a well-configured server, snekql
 **applies** each required setting and then **reads it back** to confirm it took
 effect. A setting that cannot be applied or verified raises
-`DatabaseRuntimeError` at initialization instead of degrading silently.
+`DatabaseRuntimeError` at initialization or later connection acquisition instead
+of degrading silently.
 
 Per-connection settings are applied to *every* connection the pool opens, not
 just the first, because the engines apply them per connection.
@@ -16,7 +17,7 @@ Applied and verified in `open_sqlite_connection`:
 | Setting | Value | Why |
 | --- | --- | --- |
 | `PRAGMA journal_mode` | `WAL` (file-backed databases) | Gives pooled readers and the single writer predictable concurrency. This setting persists on the database file. |
-| `PRAGMA synchronous` | `NORMAL` (file-backed databases) | Under WAL, committed data survives application crashes; an operating-system crash or power loss can lose the latest transaction. |
+| `PRAGMA synchronous` | `NORMAL` by default; `FULL` with `Config(durability="full")` | NORMAL can lose recent commits on OS crash or power loss. FULL adds a WAL sync at each commit. |
 | `PRAGMA foreign_keys` | `ON` | SQLite does not enforce `FOREIGN KEY` constraints unless this is on. Without it the emitted constraints are inert. |
 | `PRAGMA busy_timeout` | `5000` ms | The pool opens several connections to one database file; a busy timeout lets writers serialize instead of failing immediately with "database is locked". |
 | `PRAGMA encoding` | `UTF-8` | Verified (not set): snekql stores and compares text as UTF-8. |
@@ -56,13 +57,50 @@ so there is no single writer lock to acquire eagerly.
 `STRICT` tables are enforced at DDL-compile time and checked during schema drift
 verification; see [schema-drift.md](./schema-drift.md).
 
-For file-backed databases, WAL plus `synchronous=NORMAL` is snekql's fixed
-concurrency/durability profile: every opened connection applies and verifies it.
-It is not currently configurable. Deployments requiring durability of the
-latest commit across an operating-system crash or power loss need a different
-SQLite policy and must not assume `FULL` remains in effect while snekql is
-connected. Test restore procedures and choose the MariaDB backend when this
-fixed trade-off does not meet the service's durability target.
+### SQLite durability policy
+
+```python
+from pathlib import Path
+from snekql import sqlite
+
+config = sqlite.Config(database=Path("app.db"), durability="full")
+db = await sqlite.Database.initialize(config)
+```
+
+`durability` accepts exactly `"normal"` or `"full"`. The default `"normal"`
+preserves existing behavior, including `Database.initialize(database=...)`.
+The policy belongs to the Config for the pool's lifetime, not to a Transaction.
+
+- Both file-backed policies apply and verify `journal_mode=WAL`.
+- `"normal"` selects `synchronous=NORMAL`. Under SQLite's WAL guarantees,
+  application crashes do not lose committed transactions, but OS crashes or
+  power loss can lose recent commits. This can include more than one transaction.
+- `"full"` selects `synchronous=FULL`. SQLite synchronizes the WAL after each
+  transaction commit, requesting durability across OS crashes and power loss.
+  Acknowledgement still depends on the filesystem, OS, device, and controller
+  honoring synchronization requests. FULL does not repair unreliable storage,
+  make volatile volumes persistent, or eliminate the need for tested backups.
+
+Every physical connection applies and verifies the selected settings, including
+initialization, lazy pool growth, and replacements after discarded connections.
+Failure to read back the required settings rejects and closes that connection;
+there is no fallback to a weaker policy. A new runtime reopening the file must
+select its desired policy again because `synchronous` is connection-local.
+Configure other processes opening the same database consistently too.
+
+The exact `":memory:"` target stays volatile and single-connection. Its default
+policy leaves SQLite's native journal and synchronization settings unchanged.
+`durability="full"` rejects in-memory targets at Config construction, including
+`Path(":memory:")`, which SQLite also interprets as its special memory target.
+Other durability values, including OFF and EXTRA, are unsupported.
+
+The policy covers the configured main database, not databases added through raw
+`ATTACH`. Do not override managed PRAGMAs or transaction control through raw SQL.
+WAL requires storage with the locking and shared-memory behavior SQLite expects;
+network filesystems are not a substitute for a supported local storage setup.
+Tests verify configuration and connection lifecycle behavior, not physical
+power-loss survival. See SQLite's [synchronous documentation](https://www.sqlite.org/pragma.html#pragma_synchronous)
+and [WAL documentation](https://www.sqlite.org/wal.html).
 
 ## MariaDB
 

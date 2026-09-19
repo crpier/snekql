@@ -422,13 +422,16 @@ async def initialize_runtime(config: Config) -> SQLiteRuntime:
 
     database_path = normalize_sqlite_database(config.database)
     logger.debug("sqlite connection opening: %s", database_path)
-    connection = await open_sqlite_connection(database_path)
+    connection = await open_sqlite_connection(
+        database_path, durability=config.durability
+    )
     return SQLiteRuntime(
         acquire_timeout=config.acquire_timeout,
         operation_timeout=config.operation_timeout,
         connection_pool=SQLiteConnectionPool(
             database_path=database_path,
             initial_connection=connection,
+            durability=config.durability,
             pool_size=config.pool_size,
         ),
         parameter_visibility=config.parameter_visibility,

@@ -1,19 +1,15 @@
 """Required per-connection SQLite settings, applied and verified at open.
 
-These run for *every* connection the pool opens, not just the first, because
-most SQLite PRAGMAs apply per connection and database-level settings should be
-reasserted at the connection seam. ``journal_mode`` keeps file-backed databases
-in WAL mode and ``synchronous`` runs NORMAL there (safe under WAL: durable across
-application crashes, only risking the last transaction on OS crash or power
-loss), ``foreign_keys`` backs the FK constraints emitted in the schema
-layer (without it they are inert), ``busy_timeout`` keeps the multi-connection
-pool from raising spurious "database is locked" errors, and ``encoding`` is a
-build-time guard that text is stored as UTF-8.
+Every physical connection applies and verifies its configured policy before
+entering the pool. File-backed databases use WAL with NORMAL synchronization by
+default, or FULL synchronization when requested. In-memory databases retain
+SQLite's native journal/synchronization behavior and have no crash durability.
+Foreign-key enforcement, busy waiting, and UTF-8 verification apply to both.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from snekql._settings import ConnectionSetting, apply_connection_settings
 
@@ -24,14 +20,17 @@ if TYPE_CHECKING:
 # pool of writers serializes instead of surfacing transient lock contention.
 SQLITE_BUSY_TIMEOUT_MS = 5000
 
+_SQLITE_WAL_SETTING = ConnectionSetting(
+    name="journal_mode",
+    apply_statements=("PRAGMA journal_mode = WAL",),
+    probe_sql="PRAGMA journal_mode",
+    expected_value="wal",
+    expectation="'wal'",
+)
+"""Both supported file-backed durability policies require WAL."""
+
 SQLITE_FILE_CONNECTION_SETTINGS: tuple[ConnectionSetting, ...] = (
-    ConnectionSetting(
-        name="journal_mode",
-        apply_statements=("PRAGMA journal_mode = WAL",),
-        probe_sql="PRAGMA journal_mode",
-        expected_value="wal",
-        expectation="'wal'",
-    ),
+    _SQLITE_WAL_SETTING,
     ConnectionSetting(
         name="synchronous",
         apply_statements=("PRAGMA synchronous = NORMAL",),
@@ -88,13 +87,26 @@ async def apply_sqlite_connection_settings(
     connection: Connection,
     *,
     file_backed: bool,
+    durability: Literal["normal", "full"] = "normal",
 ) -> None:
     """Apply and verify the required PRAGMAs on one SQLite connection."""
 
+    file_settings = SQLITE_FILE_CONNECTION_SETTINGS
+    if durability == "full":
+        file_settings = (
+            _SQLITE_WAL_SETTING,
+            ConnectionSetting(
+                name="synchronous",
+                apply_statements=("PRAGMA synchronous = FULL",),
+                probe_sql="PRAGMA synchronous",
+                expected_value=2,
+                expectation="2 (FULL)",
+            ),
+        )
     await apply_connection_settings(
         _SQLiteSettingsProbe(connection),
         (
-            SQLITE_FILE_CONNECTION_SETTINGS + SQLITE_CONNECTION_SETTINGS
+            file_settings + SQLITE_CONNECTION_SETTINGS
             if file_backed
             else SQLITE_CONNECTION_SETTINGS
         ),
