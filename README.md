@@ -990,6 +990,14 @@ async with db.transaction() as tx:
 
 Runtime methods:
 
+- `begin_nested()` returns an explicit savepoint context on the existing
+  Transaction: `async with tx.begin_nested(): ...`. Success releases it without
+  committing; exceptional exit rolls back nested work. Recognized immediate
+  constraint failures can recover, but unsafe connections remain unusable.
+  Nested contexts reserve the Transaction for their entering task and require
+  streams to close before savepoint entry/exit. See
+  [nested transactions and recovery limits](docs/error-handling.md#explicit-nested-transactions).
+  Nested `db.transaction()` calls still acquire independent connections.
 - `fetch_all(select(...))` returns all result rows. It is for bounded result
   sets: the whole result is loaded into memory and every row is validated
   synchronously on the event loop. The materialization loop yields a cooperative

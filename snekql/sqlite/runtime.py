@@ -5,6 +5,15 @@ from __future__ import annotations
 import contextlib
 import logging
 from collections.abc import Sequence
+from sqlite3 import (
+    SQLITE_CONSTRAINT_CHECK,
+    SQLITE_CONSTRAINT_FOREIGNKEY,
+    SQLITE_CONSTRAINT_NOTNULL,
+    SQLITE_CONSTRAINT_PRIMARYKEY,
+    SQLITE_CONSTRAINT_ROWID,
+    SQLITE_CONSTRAINT_UNIQUE,
+    IntegrityError,
+)
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
@@ -15,6 +24,7 @@ from snekql._migrations import MigrationPlan, MigrationResult
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._statement_failure import StatementConstraintError
 from snekql._telemetry import ParameterVisibility
 from snekql.errors import DatabaseRuntimeError
 from snekql.model import Table
@@ -128,7 +138,12 @@ class SQLiteConnectionAdapter:
         sql: str,
         params: tuple[object, ...],
     ) -> SQLiteCursorAdapter:
-        cursor = await self.connection.execute(sql, params)
+        try:
+            cursor = await self.connection.execute(sql, params)
+        except IntegrityError as e:
+            if self._recoverable_constraint(e):
+                raise StatementConstraintError(e) from e
+            raise
         return SQLiteCursorAdapter(cursor)
 
     async def execute_stream(
@@ -150,12 +165,30 @@ class SQLiteConnectionAdapter:
         """Omitted parameters remain omitted at the native connector boundary."""
 
         del stream
-        cursor = (
-            await self.connection.execute(sql)
-            if params is None
-            else await self.connection.execute(sql, params)
-        )
+        try:
+            cursor = (
+                await self.connection.execute(sql)
+                if params is None
+                else await self.connection.execute(sql, params)
+            )
+        except IntegrityError as e:
+            if self._recoverable_constraint(e):
+                raise StatementConstraintError(e) from e
+            raise
         return SQLiteCursorAdapter(cursor)
+
+    def _recoverable_constraint(self, error: IntegrityError) -> bool:
+        """A whole-transaction rollback must never be mistaken for a failed statement."""
+        return self.connection.in_transaction and getattr(
+            error, "sqlite_errorcode", None
+        ) in {
+            SQLITE_CONSTRAINT_CHECK,
+            SQLITE_CONSTRAINT_FOREIGNKEY,
+            SQLITE_CONSTRAINT_NOTNULL,
+            SQLITE_CONSTRAINT_PRIMARYKEY,
+            SQLITE_CONSTRAINT_ROWID,
+            SQLITE_CONSTRAINT_UNIQUE,
+        }
 
     async def _execute_control_sql(self, sql: str) -> None:
         cursor = await self.connection.execute(sql, ())
