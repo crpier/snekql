@@ -34,6 +34,7 @@ class QueryDialect:
     placeholder: str
     quote_identifier: Callable[[str], str]
     explain_sql: ExplainSqlCompiler | None = None
+    char_length_function: str | None = None
     supports_delete_returning: bool = False
     supports_update_returning: bool = False
 

@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from snekql.expressions import Predicate
     from snekql.model import Table
 
 
@@ -44,6 +45,10 @@ class CompileCtx:
     placeholder: str
     quote_identifier: Callable[[str], str]
     render_column: Callable[[Any], str]
+    char_length_function: str | None = None
+    compile_predicate: (
+        Callable[[Predicate[Any]], tuple[str, tuple[object, ...]]] | None
+    ) = None
 
 
 @runtime_checkable

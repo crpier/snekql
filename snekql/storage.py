@@ -42,6 +42,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError, core_schema
 
+from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
@@ -1211,6 +1212,7 @@ class Attr[
     CompareT = Any,
 ](
     Comparable[OwnerT, CompareT, ReadValueT],
+    ExpressionMethods[OwnerT, ReadValueT],
 ):
     """Typed model column descriptor used for fields and query construction.
 
@@ -1876,6 +1878,34 @@ class Attr[
             msg = "ZonedDatetime columns do not support ordering or range predicates"
             raise QueryConstructionError(msg)
 
+    def __value_operand__(self) -> ValueExpression[OwnerT, ReadValueT]:
+        """Only expose operations whose wire values match the logical domain."""
+        if self._is_json_column():
+            msg = "native value expressions do not support JSON-encoded columns"
+            raise QueryConstructionError(msg)
+        logical = self._resolved_logical_type()
+        cores = _annotation_core_types(logical) if logical is not None else []
+        if cores == [int] and self.storage_class == "INTEGER":
+            value_type = int
+        elif cores == [float] and self.storage_class == "REAL":
+            value_type = float
+        elif cores == [str] and self.storage_class == "TEXT":
+            value_type = str
+        else:
+            msg = "expressions require native integer, real, or text storage with matching logical types"
+            raise QueryConstructionError(msg)
+        owner = getattr(self, "_query_relation", self.owner)
+        if owner is None:
+            msg = "arithmetic requires a bound column"
+            raise QueryConstructionError(msg)
+        # Bound descriptor metadata erases the owner generic retained by Attr.
+        return ValueExpression(
+            column=self,
+            owner=cast("type[OwnerT]", owner),
+            nullable=self.nullable,
+            value_type=value_type,
+        )
+
     def _logical_is_numeric(self) -> bool | None:
         """Whether the logical type is numeric (``int``/``float``, not ``bool``).
 
@@ -1998,6 +2028,71 @@ class Attr[
             value if value is CurrentTimestamp else self.validate_model_value(value)
         )
         return _Assignment(column=self, value=assigned_value)
+
+    @overload
+    def to_expr(
+        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, int, SetValueT, CompareT],
+        expression: ExpressionMethods[OwnerT, int],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, int | None, SetValueT, CompareT
+        ],
+        expression: ExpressionMethods[OwnerT, int]
+        | ExpressionMethods[OwnerT, int | None],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, float, SetValueT, CompareT
+        ],
+        expression: ExpressionMethods[OwnerT, float],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, float | None, SetValueT, CompareT
+        ],
+        expression: ExpressionMethods[OwnerT, float]
+        | ExpressionMethods[OwnerT, float | None],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT, CompareT],
+        expression: ExpressionMethods[OwnerT, str],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str | None, SetValueT, CompareT
+        ],
+        expression: ExpressionMethods[OwnerT, str]
+        | ExpressionMethods[OwnerT, str | None],
+    ) -> Assignment[OwnerT]: ...
+
+    def to_expr(self, expression: object) -> Assignment[OwnerT]:
+        """Assign a database-computed value instead of validating a Python literal."""
+        target = self.__value_operand__()
+        if not isinstance(expression, ExpressionMethods):
+            msg = "to_expr() requires a native value column or expression"
+            raise QueryConstructionError(msg)
+        operand = expression.__value_operand__()
+        if operand.owner is not target.owner:
+            msg = "expression assignment must reference the target model"
+            raise QueryConstructionError(msg)
+        if operand.value_type is not target.value_type:
+            msg = "expression assignment requires matching value domains"
+            raise QueryConstructionError(msg)
+        if operand.nullable and not target.nullable:
+            msg = "nullable expression cannot target a non-null column"
+            raise QueryConstructionError(msg)
+        return _Assignment(column=self, value=operand)
 
     def to_inserted(self) -> Assignment[OwnerT]:
         """Assign this column's value from the row whose insert conflicted."""

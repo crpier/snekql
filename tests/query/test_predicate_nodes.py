@@ -81,9 +81,11 @@ class _StubCompiler:
         self.operands.append(operand)
         return lambda value: ("encoded", value)
 
-    def render_comparison_operand(self, other: object) -> str:
+    def render_comparison_operand(
+        self, other: object
+    ) -> tuple[str, tuple[object, ...]]:
         self.operands.append(other)
-        return "other_column"
+        return "other_column", ()
 
     def compile_scalar(self, scalar: object) -> tuple[str, tuple[object, ...]]:
         self.operands.append(scalar)

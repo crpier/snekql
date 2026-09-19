@@ -114,7 +114,9 @@ class PredicateCompiler(Protocol):
 
     def value_encoder(self, operand: object) -> Callable[[object], object]: ...
 
-    def render_comparison_operand(self, other: object) -> str: ...
+    def render_comparison_operand(
+        self, other: object
+    ) -> tuple[str, tuple[object, ...]]: ...
 
     def compile_scalar(self, scalar: object) -> tuple[str, tuple[object, ...]]: ...
 
@@ -391,8 +393,8 @@ class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
                 f"{rendered} {operator} {operand_sql}",
                 (*rendered_params, *operand_params),
             )
-        other_ref = compiler.render_comparison_operand(other)
-        return f"{rendered} {operator} {other_ref}", rendered_params
+        other_ref, other_params = compiler.render_comparison_operand(other)
+        return f"{rendered} {operator} {other_ref}", (*rendered_params, *other_params)
 
 
 @dataclass(frozen=True)

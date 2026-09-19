@@ -762,3 +762,79 @@ Run:
 ```sh
 uv run ty check examples/typed_queries.py tests/test_public_typing.py
 ```
+
+
+## Arithmetic expression types
+
+Native numeric `.add`, `.sub`, and `.mul` operations retain their query-source
+owner and result domain. SQL nullability follows both operands, including nested
+expressions. Completed queries retain the existing `Select[Row]` and
+`Write[Result]` helper annotations.
+
+| Operands | Result |
+| --- | --- |
+| `int`, `int` | `int` |
+| `int`, `int | None` | `int | None` |
+| `int | None`, `int` | `int | None` |
+| `float`, `float` | `float` |
+| Either floating operand nullable | `float | None` |
+| Numeric expression, literal `None` | Nullable numeric result |
+
+An integer expression accepts integer literals; a floating expression accepts
+floating and integer literals. Integer and floating column/expression domains
+cannot be mixed. Python treats bool as an int subtype, so runtime checks reject
+boolean operands that static typing admits. Storage compatibility also requires
+runtime checks because `Col[int]` alone does not distinguish INTEGER from a
+text-encoded integer.
+
+`.to_expr(...)` accepts columns and expressions from the assignment's own model.
+It rejects incompatible numeric types and nullable-to-non-null assignments.
+Non-null expressions can fill nullable columns. Alias role owners remain
+distinct, and alias-owned assignments cannot target the original model.
+
+The compiler also rejects reads of other columns assigned by the same UPDATE.
+The type system does not track those statement-wide dependencies. These checks
+traverse nested arithmetic as well as direct column reads.
+
+Literal `.to(...)` validation remains unchanged. Computed values are evaluated
+by the database, so the expression's numeric result contract does not promise
+that every Python validator attached to the target column will pass. See the
+README's arithmetic section for overflow and storage constraints.
+
+
+## COALESCE and text function types
+
+`coalesce` supports native `int`, `float`, and `str` domains. A non-null input
+remains non-null regardless of the fallback. For nullable inputs, a non-null
+fallback removes nullability; a nullable fallback preserves it. A literal
+`None` is a nullable fallback, not a value that changes the result domain.
+
+`lower()` accepts `str` and `str | None`, returning the same nullability.
+`char_length()` accepts the same inputs and returns `int` or `int | None`.
+Its result can participate in arithmetic and numeric `.to_expr()` assignments.
+Text expressions also support `.to_expr()` with matching native text columns.
+
+Overloads reject cross-domain fallbacks and incompatible assignments. Runtime
+checks reject JSON-encoded strings despite their logical `str` annotation.
+Integer literals accepted by floating COALESCE are bound as floats; expressions
+from integer columns are not silently converted to floating expressions.
+
+
+## CASE result types
+
+`case(condition, then=..., otherwise=...)` requires both branches. Its owner
+comes from the condition's query source. Branch columns and expressions must
+have that same owner. Backend namespace factories enforce their backend family,
+including nominal alias roles.
+
+Non-null branches of the same native domain produce `int`, `float`, or `str`.
+A nullable branch or literal `None` makes that result optional. The type system
+does not infer non-nullability from the condition. Calling `coalesce` with a
+non-null fallback can remove it explicitly.
+
+Python permits integer literals in float annotations. CASE normalizes those
+literals to floating bindings after validation, while invariant expression
+contracts reject mixing integer and float columns. Boolean literals and two
+literal NULL branches require runtime rejection. CASE also checks the runtime
+ownership of both sides of column comparisons because `*_col` tracks only the
+left owner's type. Row-local restrictions exclude subqueries and aggregates.
