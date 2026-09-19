@@ -762,3 +762,41 @@ Run:
 ```sh
 uv run ty check examples/typed_queries.py tests/test_public_typing.py
 ```
+
+
+## Named result contracts
+
+`select(Model).project(Result, **bindings)` returns a query whose row type is the
+plain Pydantic `BaseModel` subclass `Result`. The same operation is available
+after model joins. This replaces positional projection overloads with one
+result-type parameter, so nine or more fields retain the full named result type.
+
+Use existing `Select[Result]` annotations for completed queries. The projection
+preserves the current readiness state: `.project(...)`, grouping, and HAVING do
+not replace the required `.all()` or `.where(...)`. Query backend identity also
+survives the result contract, which itself is reusable across backends.
+
+`.returning_as(Result, **bindings)` preserves write cardinality and readiness:
+
+| Operation | Executable helper annotation |
+| --- | --- |
+| Single INSERT | `Write[Result]` |
+| Bulk INSERT | `Write[list[Result]]` |
+| Supported UPDATE/DELETE RETURNING | `Write[list[Result]]` |
+
+Python typing cannot check arbitrary keyword bindings against a Pydantic
+class's declared fields. Result objects are statically typed; binding labels,
+source ownership, known logical domains, and left-join nullability are runtime
+construction checks. Constraints and domains that cannot be inferred safely are
+validated after decoding each row. No expression is treated as a caller-asserted
+result type, and `validate=False` does not bypass this final validation.
+
+LEFT JOIN fields need optional result annotations even if their source column
+is NOT NULL. Named row objects support `fetch_one_or_none`, including a one-field
+row whose field is nullable. The object is distinct from the missing-row `None`.
+A named row query is not a scalar-subquery contract, even with one projected
+field. Use a scalar/tuple query when those result semantics are required.
+
+Bindings use Python field names rather than Pydantic aliases. All fields must be
+bound explicitly, including defaulted and optional fields. Extra bindings and
+case-insensitive duplicate labels fail rather than silently changing shape.

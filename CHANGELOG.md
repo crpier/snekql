@@ -4,6 +4,13 @@
 
 ### Added
 
+- Named SELECT contracts through `.project(Result, **bindings)` and supported
+  write results through `.returning_as(Result, **bindings)` remove the
+  eight-value projection ceiling without requiring table models. Results retain
+  helper typing, backend identity, readiness, logical codecs, strict Pydantic
+  validation, and nullable LEFT JOIN fields. Binding shape and label guards
+  reject missing, extra, incompatible, or ambiguous fields. (#279)
+
 - Joins accept ordinary ON predicates without foreign-key declarations, including
   compound comparisons, filters, and correlated subqueries. Left-join ON filters
   preserve unmatched rows. Each ON clause sees only its join prefix and enclosing

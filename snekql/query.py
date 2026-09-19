@@ -22,9 +22,12 @@ from typing import (
     overload,
 )
 
+from pydantic import BaseModel
+
 from snekql._aliases import TableAlias, require_query_source
 from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import DialectSelectable
+from snekql._named_projection import NamedProjection
 from snekql._query_readiness import (
     _AssignedUpdate,
     _EmptyUpdate,
@@ -325,6 +328,108 @@ reference coordinates, so the Query Runtime can still reject unjoined references
 """
 
 
+def _named_contract(
+    result_type: type[BaseModel], fields: dict[str, object]
+) -> NamedProjection:
+    """Require a complete, unambiguous, table-independent named row contract."""
+    if (
+        not isinstance(result_type, type)
+        or not issubclass(result_type, BaseModel)
+        or issubclass(result_type, Table)
+        or result_type.__pydantic_root_model__
+    ):
+        msg = "named projections require a non-table, non-root Pydantic result model"
+        raise QueryConstructionError(msg)
+    if not fields or set(fields) != set(result_type.model_fields):
+        msg = "projection bindings must match every result field exactly"
+        raise QueryConstructionError(msg)
+    if len({label.casefold() for label in fields}) != len(fields):
+        msg = "projection labels must be unique ignoring case"
+        raise QueryConstructionError(msg)
+    return NamedProjection(labels=tuple(fields), result_type=result_type)
+
+
+def _project_state(
+    state: SelectState, result_type: type[BaseModel], fields: dict[str, object]
+) -> SelectState:
+    """Resolve named bindings without changing row scope or query readiness."""
+    projection = _named_contract(result_type, fields)
+    selectables = tuple(require_selectable(value) for value in fields.values())
+    scope = ScopeResolver(own_models=state.result_models())
+    nullable_models = {join.model for join in state.joins if join.join_type == "LEFT"}
+    for label, selectable in zip(projection.labels, selectables, strict=True):
+        if isinstance(selectable, _Scalar):
+            inner = require_single_column_subquery(selectable.subquery)
+            if require_model_backend(inner.model) != require_model_backend(state.model):
+                msg = "named scalar projection belongs to another backend"
+                raise QueryConstructionError(msg)
+            projection.check_binding(label, inner.fields[0], nullable=True)
+            continue
+        scope.ensure_operand_in_scope(
+            selectable, clause="projection", error=QueryConstructionError, own_only=True
+        )
+        projection.check_binding(
+            label,
+            selectable,
+            nullable=isinstance(selectable, Attr)
+            and require_column_model(selectable) in nullable_models,
+        )
+    return replace(
+        state, fields=selectables, returns_model=False, named_projection=projection
+    )
+
+
+def _named_returning_state[StateT: InsertState | UpdateState | DeleteState](
+    state: StateT, result_type: type[BaseModel], fields: dict[str, object]
+) -> StateT:
+    """Use the existing RETURNING column policy with a named result contract."""
+    projection = _named_contract(result_type, fields)
+    model = (
+        state.model()
+        if isinstance(state, InsertState)
+        else cast("UpdateState | DeleteState", state).model
+    )
+    selectables = require_model_returning_fields(model, tuple(fields.values()))
+    for label, selectable in zip(projection.labels, selectables, strict=True):
+        column = require_field(selectable)
+        projection.check_binding(label, column, nullable=column.nullable)
+    return replace(
+        state, returning=True, returning_fields=selectables, named_projection=projection
+    )
+
+
+class NamedSelectQuery[FamilyT, OwnerT: Table[Any], ResultT: BaseModel, ReadinessT](
+    _FluentSelectQuery[OwnerT],
+    _OptionalQueryShape[FamilyT, OwnerT, OwnerT, ResultT, ReadinessT],
+):
+    """Select values into a table-independent named result model."""
+
+    def group_by[GroupOwnerT: Table[Any]](
+        self,
+        column: Attr[Any, Any, GroupOwnerT, Any, Any],
+        /,
+        *columns: Attr[Any, Any, GroupOwnerT, Any, Any],
+    ) -> Self:
+        """Group named results by columns already present in the query scope."""
+        return self._replace_state(_select_group_by(self.state, (column, *columns)))
+
+    def having(
+        self, predicate: Predicate[OwnerT], /, *predicates: Predicate[OwnerT]
+    ) -> Self:
+        """Filter aggregates or grouping keys without changing row readiness."""
+        return self._replace_state(_select_having(self.state, (predicate, *predicates)))
+
+    def all(self) -> NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery]:
+        """Select every row and mark the query executable."""
+        return NamedSelectQuery(_select_all(self.state))
+
+    def where(
+        self, predicate: Predicate[OwnerT], /, *predicates: Predicate[OwnerT]
+    ) -> NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery]:
+        """Filter rows while retaining the named result contract."""
+        return NamedSelectQuery(_select_where(self.state, (predicate, *predicates)))
+
+
 class SelectModelQuery[
     FamilyT,
     SelectOwnerT: Table[Any],
@@ -335,6 +440,15 @@ class SelectModelQuery[
     _OptionalQueryShape[FamilyT, SelectOwnerT, SelectOwnerT, ReadModelT, ReadinessT],
 ):
     """Immutable select query that returns fetched table model instances."""
+
+    def project[ResultT: BaseModel](
+        self, result_type: type[ResultT], /, **fields: object
+    ) -> NamedSelectQuery[FamilyT, SelectOwnerT, ResultT, ReadinessT]:
+        """Select named values validated against an application result contract.
+
+        Example: `select(User).project(Summary, id=User.id, name=User.name)`.
+        """
+        return NamedSelectQuery(_project_state(self.state, result_type, fields))
 
     def all(
         self,
@@ -461,6 +575,15 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
     accumulates the per-table fetched models: `join` appends `T[Fetched]` and
     `left_join` appends `T[Fetched] | None`.
     """
+
+    def project[ResultT: BaseModel](
+        self, result_type: type[ResultT], /, **fields: object
+    ) -> NamedSelectQuery[FamilyT, JoinOwnerT, ResultT, ReadinessT]:
+        """Select named values validated against an application result contract.
+
+        Example: `select(User).project(Summary, id=User.id, name=User.name)`.
+        """
+        return NamedSelectQuery(_project_state(self.state, result_type, fields))
 
     def all(
         self,
@@ -1080,6 +1203,14 @@ class InsertQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
 ):
     """Immutable insert statement for one pending table model instance."""
 
+    def returning_as[ResultT: BaseModel](
+        self, result_type: type[ResultT], /, **fields: object
+    ) -> InsertReturningValueQuery[FamilyT, OwnerT, ResultT]:
+        """Return named application results using the backend's RETURNING support."""
+        return InsertReturningValueQuery(
+            _named_returning_state(self.state, result_type, fields)
+        )
+
     @overload
     def returning(self) -> InsertReturningQuery[FamilyT, OwnerT, ReadT]: ...
     # BEGIN GENERATED INSERT RETURNING OVERLOADS
@@ -1190,6 +1321,14 @@ class InsertManyQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
     _WriteShape[FamilyT, None],
 ):
     """Immutable bulk insert statement for several pending model instances."""
+
+    def returning_as[ResultT: BaseModel](
+        self, result_type: type[ResultT], /, **fields: object
+    ) -> InsertManyReturningValueQuery[FamilyT, OwnerT, ResultT]:
+        """Return named application results using the backend's RETURNING support."""
+        return InsertManyReturningValueQuery(
+            _named_returning_state(self.state, result_type, fields)
+        )
 
     @overload
     def returning(self) -> InsertManyReturningQuery[FamilyT, OwnerT, ReadT]: ...
@@ -1358,7 +1497,9 @@ def _insert_returning(
     if not fields:
         return model_query(replace(state, returning=True))
     selectables = require_returning_fields(state, fields)
-    projected = replace(state, returning=True, returning_fields=selectables)
+    projected = replace(
+        state, returning=True, returning_fields=selectables, named_projection=None
+    )
     if len(selectables) == 1:
         return value_query(projected)
     return tuple_query(projected)
@@ -1406,6 +1547,14 @@ class _UpdateQuery[
         if state is None:
             state = UpdateState(model=Table[Any])
         self.state: UpdateState = state
+
+    def returning_as[NamedT: BaseModel](
+        self, result_type: type[NamedT], /, **fields: object
+    ) -> UpdateReturningValueQuery[FamilyT, ModelT, ReadT, ReadinessT, NamedT]:
+        """Return named rows on backends that support this write's RETURNING clause."""
+        return UpdateReturningValueQuery(
+            _named_returning_state(self.state, result_type, fields)
+        )
 
     @overload
     def all(
@@ -1672,6 +1821,14 @@ class _DeleteQuery[
         return cast(
             "_DeleteQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableQuery]",
             self if state is self.state else type(self)(state),
+        )
+
+    def returning_as[NamedT: BaseModel](
+        self, result_type: type[NamedT], /, **fields: object
+    ) -> DeleteReturningValueQuery[FamilyT, ModelT, ReadT, ReadinessT, NamedT]:
+        """Return named rows on backends that support this write's RETURNING clause."""
+        return DeleteReturningValueQuery(
+            _named_returning_state(self.state, result_type, fields)
         )
 
     @overload
@@ -2018,10 +2175,12 @@ def _update_returning(state: UpdateState, fields: tuple[object, ...]) -> object:
 
     if not fields:
         return UpdateReturningQuery[Any, Any, Any, Any](
-            replace(state, returning=True, returning_fields=())
+            replace(state, returning=True, returning_fields=(), named_projection=None)
         )
     selectables = require_model_returning_fields(state.model, fields)
-    projected = replace(state, returning=True, returning_fields=selectables)
+    projected = replace(
+        state, returning=True, returning_fields=selectables, named_projection=None
+    )
     if len(selectables) == 1:
         return UpdateReturningValueQuery[Any, Any, Any, Any, Any](projected)
     return UpdateReturningTupleQuery[Any, Any, Any, Any, *tuple[Any, ...]](projected)
@@ -2032,10 +2191,12 @@ def _delete_returning(state: DeleteState, fields: tuple[object, ...]) -> object:
 
     if not fields:
         return DeleteReturningQuery[Any, Any, Any, Any](
-            replace(state, returning=True, returning_fields=())
+            replace(state, returning=True, returning_fields=(), named_projection=None)
         )
     selectables = require_model_returning_fields(state.model, fields)
-    projected = replace(state, returning=True, returning_fields=selectables)
+    projected = replace(
+        state, returning=True, returning_fields=selectables, named_projection=None
+    )
     if len(selectables) == 1:
         return DeleteReturningValueQuery[Any, Any, Any, Any, Any](projected)
     return DeleteReturningTupleQuery[Any, Any, Any, Any, *tuple[Any, ...]](projected)
