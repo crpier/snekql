@@ -1,0 +1,183 @@
+{
+  "baseRefOid": "50b7a9aca2eb0d7a5336810bd7629f8a0079fb11",
+  "body": "## Scope\n\nCloses #366. Independent follow-up to #363. No production fixes, unmerged expression work, or literal-default decisions.\n\nStart with `research/concurrency/README.md` and `SPEC.md`. The seven configurations retain 61 controlled concurrent scenarios, seven no-op controls, actual connection settings, SQL, and installed DDL.\n\n## Findings\n\n- Separate read/write transactions permitted stale assignment to leave 9 after two requested decrements of 10. Unguarded callers treated clean completion as success. Native snekql/MariaDB returned 0 for the second unchanged write, an available hint but not automatic optimistic checking.\n- Atomic arithmetic left 8 everywhere. The tested snekql builder required its public raw path for arithmetic; SQLAlchemy used update expressions.\n- Explicit revision predicates detected stale writes. Matched CAS increments revision, so 1/0 counts agreed despite MariaDB no-op rowcount differences.\n- SQLite SQLAlchemy legacy mode reported an active Session transaction while its driver had no transaction after SELECT. Explicit BEGIN exposed stale writes as SQLITE_BUSY_SNAPSHOT instead of losing the decrement.\n- The initial MariaDB server reported snapshot isolation enabled. With it on, both libraries exposed error 1020 for obsolete in-transaction reads. With it off, REPEATABLE READ allowed the unguarded overwrite. Both configurations are retained rather than attributing a server policy to a library.\n- SQLAlchemy version_id_col detected stale object flushes through StaleDataError. Explicit Session.execute(update(...)) bypassed that mapper policy and still lost an update.\n- Known held locks produced SQLite code 5 or MariaDB code 1205. One explicit full-transaction retry reread quantity 9/revision 2 and safely reached quantity 8/revision 3. Retrying stale parameters was not the policy.\n\n## Method\n\nBarriers/events establish both old reads, commit ordering, and holder release. No correctness sleeps. Real independent transactions/sessions, fresh readback, owned temporary databases, and outer schedule deadlines. Unexpected errors or ambiguous commit failures abort instead of being counted as acceptable conflicts.\n\nThis is controlled interleaving, not a stress test or race-frequency estimate. SQLite busy waits and MariaDB lock waits are deliberately bounded; BEGIN IMMEDIATE retry, deadlocks, network failures, pessimistic locking APIs, and performance remain outside scope.\n\n## Validation\n\n- Full package plus research suite: 1646 passed, including 87 research checks.\n- Clean temporary environment: 87 research checks and typing passed after installing the pinned comparator requirements.\n- Ruff lint, formatting, lock check, and diff checks passed.\n- CI installs the comparator separately and uses explicit test paths. No root dependency/lockfile changes.\n- Typing exception limited to SQLAlchemy mapped_column declarations in one research file.\n\nThe report separates native behavior, added connection policy, mapper policy, and application retry decisions. It makes no overall library ranking or general serializability claim.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-19T08:35:58Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-19T08:35:58Z",
+      "messageBody": "",
+      "messageHeadline": "Investigate concurrent updates and conflict recovery (#366)",
+      "oid": "e2902b5b8568a29031d1a63b6975ee436b7c479a"
+    }
+  ],
+  "createdAt": "2026-09-19T08:36:01Z",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "additions": 3,
+      "deletions": 1,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "pyproject.toml",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/concurrency/README.md",
+      "additions": 244,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/SPEC.md",
+      "additions": 56,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/cases.py",
+      "additions": 24,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/experiment.py",
+      "additions": 162,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/mariadb-snekql-snapshot-off.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/mariadb-snekql-snapshot-on.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/mariadb-sqlalchemy-snapshot-off.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/mariadb-sqlalchemy-snapshot-on.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/mariadb_models.py",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/observations.py",
+      "additions": 35,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/orm.py",
+      "additions": 63,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/requirements.txt",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/results.json",
+      "additions": 3947,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/runtime.py",
+      "additions": 302,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/schedules.py",
+      "additions": 141,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/sqlalchemy_models.py",
+      "additions": 22,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/sqlite-snekql.sql",
+      "additions": 1,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/sqlite-sqlalchemy-explicit.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/sqlite-sqlalchemy-legacy.sql",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/sqlite_models.py",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/test_concurrency.py",
+      "additions": 83,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/concurrency/test_matrix.py",
+      "additions": 139,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/concurrent-updates",
+  "headRefOid": "e2902b5b8568a29031d1a63b6975ee436b7c479a",
+  "number": 368,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research concurrent updates, transaction policies, and optimistic conflicts",
+  "updatedAt": "2026-09-19T08:36:01Z",
+  "url": "https://github.com/crpier/snekql/pull/368"
+}

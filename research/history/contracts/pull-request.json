@@ -1,0 +1,147 @@
+{
+  "baseRefOid": "4dcb71669a9a9dffb202595e7f14251ff76714c8",
+  "body": "## Scope\n\nCloses #358. Independent follow-up to #357; no package fixes and no previous PR merged.\n\nStart with `research/contracts/README.md`. `SPEC.md` states the target contract. The models, input check, custom SQLAlchemy types, literal migrations, runner, and evidence are beside it.\n\n## Findings\n\n- Both tailored implementations matched the expected accept/reject outcomes for 64 application cases across SQLite and MariaDB. Writes use full snekql transactions or SQLAlchemy AsyncSession flush/commit, followed by independent readback.\n- SQLAlchemy custom types repair the earlier UTC mismatch. Attribute validation, bind validation, connection policy, and bulk omission behavior all require explicit decisions.\n- Bulk timestamp None initially received a server default until evaluates_none() made the custom binder reject it. The focused test caught this before the example was corrected.\n- snekql deliberately normalizes bool to int before field validation. A separate input boundary is needed for our stronger actual-int-only contract. The native behavior remains recorded separately.\n- snekql literal defaults work with migration SQL and GenCol/PENDING_GENERATION, but strict schema verification rejects the intended default. Removing CHECKs adds no verification issue; migration history remains valid after live schema corruption.\n- SQLAlchemy create_all neither repairs nor rejects the corresponding corrupted existing schemas. This study does not claim it replaces a verifier or migration system.\n\nThe report compares actual implementation and maintenance decisions, not usability scores. Strict verification remains an unmet deployment requirement; this is not a claim of complete equivalence.\n\n## Validation\n\n- Four isolated backend/library runs.\n- 64 application cases and 120 raw SQL observations across baseline and deliberately corrupted schemas, plus native-input and bulk-write diagnostics.\n- Full package plus research suite: 1356 passed, including 18 research checks.\n- Final focused tests, ty, Ruff lint, and Ruff formatting passed.\n- Extra comparator dependencies pinned separately. No uv.lock or production-code changes.\n- Root typing exception limited to SQLAlchemy mapped_column declarations in one research file.\n\nLimits include untested updates, corrupt-row materialization, migration upgrades, concurrency, and broader driver/backend versions. Temporary MariaDB binaries are required locally; the runner accepts no external database URL.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-12T09:27:20Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-12T09:27:20Z",
+      "messageBody": "",
+      "messageHeadline": "Compare equivalent runtime contracts and schema-rule maintenance (#358)",
+      "oid": "99ff862c3c05cac2f976f72c9a32e6da082d7906"
+    }
+  ],
+  "createdAt": "2026-09-12T09:27:24Z",
+  "files": [
+    {
+      "path": "pyproject.toml",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/contracts/README.md",
+      "additions": 234,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/SPEC.md",
+      "additions": 29,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/cases.py",
+      "additions": 38,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/experiment.py",
+      "additions": 419,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/mariadb-snekql.sql",
+      "additions": 7,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/mariadb-sqlalchemy.sql",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/mariadb_models.py",
+      "additions": 33,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/raw.py",
+      "additions": 85,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/requirements.txt",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/results.json",
+      "additions": 4114,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/snekql_inputs.py",
+      "additions": 19,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/sqlalchemy_models.py",
+      "additions": 130,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/sqlite-snekql.sql",
+      "additions": 7,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/sqlite-sqlalchemy.sql",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/sqlite_models.py",
+      "additions": 33,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/test_contracts.py",
+      "additions": 91,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/contracts/test_mariadb_contracts.py",
+      "additions": 78,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/equivalent-contracts",
+  "headRefOid": "99ff862c3c05cac2f976f72c9a32e6da082d7906",
+  "number": 360,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research equivalent runtime contracts and schema verification limits",
+  "updatedAt": "2026-09-12T09:27:24Z",
+  "url": "https://github.com/crpier/snekql/pull/360"
+}

@@ -1,0 +1,4114 @@
+{
+  "python": "3.14.2",
+  "versions": {
+    "snekql": "0.7.0",
+    "sqlalchemy": "2.0.43",
+    "pydantic": "2.13.5",
+    "aiosqlite": "0.22.1",
+    "aiomysql": "0.3.2",
+    "greenlet": "3.5.1"
+  },
+  "runs": {
+    "sqlite/snekql": {
+      "application": {
+        "offset": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 08:34:05.123456+05:30",
+              "type": "datetime"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "defaults": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "3",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:50.810000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "upper_bounds": {
+          "input": {
+            "price_cents": {
+              "value": "9999999999",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483647",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "4",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:50.811000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "zero_cents": {
+          "input": {
+            "price_cents": {
+              "value": "0",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "5",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:50.813000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "fractional_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.5",
+              "type": "Decimal"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "price_cents: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "float_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.0",
+              "type": "float"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "price_cents: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "bool_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "quantity: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "string_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "str"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "quantity: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value='1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "zero_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "negative_cents": {
+          "input": {
+            "price_cents": {
+              "value": "-1",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "overflow_cents": {
+          "input": {
+            "price_cents": {
+              "value": "10000000000",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be less than or equal to 9999999999 [type=less_than_equal, input_value=10000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "overflow_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483648",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be less than or equal to 2147483647 [type=less_than_equal, input_value=2147483648, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "naive_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 03:04:05",
+              "type": "datetime"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "null_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'created_at' cannot be null"
+        },
+        "null_status": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "status": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'status' cannot be null"
+        },
+        "missing_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "missing required value for 'quantity'"
+        }
+      },
+      "ddl": "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status TEXT NOT NULL DEFAULT 'pending',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT",
+      "scaffold": "CREATE TABLE \"orders\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price_cents\" INTEGER NOT NULL, \"quantity\" INTEGER NOT NULL, \"status\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT;",
+      "migrations": {
+        "applied": [
+          "001_orders"
+        ],
+        "already_applied": [],
+        "legacy_adopted": false
+      },
+      "verification": {
+        "migration_history": "accepted",
+        "strict": "rejected",
+        "issues": [
+          {
+            "table_name": "orders",
+            "detail": "column 'status' differs: server default expected None, found \"'pending'\""
+          }
+        ]
+      },
+      "native_bool_quantity": {
+        "input": {
+          "price_cents": {
+            "value": "123",
+            "type": "int"
+          },
+          "quantity": {
+            "value": "True",
+            "type": "bool"
+          }
+        },
+        "before": {
+          "id": "PENDING_GENERATION",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "PENDING_GENERATION",
+          "created_at": "PENDING_GENERATION"
+        },
+        "after": {
+          "id": "PENDING_GENERATION",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "PENDING_GENERATION",
+          "created_at": "PENDING_GENERATION"
+        },
+        "fetched": {
+          "id": "1",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "pending",
+          "created_at": "2026-09-12 09:24:50.807000+00:00"
+        },
+        "fetched_types": {
+          "id": "int",
+          "price_cents": "int",
+          "quantity": "int",
+          "status": "str",
+          "created_at": "datetime"
+        },
+        "outcome": "accepted",
+        "stage": "fetch"
+      },
+      "raw": {
+        "defaults": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12T09:24:50.818Z"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "zero_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: quantity BETWEEN 1 AND 2147483647"
+        },
+        "negative_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: price_cents BETWEEN 0 AND 9999999999"
+        },
+        "overflow_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: price_cents BETWEEN 0 AND 9999999999"
+        },
+        "overflow_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: quantity BETWEEN 1 AND 2147483647"
+        },
+        "fractional_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+          "outcome": "rejected",
+          "error": "cannot store REAL value in INTEGER column orders.price_cents"
+        },
+        "string_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12T09:24:50.820Z"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "null_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "null_status": {
+          "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "NOT NULL constraint failed: orders.status"
+        },
+        "invalid_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        }
+      },
+      "schema": {
+        "installed_ddl": [
+          "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status TEXT NOT NULL DEFAULT 'pending',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT"
+        ],
+        "checks": [
+          {
+            "sqltext": "price_cents BETWEEN 0 AND 9999999999",
+            "name": null
+          },
+          {
+            "sqltext": "quantity BETWEEN 1 AND 2147483647",
+            "name": null
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'pending'",
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+            "primary_key": 0
+          }
+        ]
+      },
+      "drift": {
+        "removed_checks": {
+          "altered_ddl": "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL,\n        quantity INTEGER NOT NULL,\n        status TEXT NOT NULL DEFAULT 'pending',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT",
+          "verification": {
+            "migration_history": "accepted",
+            "strict": "rejected",
+            "issues": [
+              {
+                "table_name": "orders",
+                "detail": "column 'status' differs: server default expected None, found \"'pending'\""
+              }
+            ]
+          },
+          "schema": {
+            "installed_ddl": [
+              "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL,\n        quantity INTEGER NOT NULL,\n        status TEXT NOT NULL DEFAULT 'pending',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT"
+            ],
+            "checks": [],
+            "columns": [
+              {
+                "name": "id",
+                "type": "INTEGER",
+                "nullable": true,
+                "default": null,
+                "primary_key": 1
+              },
+              {
+                "name": "price_cents",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "quantity",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "status",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "'pending'",
+                "primary_key": 0
+              },
+              {
+                "name": "created_at",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+                "primary_key": 0
+              }
+            ]
+          },
+          "zero_quantity": "accepted",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:50.822Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "rows": [
+                [
+                  123,
+                  0,
+                  "pending",
+                  "2026-09-12T09:24:50.823Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "rows": [
+                [
+                  -1,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:50.823Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "rows": [
+                [
+                  10000000000,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:50.823Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "rows": [
+                [
+                  123,
+                  2147483648,
+                  "pending",
+                  "2026-09-12T09:24:50.824Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "outcome": "rejected",
+              "error": "cannot store REAL value in INTEGER column orders.price_cents"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:50.824Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.created_at"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.status"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "not-a-date"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "after": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "fetched": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:50.829000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        },
+        "changed_default": {
+          "altered_ddl": "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status TEXT NOT NULL DEFAULT 'queued',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT",
+          "verification": {
+            "migration_history": "accepted",
+            "strict": "rejected",
+            "issues": [
+              {
+                "table_name": "orders",
+                "detail": "column 'status' differs: server default expected None, found \"'queued'\""
+              }
+            ]
+          },
+          "schema": {
+            "installed_ddl": [
+              "CREATE TABLE orders (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        price_cents INTEGER NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity INTEGER NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status TEXT NOT NULL DEFAULT 'queued',\n        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))\n    ) STRICT"
+            ],
+            "checks": [
+              {
+                "sqltext": "price_cents BETWEEN 0 AND 9999999999",
+                "name": null
+              },
+              {
+                "sqltext": "quantity BETWEEN 1 AND 2147483647",
+                "name": null
+              }
+            ],
+            "columns": [
+              {
+                "name": "id",
+                "type": "INTEGER",
+                "nullable": true,
+                "default": null,
+                "primary_key": 1
+              },
+              {
+                "name": "price_cents",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "quantity",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "status",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "'queued'",
+                "primary_key": 0
+              },
+              {
+                "name": "created_at",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+                "primary_key": 0
+              }
+            ]
+          },
+          "zero_quantity": "rejected",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12T09:24:50.830Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: quantity BETWEEN 1 AND 2147483647"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: price_cents BETWEEN 0 AND 9999999999"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: price_cents BETWEEN 0 AND 9999999999"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: quantity BETWEEN 1 AND 2147483647"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "outcome": "rejected",
+              "error": "cannot store REAL value in INTEGER column orders.price_cents"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12T09:24:50.831Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.created_at"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.status"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "not-a-date"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "after": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "fetched": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:50.835000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        }
+      },
+      "runtime_controls": {
+        "version": "3.50.4"
+      },
+      "raw_connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "mariadb/snekql": {
+      "application": {
+        "offset": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 08:34:05.123456+05:30",
+              "type": "datetime"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "defaults": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "3",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.383000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "upper_bounds": {
+          "input": {
+            "price_cents": {
+              "value": "9999999999",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483647",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "4",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.384000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "zero_cents": {
+          "input": {
+            "price_cents": {
+              "value": "0",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "after": {
+            "id": "PENDING_GENERATION",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "PENDING_GENERATION",
+            "created_at": "PENDING_GENERATION"
+          },
+          "fetched": {
+            "id": "5",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.384000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "fractional_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.5",
+              "type": "Decimal"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "price_cents: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "float_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.0",
+              "type": "float"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "price_cents: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "bool_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "quantity: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "string_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "str"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "input_validation",
+          "error": "quantity: 1 validation error for int\n  Input should be a valid integer [type=int_type, input_value='1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "zero_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "negative_cents": {
+          "input": {
+            "price_cents": {
+              "value": "-1",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "overflow_cents": {
+          "input": {
+            "price_cents": {
+              "value": "10000000000",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be less than or equal to 9999999999 [type=less_than_equal, input_value=10000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "overflow_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483648",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be less than or equal to 2147483647 [type=less_than_equal, input_value=2147483648, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "naive_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 03:04:05",
+              "type": "datetime"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "null_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'created_at' cannot be null"
+        },
+        "null_status": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "status": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "'status' cannot be null"
+        },
+        "missing_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "missing required value for 'quantity'"
+        }
+      },
+      "ddl": "CREATE TABLE orders (\n        id BIGINT PRIMARY KEY AUTO_INCREMENT,\n        price_cents BIGINT NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity BIGINT NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'pending',\n        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)\n    ) ENGINE=InnoDB",
+      "scaffold": "CREATE TABLE `orders` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price_cents` BIGINT NOT NULL, `quantity` BIGINT NOT NULL, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)) ENGINE=InnoDB;",
+      "migrations": {
+        "applied": [
+          "001_orders"
+        ],
+        "already_applied": [],
+        "legacy_adopted": false
+      },
+      "verification": {
+        "migration_history": "accepted",
+        "strict": "rejected",
+        "issues": [
+          {
+            "table_name": "orders",
+            "detail": "column 'status' differs: server default expected None, found \"'pending'\""
+          }
+        ]
+      },
+      "native_bool_quantity": {
+        "input": {
+          "price_cents": {
+            "value": "123",
+            "type": "int"
+          },
+          "quantity": {
+            "value": "True",
+            "type": "bool"
+          }
+        },
+        "before": {
+          "id": "PENDING_GENERATION",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "PENDING_GENERATION",
+          "created_at": "PENDING_GENERATION"
+        },
+        "after": {
+          "id": "PENDING_GENERATION",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "PENDING_GENERATION",
+          "created_at": "PENDING_GENERATION"
+        },
+        "fetched": {
+          "id": "1",
+          "price_cents": "123",
+          "quantity": "1",
+          "status": "pending",
+          "created_at": "2026-09-12 09:24:51.381000+00:00"
+        },
+        "fetched_types": {
+          "id": "int",
+          "price_cents": "int",
+          "quantity": "int",
+          "status": "str",
+          "created_at": "datetime"
+        },
+        "outcome": "accepted",
+        "stage": "fetch"
+      },
+      "raw": {
+        "defaults": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+          "warnings": [],
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12 09:24:51.389000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "zero_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `orders.quantity` failed for `test`.`orders`')"
+        },
+        "negative_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `orders.price_cents` failed for `test`.`orders`')"
+        },
+        "overflow_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `orders.price_cents` failed for `test`.`orders`')"
+        },
+        "overflow_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `orders.quantity` failed for `test`.`orders`')"
+        },
+        "fractional_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+          "warnings": [],
+          "rows": [
+            [
+              2,
+              1,
+              "pending",
+              "2026-09-12 09:24:51.390000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "string_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+          "warnings": [],
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12 09:24:51.391000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "null_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "null_status": {
+          "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "(1048, \"Column 'status' cannot be null\")"
+        },
+        "invalid_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+          "outcome": "rejected",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        }
+      },
+      "schema": {
+        "installed_ddl": [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL CHECK (`price_cents` between 0 and 9999999999),\n  `quantity` bigint(20) NOT NULL CHECK (`quantity` between 1 and 2147483647),\n  `status` varchar(255) NOT NULL DEFAULT 'pending',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        "checks": [],
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "quantity",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": "'pending'",
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp(3)",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "drift": {
+        "removed_checks": {
+          "altered_ddl": "CREATE TABLE orders (\n        id BIGINT PRIMARY KEY AUTO_INCREMENT,\n        price_cents BIGINT NOT NULL,\n        quantity BIGINT NOT NULL,\n        status VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'pending',\n        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)\n    ) ENGINE=InnoDB",
+          "verification": {
+            "migration_history": "accepted",
+            "strict": "rejected",
+            "issues": [
+              {
+                "table_name": "orders",
+                "detail": "column 'status' differs: server default expected None, found \"'pending'\""
+              }
+            ]
+          },
+          "schema": {
+            "installed_ddl": [
+              "orders",
+              "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL DEFAULT 'pending',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+            ],
+            "checks": [],
+            "columns": [
+              {
+                "name": "id",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": true
+              },
+              {
+                "name": "price_cents",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "quantity",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "status",
+                "type": "VARCHAR(255)",
+                "default": "'pending'",
+                "comment": null,
+                "nullable": false
+              },
+              {
+                "name": "created_at",
+                "type": "DATETIME",
+                "default": "current_timestamp(3)",
+                "comment": null,
+                "nullable": false
+              }
+            ]
+          },
+          "zero_quantity": "accepted",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:51.395000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  0,
+                  "pending",
+                  "2026-09-12 09:24:51.395000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  -1,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:51.395000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  10000000000,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:51.396000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  2147483648,
+                  "pending",
+                  "2026-09-12 09:24:51.396000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  2,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:51.396000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:51.396000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'created_at' cannot be null\")"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'status' cannot be null\")"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "outcome": "rejected",
+              "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "after": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "fetched": {
+              "id": "8",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:51.400000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        },
+        "changed_default": {
+          "altered_ddl": "CREATE TABLE orders (\n        id BIGINT PRIMARY KEY AUTO_INCREMENT,\n        price_cents BIGINT NOT NULL CHECK (price_cents BETWEEN 0 AND 9999999999),\n        quantity BIGINT NOT NULL CHECK (quantity BETWEEN 1 AND 2147483647),\n        status VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'queued',\n        created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)\n    ) ENGINE=InnoDB",
+          "verification": {
+            "migration_history": "accepted",
+            "strict": "rejected",
+            "issues": [
+              {
+                "table_name": "orders",
+                "detail": "column 'status' differs: server default expected None, found \"'queued'\""
+              }
+            ]
+          },
+          "schema": {
+            "installed_ddl": [
+              "orders",
+              "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL CHECK (`price_cents` between 0 and 9999999999),\n  `quantity` bigint(20) NOT NULL CHECK (`quantity` between 1 and 2147483647),\n  `status` varchar(255) NOT NULL DEFAULT 'queued',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+            ],
+            "checks": [],
+            "columns": [
+              {
+                "name": "id",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": true
+              },
+              {
+                "name": "price_cents",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "quantity",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "status",
+                "type": "VARCHAR(255)",
+                "default": "'queued'",
+                "comment": null,
+                "nullable": false
+              },
+              {
+                "name": "created_at",
+                "type": "DATETIME",
+                "default": "current_timestamp(3)",
+                "comment": null,
+                "nullable": false
+              }
+            ]
+          },
+          "zero_quantity": "rejected",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:51.401000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `orders.quantity` failed for `test`.`orders`')"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `orders.price_cents` failed for `test`.`orders`')"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `orders.price_cents` failed for `test`.`orders`')"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `orders.quantity` failed for `test`.`orders`')"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  2,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:51.402000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:51.402000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'created_at' cannot be null\")"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'status' cannot be null\")"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "outcome": "rejected",
+              "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "after": {
+              "id": "PENDING_GENERATION",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "PENDING_GENERATION",
+              "created_at": "PENDING_GENERATION"
+            },
+            "fetched": {
+              "id": "4",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:51.407000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        }
+      },
+      "runtime_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1
+      },
+      "raw_connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "engine": "InnoDB",
+        "collation": "utf8mb4_bin"
+      }
+    },
+    "sqlite/sqlalchemy": {
+      "application": {
+        "offset": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 08:34:05.123456+05:30",
+              "type": "datetime"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "after": {
+            "id": "1",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched": {
+            "id": "1",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "defaults": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.450000+00:00"
+          },
+          "fetched": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.450000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "upper_bounds": {
+          "input": {
+            "price_cents": {
+              "value": "9999999999",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483647",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "3",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.452000+00:00"
+          },
+          "fetched": {
+            "id": "3",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.452000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "zero_cents": {
+          "input": {
+            "price_cents": {
+              "value": "0",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "4",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.453000+00:00"
+          },
+          "fetched": {
+            "id": "4",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:51.453000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "fractional_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.5",
+              "type": "Decimal"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "float_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.0",
+              "type": "float"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "bool_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "string_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "str"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value='1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "zero_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "negative_cents": {
+          "input": {
+            "price_cents": {
+              "value": "-1",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "overflow_cents": {
+          "input": {
+            "price_cents": {
+              "value": "10000000000",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be less than or equal to 9999999999 [type=less_than_equal, input_value=10000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "overflow_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483648",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be less than or equal to 2147483647 [type=less_than_equal, input_value=2147483648, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "naive_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 03:04:05",
+              "type": "datetime"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should have timezone info [type=timezone_aware, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/timezone_aware"
+        },
+        "null_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_type"
+        },
+        "null_status": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "status": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for str\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+        },
+        "missing_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "None",
+            "status": "None",
+            "created_at": "None"
+          },
+          "outcome": "rejected",
+          "stage": "flush",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "wrapper": "StatementError"
+        }
+      },
+      "ddl": "\nCREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL, \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n STRICT\n\n",
+      "bulk": {
+        "null_timestamp": {
+          "outcome": "rejected",
+          "stage": "bulk_execute",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_type",
+          "wrapper": "StatementError"
+        },
+        "bool_quantity": {
+          "outcome": "rejected",
+          "stage": "bulk_execute",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "wrapper": "StatementError"
+        }
+      },
+      "raw": {
+        "defaults": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12T09:24:51.458Z"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "zero_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: ck_quantity"
+        },
+        "negative_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: ck_price_cents"
+        },
+        "overflow_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: ck_price_cents"
+        },
+        "overflow_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+          "outcome": "rejected",
+          "error": "CHECK constraint failed: ck_quantity"
+        },
+        "fractional_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+          "outcome": "rejected",
+          "error": "cannot store REAL value in INTEGER column orders.price_cents"
+        },
+        "string_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12T09:24:51.459Z"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "null_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "null_status": {
+          "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "NOT NULL constraint failed: orders.status"
+        },
+        "invalid_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "str"
+            ]
+          ],
+          "outcome": "accepted"
+        }
+      },
+      "schema": {
+        "installed_ddl": [
+          "CREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL, \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n STRICT\n\n"
+        ],
+        "checks": [
+          {
+            "sqltext": "price_cents BETWEEN 0 AND 9999999999",
+            "name": "ck_price_cents"
+          },
+          {
+            "sqltext": "quantity BETWEEN 1 AND 2147483647",
+            "name": "ck_quantity"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "'pending'",
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+            "primary_key": 0
+          }
+        ]
+      },
+      "drift": {
+        "removed_checks": {
+          "altered_ddl": "\nCREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL\n)\n STRICT\n\n",
+          "create_all": "completed",
+          "schema": {
+            "installed_ddl": [
+              "CREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL\n)\n STRICT\n\n"
+            ],
+            "checks": [],
+            "columns": [
+              {
+                "name": "id",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 1
+              },
+              {
+                "name": "price_cents",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "quantity",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "status",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "'pending'",
+                "primary_key": 0
+              },
+              {
+                "name": "created_at",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+                "primary_key": 0
+              }
+            ]
+          },
+          "zero_quantity": "accepted",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:51.461Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "rows": [
+                [
+                  123,
+                  0,
+                  "pending",
+                  "2026-09-12T09:24:51.461Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "rows": [
+                [
+                  -1,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:51.461Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "rows": [
+                [
+                  10000000000,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:51.462Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "rows": [
+                [
+                  123,
+                  2147483648,
+                  "pending",
+                  "2026-09-12T09:24:51.462Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "outcome": "rejected",
+              "error": "cannot store REAL value in INTEGER column orders.price_cents"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12T09:24:51.462Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.created_at"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.status"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "not-a-date"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "None",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "None",
+              "created_at": "None"
+            },
+            "after": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:51.463000+00:00"
+            },
+            "fetched": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:51.463000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        },
+        "changed_default": {
+          "altered_ddl": "\nCREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'queued' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL, \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n STRICT\n\n",
+          "create_all": "completed",
+          "schema": {
+            "installed_ddl": [
+              "CREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'queued' NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL, \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n STRICT\n\n"
+            ],
+            "checks": [
+              {
+                "sqltext": "price_cents BETWEEN 0 AND 9999999999",
+                "name": "ck_price_cents"
+              },
+              {
+                "sqltext": "quantity BETWEEN 1 AND 2147483647",
+                "name": "ck_quantity"
+              }
+            ],
+            "columns": [
+              {
+                "name": "id",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 1
+              },
+              {
+                "name": "price_cents",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "quantity",
+                "type": "INTEGER",
+                "nullable": false,
+                "default": null,
+                "primary_key": 0
+              },
+              {
+                "name": "status",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "'queued'",
+                "primary_key": 0
+              },
+              {
+                "name": "created_at",
+                "type": "TEXT",
+                "nullable": false,
+                "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+                "primary_key": 0
+              }
+            ]
+          },
+          "zero_quantity": "rejected",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12T09:24:51.465Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: ck_quantity"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: ck_price_cents"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: ck_price_cents"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "outcome": "rejected",
+              "error": "CHECK constraint failed: ck_quantity"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "outcome": "rejected",
+              "error": "cannot store REAL value in INTEGER column orders.price_cents"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12T09:24:51.466Z"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.created_at"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "NOT NULL constraint failed: orders.status"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "not-a-date"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "str"
+                ]
+              ],
+              "outcome": "accepted"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "None",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "None",
+              "created_at": "None"
+            },
+            "after": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:51.467000+00:00"
+            },
+            "fetched": {
+              "id": "1",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:51.467000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        }
+      },
+      "raw_connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "mariadb/sqlalchemy": {
+      "application": {
+        "offset": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 08:34:05.123456+05:30",
+              "type": "datetime"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "after": {
+            "id": "1",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched": {
+            "id": "1",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-01-02 03:04:05.123000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "defaults": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.505000+00:00"
+          },
+          "fetched": {
+            "id": "2",
+            "price_cents": "123",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.505000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "upper_bounds": {
+          "input": {
+            "price_cents": {
+              "value": "9999999999",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483647",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "3",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.506000+00:00"
+          },
+          "fetched": {
+            "id": "3",
+            "price_cents": "9999999999",
+            "quantity": "2147483647",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.506000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "zero_cents": {
+          "input": {
+            "price_cents": {
+              "value": "0",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "None",
+            "created_at": "None"
+          },
+          "after": {
+            "id": "4",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.507000+00:00"
+          },
+          "fetched": {
+            "id": "4",
+            "price_cents": "0",
+            "quantity": "1",
+            "status": "pending",
+            "created_at": "2026-09-12 09:24:52.507000+00:00"
+          },
+          "fetched_types": {
+            "id": "int",
+            "price_cents": "int",
+            "quantity": "int",
+            "status": "str",
+            "created_at": "datetime"
+          },
+          "outcome": "accepted",
+          "stage": "fetch"
+        },
+        "fractional_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.5",
+              "type": "Decimal"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "float_cents": {
+          "input": {
+            "price_cents": {
+              "value": "1.0",
+              "type": "float"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "bool_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "string_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "str"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value='1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "zero_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "negative_cents": {
+          "input": {
+            "price_cents": {
+              "value": "-1",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "overflow_cents": {
+          "input": {
+            "price_cents": {
+              "value": "10000000000",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be less than or equal to 9999999999 [type=less_than_equal, input_value=10000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "overflow_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "2147483648",
+              "type": "int"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for constrained-int\n  Input should be less than or equal to 2147483647 [type=less_than_equal, input_value=2147483648, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        },
+        "naive_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "2026-01-02 03:04:05",
+              "type": "datetime"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should have timezone info [type=timezone_aware, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/timezone_aware"
+        },
+        "null_timestamp": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "created_at": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_type"
+        },
+        "null_status": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            },
+            "quantity": {
+              "value": "1",
+              "type": "int"
+            },
+            "status": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          },
+          "outcome": "rejected",
+          "stage": "construction",
+          "error": "1 validation error for str\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+        },
+        "missing_quantity": {
+          "input": {
+            "price_cents": {
+              "value": "123",
+              "type": "int"
+            }
+          },
+          "before": {
+            "id": "None",
+            "price_cents": "123",
+            "quantity": "None",
+            "status": "None",
+            "created_at": "None"
+          },
+          "outcome": "rejected",
+          "stage": "flush",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "wrapper": "StatementError"
+        }
+      },
+      "ddl": "\nCREATE TABLE orders (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tprice_cents BIGINT NOT NULL, \n\tquantity BIGINT NOT NULL, \n\tstatus VARCHAR(255) COLLATE utf8mb4_bin NOT NULL DEFAULT 'pending', \n\tcreated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n\n",
+      "bulk": {
+        "null_timestamp": {
+          "outcome": "rejected",
+          "stage": "bulk_execute",
+          "error": "1 validation error for function-after[_utc_millis(), datetime]\n  Input should be a valid datetime [type=datetime_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_type",
+          "wrapper": "StatementError"
+        },
+        "bool_quantity": {
+          "outcome": "rejected",
+          "stage": "bulk_execute",
+          "error": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "wrapper": "StatementError"
+        }
+      },
+      "raw": {
+        "defaults": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+          "warnings": [],
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12 09:24:52.512000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "zero_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `ck_quantity` failed for `test`.`orders`')"
+        },
+        "negative_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `ck_price_cents` failed for `test`.`orders`')"
+        },
+        "overflow_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `ck_price_cents` failed for `test`.`orders`')"
+        },
+        "overflow_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+          "outcome": "rejected",
+          "error": "(4025, 'CONSTRAINT `ck_quantity` failed for `test`.`orders`')"
+        },
+        "fractional_cents": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+          "warnings": [],
+          "rows": [
+            [
+              2,
+              1,
+              "pending",
+              "2026-09-12 09:24:52.512000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "string_quantity": {
+          "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+          "warnings": [],
+          "rows": [
+            [
+              123,
+              1,
+              "pending",
+              "2026-09-12 09:24:52.513000"
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int",
+              "str",
+              "datetime"
+            ]
+          ],
+          "outcome": "accepted"
+        },
+        "null_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "null_status": {
+          "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+          "outcome": "rejected",
+          "error": "(1048, \"Column 'status' cannot be null\")"
+        },
+        "invalid_timestamp": {
+          "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+          "outcome": "rejected",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        }
+      },
+      "schema": {
+        "installed_ddl": [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL DEFAULT 'pending',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`),\n  CONSTRAINT `ck_price_cents` CHECK (`price_cents` between 0 and 9999999999),\n  CONSTRAINT `ck_quantity` CHECK (`quantity` between 1 and 2147483647)\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        "checks": [
+          {
+            "name": "ck_price_cents",
+            "sqltext": "`price_cents` between 0 and 9999999999"
+          },
+          {
+            "name": "ck_quantity",
+            "sqltext": "`quantity` between 1 and 2147483647"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "quantity",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": "'pending'",
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp(3)",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "drift": {
+        "removed_checks": {
+          "altered_ddl": "\nCREATE TABLE orders (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tprice_cents BIGINT NOT NULL, \n\tquantity BIGINT NOT NULL, \n\tstatus VARCHAR(255) COLLATE utf8mb4_bin NOT NULL DEFAULT 'pending', \n\tcreated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), \n\tPRIMARY KEY (id)\n)\n\n",
+          "create_all": "completed",
+          "schema": {
+            "installed_ddl": [
+              "orders",
+              "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL DEFAULT 'pending',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+            ],
+            "checks": [],
+            "columns": [
+              {
+                "name": "id",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": true
+              },
+              {
+                "name": "price_cents",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "quantity",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "status",
+                "type": "VARCHAR(255)",
+                "default": "'pending'",
+                "comment": null,
+                "nullable": false
+              },
+              {
+                "name": "created_at",
+                "type": "DATETIME",
+                "default": "current_timestamp(3)",
+                "comment": null,
+                "nullable": false
+              }
+            ]
+          },
+          "zero_quantity": "accepted",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:52.515000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  0,
+                  "pending",
+                  "2026-09-12 09:24:52.515000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  -1,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:52.516000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  10000000000,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:52.516000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  2147483648,
+                  "pending",
+                  "2026-09-12 09:24:52.516000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  2,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:52.516000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "pending",
+                  "2026-09-12 09:24:52.516000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'created_at' cannot be null\")"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'status' cannot be null\")"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "outcome": "rejected",
+              "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "None",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "None",
+              "created_at": "None"
+            },
+            "after": {
+              "id": "8",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:52.517000+00:00"
+            },
+            "fetched": {
+              "id": "8",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "pending",
+              "created_at": "2026-09-12 09:24:52.517000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        },
+        "changed_default": {
+          "altered_ddl": "\nCREATE TABLE orders (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tprice_cents BIGINT NOT NULL, \n\tquantity BIGINT NOT NULL, \n\tstatus VARCHAR(255) COLLATE utf8mb4_bin NOT NULL DEFAULT 'queued', \n\tcreated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_price_cents CHECK (price_cents BETWEEN 0 AND 9999999999), \n\tCONSTRAINT ck_quantity CHECK (quantity BETWEEN 1 AND 2147483647)\n)\n\n",
+          "create_all": "completed",
+          "schema": {
+            "installed_ddl": [
+              "orders",
+              "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL DEFAULT 'queued',\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`),\n  CONSTRAINT `ck_price_cents` CHECK (`price_cents` between 0 and 9999999999),\n  CONSTRAINT `ck_quantity` CHECK (`quantity` between 1 and 2147483647)\n) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+            ],
+            "checks": [
+              {
+                "name": "ck_price_cents",
+                "sqltext": "`price_cents` between 0 and 9999999999"
+              },
+              {
+                "name": "ck_quantity",
+                "sqltext": "`quantity` between 1 and 2147483647"
+              }
+            ],
+            "columns": [
+              {
+                "name": "id",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": true
+              },
+              {
+                "name": "price_cents",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "quantity",
+                "type": "BIGINT",
+                "default": null,
+                "comment": null,
+                "nullable": false,
+                "autoincrement": false
+              },
+              {
+                "name": "status",
+                "type": "VARCHAR(255)",
+                "default": "'queued'",
+                "comment": null,
+                "nullable": false
+              },
+              {
+                "name": "created_at",
+                "type": "DATETIME",
+                "default": "current_timestamp(3)",
+                "comment": null,
+                "nullable": false
+              }
+            ]
+          },
+          "zero_quantity": "rejected",
+          "raw": {
+            "defaults": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:52.519000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "zero_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,0)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `ck_quantity` failed for `test`.`orders`')"
+            },
+            "negative_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (-1,1)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `ck_price_cents` failed for `test`.`orders`')"
+            },
+            "overflow_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (10000000000,1)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `ck_price_cents` failed for `test`.`orders`')"
+            },
+            "overflow_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,2147483648)",
+              "outcome": "rejected",
+              "error": "(4025, 'CONSTRAINT `ck_quantity` failed for `test`.`orders`')"
+            },
+            "fractional_cents": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (1.5,1)",
+              "warnings": [],
+              "rows": [
+                [
+                  2,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:52.520000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "string_quantity": {
+              "sql": "INSERT INTO orders (price_cents,quantity) VALUES (123,'1')",
+              "warnings": [],
+              "rows": [
+                [
+                  123,
+                  1,
+                  "queued",
+                  "2026-09-12 09:24:52.520000"
+                ]
+              ],
+              "types": [
+                [
+                  "int",
+                  "int",
+                  "str",
+                  "datetime"
+                ]
+              ],
+              "outcome": "accepted"
+            },
+            "null_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'created_at' cannot be null\")"
+            },
+            "null_status": {
+              "sql": "INSERT INTO orders (price_cents,quantity,status) VALUES (123,1,NULL)",
+              "outcome": "rejected",
+              "error": "(1048, \"Column 'status' cannot be null\")"
+            },
+            "invalid_timestamp": {
+              "sql": "INSERT INTO orders (price_cents,quantity,created_at) VALUES (123,1,'not-a-date')",
+              "outcome": "rejected",
+              "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+            }
+          },
+          "default_readback": {
+            "input": {
+              "price_cents": {
+                "value": "123",
+                "type": "int"
+              },
+              "quantity": {
+                "value": "1",
+                "type": "int"
+              }
+            },
+            "before": {
+              "id": "None",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "None",
+              "created_at": "None"
+            },
+            "after": {
+              "id": "4",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:52.521000+00:00"
+            },
+            "fetched": {
+              "id": "4",
+              "price_cents": "123",
+              "quantity": "1",
+              "status": "queued",
+              "created_at": "2026-09-12 09:24:52.521000+00:00"
+            },
+            "fetched_types": {
+              "id": "int",
+              "price_cents": "int",
+              "quantity": "int",
+              "status": "str",
+              "created_at": "datetime"
+            },
+            "outcome": "accepted",
+            "stage": "fetch"
+          }
+        }
+      },
+      "raw_connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "engine": "InnoDB",
+        "collation": "utf8mb4_bin"
+      }
+    }
+  }
+}

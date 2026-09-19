@@ -1,0 +1,201 @@
+{
+  "baseRefOid": "4dcb71669a9a9dffb202595e7f14251ff76714c8",
+  "body": "## Scope\n\nCloses #355. Independent follow-up to the relationship pilot in #354, which remains unmerged. No package behavior changes.\n\nStart with `research/commerce/README.md` for preliminary conclusions and qualitative observations. `SPEC.md` records desired commerce behavior; models, raw SQL probes, emitted DDL, reflected-column diffs, and recorded results sit beside it.\n\n## Findings\n\n- SQLite text preserves decimal digits but sorts lexically and uses floating-point SUM. SQLAlchemy Numeric does not enforce SQLite decimal precision; typed readback can round a value that raw storage retained.\n- MariaDB rounds extra fractional digits under strict mode. snekql's public encoder rejects those application values before binding.\n- UtcDatetime normalizes offsets and rejects naive inputs. Tested SQLAlchemy DateTime(timezone=True) writes lost the offset on both backends.\n- SQLAlchemy declares CHECK and literal server defaults directly; snekql's current scaffold does not expose equivalents. Pydantic bounds remain application validation.\n- Report covers declaration overhead, default timing, error readability, connection policy, and schema flexibility. These are implementation observations, not a usability study or a broad library ranking.\n\n## Evidence and validation\n\n- Eight runs on SQLite 3.50.4 and temporary MariaDB 12.3.2 servers.\n- 128 raw SQL observations, 16 database-rule observations, four timezone-shift observations, plus construction/encoding and selected bound readbacks.\n- `uv run --with-requirements research/commerce/requirements.txt snektest tests research/commerce/test_experiment.py`: 1211 passed.\n- Focused tests, ty, Ruff lint, and Ruff format checks passed after final changes.\n- Extra comparator dependencies are pinned separately; no root lockfile changes.\n- Typing exception is limited to SQLAlchemy's documented Mapped/mapped_column declarations in two research files.\n\nLimitations: local database binaries are recorded rather than provisioned; no ORM session or full snekql runtime benchmark. SQLite storage matching is explicitly DDL-only, without a custom SQLAlchemy codec. No migration workarounds or package fixes concealed unmet commerce requirements.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-11T04:41:48Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-11T04:41:48Z",
+      "messageBody": "",
+      "messageHeadline": "Investigate commerce schema semantics and ergonomics (#355)",
+      "oid": "470b5d398777c0ac6415b3d428785d928f82af49"
+    }
+  ],
+  "createdAt": "2026-09-11T04:41:51Z",
+  "files": [
+    {
+      "path": "pyproject.toml",
+      "additions": 10,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/commerce/README.md",
+      "additions": 223,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/SPEC.md",
+      "additions": 52,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/applications.py",
+      "additions": 88,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/database_rules.py",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/experiment.py",
+      "additions": 307,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-idiomatic-columns.diff",
+      "additions": 56,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-matched-columns.diff",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-snekql-idiomatic.sql",
+      "additions": 5,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-snekql-matched.sql",
+      "additions": 5,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-sqlalchemy-database-rules.sql",
+      "additions": 7,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-sqlalchemy-idiomatic.sql",
+      "additions": 19,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb-sqlalchemy-matched.sql",
+      "additions": 19,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/mariadb_models.py",
+      "additions": 46,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/probes.py",
+      "additions": 120,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/requirements.txt",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/results.json",
+      "additions": 4334,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlalchemy_models.py",
+      "additions": 86,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-idiomatic-columns.diff",
+      "additions": 55,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-matched-columns.diff",
+      "additions": 29,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-snekql-idiomatic.sql",
+      "additions": 5,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-snekql-matched.sql",
+      "additions": 5,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-sqlalchemy-database-rules.sql",
+      "additions": 7,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-sqlalchemy-idiomatic.sql",
+      "additions": 19,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite-sqlalchemy-matched.sql",
+      "additions": 19,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/sqlite_models.py",
+      "additions": 45,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/commerce/test_experiment.py",
+      "additions": 50,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/commerce-schema",
+  "headRefOid": "470b5d398777c0ac6415b3d428785d928f82af49",
+  "number": 357,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research money, timestamps, defaults, and schema ergonomics",
+  "updatedAt": "2026-09-11T04:41:51Z",
+  "url": "https://github.com/crpier/snekql/pull/357"
+}

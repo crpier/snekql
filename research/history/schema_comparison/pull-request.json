@@ -1,0 +1,177 @@
+{
+  "baseRefOid": "4edf5391cd0faa8078a91e32093a119929963b26",
+  "body": "## Scope\n\nCloses #353.\n\nPilot users/profiles and teams/memberships across both database engines, using idiomatic and matched-intent declarations. No package behavior changes.\n\nStart review at `research/schema_comparison/README.md`, then model declarations and raw SQL probes. Generated SQL, reflected structural diffs, and full observations are committed beside the runner.\n\n## Findings\n\n- All 128 shared-contract checks passed across eight runs.\n- Forty diagnostic observations expose SQLite STRICT and ID-reuse differences, plus MariaDB integer-range and collation differences.\n- Explicitly matched declarations agree on the measured behavior.\n- Python defaults did not become server defaults in either library.\n\n## Validation\n\n- Ran the experiment on SQLite 3.50.4 and temporary MariaDB 12.3.2 servers.\n- `uv run --group research snektest tests research/schema_comparison/test_experiment.py`: 1212 passed.\n- `uv run --group research ty check`: passed.\n- `uv run --group research ruff check .`: passed.\n- `uv run --group research ruff format --check .`: passed.\n- Bare snektest failed collection with `Empty module name`; explicit paths cover the package suite and research checks.\n\nDependencies are in an optional research group. Database versions are recorded, not provisioned by the runner. Broader type/default scenarios and MariaDB LTS coverage remain future research.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-11T04:19:55Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-11T04:19:55Z",
+      "messageBody": "",
+      "messageHeadline": "Research SQLite and MariaDB schema comparison with SQLAlchemy (#353)",
+      "oid": "2f641344e27c767b58ece84385cbafda0fcc7b0a"
+    }
+  ],
+  "createdAt": "2026-09-11T04:19:59Z",
+  "files": [
+    {
+      "path": "pyproject.toml",
+      "additions": 11,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/README.md",
+      "additions": 146,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/experiment.py",
+      "additions": 202,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-idiomatic-snekql.sql",
+      "additions": 15,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-idiomatic-sqlalchemy.sql",
+      "additions": 35,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-idiomatic.diff",
+      "additions": 164,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-matched-snekql.sql",
+      "additions": 15,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-matched-sqlalchemy.sql",
+      "additions": 35,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb-matched.diff",
+      "additions": 71,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/mariadb_models.py",
+      "additions": 53,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/probes.py",
+      "additions": 124,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/results.json",
+      "additions": 3197,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlalchemy_models.py",
+      "additions": 85,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-idiomatic-snekql.sql",
+      "additions": 15,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-idiomatic-sqlalchemy.sql",
+      "additions": 35,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-idiomatic.diff",
+      "additions": 159,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-matched-snekql.sql",
+      "additions": 15,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-matched-sqlalchemy.sql",
+      "additions": 37,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite-matched.diff",
+      "additions": 115,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/sqlite_models.py",
+      "additions": 53,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/schema_comparison/test_experiment.py",
+      "additions": 44,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "uv.lock",
+      "additions": 23,
+      "deletions": 3,
+      "changeType": "MODIFIED"
+    }
+  ],
+  "headRefName": "research/schema-comparison",
+  "headRefOid": "2f641344e27c767b58ece84385cbafda0fcc7b0a",
+  "number": 354,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research snekql versus SQLAlchemy schemas on SQLite and MariaDB",
+  "updatedAt": "2026-09-11T04:19:59Z",
+  "url": "https://github.com/crpier/snekql/pull/354"
+}

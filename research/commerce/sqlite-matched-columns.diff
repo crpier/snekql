@@ -1,0 +1,29 @@
+--- snekql
++++ sqlalchemy
+@@ -3,7 +3,7 @@
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },
+@@ -19,7 +19,7 @@
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },
+@@ -49,7 +49,7 @@
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },

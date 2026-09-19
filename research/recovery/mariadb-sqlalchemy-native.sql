@@ -1,0 +1,9 @@
+CREATE TABLE entries (
+	id INTEGER NOT NULL AUTO_INCREMENT,
+	code VARCHAR(255) NOT NULL,
+	quantity INTEGER NOT NULL,
+	note VARCHAR(255),
+	occurred_at DATETIME(3) NOT NULL,
+	PRIMARY KEY (id),
+	UNIQUE (code)
+);

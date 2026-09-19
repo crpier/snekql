@@ -1,0 +1,55 @@
+--- snekql
++++ sqlalchemy
+@@ -3,7 +3,7 @@
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },
+@@ -19,7 +19,7 @@
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },
+@@ -35,21 +35,21 @@
+       "name": "status",
+       "nullable": false,
+       "primary_key": 0,
+-      "type": "TEXT"
++      "type": "VARCHAR(255)"
+     },
+     {
+-      "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
++      "default": "CURRENT_TIMESTAMP",
+       "name": "created_at",
+       "nullable": false,
+       "primary_key": 0,
+-      "type": "TEXT"
++      "type": "DATETIME"
+     }
+   ],
+   "products": [
+     {
+       "default": null,
+       "name": "id",
+-      "nullable": true,
++      "nullable": false,
+       "primary_key": 1,
+       "type": "INTEGER"
+     },
+@@ -58,7 +58,7 @@
+       "name": "price",
+       "nullable": false,
+       "primary_key": 0,
+-      "type": "TEXT"
++      "type": "NUMERIC(10, 2)"
+     }
+   ]
+ }

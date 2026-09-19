@@ -1,0 +1,6 @@
+CREATE TABLE counter (
+	id INTEGER NOT NULL,
+	quantity INTEGER NOT NULL,
+	revision INTEGER NOT NULL,
+	PRIMARY KEY (id)
+);

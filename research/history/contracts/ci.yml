@@ -12,9 +12,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PYTHON_CONTEXT_AWARE_WARNINGS: "1"
-
 jobs:
   validate:
     name: Validate
@@ -38,7 +35,7 @@ jobs:
       - name: Sync locked environment
         run: uv sync --locked --all-extras
       - name: Test
-        run: uv run snektest tests
+        run: uv run snektest
       - name: Type check
         run: uv run ty check
       - name: Lint

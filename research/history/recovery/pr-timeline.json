@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "sha": "bcc66c2745f8006d7de04ff0cc1173251b7252b3",
+      "node_id": "C_kwDORi7RydoAKGJjYzY2YzI3NDVmODAwNmQ3ZGUwNGZmMGNjMTE3MzI1MWI3MjUyYjM",
+      "url": "https://api.github.com/repos/crpier/snekql/git/commits/bcc66c2745f8006d7de04ff0cc1173251b7252b3",
+      "html_url": "https://github.com/crpier/snekql/commit/bcc66c2745f8006d7de04ff0cc1173251b7252b3",
+      "author": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-19T07:58:02Z"
+      },
+      "committer": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-19T07:58:02Z"
+      },
+      "tree": {
+        "sha": "4b0aed71d1fca980438a8a31749ab1a352ff8f7c",
+        "url": "https://api.github.com/repos/crpier/snekql/git/trees/4b0aed71d1fca980438a8a31749ab1a352ff8f7c"
+      },
+      "message": "Investigate updates and failure recovery versus SQLAlchemy (#363)",
+      "parents": [
+        {
+          "sha": "86120109a4b5ce8a323108e4fd50e38f4696e16c",
+          "url": "https://api.github.com/repos/crpier/snekql/git/commits/86120109a4b5ce8a323108e4fd50e38f4696e16c",
+          "html_url": "https://github.com/crpier/snekql/commit/86120109a4b5ce8a323108e4fd50e38f4696e16c"
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "event": "committed"
+    }
+  ]
+]

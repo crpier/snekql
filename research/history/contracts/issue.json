@@ -1,0 +1,11 @@
+{
+  "body": "Follow-up to #355. User approved full snekql transactions and SQLAlchemy ORM sessions.\n\nCompare equivalent bounded integer-cent/positive-quantity validation, millisecond UTC timestamps, literal status defaults, and database CHECK constraints on SQLite and MariaDB. SQLAlchemy gets explicit validation/types; snekql gets hand-authored migrations. Record actual round trips, rejection stages, defaults, raw SQL behavior, and schema verification limits.\n\nDeliver an independent research report, runnable examples, evidence, and focused test-first checks. No package fixes or merging previous research PRs. Qualitative conclusions must describe actual code and observed behavior, not usability scores.\n",
+  "comments": [],
+  "createdAt": "2026-09-12T09:08:27Z",
+  "labels": [],
+  "number": 358,
+  "state": "OPEN",
+  "title": "Research equivalent runtime contracts and schema-rule maintenance versus SQLAlchemy",
+  "updatedAt": "2026-09-12T09:08:27Z",
+  "url": "https://github.com/crpier/snekql/issues/358"
+}

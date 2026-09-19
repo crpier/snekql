@@ -1,0 +1,11 @@
+{
+  "body": "Independent comparison following #363. No package fixes or literal-default decisions.\n\nUse two independent callers against temporary SQLite and MariaDB databases. Compare stale read-modify-write, atomic SQL decrement, version-column optimistic concurrency, affected-row conflict detection, and explicit retry after database contention. Coordinate schedules with events/barriers, not sleeps as correctness evidence.\n\nOracle: two successful decrements of quantity 10 must leave 8, or an unsuccessful caller must receive a detectable conflict. Both reporting success while leaving 9 is a lost update.\n\nUse public snekql transactions/builders/raw statements and SQLAlchemy sessions/statements, with independent readback. Separate native behavior from application retry/conflict policies. Retain runnable probes, observed outcomes, database controls, and ergonomic costs. Keep research independent of other PRs; do not merge them.\n",
+  "comments": [],
+  "createdAt": "2026-09-19T08:10:10Z",
+  "labels": [],
+  "number": 366,
+  "state": "OPEN",
+  "title": "Research concurrent updates, optimistic conflicts, and lock recovery versus SQLAlchemy",
+  "updatedAt": "2026-09-19T08:10:10Z",
+  "url": "https://github.com/crpier/snekql/issues/366"
+}
