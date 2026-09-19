@@ -377,7 +377,9 @@ class SQLiteRuntime:
         finally:
             await self._release_migration_connection(connection, connection_state)
 
-    async def verify_migrations(self, migrations: MigrationPlan) -> None:
+    async def verify_migrations(
+        self, migrations: MigrationPlan, *, minimum_applied: int | None = None
+    ) -> None:
         """Read and compare Migration History without changing it."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
@@ -387,6 +389,7 @@ class SQLiteRuntime:
                 connection,
                 connection_state,
                 migrations,
+                minimum_applied=minimum_applied,
             )
         finally:
             await self._release_migration_connection(connection, connection_state)

@@ -1101,7 +1101,10 @@ await db.verify([User], policy="strict")
   sole schema-creation authority. Run `scaffold(...)` during development, review
   its output, and commit the SQL as literals rather than recomputing old bodies
   from current model metadata.
-- `db.verify_migrations(migrations)` performs a read-only exact-head check. It
+- `db.verify_migrations(migrations)` performs a read-only exact-head check by
+  default. For rolling deployments, `policy="compatible"` with an explicit
+  `approved_later` dictionary permits only that reviewed later prefix. See
+  [rolling deployments](docs/migrations.md#rolling-deployments). It
   neither applies pending SQL nor upgrades legacy history.
 - `db.verify(models, *, policy=...)` is a partial, structural check that returns
   an immutable `SchemaVerificationResult` with checked tables and table-scoped

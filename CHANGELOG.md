@@ -4,6 +4,12 @@
 
 ### Added
 
+- `Database.verify_migrations()` retains strict exact-head verification and adds
+  opt-in `policy="compatible"` with an explicitly checksummed `approved_later`
+  suffix. The complete known chain remains required; unknown or divergent later
+  history is rejected. Migration application and schema verification remain
+  separate and unchanged. (#288)
+
 - MariaDB Config gains optional connection lifetime and idle limits plus
   `health_check="checkout"`. Recycling and non-reconnecting health probes share
   the acquisition deadline, preserve TLS and session settings, and never replay

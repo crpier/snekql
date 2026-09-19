@@ -1214,7 +1214,9 @@ if TYPE_CHECKING:
             list[tuple[int, str]],
         )
 
-    async def check_migration_types(database: sqlite.Database) -> None:
+    async def check_migration_types(
+        database: sqlite.Database | mariadb.Database,
+    ) -> None:
         """Migration verbs expose one immutable result and a read-only check."""
 
         migrations = {"001_users": 'CREATE TABLE "user" ("id" INTEGER) STRICT'}
@@ -1226,6 +1228,25 @@ if TYPE_CHECKING:
         _ = assert_type(migration_result.already_applied, tuple[str, ...])
         _ = assert_type(migration_result.legacy_adopted, bool)
         _ = assert_type(await database.verify_migrations(migrations), None)
+        _ = assert_type(
+            await database.verify_migrations(migrations, policy="strict"), None
+        )
+        _ = assert_type(
+            await database.verify_migrations(
+                migrations,
+                policy="compatible",
+                approved_later={"002_later": "SELECT 1"},
+            ),
+            None,
+        )
+        await database.verify_migrations(
+            migrations,
+            policy="prefix",  # ty: ignore[invalid-argument-type]
+        )
+        await database.verify_migrations(
+            migrations,
+            approved_later=["002_later"],  # ty: ignore[invalid-argument-type]
+        )
         _ = await database.migrate(
             [("001_users", "SELECT 1")]  # ty: ignore[invalid-argument-type]
         )
