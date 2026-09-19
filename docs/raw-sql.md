@@ -25,6 +25,9 @@ Import `RawStatement[RowT]` from the same backend to annotate statements passed
 between application functions. The alias preserves backend identity. There is no
 root-level `snekql.raw` or separate command factory.
 
+See [reporting recipes](reporting.md) for tested CTE, recursive traversal,
+ranking-window, and UNION examples on SQLite and MariaDB.
+
 ## Consumption
 
 Every Transaction call executes the statement anew. A statement can be reused
