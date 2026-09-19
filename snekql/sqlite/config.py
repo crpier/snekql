@@ -45,6 +45,7 @@ def _validate_sqlite_config(  # noqa: PLR0913
     busy_max_backoff: NonNegativeFloat,
     busy_max_retries: NonNegativeInt,
     database: Path | Literal[":memory:"],
+    durability: Literal["normal", "full"],
     operation_timeout: NonNegativeFloat,
     pool_size: PositiveInt,
     parameter_visibility: ParameterVisibility,
@@ -57,7 +58,10 @@ def _validate_sqlite_config(  # noqa: PLR0913
     """
 
     del acquire_timeout, busy_base_backoff, busy_max_backoff, busy_max_retries
-    del database, operation_timeout, parameter_visibility, pool_size
+    del operation_timeout, parameter_visibility, pool_size
+    if durability == "full" and str(database) == ":memory:":
+        msg = "SQLite full durability requires a file-backed database"
+        raise DatabaseRuntimeError(msg)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -68,9 +72,16 @@ class Config:
     >>> config = Config(database=Path("app.db"))
     >>> config.pool_size
     5
+    >>> Config(database=Path("app.db"), durability="full").durability
+    'full'
+
+    File-backed databases use WAL. `normal` preserves the default synchronization
+    policy; `full` synchronizes the WAL on each commit. FULL requires a file-backed
+    target and depends on the storage stack honoring SQLite's sync requests.
     """
 
     database: Path | Literal[":memory:"]
+    durability: Literal["normal", "full"] = "normal"
     acquire_timeout: NonNegativeFloat = 30.0
     operation_timeout: NonNegativeFloat = 30.0
     pool_size: PositiveInt = 5
@@ -92,6 +103,7 @@ class Config:
             busy_max_backoff=self.busy_max_backoff,
             busy_max_retries=self.busy_max_retries,
             database=self.database,
+            durability=self.durability,
             operation_timeout=self.operation_timeout,
             pool_size=self.pool_size,
             parameter_visibility=self.parameter_visibility,

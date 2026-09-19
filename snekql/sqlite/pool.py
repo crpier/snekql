@@ -7,7 +7,7 @@ import contextlib
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import NoReturn
+from typing import Literal, NoReturn
 
 import anyio
 from aiosqlite import Connection, Error, connect
@@ -39,7 +39,9 @@ def normalize_sqlite_database(database: object) -> str:
     )
 
 
-async def open_sqlite_connection(database_path: str) -> Connection:
+async def open_sqlite_connection(
+    database_path: str, *, durability: Literal["normal", "full"] = "normal"
+) -> Connection:
     """Open and prove an async SQLite connection without leaking partial state."""
 
     connection: Connection | None = None
@@ -53,6 +55,7 @@ async def open_sqlite_connection(database_path: str) -> Connection:
         await apply_sqlite_connection_settings(
             connection,
             file_backed=database_path != ":memory:",
+            durability=durability,
         )
     except BaseException as error:
         if connection is not None:
@@ -103,11 +106,13 @@ class SQLiteConnectionPool:
         *,
         database_path: str,
         initial_connection: Connection,
+        durability: Literal["normal", "full"] = "normal",
         pool_size: PositiveInt,
     ) -> None:
         self.closed: bool = False
         self.closing: bool = False
         self.database_path: str = database_path
+        self.durability: Literal["normal", "full"] = durability
         self.idle_connections: list[Connection] = [initial_connection]
         self.pool_size: PositiveInt = pool_size
         self.discard_tasks: set[asyncio.Task[None]] = set()
@@ -145,7 +150,9 @@ class SQLiteConnectionPool:
                     connection = self.idle_connections.pop()
                     logger.debug("sqlite connection acquired from idle pool")
                     return connection
-            opening = asyncio.create_task(open_sqlite_connection(self.database_path))
+            opening = asyncio.create_task(
+                open_sqlite_connection(self.database_path, durability=self.durability)
+            )
             with anyio.fail_after(deadline - anyio.current_time()):
                 opened_connection = await asyncio.shield(opening)
                 async with self.gate.condition:

@@ -4,6 +4,11 @@
 
 ### Added
 
+- SQLite `Config(durability="full")` applies and verifies WAL plus
+  `synchronous=FULL` on initial, additional, and replacement connections. The
+  default `"normal"` policy is unchanged. Unsupported values and FULL on in-memory
+  targets are rejected before connection initialization. (#285)
+
 - `Transaction.commit_outcome` distinguishes unattempted, rejected, acknowledged,
   and unknown managed commits. Acknowledgement survives subsequent cleanup
   failures; interrupted or lost acknowledgements stay unknown. Both namespaces

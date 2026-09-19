@@ -1071,6 +1071,11 @@ Timed-out operations discard the uncertain physical connection. A timeout before
 COMMIT acknowledgement leaves an unknown outcome requiring reconciliation.
 Acknowledged commits remain committed even if subsequent cleanup times out.
 
+For file-backed SQLite, `sqlite.Config(database=Path("app.db"), durability="full")`
+selects WAL with `synchronous=FULL` on every physical connection. The default
+`"normal"` policy is unchanged; FULL is rejected for in-memory targets. See
+[durability policy and storage limits](docs/engine-settings.md#sqlite-durability-policy).
+
 ## Migrations and verification
 
 Initialization does no schema work. A live `Database` applies the complete

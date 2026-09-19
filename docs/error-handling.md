@@ -187,7 +187,8 @@ This property describes the library's managed outer COMMIT only. It does not
 track raw COMMIT statements, implicit commits from MariaDB DDL, nontransactional
 tables, stored-program side effects, or external services. `not_attempted` is not
 a blanket claim that no side effect became durable. Savepoint release does not
-change the outer commit outcome.
+change the outer commit outcome. Acknowledgement is not itself a power-loss
+guarantee; see [SQLite durability policy](engine-settings.md#sqlite-durability-policy).
 
 ## Whole-transaction retries
 
