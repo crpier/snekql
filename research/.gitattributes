@@ -1,0 +1,3 @@
+# Preserve patch context and original generated SQL byte-for-byte.
+history/*/changes.patch -whitespace
+*/*.sql -whitespace

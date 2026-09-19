@@ -1,0 +1,11 @@
+{
+  "body": "Implement a reproducible pilot comparing users/profiles and teams/memberships on SQLite and MariaDB. Compare idiomatic defaults and matched intent through emitted DDL, installed schema, and raw SQL probes. Record unsupported declarations and findings separately from fixes.\n",
+  "comments": [],
+  "createdAt": "2026-09-11T04:09:59Z",
+  "labels": [],
+  "number": 353,
+  "state": "OPEN",
+  "title": "Research snekql versus SQLAlchemy DDL on SQLite and MariaDB",
+  "updatedAt": "2026-09-11T04:09:59Z",
+  "url": "https://github.com/crpier/snekql/issues/353"
+}

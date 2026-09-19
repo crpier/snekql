@@ -1,0 +1,11 @@
+{
+  "body": "Follow up #353 with an independent commerce-schema experiment on SQLite and MariaDB. Compare monetary storage, timestamp defaults, invalid values, and declaration/validation ergonomics. Preserve DDL and raw database evidence, distinguish application validation from database guarantees, and report qualitative observations without claiming a user study. No package fixes in this work.\n",
+  "comments": [],
+  "createdAt": "2026-09-11T04:28:56Z",
+  "labels": [],
+  "number": 355,
+  "state": "OPEN",
+  "title": "Research money, timestamps, defaults, and declaration ergonomics versus SQLAlchemy",
+  "updatedAt": "2026-09-11T04:28:56Z",
+  "url": "https://github.com/crpier/snekql/issues/355"
+}

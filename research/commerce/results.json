@@ -1,0 +1,4334 @@
+{
+  "versions": {
+    "snekql": "0.7.0",
+    "sqlalchemy": "2.0.43",
+    "pymysql": "1.1.2",
+    "pydantic": "2.13.5"
+  },
+  "python": "3.14.2",
+  "runs": {
+    "sqlite/snekql/idiomatic": {
+      "ddl": [
+        "CREATE TABLE \"products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price\" TEXT NOT NULL) STRICT",
+        "CREATE TABLE \"cent_products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price_cents\" INTEGER NOT NULL) STRICT",
+        "CREATE TABLE \"orders\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"quantity\" INTEGER NOT NULL, \"status\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "10"
+            ],
+            [
+              "2"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ],
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.239"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "100000000.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "banana"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0.30000000000000004,
+              0
+            ]
+          ],
+          "types": [
+            [
+              "float",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              30,
+              1
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "cannot store REAL value in INTEGER column cent_products.price_cents"
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-09-11T04:39:17.868Z"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123456"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.23",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.23",
+          "encoded_type": "str"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "str"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000",
+          "encoded_type": "str"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for function-after[functools.partial(<function greater_than_or_equal_validator at 0x7fef7b19ecf0>, ge=0)(), function-after[_normalize_canonical_decimal(), decimal]]\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=Decimal('-1'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for function-after[functools.partial(<function greater_than_or_equal_validator at 0x7fef7b19ecf0>, ge=0)(), function-after[_normalize_canonical_decimal(), decimal]]\n  Input should be an instance of Decimal [type=is_instance_of, input_value='banana', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/is_instance_of"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123000+00:00",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02T03:04:05.123Z",
+          "encoded_type": "str"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5, 123456), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "unpersisted_defaults": {
+          "status": "pending",
+          "created_at": "PENDING_GENERATION",
+          "created_at_type": "PendingGeneration"
+        }
+      },
+      "controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+            "primary_key": 0
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "cent_products",
+          "CREATE TABLE \"cent_products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price_cents\" INTEGER NOT NULL) STRICT"
+        ],
+        [
+          "orders",
+          "CREATE TABLE \"orders\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"quantity\" INTEGER NOT NULL, \"status\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT"
+        ],
+        [
+          "products",
+          "CREATE TABLE \"products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price\" TEXT NOT NULL) STRICT"
+        ],
+        [
+          "sqlite_sequence",
+          "CREATE TABLE sqlite_sequence(name,seq)"
+        ]
+      ],
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02T03:04:05.123Z",
+        "raw_type": "str",
+        "typed": "2026-01-02 03:04:05.123000+00:00",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      }
+    },
+    "mariadb/snekql/idiomatic": {
+      "ddl": [
+        "CREATE TABLE `products` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price` DECIMAL(10,2) NOT NULL) ENGINE=InnoDB",
+        "CREATE TABLE `cent_products` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price_cents` BIGINT NOT NULL) ENGINE=InnoDB",
+        "CREATE TABLE `orders` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `quantity` BIGINT NOT NULL, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)) ENGINE=InnoDB"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2.00"
+            ],
+            [
+              "10.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ],
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [
+            [
+              "Note",
+              1265,
+              "Data truncated for column 'price' at row 1"
+            ]
+          ],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.24"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1264, \"Out of range value for column 'price' at row 1\")"
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1366, \"Incorrect decimal value: 'banana' for column `test`.`products`.`price` at row 1\")"
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "0.30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              2
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.2300",
+          "encoded_type": "Decimal"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "rejected",
+          "error": "'price' decimal value does not fit DECIMAL(10, 2)"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "rejected",
+          "error": "'price' decimal value does not fit DECIMAL(10, 2)"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for decimal\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=Decimal('-1'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for decimal\n  Input should be an instance of Decimal [type=is_instance_of, input_value='banana', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/is_instance_of"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123000+00:00",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123",
+          "encoded_type": "str"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5, 123456), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "unpersisted_defaults": {
+          "status": "pending",
+          "created_at": "PENDING_GENERATION",
+          "created_at_type": "PendingGeneration"
+        }
+      },
+      "controls": {
+        "version": "12.3.2-MariaDB",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "time_zone": "+00:00",
+        "clock": 1767323045.123456,
+        "engine": "InnoDB",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price",
+            "type": "DECIMAL(10, 2)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "quantity",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp(3)",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "products",
+          "CREATE TABLE `products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price` decimal(10,2) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "cent_products",
+          "CREATE TABLE `cent_products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL,\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ]
+      ],
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02 03:04:05.123000",
+        "raw_type": "datetime",
+        "typed": "2026-01-02 03:04:05.123000+00:00",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "timezone_shift": {
+        "name": "timestamp_default",
+        "question": "Does omitting creation time get a database value, and in what format?",
+        "statements": [
+          "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+        ],
+        "query": "SELECT created_at FROM orders",
+        "warnings": [],
+        "outcome": "accepted",
+        "rows": [
+          [
+            "2026-01-02 08:34:05.123000"
+          ]
+        ],
+        "types": [
+          [
+            "datetime"
+          ]
+        ]
+      }
+    },
+    "sqlite/snekql/matched": {
+      "ddl": [
+        "CREATE TABLE \"products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price\" TEXT NOT NULL) STRICT",
+        "CREATE TABLE \"cent_products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price_cents\" INTEGER NOT NULL) STRICT",
+        "CREATE TABLE \"orders\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"quantity\" INTEGER NOT NULL, \"status\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "10"
+            ],
+            [
+              "2"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ],
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.239"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "100000000.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "banana"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0.30000000000000004,
+              0
+            ]
+          ],
+          "types": [
+            [
+              "float",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              30,
+              1
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "cannot store REAL value in INTEGER column cent_products.price_cents"
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-09-11T04:39:18.686Z"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123456"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.23",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.23",
+          "encoded_type": "str"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "str"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000",
+          "encoded_type": "str"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for function-after[functools.partial(<function greater_than_or_equal_validator at 0x7fef7b19ecf0>, ge=0)(), function-after[_normalize_canonical_decimal(), decimal]]\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=Decimal('-1'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for function-after[functools.partial(<function greater_than_or_equal_validator at 0x7fef7b19ecf0>, ge=0)(), function-after[_normalize_canonical_decimal(), decimal]]\n  Input should be an instance of Decimal [type=is_instance_of, input_value='banana', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/is_instance_of"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123000+00:00",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02T03:04:05.123Z",
+          "encoded_type": "str"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5, 123456), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "unpersisted_defaults": {
+          "status": "pending",
+          "created_at": "PENDING_GENERATION",
+          "created_at_type": "PendingGeneration"
+        }
+      },
+      "controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+            "primary_key": 0
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "cent_products",
+          "CREATE TABLE \"cent_products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price_cents\" INTEGER NOT NULL) STRICT"
+        ],
+        [
+          "orders",
+          "CREATE TABLE \"orders\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"quantity\" INTEGER NOT NULL, \"status\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT"
+        ],
+        [
+          "products",
+          "CREATE TABLE \"products\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"price\" TEXT NOT NULL) STRICT"
+        ],
+        [
+          "sqlite_sequence",
+          "CREATE TABLE sqlite_sequence(name,seq)"
+        ]
+      ],
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02T03:04:05.123Z",
+        "raw_type": "str",
+        "typed": "2026-01-02 03:04:05.123000+00:00",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      }
+    },
+    "mariadb/snekql/matched": {
+      "ddl": [
+        "CREATE TABLE `products` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price` DECIMAL(10,2) NOT NULL) ENGINE=InnoDB",
+        "CREATE TABLE `cent_products` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price_cents` BIGINT NOT NULL) ENGINE=InnoDB",
+        "CREATE TABLE `orders` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `quantity` BIGINT NOT NULL, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)) ENGINE=InnoDB"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2.00"
+            ],
+            [
+              "10.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ],
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [
+            [
+              "Note",
+              1265,
+              "Data truncated for column 'price' at row 1"
+            ]
+          ],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.24"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1264, \"Out of range value for column 'price' at row 1\")"
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1366, \"Incorrect decimal value: 'banana' for column `test`.`products`.`price` at row 1\")"
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "0.30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              2
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.2300",
+          "encoded_type": "Decimal"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "rejected",
+          "error": "'price' decimal value does not fit DECIMAL(10, 2)"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "rejected",
+          "error": "'price' decimal value does not fit DECIMAL(10, 2)"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for decimal\n  Input should be greater than or equal to 0 [type=greater_than_equal, input_value=Decimal('-1'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price' failed type validation: 1 validation error for decimal\n  Input should be an instance of Decimal [type=is_instance_of, input_value='banana', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/is_instance_of"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'price_cents' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=Decimal('1.5'), input_type=Decimal]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123000+00:00",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123",
+          "encoded_type": "str"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "stage": "construction",
+          "outcome": "rejected",
+          "error": "'created_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value=datetime.datetime(2026, 1, 2, 3, 4, 5, 123456), input_type=datetime]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+        },
+        "unpersisted_defaults": {
+          "status": "pending",
+          "created_at": "PENDING_GENERATION",
+          "created_at_type": "PendingGeneration"
+        }
+      },
+      "controls": {
+        "version": "12.3.2-MariaDB",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "time_zone": "+00:00",
+        "clock": 1767323045.123456,
+        "engine": "InnoDB",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price",
+            "type": "DECIMAL(10, 2)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "quantity",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp(3)",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "products",
+          "CREATE TABLE `products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price` decimal(10,2) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "cent_products",
+          "CREATE TABLE `cent_products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL,\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ]
+      ],
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02 03:04:05.123000",
+        "raw_type": "datetime",
+        "typed": "2026-01-02 03:04:05.123000+00:00",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "timezone_shift": {
+        "name": "timestamp_default",
+        "question": "Does omitting creation time get a database value, and in what format?",
+        "statements": [
+          "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+        ],
+        "query": "SELECT created_at FROM orders",
+        "warnings": [],
+        "outcome": "accepted",
+        "rows": [
+          [
+            "2026-01-02 08:34:05.123000"
+          ]
+        ],
+        "types": [
+          [
+            "datetime"
+          ]
+        ]
+      }
+    },
+    "sqlite/sqlalchemy/idiomatic": {
+      "ddl": [
+        "CREATE TABLE products (\n\tid INTEGER NOT NULL, \n\tprice NUMERIC(10, 2) NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE cent_products (\n\tid INTEGER NOT NULL, \n\tprice_cents INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE orders (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus VARCHAR(255) NOT NULL, \n\tcreated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, \n\tPRIMARY KEY (id)\n)"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "outcome": "accepted",
+          "rows": [
+            [
+              2
+            ],
+            [
+              10
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              1.239
+            ]
+          ],
+          "types": [
+            [
+              "float"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              100000000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              -1
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "banana"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0.30000000000000004,
+              0
+            ]
+          ],
+          "types": [
+            [
+              "float",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              30,
+              1
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              1.5
+            ]
+          ],
+          "types": [
+            [
+              "float"
+            ]
+          ]
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-09-11 04:39:19"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123456"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.23",
+          "encoded_type": "float"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "float"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000.0",
+          "encoded_type": "float"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "constructed": "-1",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "-1.0",
+          "encoded_type": "float"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "constructed": "banana",
+          "constructed_type": "str",
+          "stage": "encoding",
+          "outcome": "rejected",
+          "error": "could not convert string to float: 'banana'"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "constructed": "1.5",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.5",
+          "encoded_type": "Decimal"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "constructed": "0",
+          "constructed_type": "int",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "0",
+          "encoded_type": "int"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 08:34:05.123456+05:30",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 08:34:05.123456",
+          "encoded_type": "str"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123456",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123456",
+          "encoded_type": "str"
+        },
+        "unpersisted_defaults": {
+          "status": "None",
+          "created_at": "None",
+          "created_at_type": "NoneType"
+        }
+      },
+      "controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price",
+            "type": "NUMERIC(10, 2)",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "nullable": false,
+            "default": "CURRENT_TIMESTAMP",
+            "primary_key": 0
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "cent_products",
+          "CREATE TABLE cent_products (\n\tid INTEGER NOT NULL, \n\tprice_cents INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)"
+        ],
+        [
+          "orders",
+          "CREATE TABLE orders (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus VARCHAR(255) NOT NULL, \n\tcreated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL, \n\tPRIMARY KEY (id)\n)"
+        ],
+        [
+          "products",
+          "CREATE TABLE products (\n\tid INTEGER NOT NULL, \n\tprice NUMERIC(10, 2) NOT NULL, \n\tPRIMARY KEY (id)\n)"
+        ]
+      ],
+      "typed_price_readback": {
+        "raw": "1.239",
+        "raw_type": "float",
+        "typed": "1.24",
+        "typed_type": "Decimal"
+      },
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02 08:34:05.123456",
+        "raw_type": "str",
+        "typed": "2026-01-02 08:34:05.123456",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [
+          "CREATE TABLE rule_orders (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_quantity_positive CHECK (quantity > 0)\n)"
+        ],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "CHECK constraint failed: ck_quantity_positive"
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        }
+      }
+    },
+    "mariadb/sqlalchemy/idiomatic": {
+      "ddl": [
+        "CREATE TABLE products (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tprice NUMERIC(10, 2) NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE cent_products (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tprice_cents INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE orders (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tquantity INTEGER NOT NULL, \n\tstatus VARCHAR(255) NOT NULL, \n\tcreated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, \n\tPRIMARY KEY (id)\n)"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2.00"
+            ],
+            [
+              "10.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ],
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [
+            [
+              "Note",
+              1265,
+              "Data truncated for column 'price' at row 1"
+            ]
+          ],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.24"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1264, \"Out of range value for column 'price' at row 1\")"
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1366, \"Incorrect decimal value: 'banana' for column `test`.`products`.`price` at row 1\")"
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "0.30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              2
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.2300",
+          "encoded_type": "Decimal"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "Decimal"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000.00",
+          "encoded_type": "Decimal"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "constructed": "-1",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "-1",
+          "encoded_type": "Decimal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "constructed": "banana",
+          "constructed_type": "str",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "banana",
+          "encoded_type": "str"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "constructed": "1.5",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.5",
+          "encoded_type": "Decimal"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "constructed": "0",
+          "constructed_type": "int",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "0",
+          "encoded_type": "int"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 08:34:05.123456+05:30",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 08:34:05.123456+05:30",
+          "encoded_type": "datetime"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123456",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123456",
+          "encoded_type": "datetime"
+        },
+        "unpersisted_defaults": {
+          "status": "None",
+          "created_at": "None",
+          "created_at_type": "NoneType"
+        }
+      },
+      "controls": {
+        "version": "12.3.2-MariaDB",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "time_zone": "+00:00",
+        "clock": 1767323045.123456,
+        "engine": "InnoDB",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price",
+            "type": "DECIMAL(10, 2)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp()",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "products",
+          "CREATE TABLE `products` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `price` decimal(10,2) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "cent_products",
+          "CREATE TABLE `cent_products` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `price_cents` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `quantity` int(11) NOT NULL,\n  `status` varchar(255) NOT NULL,\n  `created_at` datetime NOT NULL DEFAULT current_timestamp(),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ]
+      ],
+      "typed_price_readback": {
+        "raw": "1.24",
+        "raw_type": "Decimal",
+        "typed": "1.24",
+        "typed_type": "Decimal"
+      },
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02 08:34:05",
+        "raw_type": "datetime",
+        "typed": "2026-01-02 08:34:05",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [
+          "CREATE TABLE rule_orders (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT NOT NULL DEFAULT 'pending', \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_quantity_positive CHECK (quantity > 0)\n)"
+        ],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(4025, 'CONSTRAINT `ck_quantity_positive` failed for `test`.`rule_orders`')"
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        }
+      },
+      "timezone_shift": {
+        "name": "timestamp_default",
+        "question": "Does omitting creation time get a database value, and in what format?",
+        "statements": [
+          "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+        ],
+        "query": "SELECT created_at FROM orders",
+        "warnings": [],
+        "outcome": "accepted",
+        "rows": [
+          [
+            "2026-01-02 08:34:05"
+          ]
+        ],
+        "types": [
+          [
+            "datetime"
+          ]
+        ]
+      }
+    },
+    "sqlite/sqlalchemy/matched": {
+      "ddl": [
+        "CREATE TABLE products (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice TEXT NOT NULL\n)\n STRICT",
+        "CREATE TABLE cent_products (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL\n)\n STRICT",
+        "CREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL\n)\n STRICT"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "10"
+            ],
+            [
+              "2"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ],
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.239"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "100000000.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "banana"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0.30000000000000004,
+              0
+            ]
+          ],
+          "types": [
+            [
+              "float",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "outcome": "accepted",
+          "rows": [
+            [
+              30,
+              1
+            ]
+          ],
+          "types": [
+            [
+              "int",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "cannot store REAL value in INTEGER column cent_products.price_cents"
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-09-11T04:39:20.338Z"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.created_at"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123456"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "not-a-date"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "NOT NULL constraint failed: orders.status"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.2300",
+          "encoded_type": "Decimal"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "Decimal"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000.00",
+          "encoded_type": "Decimal"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "constructed": "-1",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "-1",
+          "encoded_type": "Decimal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "constructed": "banana",
+          "constructed_type": "str",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "banana",
+          "encoded_type": "str"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "constructed": "1.5",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.5",
+          "encoded_type": "Decimal"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "constructed": "0",
+          "constructed_type": "int",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "0",
+          "encoded_type": "int"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 08:34:05.123456+05:30",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 08:34:05.123456+05:30",
+          "encoded_type": "datetime"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123456",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123456",
+          "encoded_type": "datetime"
+        },
+        "unpersisted_defaults": {
+          "status": "None",
+          "created_at": "None",
+          "created_at_type": "NoneType"
+        }
+      },
+      "controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "price_cents",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 1
+          },
+          {
+            "name": "quantity",
+            "type": "INTEGER",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "nullable": false,
+            "default": null,
+            "primary_key": 0
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "nullable": false,
+            "default": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+            "primary_key": 0
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "cent_products",
+          "CREATE TABLE cent_products (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice_cents INTEGER NOT NULL\n)\n STRICT"
+        ],
+        [
+          "orders",
+          "CREATE TABLE orders (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT NOT NULL, \n\tcreated_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) NOT NULL\n)\n STRICT"
+        ],
+        [
+          "products",
+          "CREATE TABLE products (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tprice TEXT NOT NULL\n)\n STRICT"
+        ],
+        [
+          "sqlite_sequence",
+          "CREATE TABLE sqlite_sequence(name,seq)"
+        ]
+      ],
+      "typed_price_readback": {
+        "raw": "1.239",
+        "raw_type": "str",
+        "typed": "1.239",
+        "typed_type": "str"
+      },
+      "bound_timestamp": {
+        "skipped": "DDL-only TEXT match has no Decimal/datetime codecs."
+      },
+      "database_rules": {
+        "ddl": [
+          "CREATE TABLE rule_orders (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT DEFAULT 'pending' NOT NULL, \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_quantity_positive CHECK (quantity > 0)\n)"
+        ],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "CHECK constraint failed: ck_quantity_positive"
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        }
+      }
+    },
+    "mariadb/sqlalchemy/matched": {
+      "ddl": [
+        "CREATE TABLE products (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tprice NUMERIC(10, 2) NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE cent_products (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tprice_cents BIGINT NOT NULL, \n\tPRIMARY KEY (id)\n)",
+        "CREATE TABLE orders (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tquantity BIGINT NOT NULL, \n\tstatus VARCHAR(255) NOT NULL, \n\tcreated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), \n\tPRIMARY KEY (id)\n)"
+      ],
+      "probes": {
+        "price_order": {
+          "name": "price_order",
+          "question": "Are exact decimal representations numerically sortable?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('2'),('10')"
+          ],
+          "query": "SELECT price FROM products ORDER BY price",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2.00"
+            ],
+            [
+              "10.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ],
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_scale": {
+          "name": "price_scale",
+          "question": "Does the database reject rather than round extra fractional digits?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('1.239')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [
+            [
+              "Note",
+              1265,
+              "Data truncated for column 'price' at row 1"
+            ]
+          ],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "1.24"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_overflow": {
+          "name": "price_overflow",
+          "question": "Does DECIMAL(10,2)'s upper bound exist in installed storage?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('100000000.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1264, \"Out of range value for column 'price' at row 1\")"
+        },
+        "price_negative": {
+          "name": "price_negative",
+          "question": "Does application nonnegativity reach the DDL?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('-1.00')"
+          ],
+          "query": "SELECT price FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "-1.00"
+            ]
+          ],
+          "types": [
+            [
+              "Decimal"
+            ]
+          ]
+        },
+        "price_invalid": {
+          "name": "price_invalid",
+          "question": "Can another SQL writer store nonnumeric money?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('banana')"
+          ],
+          "query": "SELECT price FROM products",
+          "outcome": "rejected",
+          "error_type": "DataError",
+          "error": "(1366, \"Incorrect decimal value: 'banana' for column `test`.`products`.`price` at row 1\")"
+        },
+        "decimal_sum": {
+          "name": "decimal_sum",
+          "question": "Is database arithmetic exact for 0.1 plus 0.2?",
+          "statements": [
+            "INSERT INTO products (price) VALUES ('0.1'),('0.2')"
+          ],
+          "query": "SELECT SUM(price), SUM(price) = 0.3 FROM products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "0.30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_sum": {
+          "name": "cents_sum",
+          "question": "Does integer-cent storage give exact arithmetic?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (10),(20)"
+          ],
+          "query": "SELECT SUM(price_cents), SUM(price_cents) = 30 FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "30",
+              1
+            ]
+          ],
+          "types": [
+            [
+              "Decimal",
+              "int"
+            ]
+          ]
+        },
+        "cents_order": {
+          "name": "cents_order",
+          "question": "Are integer-cent values numerically sortable?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (200),(1000)"
+          ],
+          "query": "SELECT price_cents FROM cent_products ORDER BY price_cents",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              200
+            ],
+            [
+              1000
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ],
+            [
+              "int"
+            ]
+          ]
+        },
+        "cents_fraction": {
+          "name": "cents_fraction",
+          "question": "Will fractional cents be rejected or coerced?",
+          "statements": [
+            "INSERT INTO cent_products (price_cents) VALUES (1.5)"
+          ],
+          "query": "SELECT price_cents FROM cent_products",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              2
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "quantity_zero": {
+          "name": "quantity_zero",
+          "question": "Does positive-quantity annotation constrain other writers?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT quantity FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              0
+            ]
+          ],
+          "types": [
+            [
+              "int"
+            ]
+          ]
+        },
+        "timestamp_default": {
+          "name": "timestamp_default",
+          "question": "Does omitting creation time get a database value, and in what format?",
+          "statements": [
+            "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_null": {
+          "name": "timestamp_null",
+          "question": "Does explicit NULL incorrectly invoke a default?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending',NULL)"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "IntegrityError",
+          "error": "(1048, \"Column 'created_at' cannot be null\")"
+        },
+        "timestamp_precision": {
+          "name": "timestamp_precision",
+          "question": "What happens to six fractional digits from a raw SQL writer?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05.123456')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05.123000"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "timestamp_invalid": {
+          "name": "timestamp_invalid",
+          "question": "Does physical storage validate a timestamp?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','not-a-date')"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`orders`.`created_at` at row 1\")"
+        },
+        "timestamp_update": {
+          "name": "timestamp_update",
+          "question": "Does an ordinary update leave creation time alone?",
+          "statements": [
+            "INSERT INTO orders (quantity,status,created_at) VALUES (1,'pending','2026-01-02 03:04:05')",
+            "UPDATE orders SET status='paid'"
+          ],
+          "query": "SELECT created_at FROM orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "2026-01-02 03:04:05"
+            ]
+          ],
+          "types": [
+            [
+              "datetime"
+            ]
+          ]
+        },
+        "status_default": {
+          "name": "status_default",
+          "question": "Does a Python default fill omitted status in raw SQL?",
+          "statements": [
+            "INSERT INTO orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(1364, \"Field 'status' doesn't have a default value\")"
+        }
+      },
+      "application": {
+        "price_valid": {
+          "input": "1.2300",
+          "input_type": "Decimal",
+          "constructed": "1.2300",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.2300",
+          "encoded_type": "Decimal"
+        },
+        "price_extra_scale": {
+          "input": "1.239",
+          "input_type": "Decimal",
+          "constructed": "1.239",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.239",
+          "encoded_type": "Decimal"
+        },
+        "price_overflow": {
+          "input": "100000000.00",
+          "input_type": "Decimal",
+          "constructed": "100000000.00",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "100000000.00",
+          "encoded_type": "Decimal"
+        },
+        "price_negative": {
+          "input": "-1",
+          "input_type": "Decimal",
+          "constructed": "-1",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "-1",
+          "encoded_type": "Decimal"
+        },
+        "price_invalid": {
+          "input": "banana",
+          "input_type": "str",
+          "constructed": "banana",
+          "constructed_type": "str",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "banana",
+          "encoded_type": "str"
+        },
+        "fractional_cents": {
+          "input": "1.5",
+          "input_type": "Decimal",
+          "constructed": "1.5",
+          "constructed_type": "Decimal",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "1.5",
+          "encoded_type": "Decimal"
+        },
+        "quantity_zero": {
+          "input": "0",
+          "input_type": "int",
+          "constructed": "0",
+          "constructed_type": "int",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "0",
+          "encoded_type": "int"
+        },
+        "timestamp_offset": {
+          "input": "2026-01-02 08:34:05.123456+05:30",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 08:34:05.123456+05:30",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 08:34:05.123456+05:30",
+          "encoded_type": "datetime"
+        },
+        "timestamp_naive": {
+          "input": "2026-01-02 03:04:05.123456",
+          "input_type": "datetime",
+          "constructed": "2026-01-02 03:04:05.123456",
+          "constructed_type": "datetime",
+          "stage": "encoding",
+          "outcome": "accepted",
+          "encoded": "2026-01-02 03:04:05.123456",
+          "encoded_type": "datetime"
+        },
+        "unpersisted_defaults": {
+          "status": "None",
+          "created_at": "None",
+          "created_at_type": "NoneType"
+        }
+      },
+      "controls": {
+        "version": "12.3.2-MariaDB",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+        "check_constraint_checks": 1,
+        "time_zone": "+00:00",
+        "clock": 1767323045.123456,
+        "engine": "InnoDB",
+        "charset": "utf8mb4",
+        "collation": "utf8mb4_bin"
+      },
+      "columns": {
+        "products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price",
+            "type": "DECIMAL(10, 2)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          }
+        ],
+        "cent_products": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "price_cents",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          }
+        ],
+        "orders": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": true
+          },
+          {
+            "name": "quantity",
+            "type": "BIGINT",
+            "default": null,
+            "comment": null,
+            "nullable": false,
+            "autoincrement": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR(255)",
+            "default": null,
+            "comment": null,
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "DATETIME",
+            "default": "current_timestamp(3)",
+            "comment": null,
+            "nullable": false
+          }
+        ]
+      },
+      "installed_ddl": [
+        [
+          "products",
+          "CREATE TABLE `products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price` decimal(10,2) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "cent_products",
+          "CREATE TABLE `cent_products` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `price_cents` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ],
+        [
+          "orders",
+          "CREATE TABLE `orders` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `quantity` bigint(20) NOT NULL,\n  `status` varchar(255) NOT NULL,\n  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+        ]
+      ],
+      "typed_price_readback": {
+        "raw": "1.24",
+        "raw_type": "Decimal",
+        "typed": "1.24",
+        "typed_type": "Decimal"
+      },
+      "bound_timestamp": {
+        "input": "2026-01-02 08:34:05.123456+05:30",
+        "raw": "2026-01-02 08:34:05.123000",
+        "raw_type": "datetime",
+        "typed": "2026-01-02 08:34:05.123000",
+        "typed_type": "datetime"
+      },
+      "database_rules": {
+        "ddl": [
+          "CREATE TABLE rule_orders (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tquantity INTEGER NOT NULL, \n\tstatus TEXT NOT NULL DEFAULT 'pending', \n\tPRIMARY KEY (id), \n\tCONSTRAINT ck_quantity_positive CHECK (quantity > 0)\n)"
+        ],
+        "snekql_scaffold_extended": false,
+        "zero_quantity": {
+          "name": "zero_quantity",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity,status) VALUES (0,'pending')"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "outcome": "rejected",
+          "error_type": "OperationalError",
+          "error": "(4025, 'CONSTRAINT `ck_quantity_positive` failed for `test`.`rule_orders`')"
+        },
+        "literal_server_default": {
+          "name": "literal_server_default",
+          "question": "Does an explicitly database-level rule enforce the desired behavior?",
+          "statements": [
+            "INSERT INTO rule_orders (quantity) VALUES (1)"
+          ],
+          "query": "SELECT status FROM rule_orders",
+          "warnings": [],
+          "outcome": "accepted",
+          "rows": [
+            [
+              "pending"
+            ]
+          ],
+          "types": [
+            [
+              "str"
+            ]
+          ]
+        }
+      },
+      "timezone_shift": {
+        "name": "timestamp_default",
+        "question": "Does omitting creation time get a database value, and in what format?",
+        "statements": [
+          "INSERT INTO orders (quantity,status) VALUES (1,'pending')"
+        ],
+        "query": "SELECT created_at FROM orders",
+        "warnings": [],
+        "outcome": "accepted",
+        "rows": [
+          [
+            "2026-01-02 08:34:05.123000"
+          ]
+        ],
+        "types": [
+          [
+            "datetime"
+          ]
+        ]
+      }
+    }
+  }
+}

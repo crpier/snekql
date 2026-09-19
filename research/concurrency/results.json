@@ -1,0 +1,3947 @@
+{
+  "python": "3.14.2",
+  "context_aware_warnings": 1,
+  "versions": {
+    "snekql": "0.7.0",
+    "sqlalchemy": "2.0.43",
+    "pydantic": "2.13.5",
+    "aiosqlite": "0.22.1",
+    "aiomysql": "0.3.2",
+    "PyMySQL": "1.2.0",
+    "greenlet": "3.5.1"
+  },
+  "runs": {
+    "sqlite/snekql": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=OperationalError"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 5,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        }
+      },
+      "noop_rowcount": 1,
+      "controls": [
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1
+        },
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1
+        }
+      ],
+      "configuration": {
+        "backend": "sqlite",
+        "library": "snekql",
+        "sqlite_begin": "explicit",
+        "snapshot_isolation": null
+      },
+      "installed_ddl": "CREATE TABLE \"counter\" (\"id\" INTEGER PRIMARY KEY, \"quantity\" INTEGER NOT NULL, \"revision\" INTEGER NOT NULL) STRICT",
+      "statements": [
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=:id AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=:id AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
+          "params": [
+            10,
+            1
+          ]
+        }
+      ]
+    },
+    "sqlite/sqlalchemy-explicit": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=? WHERE counter.id = ?]\n[parameters: (9, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 517,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "1:read_open",
+            "0:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 5,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        },
+        "orm_unversioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "orm_versioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 2
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "conflict",
+              "error_type": "StaleDataError",
+              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "versioned_direct_update": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        }
+      },
+      "noop_rowcount": 1,
+      "controls": [
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1,
+          "session_in_transaction": true,
+          "driver_in_transaction": true
+        },
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1,
+          "session_in_transaction": true,
+          "driver_in_transaction": true
+        }
+      ],
+      "configuration": {
+        "backend": "sqlite",
+        "library": "sqlalchemy",
+        "sqlite_begin": "explicit",
+        "snapshot_isolation": null
+      },
+      "installed_ddl": "CREATE TABLE counter (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\trevision INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
+      "statements": [
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            10,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        }
+      ]
+    },
+    "sqlite/sqlalchemy-legacy": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "1:read_open",
+            "0:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "conflict",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 5,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        },
+        "orm_unversioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "orm_versioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 2
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "conflict",
+              "error_type": "StaleDataError",
+              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "versioned_direct_update": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "1:read_committed",
+            "0:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        }
+      },
+      "noop_rowcount": 1,
+      "controls": [
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1,
+          "session_in_transaction": true,
+          "driver_in_transaction": false
+        },
+        {
+          "version": "3.50.4",
+          "journal_mode": "wal",
+          "busy_timeout": 100,
+          "foreign_keys": 1,
+          "session_in_transaction": true,
+          "driver_in_transaction": false
+        }
+      ],
+      "configuration": {
+        "backend": "sqlite",
+        "library": "sqlalchemy",
+        "sqlite_begin": "legacy",
+        "snapshot_isolation": null
+      },
+      "installed_ddl": "CREATE TABLE counter (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\trevision INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
+      "statements": [
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            10,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
+          "params": [
+            9,
+            1
+          ]
+        }
+      ]
+    },
+    "mariadb/snekql-snapshot-on": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)' params=<redacted:2> cause=OperationalError"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1205,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        }
+      },
+      "noop_rowcount": 0,
+      "controls": [
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 10,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 1,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        },
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 11,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 1,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        }
+      ],
+      "configuration": {
+        "backend": "mariadb",
+        "library": "snekql",
+        "sqlite_begin": null,
+        "snapshot_isolation": true
+      },
+      "installed_ddl": "CREATE TABLE `counter` (\n  `id` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `revision` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+      "statements": [
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            10,
+            1
+          ]
+        }
+      ]
+    },
+    "mariadb/snekql-snapshot-off": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "conflict",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1205,
+                  "error_type": "ExecutionError",
+                  "driver_type": "OperationalError",
+                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        }
+      },
+      "noop_rowcount": 0,
+      "controls": [
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 5,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 0,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        },
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 8,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 0,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        }
+      ],
+      "configuration": {
+        "backend": "mariadb",
+        "library": "snekql",
+        "sqlite_begin": null,
+        "snapshot_isolation": false
+      },
+      "installed_ddl": "CREATE TABLE `counter` (\n  `id` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `revision` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+      "statements": [
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "raw",
+          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
+          "params": {
+            "id": 1
+          }
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "compiled_builder",
+          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
+          "params": [
+            10,
+            1
+          ]
+        }
+      ]
+    },
+    "mariadb/sqlalchemy-snapshot-on": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s WHERE counter.id = %s]\n[parameters: (9, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "contention",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1020,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:contention",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1205,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(pymysql.err.OperationalError) (1205, 'Lock wait timeout exceeded; try restarting transaction')\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        },
+        "orm_unversioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "orm_versioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 2
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "conflict",
+              "error_type": "StaleDataError",
+              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "versioned_direct_update": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        }
+      },
+      "noop_rowcount": 1,
+      "controls": [
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 6,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 1,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        },
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 5,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 1,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        }
+      ],
+      "configuration": {
+        "backend": "mariadb",
+        "library": "sqlalchemy",
+        "sqlite_begin": null,
+        "snapshot_isolation": true
+      },
+      "installed_ddl": "CREATE TABLE `counter` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `quantity` int(11) NOT NULL,\n  `revision` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+      "statements": [
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            10,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        }
+      ]
+    },
+    "mariadb/sqlalchemy-snapshot-off": {
+      "scenarios": {
+        "detached_stale": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "detached_atomic": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "detached_cas": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 0,
+              "outcome": "conflict"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_stale": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "overlap_cas": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "conflict",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "overlap_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 0,
+                  "outcome": "conflict"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:read_open",
+            "1:read_open",
+            "0:transaction_closed:committed",
+            "1:transaction_closed:conflict",
+            "1:retry_closed:committed"
+          ],
+          "oracle": "two_applied"
+        },
+        "lock_retry": {
+          "callers": [
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            },
+            {
+              "outcome": "committed",
+              "attempts": [
+                {
+                  "read": {
+                    "quantity": 10,
+                    "revision": 1
+                  },
+                  "outcome": "contention",
+                  "stage": "execute",
+                  "code": 1205,
+                  "error_type": "OperationalError",
+                  "driver_type": "OperationalError",
+                  "message": "(pymysql.err.OperationalError) (1205, 'Lock wait timeout exceeded; try restarting transaction')\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
+                },
+                {
+                  "read": {
+                    "quantity": 9,
+                    "revision": 2
+                  },
+                  "rowcount": 1,
+                  "outcome": "committed"
+                }
+              ]
+            }
+          ],
+          "final": {
+            "quantity": 8,
+            "revision": 3
+          },
+          "events": [
+            "0:write_locked",
+            "1:first_attempt_closed",
+            "0:committed",
+            "1:retry_finished"
+          ],
+          "oracle": "two_applied"
+        },
+        "orm_unversioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 1
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:committed"
+          ],
+          "oracle": "lost_update"
+        },
+        "orm_versioned": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "committed",
+              "held_revision": 2
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "outcome": "conflict",
+              "error_type": "StaleDataError",
+              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 2
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_finished:committed",
+            "1:write_finished:conflict"
+          ],
+          "oracle": "conflict_exposed"
+        },
+        "versioned_direct_update": {
+          "callers": [
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            },
+            {
+              "read": {
+                "quantity": 10,
+                "revision": 1
+              },
+              "rowcount": 1,
+              "outcome": "committed"
+            }
+          ],
+          "final": {
+            "quantity": 9,
+            "revision": 1
+          },
+          "events": [
+            "0:read_committed",
+            "1:read_committed",
+            "0:write_committed",
+            "1:write_committed"
+          ],
+          "oracle": "lost_update"
+        }
+      },
+      "noop_rowcount": 1,
+      "controls": [
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 6,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 0,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        },
+        {
+          "version": "12.3.2-MariaDB",
+          "connection_id": 5,
+          "isolation": "REPEATABLE-READ",
+          "snapshot_isolation": 0,
+          "lock_wait_timeout": 1,
+          "rollback_on_timeout": 0,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "collation": "utf8mb4_bin",
+          "engine": "InnoDB"
+        }
+      ],
+      "configuration": {
+        "backend": "mariadb",
+        "library": "sqlalchemy",
+        "sqlite_begin": null,
+        "snapshot_isolation": false
+      },
+      "installed_ddl": "CREATE TABLE `counter` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `quantity` int(11) NOT NULL,\n  `revision` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
+      "statements": [
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
+          "params": [
+            1,
+            1,
+            1,
+            0
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            8,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            10,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
+          "params": [
+            9,
+            2,
+            1,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        },
+        {
+          "path": "driver_statement",
+          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
+          "params": [
+            9,
+            1
+          ]
+        }
+      ]
+    }
+  }
+}

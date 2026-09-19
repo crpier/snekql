@@ -1,0 +1,71 @@
+--- snekql
++++ sqlalchemy
+@@ -58,7 +58,7 @@
+         "column_names": [
+           "user_id"
+         ],
+-        "name": "ix_memberships_user_id",
++        "name": "ix_memberships_user",
+         "unique": false
+       },
+       {
+@@ -66,7 +66,7 @@
+           "team_id",
+           "alias"
+         ],
+-        "name": "ux_memberships_team_id_alias",
++        "name": "ux_memberships_team_alias",
+         "type": "UNIQUE",
+         "unique": true
+       }
+@@ -84,8 +84,8 @@
+           "team_id",
+           "alias"
+         ],
+-        "duplicates_index": "ux_memberships_team_id_alias",
+-        "name": "ux_memberships_team_id_alias"
++        "duplicates_index": "ux_memberships_team_alias",
++        "name": "ux_memberships_team_alias"
+       }
+     ]
+   },
+@@ -156,7 +156,7 @@
+         "column_names": [
+           "name"
+         ],
+-        "name": "ux_teams_name",
++        "name": "name",
+         "type": "UNIQUE",
+         "unique": true
+       }
+@@ -172,8 +172,8 @@
+         "column_names": [
+           "name"
+         ],
+-        "duplicates_index": "ux_teams_name",
+-        "name": "ux_teams_name"
++        "duplicates_index": "name",
++        "name": "name"
+       }
+     ]
+   },
+@@ -215,7 +215,7 @@
+         "column_names": [
+           "email"
+         ],
+-        "name": "ux_users_email",
++        "name": "email",
+         "type": "UNIQUE",
+         "unique": true
+       }
+@@ -231,8 +231,8 @@
+         "column_names": [
+           "email"
+         ],
+-        "duplicates_index": "ux_users_email",
+-        "name": "ux_users_email"
++        "duplicates_index": "email",
++        "name": "email"
+       }
+     ]
+   }

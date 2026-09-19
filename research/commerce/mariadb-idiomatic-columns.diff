@@ -1,0 +1,56 @@
+--- snekql
++++ sqlalchemy
+@@ -6,7 +6,7 @@
+       "default": null,
+       "name": "id",
+       "nullable": false,
+-      "type": "BIGINT"
++      "type": "INTEGER"
+     },
+     {
+       "autoincrement": false,
+@@ -14,7 +14,7 @@
+       "default": null,
+       "name": "price_cents",
+       "nullable": false,
+-      "type": "BIGINT"
++      "type": "INTEGER"
+     }
+   ],
+   "orders": [
+@@ -24,7 +24,7 @@
+       "default": null,
+       "name": "id",
+       "nullable": false,
+-      "type": "BIGINT"
++      "type": "INTEGER"
+     },
+     {
+       "autoincrement": false,
+@@ -32,7 +32,7 @@
+       "default": null,
+       "name": "quantity",
+       "nullable": false,
+-      "type": "BIGINT"
++      "type": "INTEGER"
+     },
+     {
+       "comment": null,
+@@ -43,7 +43,7 @@
+     },
+     {
+       "comment": null,
+-      "default": "current_timestamp(3)",
++      "default": "current_timestamp()",
+       "name": "created_at",
+       "nullable": false,
+       "type": "DATETIME"
+@@ -56,7 +56,7 @@
+       "default": null,
+       "name": "id",
+       "nullable": false,
+-      "type": "BIGINT"
++      "type": "INTEGER"
+     },
+     {
+       "comment": null,

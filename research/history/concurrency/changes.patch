@@ -1,0 +1,5442 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index c26d04a..cadf098 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -37,8 +37,10 @@ jobs:
+           mariadbd --version
+       - name: Sync locked environment
+         run: uv sync --locked --all-extras
++      - name: Install research comparator
++        run: uv pip install --python .venv/bin/python --requirements research/concurrency/requirements.txt
+       - name: Test
+-        run: uv run snektest
++        run: uv run snektest tests research/concurrency
+       - name: Type check
+         run: uv run ty check
+       - name: Lint
+diff --git a/pyproject.toml b/pyproject.toml
+index 8e902e5..093fd0f 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -110,3 +110,9 @@ allowed-unused-imports = [
+ [tool.ty.rules]
+ all = "error"
+ missing-override-decorator = "ignore"
++
++# SQLAlchemy mapped_column returns MappedColumn[Any] for Mapped declarations.
++[[tool.ty.overrides]]
++include = ["research/concurrency/sqlalchemy_models.py"]
++[tool.ty.overrides.rules]
++unsound-assignment = "ignore"
+diff --git a/research/concurrency/README.md b/research/concurrency/README.md
+new file mode 100644
+index 0000000..917e242
+--- /dev/null
++++ b/research/concurrency/README.md
+@@ -0,0 +1,244 @@
++# Concurrent updates and conflict detection
++
++Research for #366, following #363. No production fixes or literal-default decisions.
++
++## Conclusion
++
++Neither library makes an unguarded read-modify-write safe across separate
++transactions. Atomic arithmetic and an explicit revision predicate both worked
++through the tested interfaces. SQLAlchemy also supplied optimistic checking for
++ordinary ORM flush when configured with version_id_col, but that policy did not
++extend to explicit UPDATE statements.
++
++The surprising differences were connection and database policies. A SQLAlchemy
++Session could report an active transaction while SQLite had not begun one. MariaDB
++REPEATABLE READ produced different outcomes with innodb_snapshot_isolation on and
++off. A library-only comparison would have attributed those effects incorrectly.
++
++## What was tested
++
++The counter starts at quantity=10, revision=1. Two independent callers each request
++one decrement. Two successful requests must leave 8, otherwise a caller must receive
++a detectable conflict. The unguarded example deliberately treats clean transaction
++completion as request success and retains the returned rowcount for inspection.
++This is an application policy, not a claim that the libraries promise concurrency
++protection on every completed UPDATE.
++
++Seven configurations produced 61 scheduled scenarios and seven no-op controls:
++
++- SQLite snekql with its explicit deferred transactions;
++- SQLite SQLAlchemy with explicit BEGIN, then its legacy aiosqlite transaction mode;
++- MariaDB snekql and SQLAlchemy, each with InnoDB snapshot isolation on and off.
++
++Each caller owns its own transaction or session. Both read quantity 10 before
++caller A is allowed to write. A commits before B writes. Some cases close the read
++transactions first; others deliberately keep both read transactions open. These
++are deterministic interleavings that expose a race, not a stress test or a
++measurement of how frequently that race occurs.
++
++Barriers and events control order. There are no correctness sleeps. TaskGroup
++cancels sibling workers on unexpected failure, and each schedule has a 15-second
++outer deadline. Timeouts of that deadline abort rather than count as successful
++conflict detection. Fresh reads use new transactions/sessions, not retained ORM
++identity-map values.
++
++## Separate read and write transactions
++
++The two callers first read 10 and end their read transactions. Then A and B write,
++in that order, each in a fresh transaction.
++
++| Write strategy | Result in every configuration |
++|---|---|
++| Assign the previously read quantity minus one | Final 9, one decrement lost |
++| Atomic quantity=quantity-1 | Final 8, both applied |
++| Compare-and-swap using the previously read revision | Final 9; B reports conflict |
++
++The atomic statement also increments revision and guards quantity>0. These runs
++start at 10 and do not test exhaustion or negative-stock races. They prove the
++specified two-decrement case, not every inventory invariant.
++
++The tested snekql builder's assignment interface accepts Python values and
++CurrentTimestamp, not arithmetic expressions. Its atomic path therefore uses
++public raw SQL with a bound row ID. SQLAlchemy expresses the arithmetic through
++its ordinary update expression. No unmerged expression implementation was imported.
++The raw path bypasses snekql column codecs, which is unproblematic for these fixed
++integer parameters but is an additional responsibility for other logical types.
++
++Manual compare-and-swap worked through both libraries. It writes the new quantity
++and revision only where the stored revision equals the observed one. The first
++write returned 1 and the stale write returned 0. The research application translates
++that zero into a conflict; snekql does not automatically raise one for this builder
++operation. All competing writers must participate in the revision protocol.
++
++## Keeping both read transactions open
++
++A transaction alone was not a sufficient description of the protection provided:
++
++| Configuration | Stale unguarded B write | Final quantity |
++|---|---|---|
++| SQLite snekql | SQLITE_BUSY_SNAPSHOT, code 517 | 9 |
++| SQLite SQLAlchemy, explicit BEGIN | SQLITE_BUSY_SNAPSHOT, code 517 | 9 |
++| SQLite SQLAlchemy, legacy mode | Completes without conflict checking | 9, lost update |
++| MariaDB either library, snapshot isolation on | Record changed, code 1020 | 9 |
++| MariaDB either library, snapshot isolation off | Completes without conflict checking | 9, lost update |
++
++For SQLite, the legacy-mode control reported session_in_transaction=True but
++driver_in_transaction=False after a table read. Explicit BEGIN changed the latter
++to True and exposed the stale-snapshot write as an error. Legacy mode is observed
++with this Python/aiosqlite/SQLAlchemy combination, not claimed for every version.
++The explicit-BEGIN comparison is an added SQLAlchemy connection policy, not its
++untouched default. WAL and timeout controls are shared across these cases.
++
++The initial local MariaDB server reported innodb_snapshot_isolation=1. The first
++runner treated error 1020 as unexpected and aborted. After retaining a focused
++regression check, the study recognized that specific stale-snapshot error and added
++the off-setting sensitivity comparison. Both settings still reported
++REPEATABLE-READ. This is not evidence that one library has a stronger isolation
++implementation; the server policy changed the outcome for both.
++
++A revision predicate did not eliminate stale-transaction errors. With real SQLite
++read snapshots or MariaDB snapshot isolation enabled, B's compare-and-swap also
++received 517 or 1020. In the other configurations it returned zero rows instead.
++Applications need to handle both kinds of conflict if they use this transaction
++shape.
++
++## Rowcount needs context
++
++The no-op control updates the existing quantity 10 to 10:
++
++| Configuration | Returned rowcount |
++|---|---:|
++| SQLite, either library | 1 |
++| MariaDB snekql | 0 |
++| MariaDB SQLAlchemy | 1 |
++
++SQLAlchemy's MySQL/MariaDB dialect standardizes UPDATE rowcount as rows matched,
++using FOUND_ROWS. snekql retains the driver's changed-row result here.
++
++Consequently, the second stale assignment on MariaDB/snekql also returned 0.
++That is an available hint that this particular decrement did not apply; the
++unguarded example ignored it. It is not an automatic optimistic-concurrency
++exception, and zero by itself does not mean a competing writer changed the row.
++The no-op control returns zero without any competitor.
++
++The compare-and-swap case avoids that no-op ambiguity: a match necessarily advances
++revision. Its 1/0 distinction agreed across all configurations. The runner rejects
++rowcounts outside the single-row 0/1 contract rather than guessing about success.
++
++## ORM versioning is useful but scoped
++
++The ordinary unversioned ORM objects also lost the second decrement. Adding:
++
++```python
++__mapper_args__ = {"version_id_col": revision}
++```
++
++made B's stale flush during commit raise StaleDataError. A had advanced revision
++from 1 to 2; B still held revision 1. Final quantity was 9, with a detected conflict.
++This worked in all four SQLAlchemy configurations, including legacy SQLite.
++
++Using the same versioned mapper in Session.execute(update(...)) did not insert the
++revision predicate or advance revision automatically. Both explicit stale updates
++completed, leaving quantity=9, revision=1. The captured SQL retains that distinction.
++Mapper versioning is therefore an ergonomic advantage for participating object
++flushes, not blanket protection for every SQL statement associated with that model.
++
++## Contention and explicit retry
++
++The held-lock schedule is separate from the stale-snapshot schedule. Both callers
++obtain and close their initial reads. A performs a guarded update but holds its
++transaction open. B attempts its guarded update in a fresh transaction. A is not
++released until B's attempt has failed and closed.
++
++The recorded order was:
++
++```text
++A acquires write lock
++B receives database error and exits its transaction
++A commits
++B rereads in a new transaction and retries
++```
++
++SQLite reported SQLITE_BUSY, code 5. MariaDB reported lock wait timeout, code 1205.
++These are not the 517/1020 stale-snapshot errors. Both libraries recovered in a
++fresh transaction after A committed.
++
++The added application retry reads quantity=9, revision=2, recomputes the decrement,
++and performs a new compare-and-swap. It does not resubmit the old assignment to 9.
++Both the overlapping-read retry and held-lock retry ended at quantity=8,
++revision=3 in every configuration. The second caller made at most two attempts.
++
++The policy recognizes only the observed contention codes and compare-and-swap
++conflicts, and never retries an error classified at commit. Unknown errors abort.
++These units have no external side effects. The deterministic holder release is
++not a production backoff algorithm, and the study says nothing about the safety
++of replaying emails, payments, or an uncertain commit.
++
++snekql's existing SQLite retry covers BEGIN IMMEDIATE acquisition, not statements
++inside an already-read transaction. This study uses deferred transactions and
++sets busy_max_retries=0. It does not evaluate that built-in immediate-mode policy.
++The contention probes use snekql's builder path, whose chained driver exception
++exposes the error code. Error-driven retry of the raw atomic path was not tested.
++
++## Ergonomic observations
++
++SQLAlchemy required less handwritten SQL for atomic arithmetic and less application
++code for version-aware object flushes. It also required distinguishing object flush
++from explicit DML and understanding the SQLite connection's actual BEGIN behavior.
++
++snekql made revision checking explicit in the builder and returned the affected-row
++count directly. The caller still owned conflict handling and full-transaction retry.
++Its runtime already started the SQLite read transactions used in this comparison,
++but atomic arithmetic required leaving the typed builder for raw SQL in this checkout.
++
++The biggest lesson is to choose a write protocol and verify its connection policies.
++Neither a Session object nor the phrase REPEATABLE READ fully described the observed
++protection. These are implementation observations, not usability-study results or a
++broad library ranking.
++
++## Reproduce and review
++
++```sh
++export PYTHON_CONTEXT_AWARE_WARNINGS=1
++uv sync --locked --all-extras
++uv pip install --python .venv/bin/python --requirements research/concurrency/requirements.txt
++uv run python -m research.concurrency.experiment
++uv run snektest tests research/concurrency
++uv run ty check
++uv run ruff check .
++uv run ruff format --check .
++```
++
++Requires local mariadbd, mariadb-install-db, and mariadb binaries. The runner creates
++and owns temporary SQLite files and socket-only MariaDB servers. Its entry point
++accepts no external database URL. Database binaries are observed, not pinned or
++provisioned by the script.
++
++Recorded environment: Python 3.14.2, SQLite 3.50.4, MariaDB 12.3.2, SQLAlchemy
++2.0.43, greenlet 3.5.1, Pydantic 2.13.5, aiosqlite 0.22.1, aiomysql 0.3.2, and
++PyMySQL 1.2.0. The local snekql checkout reports 0.7.0 but is based on main commit
++8612010, not the published 0.7.0 artifact.
++
++Both library pools allow two connections. SQLite uses WAL, foreign keys enabled,
++and a deliberately shortened 100ms busy timeout rather than snekql's normal 5000ms.
++MariaDB uses InnoDB, UTC, utf8mb4_bin, strict SQL mode, and a one-second InnoDB lock
++wait. snekql's operation deadline is five seconds; schedule deadlines are separate.
++Actual controls from two borrowed connections are retained, including distinct
++MariaDB connection IDs and innodb_rollback_on_timeout=0.
++
++Validation: 1646 tests passed, including 87 research checks. Typing and Ruff passed.
++Comparator additions are pinned separately; no root dependency or lockfile changes.
++CI installs those additions and uses explicit test paths. The only typing exception
++is scoped to SQLAlchemy mapped_column declarations in this research file.
++
++Read SPEC.md, then runtime.py for the two execution paths, schedules.py for overlap
++and retry, and orm.py for retained-object flush behavior. results.json contains the
++outcomes, event order, controls, and SQL. snekql builder statements are compiled for
++inspection before execution; SQLAlchemy UPDATE statements are captured by its
++public engine event, including ORM flushes. Raw atomic SQL is retained directly.
++The seven .sql files contain installed table DDL.
++
++Connection IDs and which reader reaches a barrier first can vary between runs.
++No throughput, fairness, real-world race frequency, alternate backend-version matrix,
++deadlock recovery, pessimistic row-locking API comparison, or serializable-isolation
++claim is made. These examples are not a proposed production retry abstraction.
+diff --git a/research/concurrency/SPEC.md b/research/concurrency/SPEC.md
+new file mode 100644
+index 0000000..7c54991
+--- /dev/null
++++ b/research/concurrency/SPEC.md
+@@ -0,0 +1,56 @@
++# Concurrent decrements
++
++Research for #366. No package fixes or changes to the literal-default design.
++
++## Confirmed interfaces
++
++Real snekql transactions/builders/raw statements and SQLAlchemy sessions/statements;
++two independent callers; fresh reads; affected-row results and explicit retry policy.
++The user approved the proposed concurrency investigation through these interfaces.
++
++## Oracle
++
++Initial quantity 10, revision 1. Each caller requests one decrement. Two successful
++requests must leave quantity 8. Otherwise a caller must receive a detectable conflict.
++Two apparent successes leaving 9 are a lost update. A returned rowcount by itself is
++not proof of concurrency protection; record a no-op UPDATE control.
++
++## Schedules
++
++- Detached reads: both callers read 10 and end their read transactions before either
++  writes. Caller A commits first, then B writes its stale value. Compare unguarded
++  assignment, atomic SQL arithmetic, and revision-based compare-and-swap.
++- Overlapping read transactions: both read 10 while transactions remain open; A
++  commits, then B attempts its update. Compare unguarded assignment and revision
++  checking, with and without a bounded full-transaction retry.
++- Held lock: both snapshots are collected first. A writes and holds the lock. B
++  attempts a guarded update until the database reports contention. Only then may A
++  commit. B retries once in a fresh transaction, rereading and recomputing.
++- SQLAlchemy ORM version counter: ordinary flush of two retained stale objects;
++  compare with explicit UPDATE, which does not inherit mapper version checking.
++
++Barriers and events establish ordering. No timing sleeps establish correctness.
++Each schedule has an outer deadline; timeout or unexpected driver errors abort the
++study rather than count as detected conflicts. This is controlled interleaving, not
++stress testing or a probability estimate for races.
++
++## Controls
++
++SQLite WAL, two connections available per library pool, bounded busy wait; the
++matched SQLAlchemy track explicitly begins read transactions. Observe SQLite's
++legacy SQLAlchemy/aiosqlite transaction behavior separately. snekql's SQLite
++BEGIN IMMEDIATE retry is outside this deferred-transaction experiment.
++
++MariaDB InnoDB, REPEATABLE READ, UTC, utf8mb4_bin, strict SQL mode, bounded InnoDB
++lock wait. The initial local server reported innodb_snapshot_isolation=ON; retain
++both explicitly enabled and disabled configurations. Error 1020 is an observed
++stale-snapshot conflict, distinct from a lock wait timeout. Inspect actual controls and retain relevant emitted SQL and error codes.
++
++Atomic arithmetic uses snekql's public raw statement because the tested query
++builder does not expose arithmetic assignments. SQLAlchemy uses update expressions.
++Do not import unmerged expression work or patch the library. Retry policies belong
++to the example application and run only after known contention or revision conflicts.
++
++No serializable isolation claim, deadlocks, pessimistic row-locking comparison,
++network failure, uncertain commit, backoff tuning, fairness, throughput, or automatic
++retry of external side effects. No overall library ranking.
+diff --git a/research/concurrency/__init__.py b/research/concurrency/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/research/concurrency/cases.py b/research/concurrency/cases.py
+new file mode 100644
+index 0000000..8d22f9f
+--- /dev/null
++++ b/research/concurrency/cases.py
+@@ -0,0 +1,24 @@
++"""The controlled matrix, shared by reproduction and regression checks."""
++
++from typing import Any
++
++
++def configurations() -> list[tuple[str, dict[str, Any]]]:
++    """Keep transaction-mode and snapshot-isolation sensitivity separate."""
++    cases: list[tuple[str, dict[str, Any]]] = [
++        ("sqlite/snekql", {"backend": "sqlite", "library": "snekql"}),
++        ("sqlite/sqlalchemy-explicit", {"backend": "sqlite", "library": "sqlalchemy"}),
++        (
++            "sqlite/sqlalchemy-legacy",
++            {"backend": "sqlite", "library": "sqlalchemy", "sqlite_begin": "legacy"},
++        ),
++    ]
++    cases.extend(
++        (
++            f"mariadb/{library}-snapshot-{'on' if snapshot else 'off'}",
++            {"backend": "mariadb", "library": library, "snapshot_isolation": snapshot},
++        )
++        for library in ("snekql", "sqlalchemy")
++        for snapshot in (True, False)
++    )
++    return cases
+diff --git a/research/concurrency/experiment.py b/research/concurrency/experiment.py
+new file mode 100644
+index 0000000..8583fe3
+--- /dev/null
++++ b/research/concurrency/experiment.py
+@@ -0,0 +1,162 @@
++"""Controlled concurrent schedules, not timing-based race guesses."""
++
++import asyncio
++import sys
++from dataclasses import replace
++from importlib.metadata import version
++from json import dumps
++from pathlib import Path
++from platform import python_version
++from typing import Any
++
++from research.concurrency.cases import configurations
++from research.concurrency.observations import assess
++from research.concurrency.orm import stale_objects
++from research.concurrency.runtime import Runtime, runtime
++from research.concurrency.schedules import held_lock, overlap
++from research.concurrency.sqlalchemy_models import models
++
++
++async def detached(adapter: Runtime, strategy: str) -> dict[str, Any]:
++    await adapter.reset()
++    ready = asyncio.Barrier(2)
++    first_done = asyncio.Event()
++    callers: list[dict[str, Any]] = [{}, {}]
++    events: list[str] = []
++
++    async def caller(index: int) -> None:
++        observed = await adapter.fresh()
++        callers[index]["read"] = observed
++        events.append(f"{index}:read_committed")
++        await ready.wait()
++        if index:
++            await first_done.wait()
++        async with adapter.transaction() as transaction:
++            callers[index]["rowcount"] = await adapter.write(
++                transaction, strategy, observed
++            )
++        callers[index]["outcome"] = (
++            "conflict"
++            if strategy in ("cas", "atomic") and callers[index]["rowcount"] == 0
++            else "committed"
++        )
++        events.append(f"{index}:write_committed")
++        if not index:
++            first_done.set()
++
++    async with asyncio.timeout(15), asyncio.TaskGroup() as tasks:
++        tasks.create_task(caller(0))
++        tasks.create_task(caller(1))
++    final = await adapter.fresh()
++    return {
++        "callers": callers,
++        "final": final,
++        "events": events,
++        "oracle": assess(callers, final),
++    }
++
++
++async def observe(
++    backend: str,
++    library: str,
++    sqlite_begin: str = "explicit",
++    *,
++    snapshot_isolation: bool = True,
++) -> dict[str, Any]:
++    """Collect a configuration through real transactions and independent readback."""
++    async with runtime(
++        backend, library, sqlite_begin, snapshot_isolation=snapshot_isolation
++    ) as adapter:
++        recorded = {
++            "scenarios": {
++                "detached_stale": await detached(adapter, "stale"),
++                "detached_atomic": await detached(adapter, "atomic"),
++                "detached_cas": await detached(adapter, "cas"),
++                "overlap_stale": await overlap(adapter, "stale"),
++                "overlap_cas": await overlap(adapter, "cas"),
++                "overlap_retry": await overlap(adapter, "cas", retry=True),
++                "lock_retry": await held_lock(adapter),
++            }
++        }
++
++        await adapter.reset()
++        snapshot = await adapter.fresh()
++        async with adapter.transaction() as transaction:
++            recorded["noop_rowcount"] = await adapter.write(
++                transaction, "noop", snapshot
++            )
++        if library == "sqlalchemy":
++            recorded["scenarios"]["orm_unversioned"] = await stale_objects(adapter)
++            versioned_adapter = replace(adapter, entry=models(versioned=True))
++            recorded["scenarios"]["orm_versioned"] = await stale_objects(
++                versioned_adapter
++            )
++            recorded["scenarios"]["versioned_direct_update"] = await detached(
++                versioned_adapter, "stale"
++            )
++        async with adapter.transaction() as first, adapter.transaction() as second:
++            await adapter.read(first)
++            await adapter.read(second)
++            recorded["controls"] = [
++                await adapter.controls(first),
++                await adapter.controls(second),
++            ]
++        recorded["configuration"] = {
++            "backend": backend,
++            "library": library,
++            "sqlite_begin": sqlite_begin if backend == "sqlite" else None,
++            "snapshot_isolation": snapshot_isolation if backend == "mariadb" else None,
++        }
++        async with adapter.engine.connect() as connection:
++            if backend == "sqlite":
++                recorded["installed_ddl"] = (
++                    await connection.exec_driver_sql(
++                        "SELECT sql FROM sqlite_master WHERE name='counter'"
++                    )
++                ).scalar_one()
++            else:
++                recorded["installed_ddl"] = (
++                    await connection.exec_driver_sql("SHOW CREATE TABLE counter")
++                ).one()[1]
++        recorded["statements"] = adapter.statements
++        return recorded
++
++
++async def main() -> None:
++    """Reproduce all controlled configurations and retain evidence beside the runner."""
++    evidence: dict[str, Any] = {
++        "python": python_version(),
++        "context_aware_warnings": sys.flags.context_aware_warnings,
++        "versions": {
++            name: version(name)
++            for name in (
++                "snekql",
++                "sqlalchemy",
++                "pydantic",
++                "aiosqlite",
++                "aiomysql",
++                "PyMySQL",
++                "greenlet",
++            )
++        },
++        "runs": {name: await observe(**options) for name, options in configurations()},
++    }
++    directory = Path(__file__).parent
++    await asyncio.to_thread(
++        (directory / "results.json").write_text, dumps(evidence, indent=2) + "\n"
++    )
++    for name, recorded in evidence["runs"].items():
++        ddl = (
++            "\n".join(
++                line.rstrip()
++                for line in recorded["installed_ddl"].strip().rstrip(";").splitlines()
++            )
++            + ";\n"
++        )
++        await asyncio.to_thread(
++            (directory / f"{name.replace('/', '-')}.sql").write_text, ddl
++        )
++
++
++if __name__ == "__main__":
++    asyncio.run(main())
+diff --git a/research/concurrency/mariadb-snekql-snapshot-off.sql b/research/concurrency/mariadb-snekql-snapshot-off.sql
+new file mode 100644
+index 0000000..ea67d89
+--- /dev/null
++++ b/research/concurrency/mariadb-snekql-snapshot-off.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE `counter` (
++  `id` bigint(20) NOT NULL,
++  `quantity` bigint(20) NOT NULL,
++  `revision` bigint(20) NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+diff --git a/research/concurrency/mariadb-snekql-snapshot-on.sql b/research/concurrency/mariadb-snekql-snapshot-on.sql
+new file mode 100644
+index 0000000..ea67d89
+--- /dev/null
++++ b/research/concurrency/mariadb-snekql-snapshot-on.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE `counter` (
++  `id` bigint(20) NOT NULL,
++  `quantity` bigint(20) NOT NULL,
++  `revision` bigint(20) NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+diff --git a/research/concurrency/mariadb-sqlalchemy-snapshot-off.sql b/research/concurrency/mariadb-sqlalchemy-snapshot-off.sql
+new file mode 100644
+index 0000000..654fab3
+--- /dev/null
++++ b/research/concurrency/mariadb-sqlalchemy-snapshot-off.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE `counter` (
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `quantity` int(11) NOT NULL,
++  `revision` int(11) NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+diff --git a/research/concurrency/mariadb-sqlalchemy-snapshot-on.sql b/research/concurrency/mariadb-sqlalchemy-snapshot-on.sql
+new file mode 100644
+index 0000000..654fab3
+--- /dev/null
++++ b/research/concurrency/mariadb-sqlalchemy-snapshot-on.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE `counter` (
++  `id` int(11) NOT NULL AUTO_INCREMENT,
++  `quantity` int(11) NOT NULL,
++  `revision` int(11) NOT NULL,
++  PRIMARY KEY (`id`)
++) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+diff --git a/research/concurrency/mariadb_models.py b/research/concurrency/mariadb_models.py
+new file mode 100644
+index 0000000..a7f57b0
+--- /dev/null
++++ b/research/concurrency/mariadb_models.py
+@@ -0,0 +1,10 @@
++"""MariaDB counter declaration without an implicit concurrency policy."""
++
++from snekql import mariadb as db
++
++
++class Counter[S = db.Pending](db.Model[S, "Counter[db.Fetched]"]):
++    __tablename__ = "counter"
++    id: db.Col[int] = db.Integer(primary_key=True)
++    quantity: db.Col[int] = db.Integer()
++    revision: db.Col[int] = db.Integer()
+diff --git a/research/concurrency/observations.py b/research/concurrency/observations.py
+new file mode 100644
+index 0000000..2bf0575
+--- /dev/null
++++ b/research/concurrency/observations.py
+@@ -0,0 +1,35 @@
++"""Keep transaction completion, request success, and contention distinct."""
++
++from typing import Any
++
++from sqlalchemy.exc import DBAPIError
++
++
++class ObservationError(Exception):
++    """The experiment received a result outside its single-row contract."""
++
++
++def assess(callers: list[dict[str, Any]], final: dict[str, int]) -> str:
++    """Count successful requests, not UPDATE executions or attempted retries."""
++    successes = sum(caller["outcome"] == "committed" for caller in callers)
++    if final["quantity"] != 10 - successes:
++        return "lost_update"
++    return "two_applied" if successes == len(callers) else "conflict_exposed"
++
++
++def contention(error: Exception, stage: str) -> dict[str, Any]:
++    """Never retry unknown errors or an ambiguous commit failure."""
++    driver = error.orig if isinstance(error, DBAPIError) else error.__cause__
++    code = getattr(driver, "sqlite_errorcode", None)
++    if code is None:
++        code = getattr(driver, "args", (None,))[0]
++    if stage != "execute" or code not in (5, 517, 1020, 1205):
++        raise error
++    return {
++        "outcome": "contention",
++        "stage": stage,
++        "code": code,
++        "error_type": type(error).__name__,
++        "driver_type": type(driver).__name__,
++        "message": str(error),
++    }
+diff --git a/research/concurrency/orm.py b/research/concurrency/orm.py
+new file mode 100644
+index 0000000..d667f82
+--- /dev/null
++++ b/research/concurrency/orm.py
+@@ -0,0 +1,63 @@
++"""Normal ORM object mutation, with and without the mapper's version counter."""
++
++import asyncio
++from typing import Any
++
++from sqlalchemy import select
++from sqlalchemy.ext.asyncio import AsyncSession
++from sqlalchemy.orm.exc import StaleDataError
++
++from research.concurrency.observations import assess
++from research.concurrency.runtime import Runtime
++
++
++async def stale_objects(adapter: Runtime) -> dict[str, Any]:
++    """End read transactions but keep independent sessions and their loaded objects."""
++    await adapter.reset()
++    ready = asyncio.Barrier(2)
++    first_done = asyncio.Event()
++    events: list[str] = []
++    callers: list[dict[str, Any]] = [{}, {}]
++
++    async def caller(index: int) -> None:
++        async with AsyncSession(adapter.engine, expire_on_commit=False) as session:
++            held = (
++                await session.scalars(
++                    select(adapter.entry).where(adapter.entry.id == 1)
++                )
++            ).one()
++            callers[index]["read"] = {
++                "quantity": held.quantity,
++                "revision": held.revision,
++            }
++            await session.commit()
++            events.append(f"{index}:read_committed")
++            await ready.wait()
++            if index:
++                await first_done.wait()
++            held.quantity -= 1
++            try:
++                await session.commit()
++            except StaleDataError as error:
++                callers[index].update(
++                    outcome="conflict",
++                    error_type=type(error).__name__,
++                    message=str(error),
++                )
++                await session.rollback()
++            else:
++                callers[index].update(outcome="committed", held_revision=held.revision)
++            events.append(f"{index}:write_finished:{callers[index]['outcome']}")
++            if not index:
++                first_done.set()
++
++    async with asyncio.timeout(15), asyncio.TaskGroup() as tasks:
++        tasks.create_task(caller(0))
++        tasks.create_task(caller(1))
++    final = await adapter.fresh()
++    return {
++        "callers": callers,
++        "final": final,
++        "events": events,
++        "oracle": assess(callers, final),
++    }
+diff --git a/research/concurrency/requirements.txt b/research/concurrency/requirements.txt
+new file mode 100644
+index 0000000..f67069c
+--- /dev/null
++++ b/research/concurrency/requirements.txt
+@@ -0,0 +1,2 @@
++SQLAlchemy[asyncio]==2.0.43
++greenlet==3.5.1
+diff --git a/research/concurrency/results.json b/research/concurrency/results.json
+new file mode 100644
+index 0000000..935a8eb
+--- /dev/null
++++ b/research/concurrency/results.json
+@@ -0,0 +1,3947 @@
++{
++  "python": "3.14.2",
++  "context_aware_warnings": 1,
++  "versions": {
++    "snekql": "0.7.0",
++    "sqlalchemy": "2.0.43",
++    "pydantic": "2.13.5",
++    "aiosqlite": "0.22.1",
++    "aiomysql": "0.3.2",
++    "PyMySQL": "1.2.0",
++    "greenlet": "3.5.1"
++  },
++  "runs": {
++    "sqlite/snekql": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=OperationalError"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 5,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)' params=<redacted:4> cause=OperationalError"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        }
++      },
++      "noop_rowcount": 1,
++      "controls": [
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1
++        },
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1
++        }
++      ],
++      "configuration": {
++        "backend": "sqlite",
++        "library": "snekql",
++        "sqlite_begin": "explicit",
++        "snapshot_isolation": null
++      },
++      "installed_ddl": "CREATE TABLE \"counter\" (\"id\" INTEGER PRIMARY KEY, \"quantity\" INTEGER NOT NULL, \"revision\" INTEGER NOT NULL) STRICT",
++      "statements": [
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=:id AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=:id AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ?, \"revision\" = ? WHERE (\"id\" = ?) AND (\"revision\" = ?)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE \"counter\" SET \"quantity\" = ? WHERE (\"id\" = ?)",
++          "params": [
++            10,
++            1
++          ]
++        }
++      ]
++    },
++    "sqlite/sqlalchemy-explicit": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=? WHERE counter.id = ?]\n[parameters: (9, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 517,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "1:read_open",
++            "0:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 5,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        },
++        "orm_unversioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "orm_versioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 2
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "conflict",
++              "error_type": "StaleDataError",
++              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "versioned_direct_update": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        }
++      },
++      "noop_rowcount": 1,
++      "controls": [
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1,
++          "session_in_transaction": true,
++          "driver_in_transaction": true
++        },
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1,
++          "session_in_transaction": true,
++          "driver_in_transaction": true
++        }
++      ],
++      "configuration": {
++        "backend": "sqlite",
++        "library": "sqlalchemy",
++        "sqlite_begin": "explicit",
++        "snapshot_isolation": null
++      },
++      "installed_ddl": "CREATE TABLE counter (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\trevision INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
++      "statements": [
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            10,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        }
++      ]
++    },
++    "sqlite/sqlalchemy-legacy": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "1:read_open",
++            "0:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "conflict",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 5,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(sqlite3.OperationalError) database is locked\n[SQL: UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        },
++        "orm_unversioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "orm_versioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 2
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "conflict",
++              "error_type": "StaleDataError",
++              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "versioned_direct_update": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "1:read_committed",
++            "0:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        }
++      },
++      "noop_rowcount": 1,
++      "controls": [
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1,
++          "session_in_transaction": true,
++          "driver_in_transaction": false
++        },
++        {
++          "version": "3.50.4",
++          "journal_mode": "wal",
++          "busy_timeout": 100,
++          "foreign_keys": 1,
++          "session_in_transaction": true,
++          "driver_in_transaction": false
++        }
++      ],
++      "configuration": {
++        "backend": "sqlite",
++        "library": "sqlalchemy",
++        "sqlite_begin": "legacy",
++        "snapshot_isolation": null
++      },
++      "installed_ddl": "CREATE TABLE counter (\n\tid INTEGER NOT NULL, \n\tquantity INTEGER NOT NULL, \n\trevision INTEGER NOT NULL, \n\tPRIMARY KEY (id)\n)",
++      "statements": [
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - ?), revision=(counter.revision + ?) WHERE counter.id = ? AND counter.quantity > ?",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            10,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=?, revision=? WHERE counter.id = ? AND counter.revision = ?",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=? WHERE counter.id = ?",
++          "params": [
++            9,
++            1
++          ]
++        }
++      ]
++    },
++    "mariadb/snekql-snapshot-on": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)' params=<redacted:2> cause=OperationalError"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1205,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        }
++      },
++      "noop_rowcount": 0,
++      "controls": [
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 10,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 1,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        },
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 11,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 1,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        }
++      ],
++      "configuration": {
++        "backend": "mariadb",
++        "library": "snekql",
++        "sqlite_begin": null,
++        "snapshot_isolation": true
++      },
++      "installed_ddl": "CREATE TABLE `counter` (\n  `id` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `revision` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
++      "statements": [
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            10,
++            1
++          ]
++        }
++      ]
++    },
++    "mariadb/snekql-snapshot-off": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "conflict",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1205,
++                  "error_type": "ExecutionError",
++                  "driver_type": "OperationalError",
++                  "message": "write failed sql='UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)' params=<redacted:4> cause=OperationalError"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        }
++      },
++      "noop_rowcount": 0,
++      "controls": [
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 5,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 0,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        },
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 8,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 0,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        }
++      ],
++      "configuration": {
++        "backend": "mariadb",
++        "library": "snekql",
++        "sqlite_begin": null,
++        "snapshot_isolation": false
++      },
++      "installed_ddl": "CREATE TABLE `counter` (\n  `id` bigint(20) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `revision` bigint(20) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
++      "statements": [
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "raw",
++          "sql": "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0",
++          "params": {
++            "id": 1
++          }
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s, `revision` = %s WHERE (`id` = %s) AND (`revision` = %s)",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "compiled_builder",
++          "sql": "UPDATE `counter` SET `quantity` = %s WHERE (`id` = %s)",
++          "params": [
++            10,
++            1
++          ]
++        }
++      ]
++    },
++    "mariadb/sqlalchemy-snapshot-on": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s WHERE counter.id = %s]\n[parameters: (9, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "contention",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1020,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(pymysql.err.OperationalError) (1020, \"Record has changed since last read in table 'counter'; try restarting transaction\")\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:contention",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1205,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(pymysql.err.OperationalError) (1205, 'Lock wait timeout exceeded; try restarting transaction')\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        },
++        "orm_unversioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "orm_versioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 2
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "conflict",
++              "error_type": "StaleDataError",
++              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "versioned_direct_update": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        }
++      },
++      "noop_rowcount": 1,
++      "controls": [
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 6,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 1,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        },
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 5,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 1,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        }
++      ],
++      "configuration": {
++        "backend": "mariadb",
++        "library": "sqlalchemy",
++        "sqlite_begin": null,
++        "snapshot_isolation": true
++      },
++      "installed_ddl": "CREATE TABLE `counter` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `quantity` int(11) NOT NULL,\n  `revision` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
++      "statements": [
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            10,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        }
++      ]
++    },
++    "mariadb/sqlalchemy-snapshot-off": {
++      "scenarios": {
++        "detached_stale": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "detached_atomic": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "detached_cas": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 0,
++              "outcome": "conflict"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_stale": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "overlap_cas": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "conflict",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "overlap_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 0,
++                  "outcome": "conflict"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:read_open",
++            "1:read_open",
++            "0:transaction_closed:committed",
++            "1:transaction_closed:conflict",
++            "1:retry_closed:committed"
++          ],
++          "oracle": "two_applied"
++        },
++        "lock_retry": {
++          "callers": [
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            },
++            {
++              "outcome": "committed",
++              "attempts": [
++                {
++                  "read": {
++                    "quantity": 10,
++                    "revision": 1
++                  },
++                  "outcome": "contention",
++                  "stage": "execute",
++                  "code": 1205,
++                  "error_type": "OperationalError",
++                  "driver_type": "OperationalError",
++                  "message": "(pymysql.err.OperationalError) (1205, 'Lock wait timeout exceeded; try restarting transaction')\n[SQL: UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s]\n[parameters: (9, 2, 1, 1)]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)"
++                },
++                {
++                  "read": {
++                    "quantity": 9,
++                    "revision": 2
++                  },
++                  "rowcount": 1,
++                  "outcome": "committed"
++                }
++              ]
++            }
++          ],
++          "final": {
++            "quantity": 8,
++            "revision": 3
++          },
++          "events": [
++            "0:write_locked",
++            "1:first_attempt_closed",
++            "0:committed",
++            "1:retry_finished"
++          ],
++          "oracle": "two_applied"
++        },
++        "orm_unversioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 1
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:committed"
++          ],
++          "oracle": "lost_update"
++        },
++        "orm_versioned": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "committed",
++              "held_revision": 2
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "outcome": "conflict",
++              "error_type": "StaleDataError",
++              "message": "UPDATE statement on table 'counter' expected to update 1 row(s); 0 were matched."
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 2
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_finished:committed",
++            "1:write_finished:conflict"
++          ],
++          "oracle": "conflict_exposed"
++        },
++        "versioned_direct_update": {
++          "callers": [
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            },
++            {
++              "read": {
++                "quantity": 10,
++                "revision": 1
++              },
++              "rowcount": 1,
++              "outcome": "committed"
++            }
++          ],
++          "final": {
++            "quantity": 9,
++            "revision": 1
++          },
++          "events": [
++            "0:read_committed",
++            "1:read_committed",
++            "0:write_committed",
++            "1:write_committed"
++          ],
++          "oracle": "lost_update"
++        }
++      },
++      "noop_rowcount": 1,
++      "controls": [
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 6,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 0,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        },
++        {
++          "version": "12.3.2-MariaDB",
++          "connection_id": 5,
++          "isolation": "REPEATABLE-READ",
++          "snapshot_isolation": 0,
++          "lock_wait_timeout": 1,
++          "rollback_on_timeout": 0,
++          "time_zone": "+00:00",
++          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
++          "collation": "utf8mb4_bin",
++          "engine": "InnoDB"
++        }
++      ],
++      "configuration": {
++        "backend": "mariadb",
++        "library": "sqlalchemy",
++        "sqlite_begin": null,
++        "snapshot_isolation": false
++      },
++      "installed_ddl": "CREATE TABLE `counter` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `quantity` int(11) NOT NULL,\n  `revision` int(11) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin",
++      "statements": [
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=(counter.quantity - %s), revision=(counter.revision + %s) WHERE counter.id = %s AND counter.quantity > %s",
++          "params": [
++            1,
++            1,
++            1,
++            0
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            8,
++            3,
++            1,
++            2
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            10,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s, revision=%s WHERE counter.id = %s AND counter.revision = %s",
++          "params": [
++            9,
++            2,
++            1,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        },
++        {
++          "path": "driver_statement",
++          "sql": "UPDATE counter SET quantity=%s WHERE counter.id = %s",
++          "params": [
++            9,
++            1
++          ]
++        }
++      ]
++    }
++  }
++}
+diff --git a/research/concurrency/runtime.py b/research/concurrency/runtime.py
+new file mode 100644
+index 0000000..736b212
+--- /dev/null
++++ b/research/concurrency/runtime.py
+@@ -0,0 +1,302 @@
++"""Two real execution paths under the same scheduling protocol."""
++
++import asyncio
++from collections.abc import AsyncIterator
++from contextlib import asynccontextmanager
++from dataclasses import dataclass, field, replace
++from os import fsdecode
++from pathlib import Path
++from tempfile import TemporaryDirectory
++from typing import Any
++
++from sqlalchemy import URL, event, select, text, update
++from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
++
++from research.concurrency import mariadb_models, sqlite_models
++from research.concurrency.observations import ObservationError
++from research.concurrency.sqlalchemy_models import models
++from snekql.testing.mariadb import temporary_mariadb_server
++
++
++@dataclass
++class Runtime:
++    """Scheduling adapter; library-specific writes remain visible here."""
++
++    backend: str
++    database: Any
++    engine: AsyncEngine
++    entry: Any
++    library: str
++    namespace: Any
++    statements: list[dict[str, Any]] = field(default_factory=list)
++
++    @asynccontextmanager
++    async def transaction(self) -> AsyncIterator[Any]:
++        """Acquire an independent transaction, committing only on clean exit."""
++        if self.library == "snekql":
++            async with self.database.transaction() as transaction:
++                if self.backend == "sqlite":
++                    await transaction.fetch_one(
++                        self.namespace.raw("PRAGMA busy_timeout=100")
++                    )
++                yield transaction
++        else:
++            async with (
++                AsyncSession(self.engine, expire_on_commit=False) as session,
++                session.begin(),
++            ):
++                yield session
++
++    async def read(self, transaction: Any) -> dict[str, int]:
++        if self.library == "snekql":
++            row = await transaction.fetch_one(
++                self.namespace.select(self.entry).where(self.entry.id.eq(1))
++            )
++        else:
++            row = (
++                await transaction.scalars(select(self.entry).where(self.entry.id == 1))
++            ).one()
++        return {"quantity": row.quantity, "revision": row.revision}
++
++    async def write(
++        self, transaction: Any, strategy: str, observed: dict[str, int]
++    ) -> int:
++        """Stale assignment has no guard. CAS both compares and advances revision."""
++        if self.library == "snekql":
++            if strategy == "atomic":
++                sql = (
++                    "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=:id AND quantity>0"
++                    if self.backend == "sqlite"
++                    else "UPDATE counter SET quantity=quantity-1, revision=revision+1 WHERE id=%(id)s AND quantity>0"
++                )
++                query = self.namespace.raw(sql, params={"id": 1})
++                self.statements.append({"path": "raw", "sql": sql, "params": {"id": 1}})
++            else:
++                assignments = [
++                    self.entry.quantity.to(
++                        observed["quantity"]
++                        if strategy == "noop"
++                        else observed["quantity"] - 1
++                    )
++                ]
++                predicates = [self.entry.id.eq(1)]
++                if strategy == "cas":
++                    assignments.append(self.entry.revision.to(observed["revision"] + 1))
++                    predicates.append(self.entry.revision.eq(observed["revision"]))
++                query = (
++                    self.namespace.update(self.entry)
++                    .set(*assignments)
++                    .where(*predicates)
++                )
++                compiled = query.compile()
++                self.statements.append(
++                    {
++                        "path": "compiled_builder",
++                        "sql": compiled.sql,
++                        "params": compiled.params,
++                    }
++                )
++            rowcount = await transaction.execute(query)
++        else:
++            query = update(self.entry).where(self.entry.id == 1)
++            if strategy == "atomic":
++                query = query.where(self.entry.quantity > 0).values(
++                    quantity=self.entry.quantity - 1, revision=self.entry.revision + 1
++                )
++            elif strategy == "cas":
++                query = query.where(self.entry.revision == observed["revision"]).values(
++                    quantity=observed["quantity"] - 1, revision=observed["revision"] + 1
++                )
++            else:
++                query = query.values(
++                    quantity=observed["quantity"]
++                    if strategy == "noop"
++                    else observed["quantity"] - 1
++                )
++            rowcount = (await transaction.execute(query)).rowcount
++        if not isinstance(rowcount, int) or rowcount not in (0, 1):
++            message = (
++                f"single-row update returned an unsupported rowcount: {rowcount!r}"
++            )
++            raise ObservationError(message)
++        return rowcount
++
++    async def fresh(self) -> dict[str, int]:
++        async with self.transaction() as transaction:
++            return await self.read(transaction)
++
++    async def controls(self, transaction: Any) -> dict[str, Any]:
++        """Inspect the actual borrowed session after a table read established policy."""
++        sql = (
++            "SELECT sqlite_version() AS version, (SELECT journal_mode FROM pragma_journal_mode) AS journal_mode, (SELECT timeout FROM pragma_busy_timeout) AS busy_timeout, (SELECT foreign_keys FROM pragma_foreign_keys) AS foreign_keys"
++            if self.backend == "sqlite"
++            else "SELECT VERSION() AS version, CONNECTION_ID() AS connection_id, @@tx_isolation AS isolation, @@innodb_snapshot_isolation AS snapshot_isolation, @@innodb_lock_wait_timeout AS lock_wait_timeout, @@innodb_rollback_on_timeout AS rollback_on_timeout, @@time_zone AS time_zone, @@sql_mode AS sql_mode, @@collation_database AS collation, @@default_storage_engine AS engine"
++        )
++        if self.library == "snekql":
++            return await transaction.fetch_one(self.namespace.raw(sql))
++        controls = dict((await transaction.execute(text(sql))).mappings().one())
++        if self.backend == "sqlite":
++            connection = await transaction.connection()
++            proxy = await connection.get_raw_connection()
++            controls["session_in_transaction"] = transaction.in_transaction()
++            controls["driver_in_transaction"] = proxy.driver_connection.in_transaction
++        return controls
++
++    async def reset(self) -> None:
++        """Seed outside the schedule; no worker transactions remain open here."""
++        async with self.engine.begin() as connection:
++            await connection.exec_driver_sql("DELETE FROM counter")
++            await connection.exec_driver_sql(
++                "INSERT INTO counter (id, quantity, revision) VALUES (1, 10, 1)"
++            )
++
++
++@asynccontextmanager
++async def _engine(
++    url: URL, backend: str, sqlite_begin: str
++) -> AsyncIterator[AsyncEngine]:
++    engine = create_async_engine(url, pool_size=2, max_overflow=0)
++
++    @event.listens_for(engine.sync_engine, "connect")
++    def configure(connection: Any, _record: Any) -> None:
++        if backend == "sqlite" and sqlite_begin == "explicit":
++            connection.isolation_level = None
++        cursor = connection.cursor()
++        try:
++            if backend == "sqlite":
++                cursor.execute("PRAGMA journal_mode=WAL")
++                cursor.execute("PRAGMA foreign_keys=ON")
++                cursor.execute("PRAGMA busy_timeout=100")
++            else:
++                cursor.execute("SET SESSION time_zone='+00:00'")
++                cursor.execute(
++                    "SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'"
++                )
++        finally:
++            cursor.close()
++
++    if backend == "sqlite" and sqlite_begin == "explicit":
++
++        @event.listens_for(engine.sync_engine, "begin")
++        def begin(connection: Any) -> None:
++            connection.exec_driver_sql("BEGIN")
++
++    try:
++        yield engine
++    finally:
++        await engine.dispose()
++
++
++@asynccontextmanager
++async def _database(
++    engine: AsyncEngine, declarations: Any, config: Any, library: str, backend: str
++) -> AsyncIterator[Runtime]:
++    if library == "snekql":
++        async with await declarations.db.Database.initialize(config) as database:
++            await database.migrate(
++                {"001_counter": declarations.db.scaffold([declarations.Counter])}
++            )
++            yield Runtime(
++                backend,
++                database,
++                engine,
++                declarations.Counter,
++                library,
++                declarations.db,
++            )
++    else:
++        entry = models()
++        async with engine.begin() as connection:
++            await connection.run_sync(entry.metadata.create_all)
++        adapter = Runtime(backend, None, engine, entry, library, None)
++
++        @event.listens_for(engine.sync_engine, "before_cursor_execute")
++        def capture(
++            _connection: Any,
++            _cursor: Any,
++            statement: str,
++            parameters: Any,
++            _context: Any,
++            _executemany: bool,  # noqa: FBT001 - SQLAlchemy event signature.
++        ) -> None:
++            if statement.startswith("UPDATE counter"):
++                adapter.statements.append(
++                    {"path": "driver_statement", "sql": statement, "params": parameters}
++                )
++
++        yield adapter
++
++
++@asynccontextmanager
++async def runtime(
++    backend: str,
++    library: str,
++    sqlite_begin: str = "explicit",
++    *,
++    snapshot_isolation: bool = True,
++) -> AsyncIterator[Runtime]:
++    """Only owned temporary files and socket-only MariaDB servers are accepted."""
++    if backend == "sqlite":
++        directory = await asyncio.to_thread(
++            TemporaryDirectory, prefix="snekql-concurrency-"
++        )
++        try:
++            path = Path(fsdecode(directory.name)) / "study.sqlite"
++            async with (
++                _engine(
++                    URL.create("sqlite+aiosqlite", database=str(path)),
++                    backend,
++                    sqlite_begin,
++                ) as engine,
++                _database(
++                    engine,
++                    sqlite_models,
++                    sqlite_models.db.Config(
++                        database=path,
++                        pool_size=2,
++                        busy_max_retries=0,
++                        operation_timeout=5,
++                    ),
++                    library,
++                    backend,
++                ) as adapter,
++            ):
++                yield adapter
++        finally:
++            await asyncio.to_thread(directory.cleanup)
++    else:
++        async with (
++            temporary_mariadb_server(
++                server_args=(
++                    "--character-set-server=utf8mb4",
++                    "--collation-server=utf8mb4_bin",
++                    "--default-storage-engine=InnoDB",
++                    "--transaction-isolation=REPEATABLE-READ",
++                    "--innodb-lock-wait-timeout=1",
++                    "--innodb-snapshot-isolation=ON"
++                    if snapshot_isolation
++                    else "--innodb-snapshot-isolation=OFF",
++                )
++            ) as server,
++            _engine(
++                URL.create(
++                    "mysql+aiomysql",
++                    username=server.user,
++                    database=server.database,
++                    query={
++                        "unix_socket": str(server.socket_path),
++                        "charset": "utf8mb4",
++                    },
++                ),
++                backend,
++                sqlite_begin,
++            ) as engine,
++            _database(
++                engine,
++                mariadb_models,
++                replace(server.config(pool_size=2), operation_timeout=5),
++                library,
++                backend,
++            ) as adapter,
++        ):
++            yield adapter
+diff --git a/research/concurrency/schedules.py b/research/concurrency/schedules.py
+new file mode 100644
+index 0000000..4e99f7c
+--- /dev/null
++++ b/research/concurrency/schedules.py
+@@ -0,0 +1,141 @@
++"""Controlled overlap keeps both read transactions open until A commits."""
++
++import asyncio
++from typing import Any
++
++from sqlalchemy.exc import DBAPIError
++
++from research.concurrency.observations import assess, contention
++from research.concurrency.runtime import Runtime
++from snekql.errors import ExecutionError
++
++
++async def retry_fresh(adapter: Runtime) -> dict[str, Any]:
++    """One bounded retry of this pure read/CAS unit; no external side effects."""
++    attempt: dict[str, Any] = {}
++    stage = "read"
++    try:
++        async with adapter.transaction() as transaction:
++            observed = await adapter.read(transaction)
++            attempt["read"] = observed
++            stage = "execute"
++            attempt["rowcount"] = await adapter.write(transaction, "cas", observed)
++            stage = "commit"
++        attempt["outcome"] = "committed" if attempt["rowcount"] == 1 else "conflict"
++    except (ExecutionError, DBAPIError) as error:
++        attempt.update(contention(error, stage))
++    return attempt
++
++
++async def overlap(
++    adapter: Runtime, strategy: str, *, retry: bool = False
++) -> dict[str, Any]:
++    await adapter.reset()
++    ready = asyncio.Barrier(2)
++    first_done = asyncio.Event()
++    callers: list[dict[str, Any]] = [{}, {}]
++    events: list[str] = []
++
++    async def caller(index: int) -> None:
++        attempt: dict[str, Any] = {}
++        stage = "read"
++        try:
++            async with adapter.transaction() as transaction:
++                observed = await adapter.read(transaction)
++                attempt["read"] = observed
++                events.append(f"{index}:read_open")
++                await ready.wait()
++                if index:
++                    await first_done.wait()
++                stage = "execute"
++                attempt["rowcount"] = await adapter.write(
++                    transaction, strategy, observed
++                )
++                stage = "commit"
++            attempt["outcome"] = (
++                "conflict"
++                if strategy == "cas" and attempt["rowcount"] == 0
++                else "committed"
++            )
++        except (ExecutionError, DBAPIError) as error:
++            attempt.update(contention(error, stage))
++        callers[index] = {"outcome": attempt["outcome"], "attempts": [attempt]}
++        events.append(f"{index}:transaction_closed:{attempt['outcome']}")
++        if not index:
++            first_done.set()
++        if retry and attempt["outcome"] in ("conflict", "contention"):
++            fresh_attempt = await retry_fresh(adapter)
++            callers[index]["attempts"].append(fresh_attempt)
++            callers[index]["outcome"] = fresh_attempt["outcome"]
++            events.append(f"{index}:retry_closed:{fresh_attempt['outcome']}")
++
++    async with asyncio.timeout(15), asyncio.TaskGroup() as tasks:
++        tasks.create_task(caller(0))
++        tasks.create_task(caller(1))
++    final = await adapter.fresh()
++    return {
++        "callers": callers,
++        "final": final,
++        "events": events,
++        "oracle": assess(callers, final),
++    }
++
++
++async def held_lock(adapter: Runtime) -> dict[str, Any]:
++    """Release the holder only after contention was observed, never after a sleep."""
++    await adapter.reset()
++    snapshots = await asyncio.gather(adapter.fresh(), adapter.fresh())
++    locked = asyncio.Event()
++    attempted = asyncio.Event()
++    committed = asyncio.Event()
++    events: list[str] = []
++    callers: list[dict[str, Any]] = [{}, {}]
++
++    async def holder() -> None:
++        async with adapter.transaction() as transaction:
++            rowcount = await adapter.write(transaction, "cas", snapshots[0])
++            events.append("0:write_locked")
++            locked.set()
++            await attempted.wait()
++        callers[0] = {
++            "outcome": "committed",
++            "attempts": [
++                {"read": snapshots[0], "rowcount": rowcount, "outcome": "committed"}
++            ],
++        }
++        events.append("0:committed")
++        committed.set()
++
++    async def contender() -> None:
++        await locked.wait()
++        attempt: dict[str, Any] = {"read": snapshots[1]}
++        stage = "execute"
++        try:
++            async with adapter.transaction() as transaction:
++                attempt["rowcount"] = await adapter.write(
++                    transaction, "cas", snapshots[1]
++                )
++                stage = "commit"
++            attempt["outcome"] = "committed" if attempt["rowcount"] == 1 else "conflict"
++        except (ExecutionError, DBAPIError) as error:
++            attempt.update(contention(error, stage))
++        finally:
++            events.append("1:first_attempt_closed")
++            attempted.set()
++        await committed.wait()
++        attempts = [attempt]
++        if attempt["outcome"] in ("contention", "conflict"):
++            attempts.append(await retry_fresh(adapter))
++        callers[1] = {"outcome": attempts[-1]["outcome"], "attempts": attempts}
++        events.append("1:retry_finished")
++
++    async with asyncio.timeout(15), asyncio.TaskGroup() as tasks:
++        tasks.create_task(holder())
++        tasks.create_task(contender())
++    final = await adapter.fresh()
++    return {
++        "callers": callers,
++        "final": final,
++        "events": events,
++        "oracle": assess(callers, final),
++    }
+diff --git a/research/concurrency/sqlalchemy_models.py b/research/concurrency/sqlalchemy_models.py
+new file mode 100644
+index 0000000..666625c
+--- /dev/null
++++ b/research/concurrency/sqlalchemy_models.py
+@@ -0,0 +1,22 @@
++"""SQLAlchemy counters, with optional built-in ORM version checking."""
++
++from typing import Any
++
++from sqlalchemy import Integer
++from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
++
++
++def models(*, versioned: bool = False) -> type[Any]:
++    """A fresh mapper can view the same table with or without version policy."""
++
++    class Base(DeclarativeBase):
++        pass
++
++    class Counter(Base):
++        __tablename__ = "counter"
++        id: Mapped[int] = mapped_column(Integer, primary_key=True)
++        quantity: Mapped[int] = mapped_column(Integer)
++        revision: Mapped[int] = mapped_column(Integer)
++        __mapper_args__ = {"version_id_col": revision} if versioned else {}
++
++    return Counter
+diff --git a/research/concurrency/sqlite-snekql.sql b/research/concurrency/sqlite-snekql.sql
+new file mode 100644
+index 0000000..307c256
+--- /dev/null
++++ b/research/concurrency/sqlite-snekql.sql
+@@ -0,0 +1 @@
++CREATE TABLE "counter" ("id" INTEGER PRIMARY KEY, "quantity" INTEGER NOT NULL, "revision" INTEGER NOT NULL) STRICT;
+diff --git a/research/concurrency/sqlite-sqlalchemy-explicit.sql b/research/concurrency/sqlite-sqlalchemy-explicit.sql
+new file mode 100644
+index 0000000..f989edb
+--- /dev/null
++++ b/research/concurrency/sqlite-sqlalchemy-explicit.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE counter (
++	id INTEGER NOT NULL,
++	quantity INTEGER NOT NULL,
++	revision INTEGER NOT NULL,
++	PRIMARY KEY (id)
++);
+diff --git a/research/concurrency/sqlite-sqlalchemy-legacy.sql b/research/concurrency/sqlite-sqlalchemy-legacy.sql
+new file mode 100644
+index 0000000..f989edb
+--- /dev/null
++++ b/research/concurrency/sqlite-sqlalchemy-legacy.sql
+@@ -0,0 +1,6 @@
++CREATE TABLE counter (
++	id INTEGER NOT NULL,
++	quantity INTEGER NOT NULL,
++	revision INTEGER NOT NULL,
++	PRIMARY KEY (id)
++);
+diff --git a/research/concurrency/sqlite_models.py b/research/concurrency/sqlite_models.py
+new file mode 100644
+index 0000000..c4acdff
+--- /dev/null
++++ b/research/concurrency/sqlite_models.py
+@@ -0,0 +1,10 @@
++"""SQLite counter declaration without an implicit concurrency policy."""
++
++from snekql import sqlite as db
++
++
++class Counter[S = db.Pending](db.Model[S, "Counter[db.Fetched]"]):
++    __tablename__ = "counter"
++    id: db.Col[int] = db.Integer(primary_key=True)
++    quantity: db.Col[int] = db.Integer()
++    revision: db.Col[int] = db.Integer()
+diff --git a/research/concurrency/test_concurrency.py b/research/concurrency/test_concurrency.py
+new file mode 100644
+index 0000000..d12396a
+--- /dev/null
++++ b/research/concurrency/test_concurrency.py
+@@ -0,0 +1,83 @@
++"""Test-first checks through the public research observation interface."""
++
++from snektest import assert_eq, assert_false, test
++
++from research.concurrency.experiment import observe
++
++
++@test(mark="medium")
++async def stale_assignment_exposes_a_lost_update() -> None:
++    """Both completed writes cannot be mistaken for two applied decrements."""
++    recorded = await observe("sqlite", "snekql")
++    assert_eq(recorded["scenarios"]["detached_stale"]["oracle"], "lost_update")
++
++
++@test(mark="medium")
++async def atomic_arithmetic_preserves_both_decrements() -> None:
++    """The write must operate on the current database quantity, not the old read."""
++    recorded = await observe("sqlite", "snekql")
++    assert_eq(recorded["scenarios"]["detached_atomic"]["final"]["quantity"], 8)
++
++
++@test(mark="medium")
++async def revision_predicate_exposes_the_stale_writer() -> None:
++    """A zero CAS rowcount is surfaced as an application conflict."""
++    recorded = await observe("sqlite", "sqlalchemy")
++    assert_eq(
++        recorded["scenarios"]["detached_cas"]["callers"][1]["outcome"], "conflict"
++    )
++
++
++@test(mark="medium")
++async def overlapping_sqlite_snapshot_exposes_contention() -> None:
++    """An old WAL read transaction cannot be upgraded after the other commit."""
++    recorded = await observe("sqlite", "snekql")
++    assert_eq(
++        recorded["scenarios"]["overlap_stale"]["callers"][1]["attempts"][0]["code"], 517
++    )
++
++
++@test(mark="medium")
++async def full_transaction_retry_rereads_current_quantity() -> None:
++    """The retry must replace the obsolete snapshot rather than resubmit it."""
++    recorded = await observe("sqlite", "sqlalchemy")
++    assert_eq(
++        recorded["scenarios"]["overlap_retry"]["callers"][1]["attempts"][1]["read"][
++            "quantity"
++        ],
++        9,
++    )
++
++
++@test(mark="medium")
++async def lock_retry_uses_a_fresh_transaction() -> None:
++    """A known held writer forces a busy error before a successful reread/retry."""
++    recorded = await observe("sqlite", "snekql")
++    assert_eq(recorded["scenarios"]["lock_retry"]["final"]["quantity"], 8)
++
++
++@test(mark="medium")
++async def orm_version_counter_detects_stale_flush() -> None:
++    """Mapper versioning must reject the second old object at flush/commit."""
++    recorded = await observe("sqlite", "sqlalchemy")
++    assert_eq(
++        recorded["scenarios"]["orm_versioned"]["callers"][1]["error_type"],
++        "StaleDataError",
++    )
++
++
++@test(mark="slow")
++async def mariadb_snapshot_conflict_is_recorded() -> None:
++    """InnoDB snapshot isolation reports error 1020 for this obsolete read."""
++    recorded = await observe("mariadb", "snekql")
++    assert_eq(
++        recorded["scenarios"]["overlap_stale"]["callers"][1]["attempts"][0]["code"],
++        1020,
++    )
++
++
++@test(mark="medium")
++async def legacy_sqlite_read_has_no_driver_transaction() -> None:
++    """A SQLAlchemy Session transaction need not mean SQLite began a read snapshot."""
++    recorded = await observe("sqlite", "sqlalchemy", "legacy")
++    assert_false(recorded["controls"][0]["driver_in_transaction"])
+diff --git a/research/concurrency/test_matrix.py b/research/concurrency/test_matrix.py
+new file mode 100644
+index 0000000..c5cd4fc
+--- /dev/null
++++ b/research/concurrency/test_matrix.py
+@@ -0,0 +1,139 @@
++"""Cross-backend outcomes through the observation runner's public interface."""
++
++from collections.abc import AsyncGenerator
++from typing import Any
++
++from snektest import Param, assert_eq, fixture, load_fixture, test
++
++from research.concurrency.cases import configurations
++from research.concurrency.experiment import observe
++
++
++@fixture(scope="session")
++async def observations() -> AsyncGenerator[dict[str, Any]]:
++    """Use real owned databases once per configuration; assertions only read evidence."""
++    yield {name: await observe(**options) for name, options in configurations()}
++
++
++CASES = [Param(value=name, name=name.replace("/", "-")) for name, _ in configurations()]
++ORM_CASES = [
++    Param(value=name, name=name.replace("/", "-"))
++    for name, options in configurations()
++    if options["library"] == "sqlalchemy"
++]
++
++
++@test(CASES, mark="slow")
++async def both_callers_really_read_ten(case: str) -> None:
++    """The schedule must establish stale inputs before either writes."""
++    recorded = await load_fixture(observations())
++    assert_eq(
++        [
++            caller["read"]["quantity"]
++            for caller in recorded[case]["scenarios"]["detached_stale"]["callers"]
++        ],
++        [10, 10],
++    )
++
++
++@test(CASES, mark="slow")
++async def detached_assignment_loses_one_decrement(case: str) -> None:
++    """No-error completion of an unguarded assignment is not conflict detection."""
++    recorded = await load_fixture(observations())
++    assert_eq(recorded[case]["scenarios"]["detached_stale"]["oracle"], "lost_update")
++
++
++@test(CASES, mark="slow")
++async def atomic_updates_apply_twice(case: str) -> None:
++    """Arithmetic executes against the current value in fresh write transactions."""
++    recorded = await load_fixture(observations())
++    assert_eq(recorded[case]["scenarios"]["detached_atomic"]["final"]["quantity"], 8)
++
++
++@test(CASES, mark="slow")
++async def cas_reports_no_match_for_stale_revision(case: str) -> None:
++    """The matched CAS necessarily changes revision, avoiding no-op ambiguity."""
++    recorded = await load_fixture(observations())
++    assert_eq(
++        [
++            caller["rowcount"]
++            for caller in recorded[case]["scenarios"]["detached_cas"]["callers"]
++        ],
++        [1, 0],
++    )
++
++
++@test(CASES, mark="slow")
++async def retry_reads_the_new_revision(case: str) -> None:
++    """The application retry cannot reuse revision 1 from the failed transaction."""
++    recorded = await load_fixture(observations())
++    assert_eq(
++        recorded[case]["scenarios"]["overlap_retry"]["callers"][1]["attempts"][1][
++            "read"
++        ],
++        {"quantity": 9, "revision": 2},
++    )
++
++
++@test(CASES, mark="slow")
++async def retry_persists_both_requests(case: str) -> None:
++    """A bounded full-transaction retry resolves this controlled stale-read schedule."""
++    recorded = await load_fixture(observations())
++    assert_eq(recorded[case]["scenarios"]["overlap_retry"]["final"]["quantity"], 8)
++
++
++@test(CASES, mark="slow")
++async def held_lock_causes_a_real_database_error(case: str) -> None:
++    """The holder is released only after the database reports busy/lock timeout."""
++    recorded = await load_fixture(observations())
++    expected = 5 if case.startswith("sqlite/") else 1205
++    assert_eq(
++        recorded[case]["scenarios"]["lock_retry"]["callers"][1]["attempts"][0]["code"],
++        expected,
++    )
++
++
++@test(CASES, mark="slow")
++async def lock_retry_preserves_the_first_commit(case: str) -> None:
++    """Reread after the held writer commits; do not overwrite it with quantity 9."""
++    recorded = await load_fixture(observations())
++    assert_eq(recorded[case]["scenarios"]["lock_retry"]["final"]["quantity"], 8)
++
++
++@test(CASES, mark="slow")
++async def noop_rowcount_depends_on_connector_policy(case: str) -> None:
++    """MariaDB changed-row counts and SQLAlchemy matched-row counts differ."""
++    recorded = await load_fixture(observations())
++    expected = 0 if case.startswith("mariadb/snekql") else 1
++    assert_eq(recorded[case]["noop_rowcount"], expected)
++
++
++@test(CASES, mark="slow")
++async def overlapping_read_safety_depends_on_transaction_policy(case: str) -> None:
++    """Legacy SQLite reads and snapshot-disabled MariaDB permit the stale overwrite."""
++    recorded = await load_fixture(observations())
++    expected = (
++        "lost_update"
++        if case.endswith(("legacy", "snapshot-off"))
++        else "conflict_exposed"
++    )
++    assert_eq(recorded[case]["scenarios"]["overlap_stale"]["oracle"], expected)
++
++
++@test(ORM_CASES, mark="slow")
++async def orm_mapper_versioning_rejects_stale_flush(case: str) -> None:
++    """Version checking is native ORM policy when explicitly configured."""
++    recorded = await load_fixture(observations())
++    assert_eq(
++        recorded[case]["scenarios"]["orm_versioned"]["callers"][1]["error_type"],
++        "StaleDataError",
++    )
++
++
++@test(ORM_CASES, mark="slow")
++async def explicit_update_bypasses_mapper_versioning(case: str) -> None:
++    """A versioned mapper does not add its predicate to arbitrary UPDATE statements."""
++    recorded = await load_fixture(observations())
++    assert_eq(
++        recorded[case]["scenarios"]["versioned_direct_update"]["final"]["quantity"], 9
++    )

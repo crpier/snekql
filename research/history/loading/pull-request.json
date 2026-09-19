@@ -1,0 +1,195 @@
+{
+  "baseRefOid": "327f49d85e2c5b2ca5ee9db3f028cc9f242c63c9",
+  "body": "## Scope\n\nCloses #369. Approved application seams: list_orders, get_order, and an observation runner. Independent research on SQLite and MariaDB, based on main 50b7a9a. No production fixes or imports from other research branches.\n\nStart with `research/loading/README.md` and `SPEC.md`, then compare the concrete typed snekql applications with `sqlalchemy_app.py`.\n\n## Findings\n\n- All eight backend/strategy configurations met the tested contract for tied-key cursor pagination, customer filtering, full collections, shared products on distinct historical lines, exact integer-cent totals, empty orders, and missing detail.\n- snekql's parent/customer projection plus child/product batch used two SELECTs for nonempty pages. SQLAlchemy's select-in collection loader with joined scalar relations also used two.\n- SQLAlchemy's joined collection loader used one SELECT and wrapped the parent LIMIT before joining children. Consuming results with unique() preserved parent pagination and complete collections.\n- Query count hid a useful difference. ORM eager plans also loaded children for the unreturned lookahead order. The snekql plan trimmed parents before loading children. This is an implementation choice, not an unavoidable ORM limitation.\n- The explicitly awaited per-order diagnostic returned correct results but grew from two SELECTs for one order to five for four. It is not the representative ORM implementation; explicit builder code can make the same N+1 mistake.\n- Every application returned immutable DTOs. The runner serialized all values after database resources closed. ORM conversion occurs before session transaction exit, with fresh sessions and raiseload guards rather than reliance on cached relationships.\n\n## Evidence and limits\n\nRetains 128 read operations, completed SELECT traces, connection controls, results, and eight installed-DDL artifacts. Query counts exclude setup and transaction control. snekql telemetry preserves parameter redaction; SQLAlchemy events show fixed fixture parameters.\n\nThe study compares these implementations, not every equivalent query plan. It does not measure latency, transferred bytes, memory, large-batch thresholds, concurrent pagination, authorization, or broad typing soundness. SQLAlchemy models load some unused columns; load_only tuning is outside this pass.\n\n## Validation\n\n- Full package plus research: 1764 tests passed, including 155 research checks.\n- Clean temporary environment: all 155 research checks and typing passed.\n- Ruff lint/format, lock, generated-interface, and diff checks passed.\n- Separately pinned comparator requirements; no root dependency or lockfile changes.\n- CI installs the comparator and uses explicit test paths. The typing exception is limited to SQLAlchemy declaration factories in one research model file.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-19T09:03:09Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-19T09:03:09Z",
+      "messageBody": "",
+      "messageHeadline": "Compare related-data loading and pagination (#369)",
+      "oid": "0b75686b6dd354131ab27c9772ff77e1e83e1272"
+    }
+  ],
+  "createdAt": "2026-09-19T09:03:13Z",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "additions": 3,
+      "deletions": 1,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "pyproject.toml",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/loading/README.md",
+      "additions": 204,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/SPEC.md",
+      "additions": 37,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/experiment.py",
+      "additions": 128,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb-joined.sql",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb-per-order.sql",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb-selectin.sql",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb-snekql.sql",
+      "additions": 34,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb_app.py",
+      "additions": 94,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/mariadb_models.py",
+      "additions": 28,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/requirements.txt",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/resources.py",
+      "additions": 202,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/results.json",
+      "additions": 5918,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlalchemy_app.py",
+      "additions": 89,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlalchemy_models.py",
+      "additions": 43,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite-joined.sql",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite-per-order.sql",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite-selectin.sql",
+      "additions": 31,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite-snekql.sql",
+      "additions": 7,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite_app.py",
+      "additions": 94,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/sqlite_models.py",
+      "additions": 28,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/telemetry.py",
+      "additions": 64,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/test_loading.py",
+      "additions": 96,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/test_matrix.py",
+      "additions": 184,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/loading/views.py",
+      "additions": 40,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/related-loading",
+  "headRefOid": "0b75686b6dd354131ab27c9772ff77e1e83e1272",
+  "number": 374,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research related-data loading and order pagination versus SQLAlchemy",
+  "updatedAt": "2026-09-19T09:03:13Z",
+  "url": "https://github.com/crpier/snekql/pull/374"
+}

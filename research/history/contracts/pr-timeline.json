@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "sha": "99ff862c3c05cac2f976f72c9a32e6da082d7906",
+      "node_id": "C_kwDORi7RydoAKDk5ZmY4NjJjM2MwNWNhYzJmOTc2ZjcyYzlhMzJlNmRhMDgyZDc5MDY",
+      "url": "https://api.github.com/repos/crpier/snekql/git/commits/99ff862c3c05cac2f976f72c9a32e6da082d7906",
+      "html_url": "https://github.com/crpier/snekql/commit/99ff862c3c05cac2f976f72c9a32e6da082d7906",
+      "author": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-12T09:27:20Z"
+      },
+      "committer": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-12T09:27:20Z"
+      },
+      "tree": {
+        "sha": "7a37c3eb17378b2e30b51f3e21243028ca1cb6b4",
+        "url": "https://api.github.com/repos/crpier/snekql/git/trees/7a37c3eb17378b2e30b51f3e21243028ca1cb6b4"
+      },
+      "message": "Compare equivalent runtime contracts and schema-rule maintenance (#358)",
+      "parents": [
+        {
+          "sha": "4dcb71669a9a9dffb202595e7f14251ff76714c8",
+          "url": "https://api.github.com/repos/crpier/snekql/git/commits/4dcb71669a9a9dffb202595e7f14251ff76714c8",
+          "html_url": "https://github.com/crpier/snekql/commit/4dcb71669a9a9dffb202595e7f14251ff76714c8"
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "event": "committed"
+    }
+  ]
+]

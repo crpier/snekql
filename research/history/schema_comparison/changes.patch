@@ -1,0 +1,4829 @@
+diff --git a/pyproject.toml b/pyproject.toml
+index 8e902e5..9847c86 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -37,6 +37,10 @@ dev = [
+     "snektest>=0.16.0",
+     "ty==0.0.77",
+ ]
++research = [
++    "pymysql==1.1.2",
++    "sqlalchemy==2.0.43",
++]
+ 
+ [build-system]
+ requires = ["hatchling"]
+@@ -110,3 +114,10 @@ allowed-unused-imports = [
+ [tool.ty.rules]
+ all = "error"
+ missing-override-decorator = "ignore"
++
++# Preserve SQLAlchemy's documented Mapped[T] = mapped_column(...) idiom.
++# Its factory returns MappedColumn[Any], which ty's strict rule rejects.
++[[tool.ty.overrides]]
++include = ["research/schema_comparison/sqlalchemy_models.py"]
++[tool.ty.overrides.rules]
++unsound-assignment = "ignore"
+diff --git a/research/__init__.py b/research/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/research/schema_comparison/README.md b/research/schema_comparison/README.md
+new file mode 100644
+index 0000000..4d7cd02
+--- /dev/null
++++ b/research/schema_comparison/README.md
+@@ -0,0 +1,146 @@
++# Schema comparison pilot
++
++Research for #353. Start here, then inspect the `.sql` files and `results.json`.
++No package behavior changed.
++
++## Question and specification
++
++Do independently declared CRUD table models install schemas that enforce the same
++rules? SQLAlchemy is a comparator, not the oracle.
++
++The pilot combines two scenarios in four tables:
++
++- Users have generated integer IDs, required unique email, nullable nickname,
++  and required status with an application default of `active`.
++- A user has at most one profile. Profiles cannot reference missing users.
++  Deleting a user deletes their profile.
++- Teams have generated IDs and unique required names.
++- Membership identity is the team/user pair. Both references are required.
++  Aliases are unique within a team, but reusable in another team.
++  Deleting a team deletes memberships. Memberships restrict user deletion.
++  A separate user index supports reverse membership lookup.
++
++`probes.py` spells out the independent SQL and expected outcomes. Sixteen probes
++check this shared contract. Five diagnostic probes explore behavior where the
++initial specification deliberately leaves policy open. Diagnostic outcomes are
++not counted as passes or failures.
++
++## Tracks
++
++The idiomatic track uses explicit snekql generated-ID declarations and SQLAlchemy
++`Mapped` declarations with `Integer`, `String(255)`, and `default="active"`.
++These are selected examples of ordinary declarations, not a survey of users.
++Foreign-key actions are explicit in both libraries. No ORM relationships or
++sessions participate.
++
++The matched track leaves snekql unchanged and adjusts SQLAlchemy to match its
++storage policies:
++
++- SQLite uses `Text`, `sqlite_strict=True`, and `sqlite_autoincrement=True`
++  on the two generated-ID tables.
++- MariaDB uses `BigInteger` and `String(255, collation="utf8mb4_bin")`.
++  The controlled server supplies utf8mb4 and InnoDB. SQLAlchemy's DDL still
++  depends on those server defaults; snekql emits charset and engine explicitly.
++
++Matched means matching the measured database behavior, not identical DDL or
++identical model-validation semantics. Cross-database equivalence is not assumed.
++
++## Method and reproduction
++
++```sh
++uv sync --locked --group research
++uv run --group research python -m research.schema_comparison.experiment
++uv run --group research snektest tests research/schema_comparison/test_experiment.py
++uv run --group research ty check
++uv run --group research ruff check .
++uv run --group research ruff format --check .
++```
++
++Requires local `mariadbd`, `mariadb-install-db`, and `mariadb` binaries. The runner
++creates and cleans up four temporary socket-only MariaDB servers. It accepts no
++production database URL. SQLite databases live in memory. Every probe starts
++with freshly recreated tables and the same seed, including reset ID sequences.
++
++Recorded environment: Python 3.14.2, SQLite 3.50.4, MariaDB 12.3.2,
++snekql 0.7.0, SQLAlchemy 2.0.43, PyMySQL 1.1.2. Python dependencies are locked;
++database binaries are local, not provisioned or pinned by this runner. Use the
++recorded versions to reproduce this snapshot, or treat a different version as a
++new experiment. These results do not establish MariaDB LTS compatibility.
++
++SQLite foreign keys are explicitly enabled. MariaDB uses InnoDB, utf8mb4,
++utf8mb4_unicode_ci as its database default collation, and
++`STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION`. Controls appear in every run record.
++
++snekql DDL comes from public `scaffold`. SQLAlchemy DDL captures all
++`metadata.create_all` statements through its mock engine. Both are replayed
++through the same raw SQL connection, without bind processing or model validation.
++Setup failures abort. Probe constraint/data errors are recorded; unrelated
++operational errors abort rather than masquerading as constraint enforcement.
++
++`results.json` contains emitted DDL, reflected columns/keys/indexes, installed
++SQLite `sqlite_schema` or MariaDB `SHOW CREATE TABLE` output, controls, and probe
++outcomes. SQLAlchemy reflection uses SQLite PRAGMAs and MariaDB schema inspection;
++it is not an independent schema parser. Raw installed DDL provides a cross-check.
++The `.diff` files compare reflected structures with sorted JSON object keys.
++They retain names, list ordering, and reflection metadata; they are review aids,
++not an automatic semantic-equivalence verdict.
++
++## Findings
++
++All 128 shared-contract checks passed across eight runs. Forty diagnostic
++observations found the following differences. No defect established by this pilot.
++
++| Behavior | snekql | SQLAlchemy idiomatic | Matched track |
++|---|---|---|---|
++| SQLite insert after deleting highest ID | Allocates 3 | Reuses 2 | Both allocate 3 |
++| SQLite binary literal in email | Rejects under STRICT | Accepts in VARCHAR column | Both reject |
++| MariaDB ID 2147483648 | Accepts with BIGINT | Rejects with INTEGER | Both accept |
++| MariaDB `alice` versus `ALICE` unique email | Both allowed with binary collation | Duplicate under database default collation | Both allowed |
++| 256-character email | SQLite accepts; MariaDB rejects | Same | Same |
++
++### Different defaults and enforcement
++
++The largest differences are storage policy, not relationship syntax. In this
++pilot, snekql's MariaDB `Integer` means BIGINT and `Text` means VARCHAR(255) with
++binary collation. SQLAlchemy's `Integer` means INTEGER, and an uncollated string
++inherits the database's comparison rules. SQLite snekql tables are STRICT;
++SQLAlchemy needs an explicit table option.
++
++Neither library turns `default="active"` into a server default here. Raw inserts
++omitting status failed in every run. This agreement is useful: model constructor
++or insert defaults must not be mistaken for database guarantees.
++
++### Equivalent behavior despite structural differences
++
++snekql emits separate named unique indexes for email and team name. SQLAlchemy
++emits inline UNIQUE constraints. Both reject the tested duplicates. Foreign-key
++constraint names, supporting indexes, DDL ordering, quoting, and reflection
++metadata also differ. MariaDB can add an index to support a foreign key even when
++no corresponding CREATE INDEX statement appears in the emitted DDL.
++
++SQLite reports primary-key nullability differently for snekql's inline
++`INTEGER PRIMARY KEY` and SQLAlchemy's explicit `NOT NULL`. The tested composite
++primary-key NULL insertion fails in both. Reflection flags alone are not a
++behavioral verdict, especially for rowid aliases.
++
++### Limits and next experiments
++
++This is a pilot, not broad schema compatibility certification. It does not test
++server timestamps, decimal rounding, JSON validity, check constraints, composite
++foreign keys, nullable unique keys, Unicode/trailing-space collation edges,
++updates of referenced keys, migrations, concurrency, or ORM cascades. No required
++pilot declaration was unsupported. Do not extrapolate that result to those
++unexamined capabilities.
++
++Next: product catalog and orders, with independently specified decimal precision,
++server defaults, timestamp representation, and invalid-value probes. Then add
++multi-tenant composite foreign keys and document unsupported declarations without
++silently replacing them with scalar references.
++
++## Validation
++
++- Experiment completed on both real database engines: eight runs, 168 probes.
++- Explicit snektest paths: 1212 passed, including seven research runner checks.
++- `ty check`, Ruff lint, and Ruff format checks passed.
++- Bare `uv run --group research snektest` failed collection with `Empty module
++  name`; explicit paths above run the package suite and research checks.
+diff --git a/research/schema_comparison/__init__.py b/research/schema_comparison/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/research/schema_comparison/experiment.py b/research/schema_comparison/experiment.py
+new file mode 100644
+index 0000000..d45b43f
+--- /dev/null
++++ b/research/schema_comparison/experiment.py
+@@ -0,0 +1,202 @@
++"""Reproducible DDL and raw-database observations. Run as a module."""
++
++import asyncio
++from difflib import unified_diff
++from importlib.metadata import version
++from json import dumps
++from pathlib import Path
++from platform import python_version
++from typing import Any
++
++from sqlalchemy import URL, Connection, create_engine, inspect
++from sqlalchemy.exc import DataError, IntegrityError, OperationalError
++
++from research.schema_comparison import mariadb_models, sqlalchemy_models, sqlite_models
++from research.schema_comparison.probes import PROBES, SEED, Probe
++from snekql.testing.mariadb import temporary_mariadb_server
++
++_MISSING_DEFAULT = 1364
++"""MariaDB reports omitted required values as OperationalError."""
++
++
++def _probe(connection: Connection, probe: Probe) -> dict[str, Any]:
++    """Only constraint/data failures count as rejection; infrastructure errors abort."""
++    outcome: dict[str, Any]
++    try:
++        for statement in probe.sql:
++            connection.exec_driver_sql(statement)
++    except (IntegrityError, DataError, OperationalError) as e:
++        if isinstance(e, OperationalError) and (
++            e.orig is None or e.orig.args[0] != _MISSING_DEFAULT
++        ):
++            raise
++        outcome = {
++            "outcome": "rejected",
++            "error": str(e.orig),
++        }
++    else:
++        outcome = {"outcome": "accepted"}
++        if probe.query:
++            outcome["rows"] = [
++                list(row) for row in connection.exec_driver_sql(probe.query)
++            ]
++    diagnostic = probe.name in {
++        "case_distinct_email",
++        "id_reuse",
++        "long_email",
++        "wide_id",
++        "blob_in_text",
++    }
++    outcome["matches_spec"] = (
++        None
++        if diagnostic
++        else (
++            (outcome["outcome"] == "rejected") == probe.reject
++            and (
++                probe.expected is None
++                or outcome.get("rows") == [list(row) for row in probe.expected]
++            )
++        )
++    )
++    return outcome
++
++
++def _observe(url: str | URL, library: str, track: str, backend: str) -> dict[str, Any]:
++    """Blocking drivers stay confined to a worker thread and fresh database."""
++    statements = (
++        (sqlite_models if backend == "sqlite" else mariadb_models).ddl()
++        if library == "snekql"
++        else sqlalchemy_models.ddl(backend, track)
++    )
++    engine = create_engine(url)
++    observation: dict[str, Any] = {"ddl": statements, "probes": {}}
++    try:
++        with engine.connect() as connection:
++            if backend == "sqlite":
++                connection.exec_driver_sql("PRAGMA foreign_keys=ON")
++                controls = "SELECT sqlite_version() AS version"
++            else:
++                connection.exec_driver_sql(
++                    "SET SESSION sql_mode='STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'"
++                )
++                controls = "SELECT VERSION() AS version, @@sql_mode AS sql_mode, @@character_set_database AS charset, @@collation_database AS collation, @@default_storage_engine AS engine"
++            observation["controls"] = dict(
++                connection.exec_driver_sql(controls).mappings().one()
++            )
++            if backend == "sqlite":
++                observation["controls"]["foreign_keys"] = connection.exec_driver_sql(
++                    "PRAGMA foreign_keys"
++                ).scalar_one()
++            for statement in statements:
++                connection.exec_driver_sql(statement)
++            connection.commit()
++            inspector = inspect(connection)
++            observation["schema"] = {}
++            for table in ("users", "profiles", "teams", "memberships"):
++                observation["schema"][table] = {
++                    "columns": inspector.get_columns(table),
++                    "primary_key": inspector.get_pk_constraint(table),
++                    "foreign_keys": inspector.get_foreign_keys(table),
++                    "indexes": inspector.get_indexes(table),
++                    "unique_constraints": inspector.get_unique_constraints(table),
++                }
++            if backend == "sqlite":
++                observation["installed_ddl"] = [
++                    list(row)
++                    for row in connection.exec_driver_sql(
++                        "SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name"
++                    )
++                ]
++            else:
++                observation["installed_ddl"] = [
++                    list(
++                        connection.exec_driver_sql(f"SHOW CREATE TABLE `{table}`").one()
++                    )
++                    for table in observation["schema"]
++                ]
++            connection.commit()
++            for probe in PROBES:
++                with connection.begin():
++                    for statement in SEED:
++                        connection.exec_driver_sql(statement)
++                    connection.commit()
++                outcome = _probe(connection, probe)
++                observation["probes"][probe.name] = outcome
++                connection.rollback()
++                for table in ("memberships", "profiles", "teams", "users"):
++                    connection.exec_driver_sql(f"DROP TABLE `{table}`")
++                for statement in statements:
++                    connection.exec_driver_sql(statement)
++                connection.commit()
++    finally:
++        engine.dispose()
++    return observation
++
++
++def _write_artifacts(observations: dict[str, Any]) -> None:
++    """Keep raw statements and reflected structural diffs beside full evidence."""
++    directory = Path(__file__).parent
++    (directory / "results.json").write_text(
++        dumps(observations, indent=2, default=str) + "\n"
++    )
++    for backend in ("sqlite", "mariadb"):
++        for track in ("idiomatic", "matched"):
++            schemas: list[list[str]] = []
++            for library in ("snekql", "sqlalchemy"):
++                observation = observations["runs"][f"{backend}/{track}/{library}"]
++                (directory / f"{backend}-{track}-{library}.sql").write_text(
++                    ";\n\n".join(observation["ddl"]) + ";\n"
++                )
++                schemas.append(
++                    dumps(
++                        observation["schema"], indent=2, sort_keys=True, default=str
++                    ).splitlines(keepends=True)
++                )
++            (directory / f"{backend}-{track}.diff").write_text(
++                "".join(unified_diff(*schemas, fromfile="snekql", tofile="sqlalchemy"))
++            )
++
++
++async def sqlite_observation(library: str, track: str) -> dict[str, Any]:
++    """Observe an isolated in-memory SQLite database."""
++    return await asyncio.to_thread(_observe, "sqlite://", library, track, "sqlite")
++
++
++async def main() -> None:
++    """Write eight isolated observations, including a temporary MariaDB server."""
++    observations: dict[str, Any] = {
++        "versions": {
++            name: version(name) for name in ("snekql", "sqlalchemy", "pymysql")
++        },
++        "python": python_version(),
++        "runs": {},
++    }
++    for track in ("idiomatic", "matched"):
++        for library in ("snekql", "sqlalchemy"):
++            observations["runs"][
++                f"sqlite/{track}/{library}"
++            ] = await sqlite_observation(library, track)
++            async with temporary_mariadb_server(
++                server_args=(
++                    "--character-set-server=utf8mb4",
++                    "--collation-server=utf8mb4_unicode_ci",
++                    "--default-storage-engine=InnoDB",
++                )
++            ) as server:
++                url = URL.create(
++                    "mariadb+pymysql",
++                    username=server.user,
++                    database=server.database,
++                    query={
++                        "unix_socket": str(server.socket_path),
++                        "charset": "utf8mb4",
++                    },
++                )
++                observations["runs"][
++                    f"mariadb/{track}/{library}"
++                ] = await asyncio.to_thread(_observe, url, library, track, "mariadb")
++    await asyncio.to_thread(_write_artifacts, observations)
++
++
++if __name__ == "__main__":
++    asyncio.run(main())
+diff --git a/research/schema_comparison/mariadb-idiomatic-snekql.sql b/research/schema_comparison/mariadb-idiomatic-snekql.sql
+new file mode 100644
+index 0000000..721278f
+--- /dev/null
++++ b/research/schema_comparison/mariadb-idiomatic-snekql.sql
+@@ -0,0 +1,15 @@
++CREATE TABLE `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `nickname` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_users_email` ON `users` (`email`);
++
++CREATE TABLE `profiles` (`user_id` BIGINT NOT NULL PRIMARY KEY, `bio` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB;
++
++CREATE TABLE `teams` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_teams_name` ON `teams` (`name`);
++
++CREATE TABLE `memberships` (`team_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL, `alias` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (`team_id`, `user_id`), FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_memberships_team_id_alias` ON `memberships` (`team_id`, `alias`);
++
++CREATE INDEX `ix_memberships_user_id` ON `memberships` (`user_id`);
+diff --git a/research/schema_comparison/mariadb-idiomatic-sqlalchemy.sql b/research/schema_comparison/mariadb-idiomatic-sqlalchemy.sql
+new file mode 100644
+index 0000000..b246487
+--- /dev/null
++++ b/research/schema_comparison/mariadb-idiomatic-sqlalchemy.sql
+@@ -0,0 +1,35 @@
++CREATE TABLE users (
++	id INTEGER NOT NULL AUTO_INCREMENT, 
++	email VARCHAR(255) NOT NULL, 
++	nickname VARCHAR(255), 
++	status VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (email)
++);
++
++CREATE TABLE teams (
++	id INTEGER NOT NULL AUTO_INCREMENT, 
++	name VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (name)
++);
++
++CREATE TABLE profiles (
++	user_id INTEGER NOT NULL, 
++	bio VARCHAR(255), 
++	PRIMARY KEY (user_id), 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
++);
++
++CREATE TABLE memberships (
++	team_id INTEGER NOT NULL, 
++	user_id INTEGER NOT NULL, 
++	alias VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (team_id, user_id), 
++	FOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT
++);
++
++CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias);
++
++CREATE INDEX ix_memberships_user ON memberships (user_id);
+diff --git a/research/schema_comparison/mariadb-idiomatic.diff b/research/schema_comparison/mariadb-idiomatic.diff
+new file mode 100644
+index 0000000..411ff08
+--- /dev/null
++++ b/research/schema_comparison/mariadb-idiomatic.diff
+@@ -0,0 +1,164 @@
++--- snekql
+++++ sqlalchemy
++@@ -7,7 +7,7 @@
++         "default": null,
++         "name": "team_id",
++         "nullable": false,
++-        "type": "BIGINT"
+++        "type": "INTEGER"
++       },
++       {
++         "autoincrement": false,
++@@ -15,14 +15,14 @@
++         "default": null,
++         "name": "user_id",
++         "nullable": false,
++-        "type": "BIGINT"
+++        "type": "INTEGER"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "alias",
++         "nullable": false,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [
++@@ -58,7 +58,7 @@
++         "column_names": [
++           "user_id"
++         ],
++-        "name": "ix_memberships_user_id",
+++        "name": "ix_memberships_user",
++         "unique": false
++       },
++       {
++@@ -66,7 +66,7 @@
++           "team_id",
++           "alias"
++         ],
++-        "name": "ux_memberships_team_id_alias",
+++        "name": "ux_memberships_team_alias",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -84,8 +84,8 @@
++           "team_id",
++           "alias"
++         ],
++-        "duplicates_index": "ux_memberships_team_id_alias",
++-        "name": "ux_memberships_team_id_alias"
+++        "duplicates_index": "ux_memberships_team_alias",
+++        "name": "ux_memberships_team_alias"
++       }
++     ]
++   },
++@@ -97,14 +97,14 @@
++         "default": null,
++         "name": "user_id",
++         "nullable": false,
++-        "type": "BIGINT"
+++        "type": "INTEGER"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "bio",
++         "nullable": true,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [
++@@ -140,14 +140,14 @@
++         "default": null,
++         "name": "id",
++         "nullable": false,
++-        "type": "BIGINT"
+++        "type": "INTEGER"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "name",
++         "nullable": false,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [],
++@@ -156,7 +156,7 @@
++         "column_names": [
++           "name"
++         ],
++-        "name": "ux_teams_name",
+++        "name": "name",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -172,8 +172,8 @@
++         "column_names": [
++           "name"
++         ],
++-        "duplicates_index": "ux_teams_name",
++-        "name": "ux_teams_name"
+++        "duplicates_index": "name",
+++        "name": "name"
++       }
++     ]
++   },
++@@ -185,28 +185,28 @@
++         "default": null,
++         "name": "id",
++         "nullable": false,
++-        "type": "BIGINT"
+++        "type": "INTEGER"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "email",
++         "nullable": false,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "nickname",
++         "nullable": true,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       },
++       {
++         "comment": null,
++         "default": null,
++         "name": "status",
++         "nullable": false,
++-        "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\""
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [],
++@@ -215,7 +215,7 @@
++         "column_names": [
++           "email"
++         ],
++-        "name": "ux_users_email",
+++        "name": "email",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -231,8 +231,8 @@
++         "column_names": [
++           "email"
++         ],
++-        "duplicates_index": "ux_users_email",
++-        "name": "ux_users_email"
+++        "duplicates_index": "email",
+++        "name": "email"
++       }
++     ]
++   }
+diff --git a/research/schema_comparison/mariadb-matched-snekql.sql b/research/schema_comparison/mariadb-matched-snekql.sql
+new file mode 100644
+index 0000000..721278f
+--- /dev/null
++++ b/research/schema_comparison/mariadb-matched-snekql.sql
+@@ -0,0 +1,15 @@
++CREATE TABLE `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `nickname` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_users_email` ON `users` (`email`);
++
++CREATE TABLE `profiles` (`user_id` BIGINT NOT NULL PRIMARY KEY, `bio` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB;
++
++CREATE TABLE `teams` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_teams_name` ON `teams` (`name`);
++
++CREATE TABLE `memberships` (`team_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL, `alias` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (`team_id`, `user_id`), FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT) ENGINE=InnoDB;
++
++CREATE UNIQUE INDEX `ux_memberships_team_id_alias` ON `memberships` (`team_id`, `alias`);
++
++CREATE INDEX `ix_memberships_user_id` ON `memberships` (`user_id`);
+diff --git a/research/schema_comparison/mariadb-matched-sqlalchemy.sql b/research/schema_comparison/mariadb-matched-sqlalchemy.sql
+new file mode 100644
+index 0000000..b36ca7d
+--- /dev/null
++++ b/research/schema_comparison/mariadb-matched-sqlalchemy.sql
+@@ -0,0 +1,35 @@
++CREATE TABLE users (
++	id BIGINT NOT NULL AUTO_INCREMENT, 
++	email VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, 
++	nickname VARCHAR(255) COLLATE utf8mb4_bin, 
++	status VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (email)
++);
++
++CREATE TABLE teams (
++	id BIGINT NOT NULL AUTO_INCREMENT, 
++	name VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (name)
++);
++
++CREATE TABLE profiles (
++	user_id BIGINT NOT NULL, 
++	bio VARCHAR(255) COLLATE utf8mb4_bin, 
++	PRIMARY KEY (user_id), 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
++);
++
++CREATE TABLE memberships (
++	team_id BIGINT NOT NULL, 
++	user_id BIGINT NOT NULL, 
++	alias VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, 
++	PRIMARY KEY (team_id, user_id), 
++	FOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT
++);
++
++CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias);
++
++CREATE INDEX ix_memberships_user ON memberships (user_id);
+diff --git a/research/schema_comparison/mariadb-matched.diff b/research/schema_comparison/mariadb-matched.diff
+new file mode 100644
+index 0000000..5752730
+--- /dev/null
++++ b/research/schema_comparison/mariadb-matched.diff
+@@ -0,0 +1,71 @@
++--- snekql
+++++ sqlalchemy
++@@ -58,7 +58,7 @@
++         "column_names": [
++           "user_id"
++         ],
++-        "name": "ix_memberships_user_id",
+++        "name": "ix_memberships_user",
++         "unique": false
++       },
++       {
++@@ -66,7 +66,7 @@
++           "team_id",
++           "alias"
++         ],
++-        "name": "ux_memberships_team_id_alias",
+++        "name": "ux_memberships_team_alias",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -84,8 +84,8 @@
++           "team_id",
++           "alias"
++         ],
++-        "duplicates_index": "ux_memberships_team_id_alias",
++-        "name": "ux_memberships_team_id_alias"
+++        "duplicates_index": "ux_memberships_team_alias",
+++        "name": "ux_memberships_team_alias"
++       }
++     ]
++   },
++@@ -156,7 +156,7 @@
++         "column_names": [
++           "name"
++         ],
++-        "name": "ux_teams_name",
+++        "name": "name",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -172,8 +172,8 @@
++         "column_names": [
++           "name"
++         ],
++-        "duplicates_index": "ux_teams_name",
++-        "name": "ux_teams_name"
+++        "duplicates_index": "name",
+++        "name": "name"
++       }
++     ]
++   },
++@@ -215,7 +215,7 @@
++         "column_names": [
++           "email"
++         ],
++-        "name": "ux_users_email",
+++        "name": "email",
++         "type": "UNIQUE",
++         "unique": true
++       }
++@@ -231,8 +231,8 @@
++         "column_names": [
++           "email"
++         ],
++-        "duplicates_index": "ux_users_email",
++-        "name": "ux_users_email"
+++        "duplicates_index": "email",
+++        "name": "email"
++       }
++     ]
++   }
+diff --git a/research/schema_comparison/mariadb_models.py b/research/schema_comparison/mariadb_models.py
+new file mode 100644
+index 0000000..243daed
+--- /dev/null
++++ b/research/schema_comparison/mariadb_models.py
+@@ -0,0 +1,53 @@
++"""Independent mariadb table declarations for the pilot."""
++
++from typing import Any, ClassVar
++
++from snekql import mariadb as db
++
++
++def ddl() -> list[str]:
++    """Scaffold users/profiles and teams/memberships through the public API."""
++
++    class User[S = db.Pending](db.Model[S, "User[db.Fetched]"]):
++        __tablename__ = "users"
++        id: db.GenCol[int] = db.Integer(
++            primary_key=True, auto_increment=True, default=db.PENDING_GENERATION
++        )
++        email: db.Col[str] = db.Text(unique=True)
++        nickname: db.Col[str | None] = db.Text(nullable=True)
++        status: db.Col[str] = db.Text(default="active")
++
++    class Profile[S = db.Pending](db.Model[S, "Profile[db.Fetched]"]):
++        __tablename__ = "profiles"
++        user_id: db.FKCol[User, int] = db.ForeignKey(
++            User.id, primary_key=True, on_delete="CASCADE"
++        )
++        bio: db.Col[str | None] = db.Text(nullable=True)
++
++    class Team[S = db.Pending](db.Model[S, "Team[db.Fetched]"]):
++        __tablename__ = "teams"
++        id: db.GenCol[int] = db.Integer(
++            primary_key=True, auto_increment=True, default=db.PENDING_GENERATION
++        )
++        name: db.Col[str] = db.Text(unique=True)
++
++    class Membership[S = db.Pending](db.Model[S, "Membership[db.Fetched]"]):
++        __tablename__ = "memberships"
++        team_id: db.FKCol[Team, int] = db.ForeignKey(
++            Team.id, primary_key=True, on_delete="CASCADE"
++        )
++        user_id: db.FKCol[User, int] = db.ForeignKey(
++            User.id, primary_key=True, on_delete="RESTRICT"
++        )
++        alias: db.Col[str] = db.Text()
++        __indexes__: ClassVar[list[db.Index[Any]]] = [
++            db.Index(team_id, alias, unique=True),
++            db.Index(user_id),
++        ]
++
++    # Fixed fixtures contain no semicolons inside identifiers or literals.
++    return [
++        statement.strip()
++        for statement in db.scaffold([User, Profile, Team, Membership]).split(";")
++        if statement.strip()
++    ]
+diff --git a/research/schema_comparison/probes.py b/research/schema_comparison/probes.py
+new file mode 100644
+index 0000000..98c175c
+--- /dev/null
++++ b/research/schema_comparison/probes.py
+@@ -0,0 +1,124 @@
++"""Independent raw SQL specifications, each run against the same seed."""
++
++from dataclasses import dataclass
++
++
++@dataclass(frozen=True)
++class Probe:
++    """One mutation, expected enforcement, and optional observable rows."""
++
++    name: str
++    sql: tuple[str, ...]
++    reject: bool = False
++    query: str | None = None
++    expected: tuple[tuple[object, ...], ...] | None = None
++
++
++SEED = (
++    "INSERT INTO users (id,email,status) VALUES (1,'alice','active'),(2,'bob','active')",
++    "INSERT INTO profiles (user_id,bio) VALUES (2,NULL)",
++    "INSERT INTO teams (id,name) VALUES (1,'one'),(2,'two')",
++    "INSERT INTO memberships (team_id,user_id,alias) VALUES (1,1,'owner')",
++)
++
++PROBES = (
++    Probe(
++        "duplicate_email",
++        ("INSERT INTO users (id,email,status) VALUES (3,'alice','active')",),
++        reject=True,
++    ),
++    Probe(
++        "required_email",
++        ("INSERT INTO users (id,status) VALUES (3,'active')",),
++        reject=True,
++    ),
++    Probe(
++        "null_email",
++        ("INSERT INTO users (id,email,status) VALUES (3,NULL,'active')",),
++        reject=True,
++    ),
++    Probe(
++        "nullable_nickname",
++        ("INSERT INTO users (id,email,status,nickname) VALUES (3,'c','active',NULL)",),
++    ),
++    Probe(
++        "python_default_is_not_server_default",
++        ("INSERT INTO users (id,email) VALUES (3,'c')",),
++        reject=True,
++    ),
++    Probe(
++        "generated_id",
++        ("INSERT INTO users (email,status) VALUES ('c','active')",),
++        query="SELECT id FROM users WHERE email='c'",
++        expected=((3,),),
++    ),
++    Probe(
++        "duplicate_profile", ("INSERT INTO profiles (user_id) VALUES (2)",), reject=True
++    ),
++    Probe(
++        "orphan_profile", ("INSERT INTO profiles (user_id) VALUES (999)",), reject=True
++    ),
++    Probe(
++        "profile_cascade",
++        ("DELETE FROM users WHERE id=2",),
++        query="SELECT COUNT(*) FROM profiles",
++        expected=((0,),),
++    ),
++    Probe("membership_restrict", ("DELETE FROM users WHERE id=1",), reject=True),
++    Probe(
++        "team_cascade",
++        ("DELETE FROM teams WHERE id=1",),
++        query="SELECT COUNT(*) FROM memberships",
++        expected=((0,),),
++    ),
++    Probe(
++        "duplicate_membership",
++        ("INSERT INTO memberships VALUES (1,1,'different')",),
++        reject=True,
++    ),
++    Probe(
++        "tenant_scoped_alias",
++        ("INSERT INTO memberships VALUES (1,2,'owner')",),
++        reject=True,
++    ),
++    Probe("alias_in_other_team", ("INSERT INTO memberships VALUES (2,2,'owner')",)),
++    Probe(
++        "orphan_membership",
++        ("INSERT INTO memberships VALUES (999,2,'new')",),
++        reject=True,
++    ),
++    Probe(
++        "null_composite_key",
++        ("INSERT INTO memberships VALUES (NULL,2,'new')",),
++        reject=True,
++    ),
++    Probe(
++        "wide_id",
++        ("INSERT INTO users (id,email,status) VALUES (2147483648,'c','active')",),
++    ),
++    Probe(
++        "blob_in_text",
++        ("INSERT INTO users (id,email,status) VALUES (3,X'6162','active')",),
++    ),
++    # Diagnostic probes have no common cross-track expectation.
++    Probe(
++        "case_distinct_email",
++        ("INSERT INTO users (id,email,status) VALUES (3,'ALICE','active')",),
++    ),
++    Probe(
++        "id_reuse",
++        (
++            "DELETE FROM users WHERE id=2",
++            "INSERT INTO users (email,status) VALUES ('c','active')",
++        ),
++        query="SELECT id FROM users WHERE email='c'",
++    ),
++    Probe(
++        "long_email",
++        (
++            "INSERT INTO users (id,email,status) VALUES (3,'"
++            + "x" * 256
++            + "','active')",
++        ),
++    ),
++)
+diff --git a/research/schema_comparison/results.json b/research/schema_comparison/results.json
+new file mode 100644
+index 0000000..a9d484a
+--- /dev/null
++++ b/research/schema_comparison/results.json
+@@ -0,0 +1,3197 @@
++{
++  "versions": {
++    "snekql": "0.7.0",
++    "sqlalchemy": "2.0.43",
++    "pymysql": "1.1.2"
++  },
++  "python": "3.14.2",
++  "runs": {
++    "sqlite/idiomatic/snekql": {
++      "ddl": [
++        "CREATE TABLE \"users\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"nickname\" TEXT, \"status\" TEXT NOT NULL) STRICT",
++        "CREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\")",
++        "CREATE TABLE \"profiles\" (\"user_id\" INTEGER PRIMARY KEY, \"bio\" TEXT, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE CASCADE) STRICT",
++        "CREATE TABLE \"teams\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL) STRICT",
++        "CREATE UNIQUE INDEX \"ux_teams_name\" ON \"teams\" (\"name\")",
++        "CREATE TABLE \"memberships\" (\"team_id\" INTEGER NOT NULL, \"user_id\" INTEGER NOT NULL, \"alias\" TEXT NOT NULL, PRIMARY KEY (\"team_id\", \"user_id\"), FOREIGN KEY (\"team_id\") REFERENCES \"teams\" (\"id\") ON DELETE CASCADE, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT) STRICT",
++        "CREATE UNIQUE INDEX \"ux_memberships_team_id_alias\" ON \"memberships\" (\"team_id\", \"alias\")",
++        "CREATE INDEX \"ix_memberships_user_id\" ON \"memberships\" (\"user_id\")"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: users.email",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.status",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: profiles.user_id",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.user_id",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.alias",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: memberships.team_id",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "rejected",
++          "error": "cannot store BLOB value in TEXT column users.email",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "3.50.4",
++        "foreign_keys": 1
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "email",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "nickname",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "status",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "bio",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "name",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 2
++            },
++            {
++              "name": "alias",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "RESTRICT"
++              }
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user_id",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": 0,
++              "dialect_options": {}
++            },
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        }
++      },
++      "installed_ddl": [
++        [
++          "index",
++          "ix_memberships_user_id",
++          "memberships",
++          "CREATE INDEX \"ix_memberships_user_id\" ON \"memberships\" (\"user_id\")"
++        ],
++        [
++          "index",
++          "sqlite_autoindex_memberships_1",
++          "memberships",
++          null
++        ],
++        [
++          "index",
++          "ux_memberships_team_id_alias",
++          "memberships",
++          "CREATE UNIQUE INDEX \"ux_memberships_team_id_alias\" ON \"memberships\" (\"team_id\", \"alias\")"
++        ],
++        [
++          "index",
++          "ux_teams_name",
++          "teams",
++          "CREATE UNIQUE INDEX \"ux_teams_name\" ON \"teams\" (\"name\")"
++        ],
++        [
++          "index",
++          "ux_users_email",
++          "users",
++          "CREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\")"
++        ],
++        [
++          "table",
++          "memberships",
++          "memberships",
++          "CREATE TABLE \"memberships\" (\"team_id\" INTEGER NOT NULL, \"user_id\" INTEGER NOT NULL, \"alias\" TEXT NOT NULL, PRIMARY KEY (\"team_id\", \"user_id\"), FOREIGN KEY (\"team_id\") REFERENCES \"teams\" (\"id\") ON DELETE CASCADE, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT) STRICT"
++        ],
++        [
++          "table",
++          "profiles",
++          "profiles",
++          "CREATE TABLE \"profiles\" (\"user_id\" INTEGER PRIMARY KEY, \"bio\" TEXT, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE CASCADE) STRICT"
++        ],
++        [
++          "table",
++          "sqlite_sequence",
++          "sqlite_sequence",
++          "CREATE TABLE sqlite_sequence(name,seq)"
++        ],
++        [
++          "table",
++          "teams",
++          "teams",
++          "CREATE TABLE \"teams\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL) STRICT"
++        ],
++        [
++          "table",
++          "users",
++          "users",
++          "CREATE TABLE \"users\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"nickname\" TEXT, \"status\" TEXT NOT NULL) STRICT"
++        ]
++      ]
++    },
++    "mariadb/idiomatic/snekql": {
++      "ddl": [
++        "CREATE TABLE `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `nickname` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_users_email` ON `users` (`email`)",
++        "CREATE TABLE `profiles` (`user_id` BIGINT NOT NULL PRIMARY KEY, `bio` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB",
++        "CREATE TABLE `teams` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_teams_name` ON `teams` (`name`)",
++        "CREATE TABLE `memberships` (`team_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL, `alias` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (`team_id`, `user_id`), FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_memberships_team_id_alias` ON `memberships` (`team_id`, `alias`)",
++        "CREATE INDEX `ix_memberships_user_id` ON `memberships` (`user_id`)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry 'alice' for key 'ux_users_email'\")",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'email' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'email' cannot be null\")",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'status' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '2' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`profiles`, CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "(1451, 'Cannot delete or update a parent row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`))')",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-1' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-owner' for key 'ux_memberships_team_id_alias'\")",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'team_id' cannot be null\")",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "rejected",
++          "error": "(1406, \"Data too long for column 'email' at row 1\")",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "12.3.2-MariaDB",
++        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
++        "charset": "utf8mb4",
++        "collation": "utf8mb4_unicode_ci",
++        "engine": "InnoDB"
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "email",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            },
++            {
++              "name": "nickname",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            },
++            {
++              "name": "status",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "duplicates_index": "ux_users_email"
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "bio",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "name",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "duplicates_index": "ux_teams_name"
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "alias",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": "2",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {}
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user_id",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": false
++            },
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "duplicates_index": "ux_memberships_team_id_alias"
++            }
++          ]
++        }
++      },
++      "installed_ddl": [
++        [
++          "users",
++          "CREATE TABLE `users` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  `nickname` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_users_email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "profiles",
++          "CREATE TABLE `profiles` (\n  `user_id` bigint(20) NOT NULL,\n  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  PRIMARY KEY (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "teams",
++          "CREATE TABLE `teams` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_teams_name` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "memberships",
++          "CREATE TABLE `memberships` (\n  `team_id` bigint(20) NOT NULL,\n  `user_id` bigint(20) NOT NULL,\n  `alias` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`team_id`,`user_id`),\n  UNIQUE KEY `ux_memberships_team_id_alias` (`team_id`,`alias`),\n  KEY `ix_memberships_user_id` (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ]
++      ]
++    },
++    "sqlite/idiomatic/sqlalchemy": {
++      "ddl": [
++        "CREATE TABLE users (\n\tid INTEGER NOT NULL, \n\temail VARCHAR(255) NOT NULL, \n\tnickname VARCHAR(255), \n\tstatus VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (email)\n)",
++        "CREATE TABLE teams (\n\tid INTEGER NOT NULL, \n\tname VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (name)\n)",
++        "CREATE TABLE profiles (\n\tuser_id INTEGER NOT NULL, \n\tbio VARCHAR(255), \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)",
++        "CREATE TABLE memberships (\n\tteam_id INTEGER NOT NULL, \n\tuser_id INTEGER NOT NULL, \n\talias VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)",
++        "CREATE INDEX ix_memberships_user ON memberships (user_id)",
++        "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: users.email",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.status",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: profiles.user_id",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.user_id",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.alias",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: memberships.team_id",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              2
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "3.50.4",
++        "foreign_keys": 1
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "email",
++              "type": "VARCHAR(255)",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "nickname",
++              "type": "VARCHAR(255)",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "status",
++              "type": "VARCHAR(255)",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [],
++          "unique_constraints": [
++            {
++              "name": null,
++              "column_names": [
++                "email"
++              ]
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "bio",
++              "type": "VARCHAR(255)",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "name",
++              "type": "VARCHAR(255)",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [],
++          "unique_constraints": [
++            {
++              "name": null,
++              "column_names": [
++                "name"
++              ]
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 2
++            },
++            {
++              "name": "alias",
++              "type": "VARCHAR(255)",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "RESTRICT"
++              }
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": 0,
++              "dialect_options": {}
++            },
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        }
++      },
++      "installed_ddl": [
++        [
++          "index",
++          "ix_memberships_user",
++          "memberships",
++          "CREATE INDEX ix_memberships_user ON memberships (user_id)"
++        ],
++        [
++          "index",
++          "sqlite_autoindex_memberships_1",
++          "memberships",
++          null
++        ],
++        [
++          "index",
++          "sqlite_autoindex_teams_1",
++          "teams",
++          null
++        ],
++        [
++          "index",
++          "sqlite_autoindex_users_1",
++          "users",
++          null
++        ],
++        [
++          "index",
++          "ux_memberships_team_alias",
++          "memberships",
++          "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)"
++        ],
++        [
++          "table",
++          "memberships",
++          "memberships",
++          "CREATE TABLE memberships (\n\tteam_id INTEGER NOT NULL, \n\tuser_id INTEGER NOT NULL, \n\talias VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)"
++        ],
++        [
++          "table",
++          "profiles",
++          "profiles",
++          "CREATE TABLE profiles (\n\tuser_id INTEGER NOT NULL, \n\tbio VARCHAR(255), \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)"
++        ],
++        [
++          "table",
++          "teams",
++          "teams",
++          "CREATE TABLE teams (\n\tid INTEGER NOT NULL, \n\tname VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (name)\n)"
++        ],
++        [
++          "table",
++          "users",
++          "users",
++          "CREATE TABLE users (\n\tid INTEGER NOT NULL, \n\temail VARCHAR(255) NOT NULL, \n\tnickname VARCHAR(255), \n\tstatus VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (email)\n)"
++        ]
++      ]
++    },
++    "mariadb/idiomatic/sqlalchemy": {
++      "ddl": [
++        "CREATE TABLE users (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\temail VARCHAR(255) NOT NULL, \n\tnickname VARCHAR(255), \n\tstatus VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (email)\n)",
++        "CREATE TABLE teams (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tname VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (name)\n)",
++        "CREATE TABLE profiles (\n\tuser_id INTEGER NOT NULL, \n\tbio VARCHAR(255), \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)",
++        "CREATE TABLE memberships (\n\tteam_id INTEGER NOT NULL, \n\tuser_id INTEGER NOT NULL, \n\talias VARCHAR(255) NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)",
++        "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)",
++        "CREATE INDEX ix_memberships_user ON memberships (user_id)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry 'alice' for key 'email'\")",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'email' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'email' cannot be null\")",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'status' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '2' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`profiles`, CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "(1451, 'Cannot delete or update a parent row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`))')",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-1' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-owner' for key 'ux_memberships_team_alias'\")",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'team_id' cannot be null\")",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "rejected",
++          "error": "(1264, \"Out of range value for column 'id' at row 1\")",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry 'ALICE' for key 'email'\")",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "rejected",
++          "error": "(1406, \"Data too long for column 'email' at row 1\")",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "12.3.2-MariaDB",
++        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
++        "charset": "utf8mb4",
++        "collation": "utf8mb4_unicode_ci",
++        "engine": "InnoDB"
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "email",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            },
++            {
++              "name": "nickname",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            },
++            {
++              "name": "status",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "email",
++              "column_names": [
++                "email"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "email",
++              "column_names": [
++                "email"
++              ],
++              "duplicates_index": "email"
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "bio",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "name",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "name",
++              "column_names": [
++                "name"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "name",
++              "column_names": [
++                "name"
++              ],
++              "duplicates_index": "name"
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "INTEGER",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "alias",
++              "type": "VARCHAR(255)",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": "2",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {}
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": false
++            },
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "duplicates_index": "ux_memberships_team_alias"
++            }
++          ]
++        }
++      },
++      "installed_ddl": [
++        [
++          "users",
++          "CREATE TABLE `users` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `email` varchar(255) NOT NULL,\n  `nickname` varchar(255) DEFAULT NULL,\n  `status` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "profiles",
++          "CREATE TABLE `profiles` (\n  `user_id` int(11) NOT NULL,\n  `bio` varchar(255) DEFAULT NULL,\n  PRIMARY KEY (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "teams",
++          "CREATE TABLE `teams` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `name` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "memberships",
++          "CREATE TABLE `memberships` (\n  `team_id` int(11) NOT NULL,\n  `user_id` int(11) NOT NULL,\n  `alias` varchar(255) NOT NULL,\n  PRIMARY KEY (`team_id`,`user_id`),\n  UNIQUE KEY `ux_memberships_team_alias` (`team_id`,`alias`),\n  KEY `ix_memberships_user` (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ]
++      ]
++    },
++    "sqlite/matched/snekql": {
++      "ddl": [
++        "CREATE TABLE \"users\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"nickname\" TEXT, \"status\" TEXT NOT NULL) STRICT",
++        "CREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\")",
++        "CREATE TABLE \"profiles\" (\"user_id\" INTEGER PRIMARY KEY, \"bio\" TEXT, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE CASCADE) STRICT",
++        "CREATE TABLE \"teams\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL) STRICT",
++        "CREATE UNIQUE INDEX \"ux_teams_name\" ON \"teams\" (\"name\")",
++        "CREATE TABLE \"memberships\" (\"team_id\" INTEGER NOT NULL, \"user_id\" INTEGER NOT NULL, \"alias\" TEXT NOT NULL, PRIMARY KEY (\"team_id\", \"user_id\"), FOREIGN KEY (\"team_id\") REFERENCES \"teams\" (\"id\") ON DELETE CASCADE, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT) STRICT",
++        "CREATE UNIQUE INDEX \"ux_memberships_team_id_alias\" ON \"memberships\" (\"team_id\", \"alias\")",
++        "CREATE INDEX \"ix_memberships_user_id\" ON \"memberships\" (\"user_id\")"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: users.email",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.status",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: profiles.user_id",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.user_id",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.alias",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: memberships.team_id",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "rejected",
++          "error": "cannot store BLOB value in TEXT column users.email",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "3.50.4",
++        "foreign_keys": 1
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "email",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "nickname",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "status",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "bio",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": true,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "name",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 2
++            },
++            {
++              "name": "alias",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "RESTRICT"
++              }
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user_id",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": 0,
++              "dialect_options": {}
++            },
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        }
++      },
++      "installed_ddl": [
++        [
++          "index",
++          "ix_memberships_user_id",
++          "memberships",
++          "CREATE INDEX \"ix_memberships_user_id\" ON \"memberships\" (\"user_id\")"
++        ],
++        [
++          "index",
++          "sqlite_autoindex_memberships_1",
++          "memberships",
++          null
++        ],
++        [
++          "index",
++          "ux_memberships_team_id_alias",
++          "memberships",
++          "CREATE UNIQUE INDEX \"ux_memberships_team_id_alias\" ON \"memberships\" (\"team_id\", \"alias\")"
++        ],
++        [
++          "index",
++          "ux_teams_name",
++          "teams",
++          "CREATE UNIQUE INDEX \"ux_teams_name\" ON \"teams\" (\"name\")"
++        ],
++        [
++          "index",
++          "ux_users_email",
++          "users",
++          "CREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\")"
++        ],
++        [
++          "table",
++          "memberships",
++          "memberships",
++          "CREATE TABLE \"memberships\" (\"team_id\" INTEGER NOT NULL, \"user_id\" INTEGER NOT NULL, \"alias\" TEXT NOT NULL, PRIMARY KEY (\"team_id\", \"user_id\"), FOREIGN KEY (\"team_id\") REFERENCES \"teams\" (\"id\") ON DELETE CASCADE, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE RESTRICT) STRICT"
++        ],
++        [
++          "table",
++          "profiles",
++          "profiles",
++          "CREATE TABLE \"profiles\" (\"user_id\" INTEGER PRIMARY KEY, \"bio\" TEXT, FOREIGN KEY (\"user_id\") REFERENCES \"users\" (\"id\") ON DELETE CASCADE) STRICT"
++        ],
++        [
++          "table",
++          "sqlite_sequence",
++          "sqlite_sequence",
++          "CREATE TABLE sqlite_sequence(name,seq)"
++        ],
++        [
++          "table",
++          "teams",
++          "teams",
++          "CREATE TABLE \"teams\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL) STRICT"
++        ],
++        [
++          "table",
++          "users",
++          "users",
++          "CREATE TABLE \"users\" (\"id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"nickname\" TEXT, \"status\" TEXT NOT NULL) STRICT"
++        ]
++      ]
++    },
++    "mariadb/matched/snekql": {
++      "ddl": [
++        "CREATE TABLE `users` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `email` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `nickname` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `status` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_users_email` ON `users` (`email`)",
++        "CREATE TABLE `profiles` (`user_id` BIGINT NOT NULL PRIMARY KEY, `bio` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB",
++        "CREATE TABLE `teams` (`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_teams_name` ON `teams` (`name`)",
++        "CREATE TABLE `memberships` (`team_id` BIGINT NOT NULL, `user_id` BIGINT NOT NULL, `alias` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, PRIMARY KEY (`team_id`, `user_id`), FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE, FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT) ENGINE=InnoDB",
++        "CREATE UNIQUE INDEX `ux_memberships_team_id_alias` ON `memberships` (`team_id`, `alias`)",
++        "CREATE INDEX `ix_memberships_user_id` ON `memberships` (`user_id`)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry 'alice' for key 'ux_users_email'\")",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'email' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'email' cannot be null\")",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'status' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '2' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`profiles`, CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "(1451, 'Cannot delete or update a parent row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`))')",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-1' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-owner' for key 'ux_memberships_team_id_alias'\")",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'team_id' cannot be null\")",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "rejected",
++          "error": "(1406, \"Data too long for column 'email' at row 1\")",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "12.3.2-MariaDB",
++        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
++        "charset": "utf8mb4",
++        "collation": "utf8mb4_unicode_ci",
++        "engine": "InnoDB"
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "email",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            },
++            {
++              "name": "nickname",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            },
++            {
++              "name": "status",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_users_email",
++              "column_names": [
++                "email"
++              ],
++              "duplicates_index": "ux_users_email"
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "bio",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "name",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_teams_name",
++              "column_names": [
++                "name"
++              ],
++              "duplicates_index": "ux_teams_name"
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "alias",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": "2",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {}
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user_id",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": false
++            },
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_memberships_team_id_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "duplicates_index": "ux_memberships_team_id_alias"
++            }
++          ]
++        }
++      },
++      "installed_ddl": [
++        [
++          "users",
++          "CREATE TABLE `users` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  `nickname` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_users_email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "profiles",
++          "CREATE TABLE `profiles` (\n  `user_id` bigint(20) NOT NULL,\n  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  PRIMARY KEY (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "teams",
++          "CREATE TABLE `teams` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_teams_name` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "memberships",
++          "CREATE TABLE `memberships` (\n  `team_id` bigint(20) NOT NULL,\n  `user_id` bigint(20) NOT NULL,\n  `alias` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`team_id`,`user_id`),\n  UNIQUE KEY `ux_memberships_team_id_alias` (`team_id`,`alias`),\n  KEY `ix_memberships_user_id` (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ]
++      ]
++    },
++    "sqlite/matched/sqlalchemy": {
++      "ddl": [
++        "CREATE TABLE users (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\temail TEXT NOT NULL, \n\tnickname TEXT, \n\tstatus TEXT NOT NULL, \n\tUNIQUE (email)\n)\n STRICT",
++        "CREATE TABLE teams (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tname TEXT NOT NULL, \n\tUNIQUE (name)\n)\n STRICT",
++        "CREATE TABLE profiles (\n\tuser_id INTEGER NOT NULL, \n\tbio TEXT, \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)\n STRICT",
++        "CREATE TABLE memberships (\n\tteam_id INTEGER NOT NULL, \n\tuser_id INTEGER NOT NULL, \n\talias TEXT NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)\n STRICT",
++        "CREATE INDEX ix_memberships_user ON memberships (user_id)",
++        "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: users.email",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.email",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: users.status",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: profiles.user_id",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.user_id",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "UNIQUE constraint failed: memberships.team_id, memberships.alias",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "FOREIGN KEY constraint failed",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "NOT NULL constraint failed: memberships.team_id",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "rejected",
++          "error": "cannot store BLOB value in TEXT column users.email",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "3.50.4",
++        "foreign_keys": 1
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "email",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "nickname",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            },
++            {
++              "name": "status",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [],
++          "unique_constraints": [
++            {
++              "name": null,
++              "column_names": [
++                "email"
++              ]
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "bio",
++              "type": "TEXT",
++              "nullable": true,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "name",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [],
++          "unique_constraints": [
++            {
++              "name": null,
++              "column_names": [
++                "name"
++              ]
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 1
++            },
++            {
++              "name": "user_id",
++              "type": "INTEGER",
++              "nullable": false,
++              "default": null,
++              "primary_key": 2
++            },
++            {
++              "name": "alias",
++              "type": "TEXT",
++              "nullable": false,
++              "default": null,
++              "primary_key": 0
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": null,
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": null,
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "RESTRICT"
++              }
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": 0,
++              "dialect_options": {}
++            },
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": 1,
++              "dialect_options": {}
++            }
++          ],
++          "unique_constraints": []
++        }
++      },
++      "installed_ddl": [
++        [
++          "index",
++          "ix_memberships_user",
++          "memberships",
++          "CREATE INDEX ix_memberships_user ON memberships (user_id)"
++        ],
++        [
++          "index",
++          "sqlite_autoindex_memberships_1",
++          "memberships",
++          null
++        ],
++        [
++          "index",
++          "sqlite_autoindex_teams_1",
++          "teams",
++          null
++        ],
++        [
++          "index",
++          "sqlite_autoindex_users_1",
++          "users",
++          null
++        ],
++        [
++          "index",
++          "ux_memberships_team_alias",
++          "memberships",
++          "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)"
++        ],
++        [
++          "table",
++          "memberships",
++          "memberships",
++          "CREATE TABLE memberships (\n\tteam_id INTEGER NOT NULL, \n\tuser_id INTEGER NOT NULL, \n\talias TEXT NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)\n STRICT"
++        ],
++        [
++          "table",
++          "profiles",
++          "profiles",
++          "CREATE TABLE profiles (\n\tuser_id INTEGER NOT NULL, \n\tbio TEXT, \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)\n STRICT"
++        ],
++        [
++          "table",
++          "sqlite_sequence",
++          "sqlite_sequence",
++          "CREATE TABLE sqlite_sequence(name,seq)"
++        ],
++        [
++          "table",
++          "teams",
++          "teams",
++          "CREATE TABLE teams (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\tname TEXT NOT NULL, \n\tUNIQUE (name)\n)\n STRICT"
++        ],
++        [
++          "table",
++          "users",
++          "users",
++          "CREATE TABLE users (\n\tid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \n\temail TEXT NOT NULL, \n\tnickname TEXT, \n\tstatus TEXT NOT NULL, \n\tUNIQUE (email)\n)\n STRICT"
++        ]
++      ]
++    },
++    "mariadb/matched/sqlalchemy": {
++      "ddl": [
++        "CREATE TABLE users (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\temail VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, \n\tnickname VARCHAR(255) COLLATE utf8mb4_bin, \n\tstatus VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (email)\n)",
++        "CREATE TABLE teams (\n\tid BIGINT NOT NULL AUTO_INCREMENT, \n\tname VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (name)\n)",
++        "CREATE TABLE profiles (\n\tuser_id BIGINT NOT NULL, \n\tbio VARCHAR(255) COLLATE utf8mb4_bin, \n\tPRIMARY KEY (user_id), \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE\n)",
++        "CREATE TABLE memberships (\n\tteam_id BIGINT NOT NULL, \n\tuser_id BIGINT NOT NULL, \n\talias VARCHAR(255) COLLATE utf8mb4_bin NOT NULL, \n\tPRIMARY KEY (team_id, user_id), \n\tFOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, \n\tFOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT\n)",
++        "CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias)",
++        "CREATE INDEX ix_memberships_user ON memberships (user_id)"
++      ],
++      "probes": {
++        "duplicate_email": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry 'alice' for key 'email'\")",
++          "matches_spec": true
++        },
++        "required_email": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'email' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "null_email": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'email' cannot be null\")",
++          "matches_spec": true
++        },
++        "nullable_nickname": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "python_default_is_not_server_default": {
++          "outcome": "rejected",
++          "error": "(1364, \"Field 'status' doesn't have a default value\")",
++          "matches_spec": true
++        },
++        "generated_id": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_profile": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '2' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "orphan_profile": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`profiles`, CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "profile_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "membership_restrict": {
++          "outcome": "rejected",
++          "error": "(1451, 'Cannot delete or update a parent row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`))')",
++          "matches_spec": true
++        },
++        "team_cascade": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              0
++            ]
++          ],
++          "matches_spec": true
++        },
++        "duplicate_membership": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-1' for key 'PRIMARY'\")",
++          "matches_spec": true
++        },
++        "tenant_scoped_alias": {
++          "outcome": "rejected",
++          "error": "(1062, \"Duplicate entry '1-owner' for key 'ux_memberships_team_alias'\")",
++          "matches_spec": true
++        },
++        "alias_in_other_team": {
++          "outcome": "accepted",
++          "matches_spec": true
++        },
++        "orphan_membership": {
++          "outcome": "rejected",
++          "error": "(1452, 'Cannot add or update a child row: a foreign key constraint fails (`test`.`memberships`, CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE)')",
++          "matches_spec": true
++        },
++        "null_composite_key": {
++          "outcome": "rejected",
++          "error": "(1048, \"Column 'team_id' cannot be null\")",
++          "matches_spec": true
++        },
++        "wide_id": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "blob_in_text": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "case_distinct_email": {
++          "outcome": "accepted",
++          "matches_spec": null
++        },
++        "id_reuse": {
++          "outcome": "accepted",
++          "rows": [
++            [
++              3
++            ]
++          ],
++          "matches_spec": null
++        },
++        "long_email": {
++          "outcome": "rejected",
++          "error": "(1406, \"Data too long for column 'email' at row 1\")",
++          "matches_spec": null
++        }
++      },
++      "controls": {
++        "version": "12.3.2-MariaDB",
++        "sql_mode": "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
++        "charset": "utf8mb4",
++        "collation": "utf8mb4_unicode_ci",
++        "engine": "InnoDB"
++      },
++      "schema": {
++        "users": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "email",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            },
++            {
++              "name": "nickname",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            },
++            {
++              "name": "status",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "email",
++              "column_names": [
++                "email"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "email",
++              "column_names": [
++                "email"
++              ],
++              "duplicates_index": "email"
++            }
++          ]
++        },
++        "profiles": {
++          "columns": [
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "bio",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": true
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            }
++          ],
++          "indexes": [],
++          "unique_constraints": []
++        },
++        "teams": {
++          "columns": [
++            {
++              "name": "id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": true
++            },
++            {
++              "name": "name",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [],
++          "indexes": [
++            {
++              "name": "name",
++              "column_names": [
++                "name"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "name",
++              "column_names": [
++                "name"
++              ],
++              "duplicates_index": "name"
++            }
++          ]
++        },
++        "memberships": {
++          "columns": [
++            {
++              "name": "team_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "user_id",
++              "type": "BIGINT",
++              "default": null,
++              "comment": null,
++              "nullable": false,
++              "autoincrement": false
++            },
++            {
++              "name": "alias",
++              "type": "VARCHAR(255) COLLATE \"utf8mb4_bin\"",
++              "default": null,
++              "comment": null,
++              "nullable": false
++            }
++          ],
++          "primary_key": {
++            "constrained_columns": [
++              "team_id",
++              "user_id"
++            ],
++            "name": null
++          },
++          "foreign_keys": [
++            {
++              "name": "1",
++              "constrained_columns": [
++                "team_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "teams",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {
++                "ondelete": "CASCADE"
++              }
++            },
++            {
++              "name": "2",
++              "constrained_columns": [
++                "user_id"
++              ],
++              "referred_schema": null,
++              "referred_table": "users",
++              "referred_columns": [
++                "id"
++              ],
++              "options": {}
++            }
++          ],
++          "indexes": [
++            {
++              "name": "ix_memberships_user",
++              "column_names": [
++                "user_id"
++              ],
++              "unique": false
++            },
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "unique": true,
++              "type": "UNIQUE"
++            }
++          ],
++          "unique_constraints": [
++            {
++              "name": "ux_memberships_team_alias",
++              "column_names": [
++                "team_id",
++                "alias"
++              ],
++              "duplicates_index": "ux_memberships_team_alias"
++            }
++          ]
++        }
++      },
++      "installed_ddl": [
++        [
++          "users",
++          "CREATE TABLE `users` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  `nickname` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "profiles",
++          "CREATE TABLE `profiles` (\n  `user_id` bigint(20) NOT NULL,\n  `bio` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,\n  PRIMARY KEY (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "teams",
++          "CREATE TABLE `teams` (\n  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `name` (`name`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ],
++        [
++          "memberships",
++          "CREATE TABLE `memberships` (\n  `team_id` bigint(20) NOT NULL,\n  `user_id` bigint(20) NOT NULL,\n  `alias` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,\n  PRIMARY KEY (`team_id`,`user_id`),\n  UNIQUE KEY `ux_memberships_team_alias` (`team_id`,`alias`),\n  KEY `ix_memberships_user` (`user_id`),\n  CONSTRAINT `1` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE CASCADE,\n  CONSTRAINT `2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
++        ]
++      ]
++    }
++  }
++}
+diff --git a/research/schema_comparison/sqlalchemy_models.py b/research/schema_comparison/sqlalchemy_models.py
+new file mode 100644
+index 0000000..58d0c58
+--- /dev/null
++++ b/research/schema_comparison/sqlalchemy_models.py
+@@ -0,0 +1,85 @@
++"""SQLAlchemy declarative equivalents, without ORM relationships or sessions."""
++
++# SQLAlchemy mapped_column returns MappedColumn[Any] by design.
++
++from typing import Any
++
++from sqlalchemy import (
++    BigInteger,
++    ForeignKey,
++    Index,
++    Integer,
++    String,
++    Text,
++    create_mock_engine,
++)
++from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
++
++
++def ddl(backend: str, track: str) -> list[str]:
++    """Capture every statement SQLAlchemy create_all emits."""
++    matched = track == "matched"
++    text_type = Text if backend == "sqlite" and matched else String(255)
++    if backend == "mariadb" and matched:
++        text_type = String(255, collation="utf8mb4_bin")
++
++    integer_type = BigInteger if backend == "mariadb" and matched else Integer
++
++    class Base(DeclarativeBase):
++        pass
++
++    class User(Base):
++        __tablename__ = "users"
++        __table_args__: Any = {  # noqa: RUF012 - SQLAlchemy declares this as an instance attribute.
++            "sqlite_strict": matched,
++            "sqlite_autoincrement": matched,
++        }
++        id: Mapped[int] = mapped_column(integer_type, primary_key=True)
++        email: Mapped[str] = mapped_column(text_type, unique=True)
++        nickname: Mapped[str | None] = mapped_column(text_type)
++        status: Mapped[str] = mapped_column(text_type, default="active")
++
++    class Profile(Base):
++        __tablename__ = "profiles"
++        __table_args__: Any = {  # noqa: RUF012 - SQLAlchemy declares this as an instance attribute.
++            "sqlite_strict": matched
++        }
++        user_id: Mapped[int] = mapped_column(
++            ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
++        )
++        bio: Mapped[str | None] = mapped_column(text_type)
++
++    class Team(Base):
++        __tablename__ = "teams"
++        __table_args__: Any = {  # noqa: RUF012 - SQLAlchemy declares this as an instance attribute.
++            "sqlite_strict": matched,
++            "sqlite_autoincrement": matched,
++        }
++        id: Mapped[int] = mapped_column(integer_type, primary_key=True)
++        name: Mapped[str] = mapped_column(text_type, unique=True)
++
++    class Membership(Base):
++        __tablename__ = "memberships"
++        __table_args__: Any = (
++            Index("ux_memberships_team_alias", "team_id", "alias", unique=True),
++            Index("ix_memberships_user", "user_id"),
++            {"sqlite_strict": matched},
++        )
++        team_id: Mapped[int] = mapped_column(
++            ForeignKey("teams.id", ondelete="CASCADE"), primary_key=True
++        )
++        user_id: Mapped[int] = mapped_column(
++            ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True
++        )
++        alias: Mapped[str] = mapped_column(text_type)
++
++    statements: list[str] = []
++
++    def capture(statement: Any, *_args: Any, **_kwargs: Any) -> None:
++        statements.append(str(statement.compile(dialect=engine.dialect)).strip())
++
++    engine = create_mock_engine(
++        "sqlite://" if backend == "sqlite" else "mariadb+pymysql://", capture
++    )
++    Base.metadata.create_all(engine, checkfirst=False)
++    return statements
+diff --git a/research/schema_comparison/sqlite-idiomatic-snekql.sql b/research/schema_comparison/sqlite-idiomatic-snekql.sql
+new file mode 100644
+index 0000000..f620068
+--- /dev/null
++++ b/research/schema_comparison/sqlite-idiomatic-snekql.sql
+@@ -0,0 +1,15 @@
++CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "email" TEXT NOT NULL, "nickname" TEXT, "status" TEXT NOT NULL) STRICT;
++
++CREATE UNIQUE INDEX "ux_users_email" ON "users" ("email");
++
++CREATE TABLE "profiles" ("user_id" INTEGER PRIMARY KEY, "bio" TEXT, FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE) STRICT;
++
++CREATE TABLE "teams" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL) STRICT;
++
++CREATE UNIQUE INDEX "ux_teams_name" ON "teams" ("name");
++
++CREATE TABLE "memberships" ("team_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL, "alias" TEXT NOT NULL, PRIMARY KEY ("team_id", "user_id"), FOREIGN KEY ("team_id") REFERENCES "teams" ("id") ON DELETE CASCADE, FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT) STRICT;
++
++CREATE UNIQUE INDEX "ux_memberships_team_id_alias" ON "memberships" ("team_id", "alias");
++
++CREATE INDEX "ix_memberships_user_id" ON "memberships" ("user_id");
+diff --git a/research/schema_comparison/sqlite-idiomatic-sqlalchemy.sql b/research/schema_comparison/sqlite-idiomatic-sqlalchemy.sql
+new file mode 100644
+index 0000000..4f1419e
+--- /dev/null
++++ b/research/schema_comparison/sqlite-idiomatic-sqlalchemy.sql
+@@ -0,0 +1,35 @@
++CREATE TABLE users (
++	id INTEGER NOT NULL, 
++	email VARCHAR(255) NOT NULL, 
++	nickname VARCHAR(255), 
++	status VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (email)
++);
++
++CREATE TABLE teams (
++	id INTEGER NOT NULL, 
++	name VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (id), 
++	UNIQUE (name)
++);
++
++CREATE TABLE profiles (
++	user_id INTEGER NOT NULL, 
++	bio VARCHAR(255), 
++	PRIMARY KEY (user_id), 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
++);
++
++CREATE TABLE memberships (
++	team_id INTEGER NOT NULL, 
++	user_id INTEGER NOT NULL, 
++	alias VARCHAR(255) NOT NULL, 
++	PRIMARY KEY (team_id, user_id), 
++	FOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT
++);
++
++CREATE INDEX ix_memberships_user ON memberships (user_id);
++
++CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias);
+diff --git a/research/schema_comparison/sqlite-idiomatic.diff b/research/schema_comparison/sqlite-idiomatic.diff
+new file mode 100644
+index 0000000..45fc2cb
+--- /dev/null
++++ b/research/schema_comparison/sqlite-idiomatic.diff
+@@ -0,0 +1,159 @@
++--- snekql
+++++ sqlalchemy
++@@ -20,7 +20,7 @@
++         "name": "alias",
++         "nullable": false,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [
++@@ -59,7 +59,7 @@
++           "user_id"
++         ],
++         "dialect_options": {},
++-        "name": "ix_memberships_user_id",
+++        "name": "ix_memberships_user",
++         "unique": 0
++       },
++       {
++@@ -68,7 +68,7 @@
++           "alias"
++         ],
++         "dialect_options": {},
++-        "name": "ux_memberships_team_id_alias",
+++        "name": "ux_memberships_team_alias",
++         "unique": 1
++       }
++     ],
++@@ -86,7 +86,7 @@
++       {
++         "default": null,
++         "name": "user_id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -95,7 +95,7 @@
++         "name": "bio",
++         "nullable": true,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [
++@@ -128,7 +128,7 @@
++       {
++         "default": null,
++         "name": "id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -137,34 +137,32 @@
++         "name": "name",
++         "nullable": false,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [],
++-    "indexes": [
+++    "indexes": [],
+++    "primary_key": {
+++      "constrained_columns": [
+++        "id"
+++      ],
+++      "name": null
+++    },
+++    "unique_constraints": [
++       {
++         "column_names": [
++           "name"
++         ],
++-        "dialect_options": {},
++-        "name": "ux_teams_name",
++-        "unique": 1
++-      }
++-    ],
++-    "primary_key": {
++-      "constrained_columns": [
++-        "id"
++-      ],
++-      "name": null
++-    },
++-    "unique_constraints": []
+++        "name": null
+++      }
+++    ]
++   },
++   "users": {
++     "columns": [
++       {
++         "default": null,
++         "name": "id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -173,40 +171,38 @@
++         "name": "email",
++         "nullable": false,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       },
++       {
++         "default": null,
++         "name": "nickname",
++         "nullable": true,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       },
++       {
++         "default": null,
++         "name": "status",
++         "nullable": false,
++         "primary_key": 0,
++-        "type": "TEXT"
+++        "type": "VARCHAR(255)"
++       }
++     ],
++     "foreign_keys": [],
++-    "indexes": [
+++    "indexes": [],
+++    "primary_key": {
+++      "constrained_columns": [
+++        "id"
+++      ],
+++      "name": null
+++    },
+++    "unique_constraints": [
++       {
++         "column_names": [
++           "email"
++         ],
++-        "dialect_options": {},
++-        "name": "ux_users_email",
++-        "unique": 1
++-      }
++-    ],
++-    "primary_key": {
++-      "constrained_columns": [
++-        "id"
++-      ],
++-      "name": null
++-    },
++-    "unique_constraints": []
+++        "name": null
+++      }
+++    ]
++   }
++ }
+\ No newline at end of file
+diff --git a/research/schema_comparison/sqlite-matched-snekql.sql b/research/schema_comparison/sqlite-matched-snekql.sql
+new file mode 100644
+index 0000000..f620068
+--- /dev/null
++++ b/research/schema_comparison/sqlite-matched-snekql.sql
+@@ -0,0 +1,15 @@
++CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "email" TEXT NOT NULL, "nickname" TEXT, "status" TEXT NOT NULL) STRICT;
++
++CREATE UNIQUE INDEX "ux_users_email" ON "users" ("email");
++
++CREATE TABLE "profiles" ("user_id" INTEGER PRIMARY KEY, "bio" TEXT, FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE) STRICT;
++
++CREATE TABLE "teams" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL) STRICT;
++
++CREATE UNIQUE INDEX "ux_teams_name" ON "teams" ("name");
++
++CREATE TABLE "memberships" ("team_id" INTEGER NOT NULL, "user_id" INTEGER NOT NULL, "alias" TEXT NOT NULL, PRIMARY KEY ("team_id", "user_id"), FOREIGN KEY ("team_id") REFERENCES "teams" ("id") ON DELETE CASCADE, FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT) STRICT;
++
++CREATE UNIQUE INDEX "ux_memberships_team_id_alias" ON "memberships" ("team_id", "alias");
++
++CREATE INDEX "ix_memberships_user_id" ON "memberships" ("user_id");
+diff --git a/research/schema_comparison/sqlite-matched-sqlalchemy.sql b/research/schema_comparison/sqlite-matched-sqlalchemy.sql
+new file mode 100644
+index 0000000..a5260ec
+--- /dev/null
++++ b/research/schema_comparison/sqlite-matched-sqlalchemy.sql
+@@ -0,0 +1,37 @@
++CREATE TABLE users (
++	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
++	email TEXT NOT NULL, 
++	nickname TEXT, 
++	status TEXT NOT NULL, 
++	UNIQUE (email)
++)
++ STRICT;
++
++CREATE TABLE teams (
++	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
++	name TEXT NOT NULL, 
++	UNIQUE (name)
++)
++ STRICT;
++
++CREATE TABLE profiles (
++	user_id INTEGER NOT NULL, 
++	bio TEXT, 
++	PRIMARY KEY (user_id), 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
++)
++ STRICT;
++
++CREATE TABLE memberships (
++	team_id INTEGER NOT NULL, 
++	user_id INTEGER NOT NULL, 
++	alias TEXT NOT NULL, 
++	PRIMARY KEY (team_id, user_id), 
++	FOREIGN KEY(team_id) REFERENCES teams (id) ON DELETE CASCADE, 
++	FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE RESTRICT
++)
++ STRICT;
++
++CREATE INDEX ix_memberships_user ON memberships (user_id);
++
++CREATE UNIQUE INDEX ux_memberships_team_alias ON memberships (team_id, alias);
+diff --git a/research/schema_comparison/sqlite-matched.diff b/research/schema_comparison/sqlite-matched.diff
+new file mode 100644
+index 0000000..b5880d5
+--- /dev/null
++++ b/research/schema_comparison/sqlite-matched.diff
+@@ -0,0 +1,115 @@
++--- snekql
+++++ sqlalchemy
++@@ -59,7 +59,7 @@
++           "user_id"
++         ],
++         "dialect_options": {},
++-        "name": "ix_memberships_user_id",
+++        "name": "ix_memberships_user",
++         "unique": 0
++       },
++       {
++@@ -68,7 +68,7 @@
++           "alias"
++         ],
++         "dialect_options": {},
++-        "name": "ux_memberships_team_id_alias",
+++        "name": "ux_memberships_team_alias",
++         "unique": 1
++       }
++     ],
++@@ -86,7 +86,7 @@
++       {
++         "default": null,
++         "name": "user_id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -128,7 +128,7 @@
++       {
++         "default": null,
++         "name": "id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -141,30 +141,28 @@
++       }
++     ],
++     "foreign_keys": [],
++-    "indexes": [
+++    "indexes": [],
+++    "primary_key": {
+++      "constrained_columns": [
+++        "id"
+++      ],
+++      "name": null
+++    },
+++    "unique_constraints": [
++       {
++         "column_names": [
++           "name"
++         ],
++-        "dialect_options": {},
++-        "name": "ux_teams_name",
++-        "unique": 1
++-      }
++-    ],
++-    "primary_key": {
++-      "constrained_columns": [
++-        "id"
++-      ],
++-      "name": null
++-    },
++-    "unique_constraints": []
+++        "name": null
+++      }
+++    ]
++   },
++   "users": {
++     "columns": [
++       {
++         "default": null,
++         "name": "id",
++-        "nullable": true,
+++        "nullable": false,
++         "primary_key": 1,
++         "type": "INTEGER"
++       },
++@@ -191,22 +189,20 @@
++       }
++     ],
++     "foreign_keys": [],
++-    "indexes": [
+++    "indexes": [],
+++    "primary_key": {
+++      "constrained_columns": [
+++        "id"
+++      ],
+++      "name": null
+++    },
+++    "unique_constraints": [
++       {
++         "column_names": [
++           "email"
++         ],
++-        "dialect_options": {},
++-        "name": "ux_users_email",
++-        "unique": 1
++-      }
++-    ],
++-    "primary_key": {
++-      "constrained_columns": [
++-        "id"
++-      ],
++-      "name": null
++-    },
++-    "unique_constraints": []
+++        "name": null
+++      }
+++    ]
++   }
++ }
+\ No newline at end of file
+diff --git a/research/schema_comparison/sqlite_models.py b/research/schema_comparison/sqlite_models.py
+new file mode 100644
+index 0000000..8b7a90e
+--- /dev/null
++++ b/research/schema_comparison/sqlite_models.py
+@@ -0,0 +1,53 @@
++"""Independent sqlite table declarations for the pilot."""
++
++from typing import Any, ClassVar
++
++from snekql import sqlite as db
++
++
++def ddl() -> list[str]:
++    """Scaffold users/profiles and teams/memberships through the public API."""
++
++    class User[S = db.Pending](db.Model[S, "User[db.Fetched]"]):
++        __tablename__ = "users"
++        id: db.GenCol[int] = db.Integer(
++            primary_key=True, auto_increment=True, default=db.PENDING_GENERATION
++        )
++        email: db.Col[str] = db.Text(unique=True)
++        nickname: db.Col[str | None] = db.Text(nullable=True)
++        status: db.Col[str] = db.Text(default="active")
++
++    class Profile[S = db.Pending](db.Model[S, "Profile[db.Fetched]"]):
++        __tablename__ = "profiles"
++        user_id: db.FKCol[User, int] = db.ForeignKey(
++            User.id, primary_key=True, on_delete="CASCADE"
++        )
++        bio: db.Col[str | None] = db.Text(nullable=True)
++
++    class Team[S = db.Pending](db.Model[S, "Team[db.Fetched]"]):
++        __tablename__ = "teams"
++        id: db.GenCol[int] = db.Integer(
++            primary_key=True, auto_increment=True, default=db.PENDING_GENERATION
++        )
++        name: db.Col[str] = db.Text(unique=True)
++
++    class Membership[S = db.Pending](db.Model[S, "Membership[db.Fetched]"]):
++        __tablename__ = "memberships"
++        team_id: db.FKCol[Team, int] = db.ForeignKey(
++            Team.id, primary_key=True, on_delete="CASCADE"
++        )
++        user_id: db.FKCol[User, int] = db.ForeignKey(
++            User.id, primary_key=True, on_delete="RESTRICT"
++        )
++        alias: db.Col[str] = db.Text()
++        __indexes__: ClassVar[list[db.Index[Any]]] = [
++            db.Index(team_id, alias, unique=True),
++            db.Index(user_id),
++        ]
++
++    # Fixed fixtures contain no semicolons inside identifiers or literals.
++    return [
++        statement.strip()
++        for statement in db.scaffold([User, Profile, Team, Membership]).split(";")
++        if statement.strip()
++    ]
+diff --git a/research/schema_comparison/test_experiment.py b/research/schema_comparison/test_experiment.py
+new file mode 100644
+index 0000000..8626d95
+--- /dev/null
++++ b/research/schema_comparison/test_experiment.py
+@@ -0,0 +1,44 @@
++"""Contract tests for the standalone research runner."""
++
++from snektest import Param, assert_eq, assert_in, test
++
++from research.schema_comparison.experiment import sqlite_observation
++from research.schema_comparison.sqlalchemy_models import ddl
++
++
++@test(mark="medium")
++async def duplicate_email_is_rejected() -> None:
++    """Raw SQL must exercise the installed unique constraint."""
++    observation = await sqlite_observation("snekql", "matched")
++    assert_eq(observation["probes"]["duplicate_email"]["outcome"], "rejected")
++
++
++@test(mark="medium")
++async def profile_delete_cascades() -> None:
++    """Deleting an unreferenced user removes their profile in the database."""
++    observation = await sqlite_observation("snekql", "matched")
++    assert_eq(observation["probes"]["profile_cascade"]["rows"], [[0]])
++
++
++@test(mark="fast")
++def matched_mariadb_uses_64_bit_ids() -> None:
++    """Matched intent must include the integer range, not just small seed IDs."""
++    assert_in("BIGINT", ddl("mariadb", "matched")[0])
++
++
++@test(
++    [Param(value=library, name=library) for library in ("snekql", "sqlalchemy")],
++    [Param(value=track, name=track) for track in ("idiomatic", "matched")],
++    mark="medium",
++)
++async def common_contract_has_no_mismatches(library: str, track: str) -> None:
++    """The runner evaluates each independent SQL specification without mismatches."""
++    observation = await sqlite_observation(library, track)
++    assert_eq(
++        [
++            name
++            for name, probe in observation["probes"].items()
++            if probe["matches_spec"] is False
++        ],
++        [],
++    )
+diff --git a/uv.lock b/uv.lock
+index 3da506d..c695e66 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -199,11 +199,11 @@ wheels = [
+ 
+ [[package]]
+ name = "pymysql"
+-version = "1.2.0"
++version = "1.1.2"
+ source = { registry = "https://pypi.org/simple" }
+-sdist = { url = "https://files.pythonhosted.org/packages/c9/bc/1c6a92f385940f727daeecf3bacaf186e03875dff57197801046c583bcf0/pymysql-1.2.0.tar.gz", hash = "sha256:6c7b17ca686988104d7426c27895b455cdeea3e9d3ceb1270f0c3704fead8c33", size = 49021, upload-time = "2026-05-19T08:26:22.302Z" }
++sdist = { url = "https://files.pythonhosted.org/packages/f5/ae/1fe3fcd9f959efa0ebe200b8de88b5a5ce3e767e38c7ac32fb179f16a388/pymysql-1.1.2.tar.gz", hash = "sha256:4961d3e165614ae65014e361811a724e2044ad3ea3739de9903ae7c21f539f03", size = 48258, upload-time = "2025-08-24T12:55:55.146Z" }
+ wheels = [
+-    { url = "https://files.pythonhosted.org/packages/c4/bd/2534e130295c8cfd4f0a2e31623baab7502278f1e97bcfe61db75656a77f/pymysql-1.2.0-py3-none-any.whl", hash = "sha256:62169ce6d5510f08e140c5e7990ee884a9764024e4a9a27b2cc11f1099322ae0", size = 45716, upload-time = "2026-05-19T08:26:20.974Z" },
++    { url = "https://files.pythonhosted.org/packages/7c/4c/ad33b92b9864cbde84f259d5df035a6447f91891f5be77788e2a3892bce3/pymysql-1.1.2-py3-none-any.whl", hash = "sha256:e6b1d89711dd51f8f74b1631fe08f039e7d76cf67a42a323d3178f0f25762ed9", size = 45300, upload-time = "2025-08-24T12:55:53.394Z" },
+ ]
+ 
+ [[package]]
+@@ -270,6 +270,10 @@ dev = [
+     { name = "snektest" },
+     { name = "ty" },
+ ]
++research = [
++    { name = "pymysql" },
++    { name = "sqlalchemy" },
++]
+ 
+ [package.metadata]
+ requires-dist = [
+@@ -289,6 +293,10 @@ dev = [
+     { name = "snektest", specifier = ">=0.16.0" },
+     { name = "ty", specifier = "==0.0.77" },
+ ]
++research = [
++    { name = "pymysql", specifier = "==1.1.2" },
++    { name = "sqlalchemy", specifier = "==2.0.43" },
++]
+ 
+ [[package]]
+ name = "snektest"
+@@ -313,6 +321,18 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575, upload-time = "2021-05-16T22:03:41.177Z" },
+ ]
+ 
++[[package]]
++name = "sqlalchemy"
++version = "2.0.43"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "typing-extensions" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/d7/bc/d59b5d97d27229b0e009bd9098cd81af71c2fa5549c580a0a67b9bed0496/sqlalchemy-2.0.43.tar.gz", hash = "sha256:788bfcef6787a7764169cfe9859fe425bf44559619e1d9f56f5bddf2ebf6f417", size = 9762949, upload-time = "2025-08-11T14:24:58.438Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/b8/d9/13bdde6521f322861fab67473cec4b1cc8999f3871953531cf61945fad92/sqlalchemy-2.0.43-py3-none-any.whl", hash = "sha256:1681c21dd2ccee222c2fe0bef671d1aef7c504087c9c4e800371cfcc8ac966fc", size = 1924759, upload-time = "2025-08-11T15:39:53.024Z" },
++]
++
+ [[package]]
+ name = "ty"
+ version = "0.0.77"

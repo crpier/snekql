@@ -1,0 +1,40 @@
+[
+  [
+    {
+      "sha": "e2902b5b8568a29031d1a63b6975ee436b7c479a",
+      "node_id": "C_kwDORi7RydoAKGUyOTAyYjViODU2OGEyOTAzMWQxYTYzYjY5NzVlZTQzNmI3YzQ3OWE",
+      "url": "https://api.github.com/repos/crpier/snekql/git/commits/e2902b5b8568a29031d1a63b6975ee436b7c479a",
+      "html_url": "https://github.com/crpier/snekql/commit/e2902b5b8568a29031d1a63b6975ee436b7c479a",
+      "author": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-19T08:35:58Z"
+      },
+      "committer": {
+        "name": "crpier",
+        "email": "crpier42@gmail.com",
+        "date": "2026-09-19T08:35:58Z"
+      },
+      "tree": {
+        "sha": "4e0084c5222b599064073fe09eb54b0236cb2c19",
+        "url": "https://api.github.com/repos/crpier/snekql/git/trees/4e0084c5222b599064073fe09eb54b0236cb2c19"
+      },
+      "message": "Investigate concurrent updates and conflict recovery (#366)",
+      "parents": [
+        {
+          "sha": "86120109a4b5ce8a323108e4fd50e38f4696e16c",
+          "url": "https://api.github.com/repos/crpier/snekql/git/commits/86120109a4b5ce8a323108e4fd50e38f4696e16c",
+          "html_url": "https://github.com/crpier/snekql/commit/86120109a4b5ce8a323108e4fd50e38f4696e16c"
+        }
+      ],
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "event": "committed"
+    }
+  ]
+]

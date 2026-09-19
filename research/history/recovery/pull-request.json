@@ -1,0 +1,183 @@
+{
+  "baseRefOid": "86120109a4b5ce8a323108e4fd50e38f4696e16c",
+  "body": "## Scope\n\nCloses #363. Independent follow-up to #358. No production-module fixes or literal-default design decisions.\n\nStart with `research/recovery/README.md`, then `SPEC.md`. Eight configurations cover SQLite/MariaDB, snekql/SQLAlchemy, and native/explicit-policy tracks.\n\n## Findings\n\n- Both libraries preserve omitted patch fields and clear nullable fields when explicitly given None. Native snekql rejects invalid bounds while building an update; ordinary ORM assignment does not provide that domain validation.\n- After a caught uniqueness error, snekql rejects further operations and can exit the context normally even though the earlier valid write does not persist. Its reuse diagnostic refers to a timeout despite this being a uniqueness failure.\n- SQLAlchemy ORM flush failure requires rollback and causes subsequent commit to raise PendingRollbackError. Direct Session.execute of the same uniqueness violation leaves the transaction usable on both tested engines. These are distinct write paths, not contradictory results.\n- snekql retains immutable snapshots. ORM rollback expires attributes even with expire_on_commit=False. A successful native MariaDB write retained 1.5 in the non-expiring object while independent readback returned integer 2.\n- Native snekql rejects externally stored invalid quantities on materialization. SQLAlchemy needs added result validation for that rule. Materialization failures did not prevent reading a valid row in the same transaction/session.\n- MariaDB rejects malformed timestamps at the external write, not at decoding. SQLite permits the bad storage and both readers reject it. Naive timestamp interpretation remains backend/policy dependent.\n\nThe added policy is deliberately limited to patch validation and quantity result validation. It does not cover arbitrary attribute assignment, bind processing, every bulk path, or UTC normalization. No claim of complete equivalence or overall library ranking.\n\n## Evidence and review\n\n- 48 partial-update observations, 24 lifecycle scenarios, 16 assignment attempts, 32 corruption attempts, and four direct-statement scenarios.\n- Real transactions/ORM sessions with independent readback; no mocks, external database URLs, savepoints, or disabled constraints.\n- Retained input types, object states, error stages, controls, emitted DDL, installed schemas, and results.json.\n- Separate declaration/policy files; lifecycle.py exposes transaction control flow directly.\n\n## Validation\n\n- Full package plus research suite: 1630 passed, including 71 research checks.\n- Final focused research tests, typing, Ruff lint, formatting, and lock check passed.\n- Clean temporary environment: 71 research checks and typing passed after installing comparator requirements.\n- The repository's documented PYTHON_CONTEXT_AWARE_WARNINGS=1 flag is required for the full suite. The initial attempt without it had 126 errors; the documented configuration passed.\n- Comparator requirements stay separately pinned; no root dependency or lockfile changes. CI installs them and uses explicit test paths. An overlay alone was insufficient for ty in a clean environment.\n- Narrow typing exception only for SQLAlchemy mapped_column declarations in the research model file.\n\nConcurrency, network faults, deadlocks, ambiguous commits, savepoints, broader driver versions, and performance remain outside this study.\n",
+  "comments": [],
+  "commits": [
+    {
+      "authoredDate": "2026-09-19T07:58:02Z",
+      "authors": [
+        {
+          "email": "crpier42@gmail.com",
+          "id": "MDQ6VXNlcjMxODE1ODc1",
+          "login": "crpier",
+          "name": "crpier"
+        }
+      ],
+      "committedDate": "2026-09-19T07:58:02Z",
+      "messageBody": "",
+      "messageHeadline": "Investigate updates and failure recovery versus SQLAlchemy (#363)",
+      "oid": "bcc66c2745f8006d7de04ff0cc1173251b7252b3"
+    }
+  ],
+  "createdAt": "2026-09-19T07:58:06Z",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "additions": 3,
+      "deletions": 1,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "pyproject.toml",
+      "additions": 6,
+      "deletions": 0,
+      "changeType": "MODIFIED"
+    },
+    {
+      "path": "research/recovery/README.md",
+      "additions": 224,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/SPEC.md",
+      "additions": 50,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/__init__.py",
+      "additions": 0,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/common.py",
+      "additions": 74,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/corruption.py",
+      "additions": 91,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/experiment.py",
+      "additions": 330,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/lifecycle.py",
+      "additions": 209,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/mariadb-snekql-native.sql",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/mariadb-snekql-validated.sql",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/mariadb-sqlalchemy-native.sql",
+      "additions": 9,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/mariadb-sqlalchemy-validated.sql",
+      "additions": 9,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/mariadb_models.py",
+      "additions": 16,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/policy.py",
+      "additions": 13,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/requirements.txt",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/results.json",
+      "additions": 5273,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlalchemy_models.py",
+      "additions": 44,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlite-snekql-native.sql",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlite-snekql-validated.sql",
+      "additions": 2,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlite-sqlalchemy-native.sql",
+      "additions": 9,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlite-sqlalchemy-validated.sql",
+      "additions": 9,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/sqlite_models.py",
+      "additions": 16,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/test_matrix.py",
+      "additions": 147,
+      "deletions": 0,
+      "changeType": "ADDED"
+    },
+    {
+      "path": "research/recovery/test_recovery.py",
+      "additions": 67,
+      "deletions": 0,
+      "changeType": "ADDED"
+    }
+  ],
+  "headRefName": "research/update-recovery",
+  "headRefOid": "bcc66c2745f8006d7de04ff0cc1173251b7252b3",
+  "number": 365,
+  "reviews": [],
+  "state": "OPEN",
+  "title": "Research updates, failure recovery, and corrupted-row reads",
+  "updatedAt": "2026-09-19T07:58:06Z",
+  "url": "https://github.com/crpier/snekql/pull/365"
+}

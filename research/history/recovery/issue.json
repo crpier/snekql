@@ -1,0 +1,11 @@
+{
+  "body": "Independent follow-up to #358. Compare SQLite and MariaDB through public snekql transactions and SQLAlchemy ORM sessions.\n\nInvestigate invalid assignment and update rejection stages, omitted versus explicit NULL patch fields, transaction/session reuse after a failed write, object state after commit/rollback versus independent reads, and decoding of externally corrupted rows.\n\nKeep idiomatic behavior separate from added validation policies. The specification is the oracle, not either library. Use isolated databases and test-first research checks; retain runnable probes and observed evidence. No package fixes, literal-default design decisions, or merging previous PRs.\n",
+  "comments": [],
+  "createdAt": "2026-09-19T07:34:37Z",
+  "labels": [],
+  "number": 363,
+  "state": "OPEN",
+  "title": "Research updates, failure recovery, and corrupted-row reads versus SQLAlchemy",
+  "updatedAt": "2026-09-19T07:34:37Z",
+  "url": "https://github.com/crpier/snekql/issues/363"
+}

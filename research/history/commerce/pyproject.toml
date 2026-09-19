@@ -58,13 +58,6 @@ packages = ["snekql"]
 "snekql/py.typed" = "snekql/py.typed"
 
 ### Formatting and static checking tools ###
-# Historical research snapshots retain their original code and tool configuration.
-[tool.ruff]
-extend-exclude = ["research"]
-
-[tool.ty.src]
-exclude = ["research/**"]
-
 [tool.ruff.lint]
 select = [ "A", "ANN", "ARG", "ASYNC", "B", "BLE", "C4", "C90", "COM", "DTZ", "E", "EM", "ERA", "EXE", "F", "FAST", "FBT", "FURB", "G", "I", "INP", "ISC", "LOG", "N", "PERF", "PGH", "PIE", "PL", "PLE", "PLR", "PLW", "PTH", "PYI", "Q", "RET", "RSE", "RUF", "S", "SIM", "SLF", "SLOT", "T10", "T20", "TC", "TID", "TRY", "UP", "W" ]
 extend-select = [
@@ -117,3 +110,13 @@ allowed-unused-imports = [
 [tool.ty.rules]
 all = "error"
 missing-override-decorator = "ignore"
+
+# SQLAlchemy's documented factory returns MappedColumn[Any]. Keep its idiom
+# intact in research declarations without weakening the package's typing rules.
+[[tool.ty.overrides]]
+include = [
+  "research/commerce/sqlalchemy_models.py",
+  "research/commerce/database_rules.py",
+]
+[tool.ty.overrides.rules]
+unsound-assignment = "ignore"

@@ -1,0 +1,11 @@
+{
+  "body": "Compare order-list and order-detail application tasks on SQLite and MariaDB. Approved public seams: list_orders(customer_id, cursor, limit), get_order(order_id), and an observation runner recording executed SQL, query counts, and usability after session/transaction closure.\n\nSpecification is the oracle. Cover empty orders, shared products, multiple items, tied sort keys, missing detail, distinct complete paginated orders, integer-cent totals, and detached results. Compare explicit snekql joins/batched reads with SQLAlchemy eager loading. Treat naive N+1 loading as a diagnostic. Use isolated real databases, test-first implementation, retained evidence, and a separate unmerged research PR. No package fixes.\n",
+  "comments": [],
+  "createdAt": "2026-09-19T08:41:25Z",
+  "labels": [],
+  "number": 369,
+  "state": "OPEN",
+  "title": "Research related-data loading and pagination versus SQLAlchemy",
+  "updatedAt": "2026-09-19T08:41:25Z",
+  "url": "https://github.com/crpier/snekql/issues/369"
+}
