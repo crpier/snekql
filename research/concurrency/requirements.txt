@@ -1,0 +1,2 @@
+SQLAlchemy[asyncio]==2.0.43
+greenlet==3.5.1

@@ -1,0 +1,1 @@
+CREATE TABLE "counter" ("id" INTEGER PRIMARY KEY, "quantity" INTEGER NOT NULL, "revision" INTEGER NOT NULL) STRICT;
