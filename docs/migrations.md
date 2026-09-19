@@ -214,7 +214,7 @@ migration from racing with incompatible running replicas.
 
 `MigrationDeclarationError` reports invalid declarations before database I/O.
 `MigrationHistoryError` reports malformed, divergent, legacy, or pending
-history. `MigrationError` means a migration body failed. Migration lock failures
+history. `MigrationError` means a migration body failed, including a failed SQLite unit commit. Migration lock failures
 use `MigrationLockError`, with `MigrationLockTimeoutError` for acquisition
 timeouts.
 
@@ -228,19 +228,70 @@ Each pending migration runs in its own transaction:
 
 1. `BEGIN IMMEDIATE` takes the writer lock before history is read.
 2. History is ensured or atomically upgraded and checked again.
-3. The one pending body executes.
+3. Every statement in the one pending body executes in order.
 4. Its history row is inserted.
 5. The body and history row commit together.
 
-This serializes cooperating runners across independent connections and makes a
-persistent SQLite body atomic with its history row. Failure and cancellation
-roll back the transaction; a connection whose cleanup cannot be confirmed is
-discarded instead of returned to the pool.
+This serializes cooperating runners across independent connections. A body can
+contain multiple persistent statements against the main database. All schema
+changes, data changes, and its single history row commit together. A later
+statement failure rolls back earlier statements in that body, but not previously
+committed migration bodies. Deferred foreign-key violations at commit also roll
+back the unit and raise `MigrationError`.
 
-One SQLite body must be one persistent statement against the main database.
-Transaction control, `VACUUM`, `ATTACH`, `DETACH`, PRAGMAs, temporary objects,
-and stacked statements are rejected. Trigger bodies containing internal
-semicolons remain one valid SQLite statement.
+Statements are separated using SQLite's completeness scanner, not by splitting
+on every semicolon. Trigger bodies, quoted semicolons, escaped quotes, and SQL
+comments retain their meaning. The last statement may omit its terminating
+semicolon. Empty statements and comments are ignored, but the body must contain
+at least one SQL statement. Incomplete statements and forbidden operations are
+rejected before acquisition; other SQL errors may be discovered during execution.
+The checksum still covers the exact original body, including comments and spacing.
+Never regroup already-applied migrations into a new multi-statement body.
+
+Transaction control, `VACUUM`, `ATTACH`, `DETACH`, PRAGMAs, temporary application
+objects, and access to package-owned Migration History remain prohibited. Every
+statement is validated and runs under the authorizer. snekql executes statements
+individually inside its transaction; it never uses `executescript()` and its
+implicit transaction behavior. This is a trusted SQL migration interface, not a
+sandbox for user-defined functions or external side effects.
+
+Cancellation during the body rolls back the unit. Cleanup stays shielded, and a
+connection whose cleanup cannot be confirmed is discarded. Cancellation around
+commit can arrive after the unit has committed. Recheck history before deciding
+whether it applied; do not assume every cancelled call implies rollback.
+
+#### Table rebuilds
+
+Keep a copy/drop/rename operation and index recreation in one body. For example,
+a populated child table can be rebuilt while foreign keys remain enabled:
+
+```python
+REBUILD_CHILD = """
+CREATE TABLE child_new (
+    id INTEGER PRIMARY KEY,
+    parent_id INTEGER NOT NULL REFERENCES parent(id),
+    label TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT 'added'
+);
+INSERT INTO child_new (id, parent_id, label)
+    SELECT id, parent_id, label FROM child;
+DROP TABLE child;
+ALTER TABLE child_new RENAME TO child;
+CREATE UNIQUE INDEX child_label ON child(label);
+"""
+
+# Append to the complete canonical declaration, not an independent subset.
+MIGRATIONS = {**PREVIOUS_MIGRATIONS, "003_rebuild_child": REBUILD_CHILD}
+await db.migrate(MIGRATIONS)
+```
+
+This example assumes the child table has no inbound foreign keys and no triggers
+or views that need reconstruction. Authors must preserve those objects explicitly
+where present. Foreign keys stay enabled; the runner does not silently disable or
+defer them. Rebuilding a referenced parent can fail or invoke `ON DELETE` actions
+when the old table is dropped. Do not assume this child-table recipe is safe for
+parent tables, self-references, or cyclic relationships. Design and test those
+changes with their actual constraints and data, including cascade behavior.
 
 ### MariaDB
 
@@ -320,9 +371,9 @@ from snekql.sqlite import scaffold
 print(scaffold([User]))
 ```
 
-Copy its output into source control, split table and index statements into
-separate migration bodies, review it, and then treat the literal SQL as
-immutable. Do not call `scaffold([CurrentModel])` while the application starts.
+Copy its output into source control and review it. Choose separate history
+entries or group related SQLite statements into an atomic body, then treat the
+literal SQL as immutable. Do not call `scaffold([CurrentModel])` while the application starts.
 Model metadata can legitimately improve over time; recomputing historical SQL
 would then change a v2 checksum.
 
