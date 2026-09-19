@@ -549,6 +549,92 @@ including nested expressions. A branch that would not execute for today's data
 still counts as a dependency. Comparisons such as `.gt_col(expression)` preserve
 bindings and check the right-hand expression against the current query scope.
 
+### Named projections
+
+Use a plain Pydantic `BaseModel` as a result contract when positional tuples are
+awkward or a query needs more than eight projected values. It is not a table
+model and declares no storage, primary key, or schema.
+
+```python
+from pydantic import BaseModel
+from snekql.sqlite import Select, select
+
+
+class UserSummary(BaseModel):
+    id: int
+    name: str
+
+
+def summaries() -> Select[UserSummary]:
+    return (
+        select(User)
+        .project(
+            UserSummary,
+            id=User.id,
+            name=User.name,
+        )
+        .all()
+    )
+
+
+async with database.transaction() as transaction:
+    rows = await transaction.fetch_all(summaries())  # list[UserSummary]
+```
+
+Keyword names identify result fields; values are query columns, aggregates,
+scalar subqueries, or supported dialect expressions. Binding order chooses the
+SQL projection order but does not change which result field receives each value.
+There is no library arity cap for named results, although database limits still
+apply. Existing scalar, tuple, and table-model results remain unchanged.
+
+Build joins before calling `.project(...)`. Fields from the nullable side of a
+LEFT JOIN must accept `None`, including alias columns whose physical storage is
+NOT NULL. Filters do not refine that declared nullability. Named queries retain
+`where`, `all`, `order_by`, `group_by`, `having`, `distinct`, `limit`, and `offset`.
+They work with eager fetches and `fetch_chunks`. A named row containing a NULL
+field remains distinguishable from no row in `fetch_one_or_none`.
+
+Every declared result field needs exactly one binding, including fields with
+Python defaults. Extra or missing bindings and labels differing only by case
+are rejected. Labels are quoted SQL identifiers and use Python field names,
+not Pydantic validation/serialization aliases. Table models and `RootModel`
+are not named result contracts. A one-field named row is still a row object;
+use a scalar select, not a named projection, for a scalar subquery.
+
+Known logical domains and nullability are checked during construction. Source
+codecs decode UUIDs, JSON, dates, and other logical values before the result
+model validates them strictly. Value constraints, opaque expression domains,
+and complex annotation compatibility are checked against actual rows.
+`validate=False` can skip source-column validators, but never named result
+validation. Invalid result rows raise `ModelValidationError` without including
+Pydantic input values or validator messages.
+
+### Named RETURNING results
+
+Use `.returning_as(Result, **bindings)` on supported writes:
+
+```python
+query = insert(User(name="Ada")).returning_as(
+    UserSummary,
+    id=User.id,
+    name=User.name,
+)
+
+async with database.transaction() as transaction:
+    created = await transaction.execute(query)  # UserSummary
+```
+
+Bindings must be columns of the written model. Named RETURNING has the same
+validation and arity rules as named SELECT. A single insert returns one result
+object. Bulk inserts and SQLite UPDATE/DELETE return lists. Empty bulk inserts
+remain no-ops returning `[]`. Existing `DoUpdate` conflict actions work;
+`DoNothing` still cannot be combined with RETURNING.
+
+SQLite supports named INSERT, UPDATE, and DELETE RETURNING. MariaDB supports
+named INSERT RETURNING; this library still rejects MariaDB UPDATE/DELETE
+RETURNING before IO. On UPDATE/DELETE, a later `.returning(...)` replaces the
+named contract with the usual scalar, tuple, or whole-model result.
+
 ### Joins
 
 `join(..., on=...)` and model-select `left_join(..., on=...)` accept ordinary

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from snekql._dialect_expr import SqlCompilable
+from snekql._named_projection import NamedProjection
 from snekql.errors import (
     ModelDeclarationError,
     QueryConstructionError,
@@ -62,6 +63,7 @@ class JoinSpec:
 class SelectState:
     model: type[Table[Any]]
     fields: tuple[Selectable, ...]
+    named_projection: NamedProjection | None = None
     returns_model: bool = False
     explicit_all: bool = False
     distinct: bool = False
@@ -85,6 +87,7 @@ class UpdateState:
     assignments: tuple[_Assignment[Any], ...] = ()
     explicit_all: bool = False
     predicates: tuple[_PredicateNode[Any], ...] = ()
+    named_projection: NamedProjection | None = None
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
 
@@ -94,6 +97,7 @@ class DeleteState:
     model: type[Table[Any]]
     explicit_all: bool = False
     predicates: tuple[_PredicateNode[Any], ...] = ()
+    named_projection: NamedProjection | None = None
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
 
@@ -116,6 +120,7 @@ class InsertState:
     rows: tuple[Table[Any], ...]
     conflict_action: DoUpdate[Any] | type[DoNothing] | None = None
     conflict_targets: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
+    named_projection: NamedProjection | None = None
     returning: bool = False
     returning_fields: tuple[Selectable, ...] = ()
     multi: bool = False
@@ -175,7 +180,11 @@ def require_single_column_subquery(subquery: object) -> SelectState:
     """
 
     state = require_subquery_state(subquery)
-    if state.returns_model or len(state.fields) != 1:
+    if (
+        state.returns_model
+        or state.named_projection is not None
+        or len(state.fields) != 1
+    ):
         msg = "a subquery value set must select exactly one column"
         raise QueryConstructionError(msg)
     return state
