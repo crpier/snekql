@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any
 
 from snekql._query_dialect import ExplainMode, QueryDialect, register_query_dialect
-from snekql._query_state import InsertState, SelectState, WriteState
+from snekql._query_state import InsertState, LockWait, SelectState, WriteState
 from snekql.errors import ModelValidationError, QueryCompilationError
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.storage import Attr
@@ -57,6 +57,15 @@ def _inserted_value_sql(quoted_column: str) -> str:
     return f"VALUES({quoted_column})"
 
 
+def _for_update_sql(wait: LockWait) -> str:
+    """Keep MariaDB locking syntax in its dialect rather than shared compilation."""
+    return {
+        "block": "FOR UPDATE",
+        "nowait": "FOR UPDATE NOWAIT",
+        "skip_locked": "FOR UPDATE SKIP LOCKED",
+    }[wait]
+
+
 def _explain_sql(state: SelectState | WriteState, sql: str, mode: ExplainMode) -> str:
     """MariaDB uses ANALYZE, not EXPLAIN ANALYZE, for execution statistics."""
 
@@ -73,6 +82,7 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
     empty_insert_sql=_empty_insert_sql,
     explain_sql=_explain_sql,
+    for_update_sql=_for_update_sql,
     encode_column_value=_encode_column_value,
     encode_sum_value=_encode_sum_value,
     inserted_value_sql=_inserted_value_sql,

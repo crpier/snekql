@@ -187,6 +187,7 @@ class RawPlan:
     params: NativeParameters
     row_mode: RowMode
     sql: str
+    requires_write_transaction: bool = False
     # Result state is fresh for every execution, never stored on the statement.
     additional_results: bool = field(default=False, init=False)
     columns: tuple[str, ...] | None = field(default=None, init=False)

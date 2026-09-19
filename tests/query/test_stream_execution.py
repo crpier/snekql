@@ -13,7 +13,13 @@ from snekql._query_plan import SelectCardinality, SelectPlan, WritePlan
 from snekql._telemetry import ParameterVisibility
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
-from snekql.runtime import QueryCodec, RuntimeConnection, Transaction, TransactionMode
+from snekql.runtime import (
+    IsolationLevel,
+    QueryCodec,
+    RuntimeConnection,
+    Transaction,
+    TransactionMode,
+)
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
@@ -179,7 +185,14 @@ class _CleanupConnection:
     def __init__(self, cursor: _CleanupCursor) -> None:
         self.cursor: _CleanupCursor = cursor
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
+        del read_only, isolation
         _ = mode
 
     async def commit(self) -> None:

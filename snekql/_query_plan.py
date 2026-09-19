@@ -54,6 +54,11 @@ class SelectPlan[ResultT]:
     _validate: bool = field(repr=False)
 
     @property
+    def requires_write_transaction(self) -> bool:
+        """Expose execution policy without making runtime inspect builder state."""
+        return self._state.lock_wait is not None
+
+    @property
     def diagnostics(self) -> QueryDiagnostics:
         """Builder selects retain their existing SQL and parameter diagnostics."""
 

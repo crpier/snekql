@@ -55,6 +55,7 @@ _NEUTRAL_NAMES = frozenset(
         "FrozenModelError",
         "GenCol",
         "Index",
+        "IsolationLevel",
         "JoinOn",
         "LexicalDatetimeWarning",
         "LexicalDecimalWarning",

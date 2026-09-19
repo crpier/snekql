@@ -636,6 +636,34 @@ def _compile_source_sql(model: type[Table[Any]], dialect: QueryDialect) -> str:
     return name
 
 
+def _compile_locking_clause(
+    state: SelectState,
+    dialect: QueryDialect,
+    *,
+    nested: bool,
+) -> tuple[str, ...]:
+    """Limit locking to supported, top-level, single-source row selections."""
+    if state.lock_wait is None:
+        return ()
+    if dialect.for_update_sql is None:
+        msg = "FOR UPDATE is not supported by this dialect"
+        raise QueryCompilationError(msg)
+    if nested:
+        msg = "locking subqueries are not supported"
+        raise QueryCompilationError(msg)
+    if (
+        state.distinct
+        or state.joins
+        or state.groupings
+        or state.having
+        or any(isinstance(field, _Aggregate) for field in state.fields)
+        or any(isinstance(ordering.column, _Aggregate) for ordering in state.orderings)
+    ):
+        msg = "FOR UPDATE requires a non-distinct, ungrouped, single-source SELECT"
+        raise QueryCompilationError(msg)
+    return (dialect.for_update_sql(state.lock_wait),)
+
+
 def _compile_select_state(
     state: SelectState,
     dialect: QueryDialect,
@@ -713,6 +741,7 @@ def _compile_select_state(
     limit_parts, limit_params = _compile_limit_offset_sql(state, dialect)
     sql_parts.extend(limit_parts)
     params = (*params, *limit_params)
+    sql_parts.extend(_compile_locking_clause(state, dialect, nested=outer is not None))
     return " ".join(sql_parts), params
 
 

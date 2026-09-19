@@ -15,7 +15,12 @@ from snekql._telemetry import ParameterVisibility
 from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
-from snekql.runtime import QueryCodec, RuntimeConnection, TransactionMode
+from snekql.runtime import (
+    IsolationLevel,
+    QueryCodec,
+    RuntimeConnection,
+    TransactionMode,
+)
 from snekql.sqlite import (
     PENDING_GENERATION,
     Database,
@@ -79,7 +84,14 @@ class _SlowExecuteConnection:
         self.commit_called: bool = False
         self.execute_started: anyio.Event = anyio.Event()
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
+        del read_only, isolation
         _ = mode
 
     async def commit(self) -> None:
@@ -114,7 +126,14 @@ class _BlockingDriverOperationConnection:
             msg = f"driver {operation} failed"
             raise RuntimeError(msg)
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
+        del read_only, isolation
         _ = mode
         await self._block_if_selected("begin")
 
@@ -137,7 +156,14 @@ class _BlockingDriverOperationConnection:
 class _ReleaseBlockingConnection:
     """Connection fake used to cancel transaction cleanup during release."""
 
-    async def begin(self, mode: TransactionMode = "deferred") -> None:
+    async def begin(
+        self,
+        mode: TransactionMode = "deferred",
+        *,
+        read_only: bool | None = None,
+        isolation: IsolationLevel | None = None,
+    ) -> None:
+        del read_only, isolation
         _ = mode
 
     async def commit(self) -> None:
