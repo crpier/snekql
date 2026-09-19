@@ -174,6 +174,106 @@ Off-path use is deliberate and tested (see
   With only one connection available the inner open simply waits for a
   connection and times out with `PoolTimeoutError` — it does not nest.
 
+## Explicit nested transactions
+
+Use `tx.begin_nested()` to create a savepoint on an already-open Transaction:
+
+```python
+async with db.transaction() as tx:
+    await tx.execute(first_write)
+    try:
+        async with tx.begin_nested():
+            await tx.execute(optional_write)
+            check_business_rules()
+    except RejectedOperation:
+        pass
+    await tx.execute(final_write)
+```
+
+`RejectedOperation` and `check_business_rules` are application-defined. Catch the
+exception **outside** the nested context: exceptional exit rolls back its writes,
+releases the savepoint, and propagates the exception. Catching an application
+exception inside the block makes its exit successful instead.
+
+Successful nested exit releases the savepoint, not a commit. The outer
+Transaction remains responsible for committing all retained work or rolling it
+all back. Further `begin_nested()` calls create deeper savepoints on the same
+connection, so nesting works with `pool_size=1`. It does not acquire a connection,
+flush Python objects, or return a new Transaction. Keep executing through `tx`.
+Nested `db.transaction()` calls retain their independent-connection behavior.
+
+The contexts have generated private names, are single-use, and must exit in
+reverse entry order. Misuse raises `TransactionStateError` or its existing
+lifecycle subclasses. An outer Transaction closed with unfinished nested
+contexts discards its connection rather than committing their work.
+
+### Ownership and streams
+
+While a nested context is active, only the task that entered it may query, open
+another nested context, or close the Transaction. Other tasks receive
+`TransactionStateError`; they do not wait to join the savepoint's work. Outside
+nested contexts, ordinary Transaction queries remain serialized across tasks.
+
+Streams can be opened and consumed inside a nested context by its owner. Close
+them before entering or exiting a savepoint. Crossing a savepoint boundary with
+an open stream raises `TransactionStateError` rather than waiting on the stream's
+lock. Builder and raw streams both respect savepoint ownership.
+
+### Recovery limits
+
+Application exceptions, including materialization/validation errors after driver
+completion, can roll back nested work without losing earlier outer writes.
+Cancellation between driver calls also unwinds the nested context with shielded
+cleanup. Cancellation still propagates; this is not automatic cancellation
+suppression or a retry policy.
+
+Recognized immediate constraint failures can recover at savepoint exit. The
+supported cases are primary/unique keys, NOT NULL, CHECK, and foreign keys,
+reported during statement execution with completed driver cleanup. Catch the
+existing `ExecutionError` outside the nested block:
+
+```python
+async with db.transaction() as tx:
+    await tx.execute(first_write)
+    try:
+        async with tx.begin_nested():
+            await tx.execute(possibly_conflicting_write)
+    except ExecutionError:
+        # Further queries succeed only if savepoint rollback/release succeeded.
+        pass
+    await tx.execute(final_write)
+```
+
+After a recognized failure, the nested scope is rollback-required. Queries,
+streams, and further nested entry are blocked until that scope exits. Catching
+the `ExecutionError` inside the block does not allow more work: clean exit then
+rolls back the scope and raises `TransactionStateError` rather than silently
+releasing partial writes. Successful rollback and release restore only the
+innermost scope's enclosing transaction, without clearing any unsafe-connection
+flag. The exception type alone never proves recovery succeeded.
+
+Timeouts, cancellation during driver IO, unknown driver errors, and failed
+savepoint control/cleanup remain terminal. So do whole-transaction rollbacks,
+such as MariaDB deadlocks or SQLite `ON CONFLICT ROLLBACK`, and constraint errors
+encountered later while fetching or closing a cursor. MariaDB streaming INSERT
+RETURNING can report a constraint failure after returning column metadata; those
+late failures remain terminal. Catching an error cannot revive these connections.
+
+Constraints checked only at outer commit, such as deferred SQLite foreign keys,
+are outside the savepoint's recovery window. Savepoints also do not introduce
+retries or change ordinary driver-error handling outside a nested context.
+
+Savepoint control and cursor cleanup use the existing per-operation deadline.
+Failed cleanup preserves a pending application exception and logs a redacted
+failure; failed release on a clean exit raises a runtime error. None of these
+failures permits the outer Transaction to commit the unsafe connection.
+
+Use transactional tables, such as InnoDB on MariaDB. Do not issue raw transaction
+control, change autocommit, manipulate the private savepoints, or execute
+implicitly committing DDL inside these contexts. Savepoints cannot undo external
+side effects or nontransactional writes, and raw SQL is not parsed to enforce
+these restrictions.
+
 ## Transaction operation deadlines
 
 Both Backend Configs default `operation_timeout` to 30 seconds. With no override,

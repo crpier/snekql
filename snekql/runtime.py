@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from types import TracebackType
 from typing import (
@@ -41,6 +42,7 @@ from snekql._runtime_selection import (
     validate_model_backends,
 )
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._statement_failure import StatementConstraintError
 from snekql._telemetry import ParameterVisibility, QueryDiagnostics, format_bound_params
 from snekql.errors import (
     DatabaseOperationTimeoutError,
@@ -51,6 +53,7 @@ from snekql.errors import (
     TransactionClosedError,
     TransactionNotStartedError,
     TransactionReuseError,
+    TransactionStateError,
 )
 from snekql.model import (
     BackendFamily,
@@ -301,9 +304,11 @@ class ChunkStream[RowT]:
             raise DatabaseRuntimeError(msg)
         self._entered = True
         transaction = self._transaction
+        transaction._check_nested_owner()  # noqa: SLF001
         await self._lock.acquire()
         self._owner_task = anyio.get_current_task().id
         try:
+            transaction._check_nested_owner()  # noqa: SLF001
             connection = transaction.require_connection()
             plan = self._plan_factory()
             self._plan = plan
@@ -315,6 +320,7 @@ class ChunkStream[RowT]:
             )
             if isinstance(plan, RawPlan):
                 plan.check_shape()
+            transaction._stream_owner = self._owner_task  # noqa: SLF001
         except BaseException as error:
             try:
                 if isinstance(self._plan, RawPlan):
@@ -345,11 +351,13 @@ class ChunkStream[RowT]:
                         cursor.close,
                     )
         finally:
+            self._transaction._stream_owner = None  # noqa: SLF001
             self._lock.release()
 
     def _check_raw_owner(self) -> None:
-        """Reject cross-task raw cursor use without touching its owner's resources."""
+        """Reject cursor use outside its savepoint or raw stream's owning task."""
 
+        self._transaction._check_nested_owner()  # noqa: SLF001
         if (
             isinstance(self._plan, RawPlan)
             and self._owner_task != anyio.get_current_task().id
@@ -424,6 +432,109 @@ class ChunkStream[RowT]:
             raise
 
 
+class _NestedTransaction(AbstractAsyncContextManager[None]):
+    """An explicit savepoint on an existing Transaction's connection."""
+
+    def __init__(self, transaction: Transaction[Any]) -> None:
+        self._transaction: Transaction[Any] = transaction
+        self._name: str = ""
+        self._used: bool = False
+        self.failed: bool = False
+
+    async def __aenter__(self) -> None:
+        if self._used:
+            msg = "nested transaction contexts are single-use"
+            raise TransactionReuseError(msg)
+        self._used = True
+        transaction = self._transaction
+        self._check_access()
+        async with transaction._lock:  # noqa: SLF001
+            transaction._check_nested_owner()  # noqa: SLF001
+            transaction.require_connection()
+            transaction._savepoint_sequence += 1  # noqa: SLF001
+            self._name = f"snekql_sp_{transaction._savepoint_sequence}"  # noqa: SLF001
+            await self._control("SAVEPOINT")
+            transaction._nested_stack.append(self)  # noqa: SLF001
+            transaction._nested_owner = anyio.get_current_task().id  # noqa: SLF001
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        del exc_value, traceback
+        transaction = self._transaction
+        self._check_access()
+        if transaction.connection is None or transaction.closed:
+            transaction.require_connection()
+        if not transaction._nested_stack or transaction._nested_stack[-1] is not self:  # noqa: SLF001
+            msg = "nested transaction contexts must exit once in stack order"
+            raise TransactionStateError(msg)
+        with anyio.CancelScope(shield=True):
+            async with transaction._lock:  # noqa: SLF001
+                try:
+                    if not transaction._connection_reusable:  # noqa: SLF001
+                        if exc_type is not None:
+                            return
+                        msg = "nested transaction cannot release an unsafe connection"
+                        raise DatabaseRuntimeError(msg)  # noqa: TRY301 - stack cleanup must run
+                    if exc_type is not None or self.failed:
+                        await self._control("ROLLBACK TO SAVEPOINT")
+                    await self._control("RELEASE SAVEPOINT")
+                except Exception:
+                    if exc_type is None:
+                        raise
+                    logger.error(  # noqa: TRY400 - driver text may contain raw SQL values
+                        "nested transaction cleanup failed",
+                        extra={"backend": transaction.runtime.backend_family},
+                    )
+                finally:
+                    transaction._nested_stack.pop()  # noqa: SLF001
+                    if not transaction._nested_stack:  # noqa: SLF001
+                        transaction._nested_owner = None  # noqa: SLF001
+                if self.failed and exc_type is None:
+                    msg = "nested transaction rolled back after a caught constraint failure"
+                    raise TransactionStateError(msg)
+
+    def _check_access(self) -> None:
+        """Reject foreign tasks and held cursors before waiting on the connection lock."""
+        transaction = self._transaction
+        transaction._check_nested_owner()  # noqa: SLF001
+        if transaction._stream_owner is not None:  # noqa: SLF001
+            msg = "close the active stream before crossing a savepoint boundary"
+            raise TransactionStateError(msg)
+
+    async def _control(self, command: str) -> None:
+        """Run control and cleanup under one deadline, even for a failed savepoint.
+
+        Only control may bypass the rollback-required guard. Physical connection
+        safety is still required; no control operation revives an unsafe connection.
+        """
+        transaction = self._transaction
+        connection = transaction.connection
+        if (
+            connection is None
+            or transaction.closed
+            or not transaction._connection_reusable  # noqa: SLF001
+        ):
+            connection = transaction.require_connection()
+
+        async def execute() -> None:
+            cursor = await connection.execute(f"{command} {self._name}", ())
+            await cursor.close()
+
+        try:
+            await transaction._run_driver_operation(command.lower(), execute)  # noqa: SLF001
+        except DatabaseOperationTimeoutError:
+            raise
+        except Exception as e:
+            msg = f"could not execute {command.lower()}"
+            if transaction._raw_diagnostics:  # noqa: SLF001
+                raise DatabaseRuntimeError(msg) from None
+            raise DatabaseRuntimeError(msg) from e
+
+
 class Transaction[FamilyT: BackendFamily]:
     """Async transaction that executes built snekql queries on one connection.
 
@@ -434,7 +545,8 @@ class Transaction[FamilyT: BackendFamily]:
     before entry, ``TransactionClosedError`` after close, ``TransactionReuseError``
     on a second entry. Queries on one transaction are serialized on its single
     connection, so sharing it across tasks is safe but offers no parallelism; open
-    separate transactions for concurrent work. See ``docs/error-handling.md``.
+    separate transactions for concurrent work. Active nested contexts reserve
+    transaction use for their entering task. See ``docs/error-handling.md``.
 
     >>> async def create_user(transaction: Transaction[Any], user: User[Pending]) -> None:
     ...     await transaction.execute(insert(user))
@@ -462,6 +574,10 @@ class Transaction[FamilyT: BackendFamily]:
         self._connection_reusable: bool = True
         self._raw_diagnostics: bool = False
         self._entering: bool = False
+        self._savepoint_sequence: int = 0
+        self._nested_stack: list[_NestedTransaction] = []
+        self._nested_owner: int | None = None
+        self._stream_owner: int | None = None
         self._lock: anyio.Lock = anyio.Lock()
 
     async def __aenter__(self) -> Self:
@@ -524,14 +640,25 @@ class Transaction[FamilyT: BackendFamily]:
     ) -> None:
         _ = exc_value
         _ = traceback
+        self._check_nested_owner()
         with anyio.CancelScope(shield=True):
             async with self._lock:
+                self._check_nested_owner()
                 connection = self.connection
                 if connection is None:
                     msg = "transaction is closed"
                     raise TransactionClosedError(msg)
                 self.connection = None
                 self.closed = True
+                if self._nested_stack:
+                    self._connection_reusable = False
+                    self._nested_stack.clear()
+                    self._nested_owner = None
+                    await self.runtime.discard(connection)
+                    if exc_type is None:
+                        msg = "transaction closed with unfinished nested contexts"
+                        raise TransactionStateError(msg)
+                    return
                 if not self._connection_reusable:
                     await self.runtime.discard(connection)
                     logger.warning(
@@ -572,6 +699,22 @@ class Transaction[FamilyT: BackendFamily]:
                         logger.warning(
                             "%s transaction discarded", self.runtime.backend_family
                         )
+
+    def begin_nested(self) -> AbstractAsyncContextManager[None]:
+        """Create a savepoint context without acquiring another connection.
+
+        >>> async def optional_write(transaction, statement):
+        ...     async with transaction.begin_nested():
+        ...         await transaction.execute(statement)
+
+        Queries still run through this Transaction. Success releases the savepoint;
+        only the outer transaction commits. An exception rolls back the nested work
+        and propagates to the caller. Recognized constraint failures require
+        rollback before further work; other driver failures remain terminal.
+        Savepoints never make an unsafe connection reusable. Contexts are
+        single-use and reserve Transaction use for their entering task until exit.
+        """
+        return _NestedTransaction(self)
 
     @overload
     async def fetch_all[ScopeT, RowT](
@@ -619,7 +762,9 @@ class Transaction[FamilyT: BackendFamily]:
         per-batch materialization small.
         """
 
+        self._check_nested_owner()
         async with self._lock:
+            self._check_nested_owner()
             connection = self.require_connection()
             if isinstance(query, RawStatement):
                 plan = lower_raw(
@@ -791,7 +936,9 @@ class Transaction[FamilyT: BackendFamily]:
         and ``.limit(1)`` to take the first of several rows on purpose.
         """
 
+        self._check_nested_owner()
         async with self._lock:
+            self._check_nested_owner()
             connection = self.require_connection()
             if isinstance(query, RawStatement):
                 plan = lower_raw(
@@ -862,7 +1009,9 @@ class Transaction[FamilyT: BackendFamily]:
         """
 
         validate_select_consumption(query, cardinality="one_or_none")
+        self._check_nested_owner()
         async with self._lock:
+            self._check_nested_owner()
             connection = self.require_connection()
             if isinstance(query, RawStatement):
                 plan = lower_raw(
@@ -942,7 +1091,9 @@ class Transaction[FamilyT: BackendFamily]:
         ``delete`` for return-value details.
         """
 
+        self._check_nested_owner()
         async with self._lock:
+            self._check_nested_owner()
             connection = self.require_connection()
             if isinstance(query, RawStatement):
                 plan = lower_raw(
@@ -999,7 +1150,9 @@ class Transaction[FamilyT: BackendFamily]:
     async def _explain(self, query: object, *, analyze: bool) -> ExplainResult:
         """Share transaction locking, deadlines, cleanup, and safe raw diagnostics."""
 
+        self._check_nested_owner()
         async with self._lock:
+            self._check_nested_owner()
             connection = self.require_connection()
             plan = compile_explain_plan(
                 query, backend=self.runtime.backend_family, analyze=analyze
@@ -1014,6 +1167,15 @@ class Transaction[FamilyT: BackendFamily]:
                 columns=plan.columns or (),
                 rows=tuple(tuple(row) for row in rows),
             )
+
+    def _check_nested_owner(self) -> None:
+        """Savepoints reserve the connection's logical work for one task."""
+        if (
+            self._nested_owner is not None
+            and self._nested_owner != anyio.get_current_task().id
+        ):
+            msg = "nested transaction must be used by its owning task"
+            raise TransactionStateError(msg)
 
     def _report_close_failure(self, error: Exception, *, during_error: bool) -> None:
         """Rollback preserves pending errors; raw lifecycle diagnostics stay safe."""
@@ -1160,7 +1322,9 @@ class Transaction[FamilyT: BackendFamily]:
         """
 
         try:
-            return await self._run_driver_operation(operation, operation_call)
+            return await self._run_driver_operation(
+                operation, operation_call, recover_constraints=True
+            )
         except DatabaseOperationTimeoutError as error:
             if diagnostics.raw:
                 raise error from None
@@ -1193,6 +1357,8 @@ class Transaction[FamilyT: BackendFamily]:
         self,
         operation: str,
         operation_call: Callable[[], Awaitable[ResultT]],
+        *,
+        recover_constraints: bool = False,
     ) -> ResultT:
         """Run one driver operation within the transaction's timeout."""
 
@@ -1208,6 +1374,12 @@ class Transaction[FamilyT: BackendFamily]:
                 self.timeout,
             )
             raise DatabaseOperationTimeoutError(operation, self.timeout) from error
+        except StatementConstraintError as e:
+            if recover_constraints and self._nested_stack and self._connection_reusable:
+                self._nested_stack[-1].failed = True
+            else:
+                self._connection_reusable = False
+            raise e.original from None
         except BaseException:
             self._connection_reusable = False
             raise
@@ -1255,6 +1427,9 @@ class Transaction[FamilyT: BackendFamily]:
         if not self._connection_reusable:
             msg = "transaction connection is unsafe after a timed-out operation"
             raise DatabaseRuntimeError(msg)
+        if self._nested_stack and self._nested_stack[-1].failed:
+            msg = "nested transaction requires rollback before further work"
+            raise TransactionStateError(msg)
         return connection
 
     def _validate_plan_backend(self, received_backend: BackendFamily) -> None:

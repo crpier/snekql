@@ -15,6 +15,7 @@ from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
+from snekql._statement_failure import StatementConstraintError
 from snekql._telemetry import ParameterVisibility
 from snekql.errors import (
     DatabaseClosedError,
@@ -182,24 +183,43 @@ class MariaDBConnectionAdapter:
                 await cursor.execute(sql)
             else:
                 await cursor.execute(sql, params)
-        except BaseException:
+        except BaseException as e:
+            if isinstance(e, Exception) and self._recoverable_constraint(e):
+                await cursor.close()
+                raise StatementConstraintError(e) from e
             # Do not ask cursor.close to consume unknown additional results.
             cast("Any", self.connection).close()
             raise
         return MariaDBCursorAdapter(cursor)
 
-    @staticmethod
+    def _recoverable_constraint(self, error: BaseException) -> bool:
+        """Only completed, recognized constraint packets are candidates for rollback.
+
+        The allowed server codes cover NULL, duplicate key, foreign-key delete/
+        insert, and CHECK violations. Deadlocks and lock timeouts are excluded.
+        """
+        driver = _import_aiomysql()
+        return bool(
+            isinstance(error, (driver.IntegrityError, driver.OperationalError))
+            and bool(error.args)
+            and error.args[0] in {1048, 1062, 1451, 1452, 4025}
+            and bool(cast("Any", self.connection).get_transaction_status())
+        )
+
     async def _run_on_cursor(
+        self,
         cursor: Any,
         sql: str,
         params: tuple[object, ...],
     ) -> MariaDBCursorAdapter:
         try:
             _ = await cursor.execute(sql, params)
-        except Exception:
+        except Exception as e:
             close_result = cursor.close()
             if close_result is not None:
                 _ = await close_result
+            if self._recoverable_constraint(e):
+                raise StatementConstraintError(e) from e
             raise
         return MariaDBCursorAdapter(cursor)
 

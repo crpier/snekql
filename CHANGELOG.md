@@ -4,6 +4,13 @@
 
 ### Added
 
+- Explicit `Transaction.begin_nested()` savepoint contexts reuse the outer
+  connection, roll back nested failures, and release without committing.
+  Recognized immediate constraint errors can recover after rollback/release;
+  uncertain IO and whole-transaction failures remain terminal. Nested contexts
+  enforce task ownership, stream cleanup, single-use, and stack-order rules.
+  Independent `db.transaction()` nesting is unchanged. (#282)
+
 - Backend `case(condition, then=..., otherwise=...)` factories build typed,
   row-local searched CASE expressions with explicit fallback and nullable
   branch contracts. Nested CASE composes with arithmetic, value functions,
