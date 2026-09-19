@@ -6,12 +6,15 @@ import contextlib
 import logging
 from collections.abc import Sequence
 from sqlite3 import (
+    SQLITE_BUSY,
+    SQLITE_BUSY_SNAPSHOT,
     SQLITE_CONSTRAINT_CHECK,
     SQLITE_CONSTRAINT_FOREIGNKEY,
     SQLITE_CONSTRAINT_NOTNULL,
     SQLITE_CONSTRAINT_PRIMARYKEY,
     SQLITE_CONSTRAINT_ROWID,
     SQLITE_CONSTRAINT_UNIQUE,
+    SQLITE_LOCKED,
     IntegrityError,
 )
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -26,7 +29,7 @@ from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
 from snekql._statement_failure import StatementConstraintError
 from snekql._telemetry import ParameterVisibility
-from snekql.errors import DatabaseRuntimeError
+from snekql.errors import DatabaseFailure, DatabaseRuntimeError, FailureCategory
 from snekql.model import Table
 from snekql.sqlite.config import Config
 from snekql.sqlite.migrations import (
@@ -50,7 +53,7 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
-    from snekql.runtime import IsolationLevel, TransactionMode
+    from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +109,7 @@ class SQLiteConnectionAdapter:
         retry_policy: BusyRetryPolicy = DEFAULT_BUSY_RETRY_POLICY,
     ) -> None:
         self.connection: Connection = connection
+        self.commit_outcome: CommitOutcome = "not_attempted"
         self.retry_policy: BusyRetryPolicy = retry_policy
         self._previous_transaction_settings: dict[
             Literal["query_only", "read_uncommitted"], bool
@@ -141,7 +145,20 @@ class SQLiteConnectionAdapter:
         await self._execute_control_sql("BEGIN IMMEDIATE")
 
     async def commit(self) -> None:
-        await self._execute_control_sql("COMMIT")
+        self.commit_outcome = "unknown"
+        try:
+            cursor = await self.connection.execute("COMMIT", ())
+        except Error as e:
+            # These engine responses leave the transaction open and uncommitted.
+            if (
+                getattr(e, "sqlite_errorcode", None)
+                in {SQLITE_BUSY, SQLITE_CONSTRAINT_FOREIGNKEY}
+                and self.connection.in_transaction
+            ):
+                self.commit_outcome = "rejected"
+            raise
+        self.commit_outcome = "committed"
+        await cursor.close()
         await self._restore_transaction_policy()
 
     async def rollback(self) -> None:
@@ -257,6 +274,32 @@ class SQLiteRuntime:
         self.connection_pool: SQLiteConnectionPool = connection_pool
         self.busy_retry_policy: BusyRetryPolicy = busy_retry_policy
         self.query_codec: DialectQueryCodec = DialectQueryCodec.for_backend("sqlite")
+
+    @staticmethod
+    def classify_failure(error: Exception) -> DatabaseFailure | None:
+        """Use SQLite extended codes, never constraint text or guessed SQLSTATE."""
+        if not isinstance(error, Error):
+            return None
+        code = getattr(error, "sqlite_errorcode", None)
+        code = code if type(code) is int else None
+        categories: dict[int, FailureCategory] = {
+            SQLITE_CONSTRAINT_PRIMARYKEY: "unique_violation",
+            SQLITE_CONSTRAINT_UNIQUE: "unique_violation",
+            SQLITE_CONSTRAINT_ROWID: "unique_violation",
+            SQLITE_CONSTRAINT_NOTNULL: "not_null_violation",
+            SQLITE_CONSTRAINT_CHECK: "check_violation",
+            SQLITE_CONSTRAINT_FOREIGNKEY: "foreign_key_violation",
+        }
+        category = categories.get(code, "unknown") if code is not None else "unknown"
+        if code == SQLITE_BUSY_SNAPSHOT:
+            category = "serialization_conflict"
+        elif code is not None and code & 0xFF in {SQLITE_BUSY, SQLITE_LOCKED}:
+            category = "lock_conflict"
+        return DatabaseFailure(
+            backend="sqlite",
+            category=category,
+            code=code,
+        )
 
     async def acquire(
         self,

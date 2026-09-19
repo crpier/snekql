@@ -16,6 +16,7 @@ from snekql.mariadb.runtime import MariaDBConnectionPool
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
 from snekql.runtime import (
+    CommitOutcome,
     IsolationLevel,
     QueryCodec,
     RuntimeConnection,
@@ -80,6 +81,7 @@ class _SlowExecuteConnection:
     """Connection fake that exposes whether commit races an active query."""
 
     def __init__(self) -> None:
+        self.commit_outcome: CommitOutcome = "unknown"
         self.allow_execute_finish: anyio.Event = anyio.Event()
         self.commit_called: bool = False
         self.execute_started: anyio.Event = anyio.Event()
@@ -115,6 +117,7 @@ class _BlockingDriverOperationConnection:
     """Connection fake that never completes one selected driver operation."""
 
     def __init__(self, operation: str) -> None:
+        self.commit_outcome: CommitOutcome = "unknown"
         self.operation = operation
         self.started = anyio.Event()
 
@@ -155,6 +158,9 @@ class _BlockingDriverOperationConnection:
 
 class _ReleaseBlockingConnection:
     """Connection fake used to cancel transaction cleanup during release."""
+
+    def __init__(self) -> None:
+        self.commit_outcome: CommitOutcome = "unknown"
 
     async def begin(
         self,
@@ -256,6 +262,11 @@ class _FakeRuntime:
         self.release_started: anyio.Event = anyio.Event()
         self.discarded: bool = False
         self.released: bool = False
+
+    @staticmethod
+    def classify_failure(error: Exception) -> None:
+        """This lifecycle fake emits no native database errors."""
+        del error
 
     async def acquire(
         self,

@@ -40,6 +40,10 @@ _Avoid_: Pool, uninitialized database config
 A database transaction exposed directly through the library as the unit within which reads and writes are executed.
 _Avoid_: Unit of Work, session
 
+**Commit Outcome**:
+Evidence about the Transaction's managed outer commit, separate from connection reusability. It does not describe raw transaction control, implicit commits, or external side effects.
+_Avoid_: transaction health, retry eligibility
+
 **Operation Deadline**:
 The maximum time allowed for one database-driver interaction. Each interaction receives its own budget; application work between interactions is outside it.
 _Avoid_: transaction lifetime, query scheduler

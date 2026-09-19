@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable, Sequence
 from importlib import import_module
+from re import fullmatch
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
@@ -21,7 +22,9 @@ from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
+    DatabaseFailure,
     DatabaseRuntimeError,
+    FailureCategory,
     PoolTimeoutError,
 )
 from snekql.mariadb.config import Config
@@ -39,9 +42,12 @@ from snekql.storage import SchemaPolicy
 from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
-    from snekql.runtime import IsolationLevel, TransactionMode
+    from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
+
+_ER_LOCK_DEADLOCK = 1213
+"""InnoDB rolled back the transaction selected as the deadlock victim."""
 
 _SERVER_STATUS_IN_TRANS_READONLY = 0x2000
 """MariaDB protocol flag for the active transaction, not its session default."""
@@ -124,6 +130,7 @@ class MariaDBConnectionAdapter:
 
     def __init__(self, connection: object) -> None:
         self.connection: object = connection
+        self.commit_outcome: CommitOutcome = "not_attempted"
 
     async def begin(
         self,
@@ -167,7 +174,17 @@ class MariaDBConnectionAdapter:
         )
 
     async def commit(self) -> None:
-        await cast("Any", self.connection).commit()
+        self.commit_outcome = "unknown"
+        try:
+            await cast("Any", self.connection).commit()
+        except _import_aiomysql().Error as e:
+            # InnoDB's deadlock response means the transaction was rolled back.
+            # Other error packets, including generic serialization states, do not
+            # establish the outcome of COMMIT.
+            if e.args and e.args[0] == _ER_LOCK_DEADLOCK:
+                self.commit_outcome = "rejected"
+            raise
+        self.commit_outcome = "committed"
 
     async def rollback(self) -> None:
         await cast("Any", self.connection).rollback()
@@ -446,6 +463,42 @@ class MariaDBRuntime:
         self.connection_pool: MariaDBConnectionPool = connection_pool
         self.migration_lock_name: str = migration_lock_name
         self.query_codec: DialectQueryCodec = DialectQueryCodec.for_backend("mariadb")
+
+    @staticmethod
+    def classify_failure(error: Exception) -> DatabaseFailure | None:
+        """Keep structured native fields without parsing potentially sensitive messages."""
+        if not isinstance(error, _import_aiomysql().Error):
+            return None
+        code = error.args[0] if error.args else None
+        code = code if type(code) is int else None
+        sqlstate = getattr(error, "sqlstate", None)
+        categories: dict[int, FailureCategory] = {
+            1062: "unique_violation",
+            1048: "not_null_violation",
+            1451: "foreign_key_violation",
+            1452: "foreign_key_violation",
+            4025: "check_violation",
+            1205: "lock_conflict",
+            _ER_LOCK_DEADLOCK: "deadlock",
+            1927: "connection_loss",
+            2006: "connection_loss",
+            2013: "connection_loss",
+            2055: "connection_loss",
+        }
+        category = categories.get(code, "unknown") if code is not None else "unknown"
+        if category == "unknown" and isinstance(sqlstate, str):
+            if sqlstate == "40001":
+                category = "serialization_conflict"
+            elif fullmatch(r"08[A-Z0-9]{3}", sqlstate):
+                category = "connection_loss"
+        constraint = getattr(error, "constraint_name", None)
+        return DatabaseFailure(
+            backend="mariadb",
+            category=category,
+            code=code,
+            sqlstate=sqlstate if isinstance(sqlstate, str) else None,
+            constraint=constraint if isinstance(constraint, str) else None,
+        )
 
     async def acquire(
         self,

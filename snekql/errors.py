@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from snekql._telemetry import ParameterVisibility, format_bound_params
@@ -75,8 +75,48 @@ class QueryCompilationError(QueryError):
     """Raised when a built query cannot be compiled into valid SQLite SQL."""
 
 
+type FailureCategory = Literal[
+    "unique_violation",
+    "foreign_key_violation",
+    "check_violation",
+    "not_null_violation",
+    "deadlock",
+    "serialization_conflict",
+    "lock_conflict",
+    "connection_loss",
+    "unknown",
+]
+
+
+@dataclass(frozen=True, kw_only=True)
+class DatabaseFailure:
+    """Driver evidence, independent of retry eligibility or connection safety.
+
+    Missing native metadata stays `None`. Constraint names and SQLSTATE are
+    available for deliberate inspection but omitted from representation.
+
+    >>> failure = DatabaseFailure(backend="sqlite", category="unique_violation")
+    >>> failure.category
+    'unique_violation'
+    """
+
+    backend: Literal["sqlite", "mariadb"]
+    category: FailureCategory
+    code: int | None = None
+    constraint: str | None = field(default=None, repr=False)
+    sqlstate: str | None = field(default=None, repr=False)
+
+
 class DatabaseRuntimeError(SnekqlError):
-    """Base class for Database and Transaction execution failures."""
+    """Base class for Database and Transaction execution failures.
+
+    `failure` contains classified driver evidence, or `None` for errors without
+    that evidence, such as lifecycle misuse and application deadlines.
+    """
+
+    def __init__(self, *args: object, failure: DatabaseFailure | None = None) -> None:
+        super().__init__(*args)
+        self.failure: DatabaseFailure | None = failure
 
 
 class DatabaseClosedError(DatabaseRuntimeError):
@@ -179,8 +219,9 @@ class ExecutionError(DatabaseRuntimeError):
         sql: str,
         params: tuple[object, ...],
         parameter_visibility: ParameterVisibility = "redacted",
+        failure: DatabaseFailure | None = None,
     ) -> None:
-        super().__init__(message)
+        super().__init__(message, failure=failure)
         self.sql: str = sql
         self.params: tuple[object, ...] = params
         self.parameter_visibility: ParameterVisibility = parameter_visibility
