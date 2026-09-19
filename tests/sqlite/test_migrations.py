@@ -618,8 +618,8 @@ async def fixed_retry_resumes_from_the_failure_point() -> None:
 
 
 @test(mark="medium")
-async def multi_statement_body_is_rejected_leaving_no_partial_object() -> None:
-    """Stacked SQLite statements are invalid before connection acquisition."""
+async def failed_multi_statement_body_leaves_no_partial_object() -> None:
+    """A later failure rolls back earlier DDL in the same SQLite unit."""
 
     multi_statement = (
         f'{_CREATE_USER_MIGRATION}; ALTER TABLE "missing" ADD COLUMN "x" INTEGER'
@@ -628,7 +628,7 @@ async def multi_statement_body_is_rejected_leaving_no_partial_object() -> None:
         database_path = Path(directory) / "app.db"
         database = await Database.initialize(database=database_path)
         try:
-            with assert_raises(MigrationDeclarationError):
+            with assert_raises(MigrationError):
                 await database.migrate({"001_multi": multi_statement})
         finally:
             await database.close()
@@ -877,7 +877,7 @@ async def commit_failure_rolls_back_before_sqlite_connection_reuse() -> None:
         cast("Any", connection).commit = fail_commit
         await runtime.connection_pool.release(connection)
 
-        with assert_raises(OperationalError):
+        with assert_raises(MigrationError):
             await database.migrate({"001_commit": _CREATE_LATER_MIGRATION})
         assert_true(not _table_exists(database_path, "later"))
         assert_eq(_fetch_applied_names(database_path), [])

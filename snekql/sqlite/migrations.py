@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from functools import partial
 from sqlite3 import (
     SQLITE_ALTER_TABLE,
     SQLITE_ATTACH,
@@ -250,8 +251,9 @@ def _sql_tokens(sql: str) -> tuple[str, ...]:  # noqa: C901
             tokens.append(sql[index:token_end].upper())
             index = token_end
             continue
-        if character in {"(", ")", ",", ".", ";"}:
-            tokens.append(character)
+        # Retain unfamiliar punctuation and digits too: malformed SQL must
+        # reach validation or execution, never disappear as an empty segment.
+        tokens.append(character)
         index += 1
     return tuple(tokens)
 
@@ -353,22 +355,10 @@ def _uses_temp_schema(tokens: tuple[str, ...]) -> bool:
     )
 
 
-def _validate_sqlite_body(migration: Migration) -> None:
-    """Require one persistent statement that cannot escape owned transaction state."""
+def _validate_sqlite_statement(migration: Migration, sql: str) -> None:
+    """Keep each statement inside the owned persistent transaction."""
 
-    statement_end: int | None = None
-    for index, character in enumerate(migration.sql):
-        if character == ";" and complete_statement(migration.sql[: index + 1]):
-            statement_end = index + 1
-            break
-    if statement_end is not None and _sql_tokens(migration.sql[statement_end:]):
-        msg = f"SQLite migration {migration.name!r} must contain one statement"
-        raise MigrationDeclarationError(msg)
-    if statement_end is None and not complete_statement(f"{migration.sql}\n;"):
-        msg = f"SQLite migration {migration.name!r} is not a complete statement"
-        raise MigrationDeclarationError(msg)
-
-    tokens = _sql_tokens(migration.sql)
+    tokens = _sql_tokens(sql)
     if not tokens:
         msg = f"SQLite migration {migration.name!r} must contain SQL"
         raise MigrationDeclarationError(msg)
@@ -392,19 +382,52 @@ def _validate_sqlite_body(migration: Migration) -> None:
         raise MigrationDeclarationError(msg)
 
 
+def _sqlite_statements(migration: Migration) -> tuple[str, ...]:
+    """Use SQLite's completeness scanner so trigger bodies remain one statement.
+
+    Preserve the original SQL slices for execution. History always hashes the
+    entire original body, including comments and whitespace, not these slices.
+    """
+
+    segments: list[str] = []
+    start = 0
+    for index, character in enumerate(migration.sql):
+        if character != ";" or not complete_statement(migration.sql[start : index + 1]):
+            continue
+        segments.append(migration.sql[start : index + 1])
+        start = index + 1
+    remainder = migration.sql[start:]
+    if not complete_statement(f"{remainder}\n;"):
+        msg = f"SQLite migration {migration.name!r} is not a complete statement"
+        raise MigrationDeclarationError(msg)
+    segments.append(remainder)
+    statements: list[str] = []
+    for statement in segments:
+        if not any(part != ";" for part in _sql_tokens(statement)):
+            continue
+        _validate_sqlite_statement(migration, statement)
+        statements.append(statement)
+    if not statements:
+        msg = f"SQLite migration {migration.name!r} must contain SQL"
+        raise MigrationDeclarationError(msg)
+    return tuple(statements)
+
+
 def validate_sqlite_migrations(migrations: MigrationPlan) -> None:
     """Validate every SQLite body synchronously before connection acquisition."""
 
     for migration in migrations:
-        _validate_sqlite_body(migration)
+        _sqlite_statements(migration)
 
 
-def _migration_authorizer(
+def _migration_authorizer(  # noqa: PLR0913 - driver callback arguments plus rename policy
     action: int,
     first_argument: str | None,
     second_argument: str | None,
     database_name: str | None,
     trigger_name: str | None,
+    *,
+    allow_temp_catalog_update: bool = False,
 ) -> int:
     """Keep bodies inside persistent main schema and away from owned history."""
 
@@ -423,7 +446,19 @@ def _migration_authorizer(
         action in _HISTORY_SECOND_ARGUMENT_ACTIONS and second_is_history
     ):
         return SQLITE_DENY
+    if action == SQLITE_ALTER_TABLE and first_argument != "main":
+        return SQLITE_DENY
     if action in _MUTATION_ACTIONS and database_name not in {None, "main"}:
+        # SQLite rewrites its temporary catalog during main-table renames even
+        # when no temporary application objects exist. Only ALTER may do this;
+        # mutations of actual temporary objects remain forbidden.
+        if (
+            allow_temp_catalog_update
+            and action == SQLITE_UPDATE
+            and database_name == "temp"
+            and first_argument == "sqlite_temp_master"
+        ):
+            return SQLITE_OK
         return SQLITE_DENY
     return SQLITE_OK
 
@@ -687,8 +722,15 @@ async def _apply_body(
 ) -> None:
     connection_state.authorizer_uncertain = True
     try:
-        await connection.set_authorizer(_migration_authorizer)
-        await _execute(connection, migration.sql)
+        for statement in _sqlite_statements(migration):
+            await connection.set_authorizer(
+                partial(
+                    _migration_authorizer,
+                    allow_temp_catalog_update=_operation_keyword(_sql_tokens(statement))
+                    == "ALTER",
+                )
+            )
+            await _execute(connection, statement)
     except Exception as error:
         logger.exception("migration %r failed", migration.name)
         msg = f"migration {migration.name!r} failed"
@@ -752,7 +794,11 @@ async def apply_sqlite_migrations(
             migration = migrations[len(history)]
             await _apply_body(connection, migration, connection_state)
             await _record_history(connection, migration)
-            await _commit(connection)
+            try:
+                await _commit(connection)
+            except Exception as e:
+                msg = f"could not commit migration {migration.name!r}"
+                raise MigrationError(msg) from e
             transaction_started = False
             applied.append(migration.name)
             applied_names.add(migration.name)

@@ -4,6 +4,13 @@
 
 ### Added
 
+- SQLite migration bodies support multiple statements in one atomic unit with
+  one exact-body checksum and history row. SQLite-aware statement boundaries
+  preserve triggers, comments, and quoted semicolons. Every statement retains
+  transaction, main-schema, and history protections. Table rebuilds support
+  main-table renames without permitting temporary application objects. Failed
+  SQLite unit commits now raise `MigrationError` with their native cause. (#289)
+
 - `Database.verify_migrations()` retains strict exact-head verification and adds
   opt-in `policy="compatible"` with an explicitly checksummed `approved_later`
   suffix. The complete known chain remains required; unknown or divergent later

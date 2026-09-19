@@ -49,8 +49,8 @@ def scaffold_statements(
 ) -> list[tuple[str, str]]:
     """Return ordered (label, DDL) pairs creating each model's table and indexes.
 
-    Each table is one statement and each index another, because a single
-    Migration body runs exactly one statement. The label is a stable, readable
+    Each table and index is a separate statement so callers can choose their
+    migration grouping. The label is a stable, readable
     suffix (the table or index name) a caller can fold into Migration names.
     """
 
