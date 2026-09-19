@@ -18,7 +18,8 @@ latest implementation. No study-specific branches are needed.
 Each study directory contains the original tracked files from its PR head, without
 rewriting code, observations, reports, tests, SQL artifacts, or dependencies.
 Original issue references and reproduction instructions remain historical text.
-The research issues are being deleted and their PRs closed, not merged.
+The six research issues were deleted and their PRs closed without merging. Their
+local and remote branches were deleted after the archive was committed and pushed.
 
 `history/manifest.json` records the source commits, original bases, former branches,
 and SHA-256 hashes of all 137 study files. Each matching `history/<study>/` contains:
