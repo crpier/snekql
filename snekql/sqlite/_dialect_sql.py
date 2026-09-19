@@ -49,6 +49,7 @@ def _explain_sql(_state: SelectState | WriteState, sql: str, mode: ExplainMode) 
 
 
 SQLITE_QUERY_DIALECT = QueryDialect(
+    char_length_function="LENGTH",
     conflict_do_nothing_sql=_conflict_do_nothing_sql,
     conflict_update_sql=_conflict_update_sql,
     current_timestamp_sql=CURRENT_TIMESTAMP_SQL,

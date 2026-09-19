@@ -4,6 +4,24 @@
 
 ### Added
 
+- Backend `case(condition, then=..., otherwise=...)` factories build typed,
+  row-local searched CASE expressions with explicit fallback and nullable
+  branch contracts. Nested CASE composes with arithmetic, value functions,
+  predicates, and UPDATE assignments. Dependency checks include condition reads
+  and both branches. Column comparisons accept computed right operands with
+  ordered bindings and scope validation. (#278)
+
+- Native values support typed `coalesce()` fallbacks. Native text supports
+  `lower()` and `char_length()`, including nullable results, further expression
+  composition, and text UPDATE assignments. JSON-encoded strings are rejected;
+  casing and character counting retain documented backend behavior. (#278)
+
+- Native integer/float `.add()`, `.sub()`, and `.mul()` expressions support
+  projections, predicates, and atomic UPDATE assignments via `.to_expr()`.
+  Types track numeric domains, source ownership, and SQL nullability. Compilation
+  rejects assignment dependencies with backend-dependent evaluation order.
+  Literal `.to()` validation is unchanged. (#278)
+
 - Named SELECT contracts through `.project(Result, **bindings)` and supported
   write results through `.returning_as(Result, **bindings)` remove the
   eight-value projection ceiling without requiring table models. Results retain

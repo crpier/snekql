@@ -421,6 +421,134 @@ select(User).where(
 select(User).where(~User.status.eq("disabled"))
 ```
 
+### Arithmetic and atomic updates
+
+Use `.add(...)`, `.sub(...)`, and `.mul(...)` on native numeric columns and
+expressions. Operands may be literals or columns/expressions from the same query
+source, including an alias. Chaining preserves parentheses and binds literals.
+Expressions work in SELECT projections and WHERE/ON predicates.
+
+`.to_expr(...)` assigns the computed value inside UPDATE. `.to(...)` retains its
+existing Python-literal validation:
+
+```python
+query = (
+    update(Inventory)
+    .set(
+        Inventory.quantity.to_expr(Inventory.quantity.sub(amount)),
+        Inventory.version.to_expr(Inventory.version.add(1)),
+    )
+    .where(
+        Inventory.id.eq(item_id)
+        & Inventory.quantity.gte(amount)
+        & Inventory.version.eq(expected_version)
+    )
+)
+
+async with database.transaction() as transaction:
+    changed = await transaction.execute(query)
+# With a unique item_id, changed == 1 means this version was claimed.
+```
+
+Validate application inputs such as a positive purchase amount separately. The
+stock check, decrement, and version increment execute in one statement, without
+an application-side read/modify/write. A stale version or insufficient stock
+changes no rows.
+
+The initial numeric contract is deliberately narrow:
+
+- `int` requires native INTEGER storage; `float` requires native REAL storage.
+  Text-encoded numbers, bool, Decimal, durations, and custom numeric types are
+  rejected. Division and mixed integer/real column expressions are unsupported.
+- Integer literals must fit signed 64 bits. Floating literals must be finite.
+  Float expressions also accept integer literals, matching Python's float
+  annotations. Boolean literals are rejected at runtime.
+- Either nullable operand makes the result nullable. A literal `None` is SQL
+  NULL, not zero. Assignments require matching numeric domains. A non-null
+  expression may target nullable storage, but not the reverse.
+- Arithmetic follows backend numeric behavior, not Python unlimited integers.
+  SQLite may promote overflowing integer arithmetic to REAL; integer projection
+  decoding rejects that result rather than truncating it. MariaDB integer
+  overflow remains an execution error. Floating arithmetic uses backend
+  precision and overflow behavior.
+- Computed writes use database constraints, not Python field validators. Final
+  storage validation cannot detect every overflowed or rounded intermediate
+  expression. Guard operand ranges when exact integer arithmetic is required.
+- Compilation rejects an expression reading another column assigned by the same
+  UPDATE, even inside nested arithmetic. This avoids MariaDB's assignment-order
+  behavior differing from SQLite. Independent stock/version updates are valid.
+- Expression assignments currently support UPDATE only, not `DoUpdate` conflict
+  actions. Aliases remain query-only, not mutation targets.
+
+### COALESCE and text functions
+
+Native integer, float, and text values support `.coalesce(fallback)`. The fallback
+may be a compatible literal or a column/expression from the same query source.
+A non-null input or fallback makes the result non-null. Two nullable operands
+retain a nullable result.
+
+```python
+select(User.nickname.coalesce("anonymous").lower()).all()  # str
+select(User.nickname.char_length()).all()  # int | None for nullable nickname
+select(User.nickname.char_length().coalesce(0).add(1)).all()  # int
+
+update(User).set(
+    User.nickname.to_expr(User.nickname.coalesce("anonymous").lower()),
+).where(User.id.eq(user_id))
+```
+
+`lower()` preserves text nullability. `char_length()` returns `int` or
+`int | None`. Both require native text storage, not JSON-encoded strings or
+text-encoded non-string values. Text `.to_expr()` assignments follow the same
+ownership, nullability, dependency, and database-validation rules as numeric
+assignments. Grouped projections must group every column read by an expression.
+
+These functions retain backend behavior. SQLite renders `LENGTH`, which counts
+characters only up to the first NUL; MariaDB renders `CHAR_LENGTH`, which counts
+all characters, not bytes. SQLite's built-in `LOWER` handles ASCII casing;
+MariaDB casing depends on its character set and collation. Neither function
+promises Python string semantics or identical Unicode casing across backends.
+
+For floating COALESCE expressions, integer literal fallbacks are bound as floats
+so a missing input still produces the promised float result. Integer and float
+column/expression operands remain distinct. No caller-supplied function names
+or result-type assertions are accepted.
+
+### CASE expressions
+
+Both namespaces export `case(condition, then=..., otherwise=...)`. It builds a
+searched SQL CASE with an explicit fallback:
+
+```python
+from snekql.sqlite import case, select
+
+select(case(User.score.gte(100), then="gold", otherwise="standard")).all()
+select(
+    case(User.score.gte(100), then=User.nickname, otherwise=None)
+    .coalesce("anonymous")
+    .lower()
+).all()
+```
+
+TRUE selects `then`; FALSE or SQL UNKNOWN selects `otherwise`. Branches accept
+native integer, float, or text literals, columns, and expressions. They must
+share a value domain and query source. Either nullable branch makes the result
+nullable, even when the condition logically excludes NULL. Two literal NULL
+branches are rejected because they do not identify a result domain. Integer
+literals in a floating CASE are validated and bound as floats; integer and
+floating column/expression branches cannot be mixed.
+
+CASE results compose with arithmetic, COALESCE, text functions, comparisons,
+and `.to_expr()` assignments. Nested CASE is supported. The initial condition
+contract is row-local: plain columns and native value expressions from one
+query source, including compound predicates. Subqueries, aggregates, and
+multi-source conditions are excluded. Aliases retain their own source identity.
+
+Grouping and UPDATE dependency checks include condition reads and both branches,
+including nested expressions. A branch that would not execute for today's data
+still counts as a dependency. Comparisons such as `.gt_col(expression)` preserve
+bindings and check the right-hand expression against the current query scope.
+
 ### Named projections
 
 Use a plain Pydantic `BaseModel` as a result contract when positional tuples are

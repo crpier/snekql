@@ -31,6 +31,7 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
+from snekql._value_expression import ValueExpression
 from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
@@ -287,14 +288,18 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
         for column in state.groupings
     }
     for field in state.fields:
-        # Only a bare column must appear in GROUP BY; aggregates, scalar
-        # subqueries, and open-AST dialect expressions are not plain columns.
-        if not isinstance(field, Attr):
+        if isinstance(field, ValueExpression):
+            inputs = field.__referenced_columns__()
+        elif isinstance(field, Attr):
+            inputs = (field,)
+        else:
             continue
-        key = (require_column_model(field), require_column_name(field))
-        if key not in grouped_keys:
-            msg = "non-aggregated column in an aggregated select must appear in group_by()"
-            raise QueryCompilationError(msg)
+        for operand in inputs:
+            column = require_field(operand)
+            key = (require_column_model(column), require_column_name(column))
+            if key not in grouped_keys:
+                msg = "non-aggregated column in an aggregated select must appear in group_by()"
+                raise QueryCompilationError(msg)
 
 
 def ensure_assignment_targets_model(

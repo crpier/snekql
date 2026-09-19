@@ -95,6 +95,7 @@ from snekql.sqlite import _dialect_sql as _dialect_sql
 from snekql.sqlite._raw import RawStatement, raw
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
+from snekql.sqlite.functions import case
 from snekql.sqlite.model import Col, FKCol, GenCol, Model
 from snekql.sqlite.verbs import alias, delete, insert, select, update
 from snekql.storage import (
@@ -199,6 +200,7 @@ __all__ = [
     "ZonedDatetime",
     "ZonedDatetimeError",
     "alias",
+    "case",
     "delete",
     "exists",
     "insert",

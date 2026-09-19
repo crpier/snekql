@@ -38,6 +38,7 @@ from snekql._query_state import (
     require_single_column_subquery,
     require_subquery_state,
 )
+from snekql._value_expression import ValueExpression
 from snekql.errors import QueryCompilationError
 from snekql.expressions import (
     DoNothing,
@@ -98,7 +99,9 @@ def _render_aggregate(
     return f"{aggregate.func}({column_ref})"
 
 
-def _make_compile_ctx(dialect: QueryDialect, *, qualified: bool) -> CompileCtx:
+def _make_compile_ctx(
+    dialect: QueryDialect, *, qualified: bool, scope: ScopeResolver | None = None
+) -> CompileCtx:
     """Build the facts a dialect expression renders itself against.
 
     ``render_column`` closes over the enclosing statement's qualification so an
@@ -107,6 +110,10 @@ def _make_compile_ctx(dialect: QueryDialect, *, qualified: bool) -> CompileCtx:
     """
 
     return CompileCtx(
+        compile_predicate=_PredicateCompileContext(dialect=dialect, scope=scope).compile
+        if scope is not None
+        else None,
+        char_length_function=dialect.char_length_function,
         placeholder=dialect.placeholder,
         quote_identifier=dialect.quote_identifier,
         render_column=lambda column: _render_column_ref(
@@ -123,6 +130,7 @@ def _render_selectable(
     *,
     qualified: bool,
     projection: bool = False,
+    scope: ScopeResolver | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     if isinstance(field, _Scalar):
         # Scalar subqueries carry nested parameters, so the select-list compiler
@@ -135,7 +143,7 @@ def _render_selectable(
         # Open-AST dialect expression: the core renders it structurally through
         # the protocol, never naming the leaf. A projection uses the select seam
         # (`__compile_select_sql__`); an operand uses the operand seam.
-        ctx = _make_compile_ctx(dialect, qualified=qualified)
+        ctx = _make_compile_ctx(dialect, qualified=qualified, scope=scope)
         if projection and isinstance(field, DialectSelectable):
             return field.__compile_select_sql__(ctx)
         return field.__compile_sql__(ctx)
@@ -172,6 +180,8 @@ def _predicate_value_encoder(
     if isinstance(selectable, _Scalar):
         msg = "a scalar subquery is not a value-encoding operand"
         raise QueryCompilationError(msg)
+    if isinstance(selectable, ValueExpression):
+        return selectable.__encode_comparison__
     if isinstance(selectable, SqlCompilable):
         # A dialect expression owns its own value type (its `__decode__`), so its
         # comparison value passes through unencoded; the leaf, not a column codec,
@@ -212,6 +222,7 @@ class _PredicateCompileContext:
             require_selectable(operand),
             self.dialect,
             qualified=self.scope.qualified,
+            scope=self.scope,
         )
 
     def value_encoder(self, operand: object) -> Callable[[object], object]:
@@ -219,21 +230,29 @@ class _PredicateCompileContext:
 
         return _predicate_value_encoder(require_selectable(operand), self.dialect)
 
-    def render_comparison_operand(self, other: object) -> str:
-        """Render the column on the right side of a ``*_col`` comparison.
+    def render_comparison_operand(
+        self, other: object
+    ) -> tuple[str, tuple[object, ...]]:
+        """Render the column or expression on the right of a `*_col` comparison.
 
         The column's table must be reachable in the current scope (the
         statement's own tables plus any enclosing query the subquery
         correlates to), else the reference is rejected at compile time.
         """
 
-        column = require_field(other)
+        operand = (
+            require_selectable(other)
+            if isinstance(other, SqlCompilable)
+            else require_field(other)
+        )
         self.scope.ensure_operand_in_scope(
-            column,
+            operand,
             clause="comparison",
             error=QueryCompilationError,
         )
-        return _render_column_ref(column, self.dialect, qualified=self.scope.qualified)
+        return _render_selectable(
+            operand, self.dialect, qualified=self.scope.qualified, scope=self.scope
+        )
 
     def compile_scalar(self, scalar: object) -> tuple[str, tuple[object, ...]]:
         """Compile a scalar-subquery operand as a parenthesized select."""
@@ -296,7 +315,7 @@ def _compile_ordering_sql(
     ensure_ordering_targets_models(ordering, scope)
     selectable = require_selectable(ordering.column)
     column_name, params = _render_selectable(
-        selectable, dialect, qualified=scope.qualified
+        selectable, dialect, qualified=scope.qualified, scope=scope
     )
     if params:
         msg = "dialect expressions with bound values cannot be used for ordering"
@@ -393,6 +412,9 @@ def _compile_insert_conflict_sql(
     set_sql_parts: list[str] = []
     params: tuple[object, ...] = ()
     for assignment in action.assignments:
+        if isinstance(assignment.value, ValueExpression):
+            msg = "expression assignments are only supported in UPDATE"
+            raise QueryCompilationError(msg)
         ensure_assignment_targets_model(assignment, scope)
         column = require_field(assignment.column)
         column_name = _render_column_ref(column, dialect)
@@ -462,6 +484,18 @@ def _compile_insert_sql(
     return sql, params
 
 
+def _ensure_expression_assignment_dependencies(state: UpdateState) -> None:
+    """Reject SET dependencies whose evaluation order differs between backends."""
+    for assignment in state.assignments:
+        if isinstance(assignment.value, ValueExpression) and any(
+            other.column is referenced and other is not assignment
+            for referenced in assignment.value.__referenced_columns__()
+            for other in state.assignments
+        ):
+            msg = "expression cannot read another column assigned by this statement"
+            raise QueryCompilationError(msg)
+
+
 def _compile_update_sql(
     state: UpdateState,
     dialect: QueryDialect,
@@ -472,6 +506,7 @@ def _compile_update_sql(
     if not state.explicit_all and not state.predicates:
         msg = "update requires all() or where() before execution"
         raise QueryCompilationError(msg)
+    _ensure_expression_assignment_dependencies(state)
     table_name = require_model_table_name(state.model)
     scope = ScopeResolver(own_models=(state.model,))
     set_sql_parts: list[str] = []
@@ -483,6 +518,13 @@ def _compile_update_sql(
         if assignment.value is InsertedValue:
             msg = "to_inserted() is only valid in a conflict update"
             raise QueryCompilationError(msg)
+        if isinstance(assignment.value, ValueExpression):
+            expression_sql, expression_params = assignment.value.__compile_sql__(
+                _make_compile_ctx(dialect, qualified=False, scope=scope)
+            )
+            set_sql_parts.append(f"{column_name} = {expression_sql}")
+            params = (*params, *expression_params)
+            continue
         if assignment.value is CurrentTimestamp:
             set_sql_parts.append(f"{column_name} = {dialect.current_timestamp_sql}")
             continue
@@ -567,6 +609,7 @@ def _compile_select_list(
             dialect,
             qualified=scope.qualified,
             projection=True,
+            scope=scope,
         )
         parts.append(field_sql)
         params = (*params, *field_params)
