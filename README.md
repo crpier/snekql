@@ -1004,6 +1004,15 @@ reject locking queries before IO. See
 [locking SELECTs](docs/error-handling.md#locking-selects) for a queue-claim example
 and lock-lifetime limits.
 
+Transaction errors expose optional `error.failure` metadata with a portable
+category and available native error details. See
+[classified transaction failures](docs/error-handling.md#classified-transaction-failures).
+Classification does not make a failed connection reusable or retry a statement.
+After context exit, `transaction.commit_outcome` reports `"not_attempted"`,
+`"rejected"`, `"committed"`, or `"unknown"`. See
+[commit outcomes and retry guidance](docs/error-handling.md#commit-outcomes)
+before retrying failed work.
+
 Runtime methods:
 
 - `begin_nested()` returns an explicit savepoint context on the existing
@@ -1058,8 +1067,9 @@ Backend Configs separate pool waiting (`acquire_timeout`) from driver I/O
 (`operation_timeout`), both defaulting to 30 seconds. Passing
 `db.transaction(timeout=N)` overrides both for that transaction. Each driver
 operation gets a fresh budget; application code between calls is not timed.
-Timed-out operations discard the uncertain physical connection. Commit timeout
-outcomes are ambiguous and require application-level reconciliation.
+Timed-out operations discard the uncertain physical connection. A timeout before
+COMMIT acknowledgement leaves an unknown outcome requiring reconciliation.
+Acknowledged commits remain committed even if subsequent cleanup times out.
 
 ## Migrations and verification
 

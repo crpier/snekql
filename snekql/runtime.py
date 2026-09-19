@@ -45,6 +45,7 @@ from snekql._schema_verification import SchemaVerificationResult
 from snekql._statement_failure import StatementConstraintError
 from snekql._telemetry import ParameterVisibility, QueryDiagnostics, format_bound_params
 from snekql.errors import (
+    DatabaseFailure,
     DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
     ExecutionError,
@@ -99,6 +100,9 @@ def _log_query_failure(
 # SQLite honors this as ``BEGIN`` vs ``BEGIN IMMEDIATE``; row-locking backends
 # treat it as a no-op (see each adapter's ``begin``).
 type TransactionMode = Literal["deferred", "immediate"]
+type CommitOutcome = Literal["not_attempted", "rejected", "committed", "unknown"]
+
+
 type IsolationLevel = Literal[
     "read_uncommitted", "read_committed", "repeatable_read", "serializable"
 ]
@@ -157,6 +161,11 @@ class RuntimeConnection(Protocol):
         read_only: bool | None = None,
         isolation: IsolationLevel | None = None,
     ) -> None: ...
+
+    @property
+    def commit_outcome(self) -> CommitOutcome:
+        """Adapter evidence survives cleanup errors after acknowledgement."""
+        ...
 
     async def commit(self) -> None: ...
 
@@ -253,6 +262,10 @@ class RuntimeBackend(Protocol):
     operation_timeout: NonNegativeFloat
     parameter_visibility: ParameterVisibility
     query_codec: QueryCodec
+
+    def classify_failure(self, error: Exception) -> DatabaseFailure | None:
+        """Normalize native evidence without changing recovery or retry policy."""
+        ...
 
     async def acquire(
         self,
@@ -362,9 +375,12 @@ class ChunkStream[RowT]:
                 cursor = self._cursor
                 self._cursor = None
                 if cursor is not None:
-                    await self._transaction._run_driver_operation(  # noqa: SLF001
+                    # A builder cursor is opened only after its SelectPlan is stored.
+                    plan = cast("SelectPlan[object]", self._plan)
+                    await self._transaction._run_query_operation(  # noqa: SLF001
                         "cursor close",
                         cursor.close,
+                        plan.diagnostics,
                     )
         finally:
             self._transaction._stream_owner = None  # noqa: SLF001
@@ -547,8 +563,12 @@ class _NestedTransaction(AbstractAsyncContextManager[None]):
         except Exception as e:
             msg = f"could not execute {command.lower()}"
             if transaction._raw_diagnostics:  # noqa: SLF001
-                raise DatabaseRuntimeError(msg) from None
-            raise DatabaseRuntimeError(msg) from e
+                raise DatabaseRuntimeError(
+                    msg, failure=transaction.runtime.classify_failure(e)
+                ) from None
+            raise DatabaseRuntimeError(
+                msg, failure=transaction.runtime.classify_failure(e)
+            ) from e
 
 
 class Transaction[FamilyT: BackendFamily]:
@@ -588,6 +608,7 @@ class Transaction[FamilyT: BackendFamily]:
             if read_only is True and mode == "immediate":
                 msg = "SQLite read-only transactions cannot request immediate write intent"
                 raise DatabaseRuntimeError(msg)
+        self._commit_outcome: CommitOutcome = "not_attempted"
         self.closed: bool = False
         self.connection: RuntimeConnection | None = None
         self.runtime: RuntimeBackend = runtime
@@ -633,7 +654,17 @@ class Transaction[FamilyT: BackendFamily]:
         # must not acquire a connection or reset the owner's reservation.
         self._entering = True
         try:
-            connection = await self.runtime.acquire(self.acquisition_timeout)
+            try:
+                connection = await self.runtime.acquire(self.acquisition_timeout)
+            except DatabaseRuntimeError as e:
+                if e.failure is None and isinstance(e.__cause__, Exception):
+                    e.failure = self.runtime.classify_failure(e.__cause__)
+                raise
+            except Exception as e:
+                msg = "could not acquire transaction connection"
+                raise DatabaseRuntimeError(
+                    msg, failure=self.runtime.classify_failure(e)
+                ) from e
             try:
                 await self._run_driver_operation(
                     "transaction begin",
@@ -642,8 +673,9 @@ class Transaction[FamilyT: BackendFamily]:
                     ),
                 )
             except BaseException as error:
-                logger.exception(
-                    "%s transaction begin failed", self.runtime.backend_family
+                logger.error(  # noqa: TRY400 - driver messages can contain private values
+                    "transaction begin failed",
+                    extra={"backend": self.runtime.backend_family},
                 )
                 with anyio.CancelScope(shield=True):
                     await self.runtime.discard(connection)
@@ -653,7 +685,9 @@ class Transaction[FamilyT: BackendFamily]:
                     raise
                 if isinstance(error, Exception):
                     msg = "could not begin transaction"
-                    raise DatabaseRuntimeError(msg) from error
+                    raise DatabaseRuntimeError(
+                        msg, failure=self.runtime.classify_failure(error)
+                    ) from error
                 raise
             self.connection = connection
             logger.debug("%s transaction begin", self.runtime.backend_family)
@@ -697,10 +731,16 @@ class Transaction[FamilyT: BackendFamily]:
                     return
                 try:
                     if exc_type is None:
-                        await self._run_driver_operation(
-                            "transaction commit",
-                            connection.commit,
-                        )
+                        self._commit_outcome = "unknown"
+                        try:
+                            await self._run_driver_operation(
+                                "transaction commit",
+                                connection.commit,
+                            )
+                        finally:
+                            if connection.commit_outcome in ("committed", "rejected"):
+                                self._commit_outcome = connection.commit_outcome
+                        self._commit_outcome = "committed"
                         logger.debug(
                             "%s transaction commit", self.runtime.backend_family
                         )
@@ -728,6 +768,19 @@ class Transaction[FamilyT: BackendFamily]:
                         logger.warning(
                             "%s transaction discarded", self.runtime.backend_family
                         )
+
+    @property
+    def commit_outcome(self) -> CommitOutcome:
+        """Evidence about the managed outer COMMIT, not arbitrary raw SQL commits.
+
+        >>> transaction = db.transaction()
+        >>> transaction.commit_outcome
+        'not_attempted'
+
+        Unknown outcomes require reconciliation before retrying. The property
+        remains readable after closure and does not imply connection reusability.
+        """
+        return self._commit_outcome
 
     def begin_nested(self) -> AbstractAsyncContextManager[None]:
         """Create a savepoint context without acquiring another connection.
@@ -1211,17 +1264,10 @@ class Transaction[FamilyT: BackendFamily]:
     def _report_close_failure(self, error: Exception, *, during_error: bool) -> None:
         """Rollback preserves pending errors; raw lifecycle diagnostics stay safe."""
 
-        if self._raw_diagnostics:
-            logger.error(
-                "raw transaction close failed",
-                extra={"backend": self.runtime.backend_family},
-            )
-        else:
-            logger.error(
-                "%s transaction close failed",
-                self.runtime.backend_family,
-                exc_info=error,
-            )
+        logger.error(
+            "transaction close failed",
+            extra={"backend": self.runtime.backend_family},
+        )
         if during_error:
             return
         if isinstance(error, DatabaseOperationTimeoutError):
@@ -1229,9 +1275,10 @@ class Transaction[FamilyT: BackendFamily]:
                 raise error from None
             raise error
         msg = "could not close transaction"
+        failure = self.runtime.classify_failure(error)
         if self._raw_diagnostics:
-            raise DatabaseRuntimeError(msg) from None
-        raise DatabaseRuntimeError(msg) from error
+            raise DatabaseRuntimeError(msg, failure=failure) from None
+        raise DatabaseRuntimeError(msg, failure=failure) from error
 
     async def _open_cursor(
         self,
@@ -1385,7 +1432,10 @@ class Transaction[FamilyT: BackendFamily]:
                     },
                 )
                 raise self._execution_error(
-                    diagnostics.failure_message, sql="", params=()
+                    diagnostics.failure_message,
+                    sql="",
+                    params=(),
+                    failure=self.runtime.classify_failure(error),
                 ) from None
             _log_query_failure(
                 self.runtime.backend_family,
@@ -1397,6 +1447,7 @@ class Transaction[FamilyT: BackendFamily]:
                 diagnostics.failure_message,
                 sql=diagnostics.sql,
                 params=diagnostics.params,
+                failure=self.runtime.classify_failure(error),
             ) from error
 
     async def _run_driver_operation[ResultT](
@@ -1441,6 +1492,7 @@ class Transaction[FamilyT: BackendFamily]:
         *,
         sql: str,
         params: tuple[object, ...],
+        failure: DatabaseFailure | None = None,
     ) -> ExecutionError:
         """Build an execution failure carrying the runtime telemetry policy."""
 
@@ -1449,6 +1501,7 @@ class Transaction[FamilyT: BackendFamily]:
             sql=sql,
             params=params,
             parameter_visibility=self.runtime.parameter_visibility,
+            failure=failure,
         )
 
     def require_connection(self) -> RuntimeConnection:

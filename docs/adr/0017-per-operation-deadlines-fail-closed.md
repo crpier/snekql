@@ -8,7 +8,10 @@ between driver calls is not timed.
 
 A timed-out driver call makes the physical connection unsafe. Query Runtime
 rejects further use and asks the Backend Runtime Adapter to discard it rather
-than rollback or return it to the pool. Commit timeout is reported as ambiguous.
+than rollback or return it to the pool. Timeout before COMMIT acknowledgement is reported as an unknown commit outcome.
+If the driver acknowledged COMMIT before cursor cleanup or policy restoration
+timed out, the outcome remains committed. Outcome evidence never overrides the
+unsafe-connection rule.
 Rollback timeout during an existing application failure is logged and discarded
 without replacing the application failure.
 

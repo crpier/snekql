@@ -4,6 +4,18 @@
 
 ### Added
 
+- `Transaction.commit_outcome` distinguishes unattempted, rejected, acknowledged,
+  and unknown managed commits. Acknowledgement survives subsequent cleanup
+  failures; interrupted or lost acknowledgements stay unknown. Both namespaces
+  export `CommitOutcome`. A tested opt-in whole-transaction retry example documents
+  bounded backoff, idempotency, and ambiguous-outcome reconciliation. (#284)
+
+- Transaction failures expose optional frozen `DatabaseFailure` metadata through
+  `DatabaseRuntimeError.failure`, including portable categories and available
+  native codes, SQLSTATE, and structured constraint names. Classification covers
+  query, stream, acquisition, and control failures without authorizing recovery
+  or automatic retries. Transaction-control logs omit driver messages. (#284)
+
 - MariaDB SELECTs support `for_update(wait="block" | "nowait" | "skip_locked")`
   for single-table model, scalar, tuple, named, and alias projections. SQLite,
   joins, grouped/aggregate queries, DISTINCT, and locking subqueries fail

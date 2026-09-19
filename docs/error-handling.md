@@ -89,6 +89,146 @@ Migration errors:
   after the holder finishes checks the exact prefix and applies the pending
   suffix.
 
+## Classified transaction failures
+
+`DatabaseRuntimeError.failure` is an optional frozen `DatabaseFailure`. Both
+backend namespaces export it and the `FailureCategory` literal type. Transaction
+acquisition, query execution, stream IO, and transaction control attach native
+evidence when available. Existing exception types remain catchable.
+
+```python
+from snekql.mariadb import DatabaseRuntimeError
+
+try:
+    async with db.transaction() as tx:
+        await tx.execute(statement)
+except DatabaseRuntimeError as error:
+    failure = error.failure
+    if failure is not None and failure.category == "unique_violation":
+        report_duplicate()
+    else:
+        raise
+```
+
+The metadata fields are `backend`, `category`, `code`, `sqlstate`, and
+`constraint`. `code` is the native integer error code, including SQLite extended
+codes. SQLSTATE and constraint names remain `None` when the driver does not
+supply structured fields. Error messages are never parsed to guess missing
+metadata. For example, a constraint name present only inside a MariaDB message
+is not extracted. SQLSTATE and constraint names are omitted from the metadata's
+representation; deliberate attribute access still exposes them.
+
+| Category | Evidence examples |
+| --- | --- |
+| `unique_violation` | SQLite primary-key/unique/rowid codes; MariaDB 1062 |
+| `foreign_key_violation` | SQLite foreign-key code; MariaDB 1451/1452 |
+| `check_violation` | SQLite CHECK code; MariaDB 4025 |
+| `not_null_violation` | SQLite NOT NULL code; MariaDB 1048 |
+| `deadlock` | MariaDB 1213, even though its SQLSTATE is 40001 |
+| `serialization_conflict` | SQLite BUSY_SNAPSHOT; MariaDB SQLSTATE 40001 without a more specific known code |
+| `lock_conflict` | Other SQLite BUSY/LOCKED codes; MariaDB 1205, including NOWAIT |
+| `connection_loss` | MariaDB 1927/2006/2013/2055 or a valid connection-exception SQLSTATE |
+| `unknown` | A recognized driver exception without a supported category |
+
+`failure is None` means no classified driver evidence accompanies the error.
+Lifecycle misuse, result-contract errors, and application operation deadlines
+do not invent a driver code. `unknown` differs from `None`: the driver is known,
+but its evidence does not establish a supported category. SQLite storage IO
+errors are not mislabeled as network connection loss.
+
+Classification does **not** authorize statement retries or connection reuse.
+The same unique violation can be recoverable inside a savepoint, terminate an
+entire SQLite transaction under `OR ROLLBACK`, or arrive after uncertain stream
+IO. The existing recovery checks still decide safety. There are no automatic
+statement retries. Handle a terminal failure outside the Transaction context.
+
+Raw failures retain metadata without exposing SQL, parameters, or driver messages
+in ordinary exception formatting. Typed errors retain their existing deliberate
+SQL/parameter inspection and chained driver cause. Library transaction-control
+logs no longer include driver exception text. Application logging of explicit
+causes, metadata attributes, or parameter values remains an explicit disclosure.
+
+## Commit outcomes
+
+Both namespaces export `CommitOutcome`. Retain a Transaction reference when you
+need its read-only `commit_outcome` after an exception or cancellation:
+
+```python
+transaction = db.transaction()
+try:
+    async with transaction:
+        await transaction.execute(statement)
+finally:
+    record_commit_outcome(transaction.commit_outcome)
+```
+
+Inspect the outcome **after context exit has completed or raised**, not while
+another task is still closing the Transaction.
+
+| Outcome | Meaning |
+| --- | --- |
+| `not_attempted` | The managed outer COMMIT was never attempted. Normal rollback, failed entry, and discarding an unsafe transaction leave this value. |
+| `rejected` | Specific backend evidence proves that the managed COMMIT failed without committing. |
+| `committed` | The driver acknowledged COMMIT, even if later cleanup failed. |
+| `unknown` | COMMIT was attempted but neither acknowledgement nor proven rejection reached the runtime. |
+
+`rejected` currently includes SQLite BUSY or deferred foreign-key errors while
+the native connection remains in its transaction, and MariaDB's InnoDB deadlock
+response. A generic error or serialization SQLSTATE alone does not prove COMMIT
+rejection. Lost acknowledgements, deadlines, and cancellation before an observed
+acknowledgement remain `unknown`.
+
+A SQLite cursor-close or policy-restoration failure **after acknowledgement**
+leaves `committed`, including restoration timeout or cancellation. Such failures
+still discard the connection. Outcome evidence does not make it reusable.
+Cancellation and existing timeout/error types retain their meaning.
+
+This property describes the library's managed outer COMMIT only. It does not
+track raw COMMIT statements, implicit commits from MariaDB DDL, nontransactional
+tables, stored-program side effects, or external services. `not_attempted` is not
+a blanket claim that no side effect became durable. Savepoint release does not
+change the outer commit outcome.
+
+## Whole-transaction retries
+
+Retries are an application decision. The library does not retry failed query
+statements. Existing SQLite `BEGIN IMMEDIATE` writer-lock acquisition retries
+remain separate and happen before application transaction work starts.
+
+The executable [retry example](../examples/transaction_retry.py) repeats an entire
+SQLite callback, including its reads, in a **fresh Transaction**. MariaDB can use
+the same loop with its namespace's annotations. It permits at most three attempts
+and full-jitter exponential waits bounded by 0.05 and 0.10 seconds. Acquisition
+and operation deadlines still apply independently; the attempt limit is not an
+overall wall-clock deadline.
+
+The example retries only deadlocks and serialization conflicts, and only after
+`not_attempted` or `rejected` outcomes. It propagates other errors, exhausted
+attempts, and cancellation. It refuses to report success if the callback swallowed
+a terminal error and the Transaction exited without committing. Recoverable
+optional writes belong in explicit savepoint contexts instead.
+
+Before applying this pattern:
+
+- Use transactional tables and avoid raw transaction control or implicit commits.
+- Give each logical operation a durable idempotency key reused across attempts.
+  Store the key and database effects atomically. Do not generate a new key per try.
+- Keep emails, payments, HTTP calls, and other external effects out of the retried
+  callback, or use the destination's own durable idempotency contract. An outbox
+  row in the same transaction can defer delivery until after commit.
+- Handle unique, foreign-key, CHECK, and NOT NULL failures as application conflicts,
+  not a generic retry queue. Lock conflicts can have persistent causes too.
+- Never replay an acknowledged commit because its cleanup failed.
+- Reconcile `unknown` using the logical operation's key against the authoritative
+  database. A missing row alone is not proof of failure while the old operation
+  may still be in flight. A safe resubmission must reuse an atomic idempotency
+  claim so it cannot apply the effect twice. There is no universal reconciliation
+  algorithm for arbitrary callbacks.
+
+The example rethrows unknown and committed-close failures. Adapt that branch to
+record or reconcile the application's request ID; do not broaden its category
+filter and accidentally retry ambiguous commits.
+
 ## Warnings
 
 Alongside the exception hierarchy, snekql raises advisory warnings for
@@ -419,9 +559,10 @@ A timed-out query or transaction-control call leaves physical connection state
 uncertain ([ADR 0017](adr/0017-per-operation-deadlines-fail-closed.md)). The
 Transaction becomes unusable and discards that connection instead
 of returning it to the pool. A commit timeout raises
-`DatabaseOperationTimeoutError`; whether the server committed is necessarily
-ambiguous and must be resolved with an idempotency key or application-level
-read. If rollback times out while an application exception is already active,
+`DatabaseOperationTimeoutError`. An outcome of `unknown` requires reconciliation
+using the logical operation's durable idempotency key. A timeout during cleanup
+after acknowledgement leaves `commit_outcome == "committed"`; do not replay it.
+See [commit outcomes](#commit-outcomes) for the distinction. If rollback times out while an application exception is already active,
 snekql preserves the application exception, logs the cleanup failure, and still
 discards the connection.
 

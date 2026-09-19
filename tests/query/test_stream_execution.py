@@ -14,6 +14,7 @@ from snekql._telemetry import ParameterVisibility
 from snekql.model import BackendFamily, Table
 from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
 from snekql.runtime import (
+    CommitOutcome,
     IsolationLevel,
     QueryCodec,
     RuntimeConnection,
@@ -183,6 +184,7 @@ class _CleanupConnection:
     """Connection fake handing back one preset streaming cursor."""
 
     def __init__(self, cursor: _CleanupCursor) -> None:
+        self.commit_outcome: CommitOutcome = "unknown"
         self.cursor: _CleanupCursor = cursor
 
     async def begin(
@@ -282,6 +284,11 @@ class _CleanupRuntime:
         self.parameter_visibility: ParameterVisibility = "redacted"
         self.connection: RuntimeConnection = connection
         self.query_codec: QueryCodec = _FirstColumnQueryCodec()
+
+    @staticmethod
+    def classify_failure(error: Exception) -> None:
+        """This lifecycle fake emits no native database errors."""
+        del error
 
     async def acquire(self, acquisition_timeout: NonNegativeFloat) -> RuntimeConnection:
         _ = acquisition_timeout
