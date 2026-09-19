@@ -117,6 +117,7 @@ class SQLiteConnectionPool:
         self.pool_size: PositiveInt = pool_size
         self.discard_tasks: set[asyncio.Task[None]] = set()
         self._close_task: asyncio.Task[None] | None = None
+        self._pending_close_connections: list[Connection] = []
         self.gate: FairAdmissionGate = FairAdmissionGate(
             capacity=pool_size,
             check_accepting_work=self.check_accepting_work,
@@ -184,19 +185,17 @@ class SQLiteConnectionPool:
         """Reap failed opening or close a completed connection before freeing its slot."""
 
         try:
-            try:
-                connection = await opening
-            except asyncio.CancelledError:
-                return
-            except Exception:
-                # The opener already cleans partial state before raising.
-                # This is an opening failure, not a failure of the detached
-                # connection-close operation.
-                logger.debug("sqlite discarded opening failed", exc_info=True)
-                return
-            await close_sqlite_connection(connection)
-        finally:
+            connection = await opening
+        except asyncio.CancelledError:
             await self.gate.release()
+            return
+        except Exception:
+            # The opener cleans partial state before raising. This is an opening
+            # failure, not a failure closing a successfully opened connection.
+            logger.debug("sqlite discarded opening failed", exc_info=True)
+            await self.gate.release()
+            return
+        await self._close_discarded(connection)
 
     @staticmethod
     def _reject_closed_during_open() -> NoReturn:
@@ -215,12 +214,14 @@ class SQLiteConnectionPool:
                     should_close = True
                 else:
                     self.idle_connections.append(connection)
-            # Return the connection to storage before freeing the admission
-            # slot so the next FIFO waiter always finds it available.
-            await self.gate.release()
-            logger.debug("sqlite connection released (closed=%s)", should_close)
             if should_close:
-                await close_sqlite_connection(connection)
+                # Physical cleanup must outlive the returning caller and keep its
+                # admission slot until complete, just like an unsafe discard.
+                await self.discard(connection)
+            else:
+                # Store the reusable connection before waking the next FIFO waiter.
+                await self.gate.release()
+            logger.debug("sqlite connection released (closed=%s)", should_close)
 
     async def discard(self, connection: Connection) -> None:
         """Detach unsafe state immediately and close it in the background."""
@@ -238,6 +239,14 @@ class SQLiteConnectionPool:
 
         try:
             await close_sqlite_connection(connection)
+        except Exception:
+            # Unknown physical state cannot become spare capacity. Quarantine
+            # the pool before releasing the slot; shutdown retains the handle.
+            async with self.gate.condition:
+                self._pending_close_connections.append(connection)
+                self.closing = True
+                self.gate.condition.notify_all()
+            raise
         finally:
             await self.gate.release()
 
@@ -285,9 +294,8 @@ class SQLiteConnectionPool:
             if self.closed:
                 logger.debug("sqlite database close skipped: already closed")
                 return
-            if self.closing:
-                msg = "database is already closing"
-                raise DatabaseClosingError(msg)
+            # The owned task serializes close attempts. A previous failed physical
+            # close keeps work rejected, but a new close must retry retained handles.
             self.closing = True
             idle_connections = list(self.idle_connections)
             self.idle_connections.clear()
@@ -300,13 +308,10 @@ class SQLiteConnectionPool:
                 if self.gate.admitted == 0:
                     remaining_idle_connections = list(self.idle_connections)
                     self.idle_connections.clear()
-                    self.closed = True
-                    self.closing = False
-                    self.gate.condition.notify_all()
                     break
                 remaining_timeout = deadline - anyio.current_time()
                 if remaining_timeout <= 0:
-                    self.closing = False
+                    self.closing = bool(self._pending_close_connections)
                     self.gate.condition.notify_all()
                     logger.warning("sqlite database close timed out")
                     msg = "database close timed out"
@@ -315,17 +320,30 @@ class SQLiteConnectionPool:
                     with anyio.fail_after(remaining_timeout):
                         await self.gate.condition.wait()
                 except TimeoutError as error:
-                    self.closing = False
+                    self.closing = bool(self._pending_close_connections)
                     self.gate.condition.notify_all()
                     logger.warning("sqlite database close timed out")
                     msg = "database close timed out"
                     raise DatabaseCloseTimeoutError(msg) from error
         await self.close_connections(remaining_idle_connections)
+        async with self.gate.condition:
+            self.closed = True
+            self.closing = False
+            self.gate.condition.notify_all()
         logger.debug("sqlite database close completed")
 
-    @staticmethod
-    async def close_connections(connections: Sequence[Connection]) -> None:
-        """Close a sequence of SQLite connections."""
+    async def close_connections(self, connections: Sequence[Connection]) -> None:
+        """Attempt all idle closes and retain failed handles for a later shutdown."""
 
-        for connection in connections:
-            await close_sqlite_connection(connection)
+        self._pending_close_connections.extend(connections)
+        first_error: Exception | None = None
+        for connection in tuple(self._pending_close_connections):
+            try:
+                await close_sqlite_connection(connection)
+            except Exception as e:
+                if first_error is None:
+                    first_error = e
+            else:
+                self._pending_close_connections.remove(connection)
+        if first_error is not None:
+            raise first_error

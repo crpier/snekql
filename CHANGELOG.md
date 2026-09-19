@@ -4,6 +4,11 @@
 
 ### Added
 
+- MariaDB Config gains optional connection lifetime and idle limits plus
+  `health_check="checkout"`. Recycling and non-reconnecting health probes share
+  the acquisition deadline, preserve TLS and session settings, and never replay
+  active Transactions. Defaults preserve passive checks with no age limits. (#286)
+
 - SQLite `Config(durability="full")` applies and verifies WAL plus
   `synchronous=FULL` on initial, additional, and replacement connections. The
   default `"normal"` policy is unchanged. Unsupported values and FULL on in-memory
@@ -160,6 +165,19 @@
   `ResultCardinalityError` instead of leaking `IndexError`. (#250)
 
 ### Fixed
+
+- MariaDB owns shutdown independently of cancelled callers and waits for
+  discarded leases. Partial connection authentication shares the acquisition
+  deadline and closes sockets on cancellation. Cleanup errors preserve the
+  initialization failure, shutdown rejects in-flight checkout completions, and
+  failed idle socket closes remain owned for retry.
+  Credential rotation and backend shutdown policies are documented. (#286)
+
+- SQLite shutdown attempts all idle connection closes after a driver failure,
+  retains failed handles for a later `close()` retry, and rejects new work until
+  cleanup succeeds. Returned connections keep shutdown waiting for physical
+  cleanup; failed discards retain their handles and reject new work, including
+  after a concurrent shutdown timeout. (#286)
 
 - MariaDB `json_extract_int()` binds JSON paths as driver parameters instead of
   interpolating SQL literals, including hostile quote-bearing input. Partial
