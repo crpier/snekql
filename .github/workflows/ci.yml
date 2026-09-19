@@ -37,8 +37,10 @@ jobs:
           mariadbd --version
       - name: Sync locked environment
         run: uv sync --locked --all-extras
+      - name: Install research comparator
+        run: uv pip install --python .venv/bin/python --requirements research/recovery/requirements.txt
       - name: Test
-        run: uv run snektest
+        run: uv run snektest tests research/recovery
       - name: Type check
         run: uv run ty check
       - name: Lint

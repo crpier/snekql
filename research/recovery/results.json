@@ -1,0 +1,5273 @@
+{
+  "python": "3.14.2",
+  "context_aware_warnings": 1,
+  "versions": {
+    "snekql": "0.7.0",
+    "sqlalchemy": "2.0.43",
+    "pydantic": "2.13.5",
+    "aiosqlite": "0.22.1",
+    "aiomysql": "0.3.2",
+    "PyMySQL": "1.2.0",
+    "greenlet": "3.5.1"
+  },
+  "runs": {
+    "sqlite/snekql/native": {
+      "backend": "sqlite",
+      "library": "snekql",
+      "track": "native",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' cannot be null",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": "ValidationError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": "ValidationError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"code\" TEXT NOT NULL, \"quantity\" INTEGER NOT NULL, \"note\" TEXT, \"occurred_at\" TEXT NOT NULL) STRICT;\nCREATE UNIQUE INDEX \"ux_entries_code\" ON \"entries\" (\"code\");",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "transaction_exit",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "invalid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "held": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'occurred_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Input should be a valid datetime or date, invalid character in year [type=datetime_from_date_parsing, input_value='not-a-date', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'occurred_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value='2026-01-02 03:04:05.123', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "snekql_runtime_controls": {
+        "version": "3.50.4"
+      },
+      "installed_schema": [
+        {
+          "type": "index",
+          "name": "ux_entries_code",
+          "sql": "CREATE UNIQUE INDEX \"ux_entries_code\" ON \"entries\" (\"code\")"
+        },
+        {
+          "type": "table",
+          "name": "entries",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"code\" TEXT NOT NULL, \"quantity\" INTEGER NOT NULL, \"note\" TEXT, \"occurred_at\" TEXT NOT NULL) STRICT"
+        }
+      ],
+      "connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "sqlite/snekql/validated": {
+      "backend": "sqlite",
+      "library": "snekql",
+      "track": "validated",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"code\" TEXT NOT NULL, \"quantity\" INTEGER NOT NULL, \"note\" TEXT, \"occurred_at\" TEXT NOT NULL) STRICT;\nCREATE UNIQUE INDEX \"ux_entries_code\" ON \"entries\" (\"code\");",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "transaction_exit",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE \"entries\" SET \"code\" = ? WHERE (\"id\" = ?)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "invalid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "held": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'occurred_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Input should be a valid datetime or date, invalid character in year [type=datetime_from_date_parsing, input_value='not-a-date', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'occurred_at' failed type validation: 1 validation error for function-after[_normalize_utc_milliseconds(), datetime]\n  Value error, naive datetime rejected; UtcDatetime is aware-only [type=value_error, input_value='2026-01-02 03:04:05.123', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "snekql_runtime_controls": {
+        "version": "3.50.4"
+      },
+      "installed_schema": [
+        {
+          "type": "index",
+          "name": "ux_entries_code",
+          "sql": "CREATE UNIQUE INDEX \"ux_entries_code\" ON \"entries\" (\"code\")"
+        },
+        {
+          "type": "table",
+          "name": "entries",
+          "sql": "CREATE TABLE \"entries\" (\"id\" INTEGER PRIMARY KEY, \"code\" TEXT NOT NULL, \"quantity\" INTEGER NOT NULL, \"note\" TEXT, \"occurred_at\" TEXT NOT NULL) STRICT"
+        }
+      ],
+      "connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "sqlite/sqlalchemy/native": {
+      "backend": "sqlite",
+      "library": "sqlalchemy",
+      "track": "native",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "flush",
+          "error_type": "IntegrityError",
+          "message": "(sqlite3.IntegrityError) NOT NULL constraint failed: entries.quantity\n[SQL: UPDATE entries SET quantity=? WHERE entries.id = ?]\n[parameters: (None, 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": true,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "bool",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": true,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "bool",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1.5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "float",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1.5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "float",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1.5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "float",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "\nCREATE TABLE entries (\n\tid INTEGER NOT NULL, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)\n\n",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "committed"
+          },
+          "expired_after_exit": [],
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "commit",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 3,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "invalid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": -1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValueError",
+            "message": "Invalid isoformat string: 'not-a-date'",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "statement_error": {
+        "failure": {
+          "outcome": "rejected",
+          "stage": "execute",
+          "error_type": "IntegrityError",
+          "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError"
+        },
+        "read_after_failure": {
+          "id": 1,
+          "code": "one",
+          "quantity": 3,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "UTC"
+        },
+        "exit": {
+          "outcome": "committed"
+        },
+        "fresh": {
+          "id": 1,
+          "code": "one",
+          "quantity": 4,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "UTC"
+        }
+      },
+      "installed_schema": [
+        {
+          "type": "index",
+          "name": "sqlite_autoindex_entries_1",
+          "sql": null
+        },
+        {
+          "type": "table",
+          "name": "entries",
+          "sql": "CREATE TABLE entries (\n\tid INTEGER NOT NULL, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)"
+        }
+      ],
+      "connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "sqlite/sqlalchemy/validated": {
+      "backend": "sqlite",
+      "library": "sqlalchemy",
+      "track": "validated",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "\nCREATE TABLE entries (\n\tid INTEGER NOT NULL, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)\n\n",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "committed"
+          },
+          "expired_after_exit": [],
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "commit",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 3,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "invalid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValidationError",
+            "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValidationError",
+            "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValueError",
+            "message": "Invalid isoformat string: 'not-a-date'",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "statement_error": {
+        "failure": {
+          "outcome": "rejected",
+          "stage": "execute",
+          "error_type": "IntegrityError",
+          "message": "(sqlite3.IntegrityError) UNIQUE constraint failed: entries.code\n[SQL: UPDATE entries SET code=? WHERE entries.id = ?]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError"
+        },
+        "read_after_failure": {
+          "id": 1,
+          "code": "one",
+          "quantity": 3,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "UTC"
+        },
+        "exit": {
+          "outcome": "committed"
+        },
+        "fresh": {
+          "id": 1,
+          "code": "one",
+          "quantity": 4,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "UTC"
+        }
+      },
+      "installed_schema": [
+        {
+          "type": "index",
+          "name": "sqlite_autoindex_entries_1",
+          "sql": null
+        },
+        {
+          "type": "table",
+          "name": "entries",
+          "sql": "CREATE TABLE entries (\n\tid INTEGER NOT NULL, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)"
+        }
+      ],
+      "connection_controls": {
+        "version": "3.50.4",
+        "foreign_keys": 1
+      }
+    },
+    "mariadb/snekql/native": {
+      "backend": "mariadb",
+      "library": "snekql",
+      "track": "native",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' cannot be null",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": "ValidationError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "build_update",
+          "error_type": "ModelValidationError",
+          "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": "ValidationError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "CREATE TABLE `entries` (`id` BIGINT NOT NULL PRIMARY KEY, `code` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `quantity` BIGINT NOT NULL, `note` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `occurred_at` DATETIME(3) NOT NULL) ENGINE=InnoDB;\nCREATE UNIQUE INDEX `ux_entries_code` ON `entries` (`code`);",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "transaction_exit",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "invalid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "held": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "rejected",
+            "stage": "raw_update",
+            "error_type": "OperationalError",
+            "message": "(pymysql.err.OperationalError) (1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`entries`.`occurred_at` at row 1\")\n[SQL: UPDATE entries SET occurred_at='not-a-date' WHERE id=1]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)",
+            "cause_type": "OperationalError"
+          },
+          "read": {
+            "outcome": "not_attempted"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "snekql_runtime_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+      },
+      "installed_schema": [
+        "entries",
+        "CREATE TABLE `entries` (\n  `id` bigint(20) NOT NULL,\n  `code` varchar(255) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `note` varchar(255) DEFAULT NULL,\n  `occurred_at` datetime(3) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_entries_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+      ],
+      "connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "collation": "utf8mb4_bin",
+        "engine": "InnoDB"
+      }
+    },
+    "mariadb/snekql/validated": {
+      "backend": "mariadb",
+      "library": "snekql",
+      "track": "validated",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "CREATE TABLE `entries` (`id` BIGINT NOT NULL PRIMARY KEY, `code` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `quantity` BIGINT NOT NULL, `note` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin, `occurred_at` DATETIME(3) NOT NULL) ENGINE=InnoDB;\nCREATE UNIQUE INDEX `ux_entries_code` ON `entries` (`code`);",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "transaction_exit",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "ExecutionError",
+            "message": "write failed sql='UPDATE `entries` SET `code` = %s WHERE (`id` = %s)' params=<redacted:2> cause=IntegrityError",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "DatabaseRuntimeError",
+            "message": "transaction connection is unsafe after a timed-out operation",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "returned_normally"
+          },
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          },
+          "reuse_closed": {
+            "outcome": "rejected",
+            "stage": "read",
+            "error_type": "TransactionClosedError",
+            "message": "transaction is closed",
+            "cause_type": null
+          },
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "invalid": {
+            "outcome": "rejected",
+            "stage": "assignment",
+            "error_type": "FrozenModelError",
+            "message": "table models are immutable",
+            "cause_type": null
+          },
+          "held": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ModelValidationError",
+            "message": "'quantity' failed type validation: 1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": "ValidationError"
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "rejected",
+            "stage": "raw_update",
+            "error_type": "OperationalError",
+            "message": "(pymysql.err.OperationalError) (1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`entries`.`occurred_at` at row 1\")\n[SQL: UPDATE entries SET occurred_at='not-a-date' WHERE id=1]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)",
+            "cause_type": "OperationalError"
+          },
+          "read": {
+            "outcome": "not_attempted"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "UTC"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000+00:00",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "UTC"
+          }
+        }
+      },
+      "snekql_runtime_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+      },
+      "installed_schema": [
+        "entries",
+        "CREATE TABLE `entries` (\n  `id` bigint(20) NOT NULL,\n  `code` varchar(255) NOT NULL,\n  `quantity` bigint(20) NOT NULL,\n  `note` varchar(255) DEFAULT NULL,\n  `occurred_at` datetime(3) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `ux_entries_code` (`code`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+      ],
+      "connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "collation": "utf8mb4_bin",
+        "engine": "InnoDB"
+      }
+    },
+    "mariadb/sqlalchemy/native": {
+      "backend": "mariadb",
+      "library": "sqlalchemy",
+      "track": "native",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "flush",
+          "error_type": "IntegrityError",
+          "message": "(pymysql.err.IntegrityError) (1048, \"Column 'quantity' cannot be null\")\n[SQL: UPDATE entries SET quantity=%s WHERE entries.id = %s]\n[parameters: (None, 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError",
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 0,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": true,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "bool",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": true,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "bool",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1.5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "float",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1.5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "float",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "\nCREATE TABLE entries (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME(3) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)\n\n",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "exit": {
+            "outcome": "committed"
+          },
+          "expired_after_exit": [],
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "commit",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 3,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "invalid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": -1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "rejected",
+            "stage": "raw_update",
+            "error_type": "OperationalError",
+            "message": "(pymysql.err.OperationalError) (1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`entries`.`occurred_at` at row 1\")\n[SQL: UPDATE entries SET occurred_at='not-a-date' WHERE id=1]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)",
+            "cause_type": "OperationalError"
+          },
+          "read": {
+            "outcome": "not_attempted"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        }
+      },
+      "statement_error": {
+        "failure": {
+          "outcome": "rejected",
+          "stage": "execute",
+          "error_type": "IntegrityError",
+          "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError"
+        },
+        "read_after_failure": {
+          "id": 1,
+          "code": "one",
+          "quantity": 3,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "None"
+        },
+        "exit": {
+          "outcome": "committed"
+        },
+        "fresh": {
+          "id": 1,
+          "code": "one",
+          "quantity": 4,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "None"
+        }
+      },
+      "installed_schema": [
+        "entries",
+        "CREATE TABLE `entries` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) NOT NULL,\n  `quantity` int(11) NOT NULL,\n  `note` varchar(255) DEFAULT NULL,\n  `occurred_at` datetime(3) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `code` (`code`)\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+      ],
+      "connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "collation": "utf8mb4_bin",
+        "engine": "InnoDB"
+      }
+    },
+    "mariadb/sqlalchemy/validated": {
+      "backend": "mariadb",
+      "library": "sqlalchemy",
+      "track": "validated",
+      "patches": {
+        "note_omitted": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 2,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "2",
+              "type": "int"
+            }
+          }
+        },
+        "note_null": {
+          "outcome": "accepted",
+          "stage": "commit",
+          "after_assignment": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "held_after_commit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "note": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_null": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "None",
+              "type": "NoneType"
+            }
+          }
+        },
+        "quantity_zero": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "0",
+              "type": "int"
+            }
+          }
+        },
+        "quantity_bool": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "True",
+              "type": "bool"
+            }
+          }
+        },
+        "quantity_fraction": {
+          "outcome": "rejected",
+          "stage": "patch_validation",
+          "error_type": "ValidationError",
+          "message": "1 validation error for constrained-int\n  Input should be a valid integer [type=int_type, input_value=1.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_type",
+          "cause_type": null,
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "input": {
+            "quantity": {
+              "value": "1.5",
+              "type": "float"
+            }
+          }
+        }
+      },
+      "ddl": "\nCREATE TABLE entries (\n\tid INTEGER NOT NULL AUTO_INCREMENT, \n\tcode VARCHAR(255) NOT NULL, \n\tquantity INTEGER NOT NULL, \n\tnote VARCHAR(255), \n\toccurred_at DATETIME(3) NOT NULL, \n\tPRIMARY KEY (id), \n\tUNIQUE (code)\n)\n\n",
+      "lifecycle": {
+        "commit": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "exit": {
+            "outcome": "committed"
+          },
+          "expired_after_exit": [],
+          "held_after_exit": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "escaping_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "caught_error": {
+          "after_write": {
+            "id": 1,
+            "code": "one",
+            "quantity": 3,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "failure": {
+            "outcome": "rejected",
+            "stage": "flush",
+            "error_type": "IntegrityError",
+            "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+            "cause_type": "IntegrityError"
+          },
+          "read_after_failure": {
+            "outcome": "rejected",
+            "stage": "select",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "retry_write": {
+            "outcome": "rejected",
+            "stage": "execute",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "exit": {
+            "outcome": "rejected",
+            "stage": "commit",
+            "error_type": "PendingRollbackError",
+            "message": "This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)",
+            "cause_type": null
+          },
+          "expired_after_exit": [
+            "code",
+            "id",
+            "note",
+            "occurred_at",
+            "quantity"
+          ],
+          "held_after_explicit_refresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "fresh": {
+            "id": 1,
+            "code": "one",
+            "quantity": 1,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          },
+          "same_session_recovery": "committed",
+          "fresh_recovery": {
+            "id": 1,
+            "code": "one",
+            "quantity": 5,
+            "note": "keep",
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "str",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "assignment": {
+          "valid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 3,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "invalid": {
+            "outcome": "accepted",
+            "held": {
+              "id": 1,
+              "code": "one",
+              "quantity": 0,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          }
+        }
+      },
+      "corruption": {
+        "zero_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValidationError",
+            "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "negative_quantity": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "rejected",
+            "stage": "materialization",
+            "error_type": "ValidationError",
+            "message": "1 validation error for constrained-int\n  Input should be greater than 0 [type=greater_than, input_value=-1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+            "cause_type": null
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        },
+        "malformed_timestamp": {
+          "injection": {
+            "outcome": "rejected",
+            "stage": "raw_update",
+            "error_type": "OperationalError",
+            "message": "(pymysql.err.OperationalError) (1292, \"Incorrect datetime value: 'not-a-date' for column `test`.`entries`.`occurred_at` at row 1\")\n[SQL: UPDATE entries SET occurred_at='not-a-date' WHERE id=1]\n(Background on this error at: https://sqlalche.me/e/20/e3q8)",
+            "cause_type": "OperationalError"
+          },
+          "read": {
+            "outcome": "not_attempted"
+          }
+        },
+        "naive_timestamp": {
+          "injection": {
+            "outcome": "accepted"
+          },
+          "read": {
+            "outcome": "accepted",
+            "row": {
+              "id": 1,
+              "code": "one",
+              "quantity": 1,
+              "note": "keep",
+              "occurred_at": "2026-01-02 03:04:05.123000",
+              "_types": {
+                "id": "int",
+                "code": "str",
+                "quantity": "int",
+                "note": "str",
+                "occurred_at": "datetime"
+              },
+              "_timestamp_tz": "None"
+            }
+          },
+          "same_transaction_good_row": {
+            "id": 2,
+            "code": "two",
+            "quantity": 1,
+            "note": null,
+            "occurred_at": "2026-01-02 03:04:05.123000",
+            "_types": {
+              "id": "int",
+              "code": "str",
+              "quantity": "int",
+              "note": "NoneType",
+              "occurred_at": "datetime"
+            },
+            "_timestamp_tz": "None"
+          }
+        }
+      },
+      "statement_error": {
+        "failure": {
+          "outcome": "rejected",
+          "stage": "execute",
+          "error_type": "IntegrityError",
+          "message": "(pymysql.err.IntegrityError) (1062, \"Duplicate entry 'two' for key 'code'\")\n[SQL: UPDATE entries SET code=%s WHERE entries.id = %s]\n[parameters: ('two', 1)]\n(Background on this error at: https://sqlalche.me/e/20/gkpj)",
+          "cause_type": "IntegrityError"
+        },
+        "read_after_failure": {
+          "id": 1,
+          "code": "one",
+          "quantity": 3,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "None"
+        },
+        "exit": {
+          "outcome": "committed"
+        },
+        "fresh": {
+          "id": 1,
+          "code": "one",
+          "quantity": 4,
+          "note": "keep",
+          "occurred_at": "2026-01-02 03:04:05.123000",
+          "_types": {
+            "id": "int",
+            "code": "str",
+            "quantity": "int",
+            "note": "str",
+            "occurred_at": "datetime"
+          },
+          "_timestamp_tz": "None"
+        }
+      },
+      "installed_schema": [
+        "entries",
+        "CREATE TABLE `entries` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `code` varchar(255) NOT NULL,\n  `quantity` int(11) NOT NULL,\n  `note` varchar(255) DEFAULT NULL,\n  `occurred_at` datetime(3) NOT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `code` (`code`)\n) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+      ],
+      "connection_controls": {
+        "version": "12.3.2-MariaDB",
+        "time_zone": "+00:00",
+        "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+        "collation": "utf8mb4_bin",
+        "engine": "InnoDB"
+      }
+    }
+  }
+}
