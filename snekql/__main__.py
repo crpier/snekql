@@ -1,4 +1,4 @@
-"""Run the snekql documentation CLI with `python -m snekql`."""
+"""Run the snekql CLI with `python -m snekql`."""
 
 from __future__ import annotations
 

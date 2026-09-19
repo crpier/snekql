@@ -1095,6 +1095,10 @@ await db.verify_migrations(MIGRATIONS)
 await db.verify([User], policy="strict")
 ```
 
+- `db.migration_status(migrations)` returns immutable applied/pending names and
+  whether history exists, without applying changes. `snekql migrations status`
+  and `snekql migrations plan` expose this inspection through trusted application
+  factories. See [status and pending plans](docs/migrations.md#status-and-pending-plans).
 - `db.migrate(migrations)` accepts the complete ordered `dict[str, str]` chain.
   It verifies each recorded position and exact-body SHA-256 before applying the
   pending suffix, then returns an immutable `MigrationResult`. Migrations are the

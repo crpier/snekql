@@ -14,6 +14,19 @@ _MAX_MIGRATION_NAME_LENGTH = 255
 
 
 @dataclass(frozen=True, slots=True)
+class MigrationStatus:
+    """Read-only, point-in-time status of a complete Migration declaration.
+
+    `applied` and `pending` contain ordered names. Absent history does not imply
+    an empty database. This snapshot does not reserve a plan for later execution.
+    """
+
+    applied: tuple[str, ...]
+    history_present: bool
+    pending: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class MigrationResult:
     """Ordered outcome of applying one complete Migration declaration.
 
@@ -59,7 +72,7 @@ class MigrationRecord:
 type MigrationPlan = tuple[Migration, ...]
 
 
-def prepare_migrations(migrations: dict[str, str]) -> MigrationPlan:
+def prepare_migrations(migrations: object) -> MigrationPlan:
     """Snapshot and validate one complete linear Migration declaration.
 
     Exact built-in strings keep names and checksums byte-stable and avoid a

@@ -23,7 +23,7 @@ import anyio
 from aiosqlite import Connection, Cursor, Error
 from anyio.lowlevel import checkpoint
 
-from snekql._migrations import MigrationPlan, MigrationResult
+from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
@@ -379,13 +379,13 @@ class SQLiteRuntime:
 
     async def verify_migrations(
         self, migrations: MigrationPlan, *, minimum_applied: int | None = None
-    ) -> None:
+    ) -> MigrationStatus:
         """Read and compare Migration History without changing it."""
 
         connection = await self.connection_pool.acquire(self.acquire_timeout)
         connection_state = SQLiteMigrationConnectionState()
         try:
-            await verify_sqlite_migrations(
+            return await verify_sqlite_migrations(
                 connection,
                 connection_state,
                 migrations,

@@ -14,6 +14,7 @@ from snekql._migrations import (
     MigrationPlan,
     MigrationRecord,
     MigrationResult,
+    MigrationStatus,
     validate_history_prefix,
     validate_legacy_history,
 )
@@ -833,7 +834,7 @@ async def verify_mariadb_migrations(
     migrations: MigrationPlan,
     *,
     minimum_applied: int | None = None,
-) -> None:
+) -> MigrationStatus:
     """Verify final v2 history within the approved range without mutation."""
 
     if minimum_applied is None:
@@ -844,12 +845,21 @@ async def verify_mariadb_migrations(
             if minimum_applied:
                 msg = "Migration History is missing"
                 raise MigrationHistoryError(msg)
-            return
+            return MigrationStatus(
+                applied=(),
+                history_present=False,
+                pending=tuple(migration.name for migration in migrations),
+            )
         if shape != "v2":
             msg = f"Migration History uses unsupported MariaDB shape {shape!r}"
             raise MigrationHistoryError(msg)
         history = await _fetch_history(connection)
         validate_history_prefix(history, migrations, minimum_applied=minimum_applied)
+        return MigrationStatus(
+            applied=tuple(record.name for record in history),
+            history_present=True,
+            pending=tuple(migration.name for migration in migrations[len(history) :]),
+        )
     finally:
         await _rollback(connection)
 

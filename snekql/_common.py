@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from snekql._compiled import CompiledQuery
 from snekql._explain import ExplainResult
-from snekql._migrations import MigrationResult
+from snekql._migrations import MigrationResult, MigrationStatus
 from snekql._schema_verification import SchemaDriftIssue, SchemaVerificationResult
 from snekql.errors import (
     DatabaseClosedError,
@@ -145,6 +145,7 @@ __all__ = [
     "MigrationLockError",
     "MigrationLockTimeoutError",
     "MigrationResult",
+    "MigrationStatus",
     "ModelDeclarationError",
     "ModelError",
     "ModelValidationError",

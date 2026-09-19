@@ -106,8 +106,101 @@ MigrationResult(
 ```
 
 Both tuples follow declaration order. `legacy_adopted` is true when the call
-accepted non-empty v1 history as a baseline or completed a previously consented
-MariaDB staging upgrade.
+adopted existing non-empty v1 names with the declared checksums or completed a
+previously consented MariaDB staging upgrade. This trusts legacy records; it is
+not the reviewed-baseline workflow for an untracked schema.
+
+## Status and pending plans
+
+Inspect the complete declaration without applying it:
+
+```python
+status = await db.migration_status(MIGRATIONS)
+print(status.history_present)
+print(status.applied)  # ordered tuple of recorded names
+print(status.pending)  # ordered tuple of remaining names
+```
+
+Both backend namespaces export the frozen `MigrationStatus` result. The
+operation snapshots and validates declarations before connection acquisition,
+then requires history to match an exact ordered, checksummed prefix. It rejects
+legacy, staged, malformed, or divergent history with `MigrationHistoryError`.
+It never creates history, adopts a baseline, executes migration bodies, or
+acquires the migration writer/advisory lock.
+
+Absent history returns `history_present=False`, no applied names, and every
+name pending. A valid empty history table returns `history_present=True`.
+Neither case proves that the application schema is empty. Likewise, pending
+MariaDB DDL may already have committed some effects without recording history.
+Status does not inspect those effects or prove that a migration can execute.
+
+This is point-in-time information, not a reservation or an executable plan
+object. Another deploy may advance history immediately afterward. Apply with
+`db.migrate(MIGRATIONS)`, which obtains its normal lock and rechecks history.
+`verify_migrations()` remains the separate readiness check that requires the
+configured head or approved compatibility range.
+
+### Command line
+
+Export an ordered declaration and a zero-argument factory returning an async
+context manager from an importable application module. The context manager must
+yield a SQLite or MariaDB `Database` and close it on exit. For example,
+`app/deploy.py` can define:
+
+```python
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from snekql import sqlite
+
+MIGRATIONS = {
+    "001_entries": "CREATE TABLE entries (id INTEGER PRIMARY KEY)",
+    "002_note": "ALTER TABLE entries ADD COLUMN note TEXT",
+}
+
+
+@asynccontextmanager
+async def open_database() -> AsyncIterator[sqlite.Database]:
+    async with await sqlite.Database.initialize(database=Path("app.db")) as db:
+        yield db
+```
+
+Then inspect it with:
+
+```bash
+snekql migrations status --database app.deploy:open_database --migrations app.deploy:MIGRATIONS
+snekql migrations plan --database app.deploy:open_database --migrations app.deploy:MIGRATIONS
+snekql migrations plan --database app.deploy:open_database --migrations app.deploy:MIGRATIONS --json --sql
+```
+
+`status` lists applied and pending names. `plan` lists pending names. Both accept
+`--json` and emit the same status fields:
+
+```json
+{"history_present": true, "applied": ["001_entries"], "pending": ["002_note"]}
+```
+
+SQL is omitted by default. Only `plan --sql` includes pending bodies; with JSON
+it adds a `sql` object mapping pending names to exact original bodies. SQL may
+contain secrets, so treat that output accordingly. The CLI snapshots the
+exported declaration before entering the database context, and waits for cleanup
+before printing a successful report.
+
+Exit codes are `0` for successful inspection, even with pending migrations,
+`1` for inspection/configuration/cleanup failure, and `2` for invalid command
+arguments. Failures produce no success document. Command error messages omit
+arbitrary exception text and tracebacks; use the Python interface when detailed
+exception diagnosis is needed.
+
+References must use `module:attribute`; expressions and factory arguments are
+not accepted. These are trusted Python imports, not a sandbox. Module imports
+and factories can execute application code. Keep them free of migration or
+other write side effects and avoid printing to stdout when using JSON. Normal
+connection initialization still applies backend settings and may create a
+SQLite database file. Do not put credentials in command arguments; load them
+inside your application's factory. Use a normal `@asynccontextmanager` factory,
+not an async function returning a context manager that would need another await.
 
 ## Read-only verification
 
@@ -360,6 +453,22 @@ populated checksum. An empty v1 table may upgrade without consent.
 
 Back up the database and stop old application versions before adoption. An old
 runner does not understand v2 history.
+
+## Recovery and deployment procedures
+
+- [Reconcile interrupted migrations](migration-recovery.md), including MariaDB
+  DDL that committed without history and ambiguous commit acknowledgements.
+- [Expand, backfill, and contract](rolling-migrations.md) with tested bounded
+  batches, durable checkpoints, dual writers, and a coordinated contract gate.
+
+## Existing databases without history
+
+Start a reviewed initial baseline only when establishing the application's first
+canonical snekql chain. Execute the same hand-authored body on fresh and existing
+databases; never stamp an older chain as if it ran. See the
+[reviewed baseline checklist and tested example](migration-baselines.md).
+Legacy-history adoption is a different operation and does not validate schema
+or historical data effects.
 
 ## Scaffolding the first table
 
