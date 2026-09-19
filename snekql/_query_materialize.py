@@ -13,11 +13,13 @@ from typing import Any, cast
 from snekql._aliases import _AliasRelation
 from snekql._dialect_expr import DialectSelectable
 from snekql._model_materialization import decode_model_row
+from snekql._named_projection import NamedProjection
 from snekql._query_state import (
     InsertState,
     Selectable,
     SelectState,
     WriteState,
+    require_column_model,
     require_column_name,
     require_field,
     require_single_column_subquery,
@@ -185,6 +187,8 @@ def materialize_select_row_for_backend(
         )
         for index, column in enumerate(state.fields)
     )
+    if state.named_projection is not None:
+        return state.named_projection.materialize(decoded_values)
     if len(decoded_values) == 1:
         return decoded_values[0]
     return decoded_values
@@ -213,7 +217,11 @@ def _decode_projection_field(
     nullability gap) rather than crashing the fetch.
     """
 
-    if value is None and isinstance(column, Attr) and column.owner in nullable_models:
+    if (
+        value is None
+        and isinstance(column, Attr)
+        and require_column_model(column) in nullable_models
+    ):
         return None
     return _decode_selectable(column, value, backend=backend, validate=validate)
 
@@ -224,6 +232,7 @@ def _materialize_insert_returning_fields(
     *,
     backend: StorageBackend,
     validate: bool,
+    projection: NamedProjection | None = None,
 ) -> list[object]:
     """Decode RETURNING rows for an explicit column projection.
 
@@ -240,7 +249,13 @@ def _materialize_insert_returning_fields(
             _decode_selectable(field, row[index], backend=backend, validate=validate)
             for index, field in enumerate(fields)
         )
-        materialized.append(decoded[0] if len(decoded) == 1 else decoded)
+        materialized.append(
+            projection.materialize(decoded)
+            if projection is not None
+            else decoded[0]
+            if len(decoded) == 1
+            else decoded
+        )
     return materialized
 
 
@@ -262,7 +277,11 @@ def materialize_write_returning_rows_for_backend(
     returning_fields = state.returning_fields
     if returning_fields:
         return _materialize_insert_returning_fields(
-            returning_fields, rows, backend=backend, validate=validate
+            returning_fields,
+            rows,
+            backend=backend,
+            validate=validate,
+            projection=state.named_projection,
         )
     if model_class is None:
         return []
