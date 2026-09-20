@@ -169,3 +169,9 @@ Password bootstrap sets `NO_BACKSLASH_ESCAPES` only in its private client
 session before parsing quote-doubled password literals. Supplied backslashes
 and quotes therefore survive either server SQL mode. The final server and
 application sessions keep the caller's configured SQL mode.
+
+## Failure gates and soak runs
+
+Both the MariaDB 12.2 and rolling CI jobs run the full suite using native tools.
+See [the fault and environment matrix](failure-matrix.md) for existing coverage,
+fault-injection limits, SQLite targets, and separate bounded resource-soak commands.

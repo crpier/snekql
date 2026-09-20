@@ -428,34 +428,49 @@ async def _fetch_existing_foreign_key_shapes(
     connection: object,
     table_names: tuple[str, ...],
 ) -> dict[str, tuple[ForeignKeyShape, ...]]:
+    """Read FK members and actions without joining virtual catalog tables.
+
+    MariaDB 12.2 can crash on a KEY_COLUMN_USAGE / REFERENTIAL_CONSTRAINTS
+    join, including for a table with no foreign keys. Correlate the two bounded
+    result sets locally by table and constraint identity instead.
+    """
     foreign_keys_sql = (
-        "SELECT key_usage.TABLE_NAME, key_usage.COLUMN_NAME, "  # noqa: S608
-        "key_usage.REFERENCED_TABLE_NAME, key_usage.REFERENCED_COLUMN_NAME, "
-        "referential.UPDATE_RULE, referential.DELETE_RULE, "
-        "key_usage.CONSTRAINT_NAME, key_usage.ORDINAL_POSITION "
-        "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS key_usage "
-        "JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS referential "
-        "ON referential.CONSTRAINT_SCHEMA = key_usage.CONSTRAINT_SCHEMA "
-        "AND referential.TABLE_NAME = key_usage.TABLE_NAME "
-        "AND referential.CONSTRAINT_NAME = key_usage.CONSTRAINT_NAME "
-        "WHERE key_usage.TABLE_SCHEMA = DATABASE() "
-        f"AND key_usage.TABLE_NAME IN ({_table_name_placeholders(table_names)}) "
-        "AND key_usage.REFERENCED_TABLE_NAME IS NOT NULL "
-        "ORDER BY key_usage.TABLE_NAME, key_usage.CONSTRAINT_NAME, "
-        "key_usage.ORDINAL_POSITION"
+        "SELECT TABLE_NAME, COLUMN_NAME, "  # noqa: S608
+        "REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, "
+        "CONSTRAINT_NAME, ORDINAL_POSITION "
+        "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+        "WHERE TABLE_SCHEMA = DATABASE() "
+        f"AND TABLE_NAME IN ({_table_name_placeholders(table_names)}) "
+        "AND REFERENCED_TABLE_NAME IS NOT NULL "
+        "ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION"
     )
-    rows = await _fetchall(connection, foreign_keys_sql, tuple(table_names))
+    rows = await _fetchall(connection, foreign_keys_sql, table_names)
+    actions_sql = (
+        "SELECT TABLE_NAME, CONSTRAINT_NAME, UPDATE_RULE, DELETE_RULE "  # noqa: S608
+        "FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS "
+        "WHERE CONSTRAINT_SCHEMA = DATABASE() "
+        f"AND TABLE_NAME IN ({_table_name_placeholders(table_names)})"
+    )
+    actions = {
+        (str(table), str(constraint)): (str(update), str(delete))
+        for table, constraint, update, delete in await _fetchall(
+            connection, actions_sql, table_names
+        )
+    }
     shapes: dict[str, list[ForeignKeyShape]] = {}
     for (
         table_name,
         column_name,
         target_table,
         target_column,
-        on_update,
-        on_delete,
         constraint_name,
         position,
     ) in rows:
+        action = actions.get((str(table_name), str(constraint_name)))
+        if action is None:
+            msg = "foreign-key action metadata unavailable during verification"
+            raise SchemaError(msg)
+        on_update, on_delete = action
         shapes.setdefault(str(table_name), []).append(
             ForeignKeyShape(
                 constraint_id=str(constraint_name),

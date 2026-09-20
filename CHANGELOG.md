@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- MariaDB schema verification avoids a virtual-catalog join that crashes MariaDB
+  12.2.2. Foreign-key members and actions are correlated locally; missing action
+  metadata fails verification rather than certifying a match. Found by the full
+  minimum-version suite during #295.
+
 ### Changed
 
 - Query `repr`/`str` now redact bindings and omit compilation-error details.
@@ -11,6 +18,10 @@
   Raw statement representations remain opaque. Addresses #294.
 
 ### Added
+
+- Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
+  gates, a documented fault inventory, and an optional bounded Linux resource
+  soak. Native late-stream faults verify discard and subsequent recovery. #295.
 
 - Optional `snekql.opentelemetry.OpenTelemetryObserver` exports duration histograms
   and request-parented spans through caller-owned SDK interfaces. Fingerprint
