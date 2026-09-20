@@ -48,7 +48,7 @@ jobs:
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
       - name: Test
-        run: uv run snektest
+        run: uv run snektest tests
       - name: Type check
         run: uv run ty check
       - name: Lint
@@ -99,7 +99,7 @@ jobs:
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
       - name: Full integration suite on minimum MariaDB
-        run: uv run snektest
+        run: uv run snektest tests
 
   sqlite-environments:
     name: SQLite / ${{ matrix.os }} / ${{ matrix.python-source }}

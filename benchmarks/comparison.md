@@ -1,10 +1,11 @@
 # Comparative runtime measurements
 
-Work in progress for #296. The command covers buffered point reads and bounded
+The command covers buffered point reads and bounded
 streaming scans, indexed joins and verified bulk writes on SQLite and MariaDB.
 It also measures capacity-one pool contention and provides separate pool and
-memory diagnostic profiles. Published results and regression guidance are being
-prepared; do not treat a tiny local run as a complete performance assessment.
+memory diagnostic profiles. [Published results and regression guidance](findings.md)
+include raw artifacts and exact commands. Do not treat a tiny local run as a
+complete performance assessment.
 
 ## Run from a source checkout
 
@@ -195,4 +196,5 @@ already running tracemalloc is rejected rather than silently resetting its data.
 No latency or throughput value is a CI pass threshold. CLI tests check observed
 work, argument bounds, trial ordering and report configuration. An injected
 50 ms driver callback block checks the heartbeat, not machine throughput.
-Repeated publication and noise-aware review guidance are the remaining work.
+See [the published baseline](findings.md) for repeated results and noise-aware
+regression review.

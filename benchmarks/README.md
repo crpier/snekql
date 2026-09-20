@@ -15,7 +15,8 @@ work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
 reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
-comparing numbers.
+comparing numbers. The [dated baseline](findings.md) publishes individual trial
+reports and noise-aware regression guidance.
 
 ## Running
 
