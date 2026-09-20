@@ -1589,3 +1589,24 @@ if TYPE_CHECKING:
         select(User.email).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
         select(User.email, Order.note).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
         select(User).left_join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
+
+
+if TYPE_CHECKING:
+
+    async def check_pool_observation_types(
+        sqlite_config: sqlite.Config, mariadb_config: mariadb.Config
+    ) -> None:
+        """Observer callbacks preserve backend-specific Database return types."""
+        observations: list[sqlite.TelemetryEvent] = []
+        sqlite_database = await sqlite.Database.initialize(
+            sqlite_config, observer=observations.append
+        )
+        mariadb_database = await mariadb.Database.initialize(
+            mariadb_config, observer=observations.append
+        )
+        assert_type(sqlite_database, sqlite.Database)
+        assert_type(mariadb_database, mariadb.Database)
+        assert_type(sqlite_database.pool_stats(), sqlite.PoolStats)
+        assert_type(mariadb_database.pool_stats(), mariadb.PoolStats)
+        assert_type(sqlite_database.pool_stats().occupied, int)
+        assert_type(sqlite.select(User.email).all().compile().fingerprint, str)

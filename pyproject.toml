@@ -19,6 +19,9 @@ aiomysql = [
 aiosqlite = [
     "aiosqlite>=0.22.1",
 ]
+opentelemetry = [
+    "opentelemetry-api>=1.44,<2",
+]
 
 [project.scripts]
 snekql = "snekql.cli:main"
@@ -33,6 +36,7 @@ Repository = "https://github.com/crpier/snekql"
 dev = [
     "aiomysql>=0.3.2,<0.4",
     "aiosqlite>=0.22.1",
+    "opentelemetry-sdk>=1.44,<2",
     "ruff>=0.15.15",
     "snektest>=0.16.0",
     "ty==0.0.77",

@@ -13,6 +13,7 @@ import anyio
 from anyio.lowlevel import checkpoint
 
 from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
+from snekql._observation import Telemetry
 from snekql._pool_gate import FairAdmissionGate
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
@@ -40,6 +41,7 @@ from snekql.mariadb.schema import verify_mariadb_schema
 from snekql.mariadb.settings import configure_mariadb_connection
 from snekql.model import Table
 from snekql.storage import SchemaPolicy
+from snekql.telemetry import PoolStats
 from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
@@ -312,6 +314,7 @@ class MariaDBConnectionPool:
             capacity=pool_size,
             check_accepting_work=self.check_accepting_work,
             log_label="mariadb",
+            backend="mariadb",
         )
 
     def check_accepting_work(self) -> None:
@@ -327,13 +330,39 @@ class MariaDBConnectionPool:
             raise DatabaseClosingError(msg)
 
     async def acquire(self, acquisition_timeout: NonNegativeFloat) -> object:
-        """Acquire a MariaDB connection within the requested timeout."""
-
+        """Count unsuccessful checkouts without changing pool cleanup ownership."""
         logger.debug(
             "mariadb connection acquisition started (timeout=%s)", acquisition_timeout
         )
         deadline = anyio.current_time() + acquisition_timeout
-        await self.gate.admit(deadline, acquisition_timeout)
+        try:
+            await self.gate.admit(deadline, acquisition_timeout)
+            entered_checkout = False
+            connection: object | None = None
+            try:
+                with self.gate.telemetry.measure("pool_checkout"):
+                    entered_checkout = True
+                    connection = await self._acquire(deadline, acquisition_timeout)
+            except BaseException:
+                if connection is not None:
+                    await self.discard(connection)
+                elif not entered_checkout:
+                    await self.gate.release()
+                raise
+            else:
+                return connection
+        except BaseException as error:
+            if isinstance(error, anyio.get_cancelled_exc_class()):
+                self.gate.acquisition_cancellations += 1
+            else:
+                self.gate.acquisition_failures += 1
+            raise
+
+    async def _acquire(
+        self, deadline: float, acquisition_timeout: NonNegativeFloat
+    ) -> object:
+        """Acquire a MariaDB connection within the requested timeout."""
+
         try:
             connection = await self._checkout(deadline, acquisition_timeout)
         except BaseException:
@@ -404,6 +433,7 @@ class MariaDBConnectionPool:
                             # session-configuration marker for a new server session.
                             await driver_connection.ping(reconnect=False)
                         except BaseException:
+                            self.gate.discarded_connections += 1
                             driver_connection.close()
                             _ = pool.release(connection)
                             raise
@@ -424,6 +454,7 @@ class MariaDBConnectionPool:
         try:
             await configure_mariadb_connection(connection)
         except BaseException:
+            self.gate.discarded_connections += 1
             cast("Any", connection).close()
             release = cast("Any", self.pool).release
             _ = release(connection)
@@ -454,6 +485,7 @@ class MariaDBConnectionPool:
     async def discard(self, connection: object) -> None:
         """Physically close a connection whose lock ownership is uncertain."""
 
+        self.gate.discarded_connections += 1
         with anyio.CancelScope(shield=True):
             cast("Any", connection).close()
             release = cast("Any", self.pool).release
@@ -571,6 +603,18 @@ class MariaDBRuntime:
             code=code,
             sqlstate=sqlstate if isinstance(sqlstate, str) else None,
             constraint=constraint if isinstance(constraint, str) else None,
+        )
+
+    @property
+    def telemetry(self) -> Telemetry:
+        """Share one observer dispatcher across pool and runtime operations."""
+        return self.connection_pool.gate.telemetry
+
+    def pool_stats(self) -> PoolStats:
+        """Expose capacity accounting without exposing the backend driver pool."""
+        pool = self.connection_pool
+        return pool.gate.snapshot(
+            state="closed" if pool.closed else "closing" if pool.closing else "open"
         )
 
     async def acquire(

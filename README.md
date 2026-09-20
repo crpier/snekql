@@ -1153,6 +1153,7 @@ inspection. Its string form and normal query logs render
 - [Reporting recipes](docs/reporting.md)
 - [Query composition design](docs/query-composition-design.md)
 - [Error handling guide](docs/error-handling.md)
+- [Runtime telemetry](docs/telemetry.md)
 - [MariaDB integration PRD](https://github.com/crpier/snekql/issues/34)
 
 Runnable examples live in `examples/`:

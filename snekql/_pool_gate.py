@@ -19,10 +19,13 @@ from __future__ import annotations
 import logging
 from collections import deque
 from collections.abc import Callable
+from typing import Literal
 
 import anyio
 
+from snekql._observation import Telemetry
 from snekql.errors import PoolTimeoutError
+from snekql.telemetry import PoolStats
 from snekql.validation import NonNegativeFloat, PositiveInt
 
 logger = logging.getLogger(__name__)
@@ -47,7 +50,12 @@ class FairAdmissionGate:
         capacity: PositiveInt,
         check_accepting_work: Callable[[], None],
         log_label: str,
+        backend: Literal["sqlite", "mariadb"] = "sqlite",
     ) -> None:
+        self.acquisition_cancellations: int = 0
+        self.acquisition_failures: int = 0
+        self.discarded_connections: int = 0
+        self.telemetry: Telemetry = Telemetry(backend)
         self.admitted: int = 0
         self.capacity: PositiveInt = capacity
         self.condition: anyio.Condition = anyio.Condition()
@@ -59,7 +67,37 @@ class FairAdmissionGate:
         self._waiters: deque[int] = deque()
         self._next_ticket: int = 0
 
+    def snapshot(self, *, state: Literal["open", "closing", "closed"]) -> PoolStats:
+        """Read admission state without yielding or reserving another slot."""
+        return PoolStats(
+            acquisition_cancellations=self.acquisition_cancellations,
+            acquisition_failures=self.acquisition_failures,
+            capacity=self.capacity,
+            discarded_connections=self.discarded_connections,
+            state=state,
+            observer_failures=self.telemetry.failures,
+            occupied=self.admitted,
+            waiters=len(self._waiters),
+        )
+
     async def admit(
+        self,
+        deadline: float,
+        acquisition_timeout: NonNegativeFloat,
+        /,
+    ) -> None:
+        """Observe admission while retaining ownership until callbacks return."""
+        admitted = False
+        try:
+            with self.telemetry.measure("pool_wait"):
+                await self._admit(deadline, acquisition_timeout)
+                admitted = True
+        except BaseException:
+            if admitted:
+                await self.release()
+            raise
+
+    async def _admit(
         self,
         deadline: float,
         acquisition_timeout: NonNegativeFloat,
