@@ -7,7 +7,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, assert_type
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, assert_type
 from zoneinfo import ZoneInfo
 
 from snekql import mariadb, sqlite
@@ -289,6 +289,14 @@ if TYPE_CHECKING:
 
         text_default: mariadb.Col[int] = mariadb.Text(default="nan")  # ty: ignore[invalid-assignment]
         factory_default: mariadb.Col[int] = mariadb.Uuid(default_factory=lambda: "nan")  # ty: ignore[invalid-assignment]
+        long_text_default: mariadb.Col[int] = mariadb.LongText(default="nan")  # ty: ignore[invalid-assignment]
+        long_text_factory: mariadb.Col[int] = mariadb.LongText(
+            default_factory=lambda: "nan"
+        )  # ty: ignore[invalid-assignment]
+        conflicting_long_text: mariadb.Col[str] = mariadb.LongText(  # ty: ignore[no-matching-overload]
+            default="value",
+            default_factory=str,
+        )
 
     _ = User()  # ty: ignore[missing-argument]
     _ = MariadbUser(email="alice@example.com")  # ty: ignore[missing-argument]
@@ -1214,6 +1222,85 @@ if TYPE_CHECKING:
             list[tuple[int, str]],
         )
 
+    class SizedText[S = mariadb.Pending](
+        mariadb.Model[S, "SizedText[mariadb.Fetched]"]
+    ):
+        value: mariadb.Col[str] = mariadb.Text(
+            collation="utf8mb4_unicode_ci", length=80
+        )
+        optional: mariadb.Col[str | None] = mariadb.Text(
+            collation="utf8mb4_unicode_ci", length=80, default=None
+        )
+        literal: mariadb.Col[str] = mariadb.Text(
+            collation="utf8mb4_unicode_ci", length=80, default="value"
+        )
+        factory: mariadb.Col[str] = mariadb.Text(
+            collation="utf8mb4_unicode_ci", length=80, default_factory=str
+        )
+        generated: mariadb.GenCol[str] = mariadb.Text(
+            collation="utf8mb4_unicode_ci",
+            length=80,
+            default=mariadb.PENDING_GENERATION,
+        )
+        timestamp: mariadb.GenCol[str] = mariadb.Text(
+            collation="utf8mb4_unicode_ci", length=80, default=mariadb.CurrentTimestamp
+        )
+
+    _ = assert_type(SizedText(value="text").value, str)
+    _ = assert_type(SizedText(value="text").optional, str | None)
+
+    class LongTextValues[S = mariadb.Pending](
+        mariadb.Model[S, "LongTextValues[mariadb.Fetched]"]
+    ):
+        value: mariadb.Col[str] = mariadb.LongText(collation="utf8mb4_general_ci")
+        optional: mariadb.Col[str | None] = mariadb.LongText(
+            collation="utf8mb4_general_ci", default=None
+        )
+        literal: mariadb.Col[str] = mariadb.LongText(
+            collation="utf8mb4_general_ci", default="value"
+        )
+        factory: mariadb.Col[str] = mariadb.LongText(
+            collation="utf8mb4_general_ci", default_factory=str
+        )
+        generated: mariadb.GenCol[str] = mariadb.LongText(
+            collation="utf8mb4_general_ci", default=mariadb.PENDING_GENERATION
+        )
+        timestamp: mariadb.GenCol[datetime] = mariadb.LongText(
+            collation="utf8mb4_general_ci", default=mariadb.CurrentTimestamp
+        )
+
+    _ = assert_type(LongTextValues(value="text").value, str)
+    _ = assert_type(LongTextValues(value="text").optional, str | None)
+
+    async def check_long_text_results(transaction: mariadb.Transaction) -> None:
+        assert_type(
+            await transaction.fetch_all(mariadb.select(LongTextValues.value).all()),
+            list[str],
+        )
+
+    mariadb.Text(length="80")  # ty: ignore[invalid-argument-type]
+    sqlite.Text(length=80)  # ty: ignore[no-matching-overload]
+
+    class CollatedSQLiteValues[S = sqlite.Pending](
+        sqlite.Model[S, "CollatedSQLiteValues[sqlite.Fetched]"]
+    ):
+        value: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
+        optional: sqlite.Col[str | None] = sqlite.Text(collation="RTRIM", default=None)
+        literal: sqlite.Col[str] = sqlite.Text(collation="NOCASE", default="Alpha")
+        factory: sqlite.Col[str] = sqlite.Text(collation="NOCASE", default_factory=str)
+        generated: sqlite.GenCol[str] = sqlite.Text(
+            collation="NOCASE", default=sqlite.PENDING_GENERATION
+        )
+        timestamp: sqlite.GenCol[datetime] = sqlite.Text(
+            collation="BINARY", default=sqlite.CurrentTimestamp
+        )
+
+    assert_type(CollatedSQLiteValues(value="Alpha").value, str)
+    assert_type(CollatedSQLiteValues(value="Alpha").optional, str | None)
+    sqlite.Text(collation="custom")  # ty: ignore[invalid-argument-type]
+    mariadb.Text(collation="BINARY")  # ty: ignore[invalid-argument-type]
+    mariadb.LongText(collation="custom")  # ty: ignore[invalid-argument-type]
+
     async def check_migration_types(
         database: sqlite.Database | mariadb.Database,
     ) -> None:
@@ -1262,6 +1349,36 @@ if TYPE_CHECKING:
             True,  # ty: ignore[too-many-positional-arguments]
         )
 
+    class ConstraintParent[S = sqlite.Pending](
+        sqlite.Model[S, "ConstraintParent[sqlite.Fetched]"]
+    ):
+        tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+        code: sqlite.Col[str] = sqlite.Text(primary_key=True)
+
+    class ConstraintChild[S = sqlite.Pending](
+        sqlite.Model[S, "ConstraintChild[sqlite.Fetched]"]
+    ):
+        tenant_id: sqlite.Col[int] = sqlite.Integer()
+        code: sqlite.Col[str] = sqlite.Text()
+        __foreign_keys__: ClassVar = [
+            sqlite.ForeignKeyConstraint(
+                tenant_id,
+                code,
+                references=(ConstraintParent.tenant_id, ConstraintParent.code),
+                on_update="CASCADE",
+            )
+        ]
+
+    constraint_child = ConstraintChild(tenant_id=1, code="account")
+    assert_type(constraint_child.tenant_id, int)
+    assert_type(constraint_child.code, str)
+    sqlite.ForeignKeyConstraint(ConstraintChild.tenant_id, references=("id",))  # ty: ignore[invalid-argument-type]
+    sqlite.ForeignKeyConstraint(
+        ConstraintChild.tenant_id,
+        references=(ConstraintParent.tenant_id,),
+        on_delete="SET DEFAULT",  # ty: ignore[invalid-argument-type]
+    )
+
     async def check_schema_verification_types(database: sqlite.Database) -> None:
         """Schema verification exposes backend-neutral immutable value types."""
 
@@ -1271,6 +1388,13 @@ if TYPE_CHECKING:
         )
         _ = assert_type(verification.checked_tables, tuple[str, ...])
         _ = assert_type(verification.issues, tuple[sqlite.SchemaDriftIssue, ...])
+        _ = assert_type(verification.facts, tuple[sqlite.SchemaVerificationFact, ...])
+        fact = verification.facts[0]
+        assert_type(fact.table_name, str)
+        assert_type(fact.object_name, str | None)
+        assert_type(fact.kind, str)
+        assert_type(fact.status, Literal["matched", "drift", "unchecked"])
+        assert_type(fact.detail, str)
         issue = sqlite.SchemaDriftIssue("user", "table is missing")
         _ = assert_type(issue.table_name, str)
         _ = assert_type(issue.detail, str)

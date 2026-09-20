@@ -125,9 +125,9 @@ def foreign_key_constraint_quotes_names_and_appends_actions(
 
     on_delete, on_update = actions
     foreign_key = PlannedForeignKey(
-        column_name=column,
+        column_names=(column,),
         target_table=target_table,
-        target_column=target_column,
+        target_columns=(target_column,),
         on_delete=on_delete,
         on_update=on_update,
     )
@@ -158,9 +158,9 @@ def _planned_models(draw: st.DrawFn) -> PlannedModel:
     )
     foreign_keys = tuple(
         PlannedForeignKey(
-            column_name=draw(_names),
+            column_names=(draw(_names),),
             target_table=draw(_names),
-            target_column=draw(_names),
+            target_columns=(draw(_names),),
             on_delete=draw(_actions),
             on_update=draw(_actions),
         )

@@ -180,6 +180,7 @@ def expected_shape_includes_foreign_keys_when_verified() -> None:
                 ),
             ),
             storage_options=("MYSUFFIX",),
+            checks=(),
         ),
     )
 

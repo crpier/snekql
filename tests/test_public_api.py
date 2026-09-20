@@ -57,12 +57,15 @@ _NEUTRAL_NAMES = frozenset(
         "FailureCategory",
         "FrozenModelError",
         "GenCol",
+        "CheckConstraint",
+        "ForeignKeyConstraint",
         "Index",
         "IsolationLevel",
         "JoinOn",
         "LexicalDatetimeWarning",
         "LexicalDecimalWarning",
         "LexicalDurationWarning",
+        "LiteralDefault",
         "MigrationDeclarationError",
         "MigrationError",
         "MigrationHistoryError",
@@ -92,6 +95,7 @@ _NEUTRAL_NAMES = frozenset(
         "SchemaError",
         "SchemaPolicy",
         "SchemaVerificationError",
+        "SchemaVerificationFact",
         "SchemaVerificationResult",
         "Select",
         "SnekqlError",
@@ -139,7 +143,16 @@ _DIALECT_NAMES = frozenset(
 # native column types (``Boolean``/``DateTime``/``Json``/``Uuid``) and the JSON
 # column attribute type.
 _MARIADB_ONLY_NAMES = frozenset(
-    {"Boolean", "DateTime", "Decimal", "Json", "JsonCol", "TLSConfig", "Uuid"},
+    {
+        "Boolean",
+        "DateTime",
+        "Decimal",
+        "Json",
+        "JsonCol",
+        "LongText",
+        "TLSConfig",
+        "Uuid",
+    },
 )
 _SQLITE_EXPECTED = _NEUTRAL_NAMES | _WRITE_VERB_NAMES | _DIALECT_NAMES
 _MARIADB_EXPECTED = _SQLITE_EXPECTED | _MARIADB_ONLY_NAMES
@@ -436,6 +449,8 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.ExecutionError,
         sqlite.Fetched,
         sqlite.FrozenModelError,
+        sqlite.CheckConstraint,
+        sqlite.ForeignKeyConstraint,
         sqlite.Index,
         sqlite.Integer,
         sqlite.MigrationError,
@@ -461,6 +476,7 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.SchemaDriftIssue,
         sqlite.SchemaError,
         sqlite.SchemaVerificationError,
+        sqlite.SchemaVerificationFact,
         sqlite.SchemaVerificationResult,
         sqlite.SnekqlError,
         sqlite.Text,
@@ -552,6 +568,7 @@ def schema_verification_values_are_backend_neutral() -> None:
 
     assert_is(sqlite.SchemaDriftIssue, mariadb.SchemaDriftIssue)
     assert_is(sqlite.SchemaVerificationResult, mariadb.SchemaVerificationResult)
+    assert_is(sqlite.SchemaVerificationFact, mariadb.SchemaVerificationFact)
 
 
 @test()

@@ -12,10 +12,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from snekql._check_catalog import CheckShape
+from snekql._checks import render_check
 from snekql._schema_shape import (
     ForeignKeyShape,
     TableShape,
 )
+from snekql.model import require_model_backend
 
 if TYPE_CHECKING:
     from snekql._schema_dialect import SchemaDialect
@@ -36,9 +39,9 @@ def compile_foreign_key_constraint(
 
     quote = dialect.quote_identifier
     constraint = (
-        f"FOREIGN KEY ({quote(foreign_key.column_name)}) "
+        f"FOREIGN KEY ({', '.join(quote(name) for name in foreign_key.column_names)}) "
         f"REFERENCES {quote(foreign_key.target_table)} "
-        f"({quote(foreign_key.target_column)})"
+        f"({', '.join(quote(name) for name in foreign_key.target_columns)})"
     )
     if foreign_key.on_delete is not None:
         constraint += f" ON DELETE {foreign_key.on_delete}"
@@ -71,6 +74,10 @@ def compile_create_table_sql(
         compile_foreign_key_constraint(foreign_key, dialect)
         for foreign_key in planned_model.foreign_keys
     )
+    definitions.extend(
+        f"CONSTRAINT {dialect.quote_identifier(check.name)} CHECK ({render_check(check.expression, dialect.quote_identifier, require_model_backend(planned_model.model))})"
+        for check in planned_model.checks
+    )
     table_body = ", ".join(definitions)
     return (
         f"CREATE TABLE {dialect.quote_identifier(planned_model.table_name)} "
@@ -87,10 +94,19 @@ def compile_create_index_sql(
 
     quote = dialect.quote_identifier
     unique_sql = "UNIQUE " if index.unique else ""
-    column_sql = ", ".join(quote(column_name) for column_name in index.column_names)
+    prefixes = index.prefix_lengths or (None,) * len(index.column_names)
+    column_sql = ", ".join(
+        quote(column_name) + (f"({prefix})" if prefix is not None else "")
+        for column_name, prefix in zip(index.column_names, prefixes, strict=True)
+    )
+    predicate_sql = (
+        ""
+        if index.where is None
+        else " WHERE " + render_check(index.where, quote, "sqlite")
+    )
     return (
         f"CREATE {unique_sql}INDEX {quote(index.name)} "
-        f"ON {quote(table_name)} ({column_sql})"
+        f"ON {quote(table_name)} ({column_sql}){predicate_sql}"
     )
 
 
@@ -109,13 +125,18 @@ def expected_table_shape(
     if dialect.verifies_foreign_keys:
         foreign_keys = tuple(
             ForeignKeyShape(
-                column_name=foreign_key.column_name,
+                constraint_id=str(constraint_id),
+                position=position,
+                column_name=column_name,
                 target_table=foreign_key.target_table,
-                target_column=foreign_key.target_column,
+                target_column=target_column,
                 on_delete=dialect.normalize_foreign_key_action(foreign_key.on_delete),
                 on_update=dialect.normalize_foreign_key_action(foreign_key.on_update),
             )
-            for foreign_key in planned_model.foreign_keys
+            for constraint_id, foreign_key in enumerate(planned_model.foreign_keys)
+            for position, (column_name, target_column) in enumerate(
+                zip(foreign_key.column_names, foreign_key.target_columns, strict=True)
+            )
         )
     return TableShape(
         table_name=planned_model.table_name,
@@ -128,4 +149,7 @@ def expected_table_shape(
         ),
         foreign_keys=foreign_keys,
         storage_options=(dialect.table_suffix,),
+        checks=tuple(
+            CheckShape(check.name, check.expression) for check in planned_model.checks
+        ),
     )

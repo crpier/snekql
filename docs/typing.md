@@ -491,9 +491,309 @@ owner_email: FKCol[User, str] = ForeignKey(User.email)  # references user(email)
 ref_code: FKCol[Region, str] = Text()  # typed-only soft reference
 ```
 
-The target column may be any primary key or `unique=True` column. A typed-only
+The target must be a single-column primary key or independently unique column.
+Membership in a composite primary key alone is insufficient. A typed-only
 reference (an `FKCol` annotation with a plain storage specifier) keeps the
 relationship available for joins without enforcing referential integrity.
+
+### Table-level foreign-key constraints
+
+Use `ForeignKeyConstraint` for ordered composite relationships. It is available
+from both backend namespaces and does not change column construction or joins.
+
+```python
+from typing import ClassVar
+from snekql import sqlite
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+
+class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    tenant_id: sqlite.Col[int] = sqlite.Integer()
+    account_id: sqlite.Col[int] = sqlite.Integer()
+    __foreign_keys__: ClassVar = [
+        sqlite.ForeignKeyConstraint(
+            tenant_id,
+            account_id,
+            references=(Account.tenant_id, Account.account_id),
+            on_delete="CASCADE",
+        ),
+    ]
+```
+
+The declaration emits one `FOREIGN KEY (tenant_id, account_id) REFERENCES account
+(tenant_id, account_id)`. Two separate scalar constraints are not equivalent:
+they could allow values taken from different parent rows.
+
+- `__foreign_keys__` is a list, snapshotted when the model is created. Each
+  declaration is frozen. Overlapping and repeated constraints remain separate.
+- Local columns belong to the declaring model. Targets belong to one table on
+  the same backend. Within a self-referencing model, use its class-body column
+  descriptors in `references`.
+- Tuples are nonempty and equally sized, with no repeated member within either
+  tuple. One-column constraints are allowed too.
+- Targets must match a complete declared primary key or unique index in order.
+  A prefix of a composite key is insufficient. A single-column `unique=True`
+  target also qualifies.
+- Storage matching is conservative: corresponding columns must use the same
+  storage declaration, VARCHAR capacity, collation, and DECIMAL precision/scale.
+  No storage is copied, coerced, or silently changed. Some combinations accepted
+  by a backend are therefore rejected by the declaration interface.
+- `on_delete` and `on_update` accept the same actions as scalar `ForeignKey`.
+  `SET NULL` requires every local member nullable and outside the primary key.
+  With default backend semantics, any NULL member bypasses the relationship
+  check; this does not require the other members to be NULL.
+
+Arity, ownership, storage, and candidate-key mistakes raise
+`ModelDeclarationError` before database access. Backend row-size, index-key,
+and engine limits still apply. Referenced tables and their unique indexes must
+exist before creating the referencing table; order scaffold inputs accordingly.
+
+Columns remain ordinary `Col` values. No `FKCol` annotation, automatic join,
+relationship loading, or automatic migration is introduced. Scalar
+`ForeignKey(Target.column)` keeps its storage-deriving behavior.
+
+Scaffolding emits the declared constraints. Verification compares catalog
+constraint groups, ordered pairs, multiplicity, and actions. Split or reordered
+groups now cause drift even when their flattened pairs match. Referenced models
+are not automatically added to the verification request. Primary-key ordering,
+constraint names, MATCH, deferral, and cross-catalog target identity retain their
+separate verification limits.
+
+There are no constraint-name, MATCH, or deferral declaration options yet.
+
+### SQLite partial indexes
+
+`where=` limits an index to rows where its predicate is true. Use a synchronous
+`__indexes__` classmethod to build predicates from bound columns:
+
+```python
+from typing import Self
+from snekql import sqlite
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    email: sqlite.Col[str] = sqlite.Text()
+    active: sqlite.Col[bool | None] = sqlite.Integer()
+
+    @classmethod
+    def __indexes__(cls) -> list[sqlite.Index[Self]]:
+        return [
+            sqlite.Index(
+                cls.email,
+                unique=True,
+                where=cls.active.eq(True),
+                name="ux_active_email",
+            ),
+        ]
+```
+
+The factory runs once during class creation, after column metadata is bound and
+frozen. Its returned list becomes an immutable schema snapshot. Existing
+`__indexes__` lists remain supported; a factory can return ordinary and partial
+indexes together. Async factories, async generators, and non-list results are
+rejected. Use `Self` in the return annotation to preserve exact column ownership.
+Alternatively, annotate `cls: type[Account[S]]` explicitly when returning
+`list[sqlite.Index[Account[S]]]`.
+
+Predicates use the bounded CHECK grammar: local Integer/Boolean/ordinary Text
+comparisons, column comparisons, NULL tests, IN/NOT IN, BETWEEN, and AND/OR/NOT.
+Predicate columns need not be index members. Raw SQL, arithmetic, functions,
+subqueries, foreign owners, encoded JSON, and other storage domains are excluded.
+Literals use column codecs and safe DDL quoting. MariaDB rejects `where=`.
+
+Unlike CHECK, a partial-index predicate excludes both false and NULL results.
+`unique=True` constrains only indexed rows. Inserts and updates can therefore
+fail when they bring a duplicate into the subset. Native NULL and collation
+semantics still apply; there is no Python-side uniqueness check.
+
+A partial unique index never authorizes a foreign-key target. An independent
+full key still can. Different named predicates and full indexes may share the
+same indexed columns; duplicate declared member/predicate combinations remain
+rejected. Supply distinct names to avoid generated-name collisions.
+
+Verification reads the stored CREATE INDEX statement and compares recognized
+predicate structure. Known changes drift; unsupported or unavailable predicates
+remain unchecked. It does not prove arbitrary expression equivalence or predict
+whether SQLite's optimizer will use the index. The existing column-only
+`on_conflict(...)` interface cannot target a partial-only unique index because it
+does not declare an ON CONFLICT target predicate. No upsert extension is included.
+
+### MariaDB prefix indexes
+
+Use `prefix_lengths` to index leading characters of ordinary text columns:
+
+```python
+from typing import ClassVar
+from snekql import mariadb
+
+
+class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    tenant_id: mariadb.Col[int] = mariadb.Integer()
+    body: mariadb.Col[str] = mariadb.LongText()
+    __indexes__: ClassVar = [
+        mariadb.Index(
+            tenant_id,
+            body,
+            prefix_lengths=(None, 128),
+            name="ix_document_body",
+        ),
+    ]
+```
+
+The tuple has one entry per column, in order. `None` means the whole column;
+a positive exact integer means that many characters, not UTF-8 bytes. Prefixes
+require Text or LongText with a logical `str`, optionally nullable or Annotated.
+Encoded JSON and other logical domains are excluded. LongText requires an explicit
+prefix; it still cannot be a primary key or foreign-key target.
+
+SQLite rejects `prefix_lengths` tuples, including all-None tuples. Omitting the
+option preserves ordinary index declarations. Booleans, nonpositive lengths,
+wrong tuple lengths, and prefixes exceeding VARCHAR capacity fail before IO.
+Counts exceeding LONGTEXT's absolute capacity also fail. Server byte limits for
+index keys still apply, especially for compound indexes. An accepted declaration
+does not promise that MariaDB can create the index as requested.
+
+`unique=True` enforces uniqueness of the indexed prefixes, subject to native
+collation and NULL behavior. Different complete values can collide. Indexing a
+prefix does not truncate stored values or change the column's codec limits.
+
+Full and differently prefixed indexes may share columns when their names differ.
+Duplicate declared member/prefix combinations remain rejected. Use explicit
+names to avoid generated-name collisions. Declarations and bound index metadata
+are immutable snapshots.
+
+Any explicit prefix excludes an index from foreign-key candidate-key validation.
+An independent full primary key or unique index can still authorize the target.
+Catalog indexes with actual prefixes are not hidden as inferred FK-supporting
+indexes. Normalized full-column catalog entries can still qualify for that
+existing filtering rule.
+
+MariaDB normalizes a VARCHAR prefix equal to its capacity into a full-column
+catalog entry. Verification recognizes this equivalence while keeping the
+original declaration for scaffold and conservative FK validation. Other changed
+prefix lengths, order, uniqueness, or missing indexes remain drift. Verification
+does not certify the original spelling of equivalent DDL.
+
+This adds no expression indexes, custom index methods, sort direction, or
+index-level collation. SQLite partial indexes use `where=` as described above.
+
+### Literal server defaults
+
+Pass `LiteralDefault(value)` through `default=` to declare a SQL DEFAULT rather
+than a Python construction default. Both backend namespaces export the marker.
+
+```python
+from snekql import sqlite
+
+
+class Job[S = sqlite.Pending](sqlite.Model[S, "Job[sqlite.Fetched]"]):
+    attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(0))
+    status: sqlite.GenCol[str] = sqlite.Text(
+        default=sqlite.LiteralDefault("pending"),
+    )
+```
+
+`Job()` holds `PENDING_GENERATION` for these fields. INSERT omits them and the
+database fills them. Fetch the row to obtain the generated values. Explicit
+values override the default; explicit `None` inserts SQL NULL on nullable columns,
+not the default. `default=0` remains a Python default and emits no SQL DEFAULT.
+`CurrentTimestamp` keeps its existing behavior.
+
+The marker is frozen. Its supported values are exact Python `int`, `bool`, `str`,
+and `None`. Non-NULL values must match the column's logical type. The supported
+storage families are Integer, Boolean, Text, and MariaDB LongText. Logical integer
+and Boolean values use Integer or Boolean storage; logical strings use Text or
+LongText. SQLite Boolean values use Integer storage. NULL defaults require nullable non-primary-key columns
+in those families. Encoded JSON, temporal, Decimal, Real, and binary defaults are
+not included. There is no raw SQL or additional server-function interface.
+
+The model declaration validates values through the column's normal logical
+validation and codec, then snapshots their encoded values. Invalid values,
+integer overflow, invalid Unicode, and text exceeding a declared VARCHAR length
+fail before IO. A server default requires `GenCol` and cannot combine with
+`default_factory` or auto-increment. `LiteralDefault` is not an UPDATE assignment
+marker. For generated foreign-key members, use ordinary `GenCol` declarations
+plus table-level `ForeignKeyConstraint` declarations, not a new generated FK alias.
+
+Scaffold emits safely quoted literals. MariaDB text uses an explicit UTF-8 hex
+conversion, independent of backslash SQL modes. Apply the DDL through a reviewed
+migration; declaring a default does not backfill existing rows.
+
+Verification compares supported encoded literal values, preserving literal types.
+It accepts cosmetic parentheses and supported integer spellings, but does not
+infer SQL affinity coercions or evaluate expressions. Unsupported catalog
+expressions remain unchecked. MariaDB cannot distinguish implicit NULL from an
+explicit DEFAULT NULL clause; verification reports that limitation separately.
+
+### Named CHECK constraints
+
+Declare CHECKs in a synchronous `__checks__` classmethod. snekql calls it once,
+after binding and freezing the table's columns. Keep it pure and deterministic;
+it runs during class creation, often at import time. Returning a list directly
+in the class body is not supported because `ty` treats those field variables as
+dataclass fields rather than bound column descriptors.
+
+```python
+from snekql import sqlite
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    balance: sqlite.Col[int] = sqlite.Integer()
+    ceiling: sqlite.Col[int] = sqlite.Integer()
+
+    @classmethod
+    def __checks__(cls) -> list[sqlite.CheckConstraint[Account[S]]]:
+        return [
+            sqlite.CheckConstraint(
+                cls.balance.gte(0) & cls.balance.lte_col(cls.ceiling),
+                name="ck_account_balance",
+            ),
+        ]
+```
+
+MariaDB uses the same interface. `CheckConstraint` is frozen, and snekql snapshots
+the returned list into immutable schema expressions. Scaffold and verification
+do not rerun the method.
+
+Supported operands are local integer, Boolean, and ordinary Text columns with
+matching Python logical types. Integer-backed Boolean values are supported too.
+JSON-encoded values, Real, Decimal, LongText, temporal values, and other encoded
+domains are excluded initially. Corresponding columns in column comparisons
+must have matching logical types, storage types, and collations.
+
+Supported predicates:
+
+- `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, and their `_col` forms;
+- `is_null`, `is_not_null`;
+- `in_(first, second, ...)`, `not_in(...)`, and `between(low, high)`;
+- `&`, `|`, and `~` for AND, OR, and NOT.
+
+Names are required SQL identifiers, unique within the table. Literals must have
+the operand's logical type and fit its wire codec. snekql encodes and quotes DDL
+literals directly, never by replacing placeholders in query SQL. MariaDB text
+literals use explicit UTF-8 hex conversion to avoid SQL-mode-dependent escaping.
+There is no raw SQL, arithmetic, function, aggregate, subquery, or cross-table
+CHECK interface.
+
+Declaration validation raises `ModelDeclarationError` before database access.
+Predicate construction retains its normal query-construction errors. Backend
+identifier and storage limits still apply. Async declaration methods are rejected.
+
+CHECK enforcement belongs to the database, not the Python model constructor.
+A CHECK rejects false, but **SQL NULL passes**. Use nonnullable columns or include
+`is_not_null()` when NULL must fail. Text comparisons follow backend collation
+rules; snekql does not normalize values in Python.
+
+Apply scaffold output through an explicit migration. Verification checks declared
+names and recognized expression structure. Missing declared names and changed
+supported expressions are drift. Unrecognized expressions, ambiguous duplicate
+names, and unmanaged checks remain unchecked. Unchecked facts alone neither warn
+nor fail strict verification. Existing data and enforcement settings are not
+certified; see [schema drift](schema-drift.md#check-verification).
 
 ### Nullable foreign keys
 
@@ -605,6 +905,85 @@ typed `... | None` and decodes a no-match to `None` rather than raising, even ov
 a `NOT NULL` inner column. A projection must start with a real column, aggregate,
 or dialect expression to establish its `FROM` scope; scalar subqueries may appear
 only in later slots.
+
+## MariaDB text capacity
+
+```python
+from snekql import mariadb
+
+
+class Article[S = mariadb.Pending](mariadb.Model[S, "Article[mariadb.Fetched]"]):
+    title: mariadb.Col[str] = mariadb.Text(length=200)
+    summary: mariadb.Col[str | None] = mariadb.Text(length=2000, default=None)
+```
+
+`mariadb.Text(length=...)` declares VARCHAR character capacity. The default is
+255; valid lengths are exact integers from 1 to 16,383. Boolean, floating-point,
+and string arguments are not coerced. The character set remains `utf8mb4`;
+collation defaults to `utf8mb4_bin`. Server row and index limits still apply.
+
+This changes scaffolding and the expected catalog shape, not an existing table.
+Write and apply a migration to change deployed storage. `ForeignKey(Target.col)`
+inherits a text target's length. Python defaults and factories retain their
+existing meaning, and this option does not truncate values or add Python
+max-length validation. Strict-mode server writes reject over-capacity values.
+SQLite `Text()` has no equivalent `length` keyword.
+
+### MariaDB native long text
+
+```python
+class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    body: mariadb.Col[str] = mariadb.LongText()
+    note: mariadb.Col[str | None] = mariadb.LongText(default=None)
+```
+
+`LongText()` uses native LONGTEXT, defaulting to utf8mb4_bin, with ordinary Text
+codecs, including LIKE predicates and lexical-order safety checks. Python
+defaults and factories work as with `Text()`. Values beyond VARCHAR capacity are
+not truncated; server packet and storage limits still apply.
+
+There is no `length`, `primary_key`, `unique`, or `index` argument. Table-level
+indexes containing LongText require an explicit [character prefix](#mariadb-prefix-indexes).
+Physical foreign keys targeting LongText remain rejected. SQLite has no LongText
+constructor; its `Text()` already uses TEXT.
+
+
+### Column collations
+
+```python
+sqlite.Text(collation="NOCASE")
+mariadb.Text(length=255, collation="utf8mb4_unicode_ci")
+mariadb.LongText(collation="utf8mb4_general_ci")
+```
+
+Accepted names are exact and case-sensitive at declaration:
+
+| Declaration | Choices | Default |
+| --- | --- | --- |
+| SQLite Text | `BINARY`, `NOCASE`, `RTRIM` | `BINARY` |
+| MariaDB Text and LongText | `utf8mb4_bin`, `utf8mb4_general_ci`, `utf8mb4_unicode_ci` | `utf8mb4_bin` |
+
+Other names and non-string values raise `ModelDeclarationError`. Arbitrary
+collations, character-set changes, and expression/index-level COLLATE declarations
+are not supported. `Json()` is unchanged. Physical `ForeignKey` columns inherit
+the target's collation. LongText supports explicit prefix indexes, but not primary
+keys or foreign-key targets.
+
+The database applies collation during comparisons and uniqueness checks. Python
+values are not case-folded, trimmed, or otherwise normalized. SQLite `NOCASE`
+folds ASCII letters only. `RTRIM` ignores trailing ASCII spaces, not tabs.
+MariaDB's supported `_ci` collations are case- and accent-insensitive. MariaDB
+`utf8mb4_bin` is case-sensitive but ignores trailing spaces in equality, unlike
+SQLite `BINARY`. Do not assume cross-backend comparison equivalence. SQLite LIKE
+has separate behavior and does not follow a column's collating function.
+Comparisons between differently collated columns use backend coercion rules and
+can fail; snekql does not insert an implicit COLLATE expression.
+
+Changing the declaration changes scaffolding and verification expectations, not
+live schema. Review existing values for newly equivalent keys, review affected
+indexes and foreign keys, and apply an explicit migration. Verification checks
+column collations, not arbitrary index/expression overrides or complete semantic
+compatibility.
 
 ## Backend namespaces
 

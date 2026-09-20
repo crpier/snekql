@@ -17,7 +17,13 @@ from __future__ import annotations
 from snekql._compiled import CompiledQuery
 from snekql._explain import ExplainResult
 from snekql._migrations import MigrationResult, MigrationStatus
-from snekql._schema_verification import SchemaDriftIssue, SchemaVerificationResult
+from snekql._schema_verification import (
+    SchemaDriftIssue,
+    SchemaVerificationFact,
+    SchemaVerificationResult,
+)
+from snekql.constraints import CheckConstraint, ForeignKeyConstraint
+from snekql.defaults import LiteralDefault
 from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
@@ -111,6 +117,7 @@ __all__ = [
     "Assignment",
     "Canonical",
     "CanonicalDecimal",
+    "CheckConstraint",
     "ChunkStream",
     "Col",
     "ColumnRef",
@@ -131,6 +138,7 @@ __all__ = [
     "FKCol",
     "FailureCategory",
     "Fetched",
+    "ForeignKeyConstraint",
     "FrozenModelError",
     "GenCol",
     "Index",
@@ -139,6 +147,7 @@ __all__ = [
     "LexicalDatetimeWarning",
     "LexicalDecimalWarning",
     "LexicalDurationWarning",
+    "LiteralDefault",
     "MigrationDeclarationError",
     "MigrationError",
     "MigrationHistoryError",
@@ -168,6 +177,7 @@ __all__ = [
     "SchemaError",
     "SchemaPolicy",
     "SchemaVerificationError",
+    "SchemaVerificationFact",
     "SchemaVerificationResult",
     "Select",
     "SnekqlError",

@@ -6,6 +6,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, cast, get_args, get_origin
 
+from snekql._checks import BoundCheck
+from snekql.constraints import ForeignKeyConstraint
 from snekql.errors import ModelDeclarationError, SchemaError
 from snekql.indexes import NormalizedIndex
 from snekql.model import Table, require_model_columns, require_model_table_name
@@ -29,21 +31,15 @@ class PlannedColumn:
 
 @dataclass(frozen=True)
 class PlannedForeignKey:
-    """One enforced foreign-key relationship resolved for schema startup.
+    """One enforced relationship with ordered local and target column tuples.
 
-    The local ``column_name`` references ``target_column`` on ``target_table``;
-    the target column is the one named explicitly by ``ForeignKey(Target.col)``,
-    and the target model is cross-checked against the column's ``FKCol[Target, T]``
-    annotation.
-
-    ``on_delete``/``on_update`` carry the optional referential action verbatim
-    (``"CASCADE"``, ``"SET NULL"``, ...); ``None`` means no action clause is
-    rendered, leaving the database default (``NO ACTION``).
+    Scalar column declarations and table-level constraints share this plan.
+    Actions retain their declared spelling; None leaves the backend default.
     """
 
-    column_name: str
+    column_names: tuple[str, ...]
     target_table: str
-    target_column: str
+    target_columns: tuple[str, ...]
     on_delete: str | None = None
     on_update: str | None = None
 
@@ -57,6 +53,7 @@ class PlannedModel:
     indexes: tuple[NormalizedIndex, ...]
     model: type[Table[Any]]
     table_name: str
+    checks: tuple[BoundCheck, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -160,7 +157,10 @@ def _resolve_target_column(
         "tuple[NormalizedIndex, ...]", getattr(target_model, "__snekql_indexes__", ())
     )
     singleton_unique_index = any(
-        index.unique and index.column_names == (target_column_name,)
+        index.unique
+        and index.column_names == (target_column_name,)
+        and not any(index.prefix_lengths or ())
+        and index.where is None
         for index in indexes
     )
     if not (singleton_primary_key or target_column.unique or singleton_unique_index):
@@ -208,16 +208,39 @@ def _plan_foreign_keys(
         target_model = _resolve_target_model(model, planned_column.name)
         foreign_keys.append(
             PlannedForeignKey(
-                column_name=planned_column.name,
+                column_names=(planned_column.name,),
                 target_table=require_model_table_name(target_model),
-                target_column=_resolve_target_column(
-                    target_model,
-                    planned_column.name,
-                    target_column,
+                target_columns=(
+                    _resolve_target_column(
+                        target_model,
+                        planned_column.name,
+                        target_column,
+                    ),
                 ),
                 on_delete=planned_column.column.on_delete,
                 on_update=planned_column.column.on_update,
             ),
+        )
+    declarations: tuple[ForeignKeyConstraint[Any, Any], ...] = getattr(
+        model, "__snekql_foreign_keys__", ()
+    )
+    # Model binding validated ownership and assigned every descriptor a name.
+    for constraint in declarations:
+        target_model = constraint.references[0].owner
+        foreign_keys.append(
+            PlannedForeignKey(
+                column_names=tuple(
+                    cast("str", column.name) for column in constraint.columns
+                ),
+                target_table=require_model_table_name(
+                    cast("type[Table[Any]]", target_model)
+                ),
+                target_columns=tuple(
+                    cast("str", column.name) for column in constraint.references
+                ),
+                on_delete=constraint.on_delete,
+                on_update=constraint.on_update,
+            )
         )
     return tuple(foreign_keys)
 
@@ -266,6 +289,7 @@ def _plan_model(model: type[Table[Any]]) -> PlannedModel:
     columns = _plan_columns(model)
     return PlannedModel(
         columns=columns,
+        checks=getattr(model, "__snekql_checks__", ()),
         foreign_keys=_plan_foreign_keys(model, columns),
         indexes=_model_indexes(model, table_name, columns),
         model=model,

@@ -158,10 +158,8 @@ async def verify_returns_an_immutable_checked_table_result() -> None:
         finally:
             await database.close()
 
-    assert_eq(
-        result,
-        SchemaVerificationResult(checked_tables=("user",), issues=()),
-    )
+    assert_eq(result.checked_tables, ("user",))
+    assert_eq(result.issues, ())
     with assert_raises(FrozenInstanceError):
         cast("Any", result).checked_tables = ()
 
@@ -286,7 +284,8 @@ async def strict_verify_reports_drift_across_every_requested_table() -> None:
             ),
         ),
     )
-    assert_eq(raised.exception.result, expected_result)
+    assert_eq(raised.exception.result.checked_tables, expected_result.checked_tables)
+    assert_eq(raised.exception.result.issues, expected_result.issues)
     assert_true("'user'" in str(raised.exception))
     assert_true("'team'" in str(raised.exception))
 

@@ -43,6 +43,7 @@ from pydantic import (
 from pydantic_core import PydanticSerializationError, core_schema
 
 from snekql._value_expression import ExpressionMethods, ValueExpression
+from snekql.defaults import LiteralDefault
 from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
@@ -152,7 +153,10 @@ def _text_column_logical(column: Attr[Any, Any, Any, Any, Any]) -> object | None
     information here.
     """
 
-    if column.storage_class != "TEXT" or column.storage_type_name != "Text":
+    if column.storage_class != "TEXT" or column.storage_type_name not in {
+        "Text",
+        "LongText",
+    }:
         return None
     owner = column.owner
     name = column.name
@@ -502,7 +506,7 @@ def Integer[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -603,7 +607,7 @@ def Real[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -679,6 +683,7 @@ def Real(  # noqa: N802, PLR0913
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -690,17 +695,19 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -712,6 +719,7 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -723,6 +731,7 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -734,6 +743,7 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -743,6 +753,7 @@ def Text[T](
 
 def Text(  # noqa: N802, PLR0913
     *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -755,10 +766,14 @@ def Text(  # noqa: N802, PLR0913
     The Python value type is the annotation: ``Text()`` may hold a ``str``, a
     ``datetime`` (ISO text), a ``uuid.UUID`` (its string form), or a
     ``pydantic.Json[T]`` payload (serialized JSON text).
+    `collation` selects BINARY, NOCASE, or RTRIM without normalizing Python values.
 
     >>> class User[S = Pending](Model[S, "User[Fetched]"]):
     ...     email: Col[str] = Text()
     """
+    if type(collation) is not str or collation not in ("BINARY", "NOCASE", "RTRIM"):
+        msg = "SQLite Text collation must be BINARY, NOCASE, or RTRIM"
+        raise ModelDeclarationError(msg)
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
         default_factory=default_factory,
@@ -768,6 +783,7 @@ def Text(  # noqa: N802, PLR0913
         unique=unique,
         storage_class="TEXT",
         storage_type_name="Text",
+        text_collation=collation,
     )
 
 
@@ -789,7 +805,7 @@ def Blob[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -960,7 +976,7 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
 ) -> Any:
     """Foreign-key column declaration that names its target column.
 
-    The single way to declare any foreign key: the target column is passed as a
+    The scalar storage-deriving declaration: the target column is passed as a
     value (`ForeignKey(User.email)`), and the precise `FKAttr[..., T, T, Target]`
     return cross-checks it against the field's `FKCol[Target, T]` annotation at
     declaration time. Storage is *derived* from the target column rather than
@@ -975,6 +991,9 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
     ...     owner_email: FKCol[User, str] = ForeignKey(User.email)
     """
     target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
+    if not target_column.keyable:
+        msg = "target column storage does not support foreign keys"
+        raise ModelDeclarationError(msg)
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
         foreign_key_target=target_column,
@@ -984,6 +1003,8 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
         primary_key=primary_key,
         storage_class=target_column.storage_class,
         storage_type_name=target_column.storage_type_name,
+        text_length=target_column.text_length,
+        text_collation=target_column.text_collation,
         index=index,
         unique=unique,
     )
@@ -1231,8 +1252,11 @@ class Attr[
         default_factory: Callable[[], object] | EllipsisType = ...,
         decimal_precision: int | None = None,
         decimal_scale: int | None = None,
+        text_length: int | None = None,
+        text_collation: str | None = None,
         foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = None,
         index: bool = False,
+        keyable: bool = True,
         nullable: bool | None = None,
         on_delete: ReferentialAction | None = None,
         on_update: ReferentialAction | None = None,
@@ -1249,10 +1273,13 @@ class Attr[
         self.default_factory: Callable[[], object] | EllipsisType = default_factory
         self.decimal_precision: int | None = decimal_precision
         self.decimal_scale: int | None = decimal_scale
+        self.text_length: int | None = text_length
+        self.text_collation: str | None = text_collation
         self.foreign_key_target: Attr[Any, Any, Any, Any, Any] | None = (
             foreign_key_target
         )
         self.index: bool = index
+        self.keyable: bool = keyable
         self.nullable_declared: bool | None = nullable
         self.on_delete: ReferentialAction | None = on_delete
         self.on_update: ReferentialAction | None = on_update
@@ -1743,12 +1770,13 @@ class Attr[
         ):
             msg = f"{self._require_name()!r} integer value exceeds the 64-bit range"
             raise ModelValidationError(msg)
-        # TEXT-family columns (Text) may overflow a backend's variable-width
-        # ceiling; reject before truncation. Uuid/DateTime also encode to text
-        # but are fixed-width, so only the Text family is checked.
+        # Preserve the legacy Text codec ceiling. Explicit larger VARCHAR
+        # capacities and LongText use the server's strict-mode storage checks;
+        # neither is constrained by the old 255-character VARCHAR default.
         if (
             self.storage_type_name == "Text"
             and codec.max_text_chars is not None
+            and (self.text_length is None or self.text_length <= codec.max_text_chars)
             and isinstance(encoded, str)
             and len(encoded) > codec.max_text_chars
         ):
@@ -2248,7 +2276,7 @@ class FKAttr[
 def _finalize_model_columns(
     columns: dict[str, Attr[Any, Any, Any, Any, Any]],
 ) -> None:
-    """Freeze public metadata once every declaration pass has completed."""
+    """Freeze bound column metadata before model declaration callbacks run."""
 
     for column in columns.values():
         object.__setattr__(column, "_snekql_metadata_frozen", True)
@@ -2323,8 +2351,8 @@ _MARIADB_CODEC = _BackendCodec(
     datetime_encode_suffix="",
     decode_datetime=_decode_mariadb_datetime,
     json_accepts_bytes=True,
-    # Text maps to VARCHAR(255) (255 characters) and Blob to BLOB (65535 bytes);
-    # JSON is LONGTEXT-backed and effectively unbounded.
+    # Legacy Text defaults to VARCHAR(255); explicit larger capacities bypass
+    # this ceiling. LongText/JSON have server-enforced limits; Blob is 65535 bytes.
     max_text_chars=255,
     max_blob_bytes=65535,
 )
