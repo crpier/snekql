@@ -48,9 +48,25 @@ jobs:
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
       - name: Test
-        run: uv run snektest
+        run: uv run snektest tests
       - name: Type check
         run: uv run ty check
+      - name: Consumer type-checker assessments
+        run: |
+          mkdir -p typing-compatibility-reports
+          uv run python scripts/check_typing_compatibility.py > typing-compatibility-reports/ty.json
+          uv run python scripts/check_typing_compatibility.py --checker pyright > typing-compatibility-reports/pyright.json
+          set +e
+          uv run python scripts/check_typing_compatibility.py --checker mypy > typing-compatibility-reports/mypy.json
+          status=$?
+          set -e
+          test "$status" -eq 1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: typing-compatibility-reports
+          path: typing-compatibility-reports/*.json
+          retention-days: 14
       - name: Lint
         run: uv run ruff check .
       - name: Format check
@@ -99,7 +115,7 @@ jobs:
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
       - name: Full integration suite on minimum MariaDB
-        run: uv run snektest
+        run: uv run snektest tests
 
   sqlite-environments:
     name: SQLite / ${{ matrix.os }} / ${{ matrix.python-source }}

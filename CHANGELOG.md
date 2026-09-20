@@ -19,6 +19,12 @@
 
 ### Added
 
+- Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
+  mypy 2.3.1 across both backends. ty stays primary; Pyright passes the documented
+  profile, while mypy rejects valid positional projections and left joins.
+  Reports preserve diagnostics and source hashes. Editor limits are explicit.
+  Addresses #299.
+
 - Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
   gates, a documented fault inventory, and an optional bounded Linux resource
   soak. Native late-stream faults verify discard and subsequent recovery. #295.
