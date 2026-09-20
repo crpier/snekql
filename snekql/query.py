@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from snekql._aliases import TableAlias
 from snekql._compiled import CompiledQuery
 from snekql._cte import _Cte, _CteOutput, build_cte
-from snekql._dialect_expr import DialectSelectable
+from snekql._dialect_expr import DialectSelectable, NullExtendedSelectable
 from snekql._named_projection import NamedProjection
 from snekql._output_label import _OutputLabel
 from snekql._query_readiness import (
@@ -69,7 +69,6 @@ from snekql._query_state import (
     selectable_owner_model,
 )
 from snekql._telemetry import ParameterVisibility, format_bound_params
-from snekql._value_expression import ValueExpression
 from snekql.errors import (
     ModelDeclarationError,
     QueryConstructionError,
@@ -424,7 +423,7 @@ def _project_state(
             and require_column_model(selectable) in nullable_models
         )
         if (
-            isinstance(selectable, ValueExpression)
+            isinstance(selectable, NullExtendedSelectable)
             and selectable.__owner_model__() in nullable_models
         ):
             nullable = selectable.__nullable_when_extended__()

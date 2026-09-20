@@ -822,3 +822,93 @@ async def cte_arithmetic_preserves_definition_left_nullability() -> None:
 
     assert_type(result, tuple[int | None, int])
     assert_eq(result, (None, 2))
+
+
+@test(mark="medium")
+async def projected_left_cte_output_decodes_absence_as_null() -> None:
+    """An absent joined reference does not run its original NOT NULL decoder."""
+    database = await load_fixture(provide_cte_people())
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    query = (
+        sqlite.select(Person)
+        .left_join(active, on=Person.id.eq(0))
+        .all()
+        .project(OptionalIdentifier, id=active.column(value))
+    )
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(query)
+
+    assert_eq(result, OptionalIdentifier(id=None))
+
+
+@test(mark="slow")
+async def native_projected_left_cte_preserves_optional_and_streamed_rows() -> None:
+    """A present named NULL row is distinct from no row in every fetch mode."""
+    database = await load_fixture(provide_mariadb_documents())
+
+    class OptionalKey(BaseModel):
+        key: UUID | None
+
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+    query = (
+        mariadb.select(MariaDocument)
+        .left_join(peer, on=MariaDocument.id.eq(UUID(int=0)))
+        .where(MariaDocument.id.eq(UUID(int=1)))
+        .project(OptionalKey, key=peer.column(key))
+    )
+
+    async with database.transaction() as transaction:
+        present = await transaction.fetch_one_or_none(query)
+        absent = await transaction.fetch_one_or_none(
+            query.where(MariaDocument.id.eq(UUID(int=0)))
+        )
+        async with transaction.fetch_chunks(query, size=1) as stream:
+            rows = [row async for chunk in stream for row in chunk]
+
+    assert_type(present, OptionalKey | None)
+    assert_type(rows, list[OptionalKey])
+    assert_eq(present, OptionalKey(key=None))
+    assert_eq(absent, None)
+    assert_eq(rows, [OptionalKey(key=None)])
+
+
+@test(mark="medium")
+async def projected_left_cte_coalesce_keeps_its_nonnull_fallback() -> None:
+    """NULL extension must not erase SQL computation on an absent reference."""
+    database = await load_fixture(provide_cte_people())
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    query = (
+        sqlite.select(Person)
+        .left_join(active, on=Person.id.eq(0))
+        .all()
+        .project(Identifier, id=active.column(value).coalesce(2))
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_eq(row, Identifier(id=2))

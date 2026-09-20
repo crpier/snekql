@@ -711,3 +711,19 @@ def cte_scalar_domain_remains_nullable_when_rebound() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.select(data).all().project(Identifier, id=data.column(value))
+
+
+@test(mark="fast")
+def projected_left_cte_output_requires_a_nullable_result_field() -> None:
+    """Consumer-local absence is checked even when the definition is NOT NULL."""
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    joined = sqlite.select(Person).left_join(active, on=Person.id.eq(0)).all()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        joined.project(Identifier, id=active.column(value))

@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from snekql._dialect_expr import (
     DialectSelectable,
+    NullExtendedSelectable,
     NumericAggregatePolicy,
     PolicySelectable,
 )
@@ -15,7 +16,6 @@ from snekql._query_state import (
     require_field,
     require_single_column_subquery,
 )
-from snekql._value_expression import ValueExpression
 from snekql.errors import QueryCompilationError
 from snekql.expressions import _Aggregate, _Scalar
 from snekql.storage import Attr, StorageBackend
@@ -137,7 +137,7 @@ def _decode_projection_field(
         return None
     if (
         value is None
-        and isinstance(column, ValueExpression)
+        and isinstance(column, NullExtendedSelectable)
         and column.__owner_model__() in nullable_models
         and column.__nullable_when_extended__()
     ):

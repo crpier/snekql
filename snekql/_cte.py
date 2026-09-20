@@ -174,6 +174,10 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
             ),
         )
 
+    def __nullable_when_extended__(self) -> bool:
+        """A missing reference nulls this SQL column regardless of its definition."""
+        return True
+
     def __output_domain__(self) -> OutputDomain:
         state = self.relation.definition.state
         return _definition_output_domain(state, state.fields[self.position])
