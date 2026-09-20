@@ -38,7 +38,7 @@ async def sum_bound_exceeds_bigint(sign: int, kind: str) -> None:
             "in": total.in_(0, bound),
         }[kind]
         query = mariadb.select(total).all().having(predicate)
-        assert_in(str(bound if kind != "between" else bound - 1), repr(query))
+        assert_in(bound if kind != "between" else bound - 1, query.compile().params)
         async with database.transaction() as tx:
             rows = await tx.fetch_all(query)
     assert_eq(rows, [bound])
@@ -70,7 +70,7 @@ async def sum_bound_retains_integer_serializer() -> None:
             .all()
             .having(Quantity.amount.sum().eq(2**62 + 2))
         )
-        assert_in("params=(9223372036854775812,)", repr(query))
+        assert_eq(query.compile().params, (9223372036854775812,))
         async with database.transaction() as tx:
             rows = await tx.fetch_all(query)
     assert_eq(rows, [9223372036854775812])
@@ -114,7 +114,7 @@ def sqlite_sum_bound_keeps_driver_limit() -> None:
         .having(Quantity.amount.sum().eq(2**63))
     )
     with assert_raises(ModelValidationError):
-        repr(query)
+        query.compile()
 
 
 @test(mark="fast")
@@ -125,7 +125,7 @@ def ordinary_integer_comparisons_keep_bigint_limit() -> None:
         amount: Quantity.Col[int] = mariadb.Integer(nullable=False)
 
     with assert_raises(ModelValidationError):
-        repr(mariadb.select(Quantity.amount).where(Quantity.amount.eq(2**63)))
+        mariadb.select(Quantity.amount).where(Quantity.amount.eq(2**63)).compile()
     for operand in (Quantity.amount.min(), Quantity.amount.max()):
         with assert_raises(ModelValidationError):
-            repr(mariadb.select(operand).all().having(operand.eq(2**63)))
+            mariadb.select(operand).all().having(operand.eq(2**63)).compile()

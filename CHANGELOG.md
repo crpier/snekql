@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Query `repr`/`str` now redact bindings and omit compilation-error details.
+  `query.inspect(parameter_visibility="values")` enables value-bearing diagnostics
+  for one explicit local call. Use `.compile()` for validation and structured
+  SQL/parameter access instead of parsing display text or relying on repr to raise.
+  Raw statement representations remain opaque. Addresses #294.
+
 ### Added
 
 - Optional `snekql.opentelemetry.OpenTelemetryObserver` exports duration histograms

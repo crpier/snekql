@@ -284,4 +284,6 @@ sampling task during application shutdown. Export capacity and cumulative failur
 discard, and observer-failure counters from the same snapshot. These are admission
 statistics, not physical connection counts.
 
-Query text inspection redaction is tracked separately in #294.
+Query repr/str also redact bindings by default. Explicit local value inspection
+uses `query.inspect(parameter_visibility="values")`; it does not change observer
+events or the runtime logging policy. See README query inspection.

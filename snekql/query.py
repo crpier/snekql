@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import replace
 from typing import (
-    TYPE_CHECKING,
     Any,
     Never,
     Protocol,
@@ -62,9 +61,9 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
+from snekql._telemetry import ParameterVisibility, format_bound_params
 from snekql.errors import (
     ModelDeclarationError,
-    QueryCompilationError,
     QueryConstructionError,
 )
 from snekql.expressions import (
@@ -89,9 +88,6 @@ from snekql.expressions import (
 from snekql.model import Pending, Table, require_model_backend, require_model_columns
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
-
-if TYPE_CHECKING:
-    from snekql._query_compile import InspectedQuery
 
 FamilyT_co = TypeVar("FamilyT_co", covariant=True)
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -154,19 +150,10 @@ class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]
 
 
 class _SqlInspectionMixin:
-    """`repr`/`str` that render a built query's own backend Dialect SQL.
+    """Inspect parameterized backend SQL without rendering bound values by default.
 
-    Resolves the Dialect from the query's model backend (see
-    :func:`snekql._query_compile.inspect_query_sql`), so a query renders its SQL
-    for debugging with no Database. Because immutable builder transitions return
-    a fresh query carrying the full accumulated state, ``repr(query)`` of a
-    composed ``query = query.where(...)`` shows the final SQL.
-
-    Neither hook raises: a query that is not yet compilable (e.g. a select
-    missing ``all()``/``where()``) renders as ``<ClassName incomplete: reason>``.
-    The compile helper is imported lazily so this module keeps no load-time
-    dependency on Query Compilation (the dependency stays builder -> state <-
-    compilation).
+    Explicit value inspection is local to one call. Compilation failures render
+    a fixed marker; exception messages can themselves contain sensitive inputs.
     """
 
     def compile(self) -> CompiledQuery:
@@ -180,27 +167,20 @@ class _SqlInspectionMixin:
 
         return compile_query_sql(self)
 
-    def _inspected_sql(self) -> InspectedQuery:
-        # Lazy import so this module carries no load-time dependency on Query
-        # Compilation; the dependency stays builder -> state <- compilation.
+    @validate_boundary(error_type=QueryConstructionError)
+    def inspect(self, *, parameter_visibility: ParameterVisibility = "redacted") -> str:
+        """Format query SQL; revealing values requires an explicit per-call choice.
+
+        `query.inspect()` matches `str(query)`. For trusted local debugging only,
+        use `query.inspect(parameter_visibility="values")`. That call includes
+        approximate inlined literals, never an executable statement. Compilation
+        errors from explicit value inspection propagate to the caller.
+        """
+        if parameter_visibility == "redacted":
+            return str(self)
         from snekql._query_compile import inspect_query_sql  # noqa: PLC0415
 
-        return inspect_query_sql(self)
-
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        try:
-            inspected = self._inspected_sql()
-        except QueryCompilationError as reason:
-            return f"<{name} incomplete: {reason}>"
-        return f"<{name}: {inspected.sql} | params={inspected.params!r}>"
-
-    def __str__(self) -> str:
-        name = type(self).__name__
-        try:
-            inspected = self._inspected_sql()
-        except QueryCompilationError as reason:
-            return f"<{name} incomplete: {reason}>"
+        inspected = inspect_query_sql(self)
         return (
             "-- parameterized (executes):\n"
             f"{inspected.sql}\n"
@@ -208,6 +188,25 @@ class _SqlInspectionMixin:
             "\n"
             "-- inlined literals (approximate, not executed):\n"
             f"{inspected.inlined_sql}"
+        )
+
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        try:
+            compiled = self.compile()
+        except Exception:
+            return f"<{name} inspection unavailable>"
+        return f"<{name}: {compiled.sql} | params={format_bound_params(compiled.params, 'redacted')}>"
+
+    def __str__(self) -> str:
+        try:
+            compiled = self.compile()
+        except Exception:
+            return f"<{type(self).__name__} inspection unavailable>"
+        return (
+            "-- parameterized (executes):\n"
+            f"{compiled.sql}\n"
+            f"-- params: {format_bound_params(compiled.params, 'redacted')}"
         )
 
 

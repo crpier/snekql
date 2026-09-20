@@ -778,14 +778,9 @@ identifiers and any literals supplied by custom dialect expressions.
 
 #### Debug text
 
-Unlike compiled output, query `repr()` and `str()` expose parameter values.
-Use them only for deliberate debugging, not production logging.
-
-Any query object renders its own SQL through `repr()` and `str()`, resolving the
-dialect from its model's backend — no `Database` or transaction needed. Because
-queries are immutable, the object you hold after composing (`query =
-query.where(...)`) already carries the full state, so inspecting it shows the
-final SQL.
+Query `repr()` and `str()` show parameterized SQL and redact bindings as
+`<redacted:N>`. `query.inspect()` uses the same redacted multiline format as
+`str(query)`. These operations need no Database or transaction.
 
 ```python
 query = select(User).where(User.status.eq("active"))
@@ -793,9 +788,15 @@ query = query.where(User.email.like("%@example.com"))
 
 repr(query)
 # <SelectModelQuery: SELECT ... FROM "user"
-#  WHERE ("status" = ?) AND ("email" LIKE ?) | params=('active', '%@example.com')>
+#  WHERE ("status" = ?) AND ("email" LIKE ?) | params=<redacted:2>>
 
-print(query)  # str(): the parameterized form plus an inlined-literals form
+print(query)
+# -- parameterized (executes):
+# SELECT ... WHERE ("status" = ?) AND ("email" LIKE ?)
+# -- params: <redacted:2>
+
+# Trusted local debugging only. This does not change later repr/str calls.
+print(query.inspect(parameter_visibility="values"))
 # -- parameterized (executes):
 # SELECT ... WHERE ("status" = ?) AND ("email" LIKE ?)
 # -- params: ('active', '%@example.com')
@@ -804,13 +805,32 @@ print(query)  # str(): the parameterized form plus an inlined-literals form
 # SELECT ... WHERE ("status" = 'active') AND ("email" LIKE '%@example.com')
 ```
 
-The parameterized form is what executes. The inlined form substitutes the
-encoded parameters as SQL literals for pasting into a database console; it is
-approximate and must not be executed. A query that has not yet chosen
-`.where(...)`/`.all()` renders as `<SelectModelQuery incomplete: ...>` rather
-than raising, so it is always safe to `repr` a query in a debugger. Such a
-builder cannot be passed to a typed Transaction or stored as `Select[Row]` until
-it becomes executable.
+The inlined form is approximate and must not be executed. Explicit value
+inspection can raise compilation or formatting errors. Runtime Config
+`parameter_visibility` does not change query formatting; disclosure here requires
+this separate per-call choice.
+
+Incomplete queries and ordinary compilation failures render a fixed
+`<ClassName inspection unavailable>` marker through default formatting. Exception
+messages can contain sensitive inputs, so they are not included. Use `.compile()`
+for deliberate validation and structured parameter access; it still raises
+compilation and codec errors. Process-control exceptions are not suppressed.
+
+**Compatibility change:** query text no longer includes bindings, inlined SQL,
+or incomplete-query error details by default. Code parsing the old display text
+should use `.compile().sql` and `.compile().params`; code using `repr` to validate
+bounds should call `.compile()` instead. Use the explicit value-inspection method
+only for local diagnostics. Query execution and encoding policies are unchanged.
+
+Redaction covers bound values in default text, not arbitrary object inspection.
+SQL identifiers and literals in custom SQL expressions remain visible. Raw
+statement `repr`/`str` remain opaque; `.sql` deliberately exposes their SQL.
+Traceback locals, exception chains from explicit compilation or execution,
+model representations, state inspection, and serializers that traverse object
+attributes can expose values. Custom validators and serializers run during
+compilation and can have their own side effects. Configure error reporters and
+structured loggers accordingly; query formatting is not a sandbox or a secret
+scanner. Ordinary logging with `%s` or `%r` uses the redacted defaults.
 
 ### Explaining query plans
 

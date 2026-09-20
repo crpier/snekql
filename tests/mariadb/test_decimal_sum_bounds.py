@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal, Inexact, Rounded, localcontext
 
-from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
+from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
 from snekql.errors import ModelValidationError
@@ -75,7 +75,7 @@ async def sum_bounds_preserve_exact_digits_under_small_decimal_context() -> None
             context.prec = 6
             context.traps[Inexact] = True
             context.traps[Rounded] = True
-            assert_in(f"params=({bound!r},)", repr(query))
+            assert_eq(query.compile().params, (bound,))
             async with database.transaction() as tx:
                 rows = await tx.fetch_all(query)
 
@@ -98,7 +98,7 @@ def sum_bounds_reject_nonfinite_decimals(value: str) -> None:
         .having(Price.amount.sum().eq(Decimal(value)))
     )
     with assert_raises(ModelValidationError):
-        repr(query)
+        query.compile()
 
 
 @test(
@@ -135,8 +135,8 @@ def scalar_minimum_and_maximum_keep_the_column_codec() -> None:
     """Only SUM is widened; ordinary operands and extrema retain their codec."""
 
     with assert_raises(ModelValidationError):
-        repr(mariadb.select(Price.amount).where(Price.amount.gt(Decimal(1000))))
+        mariadb.select(Price.amount).where(Price.amount.gt(Decimal(1000))).compile()
     for operand in (Price.amount.min(), Price.amount.max()):
         query = mariadb.select(operand).all().having(operand.gt(Decimal(1000)))
         with assert_raises(ModelValidationError):
-            repr(query)
+            query.compile()
