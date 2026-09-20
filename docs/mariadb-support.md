@@ -72,6 +72,28 @@ Verification remains partial; it does not certify arbitrary hand-authored DDL.
 - Raw SQL is caller-owned SQL. Version admission does not certify arbitrary
   statements or introduce MySQL compatibility.
 
+## Recorded validation
+
+On 2026-09-20, [CI run 35524155000](https://github.com/crpier/snekql/actions/runs/35524155000)
+validated runtime revision `529d542` on Ubuntu 24.04 x86-64, GIL-enabled CPython
+3.14.2 and default asyncio. The locked driver dependencies were aiomysql 0.3.2
+and PyMySQL 1.2.0. Every native job ran all **2,729 tests**, including migrations,
+queries, codecs, TLS, concurrency and failure/process-cleanup cases.
+
+| Native server build | Repository target | Passed | Suite seconds |
+| --- | --- | ---: | ---: |
+| 10.11.19-MariaDB-ubu2404 | 10.11 | 2729 | 151.54 |
+| 11.4.13-MariaDB-ubu2404 | 11.4 | 2729 | 288.27 |
+| 11.8.9-MariaDB-ubu2404 | 11.8 | 2729 | 301.23 |
+| 12.2.2-MariaDB-ubu2404 | 12.2 compatibility | 2729 | 357.80 |
+| 12.3.3-MariaDB-ubu2404 | 12.3 | 2729 | 315.75 |
+| 12.3.3-MariaDB-ubu2404 | 12 rolling | 2729 | 243.67 |
+
+These are correctness-suite durations, not performance comparisons. The same
+run passed all four SQLite environment jobs with 323 cases each, plus static,
+lock/generated-interface, build and isolated artifact validation. Passing these
+builds does not certify every older patch in their families.
+
 ## Validation and reproduction
 
 CI installs native server/client binaries for each listed fixed series on
