@@ -1,5 +1,7 @@
 """Typed output tokens bind SQL expressions to named projection fields."""
 
+from dataclasses import FrozenInstanceError
+
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_ne, assert_raises, test
 
@@ -96,3 +98,97 @@ def labeled_projection_uses_the_mariadb_dialect() -> None:
 
     assert_eq(compiled.sql, "SELECT `person_id` AS `id` FROM `native`")
     assert_eq(compiled.params, ())
+
+
+@test(mark="fast")
+def aggregate_label_keeps_aggregate_sql() -> None:
+    """Labeling COUNT preserves aggregate semantics rather than becoming a column."""
+    total = Person.person_id.count().label("id")
+
+    compiled = sqlite.select(Person).all().project(Identifier, id=total).compile()
+
+    assert_eq(compiled.sql, 'SELECT COUNT("person_id") AS "id" FROM "person"')
+    assert_eq(compiled.params, ())
+
+
+@test(mark="fast")
+def computed_label_preserves_textual_parameter_order() -> None:
+    """The labeled SELECT expression's parameter precedes the WHERE parameter."""
+    incremented = Person.person_id.add(4).label("id")
+
+    compiled = (
+        sqlite.select(Person)
+        .where(Person.person_id.gt(8))
+        .project(Identifier, id=incremented)
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        'SELECT ("person_id" + ?) AS "id" FROM "person" WHERE ("person_id" > ?)',
+    )
+    assert_eq(compiled.params, (4, 8))
+
+
+class OptionalIdentifier(BaseModel):
+    """A scalar subquery can produce SQL NULL when its input is empty."""
+
+    id: int | None
+
+
+@test(mark="fast")
+def scalar_label_preserves_subquery_parameter_order() -> None:
+    """A labeled scalar remains a nested query with its own row scope."""
+    identifier = sqlite.scalar(
+        sqlite.select(Person.person_id).where(Person.person_id.eq(3))
+    ).label("id")
+
+    compiled = (
+        sqlite.select(Person)
+        .where(Person.person_id.eq(7))
+        .project(OptionalIdentifier, id=identifier)
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        'SELECT (SELECT "person"."person_id" FROM "person" WHERE ("person"."person_id" = ?)) AS "id" FROM "person" WHERE ("person_id" = ?)',
+    )
+    assert_eq(compiled.params, (3, 7))
+
+
+@test(mark="fast")
+def json_label_preserves_native_path_binding() -> None:
+    """A dialect expression keeps its compiler and parameter instead of SQL text."""
+
+    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+        payload: mariadb.JsonCol[list[int]] = mariadb.Json()
+
+    identifier = Document.payload.json_extract_int("$[0]").label("id")
+
+    compiled = (
+        mariadb.select(Document)
+        .all()
+        .project(OptionalIdentifier, id=identifier)
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql, "SELECT JSON_EXTRACT(`payload`, %s) AS `id` FROM `document`"
+    )
+    assert_eq(compiled.params, ("$[0]",))
+
+
+@test(mark="fast")
+def labels_cannot_be_retargeted_after_binding() -> None:
+    """An issued output token cannot later acquire a different binding name."""
+    identifier = Person.person_id.label("id")
+    with assert_raises(FrozenInstanceError):
+        identifier.name = "different"  # ty: ignore[invalid-assignment]
+
+
+@test(mark="fast")
+def untyped_label_names_fail_before_projection() -> None:
+    """Dynamic callers receive the same construction error as malformed strings."""
+    with assert_raises(sqlite.QueryConstructionError):
+        Person.person_id.label(None)  # ty: ignore[invalid-argument-type]

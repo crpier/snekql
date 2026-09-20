@@ -7,6 +7,7 @@ from math import isfinite
 from typing import Any, Literal, cast, overload
 
 from snekql._dialect_expr import CompileCtx
+from snekql._output_label import _NullExtendedLabel
 from snekql.errors import (
     ModelValidationError,
     QueryCompilationError,
@@ -386,6 +387,10 @@ class ValueExpression[OwnerT, T](
         ],
         ...,
     ] = ()
+
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, T]:
+        """Name the computed SQL value without evaluating it in Python."""
+        return _NullExtendedLabel(name=name, operand=self)
 
     def __value_operand__(self) -> ValueExpression[OwnerT, T]:
         return self

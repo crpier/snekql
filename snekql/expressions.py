@@ -16,6 +16,7 @@ from typing import (
     runtime_checkable,
 )
 
+from snekql._output_label import _OutputLabel
 from snekql._query_readiness import _ExecutableQuery
 from snekql.errors import QueryCompilationError, QueryConstructionError
 
@@ -523,6 +524,10 @@ class Scalar[OwnerT, T, CompareT = T](ABC):
     def __column_value_type__(self) -> T:
         """Typing-only witness for singleton-select result inference."""
 
+    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT]:
+        """Name the scalar SQL output without changing its nullable result type."""
+        return _OutputLabel(name=name, operand=self)
+
 
 @dataclass(frozen=True)
 class _Scalar[OwnerT, T, CompareT = T](Scalar[OwnerT, T, CompareT]):
@@ -760,6 +765,10 @@ class Aggregate[OwnerT, T, CompareT = T](
     @abstractmethod
     def __column_value_type__(self) -> T:
         """Typing-only witness for singleton-select result inference."""
+
+    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT]:
+        """Name the aggregate result, retaining its value and comparison domains."""
+        return _OutputLabel(name=name, operand=self)
 
     def asc(self) -> OrderBy[OwnerT]:
         """Order rows by this aggregate ascending (e.g. `COUNT(id)`)."""
