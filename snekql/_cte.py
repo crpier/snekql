@@ -113,6 +113,9 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T
         # Construction binds every output to exactly this reference's relation.
         return cast("type[OwnerT]", self.relation)
 
+    def __grouping_column__(self) -> None:
+        """Typing witness for a readonly GROUP BY column reference."""
+
     def __column_owner_type__(self) -> OwnerT:
         raise NotImplementedError
 

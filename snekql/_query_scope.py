@@ -22,10 +22,10 @@ from typing import Any, cast
 from snekql._aliases import _AliasRelation
 from snekql._cte import _CteOutput, _CteRelation
 from snekql._dialect_expr import SqlCompilable
+from snekql._query_sources import grouping_key
 from snekql._query_state import (
     SelectState,
     require_column_model,
-    require_column_name,
     require_field,
     require_selectable,
     require_single_column_subquery,
@@ -244,12 +244,8 @@ def ensure_having_selectable(
     )
     if isinstance(selectable, _Aggregate):
         return
-    bare_column = require_field(column)
-    grouped_keys = {
-        (require_column_model(grouped), require_column_name(grouped))
-        for grouped in state.groupings
-    }
-    key = (require_column_model(bare_column), require_column_name(bare_column))
+    grouped_keys = {grouping_key(grouped) for grouped in state.groupings}
+    key = grouping_key(column)
     if key not in grouped_keys:
         msg = "having references a column that is not grouped or aggregated"
         raise QueryConstructionError(msg)
@@ -279,7 +275,7 @@ def ensure_ordering_targets_models(
 
 
 def ensure_grouping_targets_models(
-    columns: tuple[Attr[Any, Any, Any, Any, Any], ...],
+    columns: tuple[Attr[Any, Any, Any, Any, Any] | SqlCompilable, ...],
     scope: ScopeResolver,
 ) -> None:
     """Validate that every group_by() column names a table in scope."""
@@ -304,23 +300,16 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
     has_aggregate = any(isinstance(field, _Aggregate) for field in state.fields)
     if not (has_aggregate or state.groupings):
         return
-    grouped_keys = {
-        (require_column_model(column), require_column_name(column))
-        for column in state.groupings
-    }
+    grouped_keys = {grouping_key(column) for column in state.groupings}
     for field in state.fields:
-        if isinstance(field, _CteOutput):
-            msg = "non-aggregated CTE output in an aggregated select must be grouped"
-            raise QueryCompilationError(msg)
         if isinstance(field, ValueExpression):
             inputs = field.__referenced_columns__()
-        elif isinstance(field, Attr):
+        elif isinstance(field, (Attr, _CteOutput)):
             inputs = (field,)
         else:
             continue
         for operand in inputs:
-            column = require_field(operand)
-            key = (require_column_model(column), require_column_name(column))
+            key = grouping_key(operand)
             if key not in grouped_keys:
                 msg = "non-aggregated column in an aggregated select must appear in group_by()"
                 raise QueryCompilationError(msg)

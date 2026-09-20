@@ -435,3 +435,65 @@ def cte_count_rejects_an_ungrouped_visible_output() -> None:
 
     with assert_raises(sqlite.QueryCompilationError):
         sqlite.select(column, column.count()).all().compile()
+
+
+@test(mark="fast")
+def grouped_cte_alias_does_not_cover_a_different_role() -> None:
+    """Matching output names and positions do not make grouping keys identical."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+    column = active.column(identifier)
+    query = (
+        sqlite.select(column, column.count())
+        .join(peer, on=column.eq_col(peer.column(identifier)))
+        .all()
+        .group_by(peer.column(identifier))
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        query.compile()
+    with assert_raises(sqlite.QueryConstructionError):
+        query.having(column.gt(0))
+
+
+@test(mark="fast")
+def mixed_physical_and_cte_grouping_keys_compile() -> None:
+    """Grouping preserves both owners when a query combines their columns."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(identifier)
+    query = (
+        sqlite.select(Person.id, column, column.count())
+        .join(active, on=Person.id.eq_col(column))
+        .all()
+        .group_by(Person.id, column)
+    )
+
+    assert_eq('GROUP BY "person"."id", "active"."id"' in query.compile().sql, True)
+
+
+@test(mark="fast")
+def cte_grouping_rejects_aggregate_keys() -> None:
+    """A COUNT has an owner but is not a grouping column."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    count = active.column(identifier).count()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(count).all().group_by(count)  # ty: ignore[invalid-argument-type]

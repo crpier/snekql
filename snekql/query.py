@@ -45,7 +45,11 @@ from snekql._query_scope import (
     ensure_ordering_targets_models,
     ensure_predicate_targets_models,
 )
-from snekql._query_sources import query_fields, require_query_source
+from snekql._query_sources import (
+    query_fields,
+    require_grouping_column,
+    require_query_source,
+)
 from snekql._query_state import (
     DeleteState,
     InsertState,
@@ -127,6 +131,14 @@ class _SelectableModelClass(Protocol[FamilyT_co, SelectableOwnerT, SelectableRea
 
     @classmethod
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
+
+
+class _GroupingColumn[OwnerT: Table[Any]](Protocol):
+    """Readonly grouping witnesses preserve unions of independent owners."""
+
+    def __column_owner_type__(self) -> OwnerT: ...
+
+    def __grouping_column__(self) -> None: ...
 
 
 class _SchemaModelClass(  # noqa: PYI046 - shared with Query Runtime
@@ -466,9 +478,9 @@ class NamedSelectQuery[
 
     def group_by[GroupOwnerT: Table[Any]](
         self,
-        column: Attr[Any, Any, GroupOwnerT, Any, Any],
+        column: _GroupingColumn[GroupOwnerT],
         /,
-        *columns: Attr[Any, Any, GroupOwnerT, Any, Any],
+        *columns: _GroupingColumn[GroupOwnerT],
     ) -> Self:
         """Group named results by columns already present in the query scope."""
         return self._replace_state(_select_group_by(self.state, (column, *columns)))
@@ -900,7 +912,7 @@ class SelectValueQuery[
     @overload
     def group_by[RefOwnerT: Table[Any]](
         self,
-        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        column: _GroupingColumn[RefOwnerT],
         /,
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT
@@ -909,17 +921,17 @@ class SelectValueQuery[
     @overload
     def group_by[RefOwnerT: Table[Any]](
         self,
-        column: Attr[Any, Any, RefOwnerT, Any, Any],
-        second: Attr[Any, Any, RefOwnerT, Any, Any],
+        column: _GroupingColumn[RefOwnerT],
+        second: _GroupingColumn[RefOwnerT],
         /,
-        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+        *columns: _GroupingColumn[RefOwnerT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT
     ]: ...
 
     def group_by[RefOwnerT: Table[Any]](
         self,
-        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+        *columns: _GroupingColumn[RefOwnerT],
     ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT]:
         """Group rows by columns, widening the referenced-table union by them."""
 
@@ -1095,22 +1107,22 @@ class SelectTupleQuery[
     @overload
     def group_by[RefOwnerT: Table[Any]](
         self,
-        column: Attr[Any, Any, RefOwnerT, Any, Any],
+        column: _GroupingColumn[RefOwnerT],
         /,
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]: ...
 
     @overload
     def group_by[RefOwnerT: Table[Any]](
         self,
-        column: Attr[Any, Any, RefOwnerT, Any, Any],
-        second: Attr[Any, Any, RefOwnerT, Any, Any],
+        column: _GroupingColumn[RefOwnerT],
+        second: _GroupingColumn[RefOwnerT],
         /,
-        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+        *columns: _GroupingColumn[RefOwnerT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]: ...
 
     def group_by[RefOwnerT: Table[Any]](
         self,
-        *columns: Attr[Any, Any, RefOwnerT, Any, Any],
+        *columns: _GroupingColumn[RefOwnerT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]:
         """Group rows by columns, widening the referenced-table union by them."""
 
@@ -2172,12 +2184,12 @@ def _select_order_by(
 
 def _select_group_by(
     state: SelectState,
-    columns: tuple[Attr[Any, Any, Any, Any, Any], ...],
+    columns: tuple[_GroupingColumn[Any], ...],
 ) -> SelectState:
     if not columns:
         msg = "group_by() requires at least one column"
         raise QueryConstructionError(msg)
-    grouped = tuple(require_field(column) for column in columns)
+    grouped = tuple(require_grouping_column(column) for column in columns)
     ensure_grouping_targets_models(
         grouped,
         ScopeResolver(own_models=state.result_models()),

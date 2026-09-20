@@ -94,17 +94,18 @@ def _render_aggregate(
     column = aggregate.column
     if column is None:
         return f"{aggregate.func}(*)"
-    if isinstance(column, _CteOutput):
-        column_ref, _ = column.__compile_sql__(
-            _make_compile_ctx(dialect, qualified=qualified)
-        )
-    else:
-        column_ref = _render_column_ref(
-            require_field(column),
-            dialect,
-            qualified=qualified,
-        )
+    column_ref = _render_grouping_column(column, dialect, qualified=qualified)
     return f"{aggregate.func}({column_ref})"
+
+
+def _render_grouping_column(
+    column: object, dialect: QueryDialect, *, qualified: bool
+) -> str:
+    """Column references carry no bindings, whether physical or derived."""
+    if isinstance(column, _CteOutput):
+        sql, _ = column.__compile_sql__(_make_compile_ctx(dialect, qualified=qualified))
+        return sql
+    return _render_column_ref(require_field(column), dialect, qualified=qualified)
 
 
 def _make_compile_ctx(
@@ -274,7 +275,7 @@ def _compile_group_by_sql(
     qualified: bool,
 ) -> str:
     group_by = ", ".join(
-        _render_column_ref(column, dialect, qualified=qualified)
+        _render_grouping_column(column, dialect, qualified=qualified)
         for column in state.groupings
     )
     return f"GROUP BY {group_by}"

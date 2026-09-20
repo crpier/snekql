@@ -2142,6 +2142,9 @@ class Attr[
 
         raise NotImplementedError
 
+    def __grouping_column__(self) -> None:
+        """Typing witness for a readonly GROUP BY column reference."""
+
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness of this column's model owner."""
 

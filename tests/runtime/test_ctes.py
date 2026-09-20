@@ -546,3 +546,63 @@ async def cte_count_can_be_labeled_into_a_downstream_definition() -> None:
 
     assert_type(result, int)
     assert_eq(result, 1)
+
+
+@test(mark="medium")
+async def cte_output_groups_and_filters_its_derived_values() -> None:
+    """Grouping keys use the derived source, including freshly retrieved tokens."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(identifier)
+    query = (
+        sqlite.select(column, column.count())
+        .all()
+        .group_by(active.column(identifier))
+        .having(column.gt(0))
+    )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[tuple[int, int]])
+    assert_eq(rows, [(1, 1)])
+
+
+@test(mark="slow")
+async def native_cte_alias_grouping_preserves_uuid_named_results() -> None:
+    """Named grouped queries use readonly keys and preserve native decoding."""
+    database = await load_fixture(provide_mariadb_documents())
+
+    class GroupResult(BaseModel):
+        key: UUID
+        count: int
+
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+    column = peer.column(key)
+    count = column.count()
+    query = (
+        mariadb.select(peer)
+        .all()
+        .project(GroupResult, key=column, count=count)
+        .group_by(peer.column(key))
+        .having(count.gt(0))
+    )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[GroupResult])
+    assert_eq(rows, [GroupResult(key=UUID(int=1), count=1)])

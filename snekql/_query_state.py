@@ -70,7 +70,7 @@ class SelectState:
     distinct: bool = False
     lock_wait: LockWait | None = None
     predicates: tuple[_PredicateNode[Any], ...] = ()
-    groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
+    groupings: tuple[Attr[Any, Any, Any, Any, Any] | SqlCompilable, ...] = ()
     having: tuple[_PredicateNode[Any], ...] = ()
     orderings: tuple[_OrderBy[Any], ...] = ()
     limit_value: int | None = None
