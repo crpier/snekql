@@ -5,12 +5,27 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from datetime import UTC, datetime
+from hashlib import sha256
+from importlib.metadata import version
 from json import dumps
 from pathlib import Path
+from platform import platform
 
 from anyio import Path as AsyncPath
-from anyio import TemporaryDirectory, fail_after, run, run_process
+from anyio import TemporaryDirectory, fail_after, run, run_process, to_thread
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
+
+_CASES = (
+    "lifecycle",
+    "readiness",
+    "backend-identity",
+    "positional-width",
+    "named-result",
+    "joins",
+    "raw-contract",
+)
+"""Consumer contracts with paired positive and negative source templates."""
 
 
 class ProbeError(Exception):
@@ -68,13 +83,33 @@ class _Diagnostic(BaseModel):
     rule: str
 
 
+class _Source(BaseModel):
+    backend: str
+    expected_line: int
+    name: str
+    negative_path: str
+    negative_sha256: str
+    positive_path: str
+    positive_sha256: str
+
+
 class _Case(BaseModel):
     backend: str
     conforms: bool
     expected_line: int
     name: str
     negative_errors: list[_Diagnostic]
+    negative_sha256: str
     positive_errors: list[_Diagnostic]
+    positive_sha256: str
+
+
+class _Environment(BaseModel):
+    packages: dict[str, str]
+    platform: str
+    python: str
+    source_commit: str | None = None
+    source_dirty: bool | None = None
 
 
 class _Report(BaseModel):
@@ -83,8 +118,40 @@ class _Report(BaseModel):
     checker_version: str
     command: list[str]
     conforms: bool
+    environment: _Environment
+    recorded_at: str
     schema_version: int = 1
     unmapped_errors: list[_Diagnostic]
+
+
+def _environment_versions() -> _Environment:
+    """Distribution and host lookups run off the event loop."""
+    return _Environment(
+        packages={
+            name: version(name) for name in ("snekql", "pydantic", "anyio", "ty")
+        },
+        platform=platform(),
+        python=sys.version,
+    )
+
+
+async def _environment(root: AsyncPath) -> _Environment:
+    """Missing checkout metadata remains unknown, never a fabricated clean state."""
+    environment = await to_thread.run_sync(_environment_versions)
+    try:
+        revision = await run_process(
+            ["git", "rev-parse", "HEAD"], cwd=str(root), check=False
+        )
+        dirty = await run_process(
+            ["git", "status", "--porcelain"], cwd=str(root), check=False
+        )
+    except OSError:
+        return environment
+    if revision.returncode == 0:
+        environment.source_commit = revision.stdout.decode().strip()
+    if dirty.returncode == 0:
+        environment.source_dirty = bool(dirty.stdout)
+    return environment
 
 
 def _parse_diagnostics(checker: str, output: bytes) -> list[_Diagnostic]:
@@ -138,8 +205,14 @@ async def _invoke_checker(
             Path(sys.executable).with_name("ty.exe" if os.name == "nt" else "ty")
         )
         prefix = [executable]
+        config = AsyncPath(directory) / "ty.toml"
+        await config.write_text(
+            '[rules]\nall = "error"\nmissing-override-decorator = "ignore"\n'
+        )
         arguments = [
             "check",
+            "--config-file",
+            str(config),
             "--python",
             sys.executable,
             "--python-version",
@@ -206,19 +279,18 @@ async def _invoke_checker(
     return version.stdout.decode().strip(), command, diagnostics
 
 
-async def _assess(backend: str, checker: str, case_name: str) -> _Report:
-    """A negative diagnostic is evidence only when its positive control is clean."""
-    root = await AsyncPath(__file__).resolve()
-    root = root.parent.parent
-    positive_template = await (
-        root / f"typing_probes/{case_name}.positive.py.txt"
-    ).read_text()
-    negative_template = await (
-        root / f"typing_probes/{case_name}.negative.py.txt"
-    ).read_text()
-    async with TemporaryDirectory(prefix="snekql-typing-") as directory:
-        cases: list[tuple[str, str, str, int]] = []
-        paths: list[str] = []
+async def _write_sources(
+    root: AsyncPath, directory: str, backend: str, selection: str
+) -> list[_Source]:
+    """Materialize paired examples; their filenames identify diagnostic ownership."""
+    sources: list[_Source] = []
+    for name in _CASES if selection == "all" else (selection,):
+        positive_template = await (
+            root / f"typing_probes/{name}.positive.py.txt"
+        ).read_text()
+        negative_template = await (
+            root / f"typing_probes/{name}.negative.py.txt"
+        ).read_text()
         for family in ("sqlite", "mariadb") if backend == "all" else (backend,):
             positive = positive_template.replace("__BACKEND__", family).replace(
                 "__OTHER_BACKEND__", "mariadb" if family == "sqlite" else "sqlite"
@@ -232,29 +304,59 @@ async def _assess(backend: str, checker: str, case_name: str) -> _Report:
             if len(expected_lines) != 1:
                 message = "each negative probe must mark exactly one expected error"
                 raise ProbeError(message)
-            positive_path = str(Path(directory) / f"{family}_{case_name}_positive.py")
-            negative_path = str(Path(directory) / f"{family}_{case_name}_negative.py")
-            await AsyncPath(positive_path).write_text(positive)
-            await AsyncPath(negative_path).write_text(negative)
-            paths.extend((positive_path, negative_path))
-            cases.append((family, positive_path, negative_path, expected_lines[0]))
+            positive_path = str(Path(directory) / f"{family}_{name}_positive.py")
+            negative_path = str(Path(directory) / f"{family}_{name}_negative.py")
+            await AsyncPath(positive_path).write_text(
+                positive, encoding="utf-8", newline="\n"
+            )
+            await AsyncPath(negative_path).write_text(
+                negative, encoding="utf-8", newline="\n"
+            )
+            sources.append(
+                _Source(
+                    backend=family,
+                    expected_line=expected_lines[0],
+                    name=name,
+                    negative_path=negative_path,
+                    negative_sha256=sha256(negative.encode()).hexdigest(),
+                    positive_path=positive_path,
+                    positive_sha256=sha256(positive.encode()).hexdigest(),
+                )
+            )
+    return sources
+
+
+async def _assess(backend: str, checker: str, case_name: str) -> _Report:
+    """A negative diagnostic is evidence only when its positive control is clean."""
+    root = (await AsyncPath(__file__).resolve()).parent.parent
+    async with TemporaryDirectory(prefix="snekql-typing-") as directory:
+        sources = await _write_sources(root, directory, backend, case_name)
+        paths = [
+            path
+            for source in sources
+            for path in (source.positive_path, source.negative_path)
+        ]
         version, command, diagnostics = await _invoke_checker(
             checker, root, directory, paths
         )
         observations: list[_Case] = []
-        for family, positive_path, negative_path, expected_line in cases:
-            positive_errors = [d for d in diagnostics if d.file == positive_path]
-            negative_errors = [d for d in diagnostics if d.file == negative_path]
+        for source in sources:
+            positive_errors = [d for d in diagnostics if d.file == source.positive_path]
+            negative_errors = [d for d in diagnostics if d.file == source.negative_path]
             observations.append(
                 _Case(
-                    backend=family,
+                    backend=source.backend,
                     conforms=not positive_errors
                     and bool(negative_errors)
-                    and all(error.line == expected_line for error in negative_errors),
-                    expected_line=expected_line,
-                    name=case_name,
+                    and all(
+                        error.line == source.expected_line for error in negative_errors
+                    ),
+                    expected_line=source.expected_line,
+                    name=source.name,
                     negative_errors=negative_errors,
+                    negative_sha256=source.negative_sha256,
                     positive_errors=positive_errors,
+                    positive_sha256=source.positive_sha256,
                 )
             )
         unmapped = [d for d in diagnostics if d.file not in paths]
@@ -264,6 +366,8 @@ async def _assess(backend: str, checker: str, case_name: str) -> _Report:
             checker_version=version,
             command=command,
             conforms=all(case.conforms for case in observations) and not unmapped,
+            environment=await _environment(root),
+            recorded_at=datetime.now(UTC).isoformat(),
             unmapped_errors=unmapped,
         )
 
@@ -281,19 +385,7 @@ def main() -> int:
     parser.add_argument(
         "--backend", choices=("all", "sqlite", "mariadb"), default="all"
     )
-    parser.add_argument(
-        "--case",
-        choices=(
-            "lifecycle",
-            "readiness",
-            "backend-identity",
-            "positional-width",
-            "named-result",
-            "joins",
-            "raw-contract",
-        ),
-        default="lifecycle",
-    )
+    parser.add_argument("--case", choices=("all", *_CASES), default="all")
     options = parser.parse_args()
     try:
         report = run(_run_cli, options.backend, options.checker, options.case)

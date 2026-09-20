@@ -1,5 +1,6 @@
 """Consumer conformance reports through the source-checkout CLI."""
 
+import os
 import sys
 from collections.abc import AsyncGenerator
 from json import loads
@@ -39,6 +40,8 @@ async def lifecycle_report_requires_positive_control(
             "scripts/check_typing_compatibility.py",
             "--checker",
             checker,
+            "--case",
+            "lifecycle",
             "--backend",
             backend,
         ],
@@ -75,6 +78,8 @@ async def unrelated_errors_cannot_certify_rejection(mutation: str) -> None:
     command = [
         sys.executable,
         str(root / "scripts/check_typing_compatibility.py"),
+        "--case",
+        "lifecycle",
         "--backend",
         "sqlite",
     ]
@@ -214,6 +219,92 @@ async def raw_probe_rejects_consumption_time_validation_override() -> None:
             "--case",
             "raw-contract",
         ],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    assert_true(loads(completed.stdout)["conforms"])
+
+
+@test([Param(name, name=name) for name in ("ty", "pyright", "mypy")], mark="fast")
+async def full_report_preserves_known_checker_limits(checker: str) -> None:
+    """Assess every domain on both backends, retaining incompatible controls."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--checker",
+            checker,
+            "--case",
+            "all",
+        ],
+        check=False,
+    )
+
+    assert_eq(
+        completed.returncode,
+        1 if checker == "mypy" else 0,
+        msg=completed.stderr.decode(),
+    )
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 14)
+    failed = {
+        (case["backend"], case["name"])
+        for case in report["cases"]
+        if not case["conforms"]
+    }
+    assert_eq(
+        failed,
+        {
+            (backend, name)
+            for backend in ("sqlite", "mariadb")
+            for name in ("positional-width", "joins")
+        }
+        if checker == "mypy"
+        else set(),
+    )
+
+
+@test(mark="fast")
+async def report_identifies_environment_and_rendered_sources() -> None:
+    """A saved assessment identifies its interpreter, checkout and actual inputs."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--case",
+            "lifecycle",
+            "--backend",
+            "sqlite",
+        ],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_true(report["recorded_at"].endswith("+00:00"))
+    assert_eq(report["environment"]["python"], sys.version)
+    assert_true(bool(report["environment"]["platform"]))
+    assert_eq(report["environment"]["packages"]["ty"], "0.0.77")
+    assert_eq(len(report["environment"]["source_commit"]), 40)
+    assert_true(isinstance(report["environment"]["source_dirty"], bool))
+    case = report["cases"][0]
+    assert_eq(len(case["positive_sha256"]), 64)
+    assert_eq(len(case["negative_sha256"]), 64)
+    assert_true(case["positive_sha256"] != case["negative_sha256"])
+
+
+@test(mark="fast")
+async def ty_probe_uses_declared_configuration() -> None:
+    """An ambient configuration pointer cannot silently change the assessment."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--case",
+            "lifecycle",
+        ],
+        env={**os.environ, "TY_CONFIG_FILE": "absent-consumer-ty-config.toml"},
         check=False,
     )
 
