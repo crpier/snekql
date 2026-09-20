@@ -15,7 +15,14 @@ from snekql._query_state import SelectState, require_single_column_subquery
 from snekql._value_decode import _decode_projection_field
 from snekql._value_encode import _predicate_value_encoder
 from snekql.errors import QueryConstructionError
-from snekql.expressions import Comparable, OrderBy, _OrderBy, _Scalar
+from snekql.expressions import (
+    Aggregate,
+    Comparable,
+    OrderBy,
+    _Aggregate,
+    _OrderBy,
+    _Scalar,
+)
 from snekql.model import BackendFamily, Table, require_model_backend
 from snekql.storage import StorageBackend
 
@@ -155,6 +162,10 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T
                 validate=validate,
             ),
         )
+
+    def count(self) -> Aggregate[OwnerT, int]:
+        """Count non-NULL SQL outputs without decoding intermediate rows."""
+        return _Aggregate(column=self, func="COUNT", owner=self.relation)
 
     def asc(self) -> OrderBy[OwnerT]:
         """Order consumers by this output without re-evaluating its definition."""

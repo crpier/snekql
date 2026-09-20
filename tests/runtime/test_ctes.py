@@ -444,3 +444,105 @@ async def native_left_alias_distinguishes_null_output_from_missing_row() -> None
     assert_type(present, tuple[MariaDocument[mariadb.Fetched], OptionalKey | None])
     assert_eq(present[1], OptionalKey(id=None))
     assert_eq(absent[1], None)
+
+
+@test(mark="medium")
+async def cte_output_count_counts_nonnull_values() -> None:
+    """Readonly COUNT uses the derived output rather than its defining expression."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    async with database.transaction() as transaction:
+        count = await transaction.fetch_one(
+            sqlite.select(active.column(identifier).count()).all()
+        )
+
+    assert_type(count, int)
+    assert_eq(count, 1)
+
+
+@test(mark="slow")
+async def native_cte_alias_count_supports_having_and_empty_inputs() -> None:
+    """COUNT over a UUID output is an integer, including an empty consumer."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+    count = peer.column(key).count()
+
+    async with database.transaction() as transaction:
+        present = await transaction.fetch_one(
+            mariadb.select(count).all().having(count.gt(0)).order_by(count.desc())
+        )
+        empty = await transaction.fetch_one(
+            mariadb.select(count).where(peer.column(key).eq(UUID(int=0)))
+        )
+
+    assert_type(present, int)
+    assert_type(empty, int)
+    assert_eq(present, 1)
+    assert_eq(empty, 0)
+
+
+@test(mark="medium")
+async def cte_output_count_ignores_matched_null_values() -> None:
+    """The private presence column must not turn COUNT(output) into COUNT(*)."""
+    database = await load_fixture(provide_cte_people())
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    identifier = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(-1))).label(
+        "id"
+    )
+    nullable = (
+        sqlite.select(Person)
+        .all()
+        .project(OptionalIdentifier, id=identifier)
+        .cte(ActiveRole, name="nullable_rows")
+    )
+
+    async with database.transaction() as transaction:
+        count = await transaction.fetch_one(
+            sqlite.select(nullable.column(identifier).count()).all()
+        )
+
+    assert_type(count, int)
+    assert_eq(count, 0)
+
+
+@test(mark="medium")
+async def cte_count_can_be_labeled_into_a_downstream_definition() -> None:
+    """An aggregate over an output retains the stable integer result contract."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    count = active.column(identifier).count().label("id")
+    counted = (
+        sqlite.select(active)
+        .all()
+        .project(Identifier, id=count)
+        .cte(FilteredRole, name="counted")
+    )
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(sqlite.select(counted.column(count)).all())
+
+    assert_type(result, int)
+    assert_eq(result, 1)

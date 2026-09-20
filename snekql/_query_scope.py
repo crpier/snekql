@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
-from snekql._cte import _CteRelation
+from snekql._cte import _CteOutput, _CteRelation
 from snekql._dialect_expr import SqlCompilable
 from snekql._query_state import (
     SelectState,
@@ -309,6 +309,9 @@ def ensure_grouping_covers_projection(state: SelectState) -> None:
         for column in state.groupings
     }
     for field in state.fields:
+        if isinstance(field, _CteOutput):
+            msg = "non-aggregated CTE output in an aggregated select must be grouped"
+            raise QueryCompilationError(msg)
         if isinstance(field, ValueExpression):
             inputs = field.__referenced_columns__()
         elif isinstance(field, Attr):

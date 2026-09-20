@@ -419,3 +419,19 @@ def distinct_definitions_cannot_reuse_an_indistinguishable_visible_role() -> Non
         sqlite.select(first).join(
             second, on=first.column(identifier).eq_col(second.column(identifier))
         ).all().compile()
+
+
+@test(mark="fast")
+def cte_count_rejects_an_ungrouped_visible_output() -> None:
+    """Derived references obey the same aggregate projection rule as columns."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(identifier)
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(column, column.count()).all().compile()

@@ -14,7 +14,7 @@ from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
 from snekql._compiled import CompiledQuery
-from snekql._cte import _CteRelation
+from snekql._cte import _CteOutput, _CteRelation
 from snekql._cte_graph import collect_cte_definitions
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._named_projection import NamedProjection
@@ -94,11 +94,16 @@ def _render_aggregate(
     column = aggregate.column
     if column is None:
         return f"{aggregate.func}(*)"
-    column_ref = _render_column_ref(
-        require_field(column),
-        dialect,
-        qualified=qualified,
-    )
+    if isinstance(column, _CteOutput):
+        column_ref, _ = column.__compile_sql__(
+            _make_compile_ctx(dialect, qualified=qualified)
+        )
+    else:
+        column_ref = _render_column_ref(
+            require_field(column),
+            dialect,
+            qualified=qualified,
+        )
     return f"{aggregate.func}({column_ref})"
 
 
