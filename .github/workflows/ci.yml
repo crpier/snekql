@@ -48,7 +48,7 @@ jobs:
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
       - name: Test
-        run: uv run snektest
+        run: uv run snektest tests
       - name: Type check
         run: uv run ty check
       - name: Lint
@@ -66,9 +66,15 @@ jobs:
       - name: Isolated artifact smoke test
         run: uv run python scripts/check_artifacts.py
 
-  minimum-mariadb:
-    name: MariaDB 12.2
+  mariadb-releases:
+    name: MariaDB ${{ matrix.release }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ["10.11", "11.4", "11.8", "12.2", "12.3"]
+    env:
+      MARIADB_RELEASE: ${{ matrix.release }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -79,15 +85,16 @@ jobs:
         run: uv python install 3.14
       - name: Sync locked environment
         run: uv sync --locked --all-extras
-      - name: Install MariaDB 12.2
+      - name: Install target MariaDB release
         run: |
           curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
-            | sudo bash -s -- --mariadb-server-version=mariadb-12.2
+            | sudo bash -s -- --mariadb-server-version="mariadb-${MARIADB_RELEASE}"
           sudo apt-get update
           sudo apt-get install --yes mariadb-client mariadb-server tzdata-legacy
           sudo systemctl stop mariadb.service || true
           mariadbd --version | tee mariadb-version.txt
-          grep -E '(^|[^0-9])12[.]2[.]' mariadb-version.txt
+          RELEASE_PATTERN="${MARIADB_RELEASE//./[.]}"
+          grep -E "(^|[^0-9])${RELEASE_PATTERN}[.]" mariadb-version.txt
       - name: Record environment
         run: |
           uv run python - <<'PYTHON'
@@ -98,8 +105,8 @@ jobs:
           print(platform.platform())
           print("SQLite", sqlite3.sqlite_version)
           PYTHON
-      - name: Full integration suite on minimum MariaDB
-        run: uv run snektest
+      - name: Full integration suite on target MariaDB
+        run: uv run snektest tests
 
   sqlite-environments:
     name: SQLite / ${{ matrix.os }} / ${{ matrix.python-source }}

@@ -186,9 +186,12 @@ particular, replacing its sole in-memory connection would destroy its database.
 
 ### Minimum version
 
-snekql verifies the server is MariaDB and at least **12.2**. Older MariaDB
-builds and non-MariaDB servers (such as MySQL) are rejected at initialization.
-The minimum may be lowered as more versions are validated.
+snekql verifies the server is MariaDB and at least **10.11**. Older MariaDB
+builds and non-MariaDB servers such as MySQL are rejected at initialization.
+The maintained LTS targets are 10.11, 11.4, 11.8 and 12.3. Admission does not
+certify every intervening release or old patch. See the
+[release/capability matrix](mariadb-support.md) for native validation, retained
+unsupported-feature diagnostics and maintenance limits.
 
 ### Session settings (per connection)
 
