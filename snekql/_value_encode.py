@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from snekql._dialect_expr import ComparisonEncoder, SqlCompilable
 from snekql._query_dialect import QueryDialect
-from snekql._query_state import Selectable, require_field
+from snekql._query_state import Selectable, require_field, require_selectable
 from snekql.errors import QueryCompilationError
 from snekql.expressions import _Aggregate, _Scalar
 
@@ -36,9 +36,9 @@ def _predicate_value_encoder(
     if isinstance(selectable, _Aggregate):
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
-        wrapped = require_field(selectable.column)
         if selectable.func == "SUM":
+            wrapped = require_field(selectable.column)
             return lambda value: dialect.encode_sum_value(wrapped, value)
-        return lambda value: dialect.encode_column_value(wrapped, value)
+        return _predicate_value_encoder(require_selectable(selectable.column), dialect)
     column = selectable
     return lambda value: dialect.encode_column_value(column, value)

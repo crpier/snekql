@@ -606,3 +606,79 @@ async def native_cte_alias_grouping_preserves_uuid_named_results() -> None:
 
     assert_type(rows, list[GroupResult])
     assert_eq(rows, [GroupResult(key=UUID(int=1), count=1)])
+
+
+@test(mark="medium")
+async def cte_minimum_and_maximum_preserve_uuid_values() -> None:
+    """Extrema decode in the source domain and compare using its wire encoder."""
+    database = await load_fixture(provide_sqlite_documents())
+    key = LocalDocument.id.label("key")
+    documents = (
+        sqlite.select(LocalDocument)
+        .all()
+        .project(DocumentResult, key=key, values=LocalDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    column = documents.column(key)
+    query = (
+        sqlite.select(column.min(), column.max())
+        .all()
+        .having(column.min().eq(UUID(int=1)))
+    )
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(query)
+
+    assert_type(result, tuple[UUID | None, UUID | None])
+    assert_eq(result, (UUID(int=1), UUID(int=1)))
+
+
+@test(mark="slow")
+async def native_cte_alias_extrema_keep_codecs_and_empty_nulls() -> None:
+    """MIN/MAX retain native UUID comparison bindings and nullable results."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+    column = peer.column(key)
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(
+            mariadb.select(column.min(), column.max())
+            .all()
+            .having(column.max().eq(UUID(int=1)))
+        )
+        empty = await transaction.fetch_one(
+            mariadb.select(column.min(), column.max()).where(column.eq(UUID(int=0)))
+        )
+
+    assert_type(result, tuple[UUID | None, UUID | None])
+    assert_type(empty, tuple[UUID | None, UUID | None])
+    assert_eq(result, (UUID(int=1), UUID(int=1)))
+    assert_eq(empty, (None, None))
+
+
+@test(mark="medium")
+async def cte_extrema_respect_disabled_source_validation() -> None:
+    """Unchecked scalar aggregate reads return the original source wire value."""
+    database = await load_fixture(provide_sqlite_documents())
+    key = LocalDocument.id.label("key")
+    documents = (
+        sqlite.select(LocalDocument)
+        .all()
+        .project(DocumentResult, key=key, values=LocalDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    column = documents.column(key)
+
+    async with database.transaction() as transaction:
+        values = await transaction.fetch_one(
+            sqlite.select(column.min(), column.max()).all(), validate=False
+        )
+
+    assert_eq(values, (str(UUID(int=1)), str(UUID(int=1))))

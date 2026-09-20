@@ -1,5 +1,7 @@
 """Query-only named SELECT definitions through public compilation."""
 
+from datetime import UTC, datetime
+
 from pydantic import BaseModel
 from snektest import assert_eq, assert_raises, test
 
@@ -497,3 +499,38 @@ def cte_grouping_rejects_aggregate_keys() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.select(count).all().group_by(count)  # ty: ignore[invalid-argument-type]
+
+
+@test(mark="fast")
+def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
+    """Timezone-preserving text is not silently treated as chronological SQL order."""
+
+    class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+        happened_at: sqlite.Col[sqlite.ZonedDatetime] = sqlite.Text(nullable=False)
+
+    class EventResult(BaseModel):
+        happened_at: sqlite.ZonedDatetime
+
+    time = Event.happened_at.label("happened_at")
+    events = (
+        sqlite.select(Event)
+        .all()
+        .project(EventResult, happened_at=time)
+        .cte(ActiveRole, name="events")
+    )
+    column = events.column(time)
+
+    with assert_raises(sqlite.QueryConstructionError):
+        column.min()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.max()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.asc()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.desc()
+
+    instant = sqlite.ZonedDatetime(datetime(2026, 1, 1, tzinfo=UTC))
+    with assert_raises(sqlite.QueryConstructionError):
+        column.gt(instant)
+    with assert_raises(sqlite.QueryConstructionError):
+        column.between(instant, instant)

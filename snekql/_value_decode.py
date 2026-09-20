@@ -51,6 +51,10 @@ def _decode_aggregate(
         return int(cast("int", value))
     if aggregate.func == "AVG":
         return float(cast("float", value))
+    if aggregate.func != "SUM" and isinstance(aggregate.column, PolicySelectable):
+        return aggregate.column.__decode_with_policy__(
+            value, backend=backend, validate=validate
+        )
     column = require_field(aggregate.column)
     if aggregate.func == "SUM":
         return _normalize_sum(column, value)
