@@ -10,8 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from snekql._aliases import _AliasRelation
+from snekql._cte import _CteRelation
 from snekql._model_materialization import decode_model_row
 from snekql._named_projection import NamedProjection
+from snekql._query_sources import query_fields
 from snekql._query_state import (
     InsertState,
     Selectable,
@@ -21,6 +23,7 @@ from snekql._query_state import (
     require_field,
 )
 from snekql._value_decode import _decode_projection_field, _decode_selectable
+from snekql.errors import QueryCompilationError
 from snekql.model import require_model_columns
 from snekql.storage import StorageBackend
 
@@ -41,14 +44,35 @@ def _materialize_join_row(
     elements: list[object] = []
     offset = 0
     for index, model in enumerate(state.result_models()):
-        columns = require_model_columns(model)
-        width = len(columns)
+        fields = query_fields(model)
+        cte_source = issubclass(model, _CteRelation)
+        width = len(fields) + int(cte_source)
         chunk = row[offset : offset + width]
         offset += width
         is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
-        if is_left_join and all(value is None for value in chunk):
+        absent = (
+            chunk[-1] is None if cte_source else all(value is None for value in chunk)
+        )
+        if is_left_join and absent:
             elements.append(None)
             continue
+        if issubclass(model, _CteRelation):
+            projection = model.definition.state.named_projection
+            if projection is None:
+                msg = "CTE row requires a named result contract"
+                raise QueryCompilationError(msg)
+            elements.append(
+                projection.materialize(
+                    tuple(
+                        _decode_selectable(
+                            field, value, backend=backend, validate=validate
+                        )
+                        for field, value in zip(fields, chunk[:-1], strict=True)
+                    )
+                )
+            )
+            continue
+        columns = require_model_columns(model)
         values = {name: chunk[position] for position, name in enumerate(columns)}
         elements.append(
             decode_model_row(

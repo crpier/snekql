@@ -187,3 +187,13 @@ if TYPE_CHECKING:
     mariadb.select(native).where(native_reference.column(native_id).gt(0))  # ty: ignore[invalid-argument-type]
     mariadb.alias(local, PeerRole, name="wrong")  # ty: ignore[no-matching-overload]
     sqlite.alias(native, PeerRole, name="wrong")  # ty: ignore[no-matching-overload]
+
+    async def verify_only_schema_declarations(
+        local_database: sqlite.Database, native_database: mariadb.Database
+    ) -> None:
+        """Selectable role witnesses never grant schema registration capability."""
+        await local_database.verify([Local])
+        await native_database.verify([Native])
+        await local_database.verify([local])  # ty: ignore[invalid-argument-type]
+        await native_database.verify([native])  # ty: ignore[invalid-argument-type]
+        await local_database.verify([local_reference])  # ty: ignore[invalid-argument-type]

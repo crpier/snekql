@@ -1,0 +1,30 @@
+"""Query source fields, separate from schema-owned column declarations."""
+
+from typing import Any
+
+from snekql._aliases import require_query_source as require_table_source
+from snekql._cte import _Cte, _CteOutput, _CtePresence, _CteRelation
+from snekql._query_state import Selectable
+from snekql.model import Table, require_model_columns
+
+
+def require_query_source(value: object) -> type[Table[Any]]:
+    """Normalize a table, table alias or query-only named reference."""
+    return (
+        value.__query_source__()
+        if isinstance(value, _Cte)
+        else require_table_source(value)
+    )
+
+
+def query_fields(
+    source: type[Table[Any]], *, presence: bool = False
+) -> tuple[Selectable, ...]:
+    """Expand visible query fields without manufacturing schema Attr metadata."""
+    if issubclass(source, _CteRelation):
+        outputs: tuple[Selectable, ...] = tuple(
+            _CteOutput[Any, Any, Any](position=position, relation=source)
+            for position in range(len(source.definition.state.fields))
+        )
+        return (*outputs, _CtePresence(source)) if presence else outputs
+    return tuple(require_model_columns(source).values())

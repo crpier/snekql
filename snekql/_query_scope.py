@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
-from snekql._cte import _CteDefinition, _CteRelation
+from snekql._cte import _CteRelation
 from snekql._dialect_expr import SqlCompilable
 from snekql._query_state import (
     SelectState,
@@ -47,6 +47,19 @@ from snekql.expressions import (
 )
 from snekql.model import Table, require_model_table_name
 from snekql.storage import Attr
+
+
+def _query_owner_identity(model: type[Table[Any]]) -> object:
+    """Mirror nominal owner coordinates without depending on SQL body identity."""
+    if issubclass(model, _AliasRelation):
+        return (_AliasRelation, model.source_model, model.role)
+    if issubclass(model, _CteRelation):
+        sources = frozenset(
+            _query_owner_identity(source)
+            for source in model.definition.state.result_models()
+        )
+        return (_CteRelation, sources, model.role)
+    return model
 
 
 @dataclass(frozen=True)
@@ -84,7 +97,7 @@ class ScopeResolver:
         """Reject SQL shadowing and indistinguishable role types in visible scopes."""
         names: dict[str, type[Table[Any]]] = {}
         roles: set[tuple[type[Table[Any]], type[object]]] = set()
-        cte_roles: set[tuple[_CteDefinition, type[object]]] = set()
+        cte_roles: set[object] = set()
         for model in self.models:
             name = require_model_table_name(model).casefold()
             previous = names.get(name)
@@ -102,7 +115,7 @@ class ScopeResolver:
                     raise QueryCompilationError(msg)
                 roles.add(role)
             if issubclass(model, _CteRelation):
-                cte_role = (model.definition, model.role)
+                cte_role = _query_owner_identity(model)
                 if cte_role in cte_roles:
                     msg = "CTE role is already visible in this query scope"
                     raise QueryCompilationError(msg)

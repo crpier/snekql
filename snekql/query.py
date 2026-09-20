@@ -23,9 +23,9 @@ from typing import (
 
 from pydantic import BaseModel
 
-from snekql._aliases import TableAlias, require_query_source
+from snekql._aliases import TableAlias
 from snekql._compiled import CompiledQuery
-from snekql._cte import _Cte, _CteOutput, _CteRelation, build_cte
+from snekql._cte import _Cte, _CteOutput, build_cte
 from snekql._dialect_expr import DialectSelectable
 from snekql._named_projection import NamedProjection
 from snekql._output_label import _OutputLabel
@@ -45,6 +45,7 @@ from snekql._query_scope import (
     ensure_ordering_targets_models,
     ensure_predicate_targets_models,
 )
+from snekql._query_sources import query_fields, require_query_source
 from snekql._query_state import (
     DeleteState,
     InsertState,
@@ -98,7 +99,9 @@ ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 SelectOwnerT = TypeVar("SelectOwnerT", bound=Table[Any])
 OwnerT = TypeVar("OwnerT", bound=Table[Any])
 SelectableOwnerT = TypeVar("SelectableOwnerT", bound=Table[Any])
-SelectableReadT_co = TypeVar("SelectableReadT_co", bound=Table[Any], covariant=True)
+SelectableReadT_co = TypeVar(
+    "SelectableReadT_co", bound=Table[Any] | BaseModel, covariant=True
+)
 T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
@@ -124,6 +127,16 @@ class _SelectableModelClass(Protocol[FamilyT_co, SelectableOwnerT, SelectableRea
 
     @classmethod
     def __read_type__(cls) -> type[SelectableReadT_co]: ...
+
+
+class _SchemaModelClass(  # noqa: PYI046 - shared with Query Runtime
+    _SelectableModelClass[FamilyT_co, SelectableOwnerT, SelectableReadT_co],
+    Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co],
+):
+    """Schema operations require declaration metadata, not just selectable roles."""
+
+    @property
+    def __snekql_columns__(self) -> dict[str, Attr[Any, Any, Any, Any, Any]]: ...
 
 
 class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]):
@@ -542,7 +555,7 @@ class SelectModelQuery[
         )
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
@@ -556,7 +569,7 @@ class SelectModelQuery[
     ]: ...
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[SelectOwnerT, NewOwnerT],
@@ -581,7 +594,7 @@ class SelectModelQuery[
         )
 
     @overload
-    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
@@ -595,7 +608,7 @@ class SelectModelQuery[
     ]: ...
 
     @overload
-    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[SelectOwnerT, NewOwnerT],
@@ -692,7 +705,7 @@ class JoinModelQuery[
         return JoinModelQuery(_select_where(self.state, predicates))
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
@@ -706,7 +719,7 @@ class JoinModelQuery[
     ]: ...
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[JoinOwnerT, NewOwnerT],
@@ -733,7 +746,7 @@ class JoinModelQuery[
         )
 
     @overload
-    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
@@ -747,7 +760,7 @@ class JoinModelQuery[
     ]: ...
 
     @overload
-    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[JoinOwnerT, NewOwnerT],
@@ -951,7 +964,7 @@ class SelectValueQuery[
         )
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
@@ -960,7 +973,7 @@ class SelectValueQuery[
     ]: ...
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[ScopeT, NewOwnerT],
@@ -1138,14 +1151,14 @@ class SelectTupleQuery[
         )
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
     ) -> SelectTupleQuery[FamilyT, ScopeT | NewOwnerT, RefT, ReadinessT, *Ts]: ...
 
     @overload
-    def join[NewOwnerT: Table[Any], NewReadT: Table[Any]](
+    def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[ScopeT, NewOwnerT],
@@ -2194,11 +2207,8 @@ def _select_join(
     *,
     project: bool = False,
 ) -> SelectState:
-    if isinstance(model, _Cte) or issubclass(state.model, _CteRelation):
-        msg = "CTE joins are not supported"
-        raise QueryConstructionError(msg)
     table_model = require_query_source(model)
-    new_columns = require_model_columns(table_model)
+    new_fields = query_fields(table_model, presence=not project)
     anchor_backend = require_model_backend(state.model)
     joined_backend = require_model_backend(table_model)
     if joined_backend != anchor_backend:
@@ -2244,7 +2254,15 @@ def _select_join(
         return replace(state, joins=(*state.joins, spec))
     return replace(
         state,
-        fields=(*state.fields, *new_columns.values()),
+        fields=(
+            *(
+                query_fields(state.model, presence=True)
+                if not state.joins
+                else state.fields
+            ),
+            *new_fields,
+        ),
+        named_projection=None,
         returns_model=True,
         joins=(*state.joins, spec),
     )

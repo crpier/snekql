@@ -37,7 +37,7 @@ def completed_named_definition_compiles_as_a_cte() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active"',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active"',
     )
     assert_eq(compiled.params, (2,))
 
@@ -57,7 +57,7 @@ def bound_token_references_only_the_cte_output() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active" WHERE ("active"."id" > ?)',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active" WHERE ("active"."id" > ?)',
     )
     assert_eq(compiled.params, (2, 4))
 
@@ -90,7 +90,7 @@ def chained_definitions_precede_the_consumer_in_parameter_order() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)), "filtered" AS (SELECT "active"."id" AS "id" FROM "active" WHERE ("active"."id" > ?)) SELECT "filtered"."id" AS "id" FROM "filtered" WHERE ("filtered"."id" > ?)',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)), "filtered" AS (SELECT "active"."id" AS "id", 1 AS "__snekql_present" FROM "active" WHERE ("active"."id" > ?)) SELECT "filtered"."id" AS "id" FROM "filtered" WHERE ("filtered"."id" > ?)',
     )
     assert_eq(compiled.params, (2, 3, 4))
 
@@ -127,7 +127,7 @@ def cte_used_only_in_exists_is_emitted() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)) SELECT "id" FROM "person" WHERE (EXISTS (SELECT "active"."id" FROM "active" WHERE ("active"."id" > ?)))',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "id" FROM "person" WHERE (EXISTS (SELECT "active"."id" FROM "active" WHERE ("active"."id" > ?)))',
     )
     assert_eq(compiled.params, (2, 3))
 
@@ -193,7 +193,7 @@ def definition_and_consumer_ordering_keep_their_own_limits() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" ORDER BY "id" ASC LIMIT ?) SELECT "active"."id" AS "id" FROM "active" ORDER BY "active"."id" DESC LIMIT ?',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" ORDER BY "id" ASC LIMIT ?) SELECT "active"."id" AS "id" FROM "active" ORDER BY "active"."id" DESC LIMIT ?',
     )
     assert_eq(compiled.params, (3, 1))
 
@@ -288,7 +288,7 @@ def cte_alias_uses_one_definition_and_its_own_qualifier() -> None:
 
     assert_eq(
         compiled.sql,
-        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)) SELECT "peer"."id" AS "id" FROM "active" AS "peer" WHERE ("peer"."id" > ?)',
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "peer"."id" AS "id" FROM "active" AS "peer" WHERE ("peer"."id" > ?)',
     )
     assert_eq(compiled.params, (2, 4))
 
@@ -365,3 +365,57 @@ def cte_alias_rejects_a_foreign_backend_before_compilation() -> None:
 
     with assert_raises(mariadb.QueryConstructionError):
         mariadb.alias(active, FilteredRole, name="peer")  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def cte_consumer_cannot_claim_locks_on_underlying_rows() -> None:
+    """A derived relation does not establish the physical-table locking contract."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    active = (
+        mariadb.select(Native)
+        .all()
+        .project(Identifier, id=Native.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(mariadb.QueryCompilationError):
+        mariadb.select(active).all().for_update().compile()
+
+
+@test(mark="fast")
+def cte_definition_cannot_hide_a_locking_select() -> None:
+    """Freezing a SELECT must not move its row-lock intent into a derived scope."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    query = mariadb.select(Native).all().project(Identifier, id=Native.id).for_update()
+
+    with assert_raises(mariadb.QueryConstructionError):
+        query.cte(ActiveRole, name="active")
+
+
+@test(mark="fast")
+def distinct_definitions_cannot_reuse_an_indistinguishable_visible_role() -> None:
+    """Different SQL bodies do not create different nominal owner types."""
+    identifier = Person.id.label("id")
+    first = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="first")
+    )
+    second = (
+        sqlite.select(Person)
+        .where(Person.id.gt(0))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="second")
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(first).join(
+            second, on=first.column(identifier).eq_col(second.column(identifier))
+        ).all().compile()

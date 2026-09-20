@@ -58,12 +58,41 @@ class _CteDefinition:
     name: str
     state: SelectState
 
+    @property
+    def presence_name(self) -> str:
+        """A private output name that cannot shadow a declared result label."""
+        projection = self.state.named_projection
+        labels = (
+            set()
+            if projection is None
+            else {label.casefold() for label in projection.labels}
+        )
+        name = "__snekql_present"
+        while name.casefold() in labels:
+            name += "_"
+        return name
+
 
 class _CteRelation(Table[Any]):
     """An SQL source identity without schema columns or a Table Model class."""
 
     definition: ClassVar[_CteDefinition]
     role: ClassVar[type[object]]
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class _CtePresence:
+    """Private row-presence reference, never a public output token."""
+
+    relation: type[_CteRelation]
+
+    def __owner_model__(self) -> type[_CteRelation]:
+        return self.relation
+
+    def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]:
+        owner = ctx.quote_identifier(self.relation.__name__)
+        name = ctx.quote_identifier(self.relation.definition.presence_name)
+        return f"{owner}.{name}", ()
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -155,6 +184,24 @@ class _Cte[
     def __query_source__(self) -> type[_CteRelation]:
         return self._relation
 
+    @classmethod
+    def __backend_family_type__(cls) -> FamilyT:
+        raise NotImplementedError
+
+    @classmethod
+    def __owner_type__(cls) -> type[_CteOwner[FamilyT, SourceT, RoleT]]:
+        raise NotImplementedError
+
+    @classmethod
+    def __owner_invariant__(
+        cls, owner: _CteOwner[FamilyT, SourceT, RoleT]
+    ) -> _CteOwner[FamilyT, SourceT, RoleT]:
+        return owner
+
+    @classmethod
+    def __read_type__(cls) -> type[ResultT]:
+        raise NotImplementedError
+
     @overload
     def column[T, CompareT](
         self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT]
@@ -197,6 +244,9 @@ def build_cte(
     """Freeze a completed named definition without executing its SQL."""
     if not state.explicit_all and not state.predicates:
         msg = "CTE definitions require all() or where()"
+        raise QueryConstructionError(msg)
+    if state.lock_wait is not None:
+        msg = "CTE definitions cannot contain a locking SELECT"
         raise QueryConstructionError(msg)
     if state.named_projection is None:
         msg = "CTE definitions require named projections"

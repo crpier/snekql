@@ -300,3 +300,147 @@ async def cte_alias_preserves_mariadb_logical_codecs() -> None:
 
     assert_type(row, DocumentResult)
     assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
+
+
+@test(mark="medium")
+async def inner_join_consumes_a_cte_as_a_named_row() -> None:
+    """A query-only source appends its named result rather than a schema model."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    query = (
+        sqlite.select(Person)
+        .join(active, on=Person.id.eq_col(active.column(identifier)))
+        .all()
+    )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[tuple[Person[sqlite.Fetched], Identifier]])
+    assert_eq(len(rows), 1)
+    assert_eq(rows[0][0].id, 1)
+    assert_eq(rows[0][1], Identifier(id=1))
+
+
+@test(mark="medium")
+async def inner_join_reuses_one_definition_for_two_named_rows() -> None:
+    """Each role materializes its own named result while sharing definition SQL."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+    query = (
+        sqlite.select(active)
+        .join(peer, on=active.column(identifier).eq_col(peer.column(identifier)))
+        .all()
+    )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[tuple[Identifier, Identifier]])
+    assert_eq(rows, [(Identifier(id=1), Identifier(id=1))])
+    assert_eq(query.compile().sql.count('"active" AS ('), 1)
+
+
+@test(mark="slow")
+async def native_inner_join_materializes_a_cte_alias() -> None:
+    """Native query-only joined rows retain UUID/JSON decoding and result shape."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+    query = (
+        mariadb.select(MariaDocument)
+        .join(peer, on=MariaDocument.id.eq_col(peer.column(key)))
+        .all()
+    )
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[tuple[MariaDocument[mariadb.Fetched], DocumentResult]])
+    assert_eq(len(rows), 1)
+    assert_eq(rows[0][0].id, UUID(int=1))
+    assert_eq(rows[0][1], DocumentResult(key=UUID(int=1), values=[2, 3]))
+
+
+@test(mark="medium")
+async def left_join_distinguishes_a_matched_all_null_cte_row() -> None:
+    """NULL visible outputs do not mean a query-only row was absent."""
+    database = await load_fixture(provide_cte_people())
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    identifier = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(-1))).label(
+        "id"
+    )
+    nullable = (
+        sqlite.select(Person)
+        .all()
+        .project(OptionalIdentifier, id=identifier)
+        .cte(ActiveRole, name="nullable_rows")
+    )
+    query = sqlite.select(Person).left_join(nullable, on=Person.id.gt(0)).all()
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(query)
+
+    assert_type(rows, list[tuple[Person[sqlite.Fetched], OptionalIdentifier | None]])
+    assert_eq(len(rows), 1)
+    assert_eq(rows[0][1], OptionalIdentifier(id=None))
+
+
+@test(mark="slow")
+async def native_left_alias_distinguishes_null_output_from_missing_row() -> None:
+    """Private presence survives aliasing and is NULL only for an absent match."""
+    database = await load_fixture(provide_mariadb_documents())
+
+    class OptionalKey(BaseModel):
+        id: UUID | None
+
+    key = mariadb.scalar(
+        mariadb.select(MariaDocument.id).where(MariaDocument.id.eq(UUID(int=0)))
+    ).label("id")
+    nullable = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(OptionalKey, id=key)
+        .cte(ActiveRole, name="nullable_rows")
+    )
+    peer = mariadb.alias(nullable, FilteredRole, name="peer")
+    matched = (
+        mariadb.select(MariaDocument)
+        .left_join(peer, on=MariaDocument.id.eq(UUID(int=1)))
+        .all()
+    )
+    missing = (
+        mariadb.select(MariaDocument)
+        .left_join(peer, on=MariaDocument.id.eq(UUID(int=2)))
+        .all()
+    )
+
+    async with database.transaction() as transaction:
+        present = await transaction.fetch_one(matched)
+        absent = await transaction.fetch_one(missing)
+
+    assert_type(present, tuple[MariaDocument[mariadb.Fetched], OptionalKey | None])
+    assert_eq(present[1], OptionalKey(id=None))
+    assert_eq(absent[1], None)

@@ -552,6 +552,7 @@ def _compile_select_list(
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
+    presence_name: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     """Render the projected columns, collecting any scalar-subquery parameters.
 
@@ -590,6 +591,8 @@ def _compile_select_list(
             f"{sql} AS {dialect.quote_identifier(label)}"
             for sql, label in zip(parts, labels, strict=True)
         ]
+    if presence_name is not None:
+        parts.append(f"1 AS {dialect.quote_identifier(presence_name)}")
     return ", ".join(parts), params
 
 
@@ -619,6 +622,9 @@ def _compile_locking_clause(
     if dialect.for_update_sql is None:
         msg = "FOR UPDATE is not supported by this dialect"
         raise QueryCompilationError(msg)
+    if issubclass(state.model, _CteRelation):
+        msg = "FOR UPDATE requires a physical table source, not a CTE"
+        raise QueryCompilationError(msg)
     if nested:
         msg = "locking subqueries are not supported"
         raise QueryCompilationError(msg)
@@ -640,6 +646,7 @@ def _compile_select_state(
     dialect: QueryDialect,
     *,
     outer: ScopeResolver | None = None,
+    presence_name: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
@@ -664,7 +671,9 @@ def _compile_select_state(
             own_only=True,
         )
     ensure_grouping_covers_projection(state)
-    quoted_columns, params = _compile_select_list(state, dialect, scope=scope)
+    quoted_columns, params = _compile_select_list(
+        state, dialect, scope=scope, presence_name=presence_name
+    )
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
     quoted_table = _compile_source_sql(state.model, dialect)
     sql_parts = [
@@ -748,7 +757,9 @@ def compile_select_sql_for_dialect(
     parts: list[str] = []
     definition_params: tuple[object, ...] = ()
     for definition in definitions:
-        body, bindings = _compile_select_state(definition.state, dialect)
+        body, bindings = _compile_select_state(
+            definition.state, dialect, presence_name=definition.presence_name
+        )
         parts.append(f"{dialect.quote_identifier(definition.name)} AS ({body})")
         definition_params = (*definition_params, *bindings)
     return f"WITH {', '.join(parts)} {sql}", (*definition_params, *params)
