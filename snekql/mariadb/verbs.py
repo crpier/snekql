@@ -66,8 +66,8 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
 
 
 @overload
-def select[SourceT: Table[Any], ResultT: BaseModel, RoleT](
-    source: _Cte[Literal["mariadb"], SourceT, ResultT, RoleT],
+def select[SourceT: Table[Any], ResultT: BaseModel, RoleT, NonNullableOwnerT](
+    source: _Cte[Literal["mariadb"], SourceT, ResultT, RoleT, NonNullableOwnerT],
     /,
 ) -> SelectModelQuery[
     Literal["mariadb"], _CteOwner[Literal["mariadb"], SourceT, RoleT], ResultT

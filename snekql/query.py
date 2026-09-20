@@ -428,18 +428,26 @@ def _named_returning_state[StateT: InsertState | UpdateState | DeleteState](
     )
 
 
-class NamedSelectQuery[FamilyT, OwnerT: Table[Any], ResultT: BaseModel, ReadinessT](
+class NamedSelectQuery[
+    FamilyT,
+    OwnerT: Table[Any],
+    ResultT: BaseModel,
+    ReadinessT,
+    NonNullableOwnerT = OwnerT,
+](
     _FluentSelectQuery[OwnerT],
     _OptionalQueryShape[FamilyT, OwnerT, OwnerT, ResultT, ReadinessT],
 ):
     """Select values into a table-independent named result model."""
 
     def cte[RoleT](
-        self: NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery],
+        self: NamedSelectQuery[
+            FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+        ],
         role: type[RoleT],
         *,
         name: str,
-    ) -> _Cte[FamilyT, OwnerT, ResultT, RoleT]:
+    ) -> _Cte[FamilyT, OwnerT, ResultT, RoleT, NonNullableOwnerT]:
         """Freeze this completed named SELECT as a query-only relation."""
         return build_cte(self.state, role, name=name)
 
@@ -458,13 +466,19 @@ class NamedSelectQuery[FamilyT, OwnerT: Table[Any], ResultT: BaseModel, Readines
         """Filter aggregates or grouping keys without changing row readiness."""
         return self._replace_state(_select_having(self.state, (predicate, *predicates)))
 
-    def all(self) -> NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery]:
+    def all(
+        self,
+    ) -> NamedSelectQuery[
+        FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+    ]:
         """Select every row and mark the query executable."""
         return NamedSelectQuery(_select_all(self.state))
 
     def where(
         self, predicate: Predicate[OwnerT], /, *predicates: Predicate[OwnerT]
-    ) -> NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery]:
+    ) -> NamedSelectQuery[
+        FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+    ]:
         """Filter rows while retaining the named result contract."""
         return NamedSelectQuery(_select_where(self.state, (predicate, *predicates)))
 
@@ -535,6 +549,7 @@ class SelectModelQuery[
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
+        SelectOwnerT | NewOwnerT,
         ReadinessT,
         ReadModelT,
         NewReadT,
@@ -548,6 +563,7 @@ class SelectModelQuery[
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
+        SelectOwnerT | NewOwnerT,
         ReadinessT,
         ReadModelT,
         NewReadT,
@@ -557,10 +573,10 @@ class SelectModelQuery[
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]]:
         """Inner-join another table, appending its fetched model to each row."""
 
-        return JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]](
             _select_join(self.state, model, on, "INNER"),
         )
 
@@ -572,6 +588,7 @@ class SelectModelQuery[
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
+        SelectOwnerT,
         ReadinessT,
         ReadModelT,
         NewReadT | None,
@@ -585,6 +602,7 @@ class SelectModelQuery[
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
+        SelectOwnerT,
         ReadinessT,
         ReadModelT,
         NewReadT | None,
@@ -594,15 +612,21 @@ class SelectModelQuery[
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]]:
         """Left-join another table; its fetched model is optional per row."""
 
-        return JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]](
             _select_join(self.state, model, on, "LEFT"),
         )
 
 
-class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
+class JoinModelQuery[
+    FamilyT,
+    JoinOwnerT: Table[Any],
+    NonNullableOwnerT,
+    ReadinessT,
+    *ResultTs,
+](
     _FluentSelectQuery[JoinOwnerT],
     _OptionalQueryShape[FamilyT, JoinOwnerT, JoinOwnerT, tuple[*ResultTs], ReadinessT],
 ):
@@ -617,7 +641,7 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
 
     def project[ResultT: BaseModel](
         self, result_type: type[ResultT], /, **fields: object
-    ) -> NamedSelectQuery[FamilyT, JoinOwnerT, ResultT, ReadinessT]:
+    ) -> NamedSelectQuery[FamilyT, JoinOwnerT, ResultT, ReadinessT, NonNullableOwnerT]:
         """Select named values validated against an application result contract.
 
         Example: `select(User).project(Summary, id=User.id, name=User.name)`.
@@ -626,12 +650,14 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
 
     def all(
         self,
-    ) -> JoinModelQuery[FamilyT, JoinOwnerT, _ExecutableQuery, *ResultTs]:
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
+    ]:
         """Select every joined row and mark the query executable."""
 
         state = _select_all(self.state)
         return cast(
-            "JoinModelQuery[FamilyT, JoinOwnerT, _ExecutableQuery, *ResultTs]",
+            "JoinModelQuery[FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs]",
             self if state is self.state else JoinModelQuery(state),
         )
 
@@ -640,7 +666,9 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
         self,
         predicate: Predicate[JoinOwnerT],
         /,
-    ) -> JoinModelQuery[FamilyT, JoinOwnerT, _ExecutableQuery, *ResultTs]: ...
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
+    ]: ...
 
     @overload
     def where(
@@ -649,12 +677,16 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
         second: Predicate[JoinOwnerT],
         /,
         *predicates: Predicate[JoinOwnerT],
-    ) -> JoinModelQuery[FamilyT, JoinOwnerT, _ExecutableQuery, *ResultTs]: ...
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
+    ]: ...
 
     def where(
         self,
         *predicates: Predicate[JoinOwnerT],
-    ) -> JoinModelQuery[FamilyT, JoinOwnerT, _ExecutableQuery, *ResultTs]:
+    ) -> JoinModelQuery[
+        FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
+    ]:
         """Filter joined rows and mark the query executable."""
 
         return JoinModelQuery(_select_where(self.state, predicates))
@@ -665,7 +697,12 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
     ) -> JoinModelQuery[
-        FamilyT, JoinOwnerT | NewOwnerT, ReadinessT, *ResultTs, NewReadT
+        FamilyT,
+        JoinOwnerT | NewOwnerT,
+        NonNullableOwnerT | NewOwnerT,
+        ReadinessT,
+        *ResultTs,
+        NewReadT,
     ]: ...
 
     @overload
@@ -674,17 +711,24 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
         on: JoinOn[JoinOwnerT, NewOwnerT],
     ) -> JoinModelQuery[
-        FamilyT, JoinOwnerT | NewOwnerT, ReadinessT, *ResultTs, NewReadT
+        FamilyT,
+        JoinOwnerT | NewOwnerT,
+        NonNullableOwnerT | NewOwnerT,
+        ReadinessT,
+        *ResultTs,
+        NewReadT,
     ]: ...
 
     def join(
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, NonNullableOwnerT, ReadinessT, *tuple[Any, ...]]:
         """Inner-join another table, appending its fetched model to each row."""
 
-        return JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]](
+        return JoinModelQuery[
+            FamilyT, Any, NonNullableOwnerT, ReadinessT, *tuple[Any, ...]
+        ](
             _select_join(self.state, model, on, "INNER"),
         )
 
@@ -696,6 +740,7 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
     ) -> JoinModelQuery[
         FamilyT,
         JoinOwnerT | NewOwnerT,
+        NonNullableOwnerT,
         ReadinessT,
         *ResultTs,
         NewReadT | None,
@@ -709,6 +754,7 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
     ) -> JoinModelQuery[
         FamilyT,
         JoinOwnerT | NewOwnerT,
+        NonNullableOwnerT,
         ReadinessT,
         *ResultTs,
         NewReadT | None,
@@ -718,10 +764,10 @@ class JoinModelQuery[FamilyT, JoinOwnerT: Table[Any], ReadinessT, *ResultTs](
         self,
         model: object,
         on: object,
-    ) -> JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]]:
+    ) -> JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]]:
         """Left-join another table; its fetched model is optional per row."""
 
-        return JoinModelQuery[FamilyT, Any, ReadinessT, *tuple[Any, ...]](
+        return JoinModelQuery[FamilyT, Any, Any, ReadinessT, *tuple[Any, ...]](
             _select_join(self.state, model, on, "LEFT"),
         )
 
@@ -2045,7 +2091,7 @@ type AnySelectQuery = (
     SelectModelQuery[Any, Any, Any, Any]
     | SelectValueQuery[Any, Any, Any, Any, Any, Any]
     | SelectTupleQuery[Any, Any, Any, Any, *tuple[Any, ...]]
-    | JoinModelQuery[Any, Any, Any, *tuple[Any, ...]]
+    | JoinModelQuery[Any, Any, Any, Any, *tuple[Any, ...]]
 )
 
 

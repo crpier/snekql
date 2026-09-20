@@ -34,3 +34,7 @@ class _NullExtendedLabel[OwnerT, T, CompareT](_OutputLabel[OwnerT, T, CompareT])
     """An output whose owner becoming absent can introduce a SQL NULL."""
 
     __slots__ = ()
+
+    def __null_extension_sensitive__(self) -> None:
+        """Typing-only witness distinguishing column reads from stable aggregates."""
+        raise NotImplementedError

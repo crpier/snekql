@@ -167,7 +167,7 @@ def plain_binding_does_not_make_none_a_column_token() -> None:
     )
 
     with assert_raises(sqlite.QueryConstructionError):
-        active.column(None)  # ty: ignore[invalid-argument-type]
+        active.column(None)  # ty: ignore[no-matching-overload]
 
 
 @test(mark="fast")

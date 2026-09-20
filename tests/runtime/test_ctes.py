@@ -9,6 +9,7 @@ from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
 from tests.query.test_ctes import ActiveRole, Identifier, Person
+from tests.runtime.test_arithmetic import MariaInventory, provide_mariadb_inventory
 from tests.runtime.test_named_codecs import (
     DocumentResult,
     LocalDocument,
@@ -153,3 +154,105 @@ async def cte_scalar_preserves_disabled_column_validation() -> None:
         )
 
     assert_eq(wire_value, str(UUID(int=1)))
+
+
+@test(mark="medium")
+async def left_join_definition_retains_nullable_output_columns() -> None:
+    """Missing definition-local rows stay NULL across the named SQL boundary."""
+    database = await load_fixture(provide_cte_people())
+
+    class PeerRole:
+        pass
+
+    class Pair(BaseModel):
+        id: int
+        other: int | None
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    identifier = Person.id.label("id")
+    other = peer.column(Person.id).label("other")
+    definition = (
+        sqlite.select(Person)
+        .left_join(
+            peer,
+            on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(-1),
+        )
+        .project(Pair, id=identifier, other=other)
+        .all()
+        .cte(ActiveRole, name="pairs")
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(sqlite.select(definition).all())
+        values = await transaction.fetch_all(
+            sqlite.select(definition.column(other)).all()
+        )
+
+    assert_type(row, Pair)
+    assert_type(values, list[int | None])
+    assert_eq(row, Pair(id=1, other=None))
+    assert_eq(values, [None])
+
+
+@test(mark="slow")
+async def mariadb_joined_definition_preserves_nullable_computation() -> None:
+    """Native NULL extension survives a computed, labeled CTE output."""
+    database = await load_fixture(provide_mariadb_inventory())
+
+    class PeerRole:
+        pass
+
+    class OptionalValue(BaseModel):
+        value: int | None
+
+    peer = mariadb.alias(MariaInventory, PeerRole, name="peer")
+    value = peer.column(MariaInventory.quantity).add(1).label("value")
+    definition = (
+        mariadb.select(MariaInventory)
+        .left_join(
+            peer,
+            on=MariaInventory.id.eq_col(peer.column(MariaInventory.id))
+            & peer.column(MariaInventory.id).eq(-1),
+        )
+        .all()
+        .project(OptionalValue, value=value)
+        .cte(ActiveRole, name="quantities")
+    )
+
+    async with database.transaction() as transaction:
+        values = await transaction.fetch_all(
+            mariadb.select(definition.column(value)).all()
+        )
+
+    assert_type(values, list[int | None])
+    assert_eq(values, [None])
+
+
+@test(mark="medium")
+async def nullable_owner_count_remains_nonnullable_through_a_definition() -> None:
+    """COUNT of an absent joined owner is zero rather than a null-extended column."""
+    database = await load_fixture(provide_cte_people())
+
+    class PeerRole:
+        pass
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    count = peer.column(Person.id).count().label("id")
+    definition = (
+        sqlite.select(Person)
+        .left_join(
+            peer,
+            on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(-1),
+        )
+        .all()
+        .project(Identifier, id=count)
+        .cte(ActiveRole, name="counts")
+    )
+
+    async with database.transaction() as transaction:
+        value = await transaction.fetch_one(
+            sqlite.select(definition.column(count)).all()
+        )
+
+    assert_type(value, int)
+    assert_eq(value, 0)

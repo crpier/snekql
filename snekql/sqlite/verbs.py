@@ -66,8 +66,8 @@ def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
 
 
 @overload
-def select[SourceT: Table[Any], ResultT: BaseModel, RoleT](
-    source: _Cte[Literal["sqlite"], SourceT, ResultT, RoleT],
+def select[SourceT: Table[Any], ResultT: BaseModel, RoleT, NonNullableOwnerT](
+    source: _Cte[Literal["sqlite"], SourceT, ResultT, RoleT, NonNullableOwnerT],
     /,
 ) -> SelectModelQuery[
     Literal["sqlite"], _CteOwner[Literal["sqlite"], SourceT, RoleT], ResultT

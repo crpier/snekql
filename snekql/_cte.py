@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from re import fullmatch
-from typing import Any, ClassVar, Protocol, cast
+from typing import Any, ClassVar, Protocol, cast, overload
 
 from pydantic import BaseModel
 
@@ -28,6 +28,14 @@ class _LabelContract[OwnerT, T, CompareT](Protocol):
     def __value_type__(self) -> T: ...
 
     def __accepts_comparison__(self, value: CompareT, /) -> None: ...
+
+
+class _SensitiveLabelContract[OwnerT, T, CompareT](
+    _LabelContract[OwnerT, T, CompareT], Protocol
+):
+    """A token whose SQL value can be null-extended with its source owner."""
+
+    def __null_extension_sensitive__(self) -> None: ...
 
 
 class _CteOwner[FamilyT, SourceT, RoleT](Table[Any]):
@@ -132,7 +140,13 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
-class _Cte[FamilyT, SourceT: Table[Any], ResultT: BaseModel, RoleT]:
+class _Cte[
+    FamilyT,
+    SourceT: Table[Any],
+    ResultT: BaseModel,
+    RoleT,
+    NonNullableOwnerT = SourceT,
+]:
     """A named SELECT relation; never a schema object or a mutation target."""
 
     _relation: type[_CteRelation]
@@ -140,24 +154,35 @@ class _Cte[FamilyT, SourceT: Table[Any], ResultT: BaseModel, RoleT]:
     def __query_source__(self) -> type[_CteRelation]:
         return self._relation
 
+    @overload
+    def column[T, CompareT](
+        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT]
+    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT]: ...
+
+    @overload
+    def column[TokenOwnerT, T, CompareT](
+        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT]
+    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T | None, CompareT]: ...
+
+    @overload
     def column[TokenOwnerT, T, CompareT](
         self, token: _LabelContract[TokenOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT]:
+    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT]: ...
+
+    def column(self, token: object) -> _CteOutput[Any, Any, Any]:
         """Rebind a token actually present in this definition, by identity."""
         projection = self._relation.definition.state.named_projection
         if projection is not None and isinstance(token, _OutputLabel):
             for position, original in enumerate(projection.output_tokens):
                 if original is token:
-                    return _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT](
-                        position=position, relation=self._relation
-                    )
+                    return _CteOutput(position=position, relation=self._relation)
         msg = "CTE column requires a label token bound by this definition"
         raise QueryConstructionError(msg)
 
 
 def build_cte(
     state: SelectState, role: type[object], *, name: str
-) -> _Cte[Any, Any, Any, Any]:
+) -> _Cte[Any, Any, Any, Any, Any]:
     """Freeze a completed named definition without executing its SQL."""
     if not state.explicit_all and not state.predicates:
         msg = "CTE definitions require all() or where()"
@@ -170,11 +195,6 @@ def build_cte(
         raise QueryConstructionError(msg)
     if not isinstance(name, str) or fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
         msg = "CTE name must be an SQL identifier"
-        raise QueryConstructionError(msg)
-    # Joined definitions need a proven-present ownership coordinate before
-    # their output references can expose a sound nullable value contract.
-    if state.joins:
-        msg = "joined CTE definitions are not supported"
         raise QueryConstructionError(msg)
     relation = type(
         name,
