@@ -1,0 +1,4 @@
+
+
+def ninth_slot() -> None:
+    database.select(Entry.id, Entry.id, Entry.id, Entry.id, Entry.id, Entry.id, Entry.id, Entry.id, Entry.id)  # expect-error
