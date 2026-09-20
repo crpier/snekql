@@ -6,15 +6,11 @@ from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
+from snekql._output_domain import output_domain
 from snekql._output_label import _OutputLabel
 from snekql.errors import ModelValidationError, QueryConstructionError
-from snekql.expressions import _Aggregate
 from snekql.storage import (
-    Attr,
     _annotation_admits_none,
-    _extract_logical_type,
-    _resolve_model_hint,
-    _strip_json_marker,
     _unwrap_annotated,
 )
 
@@ -71,25 +67,9 @@ class NamedProjection:
 
     def check_binding(self, label: str, operand: object, *, nullable: bool) -> None:
         """Check known source domains; opaque expression values validate on fetch."""
-        logical: object = Any
-        if isinstance(operand, _Aggregate):
-            nullable = nullable or operand.func != "COUNT"
-            if operand.func == "COUNT":
-                logical = int
-            elif operand.func == "AVG":
-                logical = float
-            else:
-                operand = operand.column
-        if isinstance(operand, Attr):
-            if operand.owner is None or operand.name is None:
-                msg = "named projections require bound columns"
-                raise QueryConstructionError(msg)
-            logical = _strip_json_marker(
-                _extract_logical_type(
-                    _resolve_model_hint(operand.owner, operand.name), operand.name
-                )
-            )
-            nullable = nullable or operand.nullable
+        domain = output_domain(operand)
+        logical = domain.logical
+        nullable = nullable or domain.nullable is True
         target = self.result_type.model_fields[label].annotation
         admits_none = (
             _annotation_admits_none(target) is not False

@@ -9,6 +9,7 @@ from typing import Any, ClassVar, Protocol, cast, overload
 from pydantic import BaseModel
 
 from snekql._dialect_expr import CompileCtx
+from snekql._output_domain import OutputDomain, output_domain
 from snekql._output_label import _NullExtendedLabel, _OutputLabel
 from snekql._query_dialect import query_dialect_for_backend
 from snekql._query_state import (
@@ -173,6 +174,10 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
             ),
         )
 
+    def __output_domain__(self) -> OutputDomain:
+        state = self.relation.definition.state
+        return _definition_output_domain(state, state.fields[self.position])
+
     def __value_operand__(self) -> ValueExpression[OwnerT, T]:
         """Expose native wire-compatible operations without schema capabilities."""
         state = self.relation.definition.state
@@ -330,6 +335,25 @@ class _Cte[
                     return _CteOutput(position=position, relation=self._relation)
         msg = "CTE column requires a label token bound by this definition"
         raise QueryConstructionError(msg)
+
+
+def _definition_output_domain(state: SelectState, source: object) -> OutputDomain:
+    """Keep definition-local NULL extension separate from result-model annotations."""
+    if isinstance(source, _Scalar):
+        inner = require_single_column_subquery(source.subquery)
+        domain = _definition_output_domain(inner, inner.fields[0])
+        return OutputDomain(domain.logical, nullable=True)
+    domain = output_domain(source)
+    if isinstance(source, (Attr, ValueExpression, _CteOutput)):
+        nullable_owners = {
+            join.model for join in state.joins if join.join_type == "LEFT"
+        }
+        if selectable_owner_model(source) in nullable_owners and (
+            not isinstance(source, ValueExpression)
+            or source.__nullable_when_extended__()
+        ):
+            return OutputDomain(domain.logical, nullable=True)
+    return domain
 
 
 def _native_value_profile(

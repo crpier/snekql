@@ -631,3 +631,83 @@ def cte_arithmetic_rejects_unresolved_sum_wire_representation() -> None:
 
     with assert_raises(mariadb.QueryConstructionError):
         totals.column(total).add(1)
+
+
+@test(mark="fast")
+def cte_rebinding_rejects_an_incompatible_logical_result_domain() -> None:
+    """A derived integer is not opaque merely because it crossed a WITH boundary."""
+
+    class WrongResult(BaseModel):
+        id: str
+
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(active).all().project(WrongResult, id=active.column(value))
+
+
+@test(mark="fast")
+def cte_rebinding_retains_definition_local_nullability() -> None:
+    """An optional source output cannot acquire NOT NULL from a consumer model."""
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    peer = sqlite.alias(Person, FilteredRole, name="peer")
+    value = peer.column(Person.id).label("id")
+    missing = (
+        sqlite.select(Person)
+        .left_join(peer, on=Person.id.eq_col(peer.column(Person.id)))
+        .all()
+        .project(OptionalIdentifier, id=value)
+        .cte(ActiveRole, name="missing")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(missing).all().project(Identifier, id=missing.column(value))
+
+
+@test(mark="fast")
+def cte_domain_follows_the_expression_not_its_result_annotation() -> None:
+    """A consumer float contract does not change an integer expression in SQL."""
+
+    class FloatResult(BaseModel):
+        id: float
+
+    value = Person.id.add(1).label("id")
+    calculated = (
+        sqlite.select(Person)
+        .all()
+        .project(FloatResult, id=value)
+        .cte(ActiveRole, name="calculated")
+    )
+    rebound = (
+        sqlite.select(calculated).all().project(Identifier, id=calculated.column(value))
+    )
+
+    assert_eq('"calculated"."id" AS "id"' in rebound.compile().sql, True)
+
+
+@test(mark="fast")
+def cte_scalar_domain_remains_nullable_when_rebound() -> None:
+    """A scalar reference can yield NULL even when its input column is required."""
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    value = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(0))).label("id")
+    data = (
+        sqlite.select(Person)
+        .all()
+        .project(OptionalIdentifier, id=value)
+        .cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(data).all().project(Identifier, id=data.column(value))
