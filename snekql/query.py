@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from snekql._aliases import TableAlias, require_query_source
 from snekql._compiled import CompiledQuery
+from snekql._cte import _Cte, _CteOutput, _CteRelation, build_cte
 from snekql._dialect_expr import DialectSelectable
 from snekql._named_projection import NamedProjection
 from snekql._output_label import _OutputLabel
@@ -433,6 +434,15 @@ class NamedSelectQuery[FamilyT, OwnerT: Table[Any], ResultT: BaseModel, Readines
 ):
     """Select values into a table-independent named result model."""
 
+    def cte[RoleT](
+        self: NamedSelectQuery[FamilyT, OwnerT, ResultT, _ExecutableQuery],
+        role: type[RoleT],
+        *,
+        name: str,
+    ) -> _Cte[FamilyT, OwnerT, ResultT, RoleT]:
+        """Freeze this completed named SELECT as a query-only relation."""
+        return build_cte(self.state, role, name=name)
+
     def group_by[GroupOwnerT: Table[Any]](
         self,
         column: Attr[Any, Any, GroupOwnerT, Any, Any],
@@ -462,7 +472,7 @@ class NamedSelectQuery[FamilyT, OwnerT: Table[Any], ResultT: BaseModel, Readines
 class SelectModelQuery[
     FamilyT,
     SelectOwnerT: Table[Any],
-    ReadModelT: Table[Any],
+    ReadModelT: Table[Any] | BaseModel,
     ReadinessT = _IncompleteQuery,
 ](
     _FluentSelectQuery[SelectOwnerT],
@@ -2138,6 +2148,9 @@ def _select_join(
     *,
     project: bool = False,
 ) -> SelectState:
+    if isinstance(model, _Cte) or issubclass(state.model, _CteRelation):
+        msg = "CTE joins are not supported"
+        raise QueryConstructionError(msg)
     table_model = require_query_source(model)
     new_columns = require_model_columns(table_model)
     anchor_backend = require_model_backend(state.model)
@@ -2698,6 +2711,21 @@ def build_select(*args: object) -> object:
     if len(args) == 0:
         msg = "select requires a model or field"
         raise QueryConstructionError(msg)
+    if isinstance(args[0], _Cte):
+        if len(args) != 1:
+            msg = "mixed CTE and field selection is invalid"
+            raise QueryConstructionError(msg)
+        relation = args[0].__query_source__()
+        definition = relation.definition.state
+        state = SelectState(
+            model=relation,
+            fields=tuple(
+                _CteOutput[Any, Any, Any](position=position, relation=relation)
+                for position in range(len(definition.fields))
+            ),
+            named_projection=definition.named_projection,
+        )
+        return SelectModelQuery[Any, Any, Any](state)
     if any(isinstance(argument, (type, TableAlias)) for argument in args):
         if len(args) != 1:
             msg = "mixed model and field selection is invalid"

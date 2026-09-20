@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from snekql.expressions import Predicate
     from snekql.model import Table
+    from snekql.storage import StorageBackend
 
 
 @dataclass(frozen=True)
@@ -92,3 +93,19 @@ class DialectSelectable[OwnerT: "Table[Any]", T, CompareT = T](Protocol):
     def __column_value_type__(self) -> T: ...
 
     def __accepts_comparison__(self, value: CompareT, /) -> None: ...
+
+
+@runtime_checkable
+class PolicySelectable(Protocol):
+    """A derived output that retains its source's column-validation policy."""
+
+    def __decode_with_policy__(
+        self, raw: object, *, backend: StorageBackend, validate: bool
+    ) -> object: ...
+
+
+@runtime_checkable
+class ComparisonEncoder(Protocol):
+    """An expression or derived output with its own comparison wire policy."""
+
+    def __encode_comparison__(self, value: object) -> object: ...

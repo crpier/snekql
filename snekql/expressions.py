@@ -199,6 +199,11 @@ class Predicate[OwnerT](ABC):
 
         return None
 
+    def __predicate_nested_selects__(self) -> tuple[object, ...]:
+        """Expose nested SELECTs for definition dependency discovery."""
+        subquery = self.__predicate_subquery__()
+        return () if subquery is None else (subquery,)
+
 
 class _PredicateNode[OwnerT](Predicate[OwnerT], ABC):
     """Private base proving a predicate came from a supported factory."""
@@ -372,6 +377,10 @@ class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
 
     def __predicate_operand__(self) -> object | None:
         return self.operand
+
+    def __predicate_nested_selects__(self) -> tuple[object, ...]:
+        """Scalar comparison inputs retain their own SELECT dependency scope."""
+        return (self.other.subquery,) if isinstance(self.other, _Scalar) else ()
 
     def __predicate_grouping_operands__(self) -> tuple[object, ...]:
         """Check both columns without treating a nested SELECT as an outer key."""

@@ -12,7 +12,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast, overload
 
+from pydantic import BaseModel
+
 from snekql._aliases import TableAlias, _AliasOwner, build_alias
+from snekql._cte import _Cte, _CteOwner
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import _IncompleteQuery
 from snekql._query_state import selectable_owner_model
@@ -50,6 +53,9 @@ def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
     if isinstance(model, TableAlias):
         msg = "aliases cannot be mutation targets"
         raise QueryConstructionError(msg)
+    if isinstance(model, _Cte):
+        msg = "CTEs cannot be mutation targets"
+        raise QueryConstructionError(msg)
     received = require_model_backend(model)
     if received != "sqlite":
         msg = (
@@ -59,10 +65,21 @@ def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
         raise QueryConstructionError(msg)
 
 
+@overload
+def select[SourceT: Table[Any], ResultT: BaseModel, RoleT](
+    source: _Cte[Literal["sqlite"], SourceT, ResultT, RoleT],
+    /,
+) -> SelectModelQuery[
+    Literal["sqlite"], _CteOwner[Literal["sqlite"], SourceT, RoleT], ResultT
+]: ...
+
+
 # BEGIN GENERATED BACKEND SELECT OVERLOADS
 @overload
 def select[
-    OwnerT: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     ReadT: Table[Any],
 ](
     model: _SelectableModelClass[Literal["sqlite"], OwnerT, ReadT],
@@ -72,7 +89,9 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     ValueT,
     CompareT,
 ](
@@ -84,7 +103,12 @@ def select[
 
 
 @overload
-def select[OwnerT: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any], ValueT](
+def select[
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
+    ValueT,
+](
     field: ColumnRef[OwnerT, ValueT],
     /,
 ) -> SelectValueQuery[Literal["sqlite"], OwnerT, OwnerT, ValueT, Any]: ...
@@ -92,9 +116,13 @@ def select[OwnerT: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any], V
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -114,11 +142,17 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -149,13 +183,21 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -192,15 +234,25 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -243,17 +295,29 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -302,19 +366,33 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner7T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T7,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -369,21 +447,37 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner7T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T7,
-    Owner8T: Model[Any, Any] | _AliasOwner[Literal["sqlite"], Any, Any],
+    Owner8T: Model[Any, Any]
+    | _AliasOwner[Literal["sqlite"], Any, Any]
+    | _CteOwner[Literal["sqlite"], Any, Any],
     T8,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]

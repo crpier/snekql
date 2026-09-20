@@ -1,0 +1,155 @@
+"""Named CTE consumption through real transactions."""
+
+from collections.abc import AsyncGenerator
+from typing import assert_type
+from uuid import UUID
+
+from pydantic import BaseModel, field_validator
+from snektest import assert_eq, fixture, load_fixture, test
+
+from snekql import mariadb, sqlite
+from tests.query.test_ctes import ActiveRole, Identifier, Person
+from tests.runtime.test_named_codecs import (
+    DocumentResult,
+    LocalDocument,
+    MariaDocument,
+    provide_mariadb_documents,
+    provide_sqlite_documents,
+)
+
+
+@fixture
+async def provide_cte_people() -> AsyncGenerator[sqlite.Database]:
+    """Seed one physical source for query-only definitions."""
+    async with await sqlite.Database.initialize(database=":memory:") as database:
+        await database.migrate({"001_people": sqlite.scaffold([Person])})
+        async with database.transaction() as transaction:
+            await transaction.execute(sqlite.insert(Person(id=1)))
+        yield database
+
+
+@test(mark="medium")
+async def cte_whole_row_materializes_its_named_contract() -> None:
+    """The consumer yields a Pydantic result, not a synthetic Table Model."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(sqlite.select(active).all())
+
+    assert_type(row, Identifier)
+    assert_eq(row, Identifier(id=1))
+
+
+@test(mark="medium")
+async def cte_whole_row_validates_only_the_final_result() -> None:
+    """Crossing the definition boundary does not run Python result validators."""
+    database = await load_fixture(provide_cte_people())
+
+    class Adjusted(BaseModel):
+        id: int
+
+        @field_validator("id")
+        @classmethod
+        def increment(cls, value: int) -> int:
+            return value + 10
+
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Adjusted, id=Person.id.label("id"))
+        .cte(ActiveRole, name="active")
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(sqlite.select(active).all())
+
+    assert_type(row, Adjusted)
+    assert_eq(row.id, 11)
+
+
+@test(mark="medium")
+async def cte_column_comparison_preserves_uuid_encoding() -> None:
+    """An output predicate binds the source's wire value, not a raw UUID object."""
+    database = await load_fixture(provide_sqlite_documents())
+    key = LocalDocument.id.label("key")
+    documents = (
+        sqlite.select(LocalDocument)
+        .all()
+        .project(DocumentResult, key=key, values=LocalDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    query = sqlite.select(documents).where(documents.column(key).eq(UUID(int=1)))
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_type(row, DocumentResult)
+    assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
+
+
+@test(mark="medium")
+async def cte_column_selection_has_the_source_value_type() -> None:
+    """A typed output reference is a scalar projection, not a result model."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    async with database.transaction() as transaction:
+        values = await transaction.fetch_all(
+            sqlite.select(active.column(identifier)).all()
+        )
+
+    assert_type(values, list[int])
+    assert_eq(values, [1])
+
+
+@test(mark="slow")
+async def mariadb_cte_preserves_native_uuid_and_json_codecs() -> None:
+    """Native definition outputs retain comparison encoding and logical decoding."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    query = mariadb.select(documents).where(documents.column(key).eq(UUID(int=1)))
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_type(row, DocumentResult)
+    assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
+
+
+@test(mark="medium")
+async def cte_scalar_preserves_disabled_column_validation() -> None:
+    """The explicit raw-value escape hatch still reaches the original codec."""
+    database = await load_fixture(provide_sqlite_documents())
+    key = LocalDocument.id.label("key")
+    documents = (
+        sqlite.select(LocalDocument)
+        .all()
+        .project(DocumentResult, key=key, values=LocalDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+
+    async with database.transaction() as transaction:
+        wire_value = await transaction.fetch_one(
+            sqlite.select(documents.column(key)).all(), validate=False
+        )
+
+    assert_eq(wire_value, str(UUID(int=1)))
