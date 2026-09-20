@@ -8,7 +8,7 @@ from pydantic import BaseModel, field_validator
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.query.test_ctes import ActiveRole, Identifier, Person
+from tests.query.test_ctes import ActiveRole, FilteredRole, Identifier, Person
 from tests.runtime.test_arithmetic import MariaInventory, provide_mariadb_inventory
 from tests.runtime.test_named_codecs import (
     DocumentResult,
@@ -256,3 +256,47 @@ async def nullable_owner_count_remains_nonnullable_through_a_definition() -> Non
 
     assert_type(value, int)
     assert_eq(value, 0)
+
+
+@test(mark="medium")
+async def cte_alias_preserves_sqlite_logical_codecs() -> None:
+    """A reference rename changes neither the UUID encoder nor JSON decoder."""
+    database = await load_fixture(provide_sqlite_documents())
+    key = LocalDocument.id.label("key")
+    documents = (
+        sqlite.select(LocalDocument)
+        .all()
+        .project(DocumentResult, key=key, values=LocalDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = sqlite.alias(documents, FilteredRole, name="peer")
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(
+            sqlite.select(peer).where(peer.column(key).eq(UUID(int=1)))
+        )
+
+    assert_type(row, DocumentResult)
+    assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
+
+
+@test(mark="slow")
+async def cte_alias_preserves_mariadb_logical_codecs() -> None:
+    """Native comparison bindings and materialization still use the definition."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, key=key, values=MariaDocument.payload)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(
+            mariadb.select(peer).where(peer.column(key).eq(UUID(int=1)))
+        )
+
+    assert_type(row, DocumentResult)
+    assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))

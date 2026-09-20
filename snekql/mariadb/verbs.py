@@ -15,7 +15,7 @@ from typing import Any, Literal, cast, overload
 from pydantic import BaseModel
 
 from snekql._aliases import TableAlias, _AliasOwner, build_alias
-from snekql._cte import _Cte, _CteOwner
+from snekql._cte import _Cte, _CteOwner, build_cte_alias
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import _IncompleteQuery
 from snekql._query_state import selectable_owner_model
@@ -607,11 +607,34 @@ def delete[ModelT: Model[Any, Any], ReadT: Table[Any]](
     return build_delete(model)
 
 
+@overload
+def alias[
+    SourceT: Table[Any],
+    ResultT: BaseModel,
+    RoleT,
+    NonNullableOwnerT,
+    AliasRoleT,
+](
+    model: _Cte[Literal["mariadb"], SourceT, ResultT, RoleT, NonNullableOwnerT],
+    role: type[AliasRoleT],
+    *,
+    name: str,
+) -> _Cte[Literal["mariadb"], SourceT, ResultT, AliasRoleT, NonNullableOwnerT]: ...
+
+
+@overload
 def alias[OwnerT: Model[Any, Any], ReadT: Table[Any], RoleT](
     model: _SelectableModelClass[Literal["mariadb"], OwnerT, ReadT],
     role: type[RoleT],
     *,
     name: str,
-) -> TableAlias[Literal["mariadb"], OwnerT, ReadT, RoleT]:
-    """Give a table a typed query role without changing its fetched result type."""
+) -> TableAlias[Literal["mariadb"], OwnerT, ReadT, RoleT]: ...
+
+
+def alias(
+    model: object, role: type[object], *, name: str
+) -> TableAlias[Any, Any, Any, Any] | _Cte[Any, Any, Any, Any, Any]:
+    """Give a table or CTE a typed role without changing its fetched result type."""
+    if isinstance(model, _Cte):
+        return build_cte_alias(model, role, name=name, backend="mariadb")
     return build_alias(model, role, name=name, backend="mariadb")

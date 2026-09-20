@@ -14,6 +14,7 @@ from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
 from snekql._compiled import CompiledQuery
+from snekql._cte import _CteRelation
 from snekql._cte_graph import collect_cte_definitions
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._named_projection import NamedProjection
@@ -595,6 +596,9 @@ def _compile_select_list(
 def _compile_source_sql(model: type[Table[Any]], dialect: QueryDialect) -> str:
     """Render a physical table with its independent query-role name, if any."""
     name = dialect.quote_identifier(require_model_table_name(model))
+    if issubclass(model, _CteRelation):
+        definition = dialect.quote_identifier(model.definition.name)
+        return definition if definition == name else f"{definition} AS {name}"
     if issubclass(model, _AliasRelation):
         physical = dialect.quote_identifier(
             require_model_table_name(model.source_model)

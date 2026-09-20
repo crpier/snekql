@@ -3,7 +3,7 @@
 from pydantic import BaseModel
 from snektest import assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 
 
 class Person[S = sqlite.Pending](sqlite.Model[S, "Person[sqlite.Fetched]"]):
@@ -270,3 +270,98 @@ def cte_mutation_target_fails_with_a_query_construction_error() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.update(active)  # ty: ignore[invalid-argument-type]
+
+
+@test(mark="fast")
+def cte_alias_uses_one_definition_and_its_own_qualifier() -> None:
+    """A new query role changes references, not the SQL definition's identity."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+
+    compiled = sqlite.select(peer).where(peer.column(identifier).gt(4)).compile()
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id" FROM "person" WHERE ("id" > ?)) SELECT "peer"."id" AS "id" FROM "active" AS "peer" WHERE ("peer"."id" > ?)',
+    )
+    assert_eq(compiled.params, (2, 4))
+
+
+@test(mark="fast")
+def cte_alias_roles_must_be_distinct_in_visible_scopes() -> None:
+    """Reusing a role cannot make two visible references nominally identical."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, ActiveRole, name="peer")
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(active).where(sqlite.exists(sqlite.select(peer).all())).compile()
+
+
+@test(mark="fast")
+def cte_alias_cannot_shadow_a_different_reachable_definition() -> None:
+    """Sibling nested scopes still share the statement's WITH namespace."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    other = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(FilteredRole, name="other")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="other")
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(Person).where(
+            sqlite.exists(sqlite.select(other).all())
+            & sqlite.exists(sqlite.select(peer).all())
+        ).compile()
+
+
+@test(mark="fast")
+def original_and_alias_references_emit_the_shared_definition_once() -> None:
+    """Definition parameters bind once even when two roles read its rows."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+    nested = sqlite.select(peer.column(identifier)).where(peer.column(identifier).gt(3))
+
+    compiled = sqlite.select(active).where(sqlite.exists(nested)).compile()
+
+    assert_eq(compiled.sql.count('"active" AS ('), 1)
+    assert_eq(compiled.params, (2, 3))
+
+
+@test(mark="fast")
+def cte_alias_rejects_a_foreign_backend_before_compilation() -> None:
+    """Dynamic calls cannot retag the definition by choosing another factory."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(mariadb.QueryConstructionError):
+        mariadb.alias(active, FilteredRole, name="peer")  # ty: ignore[no-matching-overload]

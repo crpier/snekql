@@ -53,6 +53,9 @@ class _DefinitionGraph:
             return
         definition = source.definition
         name = definition.name.casefold()
+        reference_name = require_model_table_name(source).casefold()
+        if reference_name != name:
+            self._physical_names.add(reference_name)
         if name in self._names and self._names[name] is not definition:
             msg = "CTE names must be unique ignoring case"
             raise QueryCompilationError(msg)

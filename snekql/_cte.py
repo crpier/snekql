@@ -16,7 +16,7 @@ from snekql._value_decode import _decode_projection_field
 from snekql._value_encode import _predicate_value_encoder
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Comparable, OrderBy, _OrderBy, _Scalar
-from snekql.model import Table, require_model_backend
+from snekql.model import BackendFamily, Table, require_model_backend
 from snekql.storage import StorageBackend
 
 
@@ -63,6 +63,7 @@ class _CteRelation(Table[Any]):
     """An SQL source identity without schema columns or a Table Model class."""
 
     definition: ClassVar[_CteDefinition]
+    role: ClassVar[type[object]]
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -180,6 +181,16 @@ class _Cte[
         raise QueryConstructionError(msg)
 
 
+def _require_reference_identity(role: object, name: str) -> None:
+    """Validate a nominal role and quoted SQL reference name before construction."""
+    if not isinstance(role, type):
+        msg = "CTE definitions require a role marker class"
+        raise QueryConstructionError(msg)
+    if not isinstance(name, str) or fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
+        msg = "CTE name must be an SQL identifier"
+        raise QueryConstructionError(msg)
+
+
 def build_cte(
     state: SelectState, role: type[object], *, name: str
 ) -> _Cte[Any, Any, Any, Any, Any]:
@@ -190,19 +201,41 @@ def build_cte(
     if state.named_projection is None:
         msg = "CTE definitions require named projections"
         raise QueryConstructionError(msg)
-    if not isinstance(role, type):
-        msg = "CTE definitions require a role marker class"
-        raise QueryConstructionError(msg)
-    if not isinstance(name, str) or fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) is None:
-        msg = "CTE name must be an SQL identifier"
-        raise QueryConstructionError(msg)
+    _require_reference_identity(role, name)
     relation = type(
         name,
         (_CteRelation,),
         {
             "definition": _CteDefinition(name=name, state=state),
+            "role": role,
             "__tablename__": name,
             "__snekql_backend__": require_model_backend(state.model),
+        },
+    )
+    return _Cte(relation)
+
+
+def build_cte_alias(
+    source: _Cte[Any, Any, Any, Any, Any],
+    role: type[object],
+    *,
+    name: str,
+    backend: BackendFamily,
+) -> _Cte[Any, Any, Any, Any, Any]:
+    """Bind a new role to the existing definition without copying its SELECT."""
+    _require_reference_identity(role, name)
+    original = source.__query_source__()
+    if require_model_backend(original) != backend:
+        msg = "CTE alias backend does not match the definition"
+        raise QueryConstructionError(msg)
+    relation = type(
+        name,
+        (_CteRelation,),
+        {
+            "definition": original.definition,
+            "role": role,
+            "__tablename__": name,
+            "__snekql_backend__": backend,
         },
     )
     return _Cte(relation)

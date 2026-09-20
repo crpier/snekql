@@ -180,7 +180,7 @@ def alias_assignment_cannot_target_the_physical_model() -> None:
 def alias_rejects_mixed_backend_models() -> None:
     """Erased callers cannot ask MariaDB to alias a SQLite model."""
     with assert_raises(mariadb.QueryConstructionError):
-        mariadb.alias(User, ManagerRole, name="manager")  # ty: ignore[invalid-argument-type]
+        mariadb.alias(User, ManagerRole, name="manager")  # ty: ignore[no-matching-overload]
 
 
 @test(mark="fast")

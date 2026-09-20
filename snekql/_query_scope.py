@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
+from snekql._cte import _CteDefinition, _CteRelation
 from snekql._dialect_expr import SqlCompilable
 from snekql._query_state import (
     SelectState,
@@ -83,12 +84,13 @@ class ScopeResolver:
         """Reject SQL shadowing and indistinguishable role types in visible scopes."""
         names: dict[str, type[Table[Any]]] = {}
         roles: set[tuple[type[Table[Any]], type[object]]] = set()
+        cte_roles: set[tuple[_CteDefinition, type[object]]] = set()
         for model in self.models:
             name = require_model_table_name(model).casefold()
             previous = names.get(name)
             if previous is not None and (
-                issubclass(model, _AliasRelation)
-                or issubclass(previous, _AliasRelation)
+                issubclass(model, (_AliasRelation, _CteRelation))
+                or issubclass(previous, (_AliasRelation, _CteRelation))
             ):
                 msg = "alias name collides with a visible query source"
                 raise QueryCompilationError(msg)
@@ -99,6 +101,12 @@ class ScopeResolver:
                     msg = "alias role is already visible in this query scope"
                     raise QueryCompilationError(msg)
                 roles.add(role)
+            if issubclass(model, _CteRelation):
+                cte_role = (model.definition, model.role)
+                if cte_role in cte_roles:
+                    msg = "CTE role is already visible in this query scope"
+                    raise QueryCompilationError(msg)
+                cte_roles.add(cte_role)
 
     def enter_subquery(
         self,

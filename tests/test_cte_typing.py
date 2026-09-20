@@ -112,6 +112,11 @@ if TYPE_CHECKING:
             list[int | None],
         )
         conditional.column(token).eq("wrong")  # ty: ignore[invalid-argument-type]
+        reference = sqlite.alias(conditional, ExtraRole, name="reference")
+        assert_type(
+            await transaction.fetch_all(sqlite.select(reference.column(token)).all()),
+            list[int | None],
+        )
         count = peer.column(Local.id).count().label("id")
         counted = joined.all().project(Result, id=count).cte(LocalRole, name="counted")
         assert_type(
@@ -153,6 +158,11 @@ if TYPE_CHECKING:
             list[int | None],
         )
         conditional.column(token).eq("wrong")  # ty: ignore[invalid-argument-type]
+        reference = mariadb.alias(conditional, ExtraRole, name="reference")
+        assert_type(
+            await transaction.fetch_all(mariadb.select(reference.column(token)).all()),
+            list[int | None],
+        )
         count = peer.column(Native.id).count().label("id")
         counted = joined.all().project(Result, id=count).cte(NativeRole, name="counted")
         assert_type(
@@ -170,3 +180,10 @@ if TYPE_CHECKING:
             await transaction.fetch_all(mariadb.select(mixed.column(extra_id)).all()),
             list[int],
         )
+
+    local_reference = sqlite.alias(local, PeerRole, name="reference")
+    native_reference = mariadb.alias(native, PeerRole, name="reference")
+    sqlite.select(local).where(local_reference.column(local_id).gt(0))  # ty: ignore[invalid-argument-type]
+    mariadb.select(native).where(native_reference.column(native_id).gt(0))  # ty: ignore[invalid-argument-type]
+    mariadb.alias(local, PeerRole, name="wrong")  # ty: ignore[no-matching-overload]
+    sqlite.alias(native, PeerRole, name="wrong")  # ty: ignore[no-matching-overload]
