@@ -682,3 +682,66 @@ async def cte_extrema_respect_disabled_source_validation() -> None:
         )
 
     assert_eq(values, (str(UUID(int=1)), str(UUID(int=1))))
+
+
+@test(mark="slow")
+async def native_cte_sum_and_average_preserve_numeric_results() -> None:
+    """Native integer SUM returns int, while AVG has its separate float domain."""
+    database = await load_fixture(provide_mariadb_inventory())
+    quantity = MariaInventory.quantity.label("id")
+    stock = (
+        mariadb.select(MariaInventory)
+        .all()
+        .project(Identifier, id=quantity)
+        .cte(ActiveRole, name="stock")
+    )
+    column = stock.column(quantity)
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(
+            mariadb.select(column.sum(), column.avg()).all().having(column.sum().gt(2))
+        )
+
+    assert_type(row, tuple[int | None, float | None])
+    assert_eq(row, (3, 3.0))
+    assert_eq(type(row[0]), int)
+    assert_eq(type(row[1]), float)
+
+
+@test(mark="medium")
+async def cte_numeric_aggregates_follow_computed_and_count_outputs() -> None:
+    """Known computed domains survive aliasing and subsequent aggregation."""
+    database = await load_fixture(provide_cte_people())
+    value = Person.id.add(2).label("id")
+    calculated = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="calculated")
+    )
+    peer = sqlite.alias(calculated, FilteredRole, name="peer")
+    column = peer.column(value)
+    counted_value = column.count().label("id")
+    counted = (
+        sqlite.select(peer)
+        .all()
+        .project(Identifier, id=counted_value)
+        .cte(ActiveRole, name="counted")
+    )
+
+    async with database.transaction() as transaction:
+        values = await transaction.fetch_one(
+            sqlite.select(column.sum(), column.avg()).all()
+        )
+        empty = await transaction.fetch_one(
+            sqlite.select(column.sum(), column.avg()).where(column.eq(0))
+        )
+        total = await transaction.fetch_one(
+            sqlite.select(counted.column(counted_value).sum()).all()
+        )
+
+    assert_type(values, tuple[int | None, float | None])
+    assert_type(total, int | None)
+    assert_eq(values, (3, 3.0))
+    assert_eq(empty, (None, None))
+    assert_eq(total, 1)

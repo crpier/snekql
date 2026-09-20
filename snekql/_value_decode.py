@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from snekql._dialect_expr import DialectSelectable, PolicySelectable
+from snekql._dialect_expr import (
+    DialectSelectable,
+    NumericAggregatePolicy,
+    PolicySelectable,
+)
 from snekql._query_state import (
     Selectable,
     require_column_model,
@@ -51,16 +55,23 @@ def _decode_aggregate(
         return int(cast("int", value))
     if aggregate.func == "AVG":
         return float(cast("float", value))
-    if aggregate.func != "SUM" and isinstance(aggregate.column, PolicySelectable):
+    if aggregate.func == "SUM":
+        return _decode_sum(aggregate.column, value)
+    if isinstance(aggregate.column, PolicySelectable):
         return aggregate.column.__decode_with_policy__(
             value, backend=backend, validate=validate
         )
-    column = require_field(aggregate.column)
-    if aggregate.func == "SUM":
-        return _normalize_sum(column, value)
-    # Stored values may violate logical constraints after unchecked/external
-    # writes. MIN/MAX use the same validation policy as a direct column read.
-    return column.decode(value, backend=backend, validate=validate)
+    # Extrema retain the source column's validation policy.
+    return require_field(aggregate.column).decode(
+        value, backend=backend, validate=validate
+    )
+
+
+def _decode_sum(column: object, value: object) -> object:
+    """Normalize totals according to their physical or derived output domain."""
+    if isinstance(column, NumericAggregatePolicy):
+        return column.__decode_sum__(value)
+    return _normalize_sum(require_field(column), value)
 
 
 def _decode_selectable(

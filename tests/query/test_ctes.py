@@ -1,6 +1,7 @@
 """Query-only named SELECT definitions through public compilation."""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 from snektest import assert_eq, assert_raises, test
@@ -534,3 +535,36 @@ def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
         column.gt(instant)
     with assert_raises(sqlite.QueryConstructionError):
         column.between(instant, instant)
+
+
+@test(mark="fast")
+def cte_numeric_aggregates_reject_nonnumeric_outputs() -> None:
+    """Numeric wire coercion cannot change a declared logical output domain."""
+
+    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+        name: sqlite.Col[str] = sqlite.Text()
+        enabled: sqlite.Col[bool] = sqlite.Integer()
+        key: sqlite.Col[UUID] = sqlite.Text()
+
+    class Result(BaseModel):
+        name: str
+        enabled: bool
+        key: UUID
+
+    name = Input.name.label("name")
+    enabled = Input.enabled.label("enabled")
+    key = Input.key.label("key")
+    data = (
+        sqlite.select(Input)
+        .all()
+        .project(Result, name=name, enabled=enabled, key=key)
+        .cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(name).sum()
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(enabled).avg()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(key).sum()

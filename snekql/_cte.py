@@ -12,8 +12,9 @@ from snekql._dialect_expr import CompileCtx
 from snekql._output_label import _NullExtendedLabel, _OutputLabel
 from snekql._query_dialect import query_dialect_for_backend
 from snekql._query_state import SelectState, require_single_column_subquery
-from snekql._value_decode import _decode_projection_field
+from snekql._value_decode import _decode_projection_field, _normalize_sum
 from snekql._value_encode import _predicate_value_encoder
+from snekql._value_expression import ValueExpression
 from snekql.errors import QueryConstructionError
 from snekql.expressions import (
     Aggregate,
@@ -169,6 +170,52 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T
     def count(self) -> Aggregate[OwnerT, int]:
         """Count non-NULL SQL outputs without decoding intermediate rows."""
         return _Aggregate(column=self, func="COUNT", owner=self.relation)
+
+    def sum(self) -> Aggregate[OwnerT, T | None, CompareT]:
+        """Sum numeric outputs using their original SQL result domain."""
+        self._numeric_source()
+        return _Aggregate(column=self, func="SUM", owner=self.relation)
+
+    def avg(self) -> Aggregate[OwnerT, float | None, float]:
+        """Average numeric outputs, returning NULL for an empty input."""
+        self._numeric_source()
+        return _Aggregate(column=self, func="AVG", owner=self.relation)
+
+    def __decode_sum__(self, raw: object) -> object:
+        source = self._numeric_source()
+        if isinstance(source, Attr):
+            return _normalize_sum(source, raw)
+        return source(cast("int | float", raw))
+
+    def __encode_sum_comparison__(self, value: object) -> object:
+        source = self._numeric_source()
+        if isinstance(source, Attr):
+            dialect = query_dialect_for_backend(require_model_backend(self.relation))
+            return dialect.encode_sum_value(source, value)
+        return value
+
+    def _numeric_source(self) -> type[int | float] | Attr[Any, Any, Any, Any, Any]:
+        source = self.relation.definition.state.fields[self.position]
+        while True:
+            if isinstance(source, _CteOutput):
+                source = source.relation.definition.state.fields[source.position]
+            elif isinstance(source, _Scalar):
+                source = require_single_column_subquery(source.subquery).fields[0]
+            elif isinstance(source, _Aggregate):
+                if source.func == "COUNT":
+                    return int
+                if source.func == "AVG":
+                    return float
+                source = source.column
+            else:
+                break
+        if isinstance(source, Attr):
+            source.sum()
+            return source
+        if isinstance(source, ValueExpression) and source.value_type in {int, float}:
+            return cast("type[int | float]", source.value_type)
+        msg = "sum()/avg() require a known numeric CTE output domain"
+        raise QueryConstructionError(msg)
 
     def min(self) -> Aggregate[OwnerT, T | None, CompareT]:
         """Select the least output, or NULL when no non-NULL value exists."""

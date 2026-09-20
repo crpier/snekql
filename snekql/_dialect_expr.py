@@ -109,3 +109,12 @@ class ComparisonEncoder(Protocol):
     """An expression or derived output with its own comparison wire policy."""
 
     def __encode_comparison__(self, value: object) -> object: ...
+
+
+@runtime_checkable
+class NumericAggregatePolicy(Protocol):
+    """A derived output retains SUM normalization and comparison encoding."""
+
+    def __decode_sum__(self, raw: object) -> object: ...
+
+    def __encode_sum_comparison__(self, value: object) -> object: ...

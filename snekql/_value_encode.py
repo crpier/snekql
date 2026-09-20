@@ -2,7 +2,11 @@
 
 from collections.abc import Callable
 
-from snekql._dialect_expr import ComparisonEncoder, SqlCompilable
+from snekql._dialect_expr import (
+    ComparisonEncoder,
+    NumericAggregatePolicy,
+    SqlCompilable,
+)
 from snekql._query_dialect import QueryDialect
 from snekql._query_state import Selectable, require_field, require_selectable
 from snekql.errors import QueryCompilationError
@@ -37,8 +41,17 @@ def _predicate_value_encoder(
         if selectable.func in {"COUNT", "AVG"}:
             return lambda value: value
         if selectable.func == "SUM":
-            wrapped = require_field(selectable.column)
-            return lambda value: dialect.encode_sum_value(wrapped, value)
+            return _sum_value_encoder(selectable.column, dialect)
         return _predicate_value_encoder(require_selectable(selectable.column), dialect)
     column = selectable
     return lambda value: dialect.encode_column_value(column, value)
+
+
+def _sum_value_encoder(
+    column: object, dialect: QueryDialect
+) -> Callable[[object], object]:
+    """SUM comparisons use the result domain, not input-column value limits."""
+    if isinstance(column, NumericAggregatePolicy):
+        return column.__encode_sum_comparison__
+    wrapped = require_field(column)
+    return lambda value: dialect.encode_sum_value(wrapped, value)
