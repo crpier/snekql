@@ -6,6 +6,7 @@ from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
+from snekql._output_label import _OutputLabel
 from snekql.errors import ModelValidationError, QueryConstructionError
 from snekql.expressions import _Aggregate
 from snekql.storage import (
@@ -66,6 +67,7 @@ class NamedProjection:
 
     labels: tuple[str, ...]
     result_type: type[BaseModel]
+    output_tokens: tuple[_OutputLabel[Any, Any, Any] | None, ...] = ()
 
     def check_binding(self, label: str, operand: object, *, nullable: bool) -> None:
         """Check known source domains; opaque expression values validate on fetch."""

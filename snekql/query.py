@@ -27,6 +27,7 @@ from snekql._aliases import TableAlias, require_query_source
 from snekql._compiled import CompiledQuery
 from snekql._dialect_expr import DialectSelectable
 from snekql._named_projection import NamedProjection
+from snekql._output_label import _OutputLabel
 from snekql._query_readiness import (
     _AssignedUpdate,
     _EmptyUpdate,
@@ -366,7 +367,18 @@ def _project_state(
 ) -> SelectState:
     """Resolve named bindings without changing row scope or query readiness."""
     projection = _named_contract(result_type, fields)
-    selectables = tuple(require_selectable(value) for value in fields.values())
+    tokens = tuple(
+        value if isinstance(value, _OutputLabel) else None for value in fields.values()
+    )
+    for name, token in zip(projection.labels, tokens, strict=True):
+        if token is not None and token.name != name:
+            msg = "output label must match its named projection binding"
+            raise QueryConstructionError(msg)
+    selectables = tuple(
+        require_selectable(value.operand if isinstance(value, _OutputLabel) else value)
+        for value in fields.values()
+    )
+    projection = replace(projection, output_tokens=tokens)
     scope = ScopeResolver(own_models=state.result_models())
     nullable_models = {join.model for join in state.joins if join.join_type == "LEFT"}
     for label, selectable in zip(projection.labels, selectables, strict=True):
