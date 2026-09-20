@@ -19,6 +19,12 @@
 
 ### Added
 
+- Searchable API reference, backend capability matrix and service adoption guide.
+  Executable SQLite examples cover FastAPI lifespan/dependency ownership,
+  commit-before-response, per-job worker transactions, migration-backed fixtures
+  and coexistence with an externally migrated database layer. Framework tools
+  remain development-only dependencies. Addresses #301.
+
 - Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
   gates, a documented fault inventory, and an optional bounded Linux resource
   soak. Native late-stream faults verify discard and subsequent recovery. #295.

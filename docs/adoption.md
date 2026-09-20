@@ -3,6 +3,10 @@
 This checklist is for maintainers validating a published snekql release and for
 application teams deciding whether the package is ready to adopt.
 
+For integration work, start with the [API reference](api-reference.md),
+[backend matrix](backend-capabilities.md), and executable
+[service and incremental-adoption recipes](service-recipes.md).
+
 ## Published-package smoke test
 
 Run this outside the repository so the local checkout cannot shadow the package
@@ -106,7 +110,7 @@ Before announcing a release:
 2. Confirm `CHANGELOG.md` has a dated entry for the version.
 3. Run the repository validation suite:
    ```sh
-   uv run snektest
+   uv run snektest tests
    uv run ty check
    uv run ruff check .
    uv run ruff format --check .
