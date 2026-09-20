@@ -8,6 +8,7 @@ from snektest import assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
 from tests.query.test_named_projection import Person
+from tests.runtime.test_arithmetic import MariaInventory, provide_mariadb_inventory
 from tests.runtime.test_named_codecs import (
     DocumentResult,
     LocalDocument,
@@ -175,3 +176,131 @@ async def labeled_native_json_cannot_bypass_final_validation() -> None:
     async with database.transaction() as transaction:
         with assert_raises(mariadb.ModelValidationError):
             await transaction.fetch_one(query, validate=False)
+
+
+@test(mark="medium")
+async def labeled_left_join_computation_preserves_null() -> None:
+    """An absent row makes arithmetic NULL despite a non-null source declaration."""
+    database = await load_fixture(provide_people())
+
+    class MissingRole:
+        pass
+
+    class OptionalIncrement(BaseModel):
+        increment: int | None
+
+    missing = sqlite.alias(Person, MissingRole, name="missing")
+    query = (
+        sqlite.select(Person)
+        .left_join(
+            missing,
+            on=Person.id.eq_col(missing.column(Person.id))
+            & missing.column(Person.id).eq(-1),
+        )
+        .all()
+        .project(
+            OptionalIncrement,
+            increment=missing.column(Person.id).add(1).label("increment"),
+        )
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_type(row, OptionalIncrement)
+    assert_eq(row.increment, None)
+
+
+@test(mark="medium")
+async def labeled_coalesce_handles_an_absent_join_before_decoding() -> None:
+    """A literal fallback is not null-extended along with the missing table."""
+    database = await load_fixture(provide_people())
+
+    class MissingRole:
+        pass
+
+    class Increment(BaseModel):
+        increment: int
+
+    missing = sqlite.alias(Person, MissingRole, name="missing")
+    query = (
+        sqlite.select(Person)
+        .left_join(
+            missing,
+            on=Person.id.eq_col(missing.column(Person.id))
+            & missing.column(Person.id).eq(-1),
+        )
+        .all()
+        .project(
+            Increment,
+            increment=missing.column(Person.id).coalesce(0).add(1).label("increment"),
+        )
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_eq(row.increment, 1)
+
+
+@test(mark="medium")
+async def labeled_case_keeps_literal_branches_nonnullable() -> None:
+    """A searched CASE over an absent owner can still return a non-null literal."""
+    database = await load_fixture(provide_people())
+
+    class MissingRole:
+        pass
+
+    class Increment(BaseModel):
+        increment: int
+
+    missing = sqlite.alias(Person, MissingRole, name="missing")
+    expression = sqlite.case(missing.column(Person.id).is_null(), then=4, otherwise=7)
+    query = (
+        sqlite.select(Person)
+        .left_join(
+            missing,
+            on=Person.id.eq_col(missing.column(Person.id))
+            & missing.column(Person.id).eq(-1),
+        )
+        .all()
+        .project(Increment, increment=expression.label("increment"))
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_eq(row.increment, 4)
+
+
+@test(mark="slow")
+async def mariadb_labeled_left_join_computation_preserves_null() -> None:
+    """Native arithmetic NULLs receive the same outer-join policy as SQLite."""
+    database = await load_fixture(provide_mariadb_inventory())
+
+    class MissingRole:
+        pass
+
+    class OptionalIncrement(BaseModel):
+        increment: int | None
+
+    missing = mariadb.alias(MariaInventory, MissingRole, name="missing")
+    query = (
+        mariadb.select(MariaInventory)
+        .left_join(
+            missing,
+            on=MariaInventory.id.eq_col(missing.column(MariaInventory.id))
+            & missing.column(MariaInventory.id).eq(-1),
+        )
+        .all()
+        .project(
+            OptionalIncrement,
+            increment=missing.column(MariaInventory.quantity).add(1).label("increment"),
+        )
+    )
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(query)
+
+    assert_type(row, OptionalIncrement)
+    assert_eq(row.increment, None)

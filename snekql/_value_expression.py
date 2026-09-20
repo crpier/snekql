@@ -448,6 +448,37 @@ class ValueExpression[OwnerT, T](
         """Validate native value literals independently of column codecs."""
         return _encode_native_literal(self.value_type, value)
 
+    def __nullable_when_extended__(self) -> bool:
+        """Compute possible NULL output when this expression's row is absent.
+
+        Row absence nulls column reads, not literal CASE branches or COALESCE
+        fallbacks. Fold the SQL operations instead of nulling every expression
+        that happens to read a LEFT-joined owner.
+        """
+        if isinstance(self.column, CaseRoot):
+            nullable = any(
+                branch.__nullable_when_extended__()
+                if isinstance(branch, ValueExpression)
+                else branch is None
+                for branch in (self.column.then, self.column.otherwise)
+            )
+        else:
+            nullable = True
+        for operator, operand in self.operations:
+            if operator in {"LOWER", "CHAR_LENGTH"}:
+                continue
+            right_nullable = (
+                operand.__nullable_when_extended__()
+                if isinstance(operand, ValueExpression)
+                else operand is None
+            )
+            nullable = (
+                nullable and right_nullable
+                if operator == "COALESCE"
+                else nullable or right_nullable
+            )
+        return nullable
+
     def __decode__(self, raw: object) -> T:
         if raw is None and self.nullable:
             return cast("T", None)

@@ -192,3 +192,79 @@ def untyped_label_names_fail_before_projection() -> None:
     """Dynamic callers receive the same construction error as malformed strings."""
     with assert_raises(sqlite.QueryConstructionError):
         Person.person_id.label(None)  # ty: ignore[invalid-argument-type]
+
+
+@test(mark="fast")
+def left_join_computation_requires_a_nullable_named_field() -> None:
+    """Null extension remains part of a labeled expression's SQL output contract."""
+
+    class PeerRole:
+        pass
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    query = (
+        sqlite.select(Person)
+        .left_join(peer, on=Person.person_id.eq_col(peer.column(Person.person_id)))
+        .all()
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        query.project(Identifier, id=peer.column(Person.person_id).add(1).label("id"))
+
+
+@test(mark="fast")
+def coalescing_left_join_output_keeps_a_nonnullable_named_field() -> None:
+    """COALESCE handles absent rows before the output contract is checked."""
+
+    class PeerRole:
+        pass
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    query = (
+        sqlite.select(Person)
+        .left_join(peer, on=Person.person_id.eq_col(peer.column(Person.person_id)))
+        .all()
+    )
+
+    compiled = query.project(
+        Identifier, id=peer.column(Person.person_id).coalesce(0).add(1).label("id")
+    ).compile()
+
+    assert_eq(compiled.params, (0, 1))
+
+
+@test(mark="fast")
+def arithmetic_after_coalesce_can_restore_outer_join_nullability() -> None:
+    """A later nullable operand prevents treating an earlier COALESCE as final."""
+
+    class PeerRole:
+        pass
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    column = peer.column(Person.person_id)
+    query = (
+        sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column)).all()
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        query.project(Identifier, id=column.coalesce(0).add(column).label("id"))
+
+
+@test(mark="fast")
+def nested_coalesce_can_remove_outer_join_nullability() -> None:
+    """A computed fallback carries its own null-elimination policy."""
+
+    class PeerRole:
+        pass
+
+    peer = sqlite.alias(Person, PeerRole, name="peer")
+    column = peer.column(Person.person_id)
+    query = (
+        sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column)).all()
+    )
+
+    compiled = query.project(
+        Identifier, id=column.coalesce(column.coalesce(2)).label("id")
+    ).compile()
+
+    assert_eq(compiled.params, (2,))

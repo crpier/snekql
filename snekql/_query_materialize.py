@@ -24,6 +24,7 @@ from snekql._query_state import (
     require_field,
     require_single_column_subquery,
 )
+from snekql._value_expression import ValueExpression
 from snekql.errors import QueryCompilationError
 from snekql.expressions import _Aggregate, _Scalar
 from snekql.model import require_model_columns
@@ -221,6 +222,13 @@ def _decode_projection_field(
         value is None
         and isinstance(column, Attr)
         and require_column_model(column) in nullable_models
+    ):
+        return None
+    if (
+        value is None
+        and isinstance(column, ValueExpression)
+        and column.__owner_model__() in nullable_models
+        and column.__nullable_when_extended__()
     ):
         return None
     return _decode_selectable(column, value, backend=backend, validate=validate)

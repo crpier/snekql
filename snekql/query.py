@@ -63,6 +63,7 @@ from snekql._query_state import (
     selectable_owner_model,
 )
 from snekql._telemetry import ParameterVisibility, format_bound_params
+from snekql._value_expression import ValueExpression
 from snekql.errors import (
     ModelDeclarationError,
     QueryConstructionError,
@@ -392,12 +393,16 @@ def _project_state(
         scope.ensure_operand_in_scope(
             selectable, clause="projection", error=QueryConstructionError, own_only=True
         )
-        projection.check_binding(
-            label,
-            selectable,
-            nullable=isinstance(selectable, Attr)
-            and require_column_model(selectable) in nullable_models,
+        nullable = (
+            isinstance(selectable, Attr)
+            and require_column_model(selectable) in nullable_models
         )
+        if (
+            isinstance(selectable, ValueExpression)
+            and selectable.__owner_model__() in nullable_models
+        ):
+            nullable = selectable.__nullable_when_extended__()
+        projection.check_binding(label, selectable, nullable=nullable)
     return replace(
         state, fields=selectables, returns_model=False, named_projection=projection
     )
