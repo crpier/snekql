@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from snekql._telemetry import format_bound_params
+from snekql._telemetry import fingerprint_sql, format_bound_params
 from snekql.model import BackendFamily
 
 
@@ -32,3 +32,14 @@ class CompiledQuery:
             f"CompiledQuery(backend={self.backend!r}, "
             f"params={format_bound_params(self.params, 'redacted')}, sql={self.sql!r})"
         )
+
+    @property
+    def fingerprint(self) -> str:
+        """Identify exact backend SQL independently of bound parameter values.
+
+        No SQL or parameter values appear in the result. Different SQL shapes
+        can still create unbounded distinct fingerprints; metric adapters need
+        an explicit allowlist or must omit this label. This is not encryption
+        for values embedded in custom SQL. Compilation changes can change IDs.
+        """
+        return fingerprint_sql(self.backend, self.sql)

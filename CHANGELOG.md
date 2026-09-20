@@ -4,6 +4,22 @@
 
 ### Added
 
+- Optional `snekql.opentelemetry.OpenTelemetryObserver` exports duration histograms
+  and request-parented spans through caller-owned SDK interfaces. Fingerprint
+  metric labels use a fixed allowlist; in-flight span storage is bounded. Install
+  the `opentelemetry` extra for the API dependency. Completes #293.
+
+- Parameter-free runtime observations now separate driver work, materialization,
+  transaction duration, and stream lifetime. `CompiledQuery.fingerprint` identifies
+  exact backend SQL without reading bound values; raw operations use one category.
+  Cancellation preserves cleanup and commit evidence. Part of #293.
+
+- `Database.pool_stats()` exposes immutable admission utilization, waiters,
+  acquisition failures/cancellations, explicit discards, and observer failures.
+  Optional synchronous observers receive parameter-free pool wait and checkout
+  events in isolated caller contexts. Callback failures do not fail database work;
+  cancellation retains cleanup ownership. First part of #293.
+
 - SQLite `Index(..., where=predicate)` declares bounded partial indexes through
   synchronous `__indexes__` factories. Existing lists remain supported. Native
   subset uniqueness, conservative FK eligibility, and structural predicate

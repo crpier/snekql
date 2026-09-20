@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, AbstractContextManager, nullcontext
 from pathlib import Path
 from types import TracebackType
 from typing import (
@@ -17,6 +17,7 @@ from typing import (
     TypeVarTuple,
     cast,
     overload,
+    runtime_checkable,
 )
 
 import anyio
@@ -29,6 +30,7 @@ from snekql._migrations import (
     MigrationStatus,
     prepare_migrations,
 )
+from snekql._observation import Telemetry, validate_observer
 from snekql._query_plan import (
     SelectCardinality,
     SelectPlan,
@@ -44,7 +46,12 @@ from snekql._runtime_selection import (
 )
 from snekql._schema_verification import SchemaVerificationResult
 from snekql._statement_failure import StatementConstraintError
-from snekql._telemetry import ParameterVisibility, QueryDiagnostics, format_bound_params
+from snekql._telemetry import (
+    ParameterVisibility,
+    QueryDiagnostics,
+    fingerprint_sql,
+    format_bound_params,
+)
 from snekql.errors import (
     DatabaseFailure,
     DatabaseOperationTimeoutError,
@@ -72,6 +79,7 @@ from snekql.query import (
     _SelectableModelClass,
 )
 from snekql.storage import SchemaPolicy
+from snekql.telemetry import Observer, PoolStats
 from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
@@ -255,6 +263,16 @@ class QueryCodec(Protocol):
     ) -> object: ...
 
 
+@runtime_checkable
+class _ObservedRuntime(Protocol):
+    """Optional observer and pool statistics support, without driver access."""
+
+    def pool_stats(self) -> PoolStats: ...
+
+    @property
+    def telemetry(self) -> Telemetry: ...
+
+
 class RuntimeBackend(Protocol):
     """Backend adapter seam used by Database and Transaction."""
 
@@ -325,6 +343,8 @@ class ChunkStream[RowT]:
         self._plan: SelectPlan[object] | RawPlan | None = None
         self._lock: anyio.Lock = lock
         self._size: PositiveInt = size
+        self._lifetime: AbstractContextManager[None] | None = None
+        self._failed: bool = False
         self._cursor: RuntimeCursor | None = None
         self._entered: bool = False
         self._owner_task: int | None = None
@@ -345,20 +365,31 @@ class ChunkStream[RowT]:
             self._plan = plan
             transaction._validate_plan_backend(plan.backend)  # noqa: SLF001
             transaction._validate_locking_policy(connection, plan)  # noqa: SLF001
+            lifetime = transaction._measure(  # noqa: SLF001
+                "stream", plan.diagnostics, succeeded=lambda: not self._failed
+            )
+            lifetime.__enter__()
+            self._lifetime = lifetime
             self._cursor = await transaction._run_query_operation(  # noqa: SLF001
                 "fetch_chunks execution",
                 lambda: transaction._open_cursor(connection, plan, stream=True),  # noqa: SLF001
                 plan.diagnostics,
             )
             if isinstance(plan, RawPlan):
-                plan.check_shape()
+                with transaction._measure("materialization", plan.diagnostics):  # noqa: SLF001
+                    plan.check_shape()
             transaction._stream_owner = self._owner_task  # noqa: SLF001
         except BaseException as error:
+            pending = error
             try:
                 if isinstance(self._plan, RawPlan):
                     await self._finish_raw(error)
+            except BaseException as cleanup_error:
+                pending = cleanup_error
+                raise
             finally:
                 self._lock.release()
+                self._finish_lifetime(pending)
             raise
         return self
 
@@ -371,6 +402,7 @@ class ChunkStream[RowT]:
         _ = exc_type
         _ = traceback
         self._check_raw_owner()
+        pending = exc_value
         try:
             if isinstance(self._plan, RawPlan):
                 await self._finish_raw(exc_value)
@@ -385,9 +417,23 @@ class ChunkStream[RowT]:
                         cursor.close,
                         plan.diagnostics,
                     )
+        except BaseException as error:
+            pending = error
+            raise
         finally:
             self._transaction._stream_owner = None  # noqa: SLF001
             self._lock.release()
+            self._finish_lifetime(pending)
+
+    def _finish_lifetime(self, pending: BaseException | None) -> None:
+        """Release the measurement after the cursor and transaction lock."""
+        lifetime, self._lifetime = self._lifetime, None
+        if lifetime is not None:
+            lifetime.__exit__(
+                type(pending) if pending is not None else None,
+                pending,
+                pending.__traceback__ if pending is not None else None,
+            )
 
     def _check_raw_owner(self) -> None:
         """Reject cursor use outside its savepoint or raw stream's owning task."""
@@ -418,7 +464,8 @@ class ChunkStream[RowT]:
             return
         if not control_flow:
             try:
-                plan.check_shape()
+                with self._transaction._measure("materialization", plan.diagnostics):  # noqa: SLF001
+                    plan.check_shape()
             except Exception as error:
                 raise error from None
 
@@ -454,14 +501,17 @@ class ChunkStream[RowT]:
             )
             # Application decoding stays outside the driver-error boundary, so a
             # validation failure does not become an ExecutionError.
-            return [
-                cast(
-                    "RowT",
-                    plan.materialize_row(tuple(row)),
-                )
-                for row in rows
-            ]
+            with transaction._measure("materialization", plan.diagnostics):  # noqa: SLF001
+                return [
+                    cast(
+                        "RowT",
+                        plan.materialize_row(tuple(row)),
+                    )
+                    for row in rows
+                ]
         except BaseException as error:
+            if not isinstance(error, StopAsyncIteration):
+                self._failed = True
             if isinstance(plan, RawPlan):
                 await self._finish_raw(error)
             raise
@@ -611,6 +661,11 @@ class Transaction[FamilyT: BackendFamily]:
             if read_only is True and mode == "immediate":
                 msg = "SQLite read-only transactions cannot request immediate write intent"
                 raise DatabaseRuntimeError(msg)
+        self._telemetry: Telemetry | None = (
+            runtime.telemetry if isinstance(runtime, _ObservedRuntime) else None
+        )
+        self._lifetime: AbstractContextManager[None] | None = None
+        self._close_owner: int | None = None
         self._commit_outcome: CommitOutcome = "not_attempted"
         self.closed: bool = False
         self.connection: RuntimeConnection | None = None
@@ -631,7 +686,7 @@ class Transaction[FamilyT: BackendFamily]:
         self._stream_owner: int | None = None
         self._lock: anyio.Lock = anyio.Lock()
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> Self:  # noqa: C901 - retain lease ownership across entry failures
         # A Transaction is single-use and not re-entrant: it is entered exactly
         # once and cannot be restarted. Re-entering one that is still open, or
         # one already used and closed, is reuse rather than a closed-use error.
@@ -669,6 +724,16 @@ class Transaction[FamilyT: BackendFamily]:
                     msg, failure=self.runtime.classify_failure(e)
                 ) from e
             try:
+                lifetime = (
+                    self._telemetry.measure(
+                        "transaction",
+                        succeeded=lambda: self._commit_outcome == "committed",
+                    )
+                    if self._telemetry is not None
+                    else nullcontext()
+                )
+                lifetime.__enter__()
+                self._lifetime = lifetime
                 await self._run_driver_operation(
                     "transaction begin",
                     lambda: connection.begin(
@@ -694,6 +759,10 @@ class Transaction[FamilyT: BackendFamily]:
                 raise
             self.connection = connection
             logger.debug("%s transaction begin", self.runtime.backend_family)
+        except BaseException as error:
+            self._finish_lifetime(error)
+            raise
+        else:
             return self
         finally:
             self._entering = False
@@ -704,9 +773,20 @@ class Transaction[FamilyT: BackendFamily]:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        _ = exc_value
         _ = traceback
         self._check_nested_owner()
+        pending = exc_value
+        try:
+            await self._close(exc_type)
+        except BaseException as error:
+            pending = error
+            raise
+        finally:
+            if self._close_owner == anyio.get_current_task().id:
+                self._finish_lifetime(pending)
+
+    async def _close(self, exc_type: type[BaseException] | None) -> None:
+        """Finish native transaction control before returning or discarding its lease."""
         with anyio.CancelScope(shield=True):
             async with self._lock:
                 self._check_nested_owner()
@@ -714,6 +794,7 @@ class Transaction[FamilyT: BackendFamily]:
                 if connection is None:
                     msg = "transaction is closed"
                     raise TransactionClosedError(msg)
+                self._close_owner = anyio.get_current_task().id
                 self.connection = None
                 self.closed = True
                 if self._nested_stack:
@@ -741,7 +822,10 @@ class Transaction[FamilyT: BackendFamily]:
                                 connection.commit,
                             )
                         finally:
-                            if connection.commit_outcome in ("committed", "rejected"):
+                            if connection.commit_outcome in (
+                                "committed",
+                                "rejected",
+                            ):
                                 self._commit_outcome = connection.commit_outcome
                         self._commit_outcome = "committed"
                         logger.debug(
@@ -771,6 +855,16 @@ class Transaction[FamilyT: BackendFamily]:
                         logger.warning(
                             "%s transaction discarded", self.runtime.backend_family
                         )
+
+    def _finish_lifetime(self, pending: BaseException | None) -> None:
+        """Close one measurement only after native transaction cleanup has run."""
+        lifetime, self._lifetime = self._lifetime, None
+        if lifetime is not None:
+            lifetime.__exit__(
+                type(pending) if pending is not None else None,
+                pending,
+                pending.__traceback__ if pending is not None else None,
+            )
 
     @property
     def commit_outcome(self) -> CommitOutcome:
@@ -871,12 +965,15 @@ class Transaction[FamilyT: BackendFamily]:
                 plan=plan,
                 operation="fetch_all",
             )
-            materialized: list[object] = []
-            for index, row in enumerate(rows):
-                if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
-                    await anyio.lowlevel.checkpoint()
-                materialized.append(plan.materialize_row(tuple(row)))
-            return materialized
+            with self._measure("materialization", plan.diagnostics):
+                if isinstance(plan, RawPlan):
+                    plan.check_shape()
+                materialized: list[object] = []
+                for index, row in enumerate(rows):
+                    if index and index % FETCH_ALL_YIELD_INTERVAL == 0:
+                        await anyio.lowlevel.checkpoint()
+                    materialized.append(plan.materialize_row(tuple(row)))
+                return materialized
 
     @overload
     def fetch_chunks[ScopeT, RowT](
@@ -1044,8 +1141,11 @@ class Transaction[FamilyT: BackendFamily]:
                 plan=plan,
                 operation="fetch_one",
             )
+        with self._measure("materialization", plan.diagnostics):
+            if isinstance(plan, RawPlan):
+                plan.check_shape()
             rows = [tuple(row) for row in raw_rows]
-        return plan.materialize(rows)
+            return plan.materialize(rows)
 
     @overload
     async def fetch_one_or_none[ScopeT, RowT](
@@ -1118,7 +1218,10 @@ class Transaction[FamilyT: BackendFamily]:
                 plan=plan,
                 operation="fetch_one_or_none",
             )
-        return plan.materialize(rows)
+        with self._measure("materialization", plan.diagnostics):
+            if isinstance(plan, RawPlan):
+                plan.check_shape()
+            return plan.materialize(rows)
 
     @overload
     async def execute(
@@ -1198,12 +1301,14 @@ class Transaction[FamilyT: BackendFamily]:
                 plan=plan,
                 operation="write",
             )
-            if isinstance(plan, RawPlan):
-                return affected_rows
-            return plan.materialize(
-                rowcount=affected_rows,
-                rows=returned_rows,
-            )
+            with self._measure("materialization", plan.diagnostics):
+                if isinstance(plan, RawPlan):
+                    plan.check_shape()
+                    return affected_rows
+                return plan.materialize(
+                    rowcount=affected_rows,
+                    rows=returned_rows,
+                )
 
     async def explain[ScopeT, RowT, ResultT](
         self,
@@ -1249,11 +1354,13 @@ class Transaction[FamilyT: BackendFamily]:
                 plan=plan,
                 operation="explain_analyze" if analyze else "explain",
             )
-            return ExplainResult(
-                backend=plan.backend,
-                columns=plan.columns or (),
-                rows=tuple(tuple(row) for row in rows),
-            )
+            with self._measure("materialization", plan.diagnostics):
+                plan.check_shape()
+                return ExplainResult(
+                    backend=plan.backend,
+                    columns=plan.columns or (),
+                    rows=tuple(tuple(row) for row in rows),
+                )
 
     def _check_nested_owner(self) -> None:
         """Savepoints reserve the connection's logical work for one task."""
@@ -1303,7 +1410,9 @@ class Transaction[FamilyT: BackendFamily]:
             try:
                 plan.columns = cursor.columns
             except BaseException as error:
-                await self._complete_raw_cursor(cursor, plan, pending=error)
+                await self._complete_raw_cursor(
+                    cursor, plan, pending=error, observe=False
+                )
                 raise
             return cursor
         if plan.sql is None:
@@ -1319,6 +1428,7 @@ class Transaction[FamilyT: BackendFamily]:
         plan: RawPlan,
         *,
         pending: BaseException | None = None,
+        observe: bool = True,
     ) -> None:
         """Cleanup errors supersede result errors, but never cancellation."""
 
@@ -1327,6 +1437,7 @@ class Transaction[FamilyT: BackendFamily]:
                 "raw cursor completion",
                 cast("RawRuntimeCursor", cursor).complete,
                 plan.diagnostics,
+                observe=observe,
             )
         except BaseException:
             if pending is not None and not isinstance(pending, Exception):
@@ -1388,13 +1499,13 @@ class Transaction[FamilyT: BackendFamily]:
                 return rowcount, rows
             finally:
                 if isinstance(plan, RawPlan):
-                    await self._complete_raw_cursor(cursor, plan, pending=pending)
+                    await self._complete_raw_cursor(
+                        cursor, plan, pending=pending, observe=False
+                    )
                 else:
                     await cursor.close()
 
         output = await self._run_query_operation(operation, collect, diagnostics)
-        if isinstance(plan, RawPlan):
-            plan.check_shape()
         logger.debug(
             "%s %s executed: %s params=%s rows=%d",
             self.runtime.backend_family,
@@ -1410,6 +1521,8 @@ class Transaction[FamilyT: BackendFamily]:
         operation: str,
         operation_call: Callable[[], Awaitable[ResultT]],
         diagnostics: QueryDiagnostics,
+        *,
+        observe: bool = True,
     ) -> ResultT:
         """Translate query driver failures without catching row materialization.
 
@@ -1419,7 +1532,11 @@ class Transaction[FamilyT: BackendFamily]:
 
         try:
             return await self._run_driver_operation(
-                operation, operation_call, recover_constraints=True
+                operation,
+                operation_call,
+                recover_constraints=True,
+                diagnostics=diagnostics,
+                observe=observe,
             )
         except DatabaseOperationTimeoutError as error:
             if diagnostics.raw:
@@ -1459,11 +1576,16 @@ class Transaction[FamilyT: BackendFamily]:
         operation_call: Callable[[], Awaitable[ResultT]],
         *,
         recover_constraints: bool = False,
+        diagnostics: QueryDiagnostics | None = None,
+        observe: bool = True,
     ) -> ResultT:
         """Run one driver operation within the transaction's timeout."""
 
         try:
-            with anyio.fail_after(self.timeout):
+            with (
+                self._measure("driver", diagnostics) if observe else nullcontext(),
+                anyio.fail_after(self.timeout),
+            ):
                 return await operation_call()
         except TimeoutError as error:
             self._connection_reusable = False
@@ -1483,6 +1605,27 @@ class Transaction[FamilyT: BackendFamily]:
         except BaseException:
             self._connection_reusable = False
             raise
+
+    def _measure(
+        self,
+        kind: Literal["driver", "materialization", "stream"],
+        diagnostics: QueryDiagnostics | None,
+        *,
+        succeeded: Callable[[], bool] | None = None,
+    ) -> AbstractContextManager[None]:
+        """Observe only supported runtimes; never hash SQL when observation is off."""
+        if self._telemetry is None or self._telemetry.observer is None:
+            return nullcontext()
+        fingerprint = None
+        if diagnostics is not None:
+            fingerprint = (
+                "raw"
+                if diagnostics.raw
+                else fingerprint_sql(self.runtime.backend_family, diagnostics.sql)
+            )
+        return self._telemetry.measure(
+            kind, fingerprint=fingerprint, succeeded=succeeded
+        )
 
     def _format_bound_params(self, params: tuple[object, ...]) -> str:
         """Apply this runtime's parameter visibility policy to telemetry."""
@@ -1571,6 +1714,8 @@ class Database[FamilyT: BackendFamily]:
     async def initialize(
         cls,
         backend: RuntimeConfig[FamilyT],
+        *,
+        observer: Observer | None = None,
     ) -> Self: ...
 
     @overload
@@ -1579,17 +1724,19 @@ class Database[FamilyT: BackendFamily]:
         cls: type[Database[Literal["sqlite"]]],
         *,
         database: Path | Literal[":memory:"],
+        observer: Observer | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
         operation_timeout: NonNegativeFloat = 30.0,
     ) -> Database[Literal["sqlite"]]: ...
 
     @classmethod
-    async def initialize(
+    async def initialize(  # noqa: PLR0913 - retain legacy initialization keywords
         cls,
         backend: object | None = None,
         *,
         database: Path | Literal[":memory:"] | None = None,
+        observer: Observer | None = None,
         pool_size: PositiveInt = 5,
         acquire_timeout: NonNegativeFloat = 30.0,
         operation_timeout: NonNegativeFloat = 30.0,
@@ -1603,6 +1750,7 @@ class Database[FamilyT: BackendFamily]:
         `verify` or query, not here.
         """
 
+        validate_observer(observer)
         try:
             runtime_config = resolve_runtime_config(
                 backend=backend,
@@ -1623,6 +1771,12 @@ class Database[FamilyT: BackendFamily]:
                 "RuntimeBackend",
                 await runtime_config.initialize_runtime(),
             )
+            if observer is not None:
+                if not isinstance(runtime, _ObservedRuntime):
+                    await runtime.close(runtime_config.acquire_timeout)
+                    msg = "backend does not support telemetry observers"
+                    raise DatabaseRuntimeError(msg)  # noqa: TRY301 - close unsupported runtime before rejecting
+                runtime.telemetry.observer = observer
             logger.info("%s database initialization completed", backend_family)
         except Exception:
             logger.exception("database initialization failed")
@@ -1630,6 +1784,17 @@ class Database[FamilyT: BackendFamily]:
         database_instance = cls.__new__(cls)
         database_instance.runtime = runtime
         return database_instance
+
+    def pool_stats(self) -> PoolStats:
+        """Return an immutable, nonblocking snapshot of pool capacity utilization.
+
+        Occupied slots include connection setup and detached physical cleanup.
+        A snapshot is diagnostic evidence, not a promise that checkout will succeed.
+        """
+        if not isinstance(self.runtime, _ObservedRuntime):
+            msg = "backend does not expose pool statistics"
+            raise DatabaseRuntimeError(msg)
+        return self.runtime.pool_stats()
 
     async def migrate(
         self,

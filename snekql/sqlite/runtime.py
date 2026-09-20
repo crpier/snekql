@@ -24,6 +24,7 @@ from aiosqlite import Connection, Cursor, Error
 from anyio.lowlevel import checkpoint
 
 from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
+from snekql._observation import Telemetry
 from snekql._query_codec import DialectQueryCodec
 from snekql._raw import NativeParameters
 from snekql._schema_verification import SchemaVerificationResult
@@ -50,6 +51,7 @@ from snekql.sqlite.retry import (
 )
 from snekql.sqlite.schema import verify_sqlite_schema
 from snekql.storage import SchemaPolicy
+from snekql.telemetry import PoolStats
 from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
@@ -299,6 +301,18 @@ class SQLiteRuntime:
             backend="sqlite",
             category=category,
             code=code,
+        )
+
+    @property
+    def telemetry(self) -> Telemetry:
+        """Share one observer dispatcher across pool and runtime operations."""
+        return self.connection_pool.gate.telemetry
+
+    def pool_stats(self) -> PoolStats:
+        """Expose capacity accounting without exposing the backend driver pool."""
+        pool = self.connection_pool
+        return pool.gate.snapshot(
+            state="closed" if pool.closed else "closing" if pool.closing else "open"
         )
 
     async def acquire(

@@ -110,6 +110,7 @@ from snekql.storage import (
     UtcDatetime,
     ZonedDatetime,
 )
+from snekql.telemetry import Observer, PoolStats, TelemetryEvent
 
 __all__ = [
     "PENDING_GENERATION",
@@ -160,10 +161,12 @@ __all__ = [
     "ModelValidationError",
     "MultipleResultsError",
     "NoResultError",
+    "Observer",
     "OrderBy",
     "OrderPreserving",
     "Pending",
     "PendingGeneration",
+    "PoolStats",
     "PoolTimeoutError",
     "Predicate",
     "QueryCompilationError",
@@ -182,6 +185,7 @@ __all__ = [
     "Select",
     "SnekqlError",
     "SnekqlWarning",
+    "TelemetryEvent",
     "Transaction",
     "TransactionClosedError",
     "TransactionMode",

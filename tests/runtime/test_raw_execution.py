@@ -25,16 +25,18 @@ async def provide_raw_case(
     backend: BackendFamily,
     *,
     visibility: Literal["redacted", "values"] = "redacted",
+    observer: sqlite.Observer | None = None,
 ) -> AsyncGenerator[RawCase]:
     if backend == "mariadb":
         server = await load_fixture(provide_mariadb_server())
         async with await mariadb.Database.initialize(
-            replace(server.config(), parameter_visibility=visibility)
+            replace(server.config(), parameter_visibility=visibility), observer=observer
         ) as database:
             yield RawCase(database, mariadb)
     else:
         async with await sqlite.Database.initialize(
-            sqlite.Config(database=":memory:", parameter_visibility=visibility)
+            sqlite.Config(database=":memory:", parameter_visibility=visibility),
+            observer=observer,
         ) as database:
             yield RawCase(database, sqlite)
 

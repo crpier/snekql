@@ -137,13 +137,37 @@ class SQLiteConnectionPool:
             raise DatabaseClosingError(msg)
 
     async def acquire(self, acquisition_timeout: NonNegativeFloat, /) -> Connection:
-        """Acquire an existing or lazily-created connection within timeout."""
-
+        """Count unsuccessful checkouts without changing pool cleanup ownership."""
         logger.debug(
             "sqlite connection acquisition started (timeout=%s)", acquisition_timeout
         )
         deadline = anyio.current_time() + acquisition_timeout
-        await self.gate.admit(deadline, acquisition_timeout)
+        try:
+            await self.gate.admit(deadline, acquisition_timeout)
+            entered_checkout = False
+            connection: Connection | None = None
+            try:
+                with self.gate.telemetry.measure("pool_checkout"):
+                    entered_checkout = True
+                    connection = await self._acquire(deadline)
+            except BaseException:
+                if connection is not None:
+                    await self.discard(connection)
+                elif not entered_checkout:
+                    await self.gate.release()
+                raise
+            else:
+                return connection
+        except BaseException as error:
+            if isinstance(error, anyio.get_cancelled_exc_class()):
+                self.gate.acquisition_cancellations += 1
+            else:
+                self.gate.acquisition_failures += 1
+            raise
+
+    async def _acquire(self, deadline: float, /) -> Connection:
+        """Acquire an existing or lazily-created connection within timeout."""
+
         opening: asyncio.Task[Connection] | None = None
         try:
             async with self.gate.condition:
@@ -217,15 +241,19 @@ class SQLiteConnectionPool:
             if should_close:
                 # Physical cleanup must outlive the returning caller and keep its
                 # admission slot until complete, just like an unsafe discard.
-                await self.discard(connection)
+                await self.discard(connection, count_discard=False)
             else:
                 # Store the reusable connection before waking the next FIFO waiter.
                 await self.gate.release()
             logger.debug("sqlite connection released (closed=%s)", should_close)
 
-    async def discard(self, connection: Connection) -> None:
+    async def discard(
+        self, connection: Connection, *, count_discard: bool = True
+    ) -> None:
         """Detach unsafe state immediately and close it in the background."""
 
+        if count_discard:
+            self.gate.discarded_connections += 1
         with anyio.CancelScope(shield=True):
             with contextlib.suppress(Exception):
                 await connection.interrupt()

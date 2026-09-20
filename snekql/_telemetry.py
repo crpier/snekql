@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Literal
 
 type ParameterVisibility = Literal["redacted", "values"]
+
+
+def fingerprint_sql(backend: Literal["sqlite", "mariadb"], sql: str) -> str:
+    """Hash parameterized SQL without examining bound values or retaining a cache."""
+    digest = sha256((backend + "\0" + sql).encode("utf-8")).hexdigest()
+    return f"v1:{digest}"
 
 
 def format_bound_params(
