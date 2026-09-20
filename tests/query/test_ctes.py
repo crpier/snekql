@@ -568,3 +568,66 @@ def cte_numeric_aggregates_reject_nonnumeric_outputs() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         data.column(key).sum()
+
+
+@test(mark="fast")
+def cte_arithmetic_inputs_obey_grouping_coverage() -> None:
+    """A computed value still reads its derived column for grouping purposes."""
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(value)
+    query = sqlite.select(column.add(1), column.count()).all()
+
+    with assert_raises(sqlite.QueryCompilationError):
+        query.compile()
+    assert_eq(
+        'GROUP BY "active"."id"' in query.group_by(active.column(value)).compile().sql,
+        True,
+    )
+
+
+@test(mark="fast")
+def cte_arithmetic_rejects_logical_uuid_storage() -> None:
+    """A UUID stored as text must not become a native numeric expression."""
+
+    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+        key: sqlite.Col[UUID] = sqlite.Text()
+
+    class Result(BaseModel):
+        key: UUID
+
+    key = Input.key.label("key")
+    data = (
+        sqlite.select(Input).all().project(Result, key=key).cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(key).add(1)  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def cte_arithmetic_rejects_unresolved_sum_wire_representation() -> None:
+    """A normalized logical integer does not prove native integer SQL storage."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer()
+
+    total = Native.id.sum().label("id")
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    totals = (
+        mariadb.select(Native)
+        .all()
+        .project(OptionalIdentifier, id=total)
+        .cte(ActiveRole, name="totals")
+    )
+
+    with assert_raises(mariadb.QueryConstructionError):
+        totals.column(total).add(1)

@@ -11,10 +11,14 @@ from pydantic import BaseModel
 from snekql._dialect_expr import CompileCtx
 from snekql._output_label import _NullExtendedLabel, _OutputLabel
 from snekql._query_dialect import query_dialect_for_backend
-from snekql._query_state import SelectState, require_single_column_subquery
+from snekql._query_state import (
+    SelectState,
+    require_single_column_subquery,
+    selectable_owner_model,
+)
 from snekql._value_decode import _decode_projection_field, _normalize_sum
 from snekql._value_encode import _predicate_value_encoder
-from snekql._value_expression import ValueExpression
+from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.errors import QueryConstructionError
 from snekql.expressions import (
     Aggregate,
@@ -104,7 +108,9 @@ class _CtePresence:
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
-class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T]):
+class _CteOutput[OwnerT: Table[Any], T, CompareT](
+    ExpressionMethods[OwnerT, T], Comparable[OwnerT, CompareT, T]
+):
     """A readonly reference whose wire decoder remains the definition's source."""
 
     position: int
@@ -165,6 +171,17 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](Comparable[OwnerT, CompareT, T
                 backend=backend,
                 validate=validate,
             ),
+        )
+
+    def __value_operand__(self) -> ValueExpression[OwnerT, T]:
+        """Expose native wire-compatible operations without schema capabilities."""
+        state = self.relation.definition.state
+        value_type, nullable = _native_value_profile(state, state.fields[self.position])
+        return ValueExpression(
+            column=self,
+            owner=self.__owner_model__(),
+            value_type=value_type,
+            nullable=nullable,
         )
 
     def count(self) -> Aggregate[OwnerT, int]:
@@ -313,6 +330,27 @@ class _Cte[
                     return _CteOutput(position=position, relation=self._relation)
         msg = "CTE column requires a label token bound by this definition"
         raise QueryConstructionError(msg)
+
+
+def _native_value_profile(
+    state: SelectState, source: object
+) -> tuple[type[int | float | str], bool]:
+    """Resolve native wire compatibility independently of the final result model."""
+    if isinstance(source, _Scalar):
+        inner = require_single_column_subquery(source.subquery)
+        value_type, _ = _native_value_profile(inner, inner.fields[0])
+        return value_type, True
+    if isinstance(source, _Aggregate) and source.func == "COUNT":
+        return int, False
+    if not isinstance(source, (Attr, ValueExpression, _CteOutput)):
+        msg = "CTE arithmetic requires a known native wire-compatible output"
+        raise QueryConstructionError(msg)
+    operand = source.__value_operand__()
+    nullable = operand.nullable
+    nullable_owners = {join.model for join in state.joins if join.join_type == "LEFT"}
+    if selectable_owner_model(source) in nullable_owners:
+        nullable = nullable or operand.__nullable_when_extended__()
+    return operand.value_type, nullable
 
 
 def _require_reference_identity(role: object, name: str) -> None:

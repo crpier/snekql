@@ -745,3 +745,80 @@ async def cte_numeric_aggregates_follow_computed_and_count_outputs() -> None:
     assert_eq(values, (3, 3.0))
     assert_eq(empty, (None, None))
     assert_eq(total, 1)
+
+
+@test(mark="medium")
+async def cte_outputs_compose_readonly_arithmetic() -> None:
+    """Operations reference the derived column without replaying its definition."""
+    database = await load_fixture(provide_cte_people())
+    value = Person.id.add(2).label("id")
+    calculated = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="calculated")
+    )
+    peer = sqlite.alias(calculated, FilteredRole, name="peer")
+    column = peer.column(value)
+    query = sqlite.select(column.add(4).mul(2).sub(column)).all()
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(query)
+
+    assert_type(result, int)
+    assert_eq(result, 11)
+    assert_eq(query.compile().params, (2, 4, 2))
+
+
+@test(mark="slow")
+async def native_cte_arithmetic_uses_its_alias_columns() -> None:
+    """Native integer operations retain role ownership and their result domain."""
+    database = await load_fixture(provide_mariadb_inventory())
+    value = MariaInventory.quantity.label("id")
+    stock = (
+        mariadb.select(MariaInventory)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="stock")
+    )
+    peer = mariadb.alias(stock, FilteredRole, name="peer")
+    column = peer.column(value)
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(
+            mariadb.select(column.add(2).mul(column)).all()
+        )
+
+    assert_type(result, int)
+    assert_eq(result, 15)
+
+
+@test(mark="medium")
+async def cte_arithmetic_preserves_definition_left_nullability() -> None:
+    """Definition-local absence remains nullable until an explicit COALESCE."""
+    database = await load_fixture(provide_cte_people())
+
+    class NullableIdentifier(BaseModel):
+        id: int | None
+
+    peer = sqlite.alias(Person, FilteredRole, name="peer")
+    value = peer.column(Person.id).label("id")
+    missing = (
+        sqlite.select(Person)
+        .left_join(
+            peer,
+            on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(0),
+        )
+        .all()
+        .project(NullableIdentifier, id=value)
+        .cte(ActiveRole, name="missing")
+    )
+    column = missing.column(value)
+
+    async with database.transaction() as transaction:
+        result = await transaction.fetch_one(
+            sqlite.select(column.add(2), column.coalesce(0).add(2)).all()
+        )
+
+    assert_type(result, tuple[int | None, int])
+    assert_eq(result, (None, 2))

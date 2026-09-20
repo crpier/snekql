@@ -125,7 +125,7 @@ def _make_compile_ctx(
         char_length_function=dialect.char_length_function,
         placeholder=dialect.placeholder,
         quote_identifier=dialect.quote_identifier,
-        render_column=lambda column: _render_column_ref(
+        render_column=lambda column: _render_grouping_column(
             column,
             dialect,
             qualified=qualified,
