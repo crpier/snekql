@@ -40,6 +40,7 @@ dev = [
     "ruff>=0.15.15",
     "snektest>=0.16.0",
     "ty==0.0.77",
+    "tzdata>=2025.3",
 ]
 
 [build-system]

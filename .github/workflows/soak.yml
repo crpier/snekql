@@ -1,0 +1,73 @@
+name: Resource soak
+
+on:
+  workflow_dispatch:
+    inputs:
+      cycles:
+        description: Closed database cycles per target (1 to 100000)
+        type: number
+        default: 10000
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    name: Soak / ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: sqlite
+            backend: sqlite
+            series: none
+          - target: mariadb-12.2
+            backend: mariadb
+            series: '12.2'
+          - target: mariadb-rolling
+            backend: mariadb
+            series: 12.rolling
+    env:
+      PYTHON_CONTEXT_AWARE_WARNINGS: '1'
+      SOAK_CYCLES: ${{ inputs.cycles }}
+      BACKEND: ${{ matrix.backend }}
+      MARIADB_SERIES: ${{ matrix.series }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: '0.9.26'
+      - name: Install MariaDB target
+        if: matrix.backend == 'mariadb'
+        run: |
+          curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
+            | sudo bash -s -- "--mariadb-server-version=mariadb-${MARIADB_SERIES}"
+          sudo apt-get update
+          sudo apt-get install --yes mariadb-client mariadb-server tzdata-legacy
+          sudo systemctl stop mariadb.service || true
+      - name: Sync environment
+        run: |
+          uv python install 3.14.2
+          uv sync --locked --all-extras --python 3.14.2
+      - name: Capture environment
+        run: |
+          {
+            date -u
+            git rev-parse HEAD
+            uv run python -c 'import platform, sqlite3, sys; print(sys.version); print(platform.platform()); print(sqlite3.sqlite_version)'
+            uv pip freeze
+            if [ "$BACKEND" = mariadb ]; then mariadbd --version; fi
+          } > environment.txt
+      - name: Run bounded soak
+        run: uv run python -m soak.lifecycle --backend "$BACKEND" --cycles "$SOAK_CYCLES" | tee samples.jsonl
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: soak-${{ matrix.target }}
+          path: |
+            environment.txt
+            samples.jsonl
+          retention-days: 14

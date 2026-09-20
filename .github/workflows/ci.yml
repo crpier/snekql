@@ -18,7 +18,7 @@ env:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -29,14 +29,24 @@ jobs:
         run: uv python install 3.14
       - name: Install MariaDB 12
         run: |
-          curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup \
+          curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
             | sudo bash -s -- --mariadb-server-version=mariadb-12.rolling
           sudo apt-get update
-          sudo apt-get install --yes mariadb-client mariadb-server
+          sudo apt-get install --yes mariadb-client mariadb-server tzdata-legacy
           sudo systemctl stop mariadb.service || true
           mariadbd --version
       - name: Sync locked environment
         run: uv sync --locked --all-extras
+      - name: Record environment
+        run: |
+          uv run python - <<'PYTHON'
+          import platform
+          import sqlite3
+          import sys
+          print(sys.version)
+          print(platform.platform())
+          print("SQLite", sqlite3.sqlite_version)
+          PYTHON
       - name: Test
         run: uv run snektest
       - name: Type check
@@ -58,22 +68,7 @@ jobs:
 
   minimum-mariadb:
     name: MariaDB 12.2
-    runs-on: ubuntu-latest
-    services:
-      mariadb:
-        image: mariadb:12.2@sha256:6a4c4bbf0447c2247801309513fcc0dd17c3f35390368139ce419387fdd1144d
-        env:
-          MARIADB_DATABASE: snekql
-          MARIADB_USER: snekql
-          MARIADB_PASSWORD: snekql
-          MARIADB_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "healthcheck.sh --connect --innodb_initialized"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -84,19 +79,94 @@ jobs:
         run: uv python install 3.14
       - name: Sync locked environment
         run: uv sync --locked --all-extras
-      - name: Exercise minimum MariaDB
+      - name: Install MariaDB 12.2
         run: |
-          uv run python - <<'PY'
+          curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
+            | sudo bash -s -- --mariadb-server-version=mariadb-12.2
+          sudo apt-get update
+          sudo apt-get install --yes mariadb-client mariadb-server tzdata-legacy
+          sudo systemctl stop mariadb.service || true
+          mariadbd --version | tee mariadb-version.txt
+          grep -E '(^|[^0-9])12[.]2[.]' mariadb-version.txt
+      - name: Record environment
+        run: |
+          uv run python - <<'PYTHON'
+          import platform
+          import sqlite3
+          import sys
+          print(sys.version)
+          print(platform.platform())
+          print("SQLite", sqlite3.sqlite_version)
+          PYTHON
+      - name: Full integration suite on minimum MariaDB
+        run: uv run snektest
+
+  sqlite-environments:
+    name: SQLite / ${{ matrix.os }} / ${{ matrix.python-source }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python-source: system-library
+            sqlite: 3.45.1
+          - os: ubuntu-24.04
+            python-source: managed
+            sqlite: 3.50.4
+          - os: macos-15
+            python-source: managed
+            sqlite: 3.50.4
+          - os: windows-2025
+            python-source: managed
+            sqlite: 3.50.4
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.26"
+          enable-cache: true
+      - uses: actions/setup-python@v6
+        if: matrix.python-source == 'system-library'
+        id: system-python
+        with:
+          python-version: "3.14.2"
+      - name: Sync system-library Python
+        if: matrix.python-source == 'system-library'
+        env:
+          UV_PYTHON: ${{ steps.system-python.outputs.python-path }}
+        run: uv sync --locked --all-extras
+      - name: Sync managed Python
+        if: matrix.python-source == 'managed'
+        env:
+          UV_PYTHON_PREFERENCE: only-managed
+        run: |
+          uv python install 3.14.2
+          uv sync --locked --all-extras --python 3.14.2
+      - name: Verify actual environment
+        env:
+          EXPECTED_SQLITE: ${{ matrix.sqlite }}
+        run: |
+          uv run python - <<'PYTHON'
           import asyncio
-
-          from snekql import mariadb
-          from snekql.examples.mariadb import run
-
-          config = mariadb.Config(
-              database="snekql",
-              host="127.0.0.1",
-              password="snekql",
-              user="snekql",
-          )
-          asyncio.run(run(config))
-          PY
+          import os
+          import platform
+          import sqlite3
+          import sys
+          print(sys.version)
+          print(platform.platform(), platform.machine())
+          print("SQLite", sqlite3.sqlite_version)
+          assert sqlite3.sqlite_version == os.environ["EXPECTED_SQLITE"]
+          assert sys._is_gil_enabled()
+          with asyncio.Runner() as runner:
+              print("Event loop", type(runner.get_loop()).__module__, type(runner.get_loop()).__name__)
+          PYTHON
+      - name: SQLite backend and shared lifecycle contracts
+        run: |
+          uv run snektest tests/sqlite \
+            'tests/runtime/test_raw_lifecycle.py::raw_deadline_discards_blocked_connection[sqlite]' \
+            'tests/runtime/test_raw_lifecycle.py::raw_native_cancellation_releases_pool_capacity[sqlite]' \
+            tests/runtime/test_pool_telemetry.py::discarded_connection_holds_capacity_until_close

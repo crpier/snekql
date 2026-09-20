@@ -1237,3 +1237,6 @@ Agent navigation map:
 - `snekql/errors.py`: public exception hierarchy.
 - `tests/test_public_typing.py`: type-checker prototypes for the public API.
 - `CONTEXT.md`: project language and terminology.
+
+Supported CI environments and fault coverage are listed in the
+[failure matrix](docs/failure-matrix.md), including optional resource-soak commands.
