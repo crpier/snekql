@@ -49,17 +49,25 @@ from snekql.model import Table, require_model_table_name
 from snekql.storage import Attr
 
 
-def _query_owner_identity(model: type[Table[Any]]) -> object:
-    """Mirror nominal owner coordinates without depending on SQL body identity."""
+def _query_owner_identity(
+    model: type[Table[Any]], identities: dict[type[Table[Any]], object]
+) -> object:
+    """Resolve each source once per scope, preserving shared owner coordinates."""
+    if model in identities:
+        return identities[model]
     if issubclass(model, _AliasRelation):
-        return (_AliasRelation, model.source_model, model.role)
-    if issubclass(model, _CteRelation):
+        identity = (_AliasRelation, model.source_model, model.role)
+    elif issubclass(model, _CteRelation):
         sources = frozenset(
-            _query_owner_identity(source)
+            _query_owner_identity(source, identities)
             for source in model.definition.state.result_models()
         )
-        return (_CteRelation, sources, model.role)
-    return model
+        identity = (_CteRelation, sources, model.role)
+    else:
+        identities[model] = model
+        return model
+    identities[model] = identity
+    return identity
 
 
 @dataclass(frozen=True)
@@ -98,6 +106,7 @@ class ScopeResolver:
         names: dict[str, type[Table[Any]]] = {}
         roles: set[tuple[type[Table[Any]], type[object]]] = set()
         cte_roles: set[object] = set()
+        identities: dict[type[Table[Any]], object] = {}
         for model in self.models:
             name = require_model_table_name(model).casefold()
             previous = names.get(name)
@@ -115,7 +124,7 @@ class ScopeResolver:
                     raise QueryCompilationError(msg)
                 roles.add(role)
             if issubclass(model, _CteRelation):
-                cte_role = _query_owner_identity(model)
+                cte_role = _query_owner_identity(model, identities)
                 if cte_role in cte_roles:
                     msg = "CTE role is already visible in this query scope"
                     raise QueryCompilationError(msg)
