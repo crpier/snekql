@@ -175,7 +175,10 @@ async def cancellation_reaps_owned_children(case: tuple[str, str]) -> None:
     ):
         task = asyncio.create_task(run(Path(directory) / "data"))
         try:
-            await asyncio.wait_for(gate.reached.wait(), 10)
+            # Installing and bootstrapping native servers precedes the cancellation
+            # under test. Allow setup more than the server's 20-second readiness
+            # budget; a busy host must not time out before reaching the fault gate.
+            await asyncio.wait_for(gate.reached.wait(), 60)
             if mode == "native":
                 task.cancel("first cancellation")
                 await asyncio.sleep(0)
