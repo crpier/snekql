@@ -60,9 +60,10 @@ def offset_only_inspection_preserves_parameter_order() -> None:
     query = sqlite.select(Item.id).where(Item.id.gt(10)).offset(2)
 
     assert_in(
-        'SELECT "id" FROM "item" WHERE ("id" > ?) LIMIT -1 OFFSET ? | params=(10, 2)',
-        repr(query),
+        'SELECT "id" FROM "item" WHERE ("id" > ?) LIMIT -1 OFFSET ?',
+        query.compile().sql,
     )
+    assert_eq(query.compile().params, (10, 2))
 
 
 @test(mark="fast")
@@ -77,6 +78,7 @@ def explicit_window_inspection_preserves_parameter_order() -> None:
     query = sqlite.select(Item.id).where(Item.id.gt(10)).limit(3).offset(2)
 
     assert_in(
-        'SELECT "id" FROM "item" WHERE ("id" > ?) LIMIT ? OFFSET ? | params=(10, 3, 2)',
-        repr(query),
+        'SELECT "id" FROM "item" WHERE ("id" > ?) LIMIT ? OFFSET ?',
+        query.compile().sql,
     )
+    assert_eq(query.compile().params, (10, 3, 2))

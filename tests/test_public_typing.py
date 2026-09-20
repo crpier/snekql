@@ -1610,3 +1610,14 @@ if TYPE_CHECKING:
         assert_type(mariadb_database.pool_stats(), mariadb.PoolStats)
         assert_type(sqlite_database.pool_stats().occupied, int)
         assert_type(sqlite.select(User.email).all().compile().fingerprint, str)
+
+
+if TYPE_CHECKING:
+
+    def check_query_inspection_types() -> None:
+        """Inspection works before readiness without granting execution permission."""
+        assert_type(sqlite.select(User).inspect(), str)
+        assert_type(
+            sqlite.select(User).all().inspect(parameter_visibility="values"), str
+        )
+        sqlite.select(User).inspect(parameter_visibility="invalid")  # ty: ignore[invalid-argument-type]

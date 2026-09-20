@@ -873,12 +873,10 @@ def compile_query_sql(query: object) -> CompiledQuery:
 
 
 def inspect_query_sql(query: object) -> InspectedQuery:
-    """Lower any built query to its backend Dialect SQL for inspection.
+    """Produce value-bearing diagnostics only for explicit local inspection.
 
-    Resolves the Dialect from the query's own model backend, so no Database is
-    required. Raises ``QueryCompilationError`` when the query is not yet
-    compilable (e.g. a select missing ``all()``/``where()``); callers that must
-    not raise -- like ``repr`` -- catch that and report the reason.
+    Default repr/str must not invoke this helper, because literal rendering
+    touches bound values. Compilation and formatting errors propagate here.
     """
 
     compiled = compile_query_sql(query)

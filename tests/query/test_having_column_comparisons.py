@@ -59,7 +59,7 @@ def having_accepts_both_grouped_operands() -> None:
         .having(Sale.category.gt_col(Sale.amount))
     )
 
-    assert_in('HAVING ("category" > "amount") | params=()', repr(query))
+    assert_in('HAVING ("category" > "amount") | params=<redacted:0>', repr(query))
 
 
 @test(mark="fast")

@@ -64,9 +64,10 @@ def offset_only_inspection_preserves_parameter_order() -> None:
 
     assert_in(
         "SELECT `id` FROM `item` WHERE (`id` > %s) "
-        "LIMIT 18446744073709551615 OFFSET %s | params=(10, 2)",
-        repr(query),
+        "LIMIT 18446744073709551615 OFFSET %s",
+        query.compile().sql,
     )
+    assert_eq(query.compile().params, (10, 2))
 
 
 @test(mark="fast")
@@ -81,7 +82,7 @@ def explicit_window_inspection_preserves_parameter_order() -> None:
     query = mariadb.select(Item.id).where(Item.id.gt(10)).limit(3).offset(2)
 
     assert_in(
-        "SELECT `id` FROM `item` WHERE (`id` > %s) "
-        "LIMIT %s OFFSET %s | params=(10, 3, 2)",
-        repr(query),
+        "SELECT `id` FROM `item` WHERE (`id` > %s) LIMIT %s OFFSET %s",
+        query.compile().sql,
     )
+    assert_eq(query.compile().params, (10, 3, 2))
