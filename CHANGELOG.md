@@ -19,6 +19,12 @@
 
 ### Added
 
+- Prospective 1.0 compatibility policy covering imports, typing-only breaks,
+  query and schema semantics, errors, deprecation notice periods and measurable
+  release gates. Keep latest-stable-minor security support without promising
+  parallel backports. Clarify authorization and verification of the existing
+  release provenance chain. Addresses #300.
+
 - Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
   gates, a documented fault inventory, and an optional bounded Linux resource
   soak. Native late-stream faults verify discard and subsequent recovery. #295.
