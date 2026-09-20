@@ -17,6 +17,8 @@ from snekql._scaffold import (
 )
 from snekql._schema_dialect import SchemaDialect
 from snekql._schema_shape import ColumnShape, IndexShape
+from snekql._server_defaults import LiteralDefaultShape, render_literal_default
+from snekql.defaults import LiteralDefault
 from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import CurrentTimestamp
@@ -77,6 +79,8 @@ def _requires_not_null(planned_column: PlannedColumn) -> bool:
 def _compile_column_definition(planned_column: PlannedColumn) -> str:
     column = planned_column.column
     parts = [quote_identifier(planned_column.name), column.storage_class]
+    if column.text_collation is not None and column.text_collation != "BINARY":
+        parts.append(f"COLLATE {column.text_collation}")
     # A composite primary key is rendered once as a table-level constraint, so its
     # member columns must not also carry an inline PRIMARY KEY.
     if column.primary_key and not planned_column.composite_pk:
@@ -87,6 +91,10 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
         parts.append("NOT NULL")
     if column.server_default is CurrentTimestamp:
         parts.append(f"DEFAULT ({CURRENT_TIMESTAMP_SQL})")
+    elif isinstance(column.server_default, LiteralDefault):
+        parts.append(
+            f"DEFAULT {render_literal_default(column.server_default, 'sqlite')}"
+        )
     return " ".join(parts)
 
 
@@ -99,9 +107,13 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
         server_default=(
-            "CurrentTimestamp" if column.server_default is CurrentTimestamp else None
+            "CurrentTimestamp"
+            if column.server_default is CurrentTimestamp
+            else LiteralDefaultShape("sqlite", column.server_default.value)
+            if isinstance(column.server_default, LiteralDefault)
+            else None
         ),
-        collation="BINARY",
+        collation=column.text_collation or "BINARY",
     )
 
 
@@ -110,6 +122,8 @@ def _expected_index_shape(index: NormalizedIndex) -> IndexShape:
         column_names=index.column_names,
         name=index.name,
         unique=index.unique,
+        partial=index.where is not None,
+        where=index.where,
     )
 
 

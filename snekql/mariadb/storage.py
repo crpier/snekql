@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import EllipsisType
-from typing import TYPE_CHECKING, Any, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from snekql._query_state import require_column_model
+from snekql.defaults import LiteralDefault
 from snekql.errors import ModelDeclarationError, ModelValidationError
 from snekql.expressions import Comparable
 from snekql.storage import (
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
 
 _DECIMAL_MAX_PRECISION = 65
 _DECIMAL_MAX_SCALE = 30
+_MAX_TEXT_LENGTH = 16383
+"""utf8mb4 VARCHAR character ceiling; actual row and index limits still apply."""
 
 
 @dataclass(frozen=True)
@@ -210,7 +213,7 @@ def Integer[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -307,7 +310,7 @@ def Real[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -379,6 +382,10 @@ def Real(  # noqa: N802, PLR0913
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -390,17 +397,25 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -412,6 +427,10 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -423,6 +442,10 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -434,6 +457,10 @@ def Text[T](
 @overload
 def Text[T](
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -443,6 +470,10 @@ def Text[T](
 
 def Text(  # noqa: N802, PLR0913
     *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    length: int = 255,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
@@ -450,7 +481,22 @@ def Text(  # noqa: N802, PLR0913
     default: object = ...,
     default_factory: Callable[[], object] | EllipsisType = ...,
 ) -> Any:
-    """MariaDB text column declaration for string model values."""
+    """Declare utf8mb4 VARCHAR storage, defaulting to 255 characters.
+
+    `Text(length=512)` describes SQL capacity, not Python value truncation or
+    validation. Server row and index limits can further restrict usable sizes.
+    `collation` selects utf8mb4_bin, utf8mb4_general_ci, or utf8mb4_unicode_ci.
+    """
+    if type(length) is not int or not 1 <= length <= _MAX_TEXT_LENGTH:
+        msg = "MariaDB Text length must be an integer from 1 to 16383"
+        raise ModelDeclarationError(msg)
+    if type(collation) is not str or collation not in (
+        "utf8mb4_bin",
+        "utf8mb4_general_ci",
+        "utf8mb4_unicode_ci",
+    ):
+        msg = "MariaDB text collation must be utf8mb4_bin, utf8mb4_general_ci, or utf8mb4_unicode_ci"
+        raise ModelDeclarationError(msg)
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
         default_factory=default_factory,
@@ -460,6 +506,107 @@ def Text(  # noqa: N802, PLR0913
         unique=unique,
         storage_class="TEXT",
         storage_type_name="Text",
+        text_collation=collation,
+        text_length=length,
+    )
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default: PendingGeneration,
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default: type[CurrentTimestamp] | LiteralDefault[T],
+) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default: None,
+) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default: T,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default_factory: Callable[[], T],
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+@overload
+def LongText[T](
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+
+
+def LongText(  # noqa: N802
+    *,
+    collation: Literal[
+        "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
+    ] = "utf8mb4_bin",
+    nullable: bool | None = None,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
+    """Declare native LONGTEXT with the ordinary Text value codecs.
+
+    `body: Col[str] = LongText()` defaults to utf8mb4_bin. `collation` also
+    accepts utf8mb4_general_ci and utf8mb4_unicode_ci. Length options, keys,
+    uniqueness, and index flags are not supported by this declaration. Table-level
+    `Index` declarations can use explicit character prefixes.
+    """
+    if type(collation) is not str or collation not in (
+        "utf8mb4_bin",
+        "utf8mb4_general_ci",
+        "utf8mb4_unicode_ci",
+    ):
+        msg = "MariaDB text collation must be utf8mb4_bin, utf8mb4_general_ci, or utf8mb4_unicode_ci"
+        raise ModelDeclarationError(msg)
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        storage_class="TEXT",
+        storage_type_name="LongText",
+        text_collation=collation,
+        keyable=False,
     )
 
 
@@ -481,7 +628,7 @@ def Blob[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -733,7 +880,7 @@ def Boolean[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -812,7 +959,7 @@ def DateTime[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -893,7 +1040,7 @@ def Uuid[T](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: type[CurrentTimestamp],
+    default: type[CurrentTimestamp] | LiteralDefault[T],
 ) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
 
 
@@ -982,6 +1129,7 @@ __all__ = [
     "Integer",
     "Json",
     "JsonAttr",
+    "LongText",
     "Real",
     "Text",
     "Uuid",

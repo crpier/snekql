@@ -11,13 +11,14 @@ from typing import Any, Literal
 import anyio
 from aiosqlite import Connection, Error
 
+from snekql._check_catalog import sqlite_checks, sqlite_index_predicate
 from snekql._schema_compile import (
     expected_table_shape,
 )
 from snekql._schema_plan import PlannedModel
 from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
 from snekql._schema_startup import verify_schema
-from snekql._schema_verification import SchemaVerificationResult
+from snekql._schema_verification import SchemaVerificationFact, SchemaVerificationResult
 from snekql.errors import SchemaError
 from snekql.model import Table
 from snekql.sqlite._schema_ddl import SCHEMA_DIALECT, sqlite_type_affinity
@@ -178,8 +179,9 @@ def _sqlite_definition_collation(
     table_constraint_starts = {"CHECK", "CONSTRAINT", "FOREIGN", "PRIMARY", "UNIQUE"}
     if (
         name_token.kind == "word" and name_token.text.upper() in table_constraint_starts
-    ) or name_token.kind not in {"identifier", "word"}:
+    ) or name_token.kind not in {"identifier", "literal", "word"}:
         return None
+    collation = "BINARY"
     depth = 0
     for position, token in enumerate(definition[1:], start=1):
         if token.kind == "symbol" and token.text == "(":
@@ -192,10 +194,10 @@ def _sqlite_definition_collation(
             continue
         if position + 1 < len(definition):
             collation_token = definition[position + 1]
-            if collation_token.kind in {"identifier", "word"}:
-                return name_token.text.casefold(), collation_token.text.upper()
-        break
-    return name_token.text.casefold(), "BINARY"
+            if collation_token.kind in {"identifier", "literal", "word"}:
+                # SQLite accepts quoted names and uses the last COLLATE clause.
+                collation = collation_token.text.upper()
+    return name_token.text.casefold(), collation
 
 
 def _sqlite_column_collations(table_sql: str | None) -> dict[str, str]:
@@ -309,6 +311,7 @@ async def _fetch_column_shapes(
 async def _fetch_index_shapes(
     connection: Connection,
     table_name: str,
+    column_names: tuple[str, ...],
 ) -> tuple[IndexShape, ...]:
     list_rows = await _fetch_rows(
         connection,
@@ -331,13 +334,25 @@ async def _fetch_index_shapes(
             connection,
             f"PRAGMA index_info({quote_identifier(index_name)})",
         )
-        column_names = tuple(str(info_row[2]) for info_row in info_rows)
+        indexed_columns = tuple(str(info_row[2]) for info_row in info_rows)
+        predicate = None
+        if partial == 1:
+            sql_rows = await _fetch_rows(
+                connection,
+                "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ? AND tbl_name = ?",
+                (index_name, table_name),
+            )
+            if len(sql_rows) == 1 and isinstance(sql_rows[0][0], str):
+                predicate = sqlite_index_predicate(
+                    sql_rows[0][0], column_names=column_names
+                )
         shapes.append(
             IndexShape(
                 name=index_name,
-                column_names=column_names,
+                column_names=indexed_columns,
                 unique=unique == 1,
                 partial=partial == 1,
+                where=predicate,
             )
         )
     return tuple(shapes)
@@ -355,6 +370,8 @@ async def _fetch_foreign_key_shapes(
         # PRAGMA foreign_key_list columns:
         # id, seq, table, from, to, on_update, on_delete, match.
         ForeignKeyShape(
+            constraint_id=str(row[0]),
+            position=int(row[1]),
             column_name=str(row[3]),
             target_table=str(row[2]),
             target_column=str(row[4]),
@@ -403,6 +420,26 @@ class SQLiteSchemaBackend:
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
         return expected_table_shape(planned_model, SCHEMA_DIALECT)
 
+    def verification_limits(
+        self, planned_model: PlannedModel
+    ) -> tuple[SchemaVerificationFact, ...]:
+        """Report backend inspection limits without inferring live feature presence."""
+        return tuple(
+            SchemaVerificationFact(
+                table_name=planned_model.table_name,
+                object_name=None,
+                kind=kind,
+                status="unchecked",
+                detail=detail,
+            )
+            for kind, detail in (
+                (
+                    "columns.declared_types",
+                    "SQLite type comparison uses affinity, not exact declared spelling or capacity",
+                ),
+            )
+        )
+
     async def inspect_shapes(
         self,
         planned_models: Sequence[PlannedModel],
@@ -421,15 +458,21 @@ class SQLiteSchemaBackend:
                 continue
             table_sql = table_sql_by_name.get(table_name)
             has_autoincrement = _table_uses_autoincrement(table_sql)
+            columns = await _fetch_column_shapes(
+                self.connection,
+                table_name,
+                collations=_sqlite_column_collations(table_sql),
+                has_autoincrement=has_autoincrement,
+            )
             shapes[table_name] = TableShape(
+                checks=sqlite_checks(table_sql),
                 table_name=table_name,
-                columns=await _fetch_column_shapes(
+                columns=columns,
+                indexes=await _fetch_index_shapes(
                     self.connection,
                     table_name,
-                    collations=_sqlite_column_collations(table_sql),
-                    has_autoincrement=has_autoincrement,
+                    tuple(column.name for column in columns),
                 ),
-                indexes=await _fetch_index_shapes(self.connection, table_name),
                 foreign_keys=await _fetch_foreign_key_shapes(
                     self.connection, table_name
                 ),

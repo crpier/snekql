@@ -17,8 +17,12 @@ from snekql._schema_plan import (
 from snekql._schema_plan import (
     validate_schema_policy as validate_planned_schema_policy,
 )
-from snekql._schema_shape import diff_table_shapes
-from snekql._schema_verification import SchemaDriftIssue, SchemaVerificationResult
+from snekql._schema_shape import compare_table_shapes
+from snekql._schema_verification import (
+    SchemaDriftIssue,
+    SchemaVerificationFact,
+    SchemaVerificationResult,
+)
 from snekql.errors import SchemaVerificationError
 
 if TYPE_CHECKING:
@@ -40,12 +44,17 @@ class SchemaBackend(Protocol):
     table and report semantic Schema Drift under the active Schema Policy --
     lives in this module. Backends answer only with the shape a model expects
     and the shape a live table actually has; the shared flow diffs the two and
-    names each divergence. No backend creates schema: migrations do.
+    names each divergence. Backends also identify known inspection limits.
+    No backend creates schema: migrations do.
     """
 
     def verification_transaction(self) -> AbstractAsyncContextManager[None]: ...
 
     def expected_shape(self, planned_model: PlannedModel) -> TableShape: ...
+
+    def verification_limits(
+        self, planned_model: PlannedModel, /
+    ) -> tuple[SchemaVerificationFact, ...]: ...
 
     async def inspect_shapes(
         self,
@@ -104,14 +113,21 @@ def _verify_model_schema(
     backend: SchemaBackend,
     planned_model: PlannedModel,
     actual_shape: TableShape,
-) -> tuple[str, ...]:
+) -> tuple[tuple[str, ...], tuple[SchemaVerificationFact, ...]]:
+    """Collect evidence without allowing a scope limit to suppress existing drift."""
     expected_shape = backend.expected_shape(planned_model)
-    issues = diff_table_shapes(expected_shape, actual_shape)
+    issues, facts = compare_table_shapes(expected_shape, actual_shape)
+    compared = {(fact.kind, fact.object_name) for fact in facts}
+    facts += tuple(
+        fact
+        for fact in backend.verification_limits(planned_model)
+        if (fact.kind, fact.object_name) not in compared
+    )
     if not issues:
         logger.debug(
             "schema table and indexes for %r verified", planned_model.table_name
         )
-    return issues
+    return issues, facts
 
 
 async def verify_schema(
@@ -132,12 +148,22 @@ async def verify_schema(
         return SchemaVerificationResult(checked_tables=(), issues=())
     logger.debug("schema verification started for %d model(s)", len(plan.models))
     drift_issues: list[SchemaDriftIssue] = []
+    facts: list[SchemaVerificationFact] = []
     async with backend.verification_transaction():
         actual_shapes = await backend.inspect_shapes(plan.models)
         for planned_model in plan.models:
             actual_shape = actual_shapes.get(planned_model.table_name)
             if actual_shape is None:
                 missing_issue = "table is missing from the database"
+                facts.append(
+                    SchemaVerificationFact(
+                        table_name=planned_model.table_name,
+                        object_name=None,
+                        kind="table.presence",
+                        status="drift",
+                        detail=missing_issue,
+                    )
+                )
                 drift_issues.append(
                     SchemaDriftIssue(
                         detail=missing_issue,
@@ -145,16 +171,21 @@ async def verify_schema(
                     )
                 )
                 continue
+            issues, table_facts = _verify_model_schema(
+                backend, planned_model, actual_shape
+            )
+            facts.extend(table_facts)
             drift_issues.extend(
                 SchemaDriftIssue(
                     detail=detail,
                     table_name=planned_model.table_name,
                 )
-                for detail in _verify_model_schema(backend, planned_model, actual_shape)
+                for detail in issues
             )
     verification_result = SchemaVerificationResult(
         checked_tables=tuple(model.table_name for model in plan.models),
         issues=tuple(drift_issues),
+        facts=tuple(facts),
     )
     _report_schema_drift(schema_policy, verification_result)
     logger.debug("schema verification completed for %d model(s)", len(plan.models))

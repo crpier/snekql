@@ -17,6 +17,7 @@ from snekql.sqlite import (
     Model,
     Pending,
     SchemaVerificationError,
+    SchemaVerificationFact,
     Text,
 )
 from tests.helpers import capture_snekql_logs
@@ -84,6 +85,11 @@ class _FakeSchemaBackend:
     def expected_shape(self, planned_model: PlannedModel) -> TableShape:
         self.calls.append(("expected_shape", planned_model.table_name))
         return self.expected
+
+    def verification_limits(
+        self, _planned_model: PlannedModel
+    ) -> tuple[SchemaVerificationFact, ...]:
+        return ()
 
     async def inspect_shapes(
         self,

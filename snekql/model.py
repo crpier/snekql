@@ -17,6 +17,10 @@ from typing import (
     get_origin,
 )
 
+from snekql._checks import BoundCheck, CheckExpression, _CheckBinder, bind_checks
+from snekql._server_defaults import bind_literal_default
+from snekql.constraints import ForeignKeyConstraint
+from snekql.defaults import LiteralDefault
 from snekql.errors import (
     FrozenModelError,
     LexicalDatetimeWarning,
@@ -201,6 +205,18 @@ class ModelMeta(type):
             ModelMeta._validate_foreign_key_backends(
                 cast("type[Table[Any]]", model_class), columns
             )
+        if not is_model_base:
+            # Runs after the declaring-scope locals are captured so column
+            # annotations resolve; this is what lets the nullability cross-check
+            # read each column's logical type.
+            ModelMeta._validate_column_nullability(columns)
+            for column in columns.values():
+                bind_literal_default(column, model_metadata.__snekql_backend__)
+            ModelMeta._warn_lexical_text_columns(
+                columns,
+                model_metadata.__snekql_backend__,
+            )
+        _finalize_model_columns(columns)
         if is_model_base:
             model_metadata.__snekql_indexes__ = ()
         else:
@@ -209,16 +225,18 @@ class ModelMeta(type):
                 namespace,
                 columns,
             )
-        if not is_model_base:
-            # Runs after the declaring-scope locals are captured so column
-            # annotations resolve; this is what lets the nullability cross-check
-            # read each column's logical type.
-            ModelMeta._validate_column_nullability(columns)
-            ModelMeta._warn_lexical_text_columns(
-                columns,
-                model_metadata.__snekql_backend__,
+        model_metadata.__snekql_foreign_keys__ = (
+            ()
+            if is_model_base
+            else ModelMeta._bind_foreign_keys(model_class, namespace, columns)
+        )
+        model_metadata.__snekql_checks__ = (
+            ()
+            if is_model_base
+            else ModelMeta._bind_checks(
+                model_class, namespace, columns, model_metadata.__snekql_backend__
             )
-        _finalize_model_columns(columns)
+        )
         return model_class
 
     @staticmethod
@@ -310,7 +328,7 @@ class ModelMeta(type):
             annotated_value = namespace.get(annotated_name)
             if isinstance(annotated_value, Attr):
                 continue
-            if annotated_name in {"__tablename__", "__indexes__"}:
+            if annotated_name in {"__tablename__", "__indexes__", "__foreign_keys__"}:
                 continue
             if ModelMeta._is_classvar_annotation(annotation):
                 continue
@@ -325,9 +343,9 @@ class ModelMeta(type):
                 raise ModelDeclarationError(msg)
             if attribute_name == "__indexes__" and not isinstance(
                 attribute_value,
-                list,
+                (list, classmethod),
             ):
-                msg = "__indexes__ must be a list"
+                msg = "__indexes__ must be a list or a classmethod returning a list"
                 raise ModelDeclarationError(msg)
 
     @staticmethod
@@ -398,14 +416,139 @@ class ModelMeta(type):
                 raise ModelDeclarationError(msg)
 
     @staticmethod
+    def _bind_checks(
+        model_class: type,
+        namespace: dict[str, object],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        backend: BackendFamily,
+    ) -> tuple[BoundCheck, ...]:
+        """Evaluate a synchronous declaration once against frozen column metadata."""
+        if "__checks__" not in namespace:
+            return ()
+        declaration = namespace["__checks__"]
+        if not isinstance(declaration, classmethod):
+            msg = "__checks__ must be a classmethod"
+            raise ModelDeclarationError(msg)
+        if inspect.iscoroutinefunction(
+            declaration.__func__
+        ) or inspect.isasyncgenfunction(declaration.__func__):
+            msg = "__checks__ must be synchronous"
+            raise ModelDeclarationError(msg)
+        return bind_checks(
+            declaration.__get__(None, model_class)(), model_class, columns, backend
+        )
+
+    @staticmethod
+    def _bind_foreign_keys(
+        model_class: type,
+        namespace: dict[str, object],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> tuple[ForeignKeyConstraint[Any, Any], ...]:
+        """Freeze explicit relationships after columns and candidate keys are bound."""
+        declarations = namespace.get("__foreign_keys__", [])
+        if not isinstance(declarations, list):
+            msg = "__foreign_keys__ must be a list"
+            raise ModelDeclarationError(msg)
+        constraints: list[ForeignKeyConstraint[Any, Any]] = []
+        for declaration in declarations:
+            if not isinstance(declaration, ForeignKeyConstraint):
+                msg = (
+                    "__foreign_keys__ entries must be ForeignKeyConstraint declarations"
+                )
+                raise ModelDeclarationError(msg)
+            for column in declaration.columns:
+                if column.owner is not model_class or not any(
+                    column is owned for owned in columns.values()
+                ):
+                    msg = "foreign key columns must belong to the declaring model"
+                    raise ModelDeclarationError(msg)
+            ModelMeta._validate_foreign_key_target(model_class, declaration)
+            constraints.append(declaration)
+        return tuple(constraints)
+
+    @staticmethod
+    def _validate_foreign_key_target(
+        model_class: type, declaration: ForeignKeyConstraint[Any, Any]
+    ) -> None:
+        """Require a single target candidate key and compatible local storage."""
+        target_model = declaration.references[0].owner
+        if target_model is None or not issubclass(target_model, Table):
+            msg = "foreign key target must be bound to a table model"
+            raise ModelDeclarationError(msg)
+        target_columns = require_model_columns(target_model)
+        for target in declaration.references:
+            if target.owner is not target_model or not any(
+                target is owned for owned in target_columns.values()
+            ):
+                msg = "foreign key targets must belong to one table model"
+                raise ModelDeclarationError(msg)
+        # Concrete model bases were validated before descriptors were bound.
+        if require_model_backend(
+            cast("type[Table[Any]]", model_class)
+        ) != require_model_backend(target_model):
+            msg = "foreign key backend mismatch"
+            raise ModelDeclarationError(msg)
+        target_names = tuple(target.name for target in declaration.references)
+        primary_key = tuple(
+            name for name, column in target_columns.items() if column.primary_key
+        )
+        # Model binding stores immutable normalized indexes on every table.
+        target_indexes = cast(
+            "tuple[NormalizedIndex, ...]",
+            getattr(target_model, "__snekql_indexes__", ()),
+        )
+        unique_target = (
+            target_names == primary_key
+            or (len(target_names) == 1 and declaration.references[0].unique)
+            or any(
+                index.unique
+                and index.column_names == target_names
+                and not any(index.prefix_lengths or ())
+                and index.where is None
+                for index in target_indexes
+            )
+        )
+        if not unique_target:
+            msg = "foreign key target must match a complete ordered primary key or unique index"
+            raise ModelDeclarationError(msg)
+        for local, target in zip(
+            declaration.columns, declaration.references, strict=True
+        ):
+            for attribute in (
+                "storage_class",
+                "storage_type_name",
+                "text_length",
+                "text_collation",
+                "decimal_precision",
+                "decimal_scale",
+            ):
+                if getattr(local, attribute) != getattr(target, attribute):
+                    msg = (
+                        f"foreign key storage mismatch for {local.name!r}: {attribute}"
+                    )
+                    raise ModelDeclarationError(msg)
+            if "SET NULL" in (declaration.on_delete, declaration.on_update) and (
+                local.primary_key or not local.nullable
+            ):
+                msg = "SET NULL requires every foreign key column to be nullable"
+                raise ModelDeclarationError(msg)
+
+    @staticmethod
     def _bind_indexes(
         model_class: type,
         namespace: dict[str, object],
         columns: dict[str, Attr[Any, Any, Any, Any, Any]],
     ) -> tuple[NormalizedIndex, ...]:
         indexes_object = namespace.get("__indexes__", [])
+        if isinstance(indexes_object, classmethod):
+            if inspect.iscoroutinefunction(
+                indexes_object.__func__
+            ) or inspect.isasyncgenfunction(indexes_object.__func__):
+                msg = "__indexes__ must be synchronous"
+                raise ModelDeclarationError(msg)
+            indexes_object = indexes_object.__get__(None, model_class)()
         if not isinstance(indexes_object, list):
-            msg = "__indexes__ must be a list"
+            msg = "__indexes__ must be a list or a classmethod returning a list"
             raise ModelDeclarationError(msg)
         index_declarations = cast("list[object]", indexes_object)
         column_names_by_id = {id(column): name for name, column in columns.items()}
@@ -430,7 +573,9 @@ class ModelMeta(type):
         )
         table_indexes: list[NormalizedIndex] = []
         for index_object in index_declarations:
-            index = require_index_declaration(index_object)
+            index = require_index_declaration(
+                index_object, backend=cast("Any", model_class).__snekql_backend__
+            )
             column_names: list[str] = []
             for column in index.columns:
                 if column.owner is not model_class:
@@ -452,6 +597,12 @@ class ModelMeta(type):
                 column_names=tuple(column_names),
                 name=index_name,
                 unique=index.unique,
+                prefix_lengths=index.prefix_lengths,
+                where=None
+                if index.where is None
+                else _CheckBinder(
+                    model_class, columns, cast("Any", model_class).__snekql_backend__
+                ).bind(index.where),
             )
             indexes.append(normalized_index)
             table_indexes.append(normalized_index)
@@ -461,16 +612,23 @@ class ModelMeta(type):
     @staticmethod
     def _validate_index_set(indexes: list[NormalizedIndex]) -> None:
         names: set[str] = set()
-        column_lists: set[tuple[str, ...]] = set()
+        column_lists: set[
+            tuple[tuple[str, ...], tuple[int | None, ...], CheckExpression | None]
+        ] = set()
         for index in indexes:
             if index.name in names:
                 msg = f"duplicate index name: {index.name!r}"
                 raise ModelDeclarationError(msg)
             names.add(index.name)
-            if index.column_names in column_lists:
+            indexed_parts = (
+                index.column_names,
+                index.prefix_lengths or (None,) * len(index.column_names),
+                index.where,
+            )
+            if indexed_parts in column_lists:
                 msg = f"duplicate index column list: {index.column_names!r}"
                 raise ModelDeclarationError(msg)
-            column_lists.add(index.column_names)
+            column_lists.add(indexed_parts)
 
     @staticmethod
     def _resolve_backend_family(
@@ -527,22 +685,22 @@ class ModelMeta(type):
         ):
             msg = f"auto-increment requires an integer primary-key column: {name!r}"
             raise ModelDeclarationError(msg)
-        if column.default is not CurrentTimestamp:
+        if column.default is not CurrentTimestamp and not isinstance(
+            column.default, LiteralDefault
+        ):
             return
-        # `default=CurrentTimestamp` is a Server Default: the database computes the
-        # value. It must be a Generated Column -- its Pending value may be
-        # PendingGeneration.
-        # until the database fills it -- and cannot also carry a Python factory.
+        # Server-default markers leave a PendingGeneration value until INSERT.
+        # The field needs the generated shape and cannot use a Python factory.
         if not column.is_generated:
-            msg = f"CurrentTimestamp requires a generated (GenCol) column: {name!r}"
+            msg = f"Server defaults require a generated (GenCol) column: {name!r}"
             raise ModelDeclarationError(msg)
         if not isinstance(column.default_factory, EllipsisType):
-            msg = f"CurrentTimestamp cannot be combined with default_factory: {name!r}"
+            msg = f"Server defaults cannot be combined with default_factory: {name!r}"
             raise ModelDeclarationError(msg)
         # Route the marker to the internal server default and leave the column
         # omittable: construction yields PendingGeneration, and the insert omits it so the
         # database supplies the value.
-        column.server_default = CurrentTimestamp
+        column.server_default = column.default
         column.default = PENDING_GENERATION
 
     @staticmethod

@@ -348,7 +348,7 @@ class LikePredicate[OwnerT](_PredicateNode[OwnerT]):
     ) -> tuple[str, tuple[object, ...]]:
         # Structural read: only a TEXT-storage column supports SQL pattern
         # matching, and the storage-type name is the fact the operand exposes.
-        if getattr(self.operand, "storage_type_name", None) != "Text":
+        if getattr(self.operand, "storage_type_name", None) not in {"Text", "LongText"}:
             name = "not_like" if self.negated else "like"
             msg = f"{name}() is only valid for text columns"
             raise QueryCompilationError(msg)

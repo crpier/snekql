@@ -139,9 +139,9 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
         plan.models[1].foreign_keys,
         (
             PlannedForeignKey(
-                column_name="user_id",
+                column_names=("user_id",),
                 target_table="user",
-                target_column="id",
+                target_columns=("id",),
             ),
         ),
     )
@@ -168,9 +168,9 @@ def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
         plan.models[1].foreign_keys,
         (
             PlannedForeignKey(
-                column_name="owner_email",
+                column_names=("owner_email",),
                 target_table="user",
-                target_column="email",
+                target_columns=("email",),
             ),
         ),
     )
@@ -295,9 +295,9 @@ def schema_plan_records_referential_actions() -> None:
         plan.models[1].foreign_keys,
         (
             PlannedForeignKey(
-                column_name="user_id",
+                column_names=("user_id",),
                 target_table="user",
-                target_column="id",
+                target_columns=("id",),
                 on_delete="CASCADE",
                 on_update="RESTRICT",
             ),

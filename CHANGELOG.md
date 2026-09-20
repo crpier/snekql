@@ -4,6 +4,60 @@
 
 ### Added
 
+- SQLite `Index(..., where=predicate)` declares bounded partial indexes through
+  synchronous `__indexes__` factories. Existing lists remain supported. Native
+  subset uniqueness, conservative FK eligibility, and structural predicate
+  verification are covered; unknown catalog expressions remain unchecked.
+  Column-only upsert targets do not gain partial-index inference. Part of #291.
+
+- MariaDB `Index(..., prefix_lengths=(...))` supports ordered character prefixes
+  on ordinary Text and LongText. Scaffold and verification preserve prefix facts,
+  including native full-capacity VARCHAR normalization. Prefix declarations do
+  not authorize FK targets; unmanaged catalog prefix indexes are no longer
+  hidden as FK support. Part of #291.
+
+- `LiteralDefault(value)` declares bounded SQL defaults through `default=` on
+  generated columns, including integer, Boolean, ordinary text, and nullable NULL
+  values on SQLite and MariaDB. Values are validated and encoded at declaration;
+  scaffold and catalog verification preserve the distinction from Python defaults.
+  Unknown expressions for literal declarations and MariaDB NULL-default
+  explicitness remain unchecked. Part of #291.
+
+- Named `CheckConstraint` declarations via synchronous `__checks__` classmethods
+  on SQLite and MariaDB. Bounded local predicates scaffold native constraints;
+  declared names and recognized catalog expressions produce presence/expression
+  verification facts. Unsupported expressions and unmanaged checks remain
+  explicitly unchecked. Fact results do not certify data or enforcement settings.
+  Part of #291.
+
+- `ForeignKeyConstraint(*columns, references=(...), on_delete=..., on_update=...)`
+  in `__foreign_keys__` declares ordered table-level relationships on SQLite and
+  MariaDB. Explicit local storage, composite candidate keys, overlapping
+  constraints, self-references, and native referential actions are supported.
+  Invalid ownership, storage, key shape, or SET NULL declarations fail before
+  database access. Part of #291.
+
+- `SchemaVerificationResult.facts` exposes immutable `SchemaVerificationFact`
+  records for matched properties, drift, and known unchecked scope on SQLite and
+  MariaDB. Existing issues and strict/warn policy remain unchanged; missing
+  objects cannot produce matched child facts. Result equality includes facts;
+  existing two-argument construction defaults to an empty fact tuple. Part of #291.
+
+- Reviewed `collation=` choices for SQLite Text and MariaDB Text/LongText,
+  preserving defaults. Scaffolding and verification honor the choice; physical
+  foreign keys inherit it. SQLite verification recognizes quoted collation names
+  and the effective final COLLATE clause. Part of #291.
+
+- `mariadb.LongText()` declares native LONGTEXT, defaulting to utf8mb4_bin collation,
+  ordinary text codecs, and Python defaults. Scaffolding and verification honor
+  its native type and collation. Physical foreign keys and indexes involving
+  LongText are rejected. Part of #291.
+
+- `mariadb.Text(length=...)` declares VARCHAR character capacity from 1 to
+  16,383, retaining the 255-character default. Scaffolding and schema verification
+  honor the length, and foreign keys inherit it from their target. No automatic
+  schema alteration or value truncation. First implementation part of #291.
+
 - MariaDB migration-recovery runbook and tested reconciliation example for DDL
   committed without history, including lost commit replies and unsafe mixed
   DML/DDL replay. Expand/contract examples include bounded, resumable backfills
@@ -150,6 +204,14 @@
   operations are required. (#237)
 
 ### Changed
+
+- Schema verification now retains foreign-key constraint grouping, pair order,
+  and multiplicity. **Compatibility change:** split or reordered groups that
+  previously passed flattened comparison now produce drift and can fail strict
+  verification. `foreign_keys.grouping` facts are now matched or drift, not
+  unchecked. MariaDB only treats a complete ordered FK tuple as a supporting
+  index prefix. Constraint names and other documented limits remain unchecked.
+  Part of #291.
 
 - Public typing validation and adoption guidance now target `ty==0.0.77`.
   Artifact smoke tests derive that exact pin from project metadata so release
