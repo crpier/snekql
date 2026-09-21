@@ -106,7 +106,7 @@ from the release series under investigation:
 uv sync --locked --all-extras
 mariadbd --version
 uv run python -c 'import platform, sqlite3, sys; print(sys.version); print(platform.platform()); print(sqlite3.sqlite_version)'
-PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests
 ```
 
 For local machines with a quota-limited system temporary directory, use a
@@ -115,7 +115,7 @@ private owned directory and retain the logs:
 ```sh
 root=$(mktemp -d "$HOME/.cache/snekql-faults-XXXXXXXX")
 mkdir "$root/tmp"
-TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest >"$root/tests.log" 2>&1
+TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests >"$root/tests.log" 2>&1
 status=$?
 printf '%s\n' "$status" >"$root/status"
 printf 'Results: %s\n' "$root"
