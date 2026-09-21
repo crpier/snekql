@@ -29,6 +29,12 @@
   and pre-I/O scope/name/readiness guards. Includes readonly output operations
   and a tested SQLite recipe. Implements #370.
 
+- Searchable API reference, backend capability matrix and service adoption guide.
+  Executable SQLite examples cover FastAPI lifespan/dependency ownership,
+  commit-before-response, per-job worker transactions, migration-backed fixtures
+  and coexistence with an externally migrated database layer. Framework tools
+  remain development-only dependencies. Addresses #301.
+
 - Prospective 1.0 compatibility policy covering imports, typing-only breaks,
   query and schema semantics, errors, deprecation notice periods and measurable
   release gates. Keep latest-stable-minor security support without promising

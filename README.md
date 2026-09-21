@@ -1172,6 +1172,9 @@ inspection. Its string form and normal query logs render
 ## Further reading
 
 - [Adoption and release confidence](docs/adoption.md)
+- [Searchable API reference](docs/api-reference.md)
+- [Backend capability matrix](docs/backend-capabilities.md)
+- [Service deployment and incremental adoption](docs/service-recipes.md)
 - [Compatibility and the 1.0 release contract](docs/compatibility.md)
 - [Why snekql is not an ORM](docs/why-not-orm.md)
 - [Typing guide](docs/typing.md)
