@@ -53,11 +53,13 @@ is an environment failure, not a passing timezone compatibility result.
 - `Validate` runs the full suite on Ubuntu 24.04 with CPython 3.14 and the MariaDB
   12 rolling repository. It also runs typing, lint, generated-interface, lock,
   build, and isolated artifact checks.
-- `MariaDB 12.2` installs native server/client tools from the 12.2 repository,
-  verifies that the selected binary reports 12.2, and runs the same full suite.
+- `MariaDB <release>` installs native server/client tools for 10.11, 11.4,
+  11.8, 12.2 and 12.3, verifies the selected series, and runs the same full suite.
+  The [release/capability matrix](mariadb-support.md) distinguishes maintained
+  LTS targets from the retained 12.2 compatibility regression target.
   An example against a shared Docker service cannot exercise the tests that own
   and restart server processes. Those tests need the target's native binaries.
-- Both jobs record effective Python, SQLite, OS, and MariaDB versions. Repository
+- All MariaDB jobs record effective Python, SQLite, OS, and MariaDB versions. Repository
   targets select a release series, not a permanently pinned patch build. Preserve
   the CI logs when comparing failures across dates.
 - Tests run sequentially within each process. Do not run separate suite processes
@@ -72,7 +74,7 @@ on asyncio; using AnyIO internally does not make Trio a supported driver loop.
 
 | Backend | OS target | Database/library target | Event loop |
 | --- | --- | --- | --- |
-| MariaDB | Ubuntu 24.04, x86-64 | 12.2 release series and 12 rolling | asyncio default |
+| MariaDB | Ubuntu 24.04, x86-64 | 10.11, 11.4, 11.8, 12.3 LTS; 12.2 compatibility; 12 rolling | asyncio default |
 | SQLite | Ubuntu 24.04, x86-64 | 3.45.1 from the system library, setup-python CPython | asyncio default |
 | SQLite | Ubuntu 24.04 | 3.50.4 bundled with uv-managed CPython | asyncio default |
 | SQLite | macOS 15 | 3.50.4 bundled with uv-managed CPython | asyncio default |

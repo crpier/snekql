@@ -11,6 +11,11 @@
 
 ### Changed
 
+- MariaDB admission starts at 10.11, with native full-suite gates for maintained
+  10.11, 11.4, 11.8 and 12.3 LTS targets. Existing session, type, migration and
+  unsupported-feature contracts remain unchanged. The 12.2 catalog regression
+  and 12 rolling jobs remain. See `docs/mariadb-support.md`. Addresses #298.
+
 - Query `repr`/`str` now redact bindings and omit compilation-error details.
   `query.inspect(parameter_visibility="values")` enables value-bearing diagnostics
   for one explicit local call. Use `.compile()` for validation and structured

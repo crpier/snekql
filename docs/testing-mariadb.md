@@ -172,6 +172,8 @@ application sessions keep the caller's configured SQL mode.
 
 ## Failure gates and soak runs
 
-Both the MariaDB 12.2 and rolling CI jobs run the full suite using native tools.
+The MariaDB LTS, retained 12.2 compatibility and rolling CI jobs run the full
+suite using native tools. See the [release/capability matrix](mariadb-support.md)
+for the selected series and support limits.
 See [the fault and environment matrix](failure-matrix.md) for existing coverage,
 fault-injection limits, SQLite targets, and separate bounded resource-soak commands.

@@ -29,9 +29,9 @@ from snekql._settings import (
 )
 from snekql.errors import DatabaseRuntimeError
 
-# Lowest MariaDB version snekql is validated against. Lower this once wider
-# version coverage is tested; raising it is a breaking change.
-MARIADB_MINIMUM_VERSION: tuple[int, ...] = (12, 2)
+# Admission floor for the shared SQL/type contract, not certification of every
+# intervening release or patch. Raising this floor is a breaking change.
+MARIADB_MINIMUM_VERSION: tuple[int, ...] = (10, 11)
 
 # sql_mode flags snekql depends on; the full mode is set, then these are
 # verified as a subset so server-added flags do not trip the check.
