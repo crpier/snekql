@@ -39,6 +39,7 @@ dev = [
     "opentelemetry-sdk>=1.44,<2",
     "ruff>=0.15.15",
     "snektest>=0.16.0",
+    "sqlalchemy[asyncio]>=2.0.45,<2.1",
     "ty==0.0.77",
     "tzdata>=2025.3",
 ]
