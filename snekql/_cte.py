@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from re import fullmatch
 from typing import Any, ClassVar, Protocol, cast, overload
 
 from pydantic import BaseModel
 
 from snekql._dialect_expr import CompileCtx
-from snekql._output_domain import OutputDomain, output_domain
+from snekql._output_domain import OutputDomain
 from snekql._output_label import _NullExtendedLabel, _OutputLabel
+from snekql._output_layout import OutputLayout, OutputSlot, build_output_layout
 from snekql._query_dialect import query_dialect_for_backend
 from snekql._query_state import (
     SelectState,
     require_single_column_subquery,
     selectable_owner_model,
 )
-from snekql._value_decode import _decode_projection_field, _normalize_sum
-from snekql._value_encode import _predicate_value_encoder
+from snekql._value_decode import _normalize_sum
 from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.errors import QueryConstructionError
 from snekql.expressions import (
@@ -71,19 +71,14 @@ class _CteDefinition:
     name: str
     state: SelectState
 
+    layout: OutputLayout = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "layout", build_output_layout(self.state))
+
     @property
     def presence_name(self) -> str:
-        """A private output name that cannot shadow a declared result label."""
-        projection = self.state.named_projection
-        labels = (
-            set()
-            if projection is None
-            else {label.casefold() for label in projection.labels}
-        )
-        name = "__snekql_present"
-        while name.casefold() in labels:
-            name += "_"
-        return name
+        return self.layout.presence_name
 
 
 class _CteRelation(Table[Any]):
@@ -131,12 +126,7 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
         raise NotImplementedError
 
     def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]:
-        definition = self.relation.definition
-        projection = definition.state.named_projection
-        if projection is None:
-            msg = "CTE outputs require a named definition"
-            raise QueryConstructionError(msg)
-        name = ctx.quote_identifier(projection.labels[self.position])
+        name = ctx.quote_identifier(self.__output_slot__().label)
         owner = ctx.quote_identifier(self.relation.__name__)
         return f"{owner}.{name}", ()
 
@@ -144,11 +134,7 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
         return self.__compile_sql__(ctx)
 
     def __encode_comparison__(self, value: object) -> object:
-        source = self.relation.definition.state.fields[self.position]
-        while isinstance(source, _Scalar):
-            source = require_single_column_subquery(source.subquery).fields[0]
-        dialect = query_dialect_for_backend(require_model_backend(self.relation))
-        return _predicate_value_encoder(source, dialect)(value)
+        return self.__output_slot__().encode_comparison(value)
 
     def __decode__(self, raw: object) -> T:
         return self.__decode_with_policy__(
@@ -158,29 +144,21 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
     def __decode_with_policy__(
         self, raw: object, *, backend: StorageBackend, validate: bool
     ) -> T:
-        state = self.relation.definition.state
-        # The output index identifies the original SQL expression, not a field
-        # produced by an intermediate Pydantic result validator.
-        return cast(
-            "T",
-            _decode_projection_field(
-                state.fields[self.position],
-                raw,
-                nullable_models=frozenset(
-                    join.model for join in state.joins if join.join_type == "LEFT"
-                ),
-                backend=backend,
-                validate=validate,
-            ),
-        )
+        slot = self.__output_slot__()
+        if backend != slot.backend:
+            msg = "CTE output decode backend differs from its definition"
+            raise QueryConstructionError(msg)
+        return cast("T", slot.decode(raw, validate=validate))
+
+    def __output_slot__(self) -> OutputSlot:
+        return self.relation.definition.layout.slots[self.position]
 
     def __nullable_when_extended__(self) -> bool:
         """A missing reference nulls this SQL column regardless of its definition."""
         return True
 
     def __output_domain__(self) -> OutputDomain:
-        state = self.relation.definition.state
-        return _definition_output_domain(state, state.fields[self.position])
+        return self.__output_slot__().domain
 
     def __value_operand__(self) -> ValueExpression[OwnerT, T]:
         """Expose native wire-compatible operations without schema capabilities."""
@@ -332,32 +310,12 @@ class _Cte[
 
     def column(self, token: object) -> _CteOutput[Any, Any, Any]:
         """Rebind a token actually present in this definition, by identity."""
-        projection = self._relation.definition.state.named_projection
-        if projection is not None and isinstance(token, _OutputLabel):
-            for position, original in enumerate(projection.output_tokens):
-                if original is token:
+        if isinstance(token, _OutputLabel):
+            for position, slot in enumerate(self._relation.definition.layout.slots):
+                if slot.token is token:
                     return _CteOutput(position=position, relation=self._relation)
         msg = "CTE column requires a label token bound by this definition"
         raise QueryConstructionError(msg)
-
-
-def _definition_output_domain(state: SelectState, source: object) -> OutputDomain:
-    """Keep definition-local NULL extension separate from result-model annotations."""
-    if isinstance(source, _Scalar):
-        inner = require_single_column_subquery(source.subquery)
-        domain = _definition_output_domain(inner, inner.fields[0])
-        return OutputDomain(domain.logical, nullable=True)
-    domain = output_domain(source)
-    if isinstance(source, (Attr, ValueExpression, _CteOutput)):
-        nullable_owners = {
-            join.model for join in state.joins if join.join_type == "LEFT"
-        }
-        if selectable_owner_model(source) in nullable_owners and (
-            not isinstance(source, ValueExpression)
-            or source.__nullable_when_extended__()
-        ):
-            return OutputDomain(domain.logical, nullable=True)
-    return domain
 
 
 def _native_value_profile(

@@ -30,7 +30,7 @@ def query_fields(
     if issubclass(source, _CteRelation):
         outputs: tuple[Selectable, ...] = tuple(
             _CteOutput[Any, Any, Any](position=position, relation=source)
-            for position in range(len(source.definition.state.fields))
+            for position in range(len(source.definition.layout.slots))
         )
         return (*outputs, _CtePresence(source)) if presence else outputs
     return tuple(require_model_columns(source).values())

@@ -912,3 +912,31 @@ async def projected_left_cte_coalesce_keeps_its_nonnull_fallback() -> None:
         row = await transaction.fetch_one(query)
 
     assert_eq(row, Identifier(id=2))
+
+
+@test(mark="slow")
+async def native_cte_layout_preserves_binding_order_and_alias_codecs() -> None:
+    """SQL slot order is independent of application field declaration order."""
+    database = await load_fixture(provide_mariadb_documents())
+    key = MariaDocument.id.label("key")
+    values = MariaDocument.payload.label("values")
+    documents = (
+        mariadb.select(MariaDocument)
+        .all()
+        .project(DocumentResult, values=values, key=key)
+        .cte(ActiveRole, name="documents")
+    )
+    peer = mariadb.alias(documents, FilteredRole, name="peer")
+
+    async with database.transaction() as transaction:
+        row = await transaction.fetch_one(
+            mariadb.select(peer).where(peer.column(key).eq(UUID(int=1)))
+        )
+        columns = await transaction.fetch_one(
+            mariadb.select(peer.column(key), peer.column(values)).all()
+        )
+
+    assert_type(row, DocumentResult)
+    assert_type(columns, tuple[UUID, list[int]])
+    assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
+    assert_eq(columns, (UUID(int=1), [2, 3]))
