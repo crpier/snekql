@@ -1,7 +1,7 @@
 # snekql benchmarks
 
 Standalone performance benchmarks, kept separate from the `snektest` unit suite.
-Two families:
+Existing benchmark families:
 
 - **Concurrency** (`benchmarks.run`): runtime behavior under concurrent async
   load — pool fairness, event-loop stalls, throughput/latency across pool sizes
@@ -9,6 +9,14 @@ Two families:
 - **Construction** (`benchmarks.construction`): the pure-CPU cost of the
   immutable Query Builder, with no I/O. See
   [Query construction throughput](#query-construction-throughput) below.
+
+A new [comparative runtime command](comparison.md) measures equivalent validated
+work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
+reads, bounded streaming, indexed joins and verified bulk writes on both
+backends, including shared-capacity contention, heartbeat diagnostics and
+separate pool/memory profiles. See its measurement-scope limitations before
+comparing numbers. The [dated baseline](findings.md) publishes individual trial
+reports and noise-aware regression guidance.
 
 ## Running
 
@@ -53,9 +61,12 @@ records event-loop wake-up lateness. Reported per scenario:
 - **loop stall** — worst heartbeat lateness; a large value means a synchronous
   stretch (typically row materialization) blocked the event loop.
 
-## Findings (baseline captured 2026-06, SQLite + MariaDB on Linux)
+## Historical findings, June 2026
 
-### 1. SQLite pool fairness — fixed in this change
+These results predate current runtime hardening. They are historical evidence,
+not current comparative measurements or universal pool-size recommendations.
+
+### 1. SQLite pool fairness, historical fix
 
 Before the fix, the SQLite pool used `condition.notify_all()` with no ordering,
 so a task that released a connection could immediately re-acquire it ahead of
@@ -68,15 +79,17 @@ acquisition). Same workload after the fix: per-worker spread **1167..1168**, max
 latency **6 ms**, Jain **1.00**, with throughput unchanged. See
 `tests/sqlite/test_pool_fairness.py`.
 
-### 2. MariaDB pool fairness — open follow-up
+### 2. MariaDB pool fairness, superseded finding
 
-The MariaDB runtime delegates to the underlying `aiomysql` pool, which exhibits
-the same starvation when `workers > pool_size`: `pool=1, workers=32` reached
+The historical MariaDB runtime delegated admission to the underlying `aiomysql`
+pool, which exhibited the same starvation when `workers > pool_size`: `pool=1, workers=32` reached
 Jain **0.03** (one worker did 14848 ops, another did 1) with max latency equal
-to the whole run. This is inside `aiomysql`, not snekql's own pool, so it needs
-a wrapper-level fair queue. Filed as a follow-up.
+to the whole run. Current snekql places `FairAdmissionGate` before native pool
+checkout. The wrapper-level admission queue is implemented; this is no longer an
+open starvation finding. Rerun against the current revision before drawing
+performance conclusions.
 
-### 3. `fetch_all` materialization blocks the event loop — fixed in this change
+### 3. Cooperative `fetch_all` materialization, historical fix
 
 `Transaction.fetch_all` materializes and validates every row synchronously after
 `fetchall()`. Before the fix, selecting 20000 rows produced a **57 ms** (SQLite)
@@ -112,11 +125,10 @@ From the sweep (read-mostly point queries, one event loop):
 - **Size the pool to expected concurrent in-flight transactions, not to total
   task count.** A pool far smaller than the worker count still completes all
   work fairly (post-fix), just with higher queueing latency.
-- **Practical defaults:** SQLite `pool_size` 4–8 for a typical service (1 is
-  fine for write-bound workloads since writes serialize anyway); MariaDB
-  `pool_size` 8–16. Until the MariaDB fairness follow-up lands, keep
-  `pool_size >= peak concurrent transactions` to avoid `aiomysql`-level
-  starvation.
+- **Measure the current runtime:** sweep pool sizes and worker counts using the
+  command above. The old recommendation to keep MariaDB pool size at least as
+  large as peak task count was a starvation workaround, not capacity guidance;
+  current fair admission no longer needs that workaround.
 - **`acquire_timeout` is a backpressure control,** not a tuning knob: set it to
   the longest a request may reasonably wait for a connection, so overload
   surfaces as `PoolTimeoutError` instead of unbounded latency.

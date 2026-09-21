@@ -27,7 +27,7 @@ For package releases:
 6. Run validation:
 
    ```bash
-   uv run snektest
+   uv run snektest tests
    uv run ty check
    uv run ruff check .
    uv run ruff format --check .
@@ -40,13 +40,13 @@ For package releases:
 
 ## Testing and validation
 
-- Use `snektest` for tests.
+- Use `snektest` for tests. Select `tests` explicitly so discovery stays out of `.venv` dependency suites.
   - For snektest usage documentation, read its installed distribution metadata with `importlib.metadata.distribution("snektest").read_text("METADATA")`; the `METADATA` file embeds snektest's README.
 - Use `ty` for static typing validation.
 - Preferred validation commands:
 
   ```bash
-  uv run snektest
+  uv run snektest tests
   uv run ty check
   uv run ruff check .
   uv run ruff format --check .
