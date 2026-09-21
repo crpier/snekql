@@ -1128,6 +1128,10 @@ catch-all, or a more specific subclass for targeted handling (see
 from each namespace so applications can filter by category. See
 [error-handling.md](error-handling.md#warnings).
 
+The [1.0 compatibility policy](compatibility.md) treats typing-only regressions
+as breaking changes and defines deprecation periods. It is a prospective contract,
+not a claim that 1.0 has shipped.
+
 **Pre-1.0 note.** While snekql is on `0.x`, the namespace surface is the
 stability target but may still change between minor versions. Breaking changes
 are called out in `CHANGELOG.md`.
