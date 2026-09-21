@@ -139,9 +139,11 @@ Before announcing a release:
 
 Security reports use the private process in [`SECURITY.md`](../SECURITY.md).
 CI reproduces the full validation and artifact smoke path on Python 3.14 with a
-live rolling MariaDB 12 server. The MariaDB 12.2 job also runs the full suite,
-including owned-server restart and process-cleanup tests, rather than only the
-public example. Each job records its Python, SQLite, OS, and MariaDB versions.
+live rolling MariaDB 12 server. Native release jobs also run the full suite on
+10.11, 11.4, 11.8 and 12.3 LTS, plus the retained 12.2 compatibility target.
+They include owned-server restart and process-cleanup tests, rather than only
+the public example. Each job records its Python, SQLite, OS, and MariaDB versions.
+See the [MariaDB support policy](mariadb-support.md) before choosing a release.
 See the [failure coverage inventory](failure-matrix.md) for evidence and limits.
 
 snekql v1 is a good fit when an application wants:
