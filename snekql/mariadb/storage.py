@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from types import EllipsisType
 from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
+from snekql._output_label import _NullExtendedLabel
 from snekql._query_state import require_column_model
 from snekql.defaults import LiteralDefault
 from snekql.errors import ModelDeclarationError, ModelValidationError
@@ -54,6 +55,10 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
 
     column: Attr[Any, Any, Any, Any, Any]
     path: str
+
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, int | None, int]:
+        """Name the decoded optional integer without losing native JSON policy."""
+        return _NullExtendedLabel[OwnerT, int | None, int](name=name, operand=self)
 
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness for singleton-select owner inference."""

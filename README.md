@@ -609,6 +609,13 @@ and complex annotation compatibility are checked against actual rows.
 validation. Invalid result rows raise `ModelValidationError` without including
 Pydantic input values or validator messages.
 
+### Typed CTEs
+
+Completed named SELECTs can become query-only CTEs with `.cte(Role, name=...)`.
+Bind expression labels and use `.column(token)` for typed readonly references.
+CTEs preserve source codecs and support aliases, INNER/LEFT joins, named rows and
+streaming. See [typed CTEs](docs/ctes.md) for the tested recipe and limits.
+
 ### Named RETURNING results
 
 Use `.returning_as(Result, **bindings)` on supported writes:

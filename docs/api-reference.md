@@ -55,6 +55,9 @@ before using EXPLAIN/ANALYZE in production.
 | `.join(...)`, `.left_join(...)` | Join explicit declared relationships; LEFT joins make the right result optional |
 | `alias(Model, ...)` | A distinct table occurrence for self-joins and correlated work |
 | `.project(Result, **bindings)` | Named Pydantic projection; use instead of widening beyond eight positional slots |
+| `.label(name)` | Identity-bound typed expression output token |
+| `.cte(Role, name=...)` | Completed named SELECT as a reusable nonrecursive query source |
+| `cte.column(label)`, `cte.alias(Role, name=...)` | Token-based output lookup and distinct CTE occurrences |
 | `.order_by(...)`, `.limit(...)`, `.offset(...)` | Explicit ordering and pagination; no implicit stable row order |
 | `.for_update(wait=...)` | MariaDB locking policy; unsupported SQLite locking fails explicitly |
 | `insert(model_or_rows)` | Pending-row writes; omitted generated values use database generation |
@@ -69,10 +72,11 @@ before using EXPLAIN/ANALYZE in production.
 | `.inspect(parameter_visibility=...)` | Explicit diagnostic value visibility; repr/str remain redacted by default |
 
 Use the [typing guide](typing.md) for exact annotation arity, inferred result
-shapes, owner constraints and overload examples. [Reporting](reporting.md) covers
-validated raw CTE/window/set-operation recipes. Reviewed future syntax in
-[query composition design](query-composition-design.md) is not an implemented
-builder API.
+shapes, owner constraints and overload examples. [Typed CTEs](ctes.md) covers
+implemented labels and nonrecursive definitions. [Reporting](reporting.md) covers
+validated raw recursive-CTE/window/set-operation recipes.
+[Query composition design](query-composition-design.md) distinguishes implemented
+CTEs from future builder syntax.
 
 ## Models, storage and schema
 

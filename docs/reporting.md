@@ -1,9 +1,9 @@
 # Reporting with raw SQL
 
 CTEs, recursive queries, ranking windows, and UNION already work through the
-[raw SQL interface](raw-sql.md). They do not yet have query-builder methods.
-The [reviewed builder design](query-composition-design.md) tracks the planned
-implementation separately.
+[raw SQL interface](raw-sql.md). [Typed nonrecursive CTEs](ctes.md) also have
+query-builder methods. Recursive queries, ranking windows and UNION builders
+remain follow-ups in the [reviewed design](query-composition-design.md).
 
 The tested SQL and strict Pydantic result contracts live in
 [`examples/reporting.py`](../examples/reporting.py). They include inline data,

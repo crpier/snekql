@@ -97,7 +97,7 @@ def _select_overloads() -> str:
 
 
 def _backend_select_overloads(backend: str) -> str:
-    owner_bound = f'Model[Any, Any] | _AliasOwner[Literal["{backend}"], Any, Any]'
+    owner_bound = f'Model[Any, Any] | _AliasOwner[Literal["{backend}"], Any, Any] | _CteOwner[Literal["{backend}"], Any, Any]'
     family = f'Literal["{backend}"]'
     model_overload = (
         "@overload\n"

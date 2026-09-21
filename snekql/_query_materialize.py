@@ -8,104 +8,24 @@ query state, never on the Query Builder classes.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
-from snekql._dialect_expr import DialectSelectable
+from snekql._cte import _CteRelation
 from snekql._model_materialization import decode_model_row
 from snekql._named_projection import NamedProjection
+from snekql._query_sources import query_fields
 from snekql._query_state import (
     InsertState,
     Selectable,
     SelectState,
     WriteState,
-    require_column_model,
     require_column_name,
     require_field,
-    require_single_column_subquery,
 )
+from snekql._value_decode import _decode_projection_field, _decode_selectable
 from snekql.errors import QueryCompilationError
-from snekql.expressions import _Aggregate, _Scalar
 from snekql.model import require_model_columns
-from snekql.storage import Attr, StorageBackend
-
-
-def _decode_aggregate(
-    aggregate: _Aggregate[Any, Any],
-    value: object,
-    *,
-    backend: StorageBackend,
-    validate: bool,
-) -> object:
-    """Decode an aggregate value, normalizing across backends.
-
-    COUNT is always an int; AVG is a float; SUM normalizes native numeric
-    results. MIN/MAX use the wrapped column's codec and the caller's validation
-    policy. NULL over an empty set decodes to None for everything but COUNT.
-    """
-
-    if value is None:
-        return None
-    if aggregate.func == "COUNT":
-        return int(cast("int", value))
-    if aggregate.func == "AVG":
-        return float(cast("float", value))
-    column = require_field(aggregate.column)
-    if aggregate.func == "SUM":
-        return _normalize_sum(column, value)
-    # Stored values may violate logical constraints after unchecked/external
-    # writes. MIN/MAX use the same validation policy as a direct column read.
-    return column.decode(value, backend=backend, validate=validate)
-
-
-def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
-    """Normalize ``SUM`` to the wrapped column's logical type across backends.
-
-    SQLite returns an integer for an integer-column sum; MariaDB returns
-    ``DECIMAL``. Mirroring the column's storage type makes both agree.
-    """
-
-    if column.storage_type_name == "Integer":
-        return int(cast("int", value))
-    if column.storage_type_name == "Real":
-        return float(cast("float", value))
-    return value
-
-
-def _decode_selectable(
-    field: Selectable,
-    value: object,
-    *,
-    backend: StorageBackend,
-    validate: bool,
-) -> object:
-    if isinstance(field, _Scalar):
-        # A scalar subquery evaluates to SQL NULL on an empty/no-match result
-        # set, even over a NOT NULL inner column, so a NULL decodes to None
-        # rather than through the inner column's null rejection (#203 F10).
-        if value is None:
-            return None
-        # Otherwise decode through its single projected selectable, so an inner
-        # SUM/COUNT/column normalizes exactly as it would standalone.
-        inner = require_single_column_subquery(field.subquery)
-        return _decode_selectable(
-            inner.fields[0],
-            value,
-            backend=backend,
-            validate=validate,
-        )
-    if isinstance(field, _Aggregate):
-        return _decode_aggregate(field, value, backend=backend, validate=validate)
-    if isinstance(field, DialectSelectable):
-        # Open-AST dialect expression: decode through the leaf's own seam, so the
-        # raw driver value becomes the typed value the projection promised without
-        # the core knowing the leaf. The decoded type is the leaf's `T`; this seam
-        # is type-erased (the result shape flows through the `select` overloads).
-        return cast("object", field.__decode__(value))
-    if isinstance(field, Attr):
-        return field.decode(value, backend=backend, validate=validate)
-    msg = "a non-projectable operand cannot be materialized"
-    raise QueryCompilationError(msg)
+from snekql.storage import StorageBackend
 
 
 def _materialize_join_row(
@@ -124,14 +44,35 @@ def _materialize_join_row(
     elements: list[object] = []
     offset = 0
     for index, model in enumerate(state.result_models()):
-        columns = require_model_columns(model)
-        width = len(columns)
+        fields = query_fields(model)
+        cte_source = issubclass(model, _CteRelation)
+        width = len(fields) + int(cte_source)
         chunk = row[offset : offset + width]
         offset += width
         is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
-        if is_left_join and all(value is None for value in chunk):
+        absent = (
+            chunk[-1] is None if cte_source else all(value is None for value in chunk)
+        )
+        if is_left_join and absent:
             elements.append(None)
             continue
+        if issubclass(model, _CteRelation):
+            projection = model.definition.state.named_projection
+            if projection is None:
+                msg = "CTE row requires a named result contract"
+                raise QueryCompilationError(msg)
+            elements.append(
+                projection.materialize(
+                    tuple(
+                        _decode_selectable(
+                            field, value, backend=backend, validate=validate
+                        )
+                        for field, value in zip(fields, chunk[:-1], strict=True)
+                    )
+                )
+            )
+            continue
+        columns = require_model_columns(model)
         values = {name: chunk[position] for position, name in enumerate(columns)}
         elements.append(
             decode_model_row(
@@ -198,32 +139,6 @@ def _left_joined_models(state: SelectState) -> frozenset[type[object]]:
     """Models projected from the nullable side of a LEFT join, by identity."""
 
     return frozenset(join.model for join in state.joins if join.join_type == "LEFT")
-
-
-def _decode_projection_field(
-    column: Selectable,
-    value: object,
-    *,
-    nullable_models: frozenset[type[object]],
-    backend: StorageBackend,
-    validate: bool,
-) -> object:
-    """Decode one projected column, tolerating a left-join's unmatched NULLs.
-
-    A column projected from the nullable side of a LEFT join is ``None`` for an
-    unmatched row even when the column is itself ``NOT NULL``; decoding that
-    through the column's codec would wrongly enforce its NOT NULL constraint and
-    raise. Such a ``None`` is yielded as ``None`` (the documented projection
-    nullability gap) rather than crashing the fetch.
-    """
-
-    if (
-        value is None
-        and isinstance(column, Attr)
-        and require_column_model(column) in nullable_models
-    ):
-        return None
-    return _decode_selectable(column, value, backend=backend, validate=validate)
 
 
 def _materialize_insert_returning_fields(

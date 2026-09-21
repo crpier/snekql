@@ -7,6 +7,7 @@ from math import isfinite
 from typing import Any, Literal, cast, overload
 
 from snekql._dialect_expr import CompileCtx
+from snekql._output_label import _NullExtendedLabel
 from snekql.errors import (
     ModelValidationError,
     QueryCompilationError,
@@ -387,6 +388,10 @@ class ValueExpression[OwnerT, T](
         ...,
     ] = ()
 
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, T]:
+        """Name the computed SQL value without evaluating it in Python."""
+        return _NullExtendedLabel(name=name, operand=self)
+
     def __value_operand__(self) -> ValueExpression[OwnerT, T]:
         return self
 
@@ -442,6 +447,37 @@ class ValueExpression[OwnerT, T](
     def __encode_comparison__(self, value: object) -> int | float | str | None:
         """Validate native value literals independently of column codecs."""
         return _encode_native_literal(self.value_type, value)
+
+    def __nullable_when_extended__(self) -> bool:
+        """Compute possible NULL output when this expression's row is absent.
+
+        Row absence nulls column reads, not literal CASE branches or COALESCE
+        fallbacks. Fold the SQL operations instead of nulling every expression
+        that happens to read a LEFT-joined owner.
+        """
+        if isinstance(self.column, CaseRoot):
+            nullable = any(
+                branch.__nullable_when_extended__()
+                if isinstance(branch, ValueExpression)
+                else branch is None
+                for branch in (self.column.then, self.column.otherwise)
+            )
+        else:
+            nullable = True
+        for operator, operand in self.operations:
+            if operator in {"LOWER", "CHAR_LENGTH"}:
+                continue
+            right_nullable = (
+                operand.__nullable_when_extended__()
+                if isinstance(operand, ValueExpression)
+                else operand is None
+            )
+            nullable = (
+                nullable and right_nullable
+                if operator == "COALESCE"
+                else nullable or right_nullable
+            )
+        return nullable
 
     def __decode__(self, raw: object) -> T:
         if raw is None and self.nullable:

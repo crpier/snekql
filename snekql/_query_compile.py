@@ -14,6 +14,8 @@ from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
 from snekql._compiled import CompiledQuery
+from snekql._cte import _CteOutput, _CteRelation
+from snekql._cte_graph import collect_cte_definitions
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._named_projection import NamedProjection
 from snekql._query_dialect import QueryDialect, query_dialect_for_backend
@@ -38,6 +40,7 @@ from snekql._query_state import (
     require_single_column_subquery,
     require_subquery_state,
 )
+from snekql._value_encode import _predicate_value_encoder
 from snekql._value_expression import ValueExpression
 from snekql.errors import QueryCompilationError
 from snekql.expressions import (
@@ -91,12 +94,18 @@ def _render_aggregate(
     column = aggregate.column
     if column is None:
         return f"{aggregate.func}(*)"
-    column_ref = _render_column_ref(
-        require_field(column),
-        dialect,
-        qualified=qualified,
-    )
+    column_ref = _render_grouping_column(column, dialect, qualified=qualified)
     return f"{aggregate.func}({column_ref})"
+
+
+def _render_grouping_column(
+    column: object, dialect: QueryDialect, *, qualified: bool
+) -> str:
+    """Column references carry no bindings, whether physical or derived."""
+    if isinstance(column, _CteOutput):
+        sql, _ = column.__compile_sql__(_make_compile_ctx(dialect, qualified=qualified))
+        return sql
+    return _render_column_ref(require_field(column), dialect, qualified=qualified)
 
 
 def _make_compile_ctx(
@@ -116,7 +125,7 @@ def _make_compile_ctx(
         char_length_function=dialect.char_length_function,
         placeholder=dialect.placeholder,
         quote_identifier=dialect.quote_identifier,
-        render_column=lambda column: _render_column_ref(
+        render_column=lambda column: _render_grouping_column(
             column,
             dialect,
             qualified=qualified,
@@ -161,41 +170,6 @@ def _compile_scalar_sql(
     state = require_single_column_subquery(scalar_subquery.subquery)
     sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
     return f"({sub_sql})", sub_params
-
-
-def _predicate_value_encoder(
-    selectable: Selectable,
-    dialect: QueryDialect,
-) -> Callable[[object], object]:
-    """Build the value encoder for a predicate operand.
-
-    A column encodes comparison values through its own logical codec. An
-    aggregate's comparison value follows its result type: `COUNT`/`AVG`
-    compare against a plain `int`/`float` and pass through unencoded, while
-    `MIN`/`MAX` reuse the wrapped column's encoder (so a `datetime` `MIN`
-    bound is serialized correctly). `SUM` uses the dialect's result-domain
-    encoder because native numeric totals can outgrow their input storage.
-    """
-
-    if isinstance(selectable, _Scalar):
-        msg = "a scalar subquery is not a value-encoding operand"
-        raise QueryCompilationError(msg)
-    if isinstance(selectable, ValueExpression):
-        return selectable.__encode_comparison__
-    if isinstance(selectable, SqlCompilable):
-        # A dialect expression owns its own value type (its `__decode__`), so its
-        # comparison value passes through unencoded; the leaf, not a column codec,
-        # defines what that operand compares against.
-        return lambda value: value
-    if isinstance(selectable, _Aggregate):
-        if selectable.func in {"COUNT", "AVG"}:
-            return lambda value: value
-        wrapped = require_field(selectable.column)
-        if selectable.func == "SUM":
-            return lambda value: dialect.encode_sum_value(wrapped, value)
-        return lambda value: dialect.encode_column_value(wrapped, value)
-    column = selectable
-    return lambda value: dialect.encode_column_value(column, value)
 
 
 @dataclass(frozen=True)
@@ -301,7 +275,7 @@ def _compile_group_by_sql(
     qualified: bool,
 ) -> str:
     group_by = ", ".join(
-        _render_column_ref(column, dialect, qualified=qualified)
+        _render_grouping_column(column, dialect, qualified=qualified)
         for column in state.groupings
     )
     return f"GROUP BY {group_by}"
@@ -584,6 +558,7 @@ def _compile_select_list(
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
+    presence_name: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     """Render the projected columns, collecting any scalar-subquery parameters.
 
@@ -622,12 +597,17 @@ def _compile_select_list(
             f"{sql} AS {dialect.quote_identifier(label)}"
             for sql, label in zip(parts, labels, strict=True)
         ]
+    if presence_name is not None:
+        parts.append(f"1 AS {dialect.quote_identifier(presence_name)}")
     return ", ".join(parts), params
 
 
 def _compile_source_sql(model: type[Table[Any]], dialect: QueryDialect) -> str:
     """Render a physical table with its independent query-role name, if any."""
     name = dialect.quote_identifier(require_model_table_name(model))
+    if issubclass(model, _CteRelation):
+        definition = dialect.quote_identifier(model.definition.name)
+        return definition if definition == name else f"{definition} AS {name}"
     if issubclass(model, _AliasRelation):
         physical = dialect.quote_identifier(
             require_model_table_name(model.source_model)
@@ -647,6 +627,9 @@ def _compile_locking_clause(
         return ()
     if dialect.for_update_sql is None:
         msg = "FOR UPDATE is not supported by this dialect"
+        raise QueryCompilationError(msg)
+    if issubclass(state.model, _CteRelation):
+        msg = "FOR UPDATE requires a physical table source, not a CTE"
         raise QueryCompilationError(msg)
     if nested:
         msg = "locking subqueries are not supported"
@@ -669,6 +652,7 @@ def _compile_select_state(
     dialect: QueryDialect,
     *,
     outer: ScopeResolver | None = None,
+    presence_name: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     if not state.explicit_all and not state.predicates:
         msg = "select requires all() or where() before execution"
@@ -693,7 +677,9 @@ def _compile_select_state(
             own_only=True,
         )
     ensure_grouping_covers_projection(state)
-    quoted_columns, params = _compile_select_list(state, dialect, scope=scope)
+    quoted_columns, params = _compile_select_list(
+        state, dialect, scope=scope, presence_name=presence_name
+    )
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
     quoted_table = _compile_source_sql(state.model, dialect)
     sql_parts = [
@@ -770,7 +756,19 @@ def compile_select_sql_for_dialect(
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a select query's state into backend Dialect SQL."""
 
-    return _compile_select_state(state, dialect)
+    definitions = collect_cte_definitions(state)
+    sql, params = _compile_select_state(state, dialect)
+    if not definitions:
+        return sql, params
+    parts: list[str] = []
+    definition_params: tuple[object, ...] = ()
+    for definition in definitions:
+        body, bindings = _compile_select_state(
+            definition.state, dialect, presence_name=definition.presence_name
+        )
+        parts.append(f"{dialect.quote_identifier(definition.name)} AS ({body})")
+        definition_params = (*definition_params, *bindings)
+    return f"WITH {', '.join(parts)} {sql}", (*definition_params, *params)
 
 
 def compile_write_sql_for_dialect(

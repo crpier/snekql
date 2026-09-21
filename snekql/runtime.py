@@ -76,7 +76,7 @@ from snekql.query import (
     _ExecutableOptionalSelect,
     _ExecutableSelect,
     _ExecutableWrite,
-    _SelectableModelClass,
+    _SchemaModelClass,
 )
 from snekql.storage import SchemaPolicy
 from snekql.telemetry import Observer, PoolStats
@@ -1916,7 +1916,7 @@ class Database[FamilyT: BackendFamily]:
 
     async def verify(
         self,
-        models: Sequence[_SelectableModelClass[FamilyT, Any, Any]],
+        models: Sequence[_SchemaModelClass[FamilyT, Any, Any]],
         *,
         policy: SchemaPolicy = "strict",
     ) -> SchemaVerificationResult:

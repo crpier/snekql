@@ -29,7 +29,8 @@ native versions recorded by [environment validation](failure-matrix.md).
 | CHECK/foreign-key/default declarations | Supported within documented expression/type limits | Supported within documented expression/type limits |
 | Schema verification | Partial structural evidence, not full equality | Partial structural evidence, not full equality |
 | Hand-authored migrations | Explicit canonical history, separate from initialization | Same ownership model; DDL may commit implicitly and need reconciliation |
-| CTE/window/set-operation builders | Not implemented | Not implemented |
+| Typed nonrecursive CTEs and output labels | Supported with named definitions and token-based outputs | Same |
+| Recursive CTE/window/set-operation builders | Not implemented | Not implemented |
 | Raw CTE/window/set SQL | Explicit validated consumption contracts, subject to engine capabilities | Same, with dialect-specific SQL |
 | Streaming | Explicit stream lifetime and bounded delivered partitions | Same, using an unbuffered cursor; not a native-memory guarantee |
 | EXPLAIN | EXPLAIN QUERY PLAN for SELECT/INSERT/UPDATE/DELETE; no `explain_analyze` | EXPLAIN/ANALYZE for SELECT/UPDATE/DELETE without RETURNING; ANALYZE executes the query |

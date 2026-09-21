@@ -12,7 +12,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast, overload
 
+from pydantic import BaseModel
+
 from snekql._aliases import TableAlias, _AliasOwner, build_alias
+from snekql._cte import _Cte, _CteOwner, build_cte_alias
 from snekql._dialect_expr import DialectSelectable
 from snekql._query_readiness import _IncompleteQuery
 from snekql._query_state import selectable_owner_model
@@ -50,6 +53,9 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
     if isinstance(model, TableAlias):
         msg = "aliases cannot be mutation targets"
         raise QueryConstructionError(msg)
+    if isinstance(model, _Cte):
+        msg = "CTEs cannot be mutation targets"
+        raise QueryConstructionError(msg)
     received = require_model_backend(model)
     if received != "mariadb":
         msg = (
@@ -59,10 +65,21 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
         raise QueryConstructionError(msg)
 
 
+@overload
+def select[SourceT: Table[Any], ResultT: BaseModel, RoleT, NonNullableOwnerT](
+    source: _Cte[Literal["mariadb"], SourceT, ResultT, RoleT, NonNullableOwnerT],
+    /,
+) -> SelectModelQuery[
+    Literal["mariadb"], _CteOwner[Literal["mariadb"], SourceT, RoleT], ResultT
+]: ...
+
+
 # BEGIN GENERATED BACKEND SELECT OVERLOADS
 @overload
 def select[
-    OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     ReadT: Table[Any],
 ](
     model: _SelectableModelClass[Literal["mariadb"], OwnerT, ReadT],
@@ -72,7 +89,9 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     ValueT,
     CompareT,
 ](
@@ -84,7 +103,12 @@ def select[
 
 
 @overload
-def select[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any], ValueT](
+def select[
+    OwnerT: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
+    ValueT,
+](
     field: ColumnRef[OwnerT, ValueT],
     /,
 ) -> SelectValueQuery[Literal["mariadb"], OwnerT, OwnerT, ValueT, Any]: ...
@@ -92,9 +116,13 @@ def select[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any], 
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -114,11 +142,17 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -149,13 +183,21 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -192,15 +234,25 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -243,17 +295,29 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -302,19 +366,33 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner7T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T7,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -369,21 +447,37 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner1T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner2T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner3T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner4T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner5T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner6T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner7T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T7,
-    Owner8T: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any],
+    Owner8T: Model[Any, Any]
+    | _AliasOwner[Literal["mariadb"], Any, Any]
+    | _CteOwner[Literal["mariadb"], Any, Any],
     T8,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
@@ -513,11 +607,34 @@ def delete[ModelT: Model[Any, Any], ReadT: Table[Any]](
     return build_delete(model)
 
 
+@overload
+def alias[
+    SourceT: Table[Any],
+    ResultT: BaseModel,
+    RoleT,
+    NonNullableOwnerT,
+    AliasRoleT,
+](
+    model: _Cte[Literal["mariadb"], SourceT, ResultT, RoleT, NonNullableOwnerT],
+    role: type[AliasRoleT],
+    *,
+    name: str,
+) -> _Cte[Literal["mariadb"], SourceT, ResultT, AliasRoleT, NonNullableOwnerT]: ...
+
+
+@overload
 def alias[OwnerT: Model[Any, Any], ReadT: Table[Any], RoleT](
     model: _SelectableModelClass[Literal["mariadb"], OwnerT, ReadT],
     role: type[RoleT],
     *,
     name: str,
-) -> TableAlias[Literal["mariadb"], OwnerT, ReadT, RoleT]:
-    """Give a table a typed query role without changing its fetched result type."""
+) -> TableAlias[Literal["mariadb"], OwnerT, ReadT, RoleT]: ...
+
+
+def alias(
+    model: object, role: type[object], *, name: str
+) -> TableAlias[Any, Any, Any, Any] | _Cte[Any, Any, Any, Any, Any]:
+    """Give a table or CTE a typed role without changing its fetched result type."""
+    if isinstance(model, _Cte):
+        return build_cte_alias(model, role, name=name, backend="mariadb")
     return build_alias(model, role, name=name, backend="mariadb")

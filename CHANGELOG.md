@@ -24,6 +24,11 @@
 
 ### Added
 
+- Typed expression labels and nonrecursive named CTEs with token-based output
+  lookup, aliases, INNER/LEFT joins, preserved codecs, ordered output policies,
+  and pre-I/O scope/name/readiness guards. Includes readonly output operations
+  and a tested SQLite recipe. Implements #370.
+
 - Searchable API reference, backend capability matrix and service adoption guide.
   Executable SQLite examples cover FastAPI lifespan/dependency ownership,
   commit-before-response, per-job worker transactions, migration-backed fixtures

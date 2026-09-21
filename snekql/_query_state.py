@@ -70,7 +70,7 @@ class SelectState:
     distinct: bool = False
     lock_wait: LockWait | None = None
     predicates: tuple[_PredicateNode[Any], ...] = ()
-    groupings: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
+    groupings: tuple[Attr[Any, Any, Any, Any, Any] | SqlCompilable, ...] = ()
     having: tuple[_PredicateNode[Any], ...] = ()
     orderings: tuple[_OrderBy[Any], ...] = ()
     limit_value: int | None = None
@@ -239,6 +239,8 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
     # Only an aggregate remains: it carries its owning table directly.
     if isinstance(field.column, Attr):
         return require_column_model(field.column)
+    if isinstance(field.column, SqlCompilable):
+        return field.column.__owner_model__()
     owner = field.owner
     if owner is None:
         msg = "aggregate is not bound to a table model"

@@ -1,0 +1,729 @@
+"""Query-only named SELECT definitions through public compilation."""
+
+from datetime import UTC, datetime
+from uuid import UUID
+
+from pydantic import BaseModel
+from snektest import assert_eq, assert_raises, test
+
+from snekql import mariadb, sqlite
+
+
+class Person[S = sqlite.Pending](sqlite.Model[S, "Person[sqlite.Fetched]"]):
+    """Physical input to a named SQL definition."""
+
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+
+class Identifier(BaseModel):
+    """The final named result contract."""
+
+    id: int
+
+
+class ActiveRole:
+    """Nominal owner for the query-only relation."""
+
+
+@test(mark="fast")
+def completed_named_definition_compiles_as_a_cte() -> None:
+    """A definition precedes its consumer and retains its bound parameters."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    compiled = sqlite.select(active).all().compile()
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active"',
+    )
+    assert_eq(compiled.params, (2,))
+
+
+@test(mark="fast")
+def bound_token_references_only_the_cte_output() -> None:
+    """The consumer predicate uses the output role, not the definition's table."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    compiled = sqlite.select(active).where(active.column(identifier).gt(4)).compile()
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "active"."id" AS "id" FROM "active" WHERE ("active"."id" > ?)',
+    )
+    assert_eq(compiled.params, (2, 4))
+
+
+class FilteredRole:
+    """A dependent definition has its own nominal owner."""
+
+
+@test(mark="fast")
+def chained_definitions_precede_the_consumer_in_parameter_order() -> None:
+    """Each dependent SELECT reads an earlier definition without Python validation."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    filtered_id = active.column(identifier).label("id")
+    filtered = (
+        sqlite.select(active)
+        .where(active.column(identifier).gt(3))
+        .project(Identifier, id=filtered_id)
+        .cte(FilteredRole, name="filtered")
+    )
+
+    compiled = (
+        sqlite.select(filtered).where(filtered.column(filtered_id).gt(4)).compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)), "filtered" AS (SELECT "active"."id" AS "id", 1 AS "__snekql_present" FROM "active" WHERE ("active"."id" > ?)) SELECT "filtered"."id" AS "id" FROM "filtered" WHERE ("filtered"."id" > ?)',
+    )
+    assert_eq(compiled.params, (2, 3, 4))
+
+
+@test(mark="fast")
+def definition_cannot_shadow_its_physical_source() -> None:
+    """WITH name resolution must not turn a table read into accidental recursion."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id.label("id"))
+        .cte(ActiveRole, name="person")
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(active).all().compile()
+
+
+@test(mark="fast")
+def cte_used_only_in_exists_is_emitted() -> None:
+    """Reachability includes nested predicates, not just the outer FROM source."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    nested = sqlite.select(active.column(identifier)).where(
+        active.column(identifier).gt(3)
+    )
+
+    compiled = sqlite.select(Person).where(sqlite.exists(nested)).compile()
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "id" FROM "person" WHERE (EXISTS (SELECT "active"."id" FROM "active" WHERE ("active"."id" > ?)))',
+    )
+    assert_eq(compiled.params, (2, 3))
+
+
+@test(mark="fast")
+def cte_used_only_in_a_scalar_predicate_is_emitted() -> None:
+    """Scalar comparisons expose their nested SELECT to definition discovery."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    nested = (
+        sqlite.select(active.column(identifier))
+        .where(active.column(identifier).gt(3))
+        .limit(1)
+    )
+
+    compiled = (
+        sqlite.select(Person).where(Person.id.eq_col(sqlite.scalar(nested))).compile()
+    )
+
+    assert_eq(compiled.sql.startswith('WITH "active" AS ('), True)
+    assert_eq(compiled.params, (2, 3, 1))
+
+
+@test(mark="fast")
+def plain_binding_does_not_make_none_a_column_token() -> None:
+    """Only issued, bound label objects can identify typed output columns."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        active.column(None)  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def definition_and_consumer_ordering_keep_their_own_limits() -> None:
+    """Local ordering bounds the definition; final ordering belongs to its reader."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .order_by(Person.id.asc())
+        .limit(3)
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+
+    compiled = (
+        sqlite.select(active)
+        .all()
+        .order_by(active.column(identifier).desc())
+        .limit(1)
+        .compile()
+    )
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" ORDER BY "id" ASC LIMIT ?) SELECT "active"."id" AS "id" FROM "active" ORDER BY "active"."id" DESC LIMIT ?',
+    )
+    assert_eq(compiled.params, (3, 1))
+
+
+@test(mark="fast")
+def repeated_predicate_references_emit_one_definition() -> None:
+    """Repeated use duplicates consumer parameters, not the definition body."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    nested = sqlite.select(active.column(identifier)).where(
+        active.column(identifier).gt(3)
+    )
+
+    compiled = (
+        sqlite.select(Person)
+        .where(sqlite.exists(nested) & sqlite.exists(nested))
+        .compile()
+    )
+
+    assert_eq(compiled.sql.count('"active" AS ('), 1)
+    assert_eq(compiled.params, (2, 3, 3))
+
+
+@test(mark="fast")
+def matching_spelling_does_not_grant_token_membership() -> None:
+    """A freshly issued token cannot identify another token's bound output."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id.label("id"))
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        active.column(Person.id.label("id"))
+
+
+@test(mark="fast")
+def dependent_definitions_cannot_reuse_a_casefolded_name() -> None:
+    """One flattened WITH scope cannot contain two distinct matching names."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="Active")
+    )
+    downstream_id = active.column(identifier).label("id")
+    downstream = (
+        sqlite.select(active)
+        .all()
+        .project(Identifier, id=downstream_id)
+        .cte(FilteredRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(downstream).all().compile()
+
+
+@test(mark="fast")
+def cte_mutation_target_fails_with_a_query_construction_error() -> None:
+    """Dynamic callers cannot treat a query-only relation as writable schema."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.update(active)  # ty: ignore[invalid-argument-type]
+
+
+@test(mark="fast")
+def cte_alias_uses_one_definition_and_its_own_qualifier() -> None:
+    """A new query role changes references, not the SQL definition's identity."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+
+    compiled = sqlite.select(peer).where(peer.column(identifier).gt(4)).compile()
+
+    assert_eq(
+        compiled.sql,
+        'WITH "active" AS (SELECT "id" AS "id", 1 AS "__snekql_present" FROM "person" WHERE ("id" > ?)) SELECT "peer"."id" AS "id" FROM "active" AS "peer" WHERE ("peer"."id" > ?)',
+    )
+    assert_eq(compiled.params, (2, 4))
+
+
+@test(mark="fast")
+def cte_alias_roles_must_be_distinct_in_visible_scopes() -> None:
+    """Reusing a role cannot make two visible references nominally identical."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, ActiveRole, name="peer")
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(active).where(sqlite.exists(sqlite.select(peer).all())).compile()
+
+
+@test(mark="fast")
+def cte_alias_cannot_shadow_a_different_reachable_definition() -> None:
+    """Sibling nested scopes still share the statement's WITH namespace."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    other = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(FilteredRole, name="other")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="other")
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(Person).where(
+            sqlite.exists(sqlite.select(other).all())
+            & sqlite.exists(sqlite.select(peer).all())
+        ).compile()
+
+
+@test(mark="fast")
+def original_and_alias_references_emit_the_shared_definition_once() -> None:
+    """Definition parameters bind once even when two roles read its rows."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.gt(2))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+    nested = sqlite.select(peer.column(identifier)).where(peer.column(identifier).gt(3))
+
+    compiled = sqlite.select(active).where(sqlite.exists(nested)).compile()
+
+    assert_eq(compiled.sql.count('"active" AS ('), 1)
+    assert_eq(compiled.params, (2, 3))
+
+
+@test(mark="fast")
+def cte_alias_rejects_a_foreign_backend_before_compilation() -> None:
+    """Dynamic calls cannot retag the definition by choosing another factory."""
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=Person.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(mariadb.QueryConstructionError):
+        mariadb.alias(active, FilteredRole, name="peer")  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def cte_consumer_cannot_claim_locks_on_underlying_rows() -> None:
+    """A derived relation does not establish the physical-table locking contract."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    active = (
+        mariadb.select(Native)
+        .all()
+        .project(Identifier, id=Native.id)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(mariadb.QueryCompilationError):
+        mariadb.select(active).all().for_update().compile()
+
+
+@test(mark="fast")
+def cte_definition_cannot_hide_a_locking_select() -> None:
+    """Freezing a SELECT must not move its row-lock intent into a derived scope."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    query = mariadb.select(Native).all().project(Identifier, id=Native.id).for_update()
+
+    with assert_raises(mariadb.QueryConstructionError):
+        query.cte(ActiveRole, name="active")
+
+
+@test(mark="fast")
+def distinct_definitions_cannot_reuse_an_indistinguishable_visible_role() -> None:
+    """Different SQL bodies do not create different nominal owner types."""
+    identifier = Person.id.label("id")
+    first = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="first")
+    )
+    second = (
+        sqlite.select(Person)
+        .where(Person.id.gt(0))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="second")
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(first).join(
+            second, on=first.column(identifier).eq_col(second.column(identifier))
+        ).all().compile()
+
+
+@test(mark="fast")
+def cte_count_rejects_an_ungrouped_visible_output() -> None:
+    """Derived references obey the same aggregate projection rule as columns."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(identifier)
+
+    with assert_raises(sqlite.QueryCompilationError):
+        sqlite.select(column, column.count()).all().compile()
+
+
+@test(mark="fast")
+def grouped_cte_alias_does_not_cover_a_different_role() -> None:
+    """Matching output names and positions do not make grouping keys identical."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    peer = sqlite.alias(active, FilteredRole, name="peer")
+    column = active.column(identifier)
+    query = (
+        sqlite.select(column, column.count())
+        .join(peer, on=column.eq_col(peer.column(identifier)))
+        .all()
+        .group_by(peer.column(identifier))
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        query.compile()
+    with assert_raises(sqlite.QueryConstructionError):
+        query.having(column.gt(0))
+
+
+@test(mark="fast")
+def mixed_physical_and_cte_grouping_keys_compile() -> None:
+    """Grouping preserves both owners when a query combines their columns."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(identifier)
+    query = (
+        sqlite.select(Person.id, column, column.count())
+        .join(active, on=Person.id.eq_col(column))
+        .all()
+        .group_by(Person.id, column)
+    )
+
+    assert_eq('GROUP BY "person"."id", "active"."id"' in query.compile().sql, True)
+
+
+@test(mark="fast")
+def cte_grouping_rejects_aggregate_keys() -> None:
+    """A COUNT has an owner but is not a grouping column."""
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    count = active.column(identifier).count()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(count).all().group_by(count)  # ty: ignore[invalid-argument-type]
+
+
+@test(mark="fast")
+def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
+    """Timezone-preserving text is not silently treated as chronological SQL order."""
+
+    class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+        happened_at: sqlite.Col[sqlite.ZonedDatetime] = sqlite.Text(nullable=False)
+
+    class EventResult(BaseModel):
+        happened_at: sqlite.ZonedDatetime
+
+    time = Event.happened_at.label("happened_at")
+    events = (
+        sqlite.select(Event)
+        .all()
+        .project(EventResult, happened_at=time)
+        .cte(ActiveRole, name="events")
+    )
+    column = events.column(time)
+
+    with assert_raises(sqlite.QueryConstructionError):
+        column.min()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.max()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.asc()
+    with assert_raises(sqlite.QueryConstructionError):
+        column.desc()
+
+    instant = sqlite.ZonedDatetime(datetime(2026, 1, 1, tzinfo=UTC))
+    with assert_raises(sqlite.QueryConstructionError):
+        column.gt(instant)
+    with assert_raises(sqlite.QueryConstructionError):
+        column.between(instant, instant)
+
+
+@test(mark="fast")
+def cte_numeric_aggregates_reject_nonnumeric_outputs() -> None:
+    """Numeric wire coercion cannot change a declared logical output domain."""
+
+    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+        name: sqlite.Col[str] = sqlite.Text()
+        enabled: sqlite.Col[bool] = sqlite.Integer()
+        key: sqlite.Col[UUID] = sqlite.Text()
+
+    class Result(BaseModel):
+        name: str
+        enabled: bool
+        key: UUID
+
+    name = Input.name.label("name")
+    enabled = Input.enabled.label("enabled")
+    key = Input.key.label("key")
+    data = (
+        sqlite.select(Input)
+        .all()
+        .project(Result, name=name, enabled=enabled, key=key)
+        .cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(name).sum()
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(enabled).avg()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(key).sum()
+
+
+@test(mark="fast")
+def cte_arithmetic_inputs_obey_grouping_coverage() -> None:
+    """A computed value still reads its derived column for grouping purposes."""
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    column = active.column(value)
+    query = sqlite.select(column.add(1), column.count()).all()
+
+    with assert_raises(sqlite.QueryCompilationError):
+        query.compile()
+    assert_eq(
+        'GROUP BY "active"."id"' in query.group_by(active.column(value)).compile().sql,
+        True,
+    )
+
+
+@test(mark="fast")
+def cte_arithmetic_rejects_logical_uuid_storage() -> None:
+    """A UUID stored as text must not become a native numeric expression."""
+
+    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+        key: sqlite.Col[UUID] = sqlite.Text()
+
+    class Result(BaseModel):
+        key: UUID
+
+    key = Input.key.label("key")
+    data = (
+        sqlite.select(Input).all().project(Result, key=key).cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        data.column(key).add(1)  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def cte_arithmetic_rejects_unresolved_sum_wire_representation() -> None:
+    """A normalized logical integer does not prove native integer SQL storage."""
+
+    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+        id: mariadb.Col[int] = mariadb.Integer()
+
+    total = Native.id.sum().label("id")
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    totals = (
+        mariadb.select(Native)
+        .all()
+        .project(OptionalIdentifier, id=total)
+        .cte(ActiveRole, name="totals")
+    )
+
+    with assert_raises(mariadb.QueryConstructionError):
+        totals.column(total).add(1)
+
+
+@test(mark="fast")
+def cte_rebinding_rejects_an_incompatible_logical_result_domain() -> None:
+    """A derived integer is not opaque merely because it crossed a WITH boundary."""
+
+    class WrongResult(BaseModel):
+        id: str
+
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(active).all().project(WrongResult, id=active.column(value))
+
+
+@test(mark="fast")
+def cte_rebinding_retains_definition_local_nullability() -> None:
+    """An optional source output cannot acquire NOT NULL from a consumer model."""
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    peer = sqlite.alias(Person, FilteredRole, name="peer")
+    value = peer.column(Person.id).label("id")
+    missing = (
+        sqlite.select(Person)
+        .left_join(peer, on=Person.id.eq_col(peer.column(Person.id)))
+        .all()
+        .project(OptionalIdentifier, id=value)
+        .cte(ActiveRole, name="missing")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(missing).all().project(Identifier, id=missing.column(value))
+
+
+@test(mark="fast")
+def cte_domain_follows_the_expression_not_its_result_annotation() -> None:
+    """A consumer float contract does not change an integer expression in SQL."""
+
+    class FloatResult(BaseModel):
+        id: float
+
+    value = Person.id.add(1).label("id")
+    calculated = (
+        sqlite.select(Person)
+        .all()
+        .project(FloatResult, id=value)
+        .cte(ActiveRole, name="calculated")
+    )
+    rebound = (
+        sqlite.select(calculated).all().project(Identifier, id=calculated.column(value))
+    )
+
+    assert_eq('"calculated"."id" AS "id"' in rebound.compile().sql, True)
+
+
+@test(mark="fast")
+def cte_scalar_domain_remains_nullable_when_rebound() -> None:
+    """A scalar reference can yield NULL even when its input column is required."""
+
+    class OptionalIdentifier(BaseModel):
+        id: int | None
+
+    value = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(0))).label("id")
+    data = (
+        sqlite.select(Person)
+        .all()
+        .project(OptionalIdentifier, id=value)
+        .cte(ActiveRole, name="data")
+    )
+
+    with assert_raises(sqlite.QueryConstructionError):
+        sqlite.select(data).all().project(Identifier, id=data.column(value))
+
+
+@test(mark="fast")
+def projected_left_cte_output_requires_a_nullable_result_field() -> None:
+    """Consumer-local absence is checked even when the definition is NOT NULL."""
+    value = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .all()
+        .project(Identifier, id=value)
+        .cte(ActiveRole, name="active")
+    )
+    joined = sqlite.select(Person).left_join(active, on=Person.id.eq(0)).all()
+
+    with assert_raises(sqlite.QueryConstructionError):
+        joined.project(Identifier, id=active.column(value))

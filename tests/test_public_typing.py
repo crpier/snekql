@@ -793,6 +793,7 @@ if TYPE_CHECKING:
         JoinModelQuery[
             Literal["sqlite"],
             User[Pending] | Order[Pending],
+            User[Pending] | Order[Pending],
             _IncompleteQuery,
             User[Fetched],
             Order[Fetched],
@@ -804,6 +805,7 @@ if TYPE_CHECKING:
         .join(Order, on=Order.user_id.references(User.id)),
         JoinModelQuery[
             Literal["sqlite"],
+            User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             _ExecutableQuery,
             User[Fetched],
@@ -818,6 +820,7 @@ if TYPE_CHECKING:
         JoinModelQuery[
             Literal["sqlite"],
             User[Pending] | Order[Pending],
+            User[Pending],
             _IncompleteQuery,
             User[Fetched],
             Order[Fetched] | None,

@@ -42,6 +42,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError, core_schema
 
+from snekql._output_label import _NullExtendedLabel
 from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.defaults import LiteralDefault
 from snekql.errors import (
@@ -1242,6 +1243,10 @@ class Attr[
     helper methods on the model class.
     """
 
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, ReadValueT, CompareT]:
+        """Name this column for a named projection without changing its codec."""
+        return _NullExtendedLabel(name=name, operand=self)
+
     def __init__(  # noqa: PLR0913
         self,
         *,
@@ -2136,6 +2141,9 @@ class Attr[
         """
 
         raise NotImplementedError
+
+    def __grouping_column__(self) -> None:
+        """Typing witness for a readonly GROUP BY column reference."""
 
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness of this column's model owner."""
