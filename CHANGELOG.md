@@ -11,6 +11,11 @@
 
 ### Changed
 
+- MariaDB admission starts at 10.11, with native full-suite gates for maintained
+  10.11, 11.4, 11.8 and 12.3 LTS targets. Existing session, type, migration and
+  unsupported-feature contracts remain unchanged. The 12.2 catalog regression
+  and 12 rolling jobs remain. See `docs/mariadb-support.md`. Addresses #298.
+
 - Query `repr`/`str` now redact bindings and omit compilation-error details.
   `query.inspect(parameter_visibility="values")` enables value-bearing diagnostics
   for one explicit local call. Use `.compile()` for validation and structured
@@ -24,6 +29,12 @@
   commit-before-response, per-job worker transactions, migration-backed fixtures
   and coexistence with an externally migrated database layer. Framework tools
   remain development-only dependencies. Addresses #301.
+
+- Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
+  mypy 2.3.1 across both backends. ty stays primary; Pyright passes the documented
+  profile, while mypy rejects valid positional projections and left joins.
+  Reports preserve diagnostics and source hashes. Editor limits are explicit.
+  Addresses #299.
 
 - Development-only comparative SQLite/MariaDB benchmarks cover raw drivers,
   snekql and SQLAlchemy Core with verified reads, streams, joins, bulk writes,

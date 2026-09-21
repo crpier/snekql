@@ -1,0 +1,4 @@
+
+
+async def wrong_result(transaction: database.Transaction) -> list[int]:
+    return await transaction.fetch_all(named_query())  # expect-error

@@ -207,7 +207,9 @@ async def cancelled_bootstrap_closes_sensitive_client(mode: str) -> None:
     ):
         task = asyncio.create_task(enter(Path(directory) / "data"))
         try:
-            await asyncio.wait_for(gate.started.wait(), 10)
+            # Native installation/startup is setup, not cancellation latency. Its
+            # watchdog must allow the server's own 20-second readiness budget.
+            await asyncio.wait_for(gate.started.wait(), 60)
             if mode == "native":
                 task.cancel("first cancellation")
             else:
