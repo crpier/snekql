@@ -25,6 +25,11 @@
   Reports preserve diagnostics and source hashes. Editor limits are explicit.
   Addresses #299.
 
+- Development-only comparative SQLite/MariaDB benchmarks cover raw drivers,
+  snekql and SQLAlchemy Core with verified reads, streams, joins, bulk writes,
+  contention, and separate acquisition/memory profiles. A dated baseline retains
+  trial artifacts and noise-aware regression guidance. Addresses #296.
+
 - Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
   gates, a documented fault inventory, and an optional bounded Linux resource
   soak. Native late-stream faults verify discard and subsequent recovery. #295.
