@@ -24,6 +24,12 @@
 
 ### Added
 
+- Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
+  mypy 2.3.1 across both backends. ty stays primary; Pyright passes the documented
+  profile, while mypy rejects valid positional projections and left joins.
+  Reports preserve diagnostics and source hashes. Editor limits are explicit.
+  Addresses #299.
+
 - Development-only comparative SQLite/MariaDB benchmarks cover raw drivers,
   snekql and SQLAlchemy Core with verified reads, streams, joins, bulk writes,
   contention, and separate acquisition/memory profiles. A dated baseline retains

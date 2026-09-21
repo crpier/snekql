@@ -1,0 +1,21 @@
+"""Raw construction fixes the validated result type before consumption."""
+
+from typing import assert_type
+
+from pydantic import BaseModel
+
+from snekql import __BACKEND__ as database
+
+
+class Total(BaseModel):
+    value: int
+
+
+async def raw_rows(transaction: database.Transaction) -> None:
+    unvalidated = database.raw("SELECT 1 AS value")
+    assert_type(unvalidated, database.RawStatement[dict[str, object]])
+    assert_type(await transaction.fetch_all(unvalidated), list[dict[str, object]])
+    validated = database.raw("SELECT 1 AS value", validate=Total)
+    assert_type(validated, database.RawStatement[Total])
+    assert_type(await transaction.fetch_all(validated), list[Total])
+    assert_type(transaction.fetch_chunks(validated, size=2), database.ChunkStream[Total])

@@ -1,0 +1,4 @@
+
+
+def requires_generated_id(account: Account[database.Pending]) -> int:
+    return account.id  # expect-error

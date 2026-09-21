@@ -1,0 +1,34 @@
+"""Left joins infer an optional fetched model on the right."""
+
+from typing import assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Parent[S = database.Pending](database.Model[S, "Parent[database.Fetched]"]):
+    id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Child[S = database.Pending](database.Model[S, "Child[database.Fetched]"]):
+    id: database.Col[int] = database.Integer(primary_key=True)
+    parent_id: database.FKCol[Parent, int] = database.ForeignKey(Parent.id)
+
+
+def joined() -> database.Select[tuple[Parent[database.Fetched], Child[database.Fetched] | None]]:
+    return database.select(Parent).left_join(
+        Child, on=Child.parent_id.references(Parent.id),
+    ).all()
+
+
+async def optional_child(transaction: database.Transaction) -> None:
+    inferred = database.select(Parent).left_join(
+        Child, on=Child.parent_id.references(Parent.id),
+    ).all()
+    assert_type(
+        await transaction.fetch_all(inferred),
+        list[tuple[Parent[database.Fetched], Child[database.Fetched] | None]],
+    )
+    assert_type(
+        await transaction.fetch_all(joined()),
+        list[tuple[Parent[database.Fetched], Child[database.Fetched] | None]],
+    )
