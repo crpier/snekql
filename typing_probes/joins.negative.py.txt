@@ -1,0 +1,4 @@
+
+
+async def mandatory_child(transaction: database.Transaction) -> list[tuple[Parent[database.Fetched], Child[database.Fetched]]]:
+    return await transaction.fetch_all(joined())  # expect-error

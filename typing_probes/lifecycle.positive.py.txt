@@ -1,0 +1,25 @@
+"""Pending and fetched models preserve generated-value types."""
+
+from typing import assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Account[S = database.Pending](database.Model[S, "Account[database.Fetched]"]):
+    id: database.GenCol[int] = database.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=database.PENDING_GENERATION,
+    )
+    name: database.Col[str] = database.Text()
+
+
+def pending() -> None:
+    account = Account(name="Ada")
+    assert_type(account, Account[database.Pending])
+    assert_type(account.id, int | database.PendingGeneration)
+
+
+def fetched(account: Account[database.Fetched]) -> int:
+    assert_type(account.id, int)
+    return account.id

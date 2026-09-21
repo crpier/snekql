@@ -1,7 +1,10 @@
 # Typing guide
 
 snekql's public API is designed so model declaration, query construction, and
-runtime result shapes are visible to static type checkers.
+runtime result shapes are visible to static type checkers. ty remains the primary
+checker. See the [versioned compatibility assessment](typing-compatibility.md)
+for the tested Pyright consumer profile, known mypy failures and editor limits.
+Unless stated otherwise, static guarantees below refer to the ty contract.
 
 ## Model states
 
@@ -243,7 +246,7 @@ mean a missing row:
 
 ```python
 await tx.fetch_one_or_none(select(User).all())
-# User[Fetched] | None
+# User[Fetched]  (raises when no row matches)
 
 await tx.fetch_one_or_none(select(User.email, User.status).all())
 # tuple[str, str] | None
@@ -292,7 +295,7 @@ MIN/MAX/SUM/AVG results are `None`.
 ## Insert conflicts
 
 `on_conflict` pins its target columns and update assignments to the inserted
-model. Pyright rejects a target or assignment from another model:
+model. ty rejects a target or assignment from another model:
 
 ```python
 from snekql.sqlite import DoNothing, DoUpdate, insert

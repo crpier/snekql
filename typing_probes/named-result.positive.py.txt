@@ -1,0 +1,43 @@
+"""Nine named fields retain their row type without positional overloads."""
+
+from typing import assert_type
+
+from pydantic import BaseModel
+
+from snekql import __BACKEND__ as database
+
+
+class Entry[S = database.Pending](database.Model[S, "Entry[database.Fetched]"]):
+    id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Summary(BaseModel):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+    f: int
+    g: int
+    h: int
+    i: int
+
+
+def named_query() -> database.Select[Summary]:
+    return database.select(Entry).all().project(
+        Summary,
+        a=Entry.id, b=Entry.id, c=Entry.id,
+        d=Entry.id, e=Entry.id, f=Entry.id,
+        g=Entry.id, h=Entry.id, i=Entry.id,
+    )
+
+
+async def named_rows(transaction: database.Transaction) -> None:
+    inferred = database.select(Entry).all().project(
+        Summary,
+        a=Entry.id, b=Entry.id, c=Entry.id,
+        d=Entry.id, e=Entry.id, f=Entry.id,
+        g=Entry.id, h=Entry.id, i=Entry.id,
+    )
+    assert_type(await transaction.fetch_all(inferred), list[Summary])
+    assert_type(await transaction.fetch_all(named_query()), list[Summary])
