@@ -5,6 +5,10 @@ application teams deciding whether the package is ready to adopt. The
 [compatibility policy](compatibility.md) defines the prospective 1.0 guarantees,
 deprecation periods, support window and release gates. It does not announce 1.0.
 
+For integration work, start with the [API reference](api-reference.md),
+[backend matrix](backend-capabilities.md), and executable
+[service and incremental-adoption recipes](service-recipes.md).
+
 ## Published-package smoke test
 
 Run this outside the repository so the local checkout cannot shadow the package
