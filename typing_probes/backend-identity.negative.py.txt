@@ -1,0 +1,4 @@
+
+
+async def crossed(transaction: database.Transaction) -> None:
+    await transaction.fetch_all(foreign.select(Foreign).all())  # expect-error

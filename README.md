@@ -1172,8 +1172,10 @@ inspection. Its string form and normal query logs render
 ## Further reading
 
 - [Adoption and release confidence](docs/adoption.md)
+- [Compatibility and the 1.0 release contract](docs/compatibility.md)
 - [Why snekql is not an ORM](docs/why-not-orm.md)
 - [Typing guide](docs/typing.md)
+- [Type-checker versions and editor compatibility](docs/typing-compatibility.md)
 - [Schema startup and drift](docs/schema-drift.md)
 - [Temporary MariaDB Test Server](docs/testing-mariadb.md)
 - [Raw SQL](docs/raw-sql.md)

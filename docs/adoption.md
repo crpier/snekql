@@ -1,7 +1,9 @@
 # Adoption and release confidence
 
 This checklist is for maintainers validating a published snekql release and for
-application teams deciding whether the package is ready to adopt.
+application teams deciding whether the package is ready to adopt. The
+[compatibility policy](compatibility.md) defines the prospective 1.0 guarantees,
+deprecation periods, support window and release gates. It does not announce 1.0.
 
 ## Published-package smoke test
 
@@ -126,12 +128,17 @@ Before announcing a release:
    The script requires exactly one wheel and sdist, installs the wheel outside
    the checkout, then checks imports, CLI startup, SQLite runtime startup, and
    public typing.
-6. Merge the release PR. Tag that exact commit as `v<project version>` and push
-   the tag. Never reuse or move a release tag.
-7. Create the GitHub release from that tag. The protected `pypi` environment
-   builds from the tag, verifies tag/version equality, records a GitHub build
-   provenance attestation, and publishes through PyPI Trusted Publishing with
-   attestations. No long-lived package token is stored.
+6. After explicit maintainer approval, merge the release PR. Before authorizing
+   publication, verify the `pypi` environment approval rules and PyPI Trusted
+   Publisher configuration. The workflow's environment name alone does not
+   establish that approval is required. Tag the approved exact commit as
+   `v<project version>` and push the tag. Never reuse or move a release tag.
+7. With publication authorization, create the GitHub release from that tag. This
+   triggers the existing release workflow, not just an announcement. Its build
+   job verifies tag/version equality and records a build provenance attestation.
+   Its `pypi` publish job uses the same artifacts, Trusted Publishing and PyPI
+   attestations. Do not also run `uv publish` for the same version. Verify the
+   resulting attestations against the distributed artifacts.
 8. Run the published-package smoke test above and attach the dated changelog
    entry to the GitHub release.
 
@@ -139,9 +146,11 @@ Before announcing a release:
 
 Security reports use the private process in [`SECURITY.md`](../SECURITY.md).
 CI reproduces the full validation and artifact smoke path on Python 3.14 with a
-live rolling MariaDB 12 server. The MariaDB 12.2 job also runs the full suite,
-including owned-server restart and process-cleanup tests, rather than only the
-public example. Each job records its Python, SQLite, OS, and MariaDB versions.
+live rolling MariaDB 12 server. Native release jobs also run the full suite on
+10.11, 11.4, 11.8 and 12.3 LTS, plus the retained 12.2 compatibility target.
+They include owned-server restart and process-cleanup tests, rather than only
+the public example. Each job records its Python, SQLite, OS, and MariaDB versions.
+See the [MariaDB support policy](mariadb-support.md) before choosing a release.
 See the [failure coverage inventory](failure-matrix.md) for evidence and limits.
 
 snekql v1 is a good fit when an application wants:

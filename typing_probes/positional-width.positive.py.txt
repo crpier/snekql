@@ -1,0 +1,21 @@
+"""The largest positional projection preserves every result slot."""
+
+from typing import assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Entry[S = database.Pending](database.Model[S, "Entry[database.Fetched]"]):
+    id: database.Col[int] = database.Integer(primary_key=True)
+    label: database.Col[str] = database.Text()
+
+
+async def eight_slots(transaction: database.Transaction) -> None:
+    query = database.select(
+        Entry.id, Entry.label, Entry.id, Entry.label,
+        Entry.id, Entry.label, Entry.id, Entry.label,
+    ).all()
+    assert_type(
+        await transaction.fetch_all(query),
+        list[tuple[int, str, int, str, int, str, int, str]],
+    )
