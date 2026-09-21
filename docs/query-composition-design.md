@@ -1,7 +1,7 @@
 # Query composition design
 
-Status: interface reviewed and approved; builder implementation is deferred to
-the focused follow-ups below.
+Status: interface reviewed and approved. Typed labels and nonrecursive CTEs are
+implemented; set operations, windows and recursion remain focused follow-ups.
 Tracking issue: #280. SQLite and MariaDB only.
 
 ## Existing support
@@ -12,15 +12,15 @@ The raw interface already executes CTEs, recursive CTEs, windows, and set
 operations with validated result contracts. This design does not replace any
 of that work.
 
-The missing builder support needs four focused follow-ups. Start with CTE output
-references because set ordering, ranking filters, and recursion all need them.
+The four follow-ups below separate implementation work. CTE output references
+are implemented because set ordering, ranking filters, and recursion need them.
 The runnable interim recipes are in [reporting with raw SQL](reporting.md).
 
 ## Typed output references and CTEs
 
-Reviewed syntax, not runnable today:
+Implemented syntax. See [typed CTE usage and limits](ctes.md) and the tested recipe.
 
-```text
+```python
 user_id = User.id.label("id")
 user_name = User.name.label("name")
 

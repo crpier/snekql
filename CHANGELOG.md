@@ -19,6 +19,11 @@
 
 ### Added
 
+- Typed expression labels and nonrecursive named CTEs with token-based output
+  lookup, aliases, INNER/LEFT joins, preserved codecs, ordered output policies,
+  and pre-I/O scope/name/readiness guards. Includes readonly output operations
+  and a tested SQLite recipe. Implements #370.
+
 - Full MariaDB 12.2 and rolling CI suites, SQLite version/OS/default-asyncio
   gates, a documented fault inventory, and an optional bounded Linux resource
   soak. Native late-stream faults verify discard and subsequent recovery. #295.
