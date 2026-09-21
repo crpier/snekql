@@ -106,7 +106,7 @@ Before announcing a release:
 2. Confirm `CHANGELOG.md` has a dated entry for the version.
 3. Run the repository validation suite:
    ```sh
-   uv run snektest
+   uv run snektest tests
    uv run ty check
    uv run ruff check .
    uv run ruff format --check .

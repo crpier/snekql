@@ -20,4 +20,23 @@ class BenchUser[S = Pending](mariadb.Model[S, "BenchUser[Fetched]"]):
     payload: BenchUser.Col[str] = mariadb.Text(nullable=False)
 
 
+class BenchProfile[S = Pending](mariadb.Model[S, "BenchProfile[Fetched]"]):
+    """One related payload per seeded user for indexed join comparisons."""
+
+    __tablename__ = "bench_profile"
+
+    user_id: BenchProfile.Col[int] = mariadb.Integer(primary_key=True)
+    payload: BenchProfile.Col[str] = mariadb.Text(nullable=False)
+
+
+class BenchWrite[S = Pending](mariadb.Model[S, "BenchWrite[Fetched]"]):
+    """Explicit identities make committed bulk-write results reproducible."""
+
+    __tablename__ = "bench_write"
+
+    id: BenchWrite.Col[int] = mariadb.Integer(primary_key=True)
+    email: BenchWrite.Col[str] = mariadb.Text(nullable=False)
+    payload: BenchWrite.Col[str] = mariadb.Text(nullable=False)
+
+
 MODELS = [BenchUser]

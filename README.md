@@ -1183,7 +1183,8 @@ uv run python -m examples.basic_app
 uv run ty check examples/typed_queries.py
 ```
 
-Local validation uses `PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest`.
+Local validation uses `PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests`.
+The explicit directory excludes bundled dependency tests inside `.venv`.
 Validated raw SQL requires this Python startup setting for context-local warning
 isolation. MariaDB integration tests start a
 Temporary MariaDB Test Server through `snekql.testing.mariadb`, so `mariadbd`,
