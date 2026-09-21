@@ -9,7 +9,7 @@ versions are welcome, but a fix may require upgrading. The
 [compatibility policy](docs/compatibility.md#security-and-backports) explains the
 support window and its distinction from API deprecation periods.
 
-Python 3.14+, MariaDB 12.2+, and SQLite through Python's standard
+Python 3.14+, maintained MariaDB LTS targets from 10.11, and SQLite through Python's standard
 library are the supported runtime baseline; MySQL is not supported.
 
 ## Reporting a vulnerability
