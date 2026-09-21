@@ -24,6 +24,12 @@
 
 ### Added
 
+- Prospective 1.0 compatibility policy covering imports, typing-only breaks,
+  query and schema semantics, errors, deprecation notice periods and measurable
+  release gates. Keep latest-stable-minor security support without promising
+  parallel backports. Clarify authorization and verification of the existing
+  release provenance chain. Addresses #300.
+
 - Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
   mypy 2.3.1 across both backends. ty stays primary; Pyright passes the documented
   profile, while mypy rejects valid positional projections and left joins.
