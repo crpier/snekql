@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="An interface-only comparison of snekql, SQLModel, and SQLAlchemy, with examples and adoption advice.">
+<title>Does snekql make sense beside SQLModel?</title>
+<style>
+:root { color-scheme: light; --ink:#202b32; --muted:#52616b; --paper:#faf9f5; --line:#d9dfdc; --accent:#155c52; --soft:#eaf2ed; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+main { max-width:1120px; padding:64px 32px 80px; margin:auto; }
+h1,h2,h3 { line-height:1.18; letter-spacing:-.025em; }
+h1 { font-size:clamp(2.2rem,5vw,3.6rem); max-width:850px; margin:16px 0 24px; }
+h2 { font-size:1.85rem; margin:0 0 24px; }
+h3 { font-size:1.2rem; margin:28px 0 12px; }
+p,li { max-width:78ch; }
+p { margin:12px 0 18px; }
+a { color:var(--accent); text-underline-offset:3px; }
+a:hover { text-decoration-thickness:2px; }
+a:focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+.kicker { text-transform:uppercase; letter-spacing:.12em; font-size:.78rem; font-weight:750; color:var(--accent); }
+.meta,.small,figcaption { font-size:.88rem; color:var(--muted); }
+.lead { font-size:1.22rem; max-width:70ch; }
+.verdict { background:var(--soft); border-left:5px solid var(--accent); padding:22px 26px; margin:30px 0; }
+.verdict p:last-child { margin-bottom:0; }
+nav { display:flex; flex-wrap:wrap; gap:10px 24px; border-block:1px solid var(--line); padding:18px 0; margin:30px 0 50px; }
+section { margin:0 0 56px; scroll-margin-top:24px; }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:22px 0; }
+.card { min-width:0; padding:20px; background:white; border:1px solid var(--line); border-radius:8px; }
+.card h3 { margin-top:0; }
+.card p:last-child { margin-bottom:0; }
+pre { background:#edf0ee; border:1px solid var(--line); padding:17px; overflow-x:auto; font-size:.82rem; line-height:1.6; border-radius:5px; tab-size:4; }
+code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; }
+pre code { font-size:inherit; }
+p code,li code,td code { overflow-wrap:anywhere; }
+.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; }
+table { width:100%; border-collapse:collapse; font-size:.91rem; background:white; }
+caption { text-align:left; padding:14px; font-weight:650; }
+th,td { padding:14px 16px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
+thead th { background:var(--soft); }
+tbody th { width:21%; font-weight:650; }
+tbody tr:last-child > * { border-bottom:0; }
+ul,ol { padding-left:24px; }
+li { margin:9px 0; }
+.sources { columns:2; column-gap:36px; font-size:.91rem; }
+.sources li { break-inside:avoid; margin:0 0 16px; }
+footer { border-top:1px solid var(--line); padding-top:22px; }
+@media(max-width:760px) { main { padding:32px 20px 48px; } .pair { grid-template-columns:1fr; } .sources { columns:1; } th,td { min-width:190px; } h2 { font-size:1.6rem; } }
+@media print { body { background:white; font-size:10pt; } main { max-width:none; padding:0; } nav { display:none; } section { margin-bottom:24px; } .card,pre,tr { break-inside:avoid; } pre { white-space:pre-wrap; overflow-wrap:anywhere; } .table-wrap { overflow:visible; } a { color:inherit; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="kicker">API comparison · 22 September 2026</div>
+<h1>Does snekql make sense beside SQLModel?</h1>
+<p class="lead">Yes, for a narrower audience. SQLModel makes ordinary application code easier to start. Snekql asks for more declarations in exchange for explicit database work and stronger checks at specific boundaries.</p>
+<p class="meta">Reviewed snekql 0.7.0 at <code>354866833545</code>, SQLModel 0.0.45 documentation and package metadata, and SQLAlchemy 2.0 documentation. Interfaces only. No implementation inspection or performance testing.</p>
+<div class="verdict">
+<p><strong>My recommendation: keep snekql, but do not sell it as a simpler SQLModel.</strong> Its best argument is an async query API with immutable rows, validated results, explicit write scope, and generated values represented accurately in types.</p>
+<p>For a typical FastAPI CRUD service, I would start with SQLModel. For a team that wants explicit SQL without tracked objects, I would compare snekql against SQLAlchemy Core before deciding. Core is the more serious alternative.</p>
+</div>
+</header>
+<nav aria-label="Report sections">
+<a href="#models">Models</a><a href="#queries">Queries and writes</a><a href="#features">Feature coverage</a><a href="#core">The Core comparison</a><a href="#adoption">Adoption costs</a><a href="#recommendation">Recommendation</a><a href="#sources">Sources</a>
+</nav>
+<section id="models">
+<h2>1. SQLModel wins the first five minutes</h2>
+<p>Both libraries let you declare a table as a Python class. SQLModel uses ordinary field annotations and infers common database types. Snekql makes you declare storage and distinguish application-created rows from database-fetched rows. That distinction is useful, but the first model is visibly harder to read. <a href="#s1">[1]</a> <a href="#s9">[9]</a></p>
+<div class="pair">
+<div class="card"><h3>SQLModel</h3><pre><code>from sqlmodel import Field, SQLModel
+
+class User(SQLModel, table=True):
+    id: int | None = Field(
+        default=None, primary_key=True
+    )
+    email: str
+    status: str = "active"</code></pre><p>Almost a plain data class. You only need special syntax for the generated primary key.</p></div>
+<div class="card"><h3>Snekql · SQLite</h3><pre><code>from snekql import sqlite as sql
+
+class User[S = sql.Pending](
+    sql.Model[S, "User[sql.Fetched]"]
+):
+    id: sql.GenCol[int] = sql.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=sql.PENDING_GENERATION,
+    )
+    email: sql.Col[str] = sql.Text()
+    status: sql.Col[str] = sql.Text(
+        default="active"
+    )</code></pre><p>The state parameter, self-reference, column wrapper, storage constructor, and generation marker all need explaining.</p></div>
+</div>
+<p class="small">Examples compare caller-facing patterns, not complete runnable applications. Imports are local to each example family; setup and migration code are omitted unless relevant. The primary-key declarations do not promise identical SQLite ID-reuse behavior.</p>
+<h3>What the extra syntax buys</h3>
+<p>In SQLModel's usual declaration, <code>user.id</code> remains statically <code>int | None</code> even after a database read. Snekql returns <code>User[Fetched]</code>, where that generated ID is an <code>int</code>. The original pending object does not change after insertion.</p>
+<p>That is a real improvement for functions that require a database-generated ID. But “fetched” does not mean the transaction committed, the row still exists, or the data is current. It describes how the value was obtained, not a permanent database guarantee.</p>
+<p>Snekql also exposes storage choices directly. A UUID stored as text is visibly different from one stored as bytes. SQLModel favors inference, with SQLAlchemy types available when needed. Snekql's explicitness helps schema review, but its docs say impossible storage/type pairings can still fail during encoding or decoding rather than at declaration time. More syntax does not prove every declaration is valid.</p>
+<h3>API request models are a separate problem</h3>
+<p>SQLModel has a particularly good story for FastAPI. A shared base can feed separate create, table, and public-response models. The public model can require <code>id: int</code> without changing the table model's optional ID. This addresses response typing, though it does not change the fetched table object's type. <a href="#s4">[4]</a></p>
+<p>Snekql's pending/fetched distinction does not replace request and response schemas. Applications still need to reject forbidden input fields and exclude private output fields. Its service recipes use separate validated input data. For routine HTTP endpoints, SQLModel offers a more direct path. <a href="#s13">[13]</a></p>
+<h3>Validation needs precise claims</h3>
+<p>SQLModel supports explicit <code>model_validate(...)</code> and Pydantic request/response validation. That is different from promising that every ORM-loaded row goes through the same validation. Snekql documents validation of fetched values and strict validation of named result models. It also exposes an option to skip some source validation, so “everything is always validated” would overstate its contract.</p>
+<p>There is no longer a clean “snekql handles UTC, SQLModel does not” distinction. SQLModel 0.0.45 now defaults datetime storage to a UTC-aware type, rejects naive database parameters, and warns that existing data may need migration. Snekql's <code>UtcDatetime</code> and <code>ZonedDatetime</code> remain useful explicit choices, especially when the timezone identity itself matters. <a href="#s8">[8]</a></p>
+</section>
+<section id="queries">
+<h2>2. Queries are close. Object behavior is not.</h2>
+<div class="pair">
+<div class="card"><h3>SQLModel · synchronous tutorial style</h3><pre><code>from sqlmodel import Session, select
+
+with Session(engine) as session:
+    users = session.exec(
+        select(User)
+        .where(User.status == "active")
+        .order_by(User.email)
+        .limit(20)
+    ).all()</code></pre></div>
+<div class="card"><h3>Snekql · async runtime</h3><pre><code>async with db.transaction() as tx:
+    users = await tx.fetch_all(
+        sql.select(User)
+        .where(User.status.eq("active"))
+        .order_by(User.email.asc())
+        .limit(20)
+    )</code></pre></div>
+</div>
+<p>SQLModel's comparison operators look familiar. Snekql's <code>.eq()</code>, <code>.gte()</code>, and <code>.eq_col()</code> are more wordy, but tell the editor whether you mean a value comparison or a column comparison. SQLModel sometimes needs <code>col(User.name)</code> to expose SQL methods or resolve annotation complaints. Neither approach eliminates all type-checking friction. <a href="#s2">[2]</a></p>
+<p>SQLModel's <code>exec()</code> is a genuine convenience. For a single model selection it removes the extra <code>.scalars()</code> step used with SQLAlchemy's <code>execute()</code>. Snekql instead puts result consumption directly on the transaction.</p>
+<div class="table-wrap"><table>
+<caption>Similar-looking methods with different jobs</caption>
+<thead><tr><th scope="col">Intent</th><th scope="col">SQLModel</th><th scope="col">Snekql</th></tr></thead>
+<tbody>
+<tr><th scope="row">Exactly one row</th><td><code>session.exec(query).one()</code></td><td><code>await tx.fetch_one(query)</code></td></tr>
+<tr><th scope="row">Zero or one row</th><td><code>session.exec(query).one_or_none()</code></td><td><code>await tx.fetch_one_or_none(query)</code> for supported result shapes</td></tr>
+<tr><th scope="row">Read every row</th><td><code>session.exec(select(User)).all()</code></td><td><code>await tx.fetch_all(sql.select(User).all())</code></td></tr>
+</tbody></table></div>
+<p>The last row reveals a naming trap. SQLModel's <code>.all()</code> consumes results. Snekql's <code>.all()</code> declares that an unfiltered query is intentional; it does not execute anything. Both can enforce “exactly one,” so that check is not a unique snekql advantage.</p>
+<h3>Insertion exposes the main design difference</h3>
+<div class="pair">
+<div class="card"><h3>SQLModel</h3><pre><code>with Session(engine) as session:
+    user = User(email="ada@example.com")
+    session.add(user)
+    session.commit()
+    session.refresh(user)</code></pre><p>The session tracks the object. Generated values become available on that same object. This is the documented beginner pattern, not a claim that every insert requires a refresh.</p></div>
+<div class="card"><h3>Snekql</h3><pre><code>pending = User(email="ada@example.com")
+async with db.transaction() as tx:
+    created = await tx.execute(
+        sql.insert(pending).returning()
+    )</code></pre><p>The insert returns a new fetched value. The pending value stays unchanged. Successful transaction exit commits.</p></div>
+</div>
+<p>SQLModel's behavior is convenient, but brings session rules. Objects normally expire after commit; later attribute access can cause a database read. Pending changes may be sent before a query through automatic flushing. Those behaviors are configurable, not unavoidable defects. They still need learning. Snekql's immutable rows cannot trigger lazy relationship loading or persistence through attribute assignment. <a href="#s3">[3]</a> <a href="#s7">[7]</a></p>
+<h3>Updates do not require a read first on either side</h3>
+<p>SQLModel's tutorial updates an object and commits. That is pleasant when the object is already in hand. For a direct update, SQLAlchemy's statement API works with SQLModel tables too. It would be unfair to compare only against a read/change/save sequence.</p>
+<div class="pair">
+<div class="card"><h3>SQLModel + SQLAlchemy statement</h3><pre><code>from sqlalchemy import update
+
+with Session(engine) as session:
+    session.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(status="inactive")
+    )
+    session.commit()</code></pre></div>
+<div class="card"><h3>Snekql statement</h3><pre><code>async with db.transaction() as tx:
+    await tx.execute(
+        sql.update(User)
+        .set(User.status.to("inactive"))
+        .where(User.id.eq(user_id))
+    )</code></pre></div>
+</div>
+<p>Snekql's important difference is the missing-filter case. An update without <code>.where(...)</code> or an explicit <code>.all()</code> is incomplete. Its supported typing contract and runtime checks reject it. SQLAlchemy permits an unfiltered update. This guard can catch an omission; it cannot tell whether a supplied filter is correct.</p>
+<h3>Relationships trade shorter code for more behavior</h3>
+<p>SQLModel's <code>Relationship(back_populates=...)</code> lets you use <code>user.team</code> and create connected objects without manually arranging every foreign-key assignment. Snekql has foreign keys and joins, but no relationship objects or automatic persistence of an object graph. That omission is helpful for explicit reads and costly for relationship-heavy applications. <a href="#s5">[5]</a></p>
+<p>Both can join without declaring a relationship. SQLModel can infer a join condition from an unambiguous foreign key. Snekql asks for an explicit <code>on=...</code>. Its whole-model left joins type the missing right-hand row as optional. For aliases, SQLAlchemy uses <code>aliased(User)</code>; snekql also requires a role class and column access through <code>alias.column(User.id)</code>. That is extra ceremony on a common SQL task.</p>
+<h3>Named results are one of snekql's better conveniences</h3>
+<pre><code>from pydantic import BaseModel
+
+class UserSummary(BaseModel):
+    id: int
+    email: str
+
+query = sql.select(User).project(
+    UserSummary, id=User.id, email=User.email
+).all()
+
+async with db.transaction() as tx:
+    summaries = await tx.fetch_all(query)  # list[UserSummary]</code></pre>
+<p>The query names the output model, binds its fields, and validates the result. SQLAlchemy can select labeled columns and return mappings, then the application can call <code>UserSummary.model_validate(row)</code>. It can achieve the same outcome, but the mapping and validation are another application step. Snekql's named projections also avoid its eight-slot positional result limit.</p>
+</section>
+<section id="features">
+<h2>3. SQLAlchemy makes the feature gap substantial</h2>
+<p>SQLModel is not limited to its tutorials. Its models work with SQLAlchemy statements. Advanced patterns may lose some SQLModel-specific typing convenience, which its own documentation acknowledges. The table credits those capabilities to SQLAlchemy rather than pretending SQLModel has a separate API for everything. <a href="#s2">[2]</a> <a href="#s6">[6]</a></p>
+<div class="table-wrap"><table>
+<caption>Documented capability, not a performance or reliability score</caption>
+<thead><tr><th scope="col">Need</th><th scope="col">SQLModel with SQLAlchemy</th><th scope="col">Snekql today</th></tr></thead>
+<tbody>
+<tr><th scope="row">Database choice</th><td>SQLAlchemy dialects include PostgreSQL, SQLite, MySQL/MariaDB, Oracle and SQL Server. Driver and async support vary.</td><td>SQLite and MariaDB only. PostgreSQL and MySQL are not supported backends.</td></tr>
+<tr><th scope="row">Sync and async</th><td>Both through SQLAlchemy. SQLModel's beginner documentation is sync-focused; its advanced guide still lists async guidance as future work.</td><td>Async execution only. Transactions and stream lifetimes are explicit in the main API.</td></tr>
+<tr><th scope="row">Filters, sorting, grouping</th><td>Supported, with a broad SQL expression API.</td><td>Supported, including aggregates, HAVING, CASE, and a narrower set of arithmetic and text operations.</td></tr>
+<tr><th scope="row">Joins and aliases</th><td>Broad join and alias support, with relationship loading available separately.</td><td>INNER/LEFT joins, self-joins, aliases. Plain positional projection LEFT joins remain unsupported; whole-model and named-result routes cover supported cases.</td></tr>
+<tr><th scope="row">Subqueries and CTEs</th><td>Scalar and correlated subqueries, nonrecursive and recursive CTEs.</td><td>Scalar/correlated subqueries and typed nonrecursive CTEs. CTE declarations need named results, role markers, and tokens for referenced outputs.</td></tr>
+<tr><th scope="row">Windows and combined queries</th><td>Window functions, UNION/UNION ALL and other set operations, subject to database support.</td><td>No corresponding query builders yet. Raw SQL recipes exist. Open work is not shipped support.</td></tr>
+<tr><th scope="row">Writes and conflicts</th><td>Bulk operations, RETURNING and dialect-specific conflict APIs. Exact support depends on database and driver.</td><td>Bulk inserts and conflict handling. INSERT RETURNING on both backends; UPDATE/DELETE RETURNING on SQLite only. DoNothing plus RETURNING is rejected.</td></tr>
+<tr><th scope="row">Transactions and streaming</th><td>Transactions, savepoints, isolation settings, row locks, async streams and partitioned results through SQLAlchemy.</td><td>Explicit transaction API, savepoints, chunk streams, and MariaDB locking reads. SQLite row-lock requests are rejected.</td></tr>
+<tr><th scope="row">Schema creation and change</th><td><code>metadata.create_all()</code> for creation. Alembic is a separate migration tool with reviewed generation of candidate changes.</td><td>Connect-only initialization. Committed SQL migration chains, history checks, and partial schema verification. No automatic migration generation.</td></tr>
+<tr><th scope="row">Raw SQL</th><td>SQLAlchemy text statements and result mappings; application code can validate results.</td><td>Raw statements with optional Pydantic-compatible result contracts. Validated raw use needs a Python startup warnings setting.</td></tr>
+<tr><th scope="row">Objects and validation</th><td>Tracked mutable objects, relationship loading, explicit Pydantic validation and API models.</td><td>Immutable row values, pending/fetched types, decoded and validated reads, named output contracts.</td></tr>
+<tr><th scope="row">Inspection and operations</th><td>Statement compilation, logging, pool configuration, events, and dialect-specific facilities.</td><td>Compilation with redacted default display, explicit plan inspection, operation deadlines, failure categories and commit-outcome metadata.</td></tr>
+</tbody></table></div>
+<p class="small">Snekql limits come from its current backend matrix, CTE, raw SQL, and runtime docs. SQLAlchemy capabilities do not imply that every database supports every operation. <a href="#s10">[10]</a> <a href="#s11">[11]</a> <a href="#s12">[12]</a></p>
+<h3>Do not mistake a smaller API for uniformly easier work</h3>
+<p>Snekql makes supported queries predictable, but some ordinary extensions are awkward. Its arithmetic excludes division and mixed integer/real column expressions. Recursive queries, rankings, and unions require raw SQL today. A growing reporting workload reaches that boundary sooner than a CRUD service.</p>
+<p>Raw SQL keeps those tasks possible, but it gives up part of the builder's value. Parameters use native driver conventions, table codecs do not automatically decode raw results, and a result validator cannot prove the SQL answered the intended question. SQLAlchemy can express much more of this work without leaving its statement API.</p>
+<h3>Migrations favor different working habits</h3>
+<p>Snekql packages deployment checks into a coherent workflow: connect, apply reviewed SQL, verify migration history, verify supported schema facts. Its schema check is deliberately partial, not proof of all defaults, CHECK constraints, triggers, or data invariants.</p>
+<p>Alembic offers broader schema-change tooling and candidate migration generation. Its documentation requires human review and lists detection limits, including renames. SQLModel's easy <code>create_all()</code> is not a replacement for either migration workflow. For long-lived applications, compare snekql with SQLModel plus Alembic, not just the SQLModel quick start. <a href="#s14">[14]</a></p>
+</section>
+<section id="core">
+<h2>4. “No ORM” is not enough of a reason to exist</h2>
+<p>SQLAlchemy Core already builds and executes explicit SQL without an ORM session, object tracking, or lazy relationships. It supports async connections too. This removes several disadvantages that make snekql look attractive beside SQLModel's session tutorials.</p>
+<pre><code>from sqlalchemy import select
+
+# users is a SQLAlchemy Table; engine is an AsyncEngine.
+async with engine.begin() as connection:
+    result = await connection.execute(
+        select(users.c.id, users.c.email)
+        .where(users.c.status == "active")
+    )
+    rows = result.mappings().all()</code></pre>
+<p>Transaction ownership is clear here. No attribute access loads a relationship. No object mutation silently becomes a write. SQLAlchemy Core also avoids snekql's current limits on query composition. <a href="#s6">[6]</a> <a href="#s7">[7]</a></p>
+<p>What remains distinctive is the package of choices snekql makes for you:</p>
+<ul>
+<li>A table declaration doubles as a validated row contract, with generated-field types changing between pending and fetched values.</li>
+<li>Named query outputs include decoding and model validation rather than leaving that assembly to each application.</li>
+<li>The API rejects missing row scope and mixing backend families at supported static boundaries, with runtime checks for dynamic callers.</li>
+<li>Deployment verification, redacted inspection, deadlines, and uncertain-commit reporting share one documented runtime.</li>
+</ul>
+<p>These are useful defaults and integrated contracts. Most can be approximated with SQLAlchemy, Pydantic, and application conventions. Snekql makes sense when maintaining those conventions costs more than accepting its smaller feature set and new API.</p>
+<p><strong>The honest pitch is “less application code to enforce this particular set of rules,” not “SQLAlchemy cannot do this.”</strong></p>
+</section>
+<section id="adoption">
+<h2>5. Other costs matter more than a shorter query</h2>
+<div class="pair">
+<div class="card"><h3>Python and editor compatibility</h3><p>Snekql requires Python 3.14+. SQLModel 0.0.45 supports Python 3.10+. That alone excludes snekql for many existing services.</p><p>Snekql names ty as primary and documents a tested Pyright consumer profile. Its full typing contract is not supported by mypy, and Pylance is not certified by those tests. This is honest documentation, but it is also an adoption cost. No equivalent cross-checker comparison was run for this report. <a href="#s15">[15]</a></p></div>
+<div class="card"><h3>Async learning costs</h3><p>Snekql makes async ownership visible from the start. SQLModel users need SQLAlchemy's async guidance sooner, including loading relationships explicitly and managing expiration.</p><p>That is a documentation advantage for snekql, not proof of unique async support. Neither a SQLAlchemy AsyncSession nor a snekql transaction should be casually shared by concurrent tasks. <a href="#s7">[7]</a></p></div>
+<div class="card"><h3>Changing libraries later</h3><p>SQLModel already uses SQLAlchemy models and statements, so adopting more SQLAlchemy APIs is a natural next step.</p><p>Snekql uses different declarations, query methods, and transaction ownership. Its docs provide incremental adoption guidance, but no bridge to borrow a SQLAlchemy connection. The two layers' transactions do not become atomic just because their context managers are nested. <a href="#s13">[13]</a></p></div>
+<div class="card"><h3>Backend portability</h3><p>Snekql catches SQLite/MariaDB mixing, but also binds declarations to a backend. Moving a service to PostgreSQL is currently a library migration, not a connection-string change.</p><p>SQLAlchemy's dialects leave more room to grow. They do not make SQL semantics identical across databases, and backend-specific features still need review.</p></div>
+<div class="card"><h3>Operations and sensitive data</h3><p>Snekql's redacted query display and commit-outcome metadata are good defaults. They encourage callers to distinguish a rejected commit from one whose outcome is unknown.</p><p>They do not make retries safe automatically or hide values in every model, traceback, and custom log. SQLAlchemy also has parameter-hiding and operational configuration; the difference is how much policy the library chooses for the application.</p></div>
+<div class="card"><h3>Testing and team familiarity</h3><p>Plain immutable rows make it easier to pass data beyond a database scope without later SQL. SQLAlchemy Core mappings or separately validated response models can give the same separation.</p><p>Neither library removes the need for real-database transaction and migration tests. For hiring, help, and maintenance, SQLAlchemy's broader documented tooling is an advantage. This report does not measure community size or maintainer capacity.</p></div>
+</div>
+<h3>Two cautions about the evidence</h3>
+<p>This is a documentation-based interface assessment, not an editor usability trial or a reliability audit. No latency, memory, or throughput advantage follows from these examples. Both “ORM overhead” and “validation overhead” need measurements on the actual workload.</p>
+<p>I also found a documentation inconsistency in snekql: an early typing-guide example labels <code>fetch_one()</code> as optional, while the README and runtime contract say it returns exactly one row or raises. This report follows the latter. Contradictions around result types undermine the very advantage snekql is trying to offer. <a href="#s9">[9]</a> <a href="#s15">[15]</a></p>
+</section>
+<section id="recommendation">
+<h2>6. Where I would use each one</h2>
+<div class="table-wrap"><table>
+<caption>A practical starting point</caption>
+<thead><tr><th scope="col">Situation</th><th scope="col">My choice</th><th scope="col">Reason</th></tr></thead>
+<tbody>
+<tr><th scope="row">Small FastAPI CRUD application</th><td>SQLModel</td><td>Less declaration work and a well-explained request/table/response model pattern.</td></tr>
+<tr><th scope="row">Relationship-heavy application</th><td>SQLModel or SQLAlchemy ORM</td><td>Relationship loading and connected-object persistence solve real application work.</td></tr>
+<tr><th scope="row">Explicit SQL with complex reporting</th><td>SQLAlchemy Core</td><td>No session behavior required, with much broader query composition.</td></tr>
+<tr><th scope="row">New async SQLite/MariaDB service on Python 3.14</th><td>Consider snekql</td><td>Strong fit if immutable validated rows and explicit query checks matter more than portability and advanced SQL builders.</td></tr>
+<tr><th scope="row">Established SQLAlchemy service</th><td>Keep SQLAlchemy by default</td><td>Require a demonstrated benefit before accepting rewrites and separate transaction ownership.</td></tr>
+<tr><th scope="row">PostgreSQL or older Python required</th><td>SQLModel or SQLAlchemy</td><td>Snekql is not currently a candidate.</td></tr>
+</tbody></table></div>
+<h3>What I would improve in snekql first</h3>
+<ol>
+<li><strong>Make the first model easier to explain.</strong> Investigate whether the repeated fetched self-type and generated-key declaration can shrink without weakening their guarantees. Do not introduce a second competing declaration style casually.</li>
+<li><strong>Document the daily path before the exceptions.</strong> Put short create/read/update examples, result-shape rules, and a SQLModel/Core comparison near the quick start. Explain the special meaning of <code>.all()</code> immediately.</li>
+<li><strong>Fix documentation contradictions before claiming stronger typing.</strong> Keep <code>fetch_one</code> cardinality, LEFT-join limits, and current feature tables consistent.</li>
+<li><strong>Close common query gaps before adding ORM behavior.</strong> Named unions and ranking windows would keep more application work in the checked builder. Recursive CTEs matter where traversal is common. Prioritize from user workloads, not a feature-count contest.</li>
+<li><strong>Prove the value on one real service.</strong> Compare model setup, a left-joined report, an atomic update, a migration, and a failed-commit path against SQLAlchemy Core plus Pydantic. Count manual validation code, type workarounds, and raw-SQL fallbacks. Ask another developer to maintain both versions.</li>
+</ol>
+<div class="verdict"><p><strong>Bottom line:</strong> snekql has a defensible purpose. Its strongest feature is a consistent set of explicit, validated database operations. Its weakest points are model ceremony, restricted compatibility, and the SQL that its builder cannot yet express. Keep the focus there. Trying to match SQLModel's relationship convenience would sacrifice much of the reason to choose snekql.</p></div>
+</section>
+<section id="sources">
+<h2>Sources and scope</h2>
+<p class="small">Official documentation and local public-facing docs consulted on 22 September 2026. External pages are living documents. Version claims use SQLModel's release notes and PyPI metadata; snekql claims refer to the revision named above. Example fragments are explanatory, not an executed compatibility suite.</p>
+<ol class="sources">
+<li id="s1"><a href="https://sqlmodel.tiangolo.com/tutorial/create-db-and-table/">SQLModel: models and table creation</a>. Field inference, primary keys, and <code>table=True</code>.</li>
+<li id="s2"><a href="https://sqlmodel.tiangolo.com/tutorial/select/">SQLModel: SELECT</a> and <a href="https://sqlmodel.tiangolo.com/tutorial/where/">WHERE</a>. <code>exec()</code>, <code>col()</code>, typing conveniences and advanced-pattern caveats.</li>
+<li id="s3"><a href="https://sqlmodel.tiangolo.com/tutorial/automatic-id-none-refresh/">SQLModel: generated IDs, expiration and refresh</a>; <a href="https://sqlmodel.tiangolo.com/tutorial/update/">updates</a>.</li>
+<li id="s4"><a href="https://sqlmodel.tiangolo.com/tutorial/fastapi/multiple-models/">SQLModel: multiple models with FastAPI</a>. Inheritance, explicit validation, separate public IDs.</li>
+<li id="s5"><a href="https://sqlmodel.tiangolo.com/tutorial/relationship-attributes/define-relationships-attributes/">SQLModel: relationship attributes</a>; <a href="https://sqlmodel.tiangolo.com/tutorial/connect/read-connected-data/">joins</a>.</li>
+<li id="s6"><a href="https://docs.sqlalchemy.org/en/20/tutorial/data_select.html">SQLAlchemy: SELECT statements</a>; <a href="https://docs.sqlalchemy.org/en/20/tutorial/data_update.html">UPDATE and DELETE</a>; <a href="https://docs.sqlalchemy.org/en/20/dialects/index.html">dialects</a>. Query composition, direct writes and database coverage.</li>
+<li id="s7"><a href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html">SQLAlchemy: async APIs</a>; <a href="https://docs.sqlalchemy.org/en/20/orm/session_basics.html">session basics</a>; <a href="https://docs.sqlalchemy.org/en/20/tutorial/dbapi_transactions.html">connections and transactions</a>; <a href="https://docs.sqlalchemy.org/en/20/core/engines.html#sqlalchemy.create_engine.params.hide_parameters">parameter hiding</a>; <a href="https://sqlmodel.tiangolo.com/advanced/">SQLModel's advanced-guide status</a>.</li>
+<li id="s8"><a href="https://sqlmodel.tiangolo.com/release-notes/">SQLModel release notes</a> and <a href="https://pypi.org/pypi/sqlmodel/json">PyPI metadata</a>. Version 0.0.45, UTC datetime change, Python requirement.</li>
+<li id="s9"><a href="../README.md">Snekql README</a> and <a href="why-not-orm.md">why it is not an ORM</a>. Public declarations, execution, state, named results, runtime policy.</li>
+<li id="s10"><a href="backend-capabilities.md">Snekql backend matrix</a>. Implemented support and exclusions.</li>
+<li id="s11"><a href="ctes.md">Snekql typed CTEs</a>. Output tokens, joins, limitations.</li>
+<li id="s12"><a href="raw-sql.md">Snekql raw SQL contracts</a>. Validation, startup setting, native parameters and decoding limits.</li>
+<li id="s13"><a href="service-recipes.md">Snekql service and adoption recipes</a>. HTTP integration, tests, coexistence and transaction ownership.</li>
+<li id="s14"><a href="https://alembic.sqlalchemy.org/en/latest/autogenerate.html">Alembic autogeneration</a>; <a href="adoption.md">snekql adoption</a>; <a href="../README.md#migrations-and-verification">snekql migrations and verification</a>.</li>
+<li id="s15"><a href="typing.md">Snekql typing guide</a>; <a href="typing-compatibility.md">checker compatibility assessment</a>. Supported guarantees and recorded limitations.</li>
+</ol>
+</section>
+<footer><p class="small">This report compares what callers write and the behavior the public contracts promise. It does not assess implementation quality, security assurance, or production reliability.</p></footer>
+</main>
+</body>
+</html>
