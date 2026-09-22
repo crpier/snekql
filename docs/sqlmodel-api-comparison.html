@@ -33,6 +33,14 @@ section { margin:0 0 56px; scroll-margin-top:24px; }
 pre { background:#edf0ee; border:1px solid var(--line); padding:17px; overflow-x:auto; font-size:.82rem; line-height:1.6; border-radius:5px; tab-size:4; }
 code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; }
 pre code { font-size:inherit; }
+/* Static Python highlighting; no scripts or external assets required. */
+pre .k, pre .kn, pre .kc { color:#713b91; font-weight:600; }
+pre .s, pre .s1, pre .s2 { color:#21633e; }
+pre .c, pre .c1 { color:#52616b; font-style:italic; }
+pre .nb, pre .nc, pre .nf, pre .nn { color:#185f88; }
+pre .mi, pre .mf { color:#934818; }
+pre .o, pre .ow { color:#713b91; }
+
 p code,li code,td code { overflow-wrap:anywhere; }
 .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; }
 table { width:100%; border-collapse:collapse; font-size:.91rem; background:white; }
@@ -69,28 +77,28 @@ footer { border-top:1px solid var(--line); padding-top:22px; }
 <h2>1. SQLModel wins the first five minutes</h2>
 <p>Both libraries let you declare a table as a Python class. SQLModel uses ordinary field annotations and infers common database types. Snekql makes you declare storage and distinguish application-created rows from database-fetched rows. That distinction is useful, but the first model is visibly harder to read. <a href="#s1">[1]</a> <a href="#s9">[9]</a></p>
 <div class="pair">
-<div class="card"><h3>SQLModel</h3><pre><code>from sqlmodel import Field, SQLModel
+<div class="card"><h3>SQLModel</h3><pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">sqlmodel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">SQLModel</span>
 
-class User(SQLModel, table=True):
-    id: int | None = Field(
-        default=None, primary_key=True
-    )
-    email: str
-    status: str = "active"</code></pre><p>Almost a plain data class. You only need special syntax for the generated primary key.</p></div>
-<div class="card"><h3>Snekql · SQLite</h3><pre><code>from snekql import sqlite as sql
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">SQLModel</span><span class="p">,</span> <span class="n">table</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"active"</span></code></pre><p>Almost a plain data class. You only need special syntax for the generated primary key.</p></div>
+<div class="card"><h3>Snekql · SQLite</h3><pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">snekql</span><span class="w"> </span><span class="kn">import</span> <span class="n">sqlite</span> <span class="k">as</span> <span class="n">sql</span>
 
-class User[S = sql.Pending](
-    sql.Model[S, "User[sql.Fetched]"]
-):
-    id: sql.GenCol[int] = sql.Integer(
-        primary_key=True,
-        auto_increment=True,
-        default=sql.PENDING_GENERATION,
-    )
-    email: sql.Col[str] = sql.Text()
-    status: sql.Col[str] = sql.Text(
-        default="active"
-    )</code></pre><p>The state parameter, self-reference, column wrapper, storage constructor, and generation marker all need explaining.</p></div>
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">[</span><span class="n">S</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">Pending</span><span class="p">](</span>
+    <span class="n">sql</span><span class="o">.</span><span class="n">Model</span><span class="p">[</span><span class="n">S</span><span class="p">,</span> <span class="s2">"User[sql.Fetched]"</span><span class="p">]</span>
+<span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="n">sql</span><span class="o">.</span><span class="n">GenCol</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span>
+        <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">auto_increment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">sql</span><span class="o">.</span><span class="n">PENDING_GENERATION</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">sql</span><span class="o">.</span><span class="n">Col</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">Text</span><span class="p">()</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">sql</span><span class="o">.</span><span class="n">Col</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">Text</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">"active"</span>
+    <span class="p">)</span></code></pre><p>The state parameter, self-reference, column wrapper, storage constructor, and generation marker all need explaining.</p></div>
 </div>
 <p class="small">Examples compare caller-facing patterns, not complete runnable applications. Imports are local to each example family; setup and migration code are omitted unless relevant. The primary-key declarations do not promise identical SQLite ID-reuse behavior.</p>
 <h3>What the extra syntax buys</h3>
@@ -107,22 +115,22 @@ class User[S = sql.Pending](
 <section id="queries">
 <h2>2. Queries are close. Object behavior is not.</h2>
 <div class="pair">
-<div class="card"><h3>SQLModel · synchronous tutorial style</h3><pre><code>from sqlmodel import Session, select
+<div class="card"><h3>SQLModel · synchronous tutorial style</h3><pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">sqlmodel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Session</span><span class="p">,</span> <span class="n">select</span>
 
-with Session(engine) as session:
-    users = session.exec(
-        select(User)
-        .where(User.status == "active")
-        .order_by(User.email)
-        .limit(20)
-    ).all()</code></pre></div>
-<div class="card"><h3>Snekql · async runtime</h3><pre><code>async with db.transaction() as tx:
-    users = await tx.fetch_all(
-        sql.select(User)
-        .where(User.status.eq("active"))
-        .order_by(User.email.asc())
-        .limit(20)
-    )</code></pre></div>
+<span class="k">with</span> <span class="n">Session</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"active"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span></code></pre></div>
+<div class="card"><h3>Snekql · async runtime</h3><pre><code class="language-python"><span class="k">async</span> <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">tx</span><span class="p">:</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tx</span><span class="o">.</span><span class="n">fetch_all</span><span class="p">(</span>
+        <span class="n">sql</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="s2">"active"</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span><span class="o">.</span><span class="n">asc</span><span class="p">())</span>
+        <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span>
+    <span class="p">)</span></code></pre></div>
 </div>
 <p>SQLModel's comparison operators look familiar. Snekql's <code>.eq()</code>, <code>.gte()</code>, and <code>.eq_col()</code> are more wordy, but tell the editor whether you mean a value comparison or a column comparison. SQLModel sometimes needs <code>col(User.name)</code> to expose SQL methods or resolve annotation complaints. Neither approach eliminates all type-checking friction. <a href="#s2">[2]</a></p>
 <p>SQLModel's <code>exec()</code> is a genuine convenience. For a single model selection it removes the extra <code>.scalars()</code> step used with SQLAlchemy's <code>execute()</code>. Snekql instead puts result consumption directly on the transaction.</p>
@@ -137,54 +145,54 @@ with Session(engine) as session:
 <p>The last row reveals a naming trap. SQLModel's <code>.all()</code> consumes results. Snekql's <code>.all()</code> declares that an unfiltered query is intentional; it does not execute anything. Both can enforce “exactly one,” so that check is not a unique snekql advantage.</p>
 <h3>Insertion exposes the main design difference</h3>
 <div class="pair">
-<div class="card"><h3>SQLModel</h3><pre><code>with Session(engine) as session:
-    user = User(email="ada@example.com")
-    session.add(user)
-    session.commit()
-    session.refresh(user)</code></pre><p>The session tracks the object. Generated values become available on that same object. This is the documented beginner pattern, not a claim that every insert requires a refresh.</p></div>
-<div class="card"><h3>Snekql</h3><pre><code>pending = User(email="ada@example.com")
-async with db.transaction() as tx:
-    created = await tx.execute(
-        sql.insert(pending).returning()
-    )</code></pre><p>The insert returns a new fetched value. The pending value stays unchanged. Successful transaction exit commits.</p></div>
+<div class="card"><h3>SQLModel</h3><pre><code class="language-python"><span class="k">with</span> <span class="n">Session</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s2">"ada@example.com"</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">user</span><span class="p">)</span></code></pre><p>The session tracks the object. Generated values become available on that same object. This is the documented beginner pattern, not a claim that every insert requires a refresh.</p></div>
+<div class="card"><h3>Snekql</h3><pre><code class="language-python"><span class="n">pending</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s2">"ada@example.com"</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">tx</span><span class="p">:</span>
+    <span class="n">created</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tx</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">sql</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">pending</span><span class="p">)</span><span class="o">.</span><span class="n">returning</span><span class="p">()</span>
+    <span class="p">)</span></code></pre><p>The insert returns a new fetched value. The pending value stays unchanged. Successful transaction exit commits.</p></div>
 </div>
 <p>SQLModel's behavior is convenient, but brings session rules. Objects normally expire after commit; later attribute access can cause a database read. Pending changes may be sent before a query through automatic flushing. Those behaviors are configurable, not unavoidable defects. They still need learning. Snekql's immutable rows cannot trigger lazy relationship loading or persistence through attribute assignment. <a href="#s3">[3]</a> <a href="#s7">[7]</a></p>
 <h3>Updates do not require a read first on either side</h3>
 <p>SQLModel's tutorial updates an object and commits. That is pleasant when the object is already in hand. For a direct update, SQLAlchemy's statement API works with SQLModel tables too. It would be unfair to compare only against a read/change/save sequence.</p>
 <div class="pair">
-<div class="card"><h3>SQLModel + SQLAlchemy statement</h3><pre><code>from sqlalchemy import update
+<div class="card"><h3>SQLModel + SQLAlchemy statement</h3><pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">update</span>
 
-with Session(engine) as session:
-    session.execute(
-        update(User)
-        .where(User.id == user_id)
-        .values(status="inactive")
-    )
-    session.commit()</code></pre></div>
-<div class="card"><h3>Snekql statement</h3><pre><code>async with db.transaction() as tx:
-    await tx.execute(
-        sql.update(User)
-        .set(User.status.to("inactive"))
-        .where(User.id.eq(user_id))
-    )</code></pre></div>
+<span class="k">with</span> <span class="n">Session</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">update</span><span class="p">(</span><span class="n">User</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">user_id</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s2">"inactive"</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></code></pre></div>
+<div class="card"><h3>Snekql statement</h3><pre><code class="language-python"><span class="k">async</span> <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">tx</span><span class="p">:</span>
+    <span class="k">await</span> <span class="n">tx</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">sql</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">User</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">"inactive"</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">eq</span><span class="p">(</span><span class="n">user_id</span><span class="p">))</span>
+    <span class="p">)</span></code></pre></div>
 </div>
 <p>Snekql's important difference is the missing-filter case. An update without <code>.where(...)</code> or an explicit <code>.all()</code> is incomplete. Its supported typing contract and runtime checks reject it. SQLAlchemy permits an unfiltered update. This guard can catch an omission; it cannot tell whether a supplied filter is correct.</p>
 <h3>Relationships trade shorter code for more behavior</h3>
 <p>SQLModel's <code>Relationship(back_populates=...)</code> lets you use <code>user.team</code> and create connected objects without manually arranging every foreign-key assignment. Snekql has foreign keys and joins, but no relationship objects or automatic persistence of an object graph. That omission is helpful for explicit reads and costly for relationship-heavy applications. <a href="#s5">[5]</a></p>
 <p>Both can join without declaring a relationship. SQLModel can infer a join condition from an unambiguous foreign key. Snekql asks for an explicit <code>on=...</code>. Its whole-model left joins type the missing right-hand row as optional. For aliases, SQLAlchemy uses <code>aliased(User)</code>; snekql also requires a role class and column access through <code>alias.column(User.id)</code>. That is extra ceremony on a common SQL task.</p>
 <h3>Named results are one of snekql's better conveniences</h3>
-<pre><code>from pydantic import BaseModel
+<pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
 
-class UserSummary(BaseModel):
-    id: int
-    email: str
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSummary</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
 
-query = sql.select(User).project(
-    UserSummary, id=User.id, email=User.email
-).all()
+<span class="n">query</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">project</span><span class="p">(</span>
+    <span class="n">UserSummary</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="n">User</span><span class="o">.</span><span class="n">email</span>
+<span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
 
-async with db.transaction() as tx:
-    summaries = await tx.fetch_all(query)  # list[UserSummary]</code></pre>
+<span class="k">async</span> <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">transaction</span><span class="p">()</span> <span class="k">as</span> <span class="n">tx</span><span class="p">:</span>
+    <span class="n">summaries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">tx</span><span class="o">.</span><span class="n">fetch_all</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>  <span class="c1"># list[UserSummary]</span></code></pre>
 <p>The query names the output model, binds its fields, and validates the result. SQLAlchemy can select labeled columns and return mappings, then the application can call <code>UserSummary.model_validate(row)</code>. It can achieve the same outcome, but the mapping and validation are another application step. Snekql's named projections also avoid its eight-slot positional result limit.</p>
 </section>
 <section id="features">
@@ -218,15 +226,15 @@ async with db.transaction() as tx:
 <section id="core">
 <h2>4. “No ORM” is not enough of a reason to exist</h2>
 <p>SQLAlchemy Core already builds and executes explicit SQL without an ORM session, object tracking, or lazy relationships. It supports async connections too. This removes several disadvantages that make snekql look attractive beside SQLModel's session tutorials.</p>
-<pre><code>from sqlalchemy import select
+<pre><code class="language-python"><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">select</span>
 
-# users is a SQLAlchemy Table; engine is an AsyncEngine.
-async with engine.begin() as connection:
-    result = await connection.execute(
-        select(users.c.id, users.c.email)
-        .where(users.c.status == "active")
-    )
-    rows = result.mappings().all()</code></pre>
+<span class="c1"># users is a SQLAlchemy Table; engine is an AsyncEngine.</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">engine</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">users</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">users</span><span class="o">.</span><span class="n">c</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"active"</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">mappings</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span></code></pre>
 <p>Transaction ownership is clear here. No attribute access loads a relationship. No object mutation silently becomes a write. SQLAlchemy Core also avoids snekql's current limits on query composition. <a href="#s6">[6]</a> <a href="#s7">[7]</a></p>
 <p>What remains distinctive is the package of choices snekql makes for you:</p>
 <ul>
