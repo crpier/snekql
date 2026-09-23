@@ -1,0 +1,13 @@
+"""One selector must not choose different fields for different operands."""
+
+from structural import Fields, integer, project, text
+
+left = project(Fields(event_id=integer(), title=text()))
+right = project(Fields(event_id=integer(), title=text()))
+
+
+def probe(choose_id: bool) -> None:
+    """A runtime branch cannot change the selected output identity."""
+    left.union_all(right).column(
+        lambda fields: fields.event_id if choose_id else fields.title
+    )

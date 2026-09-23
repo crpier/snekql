@@ -1,0 +1,27 @@
+"""Actual snekql labels supply types to the specialized prototype."""
+
+from typing import assert_type
+
+from specialized import ID, TITLE, Expr, SQLite, project
+
+from snekql import sqlite
+
+
+class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+    """Real production model supplying expression types."""
+
+    event_id: sqlite.Col[int] = sqlite.Integer()
+    optional_id: sqlite.Col[int | None] = sqlite.Integer()
+    title: sqlite.Col[str] = sqlite.Text()
+
+
+left = project(
+    SQLite, event_id=Event.event_id.label("event_id"), title=Event.title.label("title")
+)
+right = project(
+    SQLite,
+    title=Event.title.label("title"),
+    event_id=Event.optional_id.label("event_id"),
+)
+assert_type(left.union_all(right).column(ID), Expr[int | None])
+assert_type(left.union_all(right).column(TITLE), Expr[str])
