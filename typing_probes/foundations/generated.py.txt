@@ -1,0 +1,14 @@
+"""Generated columns and keyword insert typing from a single dataclass."""
+
+from dataclasses import dataclass
+from typing import assert_type
+
+from typing_probes.foundations.core import Query, Write, columns
+from typing_probes.foundations.generated import accounts
+from typing_probes.foundations.schema import Account
+
+
+@dataclass
+class Summary:
+    name: str
+    total: int

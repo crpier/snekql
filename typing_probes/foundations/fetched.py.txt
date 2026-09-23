@@ -1,0 +1,29 @@
+"""Fetched-only descriptor models: no lifecycle generics at declaration sites."""
+
+from dataclasses import dataclass
+from typing import assert_type
+
+from typing_probes.foundations.core import Query, Write, columns
+from typing_probes.foundations.fetched import Field, Model, field, select, insert, update, delete
+
+
+class Account(Model):
+    id: Field[int] = field()
+    name: Field[str] = field()
+    age: Field[int] = field()
+
+
+class Team(Model):
+    name: Field[str] = field()
+
+
+@dataclass
+class Summary:
+    name: str
+    total: int
+
+
+@dataclass(kw_only=True)
+class KeywordSummary:
+    name: str
+    total: int

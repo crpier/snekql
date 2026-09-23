@@ -1,0 +1,34 @@
+"""Plain dataclass rows, separate insert inputs, typed attribute selectors."""
+
+from dataclasses import dataclass
+from typing import assert_type
+
+from typing_probes.foundations.core import Query, Write, columns
+from typing_probes.foundations.records import Table
+
+
+@dataclass(kw_only=True)
+class NewAccount:
+    age: int
+    name: str
+    nickname: str | None = None
+
+
+@dataclass(kw_only=True)
+class Account(NewAccount):
+    id: int
+
+
+@dataclass(kw_only=True)
+class Team:
+    title: str
+
+
+@dataclass
+class Summary:
+    name: str
+    total: int
+
+
+accounts = Table(Account, NewAccount)
+teams = Table(Team, Team)

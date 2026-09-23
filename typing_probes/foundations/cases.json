@@ -1,0 +1,266 @@
+[
+  {
+    "name": "fetched-model-construction",
+    "template": "fetched.py.txt",
+    "valid": "account = Account(id=1, name='Ada', age=30)\nassert_type(account.id, int)\nassert_type(account.name, str)",
+    "invalid": "Account(id='wrong', name='Ada', age=30)"
+  },
+  {
+    "name": "fetched-required-constructor",
+    "template": "fetched.py.txt",
+    "valid": "account = Account(id=1, name='Ada', age=30)",
+    "invalid": "Account(name='Ada', age=30)",
+    "rejects": true
+  },
+  {
+    "name": "fetched-select",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(select(Account), Query[Account, Account])",
+    "invalid": "select(Account).where(Team.name.eq('A'))",
+    "rejects": true
+  },
+  {
+    "name": "fetched-insert",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(insert(Account, Account.name.to('Ada'), Account.age.to(30)), Write[Account])",
+    "invalid": "insert(Account, Account.age.to('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "fetched-insert-owner",
+    "template": "fetched.py.txt",
+    "valid": "insert(Account, Account.name.to('Ada'))",
+    "invalid": "insert(Account, Team.name.to('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "fetched-update",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(update(Account).set(Account.name.to('Grace')).where(Account.id.eq(1)), Write[int])",
+    "invalid": "update(Account).set(Team.name.to('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "fetched-delete",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(delete(Account).where(Account.id.eq(1)), Write[int])",
+    "invalid": "delete(Account).where(Team.name.eq('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "fetched-comparison",
+    "template": "fetched.py.txt",
+    "valid": "select(Account).where(Account.age.eq(30))",
+    "invalid": "Account.age.eq('wrong')",
+    "rejects": true
+  },
+  {
+    "name": "fetched-missing-insert-field",
+    "template": "fetched.py.txt",
+    "valid": "insert(Account, Account.name.to('Ada'), Account.age.to(30))",
+    "invalid": "insert(Account, Account.name.to('Ada'))",
+    "rejects": false
+  },
+  {
+    "name": "fetched-missing-update-assignment",
+    "template": "fetched.py.txt",
+    "valid": "update(Account).set(Account.age.to(31)).where(Account.id.eq(1))",
+    "invalid": "update(Account).where(Account.id.eq(1))",
+    "rejects": true
+  },
+  {
+    "name": "incremental-pair-inference",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(columns(Account.name).add(Account.age).query(), Query[Account, tuple[str, int]])",
+    "invalid": "columns(Account.name).add(Team.name)"
+  },
+  {
+    "name": "projection-constructor-check",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(columns(Account.name).add(Account.id.count()).map(Summary), Query[Account, Summary])",
+    "invalid": "columns(Account.id.count()).add(Account.name).map(Summary)"
+  },
+  {
+    "name": "projection-ten-slots",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(columns(Account.name).add(Account.age).add(Account.name).add(Account.age).add(Account.name).add(Account.age).add(Account.name).add(Account.age).add(Account.name).add(Account.age).query(), Query[Account, tuple[str, int, str, int, str, int, str, int, str, int]])",
+    "invalid": "",
+    "rejects": true
+  },
+  {
+    "name": "projection-constructor-arity",
+    "template": "fetched.py.txt",
+    "valid": "columns(Account.name).add(Account.id.count()).map(Summary)",
+    "invalid": "columns(Account.name).map(Summary)",
+    "rejects": true
+  },
+  {
+    "name": "aggregate-nullable-sum",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(columns(Account.age.sum()).query(), Query[Account, tuple[int | None]])",
+    "invalid": "Account.name.sum()",
+    "rejects": true
+  },
+  {
+    "name": "aggregate-having",
+    "template": "fetched.py.txt",
+    "valid": "columns(Account.name).add(Account.id.count()).map(Summary).group_by(Account.name).having(Account.id.count().gt(1))",
+    "invalid": "select(Account).where(Account.id.count().gt(1))",
+    "rejects": true
+  },
+  {
+    "name": "aggregate-ungrouped-selection",
+    "template": "fetched.py.txt",
+    "valid": "columns(Account.name).add(Account.id.count()).map(Summary).group_by(Account.name)",
+    "invalid": "columns(Account.name).add(Account.id.count()).map(Summary)",
+    "rejects": false
+  },
+  {
+    "name": "dataclass-select",
+    "template": "records.py.txt",
+    "valid": "assert_type(accounts.select(), Query[Account, Account])\nassert_type(columns(accounts.column(lambda row: row.name)).query(), Query[Account, tuple[str]])",
+    "invalid": "accounts.column(lambda row: row.nonexistent)"
+  },
+  {
+    "name": "dataclass-insert",
+    "template": "records.py.txt",
+    "valid": "assert_type(accounts.insert(NewAccount(name='Ada', age=30)), Write[Account])",
+    "invalid": "accounts.insert(NewAccount(name='Ada', age='wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-required-insert",
+    "template": "records.py.txt",
+    "valid": "accounts.insert(NewAccount(name='Ada', age=30))",
+    "invalid": "accounts.insert(NewAccount(name='Ada'))",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-generated-insert",
+    "template": "records.py.txt",
+    "valid": "accounts.insert(NewAccount(name='Ada', age=30))",
+    "invalid": "NewAccount(id=1, name='Ada', age=30)",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-nullable-value",
+    "template": "records.py.txt",
+    "valid": "assert_type(columns(accounts.column(lambda row: row.nickname)).query(), Query[Account, tuple[str | None]])\naccounts.column(lambda row: row.nickname).to(None)",
+    "invalid": "accounts.column(lambda row: row.name).to(None)",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-update",
+    "template": "records.py.txt",
+    "valid": "assert_type(accounts.update().set(accounts.column(lambda row: row.age).to(31)).where(accounts.column(lambda row: row.id).eq(1)), Write[int])",
+    "invalid": "accounts.update().set(teams.column(lambda row: row.title).to('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-delete",
+    "template": "records.py.txt",
+    "valid": "assert_type(accounts.delete().where(accounts.column(lambda row: row.id).eq(1)), Write[int])",
+    "invalid": "accounts.delete().where(teams.column(lambda row: row.title).eq('wrong'))",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-aggregate",
+    "template": "records.py.txt",
+    "valid": "assert_type(columns(accounts.column(lambda row: row.name)).add(accounts.column(lambda row: row.id).count()).map(Summary).group_by(accounts.column(lambda row: row.name)), Query[Account, Summary])",
+    "invalid": "accounts.column(lambda row: row.name).sum()",
+    "rejects": true
+  },
+  {
+    "name": "dataclass-computed-selector",
+    "template": "records.py.txt",
+    "valid": "accounts.column(lambda row: row.name)",
+    "invalid": "accounts.column(lambda row: row.name.upper())",
+    "rejects": false
+  },
+  {
+    "name": "dataclass-constant-selector",
+    "template": "records.py.txt",
+    "valid": "accounts.column(lambda row: row.age)",
+    "invalid": "accounts.column(lambda row: 42)",
+    "rejects": false
+  },
+  {
+    "name": "dataclass-same-row-table-scope",
+    "template": "records.py.txt",
+    "valid": "accounts.select().where(accounts.column(lambda row: row.name).eq('Ada'))",
+    "invalid": "accounts.select().where(Table(Account, NewAccount).column(lambda row: row.name).eq('Ada'))",
+    "rejects": false
+  },
+  {
+    "name": "generated-insert",
+    "template": "generated.py.txt",
+    "valid": "assert_type(accounts.insert(name='Ada', age=30), Write[Account])",
+    "invalid": "accounts.insert(name='Ada')"
+  },
+  {
+    "name": "generated-insert-value",
+    "template": "generated.py.txt",
+    "valid": "accounts.insert(name='Ada', age=30)",
+    "invalid": "accounts.insert(name='Ada', age='wrong')"
+  },
+  {
+    "name": "generated-insert-keyword",
+    "template": "generated.py.txt",
+    "valid": "accounts.insert(name='Ada', age=30, nickname=None)",
+    "invalid": "accounts.insert(name='Ada', age=30, nick='typo')"
+  },
+  {
+    "name": "generated-id-override",
+    "template": "generated.py.txt",
+    "valid": "accounts.insert(name='Ada', age=30, id=100)",
+    "invalid": "accounts.insert(name='Ada', age=30, id=None)"
+  },
+  {
+    "name": "generated-read-id-required",
+    "template": "generated.py.txt",
+    "valid": "assert_type(Account(id=1, name='Ada', age=30).id, int)",
+    "invalid": "Account(name='Ada', age=30)"
+  },
+  {
+    "name": "generated-select",
+    "template": "generated.py.txt",
+    "valid": "assert_type(accounts.select(), Query[Account, Account])\nassert_type(columns(accounts.nickname).query(), Query[Account, tuple[str | None]])",
+    "invalid": "accounts.missing"
+  },
+  {
+    "name": "generated-update",
+    "template": "generated.py.txt",
+    "valid": "assert_type(accounts.update().set(accounts.name.to('Grace')).where(accounts.id.eq(1)), Write[int])",
+    "invalid": "accounts.update().set(accounts.age.to('wrong'))"
+  },
+  {
+    "name": "generated-delete",
+    "template": "generated.py.txt",
+    "valid": "assert_type(accounts.delete().where(accounts.id.eq(1)), Write[int])",
+    "invalid": "accounts.delete().where(accounts.id.eq('wrong'))"
+  },
+  {
+    "name": "generated-aggregate",
+    "template": "generated.py.txt",
+    "valid": "assert_type(columns(accounts.name).add(accounts.id.count()).map(Summary).group_by(accounts.name), Query[Account, Summary])",
+    "invalid": "columns(accounts.id.count()).add(accounts.name).map(Summary)"
+  },
+  {
+    "name": "projection-keyword-constructor",
+    "template": "fetched.py.txt",
+    "valid": "assert_type(columns(Account.name).add(Account.id.count()).map(lambda name, total: KeywordSummary(name=name, total=total)), Query[Account, KeywordSummary])",
+    "invalid": "columns(Account.name).add(Account.id.count()).map(lambda name, total: KeywordSummary(name=total, total=name))"
+  },
+  {
+    "name": "projection-keyword-constructor-direct",
+    "template": "fetched.py.txt",
+    "valid": "columns(Account.name).add(Account.id.count()).map(lambda name, total: KeywordSummary(name=name, total=total))",
+    "invalid": "columns(Account.name).add(Account.id.count()).map(KeywordSummary)"
+  },
+  {
+    "name": "projection-nullable-aggregate-constructor",
+    "template": "fetched.py.txt",
+    "valid": "columns(Account.name).add(Account.id.count()).map(Summary)",
+    "invalid": "columns(Account.name).add(Account.age.sum()).map(Summary)"
+  }
+]

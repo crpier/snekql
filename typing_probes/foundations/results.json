@@ -1,0 +1,1311 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "implementation": "CPython",
+  "ty": "0.0.77",
+  "python_target": "3.14",
+  "base_revision": "3548668335456a686eedcf3649d267c53148dbd7",
+  "source_sha256": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cases.json": "fa6f21c36dfd16ee3c5372aa07c9e86a6357172bbbc105c70c101e1980322467",
+    "check.py": "6e140d3bfd4697b2bda9280a0ffce4b4bf600d921f24decdc586d33d09ddc2ee",
+    "core.py": "ce56eb7463c0b0b8c18440b6425d94de70223cc272e88feb03d821af53a0b4de",
+    "fetched.py.txt": "612e5d5f2b61df389eacdad31b1a5ceb2b12989fa574ed9a951500a4de57ec53",
+    "fetched.pyi": "6209323c0cc037ad5c8c9622a288869b5842bddbab2596f8a7eb5fd01c1fab82",
+    "generate.py": "1eecfaa236f8712a81eb8da5a4de461f0fc4d6932ac7241056fa2a80c334f96a",
+    "generated.py.txt": "246f16d896c86c123fd1e08fa05ae5be47660c0820de89e89a6b979f7a9139ed",
+    "generated.pyi": "0921ec6f92749d3b894158ba0d7e90bd8ef805eb38ee319f37181f7331a86f5f",
+    "records.py.txt": "4b3d9be26297e640d9abe6eccb93cd41fe90f41268f7ac324a3c396fb882c1f0",
+    "records.pyi": "5355fee3ab84a3e30198e68cae5b5214e7efc96a0790c2efcd695ca54796ab18",
+    "schema.py": "40205bdee6b2be744ab7905ec77d4020bc89a102de2ef9e2697bccac0413cc1b",
+    "selectors.py": "b48b7c1ffc738c0252eb46a1c76f2d28126dd0cd0fb1259b278d0e653847df33"
+  },
+  "results": [
+    {
+      "name": "fetched-model-construction",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1e44f60f388f08877c5638a8816c9b0f79349a999aa6c18f29dd6500c9f55cf5",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "ebb3c95b77502f977267436c68209e9c96b4035c808036a5d03ec4ea5e8c956e",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpk70xz288/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 36
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-required-constructor",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "d40ca23de0ff8ab078685414b2d5814c9fff8fd7b9ea659ab1ca0e6746f1e11e",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "8aea537837116a9fa342029491b3ab2e622f451211468ea2dac1ffc652b6a7d6",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `id`",
+              "location": {
+                "path": ".git/tmpupekoca3/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-select",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2a45e16d59e9b117a0d5fcf4614eaa5d25e7b8245b760e9d133dd1ac7f6b7b6f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "0faab10b1eeb865f894180712aca5e045687332bcfabe12489aab997db2b4d5e",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Query.where` is incorrect: Expected `Predicate[Account]`, found `Predicate[Team]`",
+              "location": {
+                "path": ".git/tmpxbjezt4z/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-insert",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "6fd7c2fe536588ef51434840c345cfdb47315904440438562877a49859b81614",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "ea1ec95d7be7f4fe6c415dae648283de0a7a08796e4ac83489e6eebd63558805",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp2f0_byfq/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-insert-owner",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0c8ba4a1c9fc885df1f2f209050f9f15f69fd2d1bdfe8a776d6f7ddd3b583694",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "9acb9440eeadfa0fb86671bddceab5537460057edb7c565280081c78bc8f1099",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to function `insert` is incorrect: Expected `Assignment[Account | Team]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmp4_tzpe0v/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-update",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "530931602a1077d8a78ca7224ce1ce665af6309deb3ef4d2a59101dfbcc2a397",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d833285dbf9c08033e41f4b0bf7e0645fafadaf81fe4bf05f20536c8ffc4f7e8",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Updating.set` is incorrect: Expected `Assignment[Account]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmp39p0qj7m/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-delete",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "77bee55fa3b747b399633356794edfec6ca047bd427a46335e02f59eadd21270",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e1bc83cb6a4bf5b0796e3957c64c46529f8c11c460ed66b14b8f24cc0cdfaa82",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Deleting.where` is incorrect: Expected `Predicate[Account]`, found `Predicate[Team]`",
+              "location": {
+                "path": ".git/tmph3euiaro/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-comparison",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "413905325ea08e431e253241c127bba172ae966e18a0f8ffd8737dabd0bc4f59",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d4acac674eeee48685dd73ac7daadb16fb0be070f9e2c082f0b76b916425030c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.eq` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpi9db8kq7/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "fetched-missing-insert-field",
+      "expected_rejection": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c7ff80770f6b5d320a7d2ef6e8b0b78fe4a3a89c5443e0c7a714e73e2c128507",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "7f26237899062413dbccc7fb666e947c780a6e375d4bd78ad1f5b6e6a4331f57",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "fetched-missing-update-assignment",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c153d4e024151f17984e71694df819f0edde520752ca4f5d75f56990c0d4b24d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a9c4c6e046a0714e71a6ea13faeba903ce793c2b1219b8cc98a3c7ed08657eff",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Object of type `Updating[Account]` has no attribute `where`",
+              "location": {
+                "path": ".git/tmpcbrk49v4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "incremental-pair-inference",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "fa721e3531f7212f305e1e7c05f4afbb425a7c3f4c7627aa51c35c7920335ede",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a2fa94ba128c0b135e643e60fa36c90fdf04c24efa22c45db83161a26693c79f",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.add` is incorrect: Expected `Item[Account, str]`, found `Column[Team, str]`",
+              "location": {
+                "path": ".git/tmpb958cs3y/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "projection-constructor-check",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "6bb5f080165db4eda11cc7644a88b875e4a44ce89a85f00c96bb12a8f0f178e5",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "8af6d8fb841b9df05280711fd23c7a08f4d811fe15550a6a3caa100f672004fc",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.map` is incorrect: Expected `(int, str, /) -> Unknown`, found `<class 'Summary'>`",
+              "location": {
+                "path": ".git/tmpe10_nfjh/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "projection-ten-slots",
+      "expected_rejection": null,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2093369f5951ab8065704ef1d2827c5f6589bafc96fffa004c186406ce66628f",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "projection-constructor-arity",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f484bf99a40b2ea26f0fb37029ae374e78f71aeae1fb7906f8d54daf04616a7a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1df2102981f4eb5833df8cf8c7aa1026db4ca0ca0cc37ae73c4a8fcf14ea1179",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.map` is incorrect: Expected `(str, /) -> Unknown`, found `<class 'Summary'>`",
+              "location": {
+                "path": ".git/tmprbl00bwz/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "aggregate-nullable-sum",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "dca268d952c3ccaabd4a0ffee221e119336fa733d896109566c267dc4a3666be",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f62d62010f15d53ad8056bc16c3469dad132889fcc51d892d628ff7450ee6ecd",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.sum` is incorrect: Expected `Column[Account, int]`, found `Column[Account, str]`",
+              "location": {
+                "path": ".git/tmp6wk_ftze/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "aggregate-having",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "45ae8311e8d94cfc9b8e2e18bad0a2405753c92726c96910647c0f06e4093030",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "46dd9ec511aeea1674096af685a0aa46e0d4b146568435cc37bfa171fcc3453f",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Query.where` is incorrect: Expected `Predicate[Account]`, found `Having[Account]`",
+              "location": {
+                "path": ".git/tmp67tcf3bt/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "aggregate-ungrouped-selection",
+      "expected_rejection": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "9f4dbd48e184577910ba367e9906357129b276de01e974b71d144b14d538f5d4",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5c469b454b87dfe594cc6544c1ba006288519854f6a9751ae045b6189bee9c32",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "dataclass-select",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "7a58764746f77fa12ba75dfc86376e179c4415bb08ade0ca66714bb247fff56a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d28d256d2182530a19b5c82ca3470208a0fb9ca461870630f96ebf370f2d5af0",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Object of type `Account` has no attribute `nonexistent`",
+              "location": {
+                "path": ".git/tmpjxyhnpkp/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 40
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-insert",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c85de0d003986de260badf832cc67c50593e8689b3d791d74e7e19437d32117a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "9e6da3b1515844583bafb566f0e0cb67ff403beb58e39abd7942d1a107bb6ace",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp8djqmmn_/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-required-insert",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "250deeb71bf8d9052079a759fc55915c7a8a7970a2d01621093f6ac99bffc25d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5f012beba336f040884e056d84a516dfd97a827991ac8d817aa31475ca54a41c",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `age`",
+              "location": {
+                "path": ".git/tmpvxhz95d2/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-generated-insert",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "250deeb71bf8d9052079a759fc55915c7a8a7970a2d01621093f6ac99bffc25d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a64704009d26062b84cb30b994c63cbc76e8ff10f2aee38bb01bd16df9977b3a",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `id` does not match any known parameter",
+              "location": {
+                "path": ".git/tmp42tfdgj4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-nullable-value",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0c44b75d0faf5f6bb3d414c591d73ea91b7a6d6df04f2193574c9f4e87bb5898",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "9f99584f2a7a3c99324be076feefb304fb73401226c9066d1d59af00efddb733",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `str`, found `None`",
+              "location": {
+                "path": ".git/tmpum_munc3/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 40
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-update",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3445d167be50eb41a143dfd157fc58dde0db881b6b4308e6278b81cac9553764",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "3bb773fe2af00d5d1ff1e596c0e132c982a21fbdba7bddb841bee2656758cb52",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Updating.set` is incorrect: Expected `Assignment[Account]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmpi06lzljf/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-delete",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c5532b81152b3fba6e4670281ea451f2b00cc04cba0e603fdbef5501b9c874ab",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "c1ec954cf59e2baa1aef35d0ae8e3a4cd5aa15bb566a9d473f5990baa8e215c4",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Deleting.where` is incorrect: Expected `Predicate[Account]`, found `Predicate[Team]`",
+              "location": {
+                "path": ".git/tmpzpbpky_4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-aggregate",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "24cf613c71e520decb4d609c0652eb77e3604fd8709000412d0b69b7e1c8ed27",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a97b1e7b5b506f8f8dfedc5433ee4440c4fcf898e3c12eb026a3f3d9209b2182",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.sum` is incorrect: Expected `Column[Account, int]`, found `Column[Account, str]`",
+              "location": {
+                "path": ".git/tmpr176duny/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 39
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "dataclass-computed-selector",
+      "expected_rejection": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "25dbc7a8b73891d9f0872acd57e27a0419ad692881ef2f220146e8b8945b0853",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e2e96e9d7d8f9200bf4858c22f3d61c5c482fd4e8ab0ec45bc45132b745516c4",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "dataclass-constant-selector",
+      "expected_rejection": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "6081cdb3cfe68201e87dc8314dc47f5774c4208778c18573883724f158bad46b",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f89deb6559eb0e18f60553385c2e8a329253c0186255da2fc5d6cf7ad1aeb7a2",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "dataclass-same-row-table-scope",
+      "expected_rejection": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "d9288abc19b0880cae2fb6ef65c79663dcf81d78b493a9b1234dcf72a7652010",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "24b169ed4e02cbc44e74d31e5c6e41278418ae4061ac0f4fe4b6be64a339cad4",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "generated-insert",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "63f5a893cb55fc25fd7099f11421b26336adde42930f9e99bc4444f4bda0059a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "4f40102b7a711f0fd93cc846b74949aad9bd48139c1d85b2305055a26d728ec7",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `age` of bound method `AccountTable.insert`",
+              "location": {
+                "path": ".git/tmpm9e0ha20/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-insert-value",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "9cafefbee2bdbf732cebdda8992f6b1355a44cd401a62d2769a68a2d23c08c67",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "0983a23d28d9b0914ba288666bfb2a22c0d720b3da313ae133f4925110a94960",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `AccountTable.insert` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp5tq013zt/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-insert-keyword",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "387b73db379bd4dfaaf1b7877276c9430c8e461dc8c051fb5afbf62037f6dd2d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "823f780afb4625cf94e84562c766948e6773139d7f470c2b9605754581262719",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `nick` does not match any known parameter of bound method `AccountTable.insert`",
+              "location": {
+                "path": ".git/tmppae6peyo/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-id-override",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "bba56d0aa3d693ef2736d40354078066e9a860538f754771520ee33f4a27139b",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "65e775391651cbf2349f9cc2cc20a1252c79b49543de05afc6cf6ec036249f4b",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `AccountTable.insert` is incorrect: Expected `int`, found `None`",
+              "location": {
+                "path": ".git/tmpomg0ere0/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-read-id-required",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "94298bc0aee9fee759c93da22405f91aea4c80d1d8b0820ad31c05a081d29d14",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "fa15aff732762f36b2cc3cf37463f84a4b73916c58362597a2a9b61565bd8336",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `id`",
+              "location": {
+                "path": ".git/tmpcznht8e0/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-select",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "4a0e9275ffef7bbc1511bb3a085dbeb6abff68579f6d9ef6cf9f9b1ad4edae77",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "adec776e00891a44162116f4b625a18301e145fd3a73767ea79960051d35f924",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Object of type `AccountTable` has no attribute `missing`",
+              "location": {
+                "path": ".git/tmplpv_e47z/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 20
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-update",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "884d779a20dc0373081688cdcb0c5f17eb34a0ec1d207d5efe1fab5c1571bedc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e703a1a14afde45fff99656a64c988eaf3256c95f2ebbc160c175e925b5fd14e",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpoqbadykx/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-delete",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2c2c7aa4f4888a73ce15b17410a8c390b93338c63d11b1fec656c0237aee7dab",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "4203eb83ef502c7ddafc7f4ce3347ffd92b64ec541ece0b8ee81383924d91057",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.eq` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpdm14kavz/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generated-aggregate",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "a0e5833c352e1a7cacd32be4788ce6e8dcf9b26087b8880846232ee49cf32ad1",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "7dd3225481f1ebfa7c412e7005ef98fc3397b8d69a9d8ba7a251e348d0c64e11",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.map` is incorrect: Expected `(int, str, /) -> Unknown`, found `<class 'Summary'>`",
+              "location": {
+                "path": ".git/tmpd3sdrs_d/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "projection-keyword-constructor",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "74a10874952c317e89cc9a9587ea2d26cd71ba3293cd75a225a4186bbfceb3b3",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1b98e6843b8f144f4b5f77d6eaf3650841a5b4fb1258480d51f58045fa9b6ce6",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `str`, found `int`",
+              "location": {
+                "path": ".git/tmpbm9kasis/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            },
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `int`, found `str`",
+              "location": {
+                "path": ".git/tmpbm9kasis/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "projection-keyword-constructor-direct",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "215be278a122b6da455ea005ffa958306d0d9f5637c4ea6c9030251c32012e1a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "cd2294d44dd981d0e59c0fbbe7a34090f09607d15e85554773cbb4c3dda28047",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.map` is incorrect: Expected `(str, int, /) -> Unknown`, found `<class 'KeywordSummary'>`",
+              "location": {
+                "path": ".git/tmpku8nqunr/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "projection-nullable-aggregate-constructor",
+      "expected_rejection": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f484bf99a40b2ea26f0fb37029ae374e78f71aeae1fb7906f8d54daf04616a7a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "999223f3384016b882f109c525119f94b5ba621d6ada3c9e82e5200f25454cf3",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Projection.map` is incorrect: Expected `(str, int | None, /) -> Unknown`, found `<class 'Summary'>`",
+              "location": {
+                "path": ".git/tmpmll6t4k6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    }
+  ]
+}
