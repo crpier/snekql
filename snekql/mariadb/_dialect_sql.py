@@ -75,7 +75,18 @@ def _explain_sql(state: SelectState | WriteState, sql: str, mode: ExplainMode) -
     return ("ANALYZE " if mode == "analyze" else "EXPLAIN ") + sql
 
 
+def _integer_literal_sql(placeholder: str) -> str:
+    """Keep the full signed-64 width when MariaDB materializes a recursive anchor.
+
+    A small bound integer, even CAST AS SIGNED, can become an INT32 temporary
+    field. The intermediate exact decimal declares all 19 integer digits before
+    the signed cast. Every accepted input already fits the signed-64 domain.
+    """
+    return f"CAST(CAST({placeholder} AS DECIMAL(19, 0)) AS SIGNED)"
+
+
 MARIADB_QUERY_DIALECT = QueryDialect(
+    integer_literal_sql=_integer_literal_sql,
     char_length_function="CHAR_LENGTH",
     conflict_do_nothing_sql=_conflict_do_nothing_sql,
     conflict_update_sql=_conflict_update_sql,

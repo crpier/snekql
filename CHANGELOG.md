@@ -28,6 +28,12 @@
 
 ### Added
 
+- Backend-owned `literal(integer)` expressions for named projections and CTE
+  outputs. Signed-64 validation, backend isolation and nonnullable constant
+  labels preserve the native integer contract. MariaDB lowering establishes
+  full anchor width even for zero. Prerequisite for #373; recursive CTE builders
+  are not included yet.
+
 - Named UNION and UNION ALL builders with name-aligned fields, preserved binary
   grouping, combined-output ordering/pagination and CTE conversion. The left
   output contract governs nullability; incompatible or unknown wire/decoder

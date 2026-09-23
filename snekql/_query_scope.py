@@ -22,6 +22,7 @@ from typing import Any, cast
 from snekql._aliases import _AliasRelation
 from snekql._cte import _CteOutput, _CteRelation
 from snekql._dialect_expr import SqlCompilable
+from snekql._literal import _IntegerLiteral
 from snekql._query_sources import grouping_key
 from snekql._query_state import (
     SelectState,
@@ -45,7 +46,7 @@ from snekql.expressions import (
     _PredicateNode,
     _require_predicate_node,
 )
-from snekql.model import Table, require_model_table_name
+from snekql.model import Table, require_model_backend, require_model_table_name
 from snekql.storage import Attr
 
 
@@ -166,6 +167,13 @@ class ScopeResolver:
         """
 
         models = self.own_models if own_only else self.models
+        if isinstance(operand, _IntegerLiteral):
+            if not models or any(
+                require_model_backend(model) != operand.backend for model in models
+            ):
+                msg = "literal backend differs from the query"
+                raise error(msg)
+            return
         out_of_scope = f"{clause} references a table that is not in the query"
         if isinstance(operand, Attr):
             bound = cast("Attr[Any, Any, Any, Any, Any]", operand)

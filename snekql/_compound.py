@@ -5,6 +5,7 @@ from types import UnionType
 from typing import Any, Literal, Protocol, TypeAliasType, Union, get_args, get_origin
 
 from snekql._cte import _CompoundRelation, _CteDefinition, _CteOutput
+from snekql._literal import _IntegerLiteral
 from snekql._output_layout import (
     LayoutOutput,
     OutputLayout,
@@ -87,6 +88,8 @@ def _decode_policy(source: object) -> tuple[object, ...]:
             source.text_collation,
             _nonnull_annotation(annotation),
         )
+    if isinstance(source, _IntegerLiteral):
+        return ("native", int)
     if isinstance(source, ValueExpression):
         return ("native", source.value_type)
     if isinstance(source, _Aggregate):
