@@ -24,6 +24,11 @@
 
 ### Added
 
+- Named UNION and UNION ALL builders with name-aligned fields, preserved binary
+  grouping, combined-output ordering/pagination and CTE conversion. The left
+  output contract governs nullability; incompatible or unknown wire/decoder
+  policies fail before I/O. Supports SQLite and MariaDB. Implements #372.
+
 - Typed expression labels and nonrecursive named CTEs with token-based output
   lookup, aliases, INNER/LEFT joins, preserved codecs, ordered output policies,
   and pre-I/O scope/name/readiness guards. Includes readonly output operations

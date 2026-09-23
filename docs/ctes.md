@@ -127,6 +127,7 @@ supported.
   targets. Writable CTEs, lateral references and materialization hints are not
   supported.
 
-UNION, windows and recursive builders remain separate follow-ups. Use the
-[raw reporting recipes](reporting.md) for those operations. The
+[Named UNION and UNION ALL](unions.md) results can also become CTEs. Windows and
+recursive builders remain separate follow-ups. Use the [raw reporting
+recipes](reporting.md) for those operations. The
 [composition design](query-composition-design.md) records their reviewed scope.

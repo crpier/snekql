@@ -76,11 +76,21 @@ class SelectState:
     limit_value: int | None = None
     offset_value: int | None = None
     joins: tuple[JoinSpec, ...] = ()
+    compound: CompoundSpec | None = None
 
     def result_models(self) -> tuple[type[Table[Any]], ...]:
         """Return the base model followed by each joined model, in join order."""
 
         return (self.model, *(join.model for join in self.joins))
+
+
+@dataclass(frozen=True)
+class CompoundSpec:
+    """A binary set operation retaining SQL expression-tree grouping."""
+
+    left: SelectState
+    right: SelectState
+    operator: Literal["UNION", "UNION ALL"]
 
 
 @dataclass(frozen=True)

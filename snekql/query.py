@@ -25,7 +25,16 @@ from pydantic import BaseModel
 
 from snekql._aliases import TableAlias
 from snekql._compiled import CompiledQuery
-from snekql._cte import _Cte, _CteOutput, build_cte
+from snekql._compound import _CompoundRole, _NamedSetOperand, build_compound
+from snekql._cte import (
+    _Cte,
+    _CteOutput,
+    _CteOwner,
+    _CteRelation,
+    _LabelContract,
+    _SensitiveLabelContract,
+    build_cte,
+)
 from snekql._dialect_expr import DialectSelectable, NullExtendedSelectable
 from snekql._named_projection import NamedProjection
 from snekql._output_label import _OutputLabel
@@ -464,6 +473,30 @@ class NamedSelectQuery[
 ):
     """Select values into a table-independent named result model."""
 
+    def _set_family(self, family: FamilyT) -> FamilyT:
+        return family
+
+    def _set_result(self, result: ResultT) -> ResultT:
+        return result
+
+    def union_all(
+        self: NamedSelectQuery[
+            FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+        ],
+        other: _NamedSetOperand[FamilyT, ResultT, _ExecutableQuery],
+    ) -> CompoundSelectQuery[FamilyT, OwnerT, ResultT, NonNullableOwnerT]:
+        """Combine compatible named rows, preserving SQL multiplicity."""
+        return CompoundSelectQuery(build_compound(self.state, other, "UNION ALL"))
+
+    def union(
+        self: NamedSelectQuery[
+            FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+        ],
+        other: _NamedSetOperand[FamilyT, ResultT, _ExecutableQuery],
+    ) -> CompoundSelectQuery[FamilyT, OwnerT, ResultT, NonNullableOwnerT]:
+        """Combine compatible named rows using database duplicate elimination."""
+        return CompoundSelectQuery(build_compound(self.state, other, "UNION"))
+
     def cte[RoleT](
         self: NamedSelectQuery[
             FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
@@ -505,6 +538,103 @@ class NamedSelectQuery[
     ]:
         """Filter rows while retaining the named result contract."""
         return NamedSelectQuery(_select_where(self.state, (predicate, *predicates)))
+
+
+class CompoundSelectQuery[
+    FamilyT,
+    OwnerT: Table[Any],
+    ResultT: BaseModel,
+    NonNullableOwnerT = OwnerT,
+](
+    _OptionalQueryShape[
+        FamilyT,
+        _CteOwner[FamilyT, OwnerT, _CompoundRole],
+        _CteOwner[FamilyT, OwnerT, _CompoundRole],
+        ResultT,
+        _ExecutableQuery,
+    ],
+):
+    """Completed named set operation exposing only its combined outputs."""
+
+    def __init__(self, state: SelectState) -> None:
+        self.state: SelectState = state
+
+    def _set_family(self, family: FamilyT) -> FamilyT:
+        return family
+
+    def _set_result(self, result: ResultT) -> ResultT:
+        return result
+
+    def union_all(
+        self, other: _NamedSetOperand[FamilyT, ResultT, _ExecutableQuery]
+    ) -> CompoundSelectQuery[FamilyT, OwnerT, ResultT, NonNullableOwnerT]:
+        """Append an operand without flattening this operation's grouping."""
+        return CompoundSelectQuery(build_compound(self.state, other, "UNION ALL"))
+
+    def union(
+        self, other: _NamedSetOperand[FamilyT, ResultT, _ExecutableQuery]
+    ) -> CompoundSelectQuery[FamilyT, OwnerT, ResultT, NonNullableOwnerT]:
+        """Remove duplicates from the two complete operand results."""
+        return CompoundSelectQuery(build_compound(self.state, other, "UNION"))
+
+    def cte[RoleT](
+        self, role: type[RoleT], *, name: str
+    ) -> _Cte[FamilyT, OwnerT, ResultT, RoleT, NonNullableOwnerT]:
+        """Expose the completed set operation as a relation for joins or filters."""
+        return build_cte(self.state, role, name=name)
+
+    @overload
+    def column[T, CompareT](
+        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT]
+    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT]: ...
+
+    @overload
+    def column[TokenOwnerT, T, CompareT](
+        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT]
+    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T | None, CompareT]: ...
+
+    @overload
+    def column[TokenOwnerT, T, CompareT](
+        self, token: _LabelContract[TokenOwnerT, T, CompareT]
+    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT]: ...
+
+    def column(self, token: object) -> _CteOutput[Any, Any, Any]:
+        """Read a left-hand output token rebound to the whole combined result."""
+        relation = self.state.model
+        if not issubclass(relation, _CteRelation):
+            msg = "combined outputs require their defining relation"
+            raise QueryConstructionError(msg)
+        if isinstance(token, _OutputLabel):
+            return _Cte[Any, Any, Any, Any, Any](relation).column(token)
+        msg = "combined column requires a label token from the left operand"
+        raise QueryConstructionError(msg)
+
+    def order_by(
+        self,
+        ordering: OrderBy[_CteOwner[FamilyT, OwnerT, _CompoundRole]],
+        /,
+        *orderings: OrderBy[_CteOwner[FamilyT, OwnerT, _CompoundRole]],
+    ) -> Self:
+        """Order only by combined output references, not operand columns."""
+        for item in (ordering, *orderings):
+            if (
+                not isinstance(item, _OrderBy)
+                or not isinstance(item.column, _CteOutput)
+                or item.column.relation is not self.state.model
+            ):
+                msg = "combined ordering requires combined output columns"
+                raise QueryConstructionError(msg)
+        return type(self)(_select_order_by(self.state, (ordering, *orderings)))
+
+    @validate_boundary(error_type=QueryConstructionError)
+    def limit(self, value: NonNegativeInt) -> Self:
+        """Bound the whole compound result."""
+        return type(self)(_select_limit(self.state, value))
+
+    @validate_boundary(error_type=QueryConstructionError)
+    def offset(self, value: NonNegativeInt) -> Self:
+        """Skip rows from the whole compound result."""
+        return type(self)(_select_offset(self.state, value))
 
 
 class SelectModelQuery[

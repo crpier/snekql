@@ -88,6 +88,10 @@ class _CteRelation(Table[Any]):
     role: ClassVar[type[object]]
 
 
+class _CompoundRelation(_CteRelation):
+    """Scope-local derived output, never an independently readable definition."""
+
+
 @dataclass(frozen=True, slots=True, repr=False)
 class _CtePresence:
     """Private row-presence reference, never a public output token."""

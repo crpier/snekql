@@ -647,6 +647,21 @@ def _compile_locking_clause(
     return (dialect.for_update_sql(state.lock_wait),)
 
 
+def _compile_select_source(
+    state: SelectState, dialect: QueryDialect
+) -> tuple[str, tuple[object, ...]]:
+    """Derived operands preserve binary grouping on both supported dialects."""
+    if state.compound is None:
+        return _compile_source_sql(state.model, dialect), ()
+    left_sql, left_params = _compile_select_state(state.compound.left, dialect)
+    right_sql, right_params = _compile_select_state(state.compound.right, dialect)
+    alias = dialect.quote_identifier(require_model_table_name(state.model))
+    return (
+        f"({left_sql} {state.compound.operator} {right_sql}) AS {alias}",
+        (*left_params, *right_params),
+    )
+
+
 def _compile_select_state(
     state: SelectState,
     dialect: QueryDialect,
@@ -681,7 +696,8 @@ def _compile_select_state(
         state, dialect, scope=scope, presence_name=presence_name
     )
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
-    quoted_table = _compile_source_sql(state.model, dialect)
+    quoted_table, source_params = _compile_select_source(state, dialect)
+    params = (*params, *source_params)
     sql_parts = [
         f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
