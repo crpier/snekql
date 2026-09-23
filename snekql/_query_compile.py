@@ -782,9 +782,22 @@ def compile_select_sql_for_dialect(
         body, bindings = _compile_select_state(
             definition.state, dialect, presence_name=definition.presence_name
         )
+        if definition.recursive_step is not None:
+            member, member_bindings = _compile_select_state(
+                definition.recursive_step,
+                dialect,
+                presence_name=definition.presence_name,
+            )
+            body = f"{body} UNION ALL {member}"
+            bindings = (*bindings, *member_bindings)
         parts.append(f"{dialect.quote_identifier(definition.name)} AS ({body})")
         definition_params = (*definition_params, *bindings)
-    return f"WITH {', '.join(parts)} {sql}", (*definition_params, *params)
+    prefix = (
+        "WITH RECURSIVE"
+        if any(definition.recursive_step is not None for definition in definitions)
+        else "WITH"
+    )
+    return f"{prefix} {', '.join(parts)} {sql}", (*definition_params, *params)
 
 
 def compile_write_sql_for_dialect(

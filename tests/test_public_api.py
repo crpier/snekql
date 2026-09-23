@@ -115,6 +115,7 @@ _NEUTRAL_NAMES = frozenset(
         "ZonedDatetimeError",
         "exists",
         "literal",
+        "recursive_cte",
         "not_exists",
         "scalar",
         "select",

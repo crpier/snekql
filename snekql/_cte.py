@@ -71,6 +71,9 @@ class _CteDefinition:
 
     name: str
     state: SelectState
+    recursive_step: SelectState | None = None
+    recursive_seed: _CteDefinition | None = None
+    is_recursive_seed: bool = False
 
     layout: OutputLayout = field(init=False)
 
