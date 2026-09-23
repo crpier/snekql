@@ -119,3 +119,32 @@ These tests validate the library against fresh isolated servers. They do not
 validate in-place database upgrades, data-directory downgrade, replica topology,
 plugins, arbitrary server tuning or another operating system. Review MariaDB's
 upgrade documentation and your own production workload separately.
+
+## Python driver compatibility
+
+The `aiomysql` extra currently requires aiomysql `>=0.3.2,<0.4` and PyMySQL
+`>=1.2.0,<1.2.1`. The development environment has the same constraints. SQLite-only
+installations do not acquire this dependency.
+
+PyMySQL 1.2.1 removes symbols that aiomysql imports. Version 1.2.2 restores one
+but still fails import. Version 1.2.3 permits import but replaces the binary
+parameter encoder with a string, breaking BLOB writes and migration checksums.
+This is tracked in #402 and upstream aio-libs/aiomysql#1080 and #1081. There is
+no driver monkey patch in snekql.
+
+The temporary bound retains the already-tested PyMySQL 1.2.0. Review of the
+1.2.1 authentication change found changes to PyMySQL's connection state machine,
+not the independent aiomysql connection implementation. The GitHub advisory
+query found no published advisory affecting 1.2.0 at review time. This is not a
+security guarantee; dependency advisories still require monitoring.
+
+Remove or widen the bound only after a compatible aiomysql release passes the
+native suite and freshly resolved artifact tests, with dependency/security
+review. Do not bypass the bound with an application override and assume support.
+
+After `uv build`, run `uv run python scripts/check_artifacts.py --mariadb` on a
+host with the supported MariaDB binaries. It installs wheel extras without the
+development lock, verifies the isolated import, prints driver versions, and runs
+snektest migration-checksum and binary round-trip tests against a temporary
+server. CI runs this check in Validate and every maintained MariaDB version job.
+The default artifact command remains usable without native MariaDB binaries.
