@@ -34,7 +34,7 @@ No other checker or native database execution is certified by this prototype.
 | Explicit schema plus selector callback | Fixes shape/domain matching. A mixed-field selector still passes as `Slot[Unknown, Unknown]`, even with structural witnesses. Rejected. |
 | Whole variadic output pack | Does not compute fieldwise widening; rejects the valid nullable-right example. This tests this signature, not every conceivable variadic design. |
 | Handwritten result-specific query type | Accurate two-field typing and six intended rejections. Requires result-specific query signatures. Does not integrate real owner/family facts. |
-| Explicit schema, union of whole layouts, direct column attributes | Promising. Seven focused consumer cases meet their expectations, including a twelve-field shape. No result-specific union overloads needed. |
+| Explicit schema, union of whole layouts, direct column attributes | Promising. Six focused consumer cases meet their expectations, including a twelve-field shape. No result-specific union overloads needed. |
 
 The last candidate keeps `Query[Schema, LeftLayout | RightLayout]`. Accessing
 `combined.columns.event_id` lets ordinary Python attribute-union typing preserve
