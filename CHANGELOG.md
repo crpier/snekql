@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Fresh MariaDB-extra installs now constrain PyMySQL to `>=1.2.0,<1.2.1`
+  while aiomysql depends on removed private encoders. Native artifact tests
+  cover migration checksums and binary round trips without the development lock.
+
 - MariaDB schema verification avoids a virtual-catalog join that crashes MariaDB
   12.2.2. Foreign-key members and actions are correlated locally; missing action
   metadata fails verification rather than certifying a match. Found by the full
