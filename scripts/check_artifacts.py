@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 import sys
 import tomllib
+from argparse import ArgumentParser
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -17,7 +19,7 @@ def _run(*command: str, cwd: Path) -> None:
         raise SystemExit(result.returncode)
 
 
-def main() -> None:
+def _check_artifacts(*, mariadb: bool) -> None:
     """Install the sole wheel and exercise imports, CLI, runtime, and typing."""
 
     project_root = Path(__file__).parents[1]
@@ -47,7 +49,9 @@ def main() -> None:
             "install",
             "--python",
             str(python),
-            f"{wheels[0]}[aiosqlite]",
+            f"{wheels[0]}[aiosqlite,aiomysql]"
+            if mariadb
+            else f"{wheels[0]}[aiosqlite]",
             type_checker_requirement,
             cwd=directory,
         )
@@ -55,8 +59,14 @@ def main() -> None:
         runtime_smoke.write_text(
             f"""from importlib.metadata import version
 import asyncio
+from pathlib import Path
+import snekql
 from snekql import mariadb, sqlite
 
+if not Path(snekql.__file__).is_relative_to({str(environment)!r}):
+    raise RuntimeError("artifact imported outside isolated environment")
+if {mariadb!r}:
+    print("aiomysql", version("aiomysql"), "PyMySQL", version("PyMySQL"))
 if version("snekql") != {expected_version!r}:
     raise RuntimeError("installed version mismatch")
 if sqlite.Config(database=":memory:").backend_family != "sqlite":
@@ -81,9 +91,49 @@ class User[S = sqlite.Pending](sqlite.Model[S, "User[sqlite.Fetched]"]):
 query: sqlite.Select[User[sqlite.Fetched]] = sqlite.select(User).all()
 """
         )
-        _run(str(python), str(runtime_smoke), cwd=directory)
+        _run(str(python), "-I", str(runtime_smoke), cwd=directory)
         _run(str(python), "-m", "snekql", "--help", cwd=directory)
         _run(str(ty), "check", str(typing_smoke), cwd=directory)
+        if mariadb:
+            _run(
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                str(python),
+                next(
+                    requirement
+                    for requirement in metadata["dependency-groups"]["dev"]
+                    if requirement.startswith("snektest")
+                ),
+                cwd=directory,
+            )
+            native_tests = directory / "test_installed_driver.py"
+            native_tests.write_text(
+                (project_root / "tests/mariadb/test_installed_driver.py").read_text()
+            )
+            _run(
+                str(python),
+                "-I",
+                "-X",
+                "context_aware_warnings=1",
+                "-m",
+                "snektest",
+                native_tests.name,
+                cwd=directory,
+            )
+
+
+def main() -> None:
+    """Optionally test fresh MariaDB extras against locally installed binaries."""
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--mariadb",
+        action="store_true",
+        help="exercise fresh MariaDB extras against a temporary native server",
+    )
+    arguments = parser.parse_args()
+    asyncio.run(asyncio.to_thread(_check_artifacts, mariadb=arguments.mariadb))
 
 
 if __name__ == "__main__":
