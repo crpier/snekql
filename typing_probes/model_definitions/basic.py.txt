@@ -1,0 +1,10 @@
+"""Minimal vocabulary for independently checked declaration mechanisms."""
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Annotated, Any, Never, ParamSpec, Self, TypedDict, Unpack, assert_type, dataclass_transform
+from typing_probes.model_definitions.core import (
+    Column, Field, Model, GeneratedModel, Generated, Omitted, OMIT,
+    Query, Write, Read, property_field, field, generated, insert, select,
+)
+class Account(Model):
+    name: Field[str] = field()

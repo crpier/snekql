@@ -1,0 +1,16 @@
+"""Caller tests against the executable implementation, not a parallel stub."""
+from typing import assert_type
+from typing_probes.model_definitions.runtime import (
+    Column, Field, Insert, Record, Omitted, OMIT, field, required, insert_using,
+)
+class NewAccount(Record):
+    id: Field[int | Omitted] = field(default=OMIT)
+    created: Field[int | Omitted] = field(default=OMIT)
+    name: Field[str] = field()
+    nickname: Field[str | None] = field(default=None)
+class Account(NewAccount):
+    id: Field[int] = required()
+    created: Field[int] = required()
+    create = insert_using(NewAccount)
+class Team(Record):
+    name: Field[str] = field()

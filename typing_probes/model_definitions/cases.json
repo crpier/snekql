@@ -1,0 +1,694 @@
+[
+  {
+    "name": "refined-required",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account.create(name='Ada'), Write[Account])",
+    "invalid": "Account.create()"
+  },
+  {
+    "name": "refined-value",
+    "template": "refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name=42)"
+  },
+  {
+    "name": "refined-keyword",
+    "template": "refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada', naem='typo')"
+  },
+  {
+    "name": "refined-explicit-id",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account.create(name='Ada', id=10), Write[Account])",
+    "invalid": "Account.create(name='Ada', id='wrong')"
+  },
+  {
+    "name": "refined-id-not-null",
+    "template": "refined.py.txt",
+    "valid": "Account.create(name='Ada', id=OMIT)",
+    "invalid": "Account.create(name='Ada', id=None)"
+  },
+  {
+    "name": "refined-nullable",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account.nickname, Column[Account, str | None])",
+    "invalid": "Account.create(name='Ada', nickname=3)"
+  },
+  {
+    "name": "refined-pending-id",
+    "template": "refined.py.txt",
+    "valid": "assert_type(NewAccount(name='Ada').id, int | Omitted)",
+    "invalid": "assert_type(NewAccount(name='Ada').id, int)"
+  },
+  {
+    "name": "refined-read-id",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account(id=1, created=datetime.now(), name='Ada').id, int)",
+    "invalid": "Account(created=datetime.now(), name='Ada')"
+  },
+  {
+    "name": "refined-read-created",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account(id=1, created=datetime.now(), name='Ada').created, datetime)",
+    "invalid": "Account(id=1,name='Ada')"
+  },
+  {
+    "name": "refined-server-override",
+    "template": "refined.py.txt",
+    "valid": "Account.create(name='Ada', created=datetime.now())",
+    "invalid": "Account.create(name='Ada', created='wrong')"
+  },
+  {
+    "name": "refined-read-rejects-omitted",
+    "template": "refined.py.txt",
+    "valid": "Account(id=1, created=datetime.now(), name='Ada')",
+    "invalid": "Account(id=OMIT, created=datetime.now(), name='Ada')"
+  },
+  {
+    "name": "refined-default",
+    "template": "refined.py.txt",
+    "valid": "Account.create(name='Ada', enabled=False)",
+    "invalid": "Account.create(name='Ada', enabled=1)"
+  },
+  {
+    "name": "refined-inherited-owner",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Account.name, Column[Account, str])",
+    "invalid": "update(Account, Team.name.to('wrong'))"
+  },
+  {
+    "name": "refined-column-value",
+    "template": "refined.py.txt",
+    "valid": "update(Account, Account.id.to(4))",
+    "invalid": "update(Account, Account.id.to('wrong'))"
+  },
+  {
+    "name": "refined-frozen",
+    "template": "refined.py.txt",
+    "valid": "row = NewAccount(name='Ada')",
+    "invalid": "row.id = 1"
+  },
+  {
+    "name": "refined-read-frozen",
+    "template": "refined.py.txt",
+    "valid": "row=Account(id=1,created=datetime.now(),name='Ada')",
+    "invalid": "row.id=OMIT"
+  },
+  {
+    "name": "refined-query-result",
+    "template": "refined.py.txt",
+    "valid": "assert_type(select(Account), Query[Account])",
+    "invalid": "assert_type(select(Account), Query[NewAccount])"
+  },
+  {
+    "name": "refined-inherited-create",
+    "template": "refined.py.txt",
+    "valid": "assert_type(SpecialAccount.create(name='Ada'), Write[SpecialAccount])",
+    "invalid": "SpecialAccount.create(name='Ada', tier=2)"
+  },
+  {
+    "name": "borrowed-required",
+    "template": "borrowed.py.txt",
+    "valid": "assert_type(insert(Account, name='Ada'), Write[Account])",
+    "invalid": "insert(Account)"
+  },
+  {
+    "name": "borrowed-classmethod",
+    "template": "borrowed.py.txt",
+    "valid": "assert_type(Account.create(name='Ada'), Write[Account])",
+    "invalid": "Account.create()"
+  },
+  {
+    "name": "borrowed-value",
+    "template": "borrowed.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name=42)"
+  },
+  {
+    "name": "borrowed-keyword",
+    "template": "borrowed.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(naem='Ada')"
+  },
+  {
+    "name": "borrowed-override",
+    "template": "borrowed.py.txt",
+    "valid": "Account.create(name='Ada',id=42)",
+    "invalid": "Account.create(name='Ada',id=None)"
+  },
+  {
+    "name": "borrowed-result",
+    "template": "borrowed.py.txt",
+    "valid": "assert_type(select(Account),Query[Account])",
+    "invalid": "assert_type(select(Account),Query[int])"
+  },
+  {
+    "name": "borrowed-direct-construction-gap",
+    "template": "borrowed.py.txt",
+    "valid": "assert_type(Account(name='Ada').id,int)",
+    "invalid": "Account(name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "command-NewCommand-missing",
+    "template": "commands.py.txt",
+    "valid": "assert_type(NewCommand(name='Ada'),Write[NewCommand])",
+    "invalid": "NewCommand()",
+    "rejects": false
+  },
+  {
+    "name": "command-NewCommand-value",
+    "template": "commands.py.txt",
+    "valid": "assert_type(NewCommand(name='Ada'),Write[NewCommand])",
+    "invalid": "NewCommand(name=42)",
+    "rejects": false
+  },
+  {
+    "name": "command-NewCommand-keyword",
+    "template": "commands.py.txt",
+    "valid": "assert_type(NewCommand(name='Ada'),Write[NewCommand])",
+    "invalid": "NewCommand(naem='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "command-MetaCommand-missing",
+    "template": "commands.py.txt",
+    "valid": "assert_type(MetaCommand(name='Ada'),Write[MetaCommand])",
+    "invalid": "MetaCommand()",
+    "rejects": false
+  },
+  {
+    "name": "command-MetaCommand-value",
+    "template": "commands.py.txt",
+    "valid": "assert_type(MetaCommand(name='Ada'),Write[MetaCommand])",
+    "invalid": "MetaCommand(name=42)",
+    "rejects": false
+  },
+  {
+    "name": "command-MetaCommand-keyword",
+    "template": "commands.py.txt",
+    "valid": "assert_type(MetaCommand(name='Ada'),Write[MetaCommand])",
+    "invalid": "MetaCommand(naem='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "baseline-required",
+    "template": "baseline.py.txt",
+    "valid": "assert_type(Account(name='Ada'), Account[db.Pending])",
+    "invalid": "Account()"
+  },
+  {
+    "name": "baseline-explicit-fetched-gap",
+    "template": "baseline.py.txt",
+    "valid": "assert_type(Account[db.Fetched](name='Ada').id,int)",
+    "invalid": "Account[db.Fetched](name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "baseline-default-mismatch",
+    "template": "baseline.py.txt",
+    "valid": "Account(name='Ada')",
+    "invalid": "class Bad(db.Model[db.Pending, 'Bad']):\n    age: db.Col[int] = db.Integer(default='wrong')"
+  },
+  {
+    "name": "implicit-generated-default",
+    "template": "basic.py.txt",
+    "valid": "class GeneratedRow(GeneratedModel):\n    id: Generated[int] = generated()\n    name: Field[str] = field()\nGeneratedRow(id=1,name='Ada')",
+    "invalid": "GeneratedRow(name='Ada')"
+  },
+  {
+    "name": "unannotated-descriptor-constructor",
+    "template": "basic.py.txt",
+    "valid": "class Implicit(Model):\n    name = Field[str]()\nassert_type(Implicit.name,Column[Implicit,str])",
+    "invalid": "Implicit(name='Ada')"
+  },
+  {
+    "name": "plain-annotated-column",
+    "template": "basic.py.txt",
+    "valid": "@dataclass\nclass Plain:\n    name: Annotated[str, 'TEXT']\nassert_type(Plain(name='Ada').name,str)",
+    "invalid": "Plain.name.eq('Ada')"
+  },
+  {
+    "name": "self-specialization",
+    "template": "basic.py.txt",
+    "valid": "class State[T]:\n    def same(self) -> Self: return self\nassert_type(State[int]().same(),State[int])",
+    "invalid": "class Rebind[T]:\n    def fetched(self) -> Self[int]: raise NotImplementedError"
+  },
+  {
+    "name": "higher-kinded-model",
+    "template": "basic.py.txt",
+    "valid": "assert_type(Account(name='Ada').name,str)",
+    "invalid": "def read[ModelType](model: type[ModelType[int]]) -> None: pass"
+  },
+  {
+    "name": "generic-typed-dict-unpack",
+    "template": "basic.py.txt",
+    "valid": "assert_type(Account(name='Ada').name,str)",
+    "invalid": "def create[Input](**kwargs: Unpack[Input]) -> None: pass"
+  },
+  {
+    "name": "recursive-__new__",
+    "template": "basic.py.txt",
+    "valid": "assert_type(Account(name='Ada').name,str)",
+    "invalid": "@dataclass_transform()\nclass Recursive:\n    def __new__[**P, R](cls: Callable[P,R], *args:P.args, **kwargs:P.kwargs) -> Write[R]:\n        raise NotImplementedError\nclass Attempt(Recursive):\n    name: Field[str] = field()\nassert_type(Attempt(name=\"Ada\"), Write[Attempt])",
+    "checker_failure": false
+  },
+  {
+    "name": "recursive-__call__",
+    "template": "basic.py.txt",
+    "valid": "assert_type(Account(name='Ada').name,str)",
+    "invalid": "@dataclass_transform()\nclass Recursive(type):\n    def __call__[**P, R](cls: Callable[P,R], *args:P.args, **kwargs:P.kwargs) -> Write[R]:\n        raise NotImplementedError",
+    "checker_failure": true
+  },
+  {
+    "name": "value-default-read",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(Account(name='Ada').id,int)",
+    "invalid": "assert_type(Account(name='Ada').id,str)"
+  },
+  {
+    "name": "value-input-shape",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(accounts.new(name='Ada'), Account[Omitted])\nassert_type(accounts.new(name='Ada').id,int | Omitted)",
+    "invalid": "accounts.new()"
+  },
+  {
+    "name": "value-insert-shape",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(accounts.create(name='Ada'), Write[Account[Never]])",
+    "invalid": "accounts.create(name=42)"
+  },
+  {
+    "name": "value-select",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(accounts.select(),Query[Account[Never]])",
+    "invalid": "assert_type(accounts.select(),Query[Account[Omitted]])"
+  },
+  {
+    "name": "value-explicit-id",
+    "template": "value_parameter.py.txt",
+    "valid": "accounts.create(name='Ada',id=42)",
+    "invalid": "accounts.create(name='Ada',id=None)"
+  },
+  {
+    "name": "value-second-generated",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(accounts.new(name='Ada').created,datetime | Omitted)",
+    "invalid": "accounts.create(name='Ada',created='wrong')"
+  },
+  {
+    "name": "value-column-without-missing",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(Account[Omitted].id,Column[Account[Omitted],int])",
+    "invalid": "Account[Omitted].id.eq(OMIT)"
+  },
+  {
+    "name": "value-direct-fetched-gap",
+    "template": "value_parameter.py.txt",
+    "valid": "assert_type(Account[Never](name='Ada').id,int)",
+    "invalid": "Account[Never](name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "decorator-required",
+    "template": "decorated.py.txt",
+    "valid": "assert_type(commands(name='Ada'),Write[Row])",
+    "invalid": "commands()"
+  },
+  {
+    "name": "decorator-value",
+    "template": "decorated.py.txt",
+    "valid": "assert_type(commands(name='Ada'),Write[Row])",
+    "invalid": "commands(name=42)"
+  },
+  {
+    "name": "decorator-not-a-type",
+    "template": "decorated.py.txt",
+    "valid": "commands(name='Ada')",
+    "invalid": "def consume(row: Decorated) -> None: pass"
+  },
+  {
+    "name": "decorator-column-namespace",
+    "template": "decorated.py.txt",
+    "valid": "commands(name='Ada')",
+    "invalid": "Decorated.name"
+  },
+  {
+    "name": "refined-required-subclass-gap",
+    "template": "refined.py.txt",
+    "valid": "assert_type(RequiredAccount.create(name='Ada'), Write[RequiredAccount])",
+    "invalid": "RequiredAccount.create(name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "refined-required-subclass-repair",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Regional.create(name='Ada',region='EU'), Write[Regional])",
+    "invalid": "Regional.create(name='Ada')"
+  },
+  {
+    "name": "refined-required-subclass-columns",
+    "template": "refined.py.txt",
+    "valid": "assert_type(Regional.name,Column[Regional,str])\nassert_type(Regional.id,Column[Regional,int])",
+    "invalid": "Regional.create(name='Ada',region=42)"
+  },
+  {
+    "name": "excluded-required",
+    "template": "excluded.py.txt",
+    "valid": "assert_type(Account.create(name='Ada'), Write[Account])",
+    "invalid": "Account.create()"
+  },
+  {
+    "name": "excluded-value",
+    "template": "excluded.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name=42)"
+  },
+  {
+    "name": "excluded-override-through-assignment",
+    "template": "excluded.py.txt",
+    "valid": "assert_type(Account.create(name='Ada').with_(Account.id.to(42)),Write[Account])",
+    "invalid": "Account.create(name='Ada').with_(Account.id.to('wrong'))"
+  },
+  {
+    "name": "excluded-override-owner",
+    "template": "excluded.py.txt",
+    "valid": "Account.create(name='Ada').with_(Account.id.to(42))",
+    "invalid": "Account.create(name='Ada').with_(Team.id.to(42))"
+  },
+  {
+    "name": "excluded-no-id-keyword",
+    "template": "excluded.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',id=42)"
+  },
+  {
+    "name": "excluded-direct-construction-gap",
+    "template": "excluded.py.txt",
+    "valid": "assert_type(Account(name='Ada').id,int)",
+    "invalid": "Account(name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "client-generated-key",
+    "template": "basic.py.txt",
+    "valid": "from uuid import UUID, uuid4\nfrom dataclasses import dataclass, field as data_field\n@dataclass(kw_only=True)\nclass ClientRow:\n    name: str\n    id: UUID = data_field(default_factory=uuid4)\nassert_type(insert(ClientRow,name='Ada'),Write[ClientRow])\nassert_type(ClientRow(name='Ada').id,UUID)",
+    "invalid": "insert(ClientRow,name='Ada',id=42)"
+  },
+  {
+    "name": "readonly-typed-dict-refinement",
+    "template": "basic.py.txt",
+    "valid": "from typing import ReadOnly, NotRequired\nclass NewDictionary(TypedDict):\n    name: ReadOnly[str]\n    id: ReadOnly[NotRequired[int]]\nclass Dictionary(NewDictionary):\n    id: ReadOnly[int]\nassert_type(Dictionary(name='Ada',id=1)['id'],int)\nNewDictionary(name='Ada')",
+    "invalid": "Dictionary(name='Ada')"
+  },
+  {
+    "name": "readonly-typed-dict-columns",
+    "template": "basic.py.txt",
+    "valid": "from typing import ReadOnly\nclass Dictionary(TypedDict):\n    name: ReadOnly[str]\nassert_type(Dictionary(name='Ada')['name'],str)",
+    "invalid": "Dictionary.name.eq('Ada')"
+  },
+  {
+    "name": "baseline-inherited-witness",
+    "template": "baseline.py.txt",
+    "valid": "class Premium[S=db.Pending](Account[S]):\n    tier: db.Col[int] = db.Integer()\nassert_type(Premium.__read_type__(), type[Account[db.Fetched]])",
+    "invalid": "assert_type(Premium.__read_type__(), type[Premium[db.Fetched]])"
+  },
+  {
+    "name": "runtime_refined-required",
+    "template": "runtime_refined.py.txt",
+    "valid": "assert_type(Account.create(name='Ada'), Insert[Account])",
+    "invalid": "Account.create()"
+  },
+  {
+    "name": "runtime_refined-value",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name=42)"
+  },
+  {
+    "name": "runtime_refined-keyword",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',naem='wrong')"
+  },
+  {
+    "name": "runtime_refined-override",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada',id=42)",
+    "invalid": "Account.create(name='Ada',id='wrong')"
+  },
+  {
+    "name": "runtime_refined-null-id",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',id=None)"
+  },
+  {
+    "name": "runtime_refined-nullable",
+    "template": "runtime_refined.py.txt",
+    "valid": "assert_type(Account.nickname,Column[Account,str|None])",
+    "invalid": "Account.create(name='Ada',nickname=42)"
+  },
+  {
+    "name": "runtime_refined-second-generated",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada',created=123)",
+    "invalid": "Account.create(name='Ada',created=None)"
+  },
+  {
+    "name": "runtime_refined-frozen",
+    "template": "runtime_refined.py.txt",
+    "valid": "account=Account(id=1,created=777,name='Ada')",
+    "invalid": "account.id=2"
+  },
+  {
+    "name": "runtime_refined-read-id",
+    "template": "runtime_refined.py.txt",
+    "valid": "assert_type(Account(id=1,created=777,name='Ada').id,int)",
+    "invalid": "assert_type(Account(id=1,created=777,name='Ada').id,str)"
+  },
+  {
+    "name": "runtime_single-required",
+    "template": "runtime_single.py.txt",
+    "valid": "assert_type(Account.create(name='Ada'), Insert[Account])",
+    "invalid": "Account.create()"
+  },
+  {
+    "name": "runtime_single-value",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name=42)"
+  },
+  {
+    "name": "runtime_single-keyword",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',naem='wrong')"
+  },
+  {
+    "name": "runtime_single-override",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada',id=42)",
+    "invalid": "Account.create(name='Ada',id='wrong')"
+  },
+  {
+    "name": "runtime_single-null-id",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',id=None)"
+  },
+  {
+    "name": "runtime_single-nullable",
+    "template": "runtime_single.py.txt",
+    "valid": "assert_type(Account.nickname,Column[Account,str|None])",
+    "invalid": "Account.create(name='Ada',nickname=42)"
+  },
+  {
+    "name": "runtime_single-second-generated",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada',created=123)",
+    "invalid": "Account.create(name='Ada',created=None)"
+  },
+  {
+    "name": "runtime_single-frozen",
+    "template": "runtime_single.py.txt",
+    "valid": "account=Account(id=1,created=777,name='Ada')",
+    "invalid": "account.id=2"
+  },
+  {
+    "name": "runtime_single-read-id",
+    "template": "runtime_single.py.txt",
+    "valid": "assert_type(Account(id=1,created=777,name='Ada').id,int)",
+    "invalid": "assert_type(Account(id=1,created=777,name='Ada').id,str)"
+  },
+  {
+    "name": "runtime-refined-required-read",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account(id=1,created=777,name='Ada')",
+    "invalid": "Account(name='Ada')"
+  },
+  {
+    "name": "runtime-refined-input-marker",
+    "template": "runtime_refined.py.txt",
+    "valid": "assert_type(NewAccount(name='Ada').id,int | Omitted)",
+    "invalid": "assert_type(NewAccount(name='Ada').id,int)"
+  },
+  {
+    "name": "runtime-refined-owner",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada').with_(Account.name.to('Grace'))",
+    "invalid": "Account.create(name='Ada').with_(Team.name.to('wrong'))"
+  },
+  {
+    "name": "runtime-refined-bad-override-gap",
+    "template": "runtime_refined.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "class Wrong(NewAccount):\n    id: Field[str] = required()",
+    "rejects": false
+  },
+  {
+    "name": "runtime-single-direct-gap",
+    "template": "runtime_single.py.txt",
+    "valid": "assert_type(Account(name='Ada').id,int)",
+    "invalid": "Account(name='Ada')",
+    "rejects": false
+  },
+  {
+    "name": "runtime-single-explicit-omit-rejected",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "Account.create(name='Ada',id=OMIT)"
+  },
+  {
+    "name": "value-parameter-inference-escape",
+    "template": "value_parameter.py.txt",
+    "valid": "Account(name='Ada',id=1)",
+    "invalid": "Account(name='Ada',id='wrong')",
+    "rejects": false
+  },
+  {
+    "name": "bounded-value-inference-repair",
+    "template": "bounded_value.py.txt",
+    "valid": "assert_type(accounts.create(name='Ada',id=1),Write[Account[Never]])",
+    "invalid": "Account(name='Ada',id='wrong')"
+  },
+  {
+    "name": "bounded-value-null-rejected",
+    "template": "bounded_value.py.txt",
+    "valid": "accounts.create(name='Ada')",
+    "invalid": "Account(name='Ada',id=None)"
+  },
+  {
+    "name": "bounded-value-pending",
+    "template": "bounded_value.py.txt",
+    "valid": "assert_type(accounts.new(name='Ada').id,int|Omitted)",
+    "invalid": "accounts.create(name='Ada',id='wrong')"
+  },
+  {
+    "name": "foreign-required",
+    "template": "relations.py.txt",
+    "valid": "assert_type(Entry.create(account_id=1),Write[Entry])",
+    "invalid": "Entry.create()"
+  },
+  {
+    "name": "foreign-value",
+    "template": "relations.py.txt",
+    "valid": "Entry.create(account_id=1)",
+    "invalid": "Entry.create(account_id='wrong')"
+  },
+  {
+    "name": "foreign-target-declaration-gap",
+    "template": "relations.py.txt",
+    "valid": "assert_type(Entry.account_id,ForeignColumn[Entry,Account,int])",
+    "invalid": "class Bad(RelatedModel):\n    account_id: Foreign[Account,int] = foreign(Team.id)",
+    "rejects": false
+  },
+  {
+    "name": "runtime-default-mismatch",
+    "template": "runtime_single.py.txt",
+    "valid": "Account.create(name='Ada')",
+    "invalid": "class Bad(Model):\n    count: Field[int] = field(default='wrong')"
+  },
+  {
+    "name": "runtime-default-factory-mismatch",
+    "template": "runtime_single.py.txt",
+    "valid": "class Good(Model):\n    count: Field[int] = field(default_factory=lambda: 1)\nassert_type(Good.create(),Insert[Good])",
+    "invalid": "class Bad(Model):\n    count: Field[int] = field(default_factory=lambda: 'wrong')"
+  },
+  {
+    "name": "foreign-target-erased-control",
+    "template": "relations.py.txt",
+    "valid": "Entry.create(account_id=1)",
+    "invalid": "class Bad(ErasedRelations):\n    account_id: ErasedForeign[Account,int] = erased_foreign(Team.id)",
+    "rejects": false
+  },
+  {
+    "name": "foreign-reference-operation",
+    "template": "relations.py.txt",
+    "valid": "Entry.account_id.references(Account.id)",
+    "invalid": "Entry.account_id.references(Team.id)"
+  },
+  {
+    "name": "foreign-descriptor-assignment",
+    "template": "relations.py.txt",
+    "valid": "Entry.account_id.references(Account.id)",
+    "invalid": "wrong: Foreign[Account,int] = foreign(Team.id)"
+  },
+  {
+    "name": "method-declared-field",
+    "template": "basic.py.txt",
+    "valid": "class MethodRow(Model):\n    @property_field\n    def name(self) -> str: raise NotImplementedError\nassert_type(MethodRow.name,Column[MethodRow,str])",
+    "invalid": "MethodRow(name='Ada')"
+  },
+  {
+    "name": "baseline-foreign-declaration-gap",
+    "template": "baseline.py.txt",
+    "valid": "class Team(db.Model[db.Pending,'Team']):\n    id:db.Col[int] = db.Integer(primary_key=True)",
+    "invalid": "class Wrong(db.Model[db.Pending,'Wrong']):\n    team_id: db.FKCol[Team,int] = db.ForeignKey(Account.id)",
+    "rejects": false
+  },
+  {
+    "name": "input-generic-base-alternative",
+    "template": "basic.py.txt",
+    "valid": "class NewRow(Model):\n    name: Field[str] = field()\nclass ReadRow(NewRow,Read[NewRow]):\n    id: Field[int] = field()\nassert_type(ReadRow.insert(NewRow(name='Ada')),Write[ReadRow])",
+    "invalid": "ReadRow.insert(NewRow())"
+  },
+  {
+    "name": "runtime-generated-explicit-marker",
+    "template": "runtime_single.py.txt",
+    "valid": "class Marker(Model):\n    id: Generated[int] = generated(default=OMIT)\n    name: Field[str] = field()\nassert_type(Marker.create(name='Ada',id=OMIT),Insert[Marker])",
+    "invalid": "Marker.create(name='Ada',id='wrong')"
+  },
+  {
+    "name": "runtime-generated-column-domain",
+    "template": "runtime_single.py.txt",
+    "valid": "class Marker(Model):\n    id: Generated[int] = generated(default=OMIT)\nassert_type(Marker.id,Column[Marker,int])",
+    "invalid": "Marker.id.to(OMIT)"
+  },
+  {
+    "name": "baseline-immutability-not-static",
+    "template": "baseline.py.txt",
+    "valid": "account=Account(name='Ada')",
+    "invalid": "account.name='Grace'",
+    "rejects": false
+  },
+  {
+    "name": "frozen-existing-immutability",
+    "template": "frozen_existing.py.txt",
+    "valid": "account=Account(name='Ada')\nassert_type(account,Account[db.Pending])\nassert_type(account.id,int|db.PendingGeneration)",
+    "invalid": "account.name='Grace'"
+  },
+  {
+    "name": "frozen-existing-constructor",
+    "template": "frozen_existing.py.txt",
+    "valid": "assert_type(Account(name='Ada'),Account[db.Pending])",
+    "invalid": "Account(name=42)"
+  },
+  {
+    "name": "frozen-existing-column-update",
+    "template": "frozen_existing.py.txt",
+    "valid": "Account.name.to('Grace')",
+    "invalid": "Account.name.to(42)"
+  }
+]

@@ -1,0 +1,16 @@
+"""Expose the existing runtime immutability through dataclass-transform metadata."""
+from typing import assert_type, dataclass_transform
+from snekql import sqlite as db
+
+@dataclass_transform(
+    field_specifiers=(db.Integer, db.Text),
+    kw_only_default=True,
+    frozen_default=True,
+)
+def readonly[Row](model: type[Row]) -> type[Row]:
+    return model
+
+@readonly
+class Account[S = db.Pending](db.Model[S, 'Account[db.Fetched]']):
+    id: db.GenCol[int] = db.Integer(default=db.PENDING_GENERATION)
+    name: db.Col[str] = db.Text()

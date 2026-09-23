@@ -1,0 +1,13 @@
+"""Genericize only the missing generated value, with explicit table binding."""
+from datetime import datetime
+from typing import Never, assert_type
+from typing_probes.model_definitions.core import (
+    Column, Field, GeneratedValue, Omitted, OMIT, ValueModel,
+    Table, Write, Query, field, server,
+)
+class Account[Missing: Omitted = Never](ValueModel):
+    id: GeneratedValue[int, Missing] = server(default=OMIT)
+    created: GeneratedValue[datetime, Missing] = server(default=OMIT)
+    name: Field[str] = field()
+    nickname: Field[str | None] = field(default=None)
+accounts = Table(Account[Omitted], Account[Never])

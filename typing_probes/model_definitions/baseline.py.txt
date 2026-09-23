@@ -1,0 +1,7 @@
+"""Observe the actual existing model implementation, including its escape hatches."""
+from typing import assert_type
+from snekql import sqlite as db
+class Account[S = db.Pending](db.Model[S, 'Account[db.Fetched]']):
+    id: db.GenCol[int] = db.Integer(default=db.PENDING_GENERATION)
+    name: db.Col[str] = db.Text()
+    nickname: db.Col[str | None] = db.Text(default=None)

@@ -1,0 +1,3739 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "implementation": "CPython",
+  "ty": "0.0.77",
+  "python_target": "3.14",
+  "base_revision": "3548668335456a686eedcf3649d267c53148dbd7",
+  "source_sha256": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "baseline.py.txt": "f270e5c6d81120de6e18884a13b1b478b0780c11f11673d283de027eec9e3794",
+    "basic.py.txt": "8b590a1d40edb4120b02481291d6ec5b03d8b4f75a7fd7675e2afe5de7b6f269",
+    "borrowed.py.txt": "e7143c5defe45bd9cc2e1886362198e52a2b4d78a83a4af2c725e848d1bbd440",
+    "bounded_value.py.txt": "870152d0403f79c6eb64e9c6d6c8e5431ea684b43f7c009fc30151d11a6ef9e2",
+    "cases.json": "64b6bae836443b16a801d8d396fb4bae29c67c8d0b9cf3985088c575a87d27e9",
+    "check.py": "41e756e6637c9bf2ed4994835a65a10602b80cf7b075368d660938fe7f211cd3",
+    "commands.py.txt": "9bc4ebbe52d86dc88947bd45a0f55b44642c28f3473a756aac02bc4054f1da06",
+    "core.pyi": "e210fa72106e7f2049e3df9dfd9ecccfb8bf2d7d2f03d975c62333dc9f81cb9b",
+    "decorated.py.txt": "f8b9d2c3634ea8ecdfa5a92c57e018ce97145f63418cf3c05db49fb8e389c985",
+    "excluded.py.txt": "78f1ec1221badc115f0ad701333979d790be8d1550300f5c42f0a97dd993f3f9",
+    "frozen_existing.py.txt": "1f0c7d4d3a4c3ee192ede1ebdc94840b9b35d8bdbb14ee028a4629c834b9c77a",
+    "refined.py.txt": "86e78f761a69452bb2330397f4cad08494d1f6aeae67dac0dc9c1a4902613fc0",
+    "relations.py.txt": "0012058932e9d9fbb6f441b912e41912b6a72046f92d1eb0a2c5ceb78bb9d7e9",
+    "runtime.py": "cd855f93e3bbdf1fb3aa4e5ae4f654cf8fcb44f062b3b7cf26e083119231d1da",
+    "runtime_refined.py.txt": "10d1c0cd83e58f4357c20c2c2ed8d3bcb7faf10e9d831fe15251c7630feda3da",
+    "runtime_single.py.txt": "fa49f19d422c7a26aea1f42877cded9427c085f01845b9489eb1078c097579d8",
+    "value_parameter.py.txt": "d140a6888f68fb8342345e3b9f43696b0c2bf2a26e7de6f9def97d4323bdc749"
+  },
+  "results": [
+    {
+      "name": "refined-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "cab8a09cdc2f3a1a55e93a265e250c5eeb44010716bfa66bf82441b6a7e2d025",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "9de3ebccbb6a4897b75dca6f0f8a2273f8f81cef44dbab61f84dfadb1b98171e",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmpwrgyb8y6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0778a479d955fa551b530123f4f30f3a405c4ef5f3e7c172a72a3f64c102a767",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1975a052fac0ad31fb2bb05f9600e3f96633198d2547deaeab425825b1755d5a",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmpuetosfzp/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-keyword",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0778a479d955fa551b530123f4f30f3a405c4ef5f3e7c172a72a3f64c102a767",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "57fc35d7a869bcc4d26160d008daddfb4974e2dc4304fbc29de14345cdd2b9c6",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `naem` does not match any known parameter of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmpksk96c6t/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-explicit-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "70bae6e676424f1da236488270fc2e0906879f1e7d327b0c90938bd15a3cb165",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "11ffe297305ee5c6d0404f97ab082b072a2ee615098ca81ceea39f2231c26154",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `int | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp7_rqzbsz/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-id-not-null",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c82e8fb4882a5fcd701c5665b5309be4749b185e582bedde877d9413f2441325",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "528c54ee5158aa6f46cab1ecf431a3471ce268e97a2c9cc448af5347e3f2784a",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `int | Omitted`, found `None`",
+              "location": {
+                "path": ".git/tmpcc74oxa4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-nullable",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "238d5e01e27f3411e98066f10531cea7da60251805d6b3a1c4763d9f08cb4507",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f46ea6a23410aa176b8b8532494a6a6496460dc9786d9beeb23a6d866febf6f4",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `str | None`, found `Literal[3]`",
+              "location": {
+                "path": ".git/tmpwt0qo1fj/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-pending-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "483201c259f761eeae5c97bc31520398c1516f1f0698f4306c79ad3bcd1a2a75",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "58510cd6568632028ba8a92360f1a85456f0d4c20720c5d467ed2c5997cd01ee",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `int | Omitted` does not match asserted type `int`",
+              "location": {
+                "path": ".git/tmpv011wefa/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-read-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1eb2d09ff9283e07561b7625875d80cf0170cee761e9c8e930753d6bf2d8a77f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "6c29ca29efc3515c60e55febe5a30ab5b33801bb18671d8b1f468af3c8e2f49e",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `id`",
+              "location": {
+                "path": ".git/tmp_56kbxw0/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-read-created",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "084a51c9f756abada59f84fcbe218d1cda3e497316069611bf4e61f904ecf204",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5fdc49639e038eeb41efc58e34cbcb0a3a01d791a0f4e3d8cd97e62d21861dcf",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `created`",
+              "location": {
+                "path": ".git/tmphnh99fcn/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-server-override",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "048dfa944e5bf6b77482b5caa2f912be4e7edc723bb7b7e1b6683786a886aa45",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "2a9d86cb7e38aaffb5444ffa288e874c820f7644aa152c78179a3cafd8be86d8",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `datetime | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpaxenhmt6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-read-rejects-omitted",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "84cd54bf91c9052f17787c583ae772826a625f93a559a3aa098fcd4a894a0bb3",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "020406644e19da782a0b86208d46e23ac3b21617e739d87e8a088760929ef510",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `int`, found `Omitted`",
+              "location": {
+                "path": ".git/tmpa2vpwz12/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-default",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "02196215b12797db1129470155751368cbb6556a8b1d2d1da8ba8b9d89934117",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "c8a9223adbe6f5c10367c775f529a39bec9519245adc5995ed460578d6b11543",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `bool`, found `Literal[1]`",
+              "location": {
+                "path": ".git/tmp_rvegxpe/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-inherited-owner",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "66a8fc25823145df7aa39f442a1b0db237c9534b713e0176338f6b9ec38ccf15",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d7b19c84fe1f0df05c9757628e3f16773fa5041dfcd5f14491d62a1e6e415e01",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to function `update` is incorrect: Expected `Assignment[Account | Team]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmps1vwj1km/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-column-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "559ae8d1858fe08280733a62b7f9d0032f6b1de7cd82a804ad4a548e1dee1b00",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a4a17f6ee5d356fbfd03159e60f1fbeb7409ed3f6ff6dd0b6a6fe1f402359f67",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpp15kztqn/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-frozen",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "6ddbdee3aec9af6ec6f1f3c6ec8f141ad80c93e0383cdd3a55e013c1d256f775",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "700482d970934fbc8d7c9d553e5ac668416a4e270f7f04ed634f260e11c0e8c5",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Property `id` defined in `NewAccount` is read-only",
+              "location": {
+                "path": ".git/tmpj71_xjz8/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-read-frozen",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f1aa80e9954da6b43e1974bdb4e6ff29cd63de222a4ccec022ee0b92c5649b3f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b6f63a18918ec133ecd68a1dc86180a2a27b37e6e0a220b264194a35899f1ad6",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Property `id` defined in `Account` is read-only",
+              "location": {
+                "path": ".git/tmpuanz1ag6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-query-result",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "af7dae94dfe1696d41badb9c4f6998fd1b2e0f2e4b4f893bec58daae0beb4b6c",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d63d580335bc65a5edd8707f28f2cd18692157ac8dd48fe79957c06a146cbd51",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `Query[Account]` does not match asserted type `Query[NewAccount]`",
+              "location": {
+                "path": ".git/tmpi5hldj8b/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-inherited-create",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c30c9c32df80ca87a23d17aaed037303458cadd2db9ee5b5548127bd3f64f920",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d219b54b37bf12e793662e99a5643bd23c6ace147b1102effb3cdcbacb005969",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `tier` does not match any known parameter of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmp0qh9brxr/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "bee8b6cc815c5d0232996861e86f3da299ffde7d505961475416ed4471c02ee5",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "43d94945c79a97f87e20b84035b6e500ef6e81bfe7c3981ce015e3273c920031",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of function `insert`",
+              "location": {
+                "path": ".git/tmp461bs7br/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-classmethod",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "6aa38c10bf658a4a817d5bd95d840a9822c5b185f9d03ea76041a25b7c69d793",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "8270457678f73c1c9c6fc94bafd6890e3991a127cd54570b34642282bd070ee0",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpy3m0ufsx/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "a92f7cde37aae4cea23f090f18d4531cefd8f69892d2139c57b06a840fd71dbd",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "8387f55308916915789bfd57bfc40c25c14bc37967ff36769fe9a9ef4d5c2796",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp017bv87l/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-keyword",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "a92f7cde37aae4cea23f090f18d4531cefd8f69892d2139c57b06a840fd71dbd",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "968358e6054a3b884e126b9c3344b30f86781442eaa73c552c9d645782ed5332",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpz1ygu41d/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            },
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `naem` does not match any known parameter of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpz1ygu41d/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-override",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "843f07e75e7112c78e5cc64ee9b45e93181720c1ebc01d4b963517712d9b6a10",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "135b68ad8acdea19021ad31a709271a9b1f5d7c017ef75fad410a8be445fb32e",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int | Omitted`, found `None`",
+              "location": {
+                "path": ".git/tmpct4o5qry/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-result",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "86716973123f39a052ace38148364895792204bae9692cb6c010997536e7a2b4",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d5ef9ad2649a8db700c056408988ea4361818a1eb13d0cdfc64a44975412e999",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `Query[Account]` does not match asserted type `Query[int]`",
+              "location": {
+                "path": ".git/tmp3wnr4dx9/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "borrowed-direct-construction-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "135d02ddffbfc4294f50291e44cd13726be3713b236916f3af8a2043ca5bd746",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "4dede06811d64cb615ddec13c2415f61e2d8ad253133624061a4a7b889a20622",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-NewCommand-missing",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1f25adf1891d0042a650a89b720492ae8f47f27577d782f754316515680794fc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "91ff598dfd446bc42e1a85cc98ab748fb01c45f800bbb6b20b236bc19e64e938",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-NewCommand-value",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1f25adf1891d0042a650a89b720492ae8f47f27577d782f754316515680794fc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "9d9f55995f6d2eeccadfc9ed59a4046bcfb89aa9643195f2f1c3f85144d5981a",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-NewCommand-keyword",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1f25adf1891d0042a650a89b720492ae8f47f27577d782f754316515680794fc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "700858c4df384406e8c5a12ed045611368ec7aabb9653aa1a29ee3db2bedfe9b",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-MetaCommand-missing",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1016db23c0d571e7eea2f8684f372eb90ebb045a22630f3421b4ad5d8d19ed33",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b32b7eb9fcb6705db213ed5bcca7abdfc0d7a18204fa1e5f9870d8a52fdfc9bd",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-MetaCommand-value",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1016db23c0d571e7eea2f8684f372eb90ebb045a22630f3421b4ad5d8d19ed33",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "866b94685ddc14f47e9ebc76eac104bbacbaf3d5bd4c4444b8fb36f64424876f",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "command-MetaCommand-keyword",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1016db23c0d571e7eea2f8684f372eb90ebb045a22630f3421b4ad5d8d19ed33",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "027739931b1987e148bdfe299e18639e1c04887d60d45be1c04591b1597f2b37",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "baseline-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "8edc1d14ffe51da6d218d292d9004049a1f77f6203e847abcec95a2dc2a0f34c",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "ac50d63f728655e4d8fb4a880e3dac0dbf23bfde008b63ef15409abae714cc87",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name`",
+              "location": {
+                "path": ".git/tmp6wif7013/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 12
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "baseline-explicit-fetched-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2937747051fdd9eab235d17ac461f9e5c70f7f6a16686f28bce7c41accdd82ec",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "0e88b171ea701b55ad2597e8efe3c8d9ec1334c11fca7b43c65ce9ae0f77f99e",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "baseline-default-mismatch",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "105f375085ba809489d28b853ae249adf899eb87f089dfb4b6cf3a15acfbb92e",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "87ceee10f7a4d0e560affd9dc65892cee122ee5140adf1b742bf06863a6ea40c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Object of type `dataclasses.Field[Attr[Any, Any, _UnboundOwner, str, str, str, Any]]` is not assignable to `Col[int]`",
+              "location": {
+                "path": ".git/tmpmxatyopq/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 13
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "implicit-generated-default",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "b8132ae144240a97a9ca2ae18f6018059b82f6319131d62448a16afeef386e35",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "eb7e76c2d3059b66a33786e7a401a5539bd224be92895fdfb93c856ae2ecab46",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `id`",
+              "location": {
+                "path": ".git/tmpb83gpebh/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "unannotated-descriptor-constructor",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3a72640d61e2d8d2de7b03602617ff097b77b017f552755aa4dcd373f5dab35a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "a0f322b0f7051d5d284af282b927d9a3edc2e277d320f99240a6fe8494d5bfd9",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `name` does not match any known parameter",
+              "location": {
+                "path": ".git/tmpulglk5m4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 17
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "plain-annotated-column",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0dcc8b00b9c85a3608072a160068d36c26f7a6e24349a3ddf07df74c8f5db703",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5f667250ede0038eaa690d0e2c513b64e0d876d1a0a65148e91ca748c53bfc80",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Object of type `str` has no attribute `eq`",
+              "location": {
+                "path": ".git/tmptaun686d/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "self-specialization",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "865d4f6a9e9259ffd71a0c78d29d9530b49c8e04bcd52da16ae6c4d7ff1f870d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "8115e9010539b42fc2b6cca15e44e14655e2b30b537b292a8a8bcb12997a5db0",
+          "diagnostics": [
+            {
+              "check_name": "invalid-type-form",
+              "description": "invalid-type-form: Special form `typing.Self` expected no type parameter",
+              "location": {
+                "path": ".git/tmpxy2gye5a/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "higher-kinded-model",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e769df3a9826ae576d559fc69dd9bd1b947938d504a11bffe5c35d9151344c6",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f1756d990c7306062e2b6af3a9af9b4bf3d7347c48f17ca4e3a815bb2616c6bc",
+          "diagnostics": [
+            {
+              "check_name": "invalid-type-form",
+              "description": "invalid-type-form: A type variable itself cannot be specialized",
+              "location": {
+                "path": ".git/tmp6t7oko1l/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "generic-typed-dict-unpack",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e769df3a9826ae576d559fc69dd9bd1b947938d504a11bffe5c35d9151344c6",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e00ce51a7212a75b4fdbd0fd500aca1c2836ea60d7951f1891e523083b8c347d",
+          "diagnostics": [
+            {
+              "check_name": "invalid-type-form",
+              "description": "invalid-type-form: Unpacked value for `**kwargs` must be a TypedDict, not `Input@create`",
+              "location": {
+                "path": ".git/tmpa3o_cu39/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "recursive-__new__",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e769df3a9826ae576d559fc69dd9bd1b947938d504a11bffe5c35d9151344c6",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "3f390f8cdc3c2a9a0a4307dda9c4aca25fd6dbcb4017ca4c78530c393ebe5c4e",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `Write[Write[Never]]` does not match asserted type `Write[Attempt]`",
+              "location": {
+                "path": ".git/tmptwu40ecv/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            },
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to constructor `Recursive.__new__` is incorrect: Expected `(...) -> Write[Never]`, found `<class 'Attempt'>`",
+              "location": {
+                "path": ".git/tmptwu40ecv/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "recursive-__call__",
+      "expected_rejection": null,
+      "expected_checker_failure": true,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e769df3a9826ae576d559fc69dd9bd1b947938d504a11bffe5c35d9151344c6",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "22756bd6f56f8a523b03b503cd59166bdeffd2d386f9925c6414e684db91261c",
+          "diagnostics": [
+            {
+              "check_name": "panic",
+              "description": "panic: Panicked at /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/salsa-0.28.2/src/function/execute.rs:751:9 when checking `/home/crpier/Projects/second-snekql/.git/tmpt1p_c5ug/probe.py`: `BoundMethodType < 'db >::bound_signatures_(Id(4200)): execute: too many cycle iterations`",
+              "location": {
+                "path": "",
+                "positions": {
+                  "begin": {
+                    "line": 1
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 101
+        }
+      ]
+    },
+    {
+      "name": "value-default-read",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c406d811c0c5a49743c95dae53696165a954511a96ac920c9f9818666b567ff5",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "2a95de51c6c414d98a6a18727322fb0999eeef7f7c99b74a5365a80682d89468",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `int` does not match asserted type `str`",
+              "location": {
+                "path": ".git/tmprk5e0a3s/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-input-shape",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "152e233cb32a8ca0073e4c1c802968d2a82d348411eb91b0c699771965a98848",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d80191d14e0328bf387730e37805963e2e597b59b4f77d5a0a6ff3df646aa07c",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Table.new`",
+              "location": {
+                "path": ".git/tmpx3hi0f86/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-insert-shape",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "86310c08383729743ba35e790367eea11c6ca6cdd67676198522c543fd08d226",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "315a03188bb75be41ac76a27f8ff8dd72b535b9ac4e284d91fae16f436183193",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Table.create` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp0hmesast/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-select",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "07205329801630b9819170e1c92502299fbe6a3cd78022091cd5519067755639",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "ee168aeec63f8e6cd5571cd70eb4e8275636feedcef947ca2a3f4d17a99a5071",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `Query[Account[Never]]` does not match asserted type `Query[Account[Omitted]]`",
+              "location": {
+                "path": ".git/tmpmpx9s_zb/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-explicit-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "ff5faa72723f614ab2e0ec28e5c0fdefbea5177ce84480e9a9282e73a11b920e",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1649287038bbb761f319b4f391a6b7d6b9696f5279feb65cecec6e14e99510a1",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Table.create` is incorrect: Expected `int | Omitted`, found `None`",
+              "location": {
+                "path": ".git/tmpdlf1sy1l/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-second-generated",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "211dcad35eabd5fc7c51c6c7767e348912a3591ad877e530f30b52666c6d95ca",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d5344742c1506fec9bbb5852296fe19f5cbd5b92ea68ac1ba2f16dea7b21c7be",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Table.create` is incorrect: Expected `datetime | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmphwdajp7f/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-column-without-missing",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c2704648807567884ec1535516d1469c303dcc44e110139637091fa22bde32ea",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1e2dceb733c8c6716137d97047224a76efac390956921de9bdc506b121144376",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.eq` is incorrect: Expected `int`, found `Omitted`",
+              "location": {
+                "path": ".git/tmpt1bxdboj/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-direct-fetched-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "7538b503c401927d8a13ec866560a163ad13bf122372e859c216bf7930b8a789",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "c9d7ce5fe01a24f6d7be520ab403921441f217a1eabb1946f879fc05ece5d83d",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "decorator-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f7784d044f62730b73be889bbfd94701e962a3e5a7e4f6e6399acbe9c5e62ee9",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "08b6648841316ddbc68185bbb4987d35af04c4995b76f02861a7674ee7da3bd1",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Factory.__call__`",
+              "location": {
+                "path": ".git/tmp5xv5hi06/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 14
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "decorator-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f7784d044f62730b73be889bbfd94701e962a3e5a7e4f6e6399acbe9c5e62ee9",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "79f1b5d74be4eee5841ecc3fea42c7f2a8bcba4ac04c57b620dc7468a110be2b",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Factory.__call__` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp7206syn6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 14
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "decorator-not-a-type",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f111355a63396c3ecf9c9223ecf1b5b4dec5dce36fd339417a0b43f53e398c2d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1bb0d364dadfe16e67ad65ba28e77f7419fb83104d85866a8d2b99dad14056a2",
+          "diagnostics": [
+            {
+              "check_name": "invalid-type-form",
+              "description": "invalid-type-form: Variable of type `Factory[(*, name: str), Decorated]` is not allowed in a parameter annotation",
+              "location": {
+                "path": ".git/tmpyaa0919i/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 14
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "decorator-column-namespace",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f111355a63396c3ecf9c9223ecf1b5b4dec5dce36fd339417a0b43f53e398c2d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f3d35124ea31247b7b6a53b287753380a08baf5643d3444c82772e1ab6966630",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Object of type `Factory[(*, name: str), Decorated]` has no attribute `name`",
+              "location": {
+                "path": ".git/tmpnu2l2fl_/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 14
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-required-subclass-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "b96c65ac83dce670330fab5215b7f77d80591f5aea39dce3a8254b78729f6877",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "6932519fd97e017d21687d4f7f865afac0029cf181f808ee44a985ed42607859",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "refined-required-subclass-repair",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f6d1cd4ac6a0bf3d65a065bcf933821db59da4dc0b580aea4bab254b4c82cc21",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e40bd3078dee690a7e94d78b9245c1ddf95cc8ac3cd3c6b81f9fb4f170f30d90",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `region` of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmp9pa7qqo6/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 33
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "refined-required-subclass-columns",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "ebf690eacce44878c763e5ed9fd7793aa68feda6c57bf8a27267368bfda3523d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "76e60bab91652190d1140f1b38f4bbc83cfa0964ffdaa7ec645a15bc6ef6411f",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmpgdmen0d4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 34
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2ba1e80c6e2656ede7827b0bbddac20d42445fd79258d6db5203f7543a853027",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "786bf87f9a7c8eb8ed3a756b463cbd21299817cb802abde725c661df4acde6a3",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpqqsznshi/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "779381c9aeada7c45da471db20cb2efa4b214ae8126881cff241769026601bdc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "00166ce52706839d1bcb4aa701fc6d1b2ebbdbb5c670beb9c0d89558f91b1858",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp_a9ia349/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-override-through-assignment",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "d9b788165207e649f8cbbc5c5555600ba4845e3e8dbe10af9d8413d7723a6e51",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "28b3abf5ca9c57689fe74c127cfbf914c3a47cf0e7d60ce9aa69f89701b2cb4d",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmphnw8vw8t/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-override-owner",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "ed7959d07938e7fc75f280f9bdf552694ea27f708307e1b8881d6a53d409efc7",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "f1eb2ed618a9addb009d4991d45368c544f0626bdc9313478a4355c78372dee6",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Write.with_` is incorrect: Expected `Assignment[Account]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmp92tj8yhx/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-no-id-keyword",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "779381c9aeada7c45da471db20cb2efa4b214ae8126881cff241769026601bdc",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "27a777314606b88028ae2ffd248b5539539ae3c5bd20a5e2e419806982da9a2b",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `id` does not match any known parameter of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpe0gr1jb0/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "excluded-direct-construction-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "8dc58f05775442f5c58c2431f8f24ce3a6ab0dfe9d26bcf2c3b284848b2eb552",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "cb5eea8033dbb1c2f61dd9cfc5e836877a2f37c325a863cfca550543f4fc0e4c",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "client-generated-key",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "956f3854e5a2e589cf559699ca5c32afd2aff54095728d38e6a8da9be0f71499",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "76f5a15de7bd919628def3d5bae0cd4733aeee82c33caef5aa3742b0ec9d47e2",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to function `insert` is incorrect: Expected `UUID`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmpddm00eg2/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 22
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "readonly-typed-dict-refinement",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "711bd54dd9cc41acd6f2873d72361a57e6d35a5ef5336f5d7eac09d6ee2a639b",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "4f910311733eb667792952f897397c33d217e652d7f9f1820eda3c59e72c6466",
+          "diagnostics": [
+            {
+              "check_name": "missing-typed-dict-key",
+              "description": "missing-typed-dict-key: Missing required key 'id' in TypedDict `Dictionary` constructor",
+              "location": {
+                "path": ".git/tmpcolc33cc/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 22
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "readonly-typed-dict-columns",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "9aa622bfb1e10efd489c3ec6ac148766d5d4b82539dd2113af7de3632e04d0f9",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "ded4d7ef6d6ca4697b1de07d11ae73edc32678746a990ccb6ea71322f089f23c",
+          "diagnostics": [
+            {
+              "check_name": "unresolved-attribute",
+              "description": "unresolved-attribute: Class `Dictionary` has no attribute `name`",
+              "location": {
+                "path": ".git/tmp5uzepuxk/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "baseline-inherited-witness",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "f45eac8aec12e8ee5c583094ea3ed7db8d14e21b40ecd48f97eebc706746e123",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "4ffb4cf0e1aa5046129a3b03d6a8e06dabf4282d766a36889666c3cc7d260f23",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `type[Account[Fetched]]` does not match asserted type `type[Premium[Fetched]]`",
+              "location": {
+                "path": ".git/tmp1i6d2490/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 14
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "7d837f7751d415357485f7c8a3d4e306a6a9b4ac0ea5fe7d677be4e96bcb0f71",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d16db6f71c7a5386c2cb963d9d1eab9aa1f3cebe2ca3aad6caf49cb12b3dfbae",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmpauei0x2x/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3af04ccf358e32f429a5f787372017bd456e67ec600473fab9139a325977fd9f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d0f86d8e8527c6f27fdfe9fb4d07482186d9d83efdb284f5c276767f523c14b5",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp92tfowf1/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-keyword",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3af04ccf358e32f429a5f787372017bd456e67ec600473fab9139a325977fd9f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "7f6370ca2ecf8c9263da5e9e9adaaf99344726eb6f11a264d271bcaac4cc218a",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `naem` does not match any known parameter of bound method `BoundInsert.__call__`",
+              "location": {
+                "path": ".git/tmpekvdfa2g/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-override",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "deb2db9d732008eecf0eedc00c2820d69451a0d4aafbffa06b72814465a433ab",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b0b3f63a045334a9b2379f3ebe2ac32b78976642ea534d04c90190e2b23f3763",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `int | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmphs2qfzeg/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-null-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3af04ccf358e32f429a5f787372017bd456e67ec600473fab9139a325977fd9f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "7f9cd15b7f5193cce5e0e38b22063551469ce270ac58fcaab041d60e36ceeb15",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `int | Omitted`, found `None`",
+              "location": {
+                "path": ".git/tmp7_blatb3/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-nullable",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "518c29d07b22e490c97a347b11d7904a8c9f39df13a726fb5977a0336f5393a6",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "33b342e47816b5932e6326c5ed72383be876646668724a373e8160b695d92aec",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `str | None`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmprpk31wn7/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-second-generated",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0bfdff7b06dd7259a21bfb7c125efac716b36384704a129a20366430a3672abf",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e3ddc9215af4e4dd1c3779db1d109541e23c7993df178847ee12a5338b41fffa",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `BoundInsert.__call__` is incorrect: Expected `int | Omitted`, found `None`",
+              "location": {
+                "path": ".git/tmp5vlkklus/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-frozen",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "aeaab9765cf81d5349caed2f2b10a9d6b18008184d838980961e3c2e6465d986",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "71c85413ca7cebfa3c8b5c47f570a9a60062dd50bfb8871c7118ae6431685af8",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Property `id` defined in `Account` is read-only",
+              "location": {
+                "path": ".git/tmpf0bvigaj/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_refined-read-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "be25a023fd07d630366c4771be6e1c5f7b27403fe46dde3395d2a80b808eab84",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "90dfd70f2f4bbf9c21baed3a81c30b9bda7d131b970179c505f3e58ece7e6c91",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `int` does not match asserted type `str`",
+              "location": {
+                "path": ".git/tmpget8uvpg/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "91fa2af37a510b7e98df8d8209c8a625c0f3cf16145f0868d69f4b905100efc5",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "72f209de2cfa228b4cac6ea1d2deb72a281bfcbf850eab7177bbbd5c5525fec1",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name` of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpqkba6fuq/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e987c8476cc7f868d1e4a05a7d2c22ae9eb27e9939834c8d9436a0d0ca07399",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "7b48bb01a9dd32305faa1e37c64da56572db949f8df40fb462882bacfd5a21d8",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmpk0q5kfla/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-keyword",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e987c8476cc7f868d1e4a05a7d2c22ae9eb27e9939834c8d9436a0d0ca07399",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d21d23ae56b22afce821a53d74aa3a83f1854146974c16d59e4cbb7038df3d26",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `naem` does not match any known parameter of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpapryakti/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-override",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "e124d44ac37eaa3ce2ff75bda552da7e523749542fc6bfdcdaea5ccfa93dd5d7",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "02b0018f595320a0ab730be5cbe01346a984625b55f667e04190a2514126e5aa",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpy8946rn_/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-null-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e987c8476cc7f868d1e4a05a7d2c22ae9eb27e9939834c8d9436a0d0ca07399",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "345ddc2143f7d5dbf44148c4af41fbe17f12efdb7cfd944f033f8891565e152c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int`, found `None`",
+              "location": {
+                "path": ".git/tmpof7weqz5/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-nullable",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "7c571a92c7b204bbea3a3a5ac2b2e1a06530bcdbd128cc3bdc91351129afe57a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "2e2a083d9609fae6a54859df8db9a786d221fd8ead73bd394813bef1ecd7eaff",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `str | None`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmp4hdqxx5y/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-second-generated",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "db607bbdae88d7b46469fd527d4f3b15391993d4b2d68636ccaf0b547c440ea8",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d12cd884635c4aeba9aa8262a92f650bbc840d6b8481f7569cca03a995eda906",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int`, found `None`",
+              "location": {
+                "path": ".git/tmp2g5u0qui/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-frozen",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1307db75f1d796e17808279e228d4f0a2f2f9468054af013ebe21928d42073ec",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "64b1375fc980bb9dedc95b2ba920ac6ecf61aec7f9eb3c6506b5e1e6e453239b",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Property `id` defined in `Account` is read-only",
+              "location": {
+                "path": ".git/tmpeq2fck53/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime_single-read-id",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "982436a01762d8cf539fc6d4625053ca8146efc2bf83ed931962e024e3e6fd3d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "2ab4cbe32be88e283938c765e1dff460c24891681cf569d3af9d30eb7ae7ac51",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `int` does not match asserted type `str`",
+              "location": {
+                "path": ".git/tmpa_21vlq0/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-refined-required-read",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "293c81d5836c61239f59358fd15b38a6c4f7717b2e39a8cc6d0a21eb8e2e300b",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "1ea3e82b8e2e5cd6a62b57dca787fbb5bcf44a44be5b7c21124e807b2e1a568e",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No arguments provided for required parameters `id`, `created`",
+              "location": {
+                "path": ".git/tmpzsmb1qjb/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-refined-input-marker",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "2e5aebc2e9f2c46bf90bb53ce5ede0652801160367f551289b453eb6bfc2fc55",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "92b2f6ec26d959adff628b5f41cc8e775f554fc6652a756b9034a02309065bc9",
+          "diagnostics": [
+            {
+              "check_name": "type-assertion-failure",
+              "description": "type-assertion-failure: Type `int | Omitted` does not match asserted type `int`",
+              "location": {
+                "path": ".git/tmpdqrzmbkx/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-refined-owner",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "60b9f760a364893b53ec2f56939d2685e57f05b8bc1e490e0f573c7bfbc76976",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "efc4ad0da2d41f645a4e4a87aa28801657512023dcf29891cfb6c69ce6d0a7d7",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Insert.with_` is incorrect: Expected `Assignment[Account]`, found `Assignment[Team]`",
+              "location": {
+                "path": ".git/tmpzm4lh8pv/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-refined-bad-override-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "3af04ccf358e32f429a5f787372017bd456e67ec600473fab9139a325977fd9f",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "314ad7f83732cd714841e54f331a8f02213f510695fda5435ed343af5c80545f",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "runtime-single-direct-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "c28232b9e6e20a75c1658da8d0228a3ed5c3f614cb908cf6b8f891fb913b2947",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e0ab3cb75771c125d3fd31e90bd1ae2e4213b8417251ccd2ade566016a1df3d8",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "runtime-single-explicit-omit-rejected",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e987c8476cc7f868d1e4a05a7d2c22ae9eb27e9939834c8d9436a0d0ca07399",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "151d3b1f672ee27f02b6e16c88dce4a32f3a30258b6161faf8062ae100535a16",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int`, found `Omitted`",
+              "location": {
+                "path": ".git/tmpm_fh1lm4/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 15
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "value-parameter-inference-escape",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "74611de371e207c816fbc630c40882cd8c2864a81cf38023f65734b0f3e9f04e",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "0299596817f982c770b67a4a69a73f9b81fa380f37a8426e7a57b73f04892efa",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "bounded-value-inference-repair",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "594bd3f616ef7bd80a664b5006f04b76566e7871852f3687e0c6d4a2f1b115ba",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "2e846c8703a109c1206e2cacfa417960cdc9080bc659a6776657678f8480c3c1",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Argument type `Literal[\"wrong\"]` does not satisfy upper bound `Omitted` of type variable `Missing`",
+              "location": {
+                "path": ".git/tmptvcezdj9/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "bounded-value-null-rejected",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0b6f72b84aab10812a53bd13dba2f9ca94752b41834423f49d61321ca2e7c06d",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "86e2c1e52aabcc878e449a319b17598f7108f9e7230dad03cb351f31f95c0a60",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Argument type `None` does not satisfy upper bound `Omitted` of type variable `Missing`",
+              "location": {
+                "path": ".git/tmpis3v_rdv/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "bounded-value-pending",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "35af8d76ae934be9a5afa1d8da9284e9bf9472664f9cd6a4326fb319a9381547",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5ad8c93cced52513965db063109bdfd4bd0b68409d652f164f01135dbed73e0a",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Table.create` is incorrect: Expected `int | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp6wu0dvhp/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "foreign-required",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "a5a87d12081910bd7e2e35b13e82dd66d308ec042022b4c252d5417534f6956a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "cce70ae5a3856d108cb2c52168791bca9e87cb584e2ab94ba2bb706eb5f06f6d",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `account_id` of bound method `Model.create`",
+              "location": {
+                "path": ".git/tmpe03k2iwv/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 16
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "foreign-value",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1c2d69323801a145c066bbfa9cd8d28acf4744138d5bd5d3a84787edbf84bb1a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b9d727485c74c1ce9b8055d4083dcce46f2ccdefaf961e28ee5c8346e68c81d3",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmp2m985ued/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 16
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "foreign-target-declaration-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "0144bae315b6598da3e08471b70d6d6b08d549a03176160d1a019846ef1dd3ab",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b6d64cfe698a545c65086eafbe95ba5e0e99893ef86d98b1d710a108b607eabc",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "runtime-default-mismatch",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "5e987c8476cc7f868d1e4a05a7d2c22ae9eb27e9939834c8d9436a0d0ca07399",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "e38df7cb6b8cfb46f588b653e62213b1fdf21ec3d1a034bce03ef8cd5211aa4f",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Object of type `dataclasses.Field[Field[str]]` is not assignable to `Field[int]`",
+              "location": {
+                "path": ".git/tmpo99a6lbk/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 16
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-default-factory-mismatch",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "e7ace98920a68b4fa1aff6cdaa38c2b5d9e4065b757c865d85ed67509db0c54a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "0cf7d3b5af7f32a4c18a02c9117eba93ee9081eae90fa5d0abb7d078d3a78505",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Object of type `dataclasses.Field[Field[str]]` is not assignable to `Field[int]`",
+              "location": {
+                "path": ".git/tmpsza4ie9j/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "foreign-target-erased-control",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "1c2d69323801a145c066bbfa9cd8d28acf4744138d5bd5d3a84787edbf84bb1a",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "bc5d241c47231fd3b589b621ab015f43efecfae9662429681e52d5cf24b4e0ca",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "foreign-reference-operation",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "127976133150a8e6f2bc7351b86edabedf6e1cd758403599099dcad889f55d05",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "020f0d2705576bb351d00440e48171ac157f073656897bdf3b4097b318cbaf11",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `ForeignColumn.references` is incorrect: Expected `Column[Account, int]`, found `Column[Team, int]`",
+              "location": {
+                "path": ".git/tmpcbp4veq9/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 16
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "foreign-descriptor-assignment",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "127976133150a8e6f2bc7351b86edabedf6e1cd758403599099dcad889f55d05",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b03fca5e33074accc2594ec9b9807caecdd8a80ca480882032160ec72ead94af",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Object of type `Foreign[Team, int]` is not assignable to `Foreign[Account, int]`",
+              "location": {
+                "path": ".git/tmpofs1mvuo/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 16
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "method-declared-field",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "292fc2c269d8fb78ef6cbe28c094014d6434c4072c0a0e45a8acabbfe3b0bf15",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "426236aeb8cc4369b68c0561a6c49fb5dd4c50b36b3bfdc492484acebeada08e",
+          "diagnostics": [
+            {
+              "check_name": "unknown-argument",
+              "description": "unknown-argument: Argument `name` does not match any known parameter",
+              "location": {
+                "path": ".git/tmpuzy2eqvn/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "baseline-foreign-declaration-gap",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "10f2abcdba8f3f48c798a55c83b0e608be129bb3f58f53c6243b4e04c7d6b767",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "b3f50aea97e56238e71661aa081c0d486b8abbfffe26921c85a0058639001b1a",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "input-generic-base-alternative",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "fd1b545ad7b53cbcea86455103eaf160254b92d3be49db7932ff68482bc2f5a4",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "efb6e2e09ec96d20be4c2a43e68c8ca7bf2c775ac9f3c0199c4e74e134f1295b",
+          "diagnostics": [
+            {
+              "check_name": "missing-argument",
+              "description": "missing-argument: No argument provided for required parameter `name`",
+              "location": {
+                "path": ".git/tmpglnj_f80/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 19
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-generated-explicit-marker",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "daeb48cd904d19a9a5503ab04f3af10c8633067faa152bc3f513f87afa0f8de3",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d0b5cc78e412ae90f2e8e187e58951a36dbfb2e2f06beb5efed309760520fbee",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Model.create` is incorrect: Expected `int | Omitted`, found `Literal[\"wrong\"]`",
+              "location": {
+                "path": ".git/tmpl6_fy1ut/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 18
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "runtime-generated-column-domain",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "a746ba31b1ef43d5103dfc932ab80a262f5f0d574f8ce3c4bd00112a6a5ac534",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d44704d418c62eaea15c4a668aaf0457330a5c92186349394159af41b704651c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `int`, found `Omitted`",
+              "location": {
+                "path": ".git/tmpvvzhib2e/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 17
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "baseline-immutability-not-static",
+      "expected_rejection": false,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "b7ba8bbfe86c60260d68487ba5ab6d70464a8b6a81632c901751b5e2f72c2ff9",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "5130af14446f7d841352cbdb6bb0c2b0e57f54c71e1f6369381ff5353a7b9c22",
+          "diagnostics": [],
+          "exit_code": 0
+        }
+      ]
+    },
+    {
+      "name": "frozen-existing-immutability",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "27e1a404e5cb534cd74237c3b25086409c581b00efc5ebaaa4634b406d785d77",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "3996f522d18f354755e486486f96fb0f7a4579883b823cb461308317830b455c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-assignment",
+              "description": "invalid-assignment: Property `name` defined in `Account[Pending]` is read-only",
+              "location": {
+                "path": ".git/tmp32zk8b20/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 23
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "frozen-existing-constructor",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "7145f458535101c7c25d79da36b2188aa81c8ee44bf79a4deda32a2a77d8174e",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "3939211726c5b23927ae2b611ace83a1138dd94bcfb2b240af486001cd50493c",
+          "diagnostics": [
+            {
+              "check_name": "invalid-argument-type",
+              "description": "invalid-argument-type: Argument is incorrect: Expected `str`, found `Literal[42]`",
+              "location": {
+                "path": ".git/tmpm7sdzsqm/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    },
+    {
+      "name": "frozen-existing-column-update",
+      "expected_rejection": true,
+      "expected_checker_failure": false,
+      "conforms": true,
+      "observations": [
+        {
+          "negative": false,
+          "conforms": true,
+          "source_sha256": "e74a452b3d4fb645f044589e919bb2d1a8b7473ed15b8e0b686c521482b9cdeb",
+          "diagnostics": [],
+          "exit_code": 0
+        },
+        {
+          "negative": true,
+          "conforms": true,
+          "source_sha256": "d8e55eaef8d2f25bb62178d43db290a6a30bec6934fe0090f795ce1760ac4769",
+          "diagnostics": [
+            {
+              "check_name": "no-matching-overload",
+              "description": "no-matching-overload: No overload of bound method `Attr.to` matches arguments",
+              "location": {
+                "path": ".git/tmpfqmduger/probe.py",
+                "positions": {
+                  "begin": {
+                    "line": 21
+                  }
+                }
+              }
+            }
+          ],
+          "exit_code": 1
+        }
+      ]
+    }
+  ]
+}

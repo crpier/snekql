@@ -1,0 +1,9 @@
+"""A callable class decorator replaces the class's static type identity."""
+from typing import assert_type
+from typing_probes.model_definitions.core import Field, Model, Write, command_model, field
+class Row(Model):
+    name: Field[str] = field()
+commands = command_model(Row)
+@command_model
+class Decorated(Model):
+    name: Field[str] = field()

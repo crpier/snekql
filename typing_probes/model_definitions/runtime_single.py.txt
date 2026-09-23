@@ -1,0 +1,10 @@
+"""Single-class input commands share a constructor signature, not a pending row."""
+from typing import assert_type
+from typing_probes.model_definitions.runtime import (
+    Column, Field, Generated, generated, Insert, Model, Omitted, OMIT, field,
+)
+class Account(Model):
+    id: Field[int] = field(default=OMIT)
+    created: Field[int] = field(default=OMIT)
+    name: Field[str] = field()
+    nickname: Field[str | None] = field(default=None)

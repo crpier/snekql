@@ -1,0 +1,11 @@
+"""Nominal read models keep typed foreign-key targets without lifecycle aliases."""
+from typing import assert_type
+from typing_probes.model_definitions.core import (
+    Column, Field, Foreign, ForeignColumn, ErasedForeign, ErasedRelations, erased_foreign, Model, RelatedModel, Write, field, foreign,
+)
+class Account(Model):
+    id: Field[int] = field()
+class Team(Model):
+    id: Field[int] = field()
+class Entry(RelatedModel):
+    account_id: Foreign[Account,int] = foreign(Account.id)

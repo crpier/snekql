@@ -1,0 +1,10 @@
+"""Generated columns have no constructor slot; overrides use typed assignments."""
+from typing import assert_type
+from typing_probes.model_definitions.core import (
+    Column, Field, Model, Write, field,
+)
+class Account(Model):
+    id: Field[int] = field(init=False)
+    name: Field[str] = field()
+class Team(Model):
+    id: Field[int] = field()

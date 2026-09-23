@@ -1,0 +1,9 @@
+"""Changing a model constructor's return type loses field argument checks."""
+from typing import assert_type
+from typing_probes.model_definitions.core import (
+    Field, Write, ReturningNew, ReturningMeta, field,
+)
+class NewCommand(ReturningNew):
+    name: Field[str] = field()
+class MetaCommand(metaclass=ReturningMeta):
+    name: Field[str] = field()

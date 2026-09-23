@@ -1,0 +1,10 @@
+"""Borrow the dataclass constructor's ParamSpec for an insert command."""
+from typing import assert_type
+from typing_probes.model_definitions.core import (
+    Column, Field, Generated, Omitted, OMIT, GeneratedModel,
+    Write, Query, field, generated, insert, select,
+)
+class Account(GeneratedModel):
+    id: Generated[int] = generated(default=OMIT)
+    name: Field[str] = field()
+    nickname: Field[str | None] = field(default=None)

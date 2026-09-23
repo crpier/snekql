@@ -1,0 +1,28 @@
+"""Shared descriptor fields; only generated fields are refined on read rows."""
+from datetime import datetime
+from typing import assert_type
+from typing_probes.model_definitions.core import (
+    Column, Field, Omitted, OMIT, RefinedModel, Write, Query,
+    field, required, insert_using, select, update,
+)
+class NewAccount(RefinedModel):
+    id: Field[int | Omitted] = field(default=OMIT)
+    created: Field[datetime | Omitted] = field(default=OMIT)
+    name: Field[str] = field()
+    nickname: Field[str | None] = field(default=None)
+    enabled: Field[bool] = field(default=True)
+class Account(NewAccount):
+    id: Field[int] = required()
+    created: Field[datetime] = required()
+    create = insert_using(NewAccount)
+class SpecialAccount(Account):
+    tier: Field[int] = field(default=1)
+class Team(RefinedModel):
+    name: Field[str] = field()
+
+class RequiredAccount(Account):
+    region: Field[str] = field()
+class NewRegional(NewAccount):
+    region: Field[str] = field()
+class Regional(Account, NewRegional):
+    create = insert_using(NewRegional)
