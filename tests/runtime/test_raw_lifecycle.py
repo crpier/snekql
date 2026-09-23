@@ -1,10 +1,13 @@
 """Raw operation deadlines and cancellation on real contended connections."""
 
 import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterable
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
+from unittest.mock import patch
 
+from aiosqlite import Connection, Cursor
 from anyio import fail_after, to_thread
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
@@ -40,9 +43,36 @@ async def provide_contended_case(backend: BackendFamily) -> AsyncGenerator[RawCa
                 await transaction.execute(
                     case.namespace.raw("INSERT INTO raw_entries VALUES (1)")
                 )
+            # Sequential leases can reuse one connection. Hold both before any
+            # lock contention or deliberately short acquisition budget begins.
+            async with case.database.transaction(), case.database.transaction():
+                pass
             yield case
     finally:
         await to_thread.run_sync(directory.cleanup)
+
+
+@test(mark="medium")
+async def contended_waiter_does_not_need_connection_setup() -> None:
+    """Slow physical setup cannot consume the prepared waiter's short deadline."""
+    case = await load_fixture(provide_contended_case("sqlite"))
+    original_execute = Connection.execute
+
+    async def slow_validation(
+        connection: Connection, sql: str, parameters: Iterable[Any] | None = None
+    ) -> Cursor:
+        if sql == "SELECT 1":
+            await asyncio.sleep(0.06)
+        return await original_execute(connection, sql, parameters)
+
+    with patch.object(Connection, "execute", slow_validation), fail_after(5):
+        async with (
+            case.database.transaction(),
+            case.database.transaction(timeout=0.03) as waiter,
+        ):
+            observed = await waiter.fetch_one(sqlite.raw("SELECT 42 AS value"))
+
+    assert_eq(observed, {"value": 42})
 
 
 @test(
