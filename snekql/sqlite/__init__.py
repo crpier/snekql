@@ -130,6 +130,8 @@ else:
     Transaction = _Transaction
     Write = _RuntimeWrite
 
+from snekql.sqlite.recursive import recursive_cte
+
 __all__ = [
     "PENDING_GENERATION",
     "Aggregate",
@@ -231,6 +233,7 @@ __all__ = [
     "literal",
     "not_exists",
     "raw",
+    "recursive_cte",
     "scaffold",
     "scalar",
     "select",
