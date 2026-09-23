@@ -68,7 +68,7 @@ before using EXPLAIN/ANALYZE in production.
 | `.on_conflict(...)`, `DoNothing`, `DoUpdate` | Backend-specific conflict behavior, not portable merge semantics |
 | `.returning(...)`, `.returning_as(Result, **bindings)` | Supported write projections; restrictions differ by backend and conflict action |
 | `literal(integer)` | Backend-owned signed-64 integer constant for named projections; no FROM owner |
-| `recursive_cte(anchor, Role, name=..., step=...)` | Initial recursive builder; see [limitations and incomplete typing contract](recursive-ctes.md) before use |
+| `recursive_cte(anchor, Role, name=...).step(callback)` | Staged recursive builder; see [current limits and remaining acceptance](recursive-ctes.md) before use |
 | `scalar(...)`, `exists(...)`, `not_exists(...)`, `case(...)` | Typed SQL composition, not a trigger for hidden database IO |
 | `Select`, `Write` | Public helper annotations for executable result contracts |
 | `ColumnRef`, `Scalar`, `Predicate`, `Assignment`, `OrderBy`, `Aggregate`, `JoinOn` | Expression annotations, not general-purpose constructors |

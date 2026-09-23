@@ -1,17 +1,21 @@
 """Atomic construction of an anchor and its direct recursive member."""
 
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
-from snekql._compound import build_compound
+from pydantic import BaseModel
+
+from snekql._compound import _NamedSetOperand, build_compound
 from snekql._cte import _Cte, _CteOutput, _CteRelation, build_cte
 from snekql._cte_graph import collect_cte_definitions
 from snekql._literal import _IntegerLiteral
+from snekql._query_readiness import _ExecutableQuery
 from snekql._query_state import SelectState
 from snekql.errors import QueryCompilationError, QueryConstructionError
 from snekql.expressions import _Aggregate
-from snekql.model import BackendFamily, require_model_backend
+from snekql.model import BackendFamily, Table, require_model_backend
+from snekql.query import NamedSelectQuery
 from snekql.storage import Attr
 
 
@@ -87,3 +91,41 @@ def build_recursive_cte(
     except QueryCompilationError as error:
         raise QueryConstructionError(str(error)) from error
     return completed
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _RecursiveCteBuilder[
+    FamilyT: BackendFamily,
+    OwnerT: Table[Any],
+    ResultT: BaseModel,
+    RoleT,
+    NonNullableOwnerT,
+]:
+    """Bind the anchor and role before the callback needs its concrete self type.
+
+    Preparation holds no recursive symbol and is not a query source. Each step
+    invocation validates a fresh definition before returning a usable relation.
+    """
+
+    anchor: NamedSelectQuery[
+        FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
+    ]
+    backend: FamilyT
+    name: str
+    role: type[RoleT]
+
+    def step(
+        self,
+        callback: Callable[
+            [_Cte[FamilyT, OwnerT, ResultT, RoleT, NonNullableOwnerT]],
+            _NamedSetOperand[FamilyT, ResultT, _ExecutableQuery],
+        ],
+    ) -> _Cte[FamilyT, OwnerT, ResultT, RoleT, NonNullableOwnerT]:
+        """Invoke the member callback once and publish only a validated CTE."""
+        return build_recursive_cte(
+            self.anchor,
+            self.role,
+            name=self.name,
+            step=callback,
+            backend=self.backend,
+        )
