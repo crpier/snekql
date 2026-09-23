@@ -4,6 +4,7 @@ from typing import Any, Literal, overload
 
 from snekql._aliases import _AliasOwner
 from snekql._case import build_case
+from snekql._literal import _IntegerLiteral, build_integer_literal
 from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.expressions import Predicate
 from snekql.sqlite.model import Model
@@ -89,3 +90,8 @@ def case(
     Example: `case(User.score.gte(100), then="gold", otherwise="standard")`.
     """
     return build_case(condition, then=then, otherwise=otherwise, backend="sqlite")
+
+
+def literal(value: int, /) -> _IntegerLiteral[Literal["sqlite"]]:
+    """Bind a native integer in a named projection, for example `literal(0)`."""
+    return build_integer_literal(value, backend="sqlite")

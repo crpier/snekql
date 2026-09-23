@@ -9,6 +9,7 @@ from typing import Any, ClassVar, Protocol, cast, overload
 from pydantic import BaseModel
 
 from snekql._dialect_expr import CompileCtx
+from snekql._literal import _IntegerLiteral
 from snekql._output_domain import OutputDomain
 from snekql._output_label import _NullExtendedLabel, _OutputLabel
 from snekql._output_layout import OutputLayout, OutputSlot, build_output_layout
@@ -220,7 +221,9 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
         if isinstance(source, Attr):
             source.sum()
             return source
-        if isinstance(source, ValueExpression) and source.value_type in {int, float}:
+        if isinstance(
+            source, (ValueExpression, _IntegerLiteral)
+        ) and source.value_type in {int, float}:
             return cast("type[int | float]", source.value_type)
         msg = "sum()/avg() require a known numeric CTE output domain"
         raise QueryConstructionError(msg)
@@ -326,6 +329,8 @@ def _native_value_profile(
     state: SelectState, source: object
 ) -> tuple[type[int | float | str], bool]:
     """Resolve native wire compatibility independently of the final result model."""
+    if isinstance(source, _IntegerLiteral):
+        return int, False
     if isinstance(source, _Scalar):
         inner = require_single_column_subquery(source.subquery)
         value_type, _ = _native_value_profile(inner, inner.fields[0])

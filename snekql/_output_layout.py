@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
 from snekql._dialect_expr import SqlCompilable
+from snekql._literal import _IntegerLiteral
 from snekql._output_domain import OutputDomain, output_domain
 from snekql._output_label import _OutputLabel
 from snekql._query_dialect import query_dialect_for_backend
@@ -135,7 +136,7 @@ def _wire_encoding(source: object) -> WireEncoding:
             storage_class=source.storage_class,
             storage_type=source.storage_type_name,
         )
-    if isinstance(source, ValueExpression):
+    if isinstance(source, (ValueExpression, _IntegerLiteral)):
         return WireEncoding("native", native_type=source.value_type)
     if isinstance(source, LayoutOutput):
         return source.__output_slot__().wire

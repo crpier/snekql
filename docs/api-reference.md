@@ -67,6 +67,7 @@ before using EXPLAIN/ANALYZE in production.
 | `delete(Model)` | Explicit `.all()` or `.where(...)` intent is required |
 | `.on_conflict(...)`, `DoNothing`, `DoUpdate` | Backend-specific conflict behavior, not portable merge semantics |
 | `.returning(...)`, `.returning_as(Result, **bindings)` | Supported write projections; restrictions differ by backend and conflict action |
+| `literal(integer)` | Backend-owned signed-64 integer constant for named projections; no FROM owner |
 | `scalar(...)`, `exists(...)`, `not_exists(...)`, `case(...)` | Typed SQL composition, not a trigger for hidden database IO |
 | `Select`, `Write` | Public helper annotations for executable result contracts |
 | `ColumnRef`, `Scalar`, `Predicate`, `Assignment`, `OrderBy`, `Aggregate`, `JoinOn` | Expression annotations, not general-purpose constructors |
@@ -238,6 +239,7 @@ against both namespaces' `__all__` lists.
 | `delete` | yes | yes |
 | `exists` | yes | yes |
 | `insert` | yes | yes |
+| `literal` | yes | yes |
 | `not_exists` | yes | yes |
 | `raw` | yes | yes |
 | `scaffold` | yes | yes |

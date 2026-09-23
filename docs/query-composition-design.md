@@ -198,10 +198,10 @@ the same result class, backend, and compatible output layout. Step bindings matc
 anchor labels by name. No Python recursively nested model is required.
 
 A category anchor needs a typed native integer literal for depth zero. An
-owner-free, backend-owned `literal(0)` expression is therefore an explicit
-prerequisite, not an existing feature. Infer its domain from the value; do not
-accept arbitrary SQL text or a caller-asserted type. An untyped NULL anchor cannot
-establish a recursive output domain by itself.
+owner-free, backend-owned `literal(0)` expression is available as the integer
+prerequisite. It establishes a signed-64 SQL domain without arbitrary SQL text
+or a caller-asserted type. NULL literals are rejected. See
+[native integer literals](literals.md). The recursive factory remains a follow-up.
 
 Initial restrictions:
 

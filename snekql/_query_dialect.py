@@ -33,6 +33,7 @@ class QueryDialect:
     offset_only_limit_sql: str
     placeholder: str
     quote_identifier: Callable[[str], str]
+    integer_literal_sql: Callable[[str], str] | None = None
     explain_sql: ExplainSqlCompiler | None = None
     char_length_function: str | None = None
     for_update_sql: Callable[[LockWait], str] | None = None

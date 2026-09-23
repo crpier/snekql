@@ -104,7 +104,7 @@ from snekql._common import (
 from snekql.mariadb import _dialect_sql as _dialect_sql
 from snekql.mariadb._raw import RawStatement, raw
 from snekql.mariadb.config import Config, TLSConfig
-from snekql.mariadb.functions import case
+from snekql.mariadb.functions import case, literal
 from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model
 from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
 from snekql.mariadb.storage import (
@@ -243,6 +243,7 @@ __all__ = [
     "delete",
     "exists",
     "insert",
+    "literal",
     "not_exists",
     "raw",
     "scaffold",

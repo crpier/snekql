@@ -609,6 +609,14 @@ and complex annotation compatibility are checked against actual rows.
 validation. Invalid result rows raise `ModelValidationError` without including
 Pydantic input values or validator messages.
 
+### Native integer literals
+
+Use `sqlite.literal(0)` or `mariadb.literal(0)` in a named projection to bind a
+signed-64 integer without borrowing a table column's type. Constants have no
+FROM owner; begin with `select(Model)` and use `.project(...)`. Their labels
+retain nonnullable integer types across CTE boundaries. See
+[native integer literals](docs/literals.md) for validation and SQL-width rules.
+
 ### Typed CTEs
 
 Completed named SELECTs can become query-only CTEs with `.cte(Role, name=...)`.
