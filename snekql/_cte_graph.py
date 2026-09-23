@@ -3,7 +3,7 @@
 from typing import Any
 
 from snekql._aliases import _AliasRelation
-from snekql._cte import _CteDefinition, _CteRelation
+from snekql._cte import _CompoundRelation, _CteDefinition, _CteRelation
 from snekql._query_state import SelectState, require_subquery_state
 from snekql.errors import QueryCompilationError
 from snekql.expressions import _PredicateNode, _require_predicate_node, _Scalar
@@ -21,8 +21,12 @@ class _DefinitionGraph:
         self._visiting: set[_CteDefinition] = set()
 
     def collect(self, query: SelectState) -> None:
-        for source in query.result_models():
-            self._source(source)
+        if query.compound is not None:
+            self.collect(query.compound.left)
+            self.collect(query.compound.right)
+        else:
+            for source in query.result_models():
+                self._source(source)
         for field in query.fields:
             if isinstance(field, _Scalar):
                 self.collect(require_subquery_state(field.subquery))
@@ -44,6 +48,9 @@ class _DefinitionGraph:
             self._predicate(_require_predicate_node(child))
 
     def _source(self, source: type[Table[Any]]) -> None:
+        if issubclass(source, _CompoundRelation):
+            msg = "combined outputs require cte() before use as a query source"
+            raise QueryCompilationError(msg)
         if not issubclass(source, _CteRelation):
             self._physical_names.add(require_model_table_name(source).casefold())
             if issubclass(source, _AliasRelation):

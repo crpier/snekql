@@ -56,6 +56,8 @@ before using EXPLAIN/ANALYZE in production.
 | `alias(Model, ...)` | A distinct table occurrence for self-joins and correlated work |
 | `.project(Result, **bindings)` | Named Pydantic projection; use instead of widening beyond eight positional slots |
 | `.label(name)` | Identity-bound typed expression output token |
+| `.union(other)`, `.union_all(other)` | Compatible completed named projections; the left output contract governs nullability |
+| `combined.column(left_label)` | Combined output for final ordering; convert to a CTE for filtering/joins |
 | `.cte(Role, name=...)` | Completed named SELECT as a reusable nonrecursive query source |
 | `cte.column(label)`, `cte.alias(Role, name=...)` | Token-based output lookup and distinct CTE occurrences |
 | `.order_by(...)`, `.limit(...)`, `.offset(...)` | Explicit ordering and pagination; no implicit stable row order |
@@ -73,10 +75,11 @@ before using EXPLAIN/ANALYZE in production.
 
 Use the [typing guide](typing.md) for exact annotation arity, inferred result
 shapes, owner constraints and overload examples. [Typed CTEs](ctes.md) covers
-implemented labels and nonrecursive definitions. [Reporting](reporting.md) covers
+implemented labels and nonrecursive definitions. [Named UNION](unions.md) covers
+set operators, output contracts and final pagination. [Reporting](reporting.md) covers
 validated raw recursive-CTE/window/set-operation recipes.
 [Query composition design](query-composition-design.md) distinguishes implemented
-CTEs from future builder syntax.
+CTEs and named set operators from future builder syntax.
 
 ## Models, storage and schema
 

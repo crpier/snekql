@@ -1,7 +1,7 @@
 # Query composition design
 
 Status: interface reviewed and approved. Typed labels and nonrecursive CTEs are
-implemented; set operations, windows and recursion remain focused follow-ups.
+implemented, as are named UNION/UNION ALL. Windows and recursion remain follow-ups.
 Tracking issue: #280. SQLite and MariaDB only.
 
 ## Existing support
@@ -88,9 +88,9 @@ CTE rules:
 
 ## UNION and UNION ALL
 
-Reviewed syntax, not runnable today:
+Implemented syntax. See [named UNION usage and limits](unions.md):
 
-```text
+```python
 combined = current.union_all(archived)
 unique = current.union(archived)
 page = combined.order_by(combined.column(event_id).asc()).limit(50).offset(100)
@@ -103,8 +103,11 @@ compatibility. Match fields by name and emit both operands in result-field order
 regardless of the original keyword binding order.
 
 For every output, require provably compatible logical domains, wire encodings,
-and decode/validation policies. Preserve nullability across both operands and
-require the result field to admit it. Do not guess a common numeric type or use
+and decode/validation policies. The approved initial policy retains the left
+output contract. Reject right-hand nullability widening before I/O; a nullable
+left output can accept a compatible required right output. Nullable result-model
+annotations alone do not widen tokens. Exact fieldwise inference would require
+a broader projection-typing redesign. Do not guess a common numeric type or use
 the left operand's codec when the right differs. Two UUID fields stored as TEXT
 and BLOB are not interchangeable just because both decode to UUID. Different
 source validators also need an explicit compatibility decision, not silent
