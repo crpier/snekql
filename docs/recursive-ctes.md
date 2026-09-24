@@ -1,7 +1,7 @@
-# Recursive CTE construction, draft
+# Recursive CTE construction
 
-This implementation remains under review. Broader graph-boundary, width and
-materialization acceptance is unfinished; it is not ready to release.
+SQLite and MariaDB support bounded recursive definitions with staged callback
+typing and public annotations for named helpers. Contracts and limits follow.
 
 Both namespaces provide `recursive_cte(anchor, Role, name=...).step(callback)`.
 The first call binds the completed named anchor and role. Its immutable builder
@@ -93,6 +93,74 @@ path length, not branching growth or total rows. Repeated visits are expected.
 Neither an outer LIMIT nor a deadline proves termination. Server recursion limits
 may reject a query before it reaches an application budget.
 
-Native tests currently cover depth zero, missing roots, bounded cyclic revisits,
-and final ordering on SQLite and MariaDB. Broader graph-boundary, width,
-materialization, and public named-callback annotations remain pending.
+## Acceptance coverage
+
+[Construction tests](../tests/query/test_recursive_ctes.py) reject multiple aliased
+self sources, indirect dependencies, nested self queries, escaped self anchors,
+and nested recursion capturing an unfinished outer definition. Existing tests
+also retain callback-once, failed-construction isolation and nullable-side guards.
+Member ordering, bounds, locks, DISTINCT and aggregates/grouping are rejected
+before execution. Windows have no typed builder entry point.
+
+[Native tests](../tests/runtime/test_recursive_ctes.py) run on SQLite and MariaDB:
+
+- Depth zero, missing roots, bounded cyclic revisits and independent final order.
+- Direct self aliases crossing both signed-32 limits and reaching both signed-64
+  endpoints from full-width literal anchors. Each case terminates after two rows.
+- Unchanged UUID/JSON fields, reordered named bindings and completed CTE aliases.
+- Invalid intermediate result constraints filtered by SQL before materialization.
+  Python field validators run only on the returned rows, once per row.
+- Strict final validation with source validation both enabled and disabled.
+- An all-NULL recursive member distinguished from an absent outer-joined row.
+
+Construction also rejects nullability widening, INTEGER/TEXT codec substitution
+and larger MariaDB text capacities despite matching Python types. These checks do
+not prove arbitrary arithmetic cannot overflow. Applications must keep computed
+values inside their established SQL domains. Growing text paths remain deferred.
+
+## Named callbacks
+
+The names in this example come from the earlier traversal:
+
+```python
+def advance(
+    previous: sqlite.Cte[Category, Visit, WalkRole],
+) -> sqlite.NamedOperand[Visit]:
+    return (
+        sqlite.select(Category)
+        .join(previous, on=Category.parent_id.eq_col(previous.column(identifier)))
+        .where(previous.column(depth).lt(3))
+        .project(Visit, id=Category.id, depth=previous.column(depth).add(1))
+    )
+
+
+walk = sqlite.recursive_cte(anchor, WalkRole, name="walk").step(advance)
+```
+
+Both namespaces export these nonconstructible annotations:
+
+- `Cte[Source, Result, Role, NonNullableSource=Source]` retains source ownership,
+  result model, role and null-extension information. The namespace fixes its
+  backend. It also annotates helpers returning completed `.cte()` relations or
+  aliases of them. A callback self reference still cannot escape its member.
+- `NamedOperand[Result]` describes a completed named SELECT or UNION operand.
+  It retains backend, result identity and readiness. Use it for a helper returning
+  the right operand of `.union()`/`.union_all()` or a recursive member. Recursive
+  construction still restricts that member to one direct self SELECT.
+
+`NamedOperand` deliberately exposes no fluent query editing after source scope
+has been erased. It is neither an anchor annotation nor a directly fetchable
+query annotation. Use `Select[Result]` for helpers returning queries to a
+Transaction, and keep anchor builder inference intact.
+
+For a left-joined anchor over `Category | Detail`, pass the nonnullable source
+explicitly, for example `Cte[Category | Detail, Visit, WalkRole, Category]`.
+Otherwise the default claims both sources are nonnullable and the type checker
+rejects that callback. Labels for nullable outputs retain their optional types;
+owner-free literal labels do not become nullable.
+
+Source coordinates name model owners, not relation values. The inferred owners
+of alias- or CTE-derived anchors are private types; keep callbacks inline when
+those owners cannot be expressed using public model annotations. Do not import
+private owner types to annotate a helper. This does not restrict inferred query
+composition or aliases of a completed, annotated relation.

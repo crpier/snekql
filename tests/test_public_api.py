@@ -131,10 +131,12 @@ _DIALECT_NAMES = frozenset(
     {
         "Blob",
         "Config",
+        "Cte",
         "CurrentTimestamp",
         "ForeignKey",
         "Integer",
         "Model",
+        "NamedOperand",
         "RawStatement",
         "Real",
         "Text",

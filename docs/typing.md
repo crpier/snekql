@@ -1261,3 +1261,17 @@ field. Use a scalar/tuple query when those result semantics are required.
 Bindings use Python field names rather than Pydantic aliases. All fields must be
 bound explicitly, including defaulted and optional fields. Extra bindings and
 case-insensitive duplicate labels fail rather than silently changing shape.
+
+
+## Named composition helpers
+
+Both namespaces provide nonconstructible `Cte[Source, Result, Role,
+NonNullableSource=Source]` and `NamedOperand[Result]` annotations. See
+[named recursive callbacks](recursive-ctes.md#named-callbacks) for a complete
+example and nullable-anchor rules.
+
+`Cte` retains source/role identity and output nullability while hiding the backend
+coordinate. `NamedOperand` retains the backend, exact named result class and
+completed readiness required by UNION and recursive member composition. It does
+not expose fluent editing or direct Transaction execution after scope erasure.
+Use `Select[Result]` for the execution-only helper contract instead.

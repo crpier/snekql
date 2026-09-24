@@ -1,9 +1,9 @@
 """Recursive definition construction through backend-owned query builders."""
 
 from pydantic import BaseModel
-from snektest import assert_eq, assert_raises, test
+from snektest import Param, assert_eq, assert_raises, test
 
-from snekql import sqlite
+from snekql import mariadb, sqlite
 from snekql.errors import QueryConstructionError
 
 
@@ -332,3 +332,315 @@ def failed_step_does_not_poison_prepared_anchor() -> None:
     compiled = sqlite.select(walk).all().compile()
 
     assert_eq(compiled.params, (0, 1, 1))
+
+
+class PeerRole:
+    pass
+
+
+@test(mark="fast")
+def recursive_member_rejects_multiple_aliased_self_sources() -> None:
+    """Renaming self does not permit a second recursive source."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(previous)
+                .join(
+                    peer := sqlite.alias(previous, PeerRole, name="peer"),
+                    on=previous.column(identifier).eq_col(peer.column(identifier)),
+                )
+                .all()
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                )
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception), "recursive member requires one direct self source"
+    )
+
+
+@test(mark="fast")
+def recursive_member_rejects_indirect_self_dependency() -> None:
+    """A direct source does not authorize self inside a dependent definition."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(previous)
+                .where(
+                    sqlite.exists(
+                        sqlite.select(
+                            sqlite.select(previous)
+                            .all()
+                            .project(
+                                Visit,
+                                id=previous.column(identifier),
+                                depth=previous.column(depth),
+                            )
+                            .cte(PeerRole, name="indirect")
+                        ).all()
+                    )
+                )
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                )
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception), "recursive self reference escaped its direct member"
+    )
+
+
+@test(mark="fast")
+def escaped_self_cannot_become_another_recursive_anchor() -> None:
+    """A saved named self query never establishes a new legal anchor scope."""
+    captured: list[sqlite.Select[Visit]] = []
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+        lambda previous: (
+            captured.append(
+                sqlite.select(Category)
+                .join(previous, on=Category.id.eq_col(previous.column(identifier)))
+                .all()
+                .project(Visit, id=identifier, depth=depth)
+            ),
+            sqlite.select(previous)
+            .where(previous.column(depth).lt(1))
+            .project(
+                Visit,
+                id=previous.column(identifier),
+                depth=previous.column(depth).add(1),
+            ),
+        )[1]
+    )
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(
+            captured[0],  # ty: ignore[invalid-argument-type]
+            PeerRole,
+            name="other",
+        ).step(
+            lambda previous: (
+                sqlite.select(previous)
+                .all()
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                )
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception), "recursive self reference escaped its direct member"
+    )
+
+
+@test(
+    [
+        Param("order", name="order"),
+        Param("limit", name="limit"),
+        Param("offset", name="offset"),
+    ],
+    mark="fast",
+)
+def recursive_member_rejects_local_bounds(clause: str) -> None:
+    """Local bounds must not reach recursive SQL, even with a complete member."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                member := sqlite.select(previous)
+                .all()
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                ),
+                {
+                    "order": lambda: member.order_by(previous.column(depth).asc()),
+                    "limit": lambda: member.limit(1),
+                    "offset": lambda: member.offset(1),
+                }[clause](),
+            )[1]
+        )
+
+    assert_eq(
+        str(rejected.exception),
+        "UNION operands cannot have local ordering or pagination; use a CTE",
+    )
+
+
+@test(mark="fast")
+def recursive_member_cannot_widen_anchor_nullability() -> None:
+    """A nullable final field does not weaken the anchor's nonnullable contract."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = (
+        sqlite.select(Category).all().project(OptionalVisit, id=identifier, depth=depth)
+    )
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(Category)
+                .join(previous, on=Category.id.eq_col(previous.column(identifier)))
+                .all()
+                .project(
+                    OptionalVisit, id=Category.parent_id, depth=previous.column(depth)
+                )
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception),
+        "UNION right output cannot widen the left output's nullability",
+    )
+
+
+@test(mark="fast")
+def recursive_member_cannot_change_anchor_codec() -> None:
+    """The same logical int in TEXT is not the anchor's INTEGER wire contract."""
+
+    class TextIdentifier[S = sqlite.Pending](
+        sqlite.Model[S, "TextIdentifier[sqlite.Fetched]"]
+    ):
+        id: sqlite.Col[int] = sqlite.Text()
+
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(TextIdentifier)
+                .join(
+                    previous, on=TextIdentifier.id.eq_col(previous.column(identifier))
+                )
+                .all()
+                .project(Visit, id=TextIdentifier.id, depth=previous.column(depth))
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception),
+        "UNION requires compatible logical domains, wire encodings and decode policies",
+    )
+
+
+@test(mark="fast")
+def nested_recursion_cannot_capture_outer_self_in_its_anchor() -> None:
+    """An inner recursive definition cannot depend on its unfinished outer one."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(previous)
+                .where(
+                    sqlite.exists(
+                        sqlite.select(
+                            sqlite.recursive_cte(
+                                sqlite.select(Category)
+                                .join(
+                                    previous,
+                                    on=Category.id.eq_col(previous.column(identifier)),
+                                )
+                                .all()
+                                .project(Visit, id=identifier, depth=depth),
+                                PeerRole,
+                                name="inner_walk",
+                            ).step(
+                                lambda inner: (
+                                    sqlite.select(inner)
+                                    .all()
+                                    .project(
+                                        Visit,
+                                        id=inner.column(identifier),
+                                        depth=inner.column(depth),
+                                    )
+                                )
+                            )
+                        ).all()
+                    )
+                )
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                )
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception), "recursive self reference escaped its direct member"
+    )
+
+
+@test(mark="fast")
+def recursive_member_cannot_widen_native_text_capacity() -> None:
+    """Matching Python str types do not prove equal MariaDB SQL capacities."""
+
+    class Narrow[S = mariadb.Pending](mariadb.Model[S, "Narrow[mariadb.Fetched]"]):
+        value: mariadb.Col[str] = mariadb.Text(length=4)
+
+    class Wide[S = mariadb.Pending](mariadb.Model[S, "Wide[mariadb.Fetched]"]):
+        value: mariadb.Col[str] = mariadb.Text(length=8)
+
+    class TextVisit(BaseModel):
+        value: str
+
+    anchor = (
+        mariadb.select(Narrow)
+        .all()
+        .project(TextVisit, value=Narrow.value.label("value"))
+    )
+
+    with assert_raises(QueryConstructionError) as rejected:
+        mariadb.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                mariadb.select(Wide)
+                .join(previous, on=Wide.value.eq("seed"))
+                .all()
+                .project(TextVisit, value=Wide.value)
+            )
+        )
+
+    assert_eq(
+        str(rejected.exception),
+        "UNION requires compatible logical domains, wire encodings and decode policies",
+    )
+
+
+@test(mark="fast")
+def recursive_member_rejects_locking_select() -> None:
+    """Locks cannot be hidden inside an otherwise complete recursive member."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+
+    with assert_raises(QueryConstructionError) as rejected:
+        sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+            lambda previous: (
+                sqlite.select(previous)
+                .all()
+                .project(
+                    Visit, id=previous.column(identifier), depth=previous.column(depth)
+                )
+                .for_update()
+            )
+        )
+
+    assert_eq(str(rejected.exception), "UNION operands cannot contain a locking SELECT")

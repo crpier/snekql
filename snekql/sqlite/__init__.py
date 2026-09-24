@@ -130,7 +130,7 @@ else:
     Transaction = _Transaction
     Write = _RuntimeWrite
 
-from snekql.sqlite.recursive import recursive_cte
+from snekql.sqlite.recursive import Cte, NamedOperand, recursive_cte
 
 __all__ = [
     "PENDING_GENERATION",
@@ -146,6 +146,7 @@ __all__ = [
     "CommitOutcome",
     "CompiledQuery",
     "Config",
+    "Cte",
     "CurrentTimestamp",
     "Database",
     "DatabaseCloseTimeoutError",
@@ -186,6 +187,7 @@ __all__ = [
     "ModelError",
     "ModelValidationError",
     "MultipleResultsError",
+    "NamedOperand",
     "NoResultError",
     "Observer",
     "OrderBy",
