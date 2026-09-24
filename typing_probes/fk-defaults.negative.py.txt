@@ -1,0 +1,3 @@
+
+
+Account.manager_id.references(Other.account_id)  # expect-error

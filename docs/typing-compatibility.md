@@ -6,17 +6,18 @@ choice or weaken library annotations to accommodate another checker.
 
 ## Tested versions and scope
 
-Assessment dated 2026-09-20, clean source revision
-`08ccf6b08754e1bbbeb9cf2297effe473f0f6888`, CPython 3.14.2, Linux x86-64.
+Assessment expanded 2026-09-24 for defaulted typed foreign keys, CPython 3.14.2,
+Linux x86-64. The original seven-contract baseline used revision
+`08ccf6b08754e1bbbeb9cf2297effe473f0f6888`.
 All tools target Python 3.14 and resolve dependencies through the same project
 interpreter. The reports record dependency versions, OS, exact arguments and
 SHA-256 hashes of the rendered positive/negative source files.
 
 | Tool | Version | Decision |
 | --- | --- | --- |
-| ty | 0.0.77 | Primary supported checker; full repository validation plus 14/14 consumer pairs |
-| Pyright CLI | 1.1.414 | Supported for the consumer profile below, in strict mode; 14/14 pairs |
-| mypy | 2.3.1 | Not supported for the complete query typing contract; 10/14 pairs |
+| ty | 0.0.77 | Primary supported checker; full repository validation plus 16/16 consumer pairs |
+| Pyright CLI | 1.1.414 | Supported for the consumer profile below, in strict mode; 16/16 pairs |
+| mypy | 2.3.1 | Not supported for the complete query typing contract; 10/16 pairs |
 | Pylance | Not assessed | Editor integration and bundled engine version are not certified by the Pyright CLI result |
 
 Python 3.14+ remains intentional. These observations do not certify older Python,
@@ -39,8 +40,9 @@ and errors in a broken positive control cannot earn a passing result.
 | Nine-field named result inference and helper boundary | Pass | Pass | Pass |
 | Left-join optional right model | Pass | Pass | Fails valid control |
 | Raw construction owns validation and result shape | Pass | Pass | Pass |
+| Nullable FK defaults, factory defaults and target-checked references | Pass | Pass | Fails valid control |
 
-These are seven focused contracts, not an exhaustive claim about every method.
+These are eight focused contracts, not an exhaustive claim about every method.
 Runtime checks still own dynamic inputs, declaration consistency, named binding
 labels, SQL scope and value validation. A checker cannot prove those properties
 for arbitrary Python programs.
@@ -50,7 +52,9 @@ for arbitrary Python programs.
 On valid eight-column projections, mypy 2.3.1 infers `Never` for some owner/value
 parameters, requests an annotation for the query, and loses the fetched tuple
 slots to `Any`. On valid left joins it reports descriptor-owner and overload
-mismatches and loses the inferred result to `list[Any]`.
+mismatches and loses the inferred result to `list[Any]`. The defaulted FK
+control also rejects a valid `.references(...)` call because of descriptor-owner
+and nullable key-type mismatches.
 
 The negative examples also contain those positive-control errors, so their
 additional rejection does not establish compatibility. The reports retain all
@@ -75,7 +79,7 @@ run reliably, such as missing tools/input files, malformed diagnostics or a
 90-second deadline. Never treat exit 2 as a successful compatibility observation.
 
 `--backend sqlite|mariadb` and `--case <name>` select a narrower assessment;
-defaults cover all seven cases on both backends. The CLI does not execute the
+defaults cover all eight cases on both backends. The CLI does not execute the
 consumer programs or connect to a database. Templates live under
 [`typing_probes/`](../typing_probes/), with `.py.txt` suffixes so ordinary project
 checks do not accidentally treat intentional-invalid examples as library errors.

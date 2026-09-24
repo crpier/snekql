@@ -247,7 +247,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 14)
+    assert_eq(len(report["cases"]), 16)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
@@ -258,7 +258,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         {
             (backend, name)
             for backend in ("sqlite", "mariadb")
-            for name in ("positional-width", "joins")
+            for name in ("positional-width", "joins", "fk-defaults")
         }
         if checker == "mypy"
         else set(),
@@ -305,6 +305,25 @@ async def ty_probe_uses_declared_configuration() -> None:
             "lifecycle",
         ],
         env={**os.environ, "TY_CONFIG_FILE": "absent-consumer-ty-config.toml"},
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    assert_true(loads(completed.stdout)["conforms"])
+
+
+@test([Param(name, name=name) for name in ("ty", "pyright")], mark="fast")
+async def defaulted_fk_probe_preserves_target(checker: str) -> None:
+    """Nullable defaults retain constructor inference and reject other targets."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--checker",
+            checker,
+            "--case",
+            "fk-defaults",
+        ],
         check=False,
     )
 

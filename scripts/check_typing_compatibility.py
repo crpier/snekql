@@ -24,6 +24,7 @@ _CASES = (
     "named-result",
     "joins",
     "raw-contract",
+    "fk-defaults",
 )
 """Consumer contracts with paired positive and negative source templates."""
 

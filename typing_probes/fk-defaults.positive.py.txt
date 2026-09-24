@@ -1,0 +1,16 @@
+"""Nullable typed references preserve defaults and the exact target."""
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+class Account[S = database.Pending](database.Model[S, "Account[database.Fetched]"]):
+    account_id: database.GenCol[int] = database.Integer(primary_key=True, auto_increment=True, default=database.PENDING_GENERATION)
+    manager_id: database.FKCol[Account, int | None] = database.Integer(default=None)
+    backup_id: database.FKCol[Account, int | None] = database.Integer(default_factory=lambda: None)
+    __foreign_keys__: ClassVar = [database.ForeignKeyConstraint(manager_id, references=(account_id,))]
+
+class Other[S = database.Pending](database.Model[S, "Other[database.Fetched]"]):
+    account_id: database.Col[int] = database.Integer(primary_key=True)
+
+assert_type(Account().manager_id, int | None)
+assert_type(Account().backup_id, int | None)
+Account.manager_id.references(Account.account_id)
