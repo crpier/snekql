@@ -1,7 +1,7 @@
 # Recursive CTE construction, draft
 
-This implementation remains under review. Broader graph-boundary, width and
-materialization acceptance is unfinished; it is not ready to release.
+Construction and native runtime acceptance are covered below. Public annotations
+for reusable named callbacks remain unfinished; the API is not ready to release.
 
 Both namespaces provide `recursive_cte(anchor, Role, name=...).step(callback)`.
 The first call binds the completed named anchor and role. Its immutable builder
@@ -93,6 +93,30 @@ path length, not branching growth or total rows. Repeated visits are expected.
 Neither an outer LIMIT nor a deadline proves termination. Server recursion limits
 may reject a query before it reaches an application budget.
 
-Native tests currently cover depth zero, missing roots, bounded cyclic revisits,
-and final ordering on SQLite and MariaDB. Broader graph-boundary, width,
-materialization, and public named-callback annotations remain pending.
+## Acceptance coverage
+
+[Construction tests](../tests/query/test_recursive_ctes.py) reject multiple aliased
+self sources, indirect dependencies, nested self queries, escaped self anchors,
+and nested recursion capturing an unfinished outer definition. Existing tests
+also retain callback-once, failed-construction isolation and nullable-side guards.
+Member ordering, bounds, locks, DISTINCT and aggregates/grouping are rejected
+before execution. Windows have no typed builder entry point.
+
+[Native tests](../tests/runtime/test_recursive_ctes.py) run on SQLite and MariaDB:
+
+- Depth zero, missing roots, bounded cyclic revisits and independent final order.
+- Direct self aliases crossing both signed-32 limits and reaching both signed-64
+  endpoints from full-width literal anchors. Each case terminates after two rows.
+- Unchanged UUID/JSON fields, reordered named bindings and completed CTE aliases.
+- Invalid intermediate result constraints filtered by SQL before materialization.
+  Python field validators run only on the returned rows, once per row.
+- Strict final validation with source validation both enabled and disabled.
+- An all-NULL recursive member distinguished from an absent outer-joined row.
+
+Construction also rejects nullability widening, INTEGER/TEXT codec substitution
+and larger MariaDB text capacities despite matching Python types. These checks do
+not prove arbitrary arithmetic cannot overflow. Applications must keep computed
+values inside their established SQL domains. Growing text paths remain deferred.
+
+Public annotations for named callbacks remain a separate interface decision.
+Inline callbacks receive the staged API's contextual typing today.
