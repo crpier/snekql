@@ -695,3 +695,75 @@ async def mariadb_recursive_literal_retains_signed_width(
         )
 
     assert_eq([row.depth for row in rows], expected)
+
+
+@test(mark="medium")
+async def sqlite_named_callback_executes() -> None:
+    """An annotated application callback produces the same bounded native walk."""
+    database = await load_fixture(provide_categories())
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = (
+        sqlite.select(Category)
+        .where(Category.id.eq(1))
+        .project(Visit, id=identifier, depth=depth)
+    )
+
+    def advance(
+        previous: sqlite.Cte[Category, Visit, WalkRole],
+    ) -> sqlite.NamedOperand[Visit]:
+        return (
+            sqlite.select(previous)
+            .where(previous.column(depth).lt(2))
+            .project(
+                Visit,
+                id=previous.column(identifier),
+                depth=previous.column(depth).add(1),
+            )
+        )
+
+    walk = sqlite.recursive_cte(anchor, WalkRole, name="walk").step(advance)
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(
+            sqlite.select(walk).all().order_by(walk.column(depth).asc())
+        )
+
+    assert_type(rows, list[Visit])
+    assert_eq([(row.id, row.depth) for row in rows], [(1, 0), (1, 1), (1, 2)])
+
+
+@test(mark="slow")
+async def mariadb_named_callback_executes() -> None:
+    """Native named helpers retain the callback's backend and result model."""
+    database = await load_fixture(provide_native_categories())
+    identifier = NativeCategory.id.label("id")
+    depth = mariadb.literal(0).label("depth")
+    anchor = (
+        mariadb.select(NativeCategory)
+        .where(NativeCategory.id.eq(1))
+        .project(Visit, id=identifier, depth=depth)
+    )
+
+    def advance(
+        previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
+    ) -> mariadb.NamedOperand[Visit]:
+        return (
+            mariadb.select(previous)
+            .where(previous.column(depth).lt(2))
+            .project(
+                Visit,
+                id=previous.column(identifier),
+                depth=previous.column(depth).add(1),
+            )
+        )
+
+    walk = mariadb.recursive_cte(anchor, WalkRole, name="walk").step(advance)
+
+    async with database.transaction() as transaction:
+        rows = await transaction.fetch_all(
+            mariadb.select(walk).all().order_by(walk.column(depth).asc())
+        )
+
+    assert_type(rows, list[Visit])
+    assert_eq([(row.id, row.depth) for row in rows], [(1, 0), (1, 1), (1, 2)])

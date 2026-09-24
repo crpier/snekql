@@ -68,9 +68,11 @@ before using EXPLAIN/ANALYZE in production.
 | `.on_conflict(...)`, `DoNothing`, `DoUpdate` | Backend-specific conflict behavior, not portable merge semantics |
 | `.returning(...)`, `.returning_as(Result, **bindings)` | Supported write projections; restrictions differ by backend and conflict action |
 | `literal(integer)` | Backend-owned signed-64 integer constant for named projections; no FROM owner |
-| `recursive_cte(anchor, Role, name=...).step(callback)` | Staged recursive builder; see [current limits and remaining acceptance](recursive-ctes.md) before use |
+| `recursive_cte(anchor, Role, name=...).step(callback)` | Staged recursive builder; see [recursive contracts and limits](recursive-ctes.md) before use |
 | `scalar(...)`, `exists(...)`, `not_exists(...)`, `case(...)` | Typed SQL composition, not a trigger for hidden database IO |
 | `Select`, `Write` | Public helper annotations for executable result contracts |
+| `Cte[Source, Result, Role, NonNullableSource=Source]` | Nonconstructible named relation annotation; backend pinned by namespace |
+| `NamedOperand[Result]` | Nonconstructible completed named operand annotation for UNION and recursive members |
 | `ColumnRef`, `Scalar`, `Predicate`, `Assignment`, `OrderBy`, `Aggregate`, `JoinOn` | Expression annotations, not general-purpose constructors |
 | `.compile()` | Parameterized SQL and bindings with construction validation |
 | `.inspect(parameter_visibility=...)` | Explicit diagnostic value visibility; repr/str remain redacted by default |
@@ -148,6 +150,7 @@ against both namespaces' `__all__` lists.
 | `CommitOutcome` | yes | yes |
 | `CompiledQuery` | yes | yes |
 | `Config` | yes | yes |
+| `Cte` | yes | yes |
 | `CurrentTimestamp` | yes | yes |
 | `Database` | yes | yes |
 | `DatabaseCloseTimeoutError` | yes | yes |
@@ -193,6 +196,7 @@ against both namespaces' `__all__` lists.
 | `ModelError` | yes | yes |
 | `ModelValidationError` | yes | yes |
 | `MultipleResultsError` | yes | yes |
+| `NamedOperand` | yes | yes |
 | `NoResultError` | yes | yes |
 | `Observer` | yes | yes |
 | `OrderBy` | yes | yes |

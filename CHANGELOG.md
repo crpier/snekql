@@ -15,11 +15,17 @@
 
 ### Changed
 
+- Both namespaces now export nonconstructible `Cte[Source, Result, Role]` and
+  `NamedOperand[Result]` annotations for named recursive callbacks and composition
+  helpers. An optional fourth `Cte` argument preserves nullable-anchor ownership.
+  Backend identity and completed readiness remain enforced.
+
 - Draft recursive CTE construction now uses
   `recursive_cte(anchor, Role, name=...).step(callback)` instead of the `step=`
   keyword. Staging preserves callback self inference and rejects incomplete
   self-only members statically. Prepared builders are not executable queries.
-  Broader recursive acceptance remains open under #373.
+  Recursive boundary, signed-width, codec and materialization acceptance now
+  runs on both backends.
 
 - MariaDB admission starts at 10.11, with native full-suite gates for maintained
   10.11, 11.4, 11.8 and 12.3 LTS targets. Existing session, type, migration and
