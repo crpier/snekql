@@ -15,6 +15,12 @@
 
 ### Changed
 
+- Draft recursive CTE construction now uses
+  `recursive_cte(anchor, Role, name=...).step(callback)` instead of the `step=`
+  keyword. Staging preserves callback self inference and rejects incomplete
+  self-only members statically. Prepared builders are not executable queries.
+  Broader recursive acceptance remains open under #373.
+
 - MariaDB admission starts at 10.11, with native full-suite gates for maintained
   10.11, 11.4, 11.8 and 12.3 LTS targets. Existing session, type, migration and
   unsupported-feature contracts remain unchanged. The 12.2 catalog regression
@@ -31,8 +37,8 @@
 - Backend-owned `literal(integer)` expressions for named projections and CTE
   outputs. Signed-64 validation, backend isolation and nonnullable constant
   labels preserve the native integer contract. MariaDB lowering establishes
-  full anchor width even for zero. Prerequisite for #373; recursive CTE builders
-  are not included yet.
+  full anchor width even for zero. Prerequisite for #373; the recursive builder
+  remains under review.
 
 - Named UNION and UNION ALL builders with name-aligned fields, preserved binary
   grouping, combined-output ordering/pagination and CTE conversion. The left

@@ -1,7 +1,8 @@
 # Query composition design
 
 Status: interface reviewed and approved. Typed labels and nonrecursive CTEs are
-implemented, as are named UNION/UNION ALL. Windows and recursion remain follow-ups.
+implemented, as are named UNION/UNION ALL. Staged recursive construction is
+implemented with acceptance work remaining. Windows remain a follow-up.
 Tracking issue: #280. SQLite and MariaDB only.
 
 ## Existing support
@@ -171,14 +172,15 @@ interface rather than inheriting surprising default RANGE peer behavior.
 
 ## Recursive CTEs
 
-Reviewed shape, not runnable today:
+Staged shape, implemented with [remaining acceptance limits](recursive-ctes.md):
 
 ```text
 walk = recursive_cte(
     anchor,
     CategoryWalkRole,
     name="category_walk",
-    step=lambda previous: (
+).step(
+    lambda previous: (
         select(Category)
         .join(previous, on=Category.parent_id.eq_col(previous.column(category_id)))
         .project(CategoryVisit,
@@ -187,13 +189,16 @@ walk = recursive_cte(
             depth=previous.column(depth).add(1),
         )
         .where(previous.column(depth).lt(max_depth))
-    ),
+    )
 )
 ```
 
 The completed named anchor fixes the row contract and typed output labels before
-constructing the step. The callback receives a typed self relation and runs once
-during query construction, not per database row. It returns a completed query of
+constructing the step. The prepared builder cannot be selected or executed.
+Staging binds the anchor and role before the callback needs their inferred types;
+the former single-call form lost that context in ty. `.step()` constructs and
+validates a fresh definition atomically. The callback receives a typed self
+relation and runs once during query construction, not per database row. It returns a completed query of
 the same result class, backend, and compatible output layout. Step bindings match
 anchor labels by name. No Python recursively nested model is required.
 
@@ -201,7 +206,7 @@ A category anchor needs a typed native integer literal for depth zero. An
 owner-free, backend-owned `literal(0)` expression is available as the integer
 prerequisite. It establishes a signed-64 SQL domain without arbitrary SQL text
 or a caller-asserted type. NULL literals are rejected. See
-[native integer literals](literals.md). The recursive factory remains a follow-up.
+[native integer literals](literals.md). Broader recursive acceptance remains open.
 
 Initial restrictions:
 

@@ -1,15 +1,26 @@
 # Recursive CTE construction, draft
 
-This implementation is under review. It is not ready to release. In particular,
-ty currently infers `Unknown` for some self-only callback expressions. Runtime
-checks still reject incomplete members. The callback annotation contract needs
-more work before this can claim static safety.
+This implementation remains under review. Broader graph-boundary, width and
+materialization acceptance is unfinished; it is not ready to release.
 
-Both namespaces provide `recursive_cte(anchor, Role, name=..., step=callback)`.
-The anchor is a completed named SELECT. Its labels define the output contract.
-The callback runs once during construction and receives a self relation whose
-columns are addressed with the anchor's label tokens. It returns a completed
-named SELECT with the same result class and compatible outputs.
+Both namespaces provide `recursive_cte(anchor, Role, name=...).step(callback)`.
+The first call binds the completed named anchor and role. Its immutable builder
+is neither a query nor a query source. `.step(callback)` then constructs and
+validates the recursive definition, returning the completed CTE.
+
+The two calls let the type checker fix the self relation's type before checking
+the callback. This replaces the draft `recursive_cte(..., step=callback)` form,
+which could infer `Unknown` for self-only lambdas. The old keyword is no longer
+accepted. The staged form checks self-only member readiness, column comparisons,
+source scope, result class and backend identity with ty.
+
+The anchor's labels define the output contract. Each `.step()` call invokes its
+callback once, not once per database row. The callback receives a fresh self
+relation whose columns are addressed with the anchor's label tokens. It must
+return a completed named SELECT with the same result class and compatible
+outputs. Construction validates the anchor, name and member before publishing
+any usable CTE. Reusing the prepared builder creates an independent definition;
+failed construction cannot publish or leave behind a usable self relation.
 
 ```python
 from pydantic import BaseModel
@@ -41,12 +52,13 @@ walk = sqlite.recursive_cte(
     anchor,
     WalkRole,
     name="walk",
-    step=lambda previous: (
+).step(
+    lambda previous: (
         sqlite.select(Category)
         .join(previous, on=Category.parent_id.eq_col(previous.column(identifier)))
         .where(previous.column(depth).lt(3))
         .project(Visit, id=Category.id, depth=previous.column(depth).add(1))
-    ),
+    )
 )
 query = (
     sqlite.select(walk)
@@ -83,4 +95,4 @@ may reject a query before it reaches an application budget.
 
 Native tests currently cover depth zero, missing roots, bounded cyclic revisits,
 and final ordering on SQLite and MariaDB. Broader graph-boundary, width,
-materialization, and typing acceptance remains pending.
+materialization, and public named-callback annotations remain pending.

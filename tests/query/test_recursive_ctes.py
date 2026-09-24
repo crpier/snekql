@@ -36,12 +36,13 @@ def recursive_member_compiles_directly_with_anchor_first_parameters() -> None:
         anchor,
         WalkRole,
         name="walk",
-        step=lambda previous: (
+    ).step(
+        lambda previous: (
             sqlite.select(Category)
             .join(previous, on=Category.parent_id.eq_col(previous.column(identifier)))
             .where(previous.column(depth).lt(3))
             .project(Visit, id=Category.id, depth=previous.column(depth).add(1))
-        ),
+        )
     )
     compiled = sqlite.select(walk).all().compile()
 
@@ -60,8 +61,10 @@ def recursive_member_requires_a_direct_self_source() -> None:
 
     with assert_raises(QueryConstructionError):
         sqlite.recursive_cte(
-            anchor, WalkRole, name="walk", step=lambda _previous: anchor
-        )
+            anchor,
+            WalkRole,
+            name="walk",
+        ).step(lambda _previous: anchor)
 
 
 @test(mark="fast")
@@ -76,14 +79,15 @@ def recursive_member_rejects_distinct() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(previous)
                 .all()
                 .distinct()
                 .project(
                     Visit, id=previous.column(identifier), depth=previous.column(depth)
                 )
-            ),
+            )
         )
 
 
@@ -99,14 +103,15 @@ def recursive_self_cannot_be_on_a_nullable_join_side() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(Category)
                 .left_join(
                     previous, on=Category.parent_id.eq_col(previous.column(identifier))
                 )
                 .all()
                 .project(Visit, id=Category.id, depth=sqlite.literal(1))
-            ),
+            )
         )
 
 
@@ -122,7 +127,8 @@ def computed_anchor_does_not_claim_recursive_width() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(previous)
                 .all()
                 .project(
@@ -130,7 +136,7 @@ def computed_anchor_does_not_claim_recursive_width() -> None:
                     id=previous.column(identifier),
                     depth=previous.column(depth).add(1),
                 )
-            ),
+            )
         )
 
 
@@ -146,14 +152,15 @@ def recursive_member_rejects_grouping() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(previous)
                 .all()
                 .project(
                     Visit, id=previous.column(identifier), depth=previous.column(depth)
                 )
                 .group_by(previous.column(identifier), previous.column(depth))
-            ),
+            )
         )
 
 
@@ -169,13 +176,14 @@ def recursive_self_is_rejected_inside_a_member_subquery() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(previous)
                 .where(sqlite.exists(sqlite.select(previous).all()))
                 .project(
                     Visit, id=previous.column(identifier), depth=previous.column(depth)
                 )
-            ),
+            )
         )
 
 
@@ -198,7 +206,8 @@ def recursive_member_rejects_aggregates_without_grouping() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 sqlite.select(previous)
                 .all()
                 .project(
@@ -206,7 +215,7 @@ def recursive_member_rejects_aggregates_without_grouping() -> None:
                     id=previous.column(identifier).min(),
                     depth=previous.column(depth),
                 )
-            ),
+            )
         )
 
 
@@ -222,7 +231,8 @@ def completed_definition_does_not_publish_its_callback_self() -> None:
         anchor,
         WalkRole,
         name="walk",
-        step=lambda previous: (
+    ).step(
+        lambda previous: (
             captured.append(sqlite.select(previous).all()),
             sqlite.select(previous)
             .where(previous.column(depth).lt(1))
@@ -231,7 +241,7 @@ def completed_definition_does_not_publish_its_callback_self() -> None:
                 id=previous.column(identifier),
                 depth=previous.column(depth).add(1),
             ),
-        )[1],
+        )[1]
     )
     sqlite.select(walk).all().compile()
     sqlite.select(walk).all().compile()
@@ -253,9 +263,10 @@ def incomplete_self_member_is_rejected_before_compilation() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: sqlite.select(previous).project(
+        ).step(
+            lambda previous: sqlite.select(previous).project(  # ty: ignore[invalid-argument-type]
                 Visit, id=previous.column(identifier), depth=previous.column(depth)
-            ),
+            )
         )
 
 
@@ -272,11 +283,52 @@ def failed_callback_does_not_publish_its_self_reference() -> None:
             anchor,
             WalkRole,
             name="walk",
-            step=lambda previous: (
+        ).step(
+            lambda previous: (
                 captured.append(sqlite.select(previous).all()),
                 anchor,
-            )[1],
+            )[1]
         )
 
     with assert_raises(sqlite.QueryCompilationError):
         captured[0].compile()
+
+
+@test(mark="fast")
+def prepared_recursion_is_not_a_query_source() -> None:
+    """A prepared anchor exposes no recursive relation before step validation."""
+    anchor = (
+        sqlite.select(Category)
+        .all()
+        .project(Visit, id=Category.id, depth=sqlite.literal(0))
+    )
+    prepared = sqlite.recursive_cte(anchor, WalkRole, name="walk")
+
+    with assert_raises(QueryConstructionError):
+        sqlite.select(prepared)  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def failed_step_does_not_poison_prepared_anchor() -> None:
+    """The same immutable preparation can construct a valid fresh definition."""
+    identifier = Category.id.label("id")
+    depth = sqlite.literal(0).label("depth")
+    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    prepared = sqlite.recursive_cte(anchor, WalkRole, name="walk")
+    with assert_raises(QueryConstructionError):
+        prepared.step(lambda _previous: anchor)
+
+    walk = prepared.step(
+        lambda previous: (
+            sqlite.select(previous)
+            .where(previous.column(depth).lt(1))
+            .project(
+                Visit,
+                id=previous.column(identifier),
+                depth=previous.column(depth).add(1),
+            )
+        )
+    )
+    compiled = sqlite.select(walk).all().compile()
+
+    assert_eq(compiled.params, (0, 1, 1))
