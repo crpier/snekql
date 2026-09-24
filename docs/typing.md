@@ -834,6 +834,48 @@ OmittableChild()  # ok: parent_id defaults to None
 Both forms materialize `parent_id` as `int | None` on Fetched Models. The
 difference applies only while constructing Pending Models.
 
+### Defaulted typed-only and self references
+
+Plain storage declarations support `FKCol` with a literal default or
+`default_factory`. The annotation retains the target used by `.references(...)`;
+plain storage alone does not emit a foreign-key constraint.
+
+For an omittable, nullable self reference with database enforcement, use the
+existing table-level constraint:
+
+```python
+from typing import ClassVar
+from snekql import sqlite
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    account_id: sqlite.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=sqlite.PENDING_GENERATION,
+    )
+    manager_id: sqlite.FKCol[Account, int | None] = sqlite.Integer(default=None)
+    __foreign_keys__: ClassVar = [
+        sqlite.ForeignKeyConstraint(manager_id, references=(account_id,))
+    ]
+
+
+account = Account()  # manager_id defaults to None
+Account.manager_id.references(Account.account_id)  # target-checked join condition
+```
+
+The same spelling works in `mariadb`. Omit `__foreign_keys__` for a typed-only
+relationship. Without a default, the nullable constructor argument remains
+required. Ordinary `Col` and `GenCol` annotations do not gain `.references(...)`.
+Aliased self-joins still use `.eq_col(...)` with the aliased target column.
+
+Direct class-body `ForeignKey(account_id, default=None)` remains unsupported by
+the checked typing contract. The bare descriptor has not acquired its model
+owner, and ty also represents the initializer as a synthetic dataclass field.
+Class-qualified references to already declared models, such as
+`ForeignKey(Account.account_id, default=None)`, remain supported. No permissive
+self-target overload bypasses target or logical-type checks.
+
 ### Referential actions
 
 `ForeignKey(...)` takes optional `on_delete=` and `on_update=` referential

@@ -16,6 +16,7 @@ from typing import (
     Any,
     ForwardRef,
     Literal,
+    Never,
     Self,
     TypeAliasType,
     TypeVar,
@@ -487,8 +488,10 @@ PENDING_GENERATION = PendingGeneration()
 type SchemaPolicy = Literal["strict", "warn"]
 
 
+# Storage declarations infer FK targets from FKCol annotations. Without that
+# context, Never avoids an unknown target and grants no target relationship.
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
@@ -496,11 +499,11 @@ def Integer[T](
     unique: bool = False,
     index: bool = False,
     default: PendingGeneration,
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
@@ -508,11 +511,11 @@ def Integer[T](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
@@ -520,11 +523,11 @@ def Integer[T](
     unique: bool = False,
     index: bool = False,
     default: None,
-) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
 
 
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
@@ -532,11 +535,23 @@ def Integer[T](
     unique: bool = False,
     index: bool = False,
     default: T,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
+    *,
+    primary_key: bool = False,
+    auto_increment: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], None],
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
@@ -544,18 +559,18 @@ def Integer[T](
     unique: bool = False,
     index: bool = False,
     default_factory: Callable[[], T],
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Integer[T](
+def Integer[T, Target = Never](
     *,
     primary_key: bool = False,
     auto_increment: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 def Integer(  # noqa: N802, PLR0913
@@ -591,68 +606,79 @@ def Integer(  # noqa: N802, PLR0913
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: PendingGeneration,
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: None,
-) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: T,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], None],
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default_factory: Callable[[], T],
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Real[T](
+def Real[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 def Real(  # noqa: N802, PLR0913
@@ -682,7 +708,7 @@ def Real(  # noqa: N802, PLR0913
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
@@ -690,11 +716,11 @@ def Text[T](
     unique: bool = False,
     index: bool = False,
     default: PendingGeneration,
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
@@ -702,11 +728,11 @@ def Text[T](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
@@ -714,11 +740,11 @@ def Text[T](
     unique: bool = False,
     index: bool = False,
     default: None,
-) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
@@ -726,11 +752,23 @@ def Text[T](
     unique: bool = False,
     index: bool = False,
     default: T,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
+    *,
+    collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], None],
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
@@ -738,18 +776,18 @@ def Text[T](
     unique: bool = False,
     index: bool = False,
     default_factory: Callable[[], T],
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Text[T](
+def Text[T, Target = Never](
     *,
     collation: Literal["BINARY", "NOCASE", "RTRIM"] = "BINARY",
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 def Text(  # noqa: N802, PLR0913
@@ -789,68 +827,79 @@ def Text(  # noqa: N802, PLR0913
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: PendingGeneration,
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> Attr[Any, Any, _UnboundOwner, T | PendingGeneration, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: None,
-) -> Attr[Any, Any, _UnboundOwner, T | None, T | None]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: T,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
+    *,
+    primary_key: bool = False,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], None],
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default_factory: Callable[[], T],
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 @overload
-def Blob[T](
+def Blob[T, Target = Never](
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-) -> Attr[Any, Any, _UnboundOwner, T, T]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
 def Blob(  # noqa: N802, PLR0913

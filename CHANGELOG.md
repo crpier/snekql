@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Defaulted typed-only `FKCol` declarations now retain their target type with
+  plain storage factories on SQLite and MariaDB. Literal and factory defaults
+  preserve constructor omittability. Typed self references can use the existing
+  table-level `ForeignKeyConstraint`; direct class-body scalar `ForeignKey`
+  self-reference typing remains unsupported. Addresses #408.
+
 - Fresh MariaDB-extra installs now constrain PyMySQL to `>=1.2.0,<1.2.1`
   while aiomysql depends on removed private encoders. Native artifact tests
   cover migration checksums and binary round trips without the development lock.
