@@ -5,6 +5,7 @@ from snekql import __BACKEND__ as database
 class Account[S = database.Pending](database.Model[S, "Account[database.Fetched]"]):
     account_id: database.GenCol[int] = database.Integer(primary_key=True, auto_increment=True, default=database.PENDING_GENERATION)
     manager_id: database.FKCol[Account, int | None] = database.Integer(default=None)
+    callable_id: database.FKCol[Account, int | None] = database.ForeignKey(lambda: Account.account_id, default=None)
     backup_id: database.FKCol[Account, int | None] = database.Integer(default_factory=lambda: None)
     __foreign_keys__: ClassVar = [database.ForeignKeyConstraint(manager_id, references=(account_id,))]
 
@@ -14,3 +15,5 @@ class Other[S = database.Pending](database.Model[S, "Other[database.Fetched]"]):
 assert_type(Account().manager_id, int | None)
 assert_type(Account().backup_id, int | None)
 Account.manager_id.references(Account.account_id)
+Account.callable_id.references(Account.account_id)
+assert_type(Account().callable_id, int | None)

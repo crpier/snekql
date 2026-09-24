@@ -840,7 +840,7 @@ Plain storage declarations support `FKCol` with a literal default or
 `default_factory`. The annotation retains the target used by `.references(...)`;
 plain storage alone does not emit a foreign-key constraint.
 
-For an omittable, nullable self reference with database enforcement, use the
+For an omittable, nullable self reference with eager declaration checks, use the
 existing table-level constraint:
 
 ```python
@@ -875,6 +875,61 @@ owner, and ty also represents the initializer as a synthetic dataclass field.
 Class-qualified references to already declared models, such as
 `ForeignKey(Account.account_id, default=None)`, remain supported. No permissive
 self-target overload bypasses target or logical-type checks.
+
+### Callable self-reference targets
+
+Both backends also accept a zero-argument callback with an explicit Python
+`default`. This form derives storage and emits a scalar foreign-key constraint:
+
+```python
+from snekql import sqlite
+
+
+class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    account_id: sqlite.GenCol[int] = sqlite.Integer(
+        primary_key=True,
+        auto_increment=True,
+        default=sqlite.PENDING_GENERATION,
+    )
+    manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
+        lambda: Account.account_id,
+        default=None,
+    )
+
+
+account = Account()
+Account.manager_id.references(Account.account_id)
+```
+
+The callback must synchronously return a column on the annotated target model.
+Use a class-qualified name, not the bare class-body descriptor. The target
+annotation must resolve at declaration time to self or an existing model; this
+is not a general cross-model forward-reference facility. Callbacks should be
+side-effect-free and must not construct models or queries as part of resolution.
+No application globals or closure cells are rewritten.
+
+**This opts the model into deferred binding.** Declaration options and logical
+nullability are fixed when the class is created. The callback runs once when
+construction, schema/query metadata use, or a derived-storage inspection first
+requires the binding. For these models, index/check hooks and target-dependent
+constraint validation also wait until binding. Ordinary models keep eager
+validation. A query or encoded value cannot consume a failed model.
+
+The target identity, backend and keyable storage are checked before its immutable
+storage snapshot is exposed. Concurrent first uses share one resolution. Success
+and failure are cached; changing names or globals does not retry a failed binding
+or redirect a successful one. Cyclic storage dependencies and invalid callback
+results raise `ModelDeclarationError`, possibly wrapped by the calling query
+operation. Do not force binding from a class decorator before Python has assigned
+the class name.
+
+Callbacks require an explicit `default=None` or a compatible Python value.
+Omitted defaults, `default_factory`, server defaults and `PENDING_GENERATION`
+are not supported for this form. The omitted-default restriction preserves target
+checking on ty; the checker currently misses some wrong-target declarations
+without it. Existing `ForeignKey(Target.column, ...)` overloads are unchanged.
+For required self-FKs or eager error timing, use `FKCol` with ordinary storage and
+`ForeignKeyConstraint` instead.
 
 ### Referential actions
 

@@ -5,7 +5,7 @@ from typing import Any
 
 from snekql.errors import ModelDeclarationError
 from snekql.expressions import Predicate
-from snekql.storage import Attr, ReferentialAction
+from snekql.storage import Attr, ReferentialAction, _DeferredFKAttr
 
 
 @dataclass(frozen=True, init=False)
@@ -47,7 +47,7 @@ class ForeignKeyConstraint[OwnerT, TargetT]:
                 if not isinstance(column, Attr):
                     msg = "foreign key members must be column descriptors"
                     raise ModelDeclarationError(msg)
-                if not column.keyable:
+                if not isinstance(column, _DeferredFKAttr) and not column.keyable:
                     msg = "column storage does not support foreign keys"
                     raise ModelDeclarationError(msg)
                 if id(column) in seen:
@@ -81,7 +81,8 @@ class CheckConstraint[OwnerT]:
         return [CheckConstraint(cls.balance.gte(0), name="ck_balance")]
     ```
 
-    The method runs once during model creation. SQL NULL passes unless excluded.
+    The method runs once during model creation, or on first binding for models
+    with callable foreign keys. SQL NULL passes unless excluded.
     """
 
     predicate: Predicate[OwnerT]

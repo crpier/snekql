@@ -40,7 +40,7 @@ and errors in a broken positive control cannot earn a passing result.
 | Nine-field named result inference and helper boundary | Pass | Pass | Pass |
 | Left-join optional right model | Pass | Pass | Fails valid control |
 | Raw construction owns validation and result shape | Pass | Pass | Pass |
-| Nullable FK defaults, factory defaults and target-checked references | Pass | Pass | Fails valid control |
+| Nullable FK defaults, callable targets, factory defaults and target-checked references | Pass | Pass | Fails valid control |
 
 These are eight focused contracts, not an exhaustive claim about every method.
 Runtime checks still own dynamic inputs, declaration consistency, named binding

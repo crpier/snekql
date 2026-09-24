@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import annotationlib
+import inspect
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError, core_schema
 
+from snekql._declaration_binding import _OnceBinding
 from snekql._output_label import _NullExtendedLabel
 from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.defaults import LiteralDefault
@@ -947,7 +949,8 @@ class CurrentTimestamp:
 
 @overload
 def ForeignKey[Target, T](
-    references: Attr[Any, Any, Target, Any, T],
+    references: Attr[Any, Any, Target, Any, T]
+    | Callable[[], Attr[Any, Any, Target, Any, T]],
     *,
     primary_key: bool = False,
     nullable: Literal[True],
@@ -961,7 +964,8 @@ def ForeignKey[Target, T](
 
 @overload
 def ForeignKey[Target, T](
-    references: Attr[Any, Any, Target, Any, T],
+    references: Attr[Any, Any, Target, Any, T]
+    | Callable[[], Attr[Any, Any, Target, Any, T]],
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
@@ -988,7 +992,8 @@ def ForeignKey[Target, T](
 
 @overload
 def ForeignKey[Target, T](
-    references: Attr[Any, Any, Target, Any, T],
+    references: Attr[Any, Any, Target, Any, T]
+    | Callable[[], Attr[Any, Any, Target, Any, T]],
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
@@ -1014,7 +1019,8 @@ def ForeignKey[Target, T](
 
 
 def ForeignKey[Target, T](  # noqa: N802, PLR0913
-    references: Attr[Any, Any, Target, Any, T],
+    references: Attr[Any, Any, Target, Any, T]
+    | Callable[[], Attr[Any, Any, Target, Any, T]],
     *,
     primary_key: bool = False,
     nullable: bool | None = None,
@@ -1033,6 +1039,12 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
     restated, so an FK to a `TEXT` column is itself `TEXT`. PK targets are named
     explicitly like any other (`ForeignKey(User.id)`).
 
+    A zero-argument callback may name a self target after class creation:
+    `ForeignKey(lambda: Account.id, default=None)`. This form requires an
+    explicit Python default and an `FKCol` annotation. Target-dependent model
+    checks run once on first metadata use, with cached success or failure.
+    Callbacks must be synchronous and side-effect-free.
+
     Marking two or more foreign keys `primary_key=True` declares a composite
     (multi-column) primary key, the natural shape for a pure join table whose
     identity *is* the referenced column pair.
@@ -1040,6 +1052,32 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
     >>> class Order[S = Pending](Model[S, "Order[Fetched]"]):
     ...     owner_email: FKCol[User, str] = ForeignKey(User.email)
     """
+    if not isinstance(references, Attr):
+        if not callable(references):
+            msg = "foreign key targets must be columns or synchronous callbacks"
+            raise ModelDeclarationError(msg)
+        if (
+            isinstance(default, EllipsisType | LiteralDefault)
+            or default is CurrentTimestamp
+            or default is PENDING_GENERATION
+        ):
+            msg = "callable foreign keys require an explicit Python default"
+            raise ModelDeclarationError(msg)
+        if inspect.iscoroutinefunction(references) or inspect.isasyncgenfunction(
+            references
+        ):
+            msg = "foreign key target callbacks must be synchronous"
+            raise ModelDeclarationError(msg)
+        return _DeferredFKAttr(
+            references,
+            default=default,
+            nullable=nullable,
+            on_delete=on_delete,
+            on_update=on_update,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+        )
     target_column = cast("Attr[Any, Any, Any, Any, Any]", references)
     if not target_column.keyable:
         msg = "target column storage does not support foreign keys"
@@ -1299,8 +1337,8 @@ class Attr[
     def __init__(  # noqa: PLR0913
         self,
         *,
-        storage_class: StorageClass,
-        storage_type_name: str,
+        storage_class: StorageClass | None,
+        storage_type_name: str | None,
         auto_increment: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
@@ -1352,8 +1390,13 @@ class Attr[
         # Set post-construction during model-body processing when a
         # CurrentTimestamp marker replaces the declared default.
         self.server_default: object | None = None
-        self.storage_class: StorageClass = storage_class
-        self.storage_type_name: str = storage_type_name
+        if storage_class is None or storage_type_name is None:
+            if not isinstance(self, _DeferredFKAttr):
+                msg = "concrete columns require storage metadata"
+                raise ModelDeclarationError(msg)
+        else:
+            self.storage_class: StorageClass = storage_class
+            self.storage_type_name: str = storage_type_name
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
@@ -1510,6 +1553,10 @@ class Attr[
         remains unchanged and SQLite keeps its signed-64-bit parameter limit.
         """
 
+        binding = getattr(self.owner, "__snekql_binding__", None)
+        if isinstance(binding, _OnceBinding):
+            # Declaration checks may encode literals after storage has resolved.
+            binding.get(allow_reentry=True)
         try:
             if value is PENDING_GENERATION:
                 return PENDING_GENERATION
@@ -2328,6 +2375,116 @@ class FKAttr[
         """Build a join condition between this FK column and its target."""
 
         return _JoinOn(left_column=self, right_column=other)
+
+
+@dataclass(frozen=True, kw_only=True)
+class _ResolvedForeignKey:
+    """An immutable physical target and the complete storage derived from it."""
+
+    decimal_precision: int | None
+    decimal_scale: int | None
+    foreign_key_target: Attr[Any, Any, Any, Any, Any]
+    keyable: bool
+    storage_class: StorageClass
+    storage_type_name: str
+    text_collation: str | None
+    text_length: int | None
+
+
+class _DeferredFKAttr(FKAttr[Any, Any, Any, Any, Any, Any]):
+    """Keep descriptor identity stable while binding its immutable storage once."""
+
+    def __init__(  # noqa: PLR0913
+        self,
+        target: Callable[[], object],
+        *,
+        default: object,
+        nullable: bool | None,
+        on_delete: ReferentialAction | None,
+        on_update: ReferentialAction | None,
+        primary_key: bool,
+        index: bool,
+        unique: bool,
+    ) -> None:
+        self._target_callback: Callable[[], object] = target
+        self._expected_target: type[object] | None = None
+        self._model_binding: _OnceBinding[None] | None = None
+        self._storage_binding: _OnceBinding[_ResolvedForeignKey] = _OnceBinding(
+            "foreign key target", self._resolve_storage
+        )
+        super().__init__(
+            storage_class=None,
+            storage_type_name=None,
+            default=default,
+            nullable=nullable,
+            on_delete=on_delete,
+            on_update=on_update,
+            primary_key=primary_key,
+            index=index,
+            unique=unique,
+        )
+
+    def __getattribute__(self, name: str) -> object:
+        if name in _ResolvedForeignKey.__dataclass_fields__:
+            # This private slot is fixed before the descriptor is frozen.
+            binding = cast(
+                "_OnceBinding[None] | None",
+                object.__getattribute__(self, "_model_binding"),
+            )
+            if binding is None:
+                msg = "deferred foreign key storage is unavailable during declaration"
+                raise ModelDeclarationError(msg)
+            binding.get(allow_reentry=True)
+            storage = cast(
+                "_OnceBinding[_ResolvedForeignKey]",
+                object.__getattribute__(self, "_storage_binding"),
+            )
+            return getattr(storage.get(), name)
+        return super().__getattribute__(name)
+
+    def bind_target(self, expected: type[object], binding: _OnceBinding[None]) -> None:
+        """Attach a captured target contract before declaration metadata is frozen."""
+        if self._model_binding is not None or self.owner is None:
+            msg = "deferred target must be bound exactly once to its declaring model"
+            raise ModelDeclarationError(msg)
+        self._expected_target = expected
+        self._model_binding = binding
+
+    def _resolve_storage(self) -> _ResolvedForeignKey:
+        """Evaluate normally, then reject forged, redirected or cross-family targets."""
+        target = self._target_callback()
+        if not isinstance(target, Attr):
+            if inspect.iscoroutine(target):
+                target.close()
+            msg = "foreign key target callback must return a column"
+            raise ModelDeclarationError(msg)
+        owner = target.owner
+        columns = getattr(owner, "__snekql_columns__", {})
+        if owner is not self._expected_target or not any(
+            target is column for column in columns.values()
+        ):
+            msg = "foreign key callback target differs from its annotated model"
+            raise ModelDeclarationError(msg)
+        if getattr(owner, "__snekql_backend__", None) != getattr(
+            self.owner,
+            "__snekql_backend__",
+            None,
+        ):
+            msg = "foreign key backend mismatch"
+            raise ModelDeclarationError(msg)
+        if not target.keyable:
+            msg = "target column storage does not support foreign keys"
+            raise ModelDeclarationError(msg)
+        return _ResolvedForeignKey(
+            foreign_key_target=target,
+            keyable=target.keyable,
+            storage_class=target.storage_class,
+            storage_type_name=target.storage_type_name,
+            text_length=target.text_length,
+            text_collation=target.text_collation,
+            decimal_precision=target.decimal_precision,
+            decimal_scale=target.decimal_scale,
+        )
 
 
 def _finalize_model_columns(
