@@ -91,7 +91,7 @@ CTEs and named set operators from future builder syntax.
 | --- | --- |
 | `Model`, `Pending`, `Fetched` | Immutable declaration facts and explicit write/read states; no identity map or lazy loading |
 | `Col[T]`, `GenCol[T]`, `PENDING_GENERATION` | Logical type and generated-value availability; storage comes from the column constructor |
-| `ForeignKey`, `ForeignKeyConstraint`, `FKCol` | Explicit referenced columns and composite constraints; foreign-key declarations are not loaded relationships |
+| `ForeignKey`, `ForeignKeyConstraint`, `FKCol` | Explicit columns, callable targets with Python defaults, and composite constraints; see [binding timing](typing.md#callable-self-reference-targets). These are not loaded relationships |
 | `Integer`, `Real`, `Text`, `Blob` | SQLite storage classes and corresponding MariaDB namespace constructors |
 | `Boolean`, `DateTime`, `Decimal`, `Json`, `JsonCol`, `Uuid`, `LongText` | Additional MariaDB-only declarations; not SQLite exports |
 | `CurrentTimestamp`, `LiteralDefault` | Supported server defaults; distinguish them from Python defaults |

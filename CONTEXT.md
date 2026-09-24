@@ -57,7 +57,7 @@ A TCP transport whose server certificate chain and hostname are checked against 
 _Avoid_: encrypted-only transport, Unix-socket security
 
 **Table Model**:
-A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata. Its declaration facts are fixed when the class is created.
+A Python class that declares a table's row contract and serves as an ergonomic front end over the query builder's column declarations and storage metadata. Its declared options are immutable; callable foreign-key targets acquire an immutable binding on first metadata use.
 _Avoid_: Entity, ORM model
 
 **Dialect**:
@@ -189,7 +189,7 @@ A column the database can supply a value for (auto-increment or Server Default),
 _Avoid_: computed property, Python default, immutable column
 
 **Foreign-Key Column**:
-A column that references a target column on another Table Model. Declared with `ForeignKey`, it names the exact target column — a primary key or unique column — derives its storage from that target, and emits a `FOREIGN KEY` constraint; a typed-only reference (the same annotation with a plain column declaration) keeps the relationship available for typed joins without enforcing referential integrity.
+A column that references a target column on a Table Model. Declared with `ForeignKey`, it names the exact target column — a primary key or unique column — derives its storage from that target, and emits a `FOREIGN KEY` constraint; a typed-only reference (the same annotation with a plain column declaration) keeps the relationship available for typed joins without enforcing referential integrity.
 _Avoid_: association, ORM relation, relationship object
 
 **PendingGeneration**:

@@ -21,6 +21,13 @@
 
 ### Changed
 
+- `ForeignKey(lambda: Account.id, default=None)` now supports typed self targets
+  on SQLite and MariaDB. Callbacks require an explicit Python default and an
+  `FKCol` annotation. Callback-bearing models bind target storage and run
+  target-dependent declaration checks once on first metadata use, caching both
+  success and failure. Ordinary models remain eager. Bare class-body
+  `ForeignKey(id, ...)` typing remains unsupported. Addresses #410.
+
 - Both namespaces now export nonconstructible `Cte[Source, Result, Role]` and
   `NamedOperand[Result]` annotations for named recursive callbacks and composition
   helpers. An optional fourth `Cte` argument preserves nullable-anchor ownership.

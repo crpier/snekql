@@ -11,6 +11,7 @@ from snekql.storage import (
     Attr,
     StorageBackend,
     _annotation_core_types,
+    _DeferredFKAttr,
     _extract_logical_type,
     _json_payload_annotation,
     _resolve_model_hint,
@@ -20,6 +21,30 @@ if TYPE_CHECKING:
     from snekql._checks import CheckExpression
 
 OwnerT = TypeVar("OwnerT")
+
+
+def _validate_index_storage(
+    column: Attr[Any, Any, Any, Any, Any], prefix: int | None
+) -> None:
+    """Check derived storage only after a deferred column has a physical target."""
+    if prefix is not None:
+        if column.storage_type_name not in ("Text", "LongText"):
+            msg = "index prefixes require ordinary text storage"
+            raise ModelDeclarationError(msg)
+        # LONGTEXT has at most 2**32 - 1 bytes, hence no more characters.
+        capacity = (
+            (2**32 - 1)
+            if column.storage_type_name == "LongText"
+            else column.text_length
+        )
+        if capacity is not None and prefix > capacity:
+            msg = "index prefix length exceeds the column character capacity"
+            raise ModelDeclarationError(msg)
+    if not column.keyable and not (
+        column.storage_type_name == "LongText" and prefix is not None
+    ):
+        msg = "column storage does not support index declarations"
+        raise ModelDeclarationError(msg)
 
 
 @dataclass(frozen=True)
@@ -34,7 +59,8 @@ class Index[OwnerT]:
     SQLite accepts `where=` with the bounded CHECK predicate grammar. Return
     indexes from a synchronous `__indexes__` classmethod when using bound-column
     predicates. Annotate its result as `list[sqlite.Index[Self]]`; the factory
-    runs once after column metadata is frozen. False and NULL exclude rows.
+    runs once after column metadata is frozen, on first binding for models with
+    callable foreign keys. False and NULL exclude rows.
     MariaDB rejects partial predicates.
 
     >>> from snekql import mariadb
@@ -49,7 +75,7 @@ class Index[OwnerT]:
     prefix_lengths: tuple[int | None, ...] | None
     where: Predicate[OwnerT] | None
 
-    def __init__(  # noqa: C901
+    def __init__(
         self,
         *columns: Attr[Any, Any, OwnerT, Any, Any],
         unique: bool = False,
@@ -75,27 +101,11 @@ class Index[OwnerT]:
             if not isinstance(column, Attr):
                 msg = "Index() arguments must be snekql column descriptors"
                 raise ModelDeclarationError(msg)
-            if prefix is not None:
-                if type(prefix) is not int or prefix <= 0:
-                    msg = "index prefix lengths must be positive integers or None"
-                    raise ModelDeclarationError(msg)
-                if column.storage_type_name not in ("Text", "LongText"):
-                    msg = "index prefixes require ordinary text storage"
-                    raise ModelDeclarationError(msg)
-                # LONGTEXT has at most 2**32 - 1 bytes, hence no more characters.
-                capacity = (
-                    (2**32 - 1)
-                    if column.storage_type_name == "LongText"
-                    else column.text_length
-                )
-                if capacity is not None and prefix > capacity:
-                    msg = "index prefix length exceeds the column character capacity"
-                    raise ModelDeclarationError(msg)
-            if not column.keyable and not (
-                column.storage_type_name == "LongText" and prefix is not None
-            ):
-                msg = "column storage does not support index declarations"
+            if prefix is not None and (type(prefix) is not int or prefix <= 0):
+                msg = "index prefix lengths must be positive integers or None"
                 raise ModelDeclarationError(msg)
+            if not isinstance(column, _DeferredFKAttr):
+                _validate_index_storage(column, prefix)
             column_id = id(column)
             if column_id in seen_column_ids:
                 msg = "Index() cannot repeat a column"
@@ -129,6 +139,9 @@ def require_index_declaration(value: object, *, backend: StorageBackend) -> Inde
     if not isinstance(value, Index):
         msg = "__indexes__ entries must be Index declarations"
         raise ModelDeclarationError(msg)
+    prefixes = value.prefix_lengths or (None,) * len(value.columns)
+    for column, prefix in zip(value.columns, prefixes, strict=True):
+        _validate_index_storage(column, prefix)
     if value.where is not None and backend != "sqlite":
         msg = "partial-index predicates require SQLite"
         raise ModelDeclarationError(msg)

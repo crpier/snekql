@@ -14,10 +14,12 @@ from typing import (
     TypeVar,
     cast,
     dataclass_transform,
+    get_args,
     get_origin,
 )
 
 from snekql._checks import BoundCheck, CheckExpression, _CheckBinder, bind_checks
+from snekql._declaration_binding import _OnceBinding
 from snekql._server_defaults import bind_literal_default
 from snekql.constraints import ForeignKeyConstraint
 from snekql.defaults import LiteralDefault
@@ -44,6 +46,7 @@ from snekql.storage import (
     Real,
     StorageBackend,
     Text,
+    _DeferredFKAttr,
     _finalize_model_columns,
     _resolve_model_hint,
     _UnboundOwner,
@@ -201,20 +204,26 @@ class ModelMeta(type):
         )
         columns = ModelMeta._bind_columns(model_class)
         model_metadata.__snekql_columns__ = columns
+        deferred = any(
+            isinstance(column, _DeferredFKAttr) for column in columns.values()
+        )
         if not is_model_base:
-            ModelMeta._validate_foreign_key_backends(
-                cast("type[Table[Any]]", model_class), columns
-            )
-        if not is_model_base:
-            # Runs after the declaring-scope locals are captured so column
-            # annotations resolve; this is what lets the nullability cross-check
-            # read each column's logical type.
-            ModelMeta._validate_column_nullability(columns)
-            for column in columns.values():
-                bind_literal_default(column, model_metadata.__snekql_backend__)
-            ModelMeta._warn_lexical_text_columns(
+            ModelMeta._prepare_column_contracts(
+                cast("type[Table[Any]]", model_class),
                 columns,
-                model_metadata.__snekql_backend__,
+                deferred=deferred,
+            )
+        if deferred:
+            ModelMeta._defer_model_declarations(
+                cast("type[Table[Any]]", model_class),
+                namespace,
+                columns,
+            )
+            _finalize_model_columns(columns)
+            return model_class
+        if not is_model_base:
+            ModelMeta._warn_lexical_text_columns(
+                columns, model_metadata.__snekql_backend__
             )
         _finalize_model_columns(columns)
         if is_model_base:
@@ -238,6 +247,73 @@ class ModelMeta(type):
             )
         )
         return model_class
+
+    @staticmethod
+    def _prepare_column_contracts(
+        model_class: type[Table[Any]],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        *,
+        deferred: bool,
+    ) -> None:
+        """Keep eager validation ordering while freezing logical contracts for deferred models."""
+        if not deferred:
+            ModelMeta._validate_foreign_key_backends(model_class, columns)
+        ModelMeta._validate_column_nullability(columns)
+        for column in columns.values():
+            bind_literal_default(column, require_model_backend(model_class))
+
+    @staticmethod
+    def _defer_model_declarations(
+        model_class: type[Table[Any]],
+        namespace: dict[str, object],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    ) -> None:
+        """Capture frozen declarations now; validate physical facts after Python binds the class."""
+        model_metadata = cast("Any", model_class)
+        captured_namespace = {
+            key: list(value) if isinstance(value, list) else value
+            for key, value in namespace.items()
+            if key in ("__indexes__", "__foreign_keys__", "__checks__")
+        }
+
+        def finish() -> None:
+            ModelMeta._validate_foreign_key_backends(model_class, columns)
+            ModelMeta._warn_lexical_text_columns(
+                columns, model_metadata.__snekql_backend__
+            )
+            model_metadata.__snekql_indexes__ = ModelMeta._bind_indexes(
+                model_class,
+                captured_namespace,
+                columns,
+            )
+            model_metadata.__snekql_foreign_keys__ = ModelMeta._bind_foreign_keys(
+                model_class,
+                captured_namespace,
+                columns,
+            )
+            model_metadata.__snekql_checks__ = ModelMeta._bind_checks(
+                model_class,
+                captured_namespace,
+                columns,
+                model_metadata.__snekql_backend__,
+            )
+
+        binding = _OnceBinding(model_class.__qualname__, finish)
+        for column in columns.values():
+            if not isinstance(column, _DeferredFKAttr):
+                continue
+            annotation = _resolve_model_hint(model_class, column.name or "")
+            origin = get_origin(annotation)
+            if getattr(origin, "__name__", None) != "FKCol":
+                msg = "callable foreign keys require FKCol[Target, T] annotations"
+                raise ModelDeclarationError(msg)
+            target_argument = get_args(annotation)[-2]
+            target = get_origin(target_argument) or target_argument
+            if not isinstance(target, type) or not issubclass(target, Table):
+                msg = "callable foreign key annotation must name a table model"
+                raise ModelDeclarationError(msg)
+            column.bind_target(target, binding)
+        model_metadata.__snekql_binding__ = binding
 
     @staticmethod
     def _warn_lexical_text_columns(
@@ -462,20 +538,26 @@ class ModelMeta(type):
                 ):
                     msg = "foreign key columns must belong to the declaring model"
                     raise ModelDeclarationError(msg)
-            ModelMeta._validate_foreign_key_target(model_class, declaration)
+            ModelMeta._validate_foreign_key_target(model_class, declaration, columns)
             constraints.append(declaration)
         return tuple(constraints)
 
     @staticmethod
     def _validate_foreign_key_target(
-        model_class: type, declaration: ForeignKeyConstraint[Any, Any]
+        model_class: type,
+        declaration: ForeignKeyConstraint[Any, Any],
+        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
     ) -> None:
         """Require a single target candidate key and compatible local storage."""
         target_model = declaration.references[0].owner
         if target_model is None or not issubclass(target_model, Table):
             msg = "foreign key target must be bound to a table model"
             raise ModelDeclarationError(msg)
-        target_columns = require_model_columns(target_model)
+        target_columns = (
+            columns
+            if target_model is model_class
+            else require_model_columns(target_model)
+        )
         for target in declaration.references:
             if target.owner is not target_model or not any(
                 target is owned for owned in target_columns.values()
@@ -818,6 +900,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
         *,
         validate: bool,
     ) -> None:
+        require_model_columns(self.__class__)
         remaining_values = dict(values)
         storage = cast(
             "dict[str, object]",
@@ -904,6 +987,9 @@ def require_model_columns(
 ) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
     """Return frozen snekql column metadata for a table model."""
 
+    binding = vars(model).get("__snekql_binding__")
+    if isinstance(binding, _OnceBinding):
+        binding.get()
     columns = getattr(model, "__snekql_columns__", None)
     if not isinstance(columns, dict):
         msg = "schema setup requires snekql table models"
