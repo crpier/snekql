@@ -1,0 +1,41 @@
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/field-erasure.py:20:17
+   |
+20 |     reveal_type(token)
+   |                 ^^^^^ `dataclasses.Field`
+
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/field-erasure.py:25:17
+   |
+25 |     reveal_type(token)
+   |                 ^^^^^ `dataclasses.Field[Token[int]]`
+
+error[invalid-argument-type]: Argument to function `needs_text` is incorrect
+  --> /var/tmp/snekql-410/field-erasure.py:26:16
+   |
+26 |     needs_text(token)
+   |                ^^^^^ Expected `Token[str]`, found `dataclasses.Field[Token[int]]`
+info: Function defined here
+  --> /var/tmp/snekql-410/field-erasure.py:11:5
+   |
+11 | def needs_text(token: Token[str]) -> None:
+   |     ^^^^^^^^^^ ----------------- Parameter declared here
+
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/field-erasure.py:30:17
+   |
+30 |     reveal_type(token)
+   |                 ^^^^^ `Token[int]`
+
+error[invalid-argument-type]: Argument to function `needs_text` is incorrect
+  --> /var/tmp/snekql-410/field-erasure.py:31:16
+   |
+31 |     needs_text(token)
+   |                ^^^^^ Expected `Token[str]`, found `Token[int]`
+info: Function defined here
+  --> /var/tmp/snekql-410/field-erasure.py:11:5
+   |
+11 | def needs_text(token: Token[str]) -> None:
+   |     ^^^^^^^^^^ ----------------- Parameter declared here
+
+Found 5 diagnostics

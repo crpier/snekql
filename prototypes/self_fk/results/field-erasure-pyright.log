@@ -1,0 +1,14 @@
+/var/tmp/snekql-410/field-erasure.py
+  /var/tmp/snekql-410/field-erasure.py:20:17 - information: Type of "token" is "Token[int]"
+  /var/tmp/snekql-410/field-erasure.py:21:16 - error: Argument of type "Token[int]" cannot be assigned to parameter "token" of type "Token[str]" in function "needs_text"
+    "Token[int]" is not assignable to "Token[str]"
+      Type parameter "Value@Token" is invariant, but "int" is not the same as "str" (reportArgumentType)
+  /var/tmp/snekql-410/field-erasure.py:25:17 - information: Type of "token" is "Token[int]"
+  /var/tmp/snekql-410/field-erasure.py:26:16 - error: Argument of type "Token[int]" cannot be assigned to parameter "token" of type "Token[str]" in function "needs_text"
+    "Token[int]" is not assignable to "Token[str]"
+      Type parameter "Value@Token" is invariant, but "int" is not the same as "str" (reportArgumentType)
+  /var/tmp/snekql-410/field-erasure.py:30:17 - information: Type of "token" is "Token[int]"
+  /var/tmp/snekql-410/field-erasure.py:31:16 - error: Argument of type "Token[int]" cannot be assigned to parameter "token" of type "Token[str]" in function "needs_text"
+    "Token[int]" is not assignable to "Token[str]"
+      Type parameter "Value@Token" is invariant, but "int" is not the same as "str" (reportArgumentType)
+3 errors, 0 warnings, 3 informations

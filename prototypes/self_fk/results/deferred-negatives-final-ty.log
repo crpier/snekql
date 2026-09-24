@@ -1,0 +1,51 @@
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/deferred-mariadb-backend.py:16:50
+   |
+16 |     parent: mariadb.FKCol[Account, int | None] = deferred_fk(lambda: Other.key, default=None)
+   |             ----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/deferred-mariadb-owner.py:16:50
+   |
+16 |     parent: mariadb.FKCol[Account, int | None] = deferred_fk(lambda: Other.key, default=None)
+   |             ----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], str | None]`
+  --> /var/tmp/snekql-410/deferred-mariadb-value.py:16:50
+   |
+16 |     parent: mariadb.FKCol[Account, str | None] = deferred_fk(lambda: Account.key, default=None)
+   |             ----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+info: element `str` of union `str | None` is not assignable to `int | None`
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/deferred-sqlite-backend.py:16:49
+   |
+16 |     parent: sqlite.FKCol[Account, int | None] = deferred_fk(lambda: Other.key, default=None)
+   |             ---------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/deferred-sqlite-owner.py:16:49
+   |
+16 |     parent: sqlite.FKCol[Account, int | None] = deferred_fk(lambda: Other.key, default=None)
+   |             ---------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], str | None]`
+  --> /var/tmp/snekql-410/deferred-sqlite-value.py:16:49
+   |
+16 |     parent: sqlite.FKCol[Account, str | None] = deferred_fk(lambda: Account.key, default=None)
+   |             ---------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]]`
+   |             |
+   |             Declared type
+info: element `str` of union `str | None` is not assignable to `int | None`
+
+Found 6 diagnostics

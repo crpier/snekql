@@ -1,0 +1,37 @@
+/var/tmp/snekql-410/deferred-mariadb-backend.py
+  /var/tmp/snekql-410/deferred-mariadb-backend.py:16:50 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/deferred-mariadb-owner.py
+  /var/tmp/snekql-410/deferred-mariadb-owner.py:16:50 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/deferred-mariadb-value.py
+  /var/tmp/snekql-410/deferred-mariadb-value.py:16:50 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], str | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, str | None, str | None, Account[Pending], str | None, Any]"
+      Type parameter "WriteT@FKAttr" is covariant, but "int | None" is not a subtype of "str | None"
+        Type "int | None" is not assignable to type "str | None"
+          Type "int" is not assignable to type "str | None"
+            "int" is not assignable to "str"
+            "int" is not assignable to "None"
+      Type parameter "ReadValueT@FKAttr" is invariant, but "int | None" is not the same as "str | None"
+      Type parameter "SetValueT@FKAttr" is invariant, but "int | None" is not the same as "str | None" (reportAssignmentType)
+/var/tmp/snekql-410/deferred-sqlite-backend.py
+  /var/tmp/snekql-410/deferred-sqlite-backend.py:16:49 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/deferred-sqlite-owner.py
+  /var/tmp/snekql-410/deferred-sqlite-owner.py:16:49 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/deferred-sqlite-value.py
+  /var/tmp/snekql-410/deferred-sqlite-value.py:16:49 - error: Type "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], str | None]"
+    "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, str | None, str | None, Account[Pending], str | None, Any]"
+      Type parameter "WriteT@FKAttr" is covariant, but "int | None" is not a subtype of "str | None"
+        Type "int | None" is not assignable to type "str | None"
+          Type "int" is not assignable to type "str | None"
+            "int" is not assignable to "str"
+            "int" is not assignable to "None"
+      Type parameter "ReadValueT@FKAttr" is invariant, but "int | None" is not the same as "str | None"
+      Type parameter "SetValueT@FKAttr" is invariant, but "int | None" is not the same as "str | None" (reportAssignmentType)
+6 errors, 0 warnings, 0 informations

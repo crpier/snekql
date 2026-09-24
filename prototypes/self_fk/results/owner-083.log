@@ -1,0 +1,40 @@
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/standalone-default.py:43:17
+   |
+43 |     reveal_type(key)
+   |                 ^^^ `dataclasses.Field[Column[Unbound, int]]`
+
+error[invalid-argument-type]: Argument to function `reference` is incorrect
+  --> /var/tmp/snekql-410/standalone-default.py:45:60
+   |
+45 |     parent: Reference[Transformed, int | None] = reference(key, default=None)
+   |                                                            ^^^ Expected `Column[Transformed, int]`, found `dataclasses.Field[Column[Unbound, int]]`
+info: Matching overload defined here
+  --> /var/tmp/snekql-410/standalone-default.py:32:5
+   |
+32 | def reference[Target, Value](target: Column[Target, Value], *, default: None) -> Reference[Target, Value | None]: ...
+   |     ^^^^^^^^^                ----------------------------- Parameter declared here
+info: Non-matching overloads for function `reference`:
+info:   [Target, Value](target: Column[Target, Value]) -> Reference[Target, Value]
+
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/standalone-default.py:49:17
+   |
+49 |     reveal_type(key)
+   |                 ^^^ `Column[Unbound, int]`
+
+error[invalid-assignment]: Object of type `Reference[Unbound, int | None]` is not assignable to `Reference[Plain, int | None]`
+  --> /var/tmp/snekql-410/standalone-default.py:51:44
+   |
+51 |     parent: Reference[Plain, int | None] = reference(key, default=None)
+   |             ----------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `Reference[Unbound, int | None]`
+   |             |
+   |             Declared type
+
+info[revealed-type]: Revealed type
+  --> /var/tmp/snekql-410/standalone-default.py:56:13
+   |
+56 | reveal_type(Transformed.key)
+   |             ^^^^^^^^^^^^^^^ `Column[Transformed, int]`
+
+Found 5 diagnostics
