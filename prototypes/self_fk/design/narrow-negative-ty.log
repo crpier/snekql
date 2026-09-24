@@ -1,0 +1,141 @@
+error[no-matching-overload]: No overload of function `foreign_key` matches arguments
+  --> /var/tmp/snekql-410/design/narrow-mariadb-unsupported-nullable_required.py:17:62
+   |
+17 |     nullable_required: database.FKCol[Account, int | None] = foreign_key(lambda: Account.key, nullable=True)
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: First overload defined here
+  --> /var/tmp/snekql-410/design/narrow_probe.pyi:6:1
+   |
+ 6 | / @overload
+ 7 | | def foreign_key[Target, T](
+ 8 | |     references: Attr[Any, Any, Target, Any, T] | Callable[[], Attr[Any, Any, Target, Any, T]],
+ 9 | |     *,
+10 | |     primary_key: bool = False,
+11 | |     nullable: Literal[True],
+12 | |     unique: bool = False,
+13 | |     index: bool = False,
+14 | |     on_delete: ReferentialAction | None = None,
+15 | |     on_update: ReferentialAction | None = None,
+16 | |     default: T,
+17 | | ) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+   | |_______________________________________________________________________________^ First overload defined here
+info: Possible overloads for function `foreign_key`:
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+
+error[invalid-argument-type]: Argument to function `foreign_key` is incorrect
+  --> /var/tmp/snekql-410/design/narrow-mariadb-unsupported-required.py:16:58
+   |
+16 |     required: database.FKCol[Account, int] = foreign_key(lambda: Account.key)
+   |                                                          ^^^^^^^^^^^^^^^^^^^ Expected `Attr[Any, Any, Account[Pending], Any, int, Any, Any]`, found `() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]`
+info: Matching overload defined here
+  --> /var/tmp/snekql-410/design/narrow_probe.pyi:62:5
+   |
+62 | def foreign_key[Target, T](
+   |     ^^^^^^^^^^^
+63 |     references: Attr[Any, Any, Target, Any, T],
+   |     ------------------------------------------ Parameter declared here
+info: Non-matching overloads for function `foreign_key`:
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/narrow-mariadb-wrong-null_default.py:18:57
+   |
+18 |     null_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, default=None)
+   |                   -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                   |
+   |                   Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/narrow-mariadb-wrong-nullable_value_default.py:20:67
+   |
+20 |     nullable_value_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, nullable=True, default=1)
+   |                             -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                             |
+   |                             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]` is not assignable to `FKCol[Account[Pending], int]`
+  --> /var/tmp/snekql-410/design/narrow-mariadb-wrong-value_default.py:19:51
+   |
+19 |     value_default: database.FKCol[Account, int] = foreign_key(lambda: Other.key, default=1)
+   |                    ----------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]`
+   |                    |
+   |                    Declared type
+
+error[no-matching-overload]: No overload of function `foreign_key` matches arguments
+  --> /var/tmp/snekql-410/design/narrow-sqlite-unsupported-nullable_required.py:17:62
+   |
+17 |     nullable_required: database.FKCol[Account, int | None] = foreign_key(lambda: Account.key, nullable=True)
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+info: First overload defined here
+  --> /var/tmp/snekql-410/design/narrow_probe.pyi:6:1
+   |
+ 6 | / @overload
+ 7 | | def foreign_key[Target, T](
+ 8 | |     references: Attr[Any, Any, Target, Any, T] | Callable[[], Attr[Any, Any, Target, Any, T]],
+ 9 | |     *,
+10 | |     primary_key: bool = False,
+11 | |     nullable: Literal[True],
+12 | |     unique: bool = False,
+13 | |     index: bool = False,
+14 | |     on_delete: ReferentialAction | None = None,
+15 | |     on_update: ReferentialAction | None = None,
+16 | |     default: T,
+17 | | ) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None]: ...
+   | |_______________________________________________________________________________^ First overload defined here
+info: Possible overloads for function `foreign_key`:
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+
+error[invalid-argument-type]: Argument to function `foreign_key` is incorrect
+  --> /var/tmp/snekql-410/design/narrow-sqlite-unsupported-required.py:16:58
+   |
+16 |     required: database.FKCol[Account, int] = foreign_key(lambda: Account.key)
+   |                                                          ^^^^^^^^^^^^^^^^^^^ Expected `Attr[Any, Any, Account[Pending], Any, int, Any, Any]`, found `() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]`
+info: Matching overload defined here
+  --> /var/tmp/snekql-410/design/narrow_probe.pyi:62:5
+   |
+62 | def foreign_key[Target, T](
+   |     ^^^^^^^^^^^
+63 |     references: Attr[Any, Any, Target, Any, T],
+   |     ------------------------------------------ Parameter declared here
+info: Non-matching overloads for function `foreign_key`:
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: T) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target, T, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any], *, primary_key: bool = False, nullable: Literal[True], unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+info:   [Target, T](references: Attr[Any, Any, Target, Any, T, Any, Any] | (() -> Attr[Any, Any, Target, Any, T, Any, Any]), *, primary_key: bool = False, nullable: bool | None = None, unique: bool = False, index: bool = False, on_delete: ReferentialAction | None = None, on_update: ReferentialAction | None = None, default: None) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target, T | None, Any]
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/narrow-sqlite-wrong-null_default.py:18:57
+   |
+18 |     null_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, default=None)
+   |                   -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                   |
+   |                   Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/narrow-sqlite-wrong-nullable_value_default.py:20:67
+   |
+20 |     nullable_value_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, nullable=True, default=1)
+   |                             -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                             |
+   |                             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]` is not assignable to `FKCol[Account[Pending], int]`
+  --> /var/tmp/snekql-410/design/narrow-sqlite-wrong-value_default.py:19:51
+   |
+19 |     value_default: database.FKCol[Account, int] = foreign_key(lambda: Other.key, default=1)
+   |                    ----------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]`
+   |                    |
+   |                    Declared type
+
+Found 10 diagnostics

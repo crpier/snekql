@@ -1,0 +1,49 @@
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/mariadb-wrong-null_default.py:18:57
+   |
+18 |     null_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, default=None)
+   |                   -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                   |
+   |                   Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/mariadb-wrong-nullable_value_default.py:20:67
+   |
+20 |     nullable_value_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, nullable=True, default=1)
+   |                             -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                             |
+   |                             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]` is not assignable to `FKCol[Account[Pending], int]`
+  --> /var/tmp/snekql-410/design/mariadb-wrong-value_default.py:19:51
+   |
+19 |     value_default: database.FKCol[Account, int] = foreign_key(lambda: Other.key, default=1)
+   |                    ----------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]`
+   |                    |
+   |                    Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/sqlite-wrong-null_default.py:18:57
+   |
+18 |     null_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, default=None)
+   |                   -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                   |
+   |                   Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]` is not assignable to `FKCol[Account[Pending], int | None]`
+  --> /var/tmp/snekql-410/design/sqlite-wrong-nullable_value_default.py:20:67
+   |
+20 |     nullable_value_default: database.FKCol[Account, int | None] = foreign_key(lambda: Other.key, nullable=True, default=1)
+   |                             -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]]`
+   |                             |
+   |                             Declared type
+
+error[invalid-assignment]: Object of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]` is not assignable to `FKCol[Account[Pending], int]`
+  --> /var/tmp/snekql-410/design/sqlite-wrong-value_default.py:19:51
+   |
+19 |     value_default: database.FKCol[Account, int] = foreign_key(lambda: Other.key, default=1)
+   |                    ----------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Incompatible value of type `dataclasses.Field[FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]]`
+   |                    |
+   |                    Declared type
+
+Found 6 diagnostics

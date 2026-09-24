@@ -1,0 +1,45 @@
+/var/tmp/snekql-410/design/narrow-mariadb-unsupported-nullable_required.py
+  /var/tmp/snekql-410/design/narrow-mariadb-unsupported-nullable_required.py:17:5 - error: Type of "nullable_required" is unknown (reportUnknownVariableType)
+  /var/tmp/snekql-410/design/narrow-mariadb-unsupported-nullable_required.py:17:62 - error: No overloads for "foreign_key" match the provided arguments (reportCallIssue)
+  /var/tmp/snekql-410/design/narrow-mariadb-unsupported-nullable_required.py:17:74 - error: Argument of type "() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]" cannot be assigned to parameter "references" of type "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" in function "foreign_key"
+    "FunctionType" is not assignable to "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" (reportArgumentType)
+/var/tmp/snekql-410/design/narrow-mariadb-unsupported-required.py
+  /var/tmp/snekql-410/design/narrow-mariadb-unsupported-required.py:16:5 - error: Type of "required" is partially unknown
+    Type of "required" is "FKAttr[Any, Any, _UnboundOwner, Unknown, Unknown, Unknown, Unknown, Any]" (reportUnknownVariableType)
+  /var/tmp/snekql-410/design/narrow-mariadb-unsupported-required.py:16:58 - error: Argument of type "() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]" cannot be assigned to parameter "references" of type "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" in function "foreign_key"
+    "FunctionType" is not assignable to "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" (reportArgumentType)
+/var/tmp/snekql-410/design/narrow-mariadb-wrong-null_default.py
+  /var/tmp/snekql-410/design/narrow-mariadb-wrong-null_default.py:18:57 - error: Type "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/design/narrow-mariadb-wrong-nullable_value_default.py
+  /var/tmp/snekql-410/design/narrow-mariadb-wrong-nullable_value_default.py:20:67 - error: Type "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/design/narrow-mariadb-wrong-value_default.py
+  /var/tmp/snekql-410/design/narrow-mariadb-wrong-value_default.py:19:51 - error: Type "FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]" is not assignable to declared type "FKCol[Account[Pending], int]"
+    "FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int, int, Account[Pending], int, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/design/narrow-sqlite-unsupported-nullable_required.py
+  /var/tmp/snekql-410/design/narrow-sqlite-unsupported-nullable_required.py:17:5 - error: Type of "nullable_required" is unknown (reportUnknownVariableType)
+  /var/tmp/snekql-410/design/narrow-sqlite-unsupported-nullable_required.py:17:62 - error: No overloads for "foreign_key" match the provided arguments (reportCallIssue)
+  /var/tmp/snekql-410/design/narrow-sqlite-unsupported-nullable_required.py:17:74 - error: Argument of type "() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]" cannot be assigned to parameter "references" of type "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" in function "foreign_key"
+    "FunctionType" is not assignable to "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" (reportArgumentType)
+/var/tmp/snekql-410/design/narrow-sqlite-unsupported-required.py
+  /var/tmp/snekql-410/design/narrow-sqlite-unsupported-required.py:16:5 - error: Type of "required" is partially unknown
+    Type of "required" is "FKAttr[Any, Any, _UnboundOwner, Unknown, Unknown, Unknown, Unknown, Any]" (reportUnknownVariableType)
+  /var/tmp/snekql-410/design/narrow-sqlite-unsupported-required.py:16:58 - error: Argument of type "() -> Attr[Table[Pending], Table[Fetched], Account[Pending], int | PendingGeneration, int, int | PendingGeneration, int]" cannot be assigned to parameter "references" of type "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" in function "foreign_key"
+    "FunctionType" is not assignable to "Attr[Any, Any, Target@foreign_key, Any, T@foreign_key, Any, Any]" (reportArgumentType)
+/var/tmp/snekql-410/design/narrow-sqlite-wrong-null_default.py
+  /var/tmp/snekql-410/design/narrow-sqlite-wrong-null_default.py:18:57 - error: Type "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/design/narrow-sqlite-wrong-nullable_value_default.py
+  /var/tmp/snekql-410/design/narrow-sqlite-wrong-nullable_value_default.py:20:67 - error: Type "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to declared type "FKCol[Account[Pending], int | None]"
+    "FKAttr[Any, Any, _UnboundOwner, int | None, int | None, Other[Pending], int | None, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int | None, int | None, Account[Pending], int | None, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+/var/tmp/snekql-410/design/narrow-sqlite-wrong-value_default.py
+  /var/tmp/snekql-410/design/narrow-sqlite-wrong-value_default.py:19:51 - error: Type "FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]" is not assignable to declared type "FKCol[Account[Pending], int]"
+    "FKAttr[Any, Any, _UnboundOwner, int, int, Other[Pending], int, Any]" is not assignable to "FKAttr[Table[Pending], Table[Fetched], _UnboundOwner, int, int, Account[Pending], int, Any]"
+      Type parameter "TargetOwnerT@FKAttr" is invariant, but "Other[Pending]" is not the same as "Account[Pending]" (reportAssignmentType)
+16 errors, 0 warnings, 0 informations

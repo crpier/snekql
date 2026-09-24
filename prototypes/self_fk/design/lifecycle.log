@@ -1,0 +1,2 @@
+local class: lookup fails in hook, succeeds after definition; metadata frozen
+redefined class: hook sees old model; post-definition lookup sees new model

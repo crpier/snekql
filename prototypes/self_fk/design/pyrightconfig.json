@@ -1,0 +1,1 @@
+{"include": ["narrow-*.py"], "extraPaths": ["/var/tmp/snekql-410/design", "/home/crpier/Projects/snekql"], "pythonVersion": "3.14", "typeCheckingMode": "strict", "reportMissingModuleSource": false}
