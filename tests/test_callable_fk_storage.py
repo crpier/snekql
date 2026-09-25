@@ -11,7 +11,8 @@ from snekql import mariadb
 async def text_reference_retains_capacity_and_collation() -> None:
     """The resolved FK copies the exact storage contract of its target."""
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         account_id: mariadb.Col[str] = mariadb.Text(
             length=32, collation="utf8mb4_bin", primary_key=True
         )
@@ -27,7 +28,8 @@ async def text_reference_retains_capacity_and_collation() -> None:
 async def deferred_prefix_index_checks_real_capacity() -> None:
     """Class-body prefix declarations are checked against resolved text dimensions."""
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         account_id: mariadb.Col[str] = mariadb.Text(length=32, primary_key=True)
         manager_id: mariadb.FKCol[Account, str | None] = mariadb.ForeignKey(
             lambda: Account.account_id, default=None
@@ -42,7 +44,8 @@ async def deferred_prefix_index_checks_real_capacity() -> None:
 async def non_keyable_storage_is_rejected_when_resolved() -> None:
     """A callback cannot turn native long text into a scalar reference key."""
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         account_id: mariadb.Col[str] = mariadb.LongText()
         manager_id: mariadb.FKCol[Account, str | None] = mariadb.ForeignKey(
             lambda: Account.account_id, default=None

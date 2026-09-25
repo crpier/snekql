@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import MinLen
 from pydantic import AfterValidator, BeforeValidator, Json, PlainSerializer
@@ -13,8 +13,10 @@ from snekql.errors import ModelDeclarationError, ModelValidationError
 from tests.helpers import initialized_database
 
 
-class Document[S = sqlite.Pending](sqlite.Model[S, "Document[sqlite.Fetched]"]):
+class Document[S = sqlite.Pending](sqlite.Model[S]):
     """A JSON marker wrapped in a nullable field annotation."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Document[sqlite.Row]]]
 
     id: Document.Col[int] = sqlite.Integer(primary_key=True)
     payload: Document.Col[Json[list[int]] | None] = sqlite.Text()
@@ -36,10 +38,10 @@ async def optional_json_round_trips_decoded_payload() -> None:
     assert_eq(payload, [1, 2])
 
 
-class InnerOptional[S = sqlite.Pending](
-    sqlite.Model[S, "InnerOptional[sqlite.Fetched]"]
-):
+class InnerOptional[S = sqlite.Pending](sqlite.Model[S]):
     """The optional union may also be inside the field's Json marker."""
+
+    __row_type__: ClassVar[sqlite.ReadType[InnerOptional[sqlite.Row]]]
 
     id: InnerOptional.Col[int] = sqlite.Integer(primary_key=True)
     payload: InnerOptional.Col[Json[list[int] | None]] = sqlite.Text()
@@ -105,10 +107,10 @@ def optional_json_retains_constraints_and_validator_order() -> None:
         calls.append("after")
         return value
 
-    class Constrained[S = sqlite.Pending](
-        sqlite.Model[S, "Constrained[sqlite.Fetched]"]
-    ):
+    class Constrained[S = sqlite.Pending](sqlite.Model[S]):
         """A constrained payload inside an optional JSON field wrapper."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Constrained[sqlite.Row]]]
 
         payload: Constrained.Col[
             Annotated[
@@ -132,8 +134,10 @@ async def optional_json_preserves_custom_serialization() -> None:
     def ordered(value: list[int]) -> list[int]:
         return sorted(value)
 
-    class Serialized[S = sqlite.Pending](sqlite.Model[S, "Serialized[sqlite.Fetched]"]):
+    class Serialized[S = sqlite.Pending](sqlite.Model[S]):
         """A JSON list with a canonical order on the wire."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Serialized[sqlite.Row]]]
 
         payload: Serialized.Col[
             Json[Annotated[list[int], PlainSerializer(ordered)]] | None
@@ -154,8 +158,10 @@ async def optional_json_preserves_custom_serialization() -> None:
 def nested_payload_json_markers_are_not_stripped() -> None:
     """Only the field wire marker changes; nested Json items still parse strings."""
 
-    class Nested[S = sqlite.Pending](sqlite.Model[S, "Nested[sqlite.Fetched]"]):
+    class Nested[S = sqlite.Pending](sqlite.Model[S]):
         """Nested JSON strings remain a payload-level Pydantic feature."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Nested[sqlite.Row]]]
 
         payload: Nested.Col[Json[list[Json[int]]] | None] = sqlite.Text()
 
@@ -170,8 +176,10 @@ def mixed_field_marker_unions_are_rejected() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Mixed[S = sqlite.Pending](sqlite.Model[S, "Mixed[sqlite.Fetched]"]):
+        class Mixed[S = sqlite.Pending](sqlite.Model[S]):
             """An ambiguous JSON-or-plain field declaration."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Mixed[sqlite.Row]]]
 
             payload: Mixed.Col[Json[list[int]] | str] = sqlite.Text(nullable=False)
 
@@ -182,8 +190,10 @@ def mixed_field_marker_unions_are_rejected() -> None:
 def explicit_json_payload_unions_remain_supported() -> None:
     """One marker around the entire union unambiguously selects JSON storage."""
 
-    class Explicit[S = sqlite.Pending](sqlite.Model[S, "Explicit[sqlite.Fetched]"]):
+    class Explicit[S = sqlite.Pending](sqlite.Model[S]):
         """Every alternative belongs to one JSON payload domain."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Explicit[sqlite.Row]]]
 
         payload: Explicit.Col[Json[list[int] | str]] = sqlite.Text(nullable=False)
 
@@ -195,10 +205,10 @@ def explicit_json_payload_unions_remain_supported() -> None:
 async def sql_null_and_json_null_remain_distinct_on_the_wire() -> None:
     """Both decode to None, but Python None writes SQL NULL, not JSON text null."""
 
-    class WireDocument[S = sqlite.Pending](
-        sqlite.Model[S, "WireDocument[sqlite.Fetched]"]
-    ):
+    class WireDocument[S = sqlite.Pending](sqlite.Model[S]):
         """A text view seeds externally supplied JSON null without a JSON codec."""
+
+        __row_type__: ClassVar[sqlite.ReadType[WireDocument[sqlite.Row]]]
 
         __tablename__ = "document"
         id: WireDocument.Col[int] = sqlite.Integer(primary_key=True)
@@ -231,10 +241,12 @@ async def sql_null_and_json_null_remain_distinct_on_the_wire() -> None:
 
 @test(mark="medium")
 async def fetched_optional_json_keeps_payload_constraints() -> None:
-    """Fetched validation honors retained metadata; unchecked decoding still works."""
+    """Row validation honors retained metadata; unchecked decoding still works."""
 
-    class Checked[S = sqlite.Pending](sqlite.Model[S, "Checked[sqlite.Fetched]"]):
+    class Checked[S = sqlite.Pending](sqlite.Model[S]):
         """A constrained optional JSON payload."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Checked[sqlite.Row]]]
 
         payload: Checked.Col[Json[Annotated[list[int], MinLen(1)]] | None] = (
             sqlite.Text()
@@ -244,7 +256,9 @@ async def fetched_optional_json_keeps_payload_constraints() -> None:
         database=":memory:", models=[Checked]
     ) as database:
         async with database.transaction() as setup:
-            await setup.execute(sqlite.insert(Checked.construct(payload=[])))
+            await setup.execute(
+                sqlite.raw("INSERT INTO checked (payload) VALUES ('[]')")
+            )
 
         async with database.transaction() as tx:
             with assert_raises(ModelValidationError):

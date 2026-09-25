@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import (
     assert_eq,
@@ -15,12 +15,13 @@ from snektest import (
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     delete,
     insert,
@@ -33,8 +34,10 @@ from tests.helpers import SQLITE_CODEC, initialized_database
 def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
     """Delete compiles quoted table and column names with bound parameters."""
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table model with identifiers requiring SQLite quoting."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         __tablename__ = "select"
         status: Order.Col[str] = Text(nullable=False)
@@ -56,8 +59,10 @@ def delete_compilation_quotes_identifiers_and_parameterizes_filters() -> None:
 def delete_returning_appends_projected_columns() -> None:
     """SQLite delete returning(col, col) appends the projected columns."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model deleted through RETURNING."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -83,13 +88,17 @@ def delete_returning_appends_projected_columns() -> None:
 def delete_predicates_must_belong_to_target_model() -> None:
     """Delete where() rejects predicates built from another table model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Target table model for ownership checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Unrelated table model for ownership checks."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
@@ -103,8 +112,10 @@ def delete_predicates_must_belong_to_target_model() -> None:
 def delete_requires_exactly_one_filter_intent() -> None:
     """Delete requires exactly one of where() or all() before compilation."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by explicit delete intent checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)
@@ -135,8 +146,10 @@ def delete_requires_exactly_one_filter_intent() -> None:
 async def delete_returning_yields_deleted_projection() -> None:
     """SQLite delete returning(col) yields one decoded value per deleted row."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model deleted through RETURNING execution."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -163,8 +176,10 @@ async def delete_returning_yields_deleted_projection() -> None:
 async def delete_execute_returns_affected_row_count() -> None:
     """tx.execute(delete(...)) returns the count of rows deleted."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model deleted through the async runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)

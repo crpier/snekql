@@ -8,10 +8,12 @@ contract through the public compile path.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql import sqlite
-from snekql.sqlite import Fetched, Pending, Text, select
+from snekql.sqlite import Pending, Row, Text, select
 from tests.helpers import SQLITE_CODEC
 
 
@@ -19,8 +21,10 @@ from tests.helpers import SQLITE_CODEC
 def select_columns_render_as_bare_quoted_names() -> None:
     """Projected columns render without a table qualifier."""
 
-    class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](sqlite.Model[S]):
         """Model exposing columns for the rendering contract."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = Text(nullable=False)
         sku: Widget.Col[str] = Text(nullable=False)
@@ -37,8 +41,10 @@ def select_columns_render_as_bare_quoted_names() -> None:
 def predicate_and_ordering_columns_render_as_bare_quoted_names() -> None:
     """Predicate and ordering columns share the same bare-name rendering seam."""
 
-    class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](sqlite.Model[S]):
         """Model exposing columns used in WHERE and ORDER BY."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = Text(nullable=False)
         sku: Widget.Col[str] = Text(nullable=False)

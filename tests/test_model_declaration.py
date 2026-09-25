@@ -29,7 +29,6 @@ from snekql.sqlite import (
     Canonical,
     CanonicalDecimal,
     Duration,
-    Fetched,
     ForeignKey,
     FrozenModelError,
     Index,
@@ -42,7 +41,9 @@ from snekql.sqlite import (
     ModelValidationError,
     OrderPreserving,
     Pending,
+    ReadType,
     Real,
+    Row,
     Text,
     UtcDatetime,
 )
@@ -55,8 +56,10 @@ type SafeOrderPreservingTextDecimal = Annotated[Decimal, OrderPreserving]
 SqliteModelBase = Model
 
 
-class DeferredPayloadRow[S = Pending](Model[S, "DeferredPayloadRow[Fetched]"]):
+class DeferredPayloadRow[S = Pending](Model[S]):
     """Model whose logical payload type is defined later in the module."""
+
+    __row_type__: ClassVar[ReadType[DeferredPayloadRow[Row]]]
 
     optional: DeferredPayloadRow.Col[int | None] = Integer(default=None)
     payload: DeferredPayloadRow.Col[DeferredPayload] = Text()
@@ -82,8 +85,10 @@ def deferred_payload_hint_retries_after_module_population() -> None:
 def generated_column_alias_preserves_lifecycle_behavior() -> None:
     """An import alias cannot change whether a column is database-generated."""
 
-    class AliasedGenerated[S = Pending](Model[S, "AliasedGenerated[Fetched]"]):
+    class AliasedGenerated[S = Pending](Model[S]):
         """Model using an ordinary import alias for its generated column type."""
+
+        __row_type__: ClassVar[ReadType[AliasedGenerated[Row]]]
 
         id: GeneratedColumn[int] = Integer(default=PENDING_GENERATION)
 
@@ -97,8 +102,10 @@ def generated_column_alias_preserves_lifecycle_behavior() -> None:
 def application_model_named_model_is_a_concrete_table() -> None:
     """The public class name Model does not bypass table declaration behavior."""
 
-    class Model[S = Pending](SqliteModelBase[S, "Model[Fetched]"]):
+    class Model[S = Pending](SqliteModelBase[S]):
         """Application table whose domain name happens to be Model."""
+
+        __row_type__: ClassVar[ReadType[Model[Row]]]
 
         value: Model.Col[str] = Text()
 
@@ -112,8 +119,10 @@ def application_model_named_model_is_a_concrete_table() -> None:
 def framework_base_marker_cannot_be_forged_with_a_boolean() -> None:
     """Only the internal identity marker bypasses concrete-table setup."""
 
-    class Pretender[S = Pending](SqliteModelBase[S, "Pretender[Fetched]"]):
+    class Pretender[S = Pending](SqliteModelBase[S]):
         """Application model with a colliding private-looking class variable."""
+
+        __row_type__: ClassVar[ReadType[Pretender[Row]]]
 
         __snekql_framework_base__: ClassVar[bool] = True
         value: Pretender.Col[str] = Text()
@@ -135,8 +144,10 @@ def column_default_and_factory_are_mutually_exclusive() -> None:
 def column_descriptor_cannot_be_reused_across_models() -> None:
     """One descriptor object cannot be rebound to another model field."""
 
-    class Source[S = Pending](Model[S, "Source[Fetched]"]):
+    class Source[S = Pending](Model[S]):
         """Model owning the original descriptor."""
+
+        __row_type__: ClassVar[ReadType[Source[Row]]]
 
         value: Source.Col[str] = Text()
 
@@ -144,8 +155,10 @@ def column_descriptor_cannot_be_reused_across_models() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Reused[S = Pending](Model[S, "Reused[Fetched]"]):
+        class Reused[S = Pending](Model[S]):
             """Model attempting to steal a bound descriptor."""
+
+            __row_type__: ClassVar[ReadType[Reused[Row]]]
 
             copied: Reused.Col[str] = descriptor  # ty: ignore[invalid-assignment]
 
@@ -157,8 +170,10 @@ def text_decimal_columns_warn_without_canonical_wire_form() -> None:
     with warnings.catch_warnings(record=True) as caught_warnings:
         warnings.simplefilter("always", LexicalDecimalWarning)
 
-        class SqlitePrice[S = Pending](Model[S, "SqlitePrice[Fetched]"]):
+        class SqlitePrice[S = Pending](Model[S]):
             """SQLite model with decimal text columns."""
+
+            __row_type__: ClassVar[ReadType[SqlitePrice[Row]]]
 
             unsafe_amount: SqlitePrice.Col[Decimal] = Text(nullable=False)
             curated_amount: SqlitePrice.Col[CanonicalDecimal] = Text(nullable=False)
@@ -170,9 +185,11 @@ def text_decimal_columns_warn_without_canonical_wire_form() -> None:
             )
 
         class MariaPrice[S = mariadb.Pending](
-            mariadb.Model[S, "MariaPrice[mariadb.Fetched]"],
+            mariadb.Model[S],
         ):
             """MariaDB model with a decimal Text column."""
+
+            __row_type__: ClassVar[mariadb.ReadType[MariaPrice[mariadb.Row]]]
 
             unsafe_amount: MariaPrice.Col[Decimal] = mariadb.Text(nullable=False)
 
@@ -189,8 +206,10 @@ def sqlite_datetime_text_columns_warn_without_order_preserving_wire_form() -> No
     with warnings.catch_warnings(record=True) as caught_warnings:
         warnings.simplefilter("always", LexicalDatetimeWarning)
 
-        class UnsafeAudit[S = Pending](Model[S, "UnsafeAudit[Fetched]"]):
+        class UnsafeAudit[S = Pending](Model[S]):
             """Model with datetime text that compares lexically."""
+
+            __row_type__: ClassVar[ReadType[UnsafeAudit[Row]]]
 
             occurred_at: UnsafeAudit.Col[datetime] = Text(nullable=False)
             displayed_at: UnsafeAudit.Col[AwareDatetime] = Text(nullable=False)
@@ -212,16 +231,20 @@ def text_duration_columns_warn_without_order_preserving_wire_form() -> None:
     with warnings.catch_warnings(record=True) as caught_warnings:
         warnings.simplefilter("always", LexicalDurationWarning)
 
-        class SqliteTimer[S = Pending](Model[S, "SqliteTimer[Fetched]"]):
+        class SqliteTimer[S = Pending](Model[S]):
             """SQLite model with duration text columns."""
+
+            __row_type__: ClassVar[ReadType[SqliteTimer[Row]]]
 
             unsafe_elapsed: SqliteTimer.Col[timedelta] = Text(nullable=False)
             curated_elapsed: SqliteTimer.Col[Duration] = Integer(nullable=False)
 
         class MariaTimer[S = mariadb.Pending](
-            mariadb.Model[S, "MariaTimer[mariadb.Fetched]"],
+            mariadb.Model[S],
         ):
             """MariaDB model with duration Text and Integer columns."""
+
+            __row_type__: ClassVar[mariadb.ReadType[MariaTimer[mariadb.Row]]]
 
             unsafe_elapsed: MariaTimer.Col[timedelta] = mariadb.Text(nullable=False)
             curated_elapsed: MariaTimer.Col[mariadb.Duration] = mariadb.Integer(
@@ -243,8 +266,10 @@ def duration_over_text_warns_because_integer_wire_form_sorts_lexically() -> None
     with warnings.catch_warnings(record=True) as caught_warnings:
         warnings.simplefilter("always", LexicalDurationWarning)
 
-        class LexicalTimer[S = Pending](Model[S, "LexicalTimer[Fetched]"]):
+        class LexicalTimer[S = Pending](Model[S]):
             """SQLite model declaring Duration over lexical Text storage."""
+
+            __row_type__: ClassVar[ReadType[LexicalTimer[Row]]]
 
             elapsed: LexicalTimer.Col[Duration] = Text(nullable=False)
 
@@ -261,8 +286,10 @@ def lexical_datetime_warning_is_suppressible_by_category() -> None:
         warnings.simplefilter("error", LexicalDatetimeWarning)
         warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        class SuppressedAudit[S = Pending](Model[S, "SuppressedAudit[Fetched]"]):
+        class SuppressedAudit[S = Pending](Model[S]):
             """Model whose unsafe datetime warning is deliberately suppressed."""
+
+            __row_type__: ClassVar[ReadType[SuppressedAudit[Row]]]
 
             occurred_at: SuppressedAudit.Col[datetime] = Text(nullable=False)
 
@@ -277,9 +304,11 @@ def mariadb_native_datetime_columns_do_not_warn_about_lexical_text() -> None:
         warnings.simplefilter("always", LexicalDatetimeWarning)
 
         class NativeAudit[S = mariadb.Pending](
-            mariadb.Model[S, "NativeAudit[mariadb.Fetched]"],
+            mariadb.Model[S],
         ):
             """MariaDB model with native datetime storage."""
+
+            __row_type__: ClassVar[mariadb.ReadType[NativeAudit[mariadb.Row]]]
 
             occurred_at: NativeAudit.Col[datetime] = mariadb.DateTime(nullable=False)
 
@@ -303,8 +332,10 @@ def generated_columns_detected_without_future_annotations_import() -> None:
 def pending_model_construction_applies_defaults_and_pending_generation() -> None:
     """Constructed models expose values, defaults, and PENDING_GENERATION."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with normal and generated columns."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -321,8 +352,10 @@ def pending_model_construction_applies_defaults_and_pending_generation() -> None
 def model_construction_rejects_absent_and_unknown_values() -> None:
     """Constructing pending models validates constructor field names."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with one required field."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -342,8 +375,10 @@ def model_construction_calls_default_factories_per_instance() -> None:
     def new_tags() -> Json[list[str]]:
         return []
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Table model with a default factory."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         tags: Event.Col[Json[list[str]]] = Text(default_factory=new_tags)
 
@@ -374,8 +409,10 @@ def bound_column_metadata_is_immutable(
 ) -> None:
     """A model's finalized column metadata rejects public mutation."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with runtime schema metadata."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -396,8 +433,10 @@ def bound_column_metadata_is_immutable(
 def bound_column_metadata_cannot_be_deleted() -> None:
     """Removing finalized metadata raises the same deliberate package error."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with default metadata."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         status: User.Col[str] = Text(default="active")
 
@@ -415,8 +454,10 @@ def bound_column_metadata_cannot_be_deleted() -> None:
 def finalized_column_metadata_preserves_declaration_facts() -> None:
     """Model finalization freezes metadata only after deriving declaration facts."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Table model with derived and explicit column metadata."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         id: Account.GenCol[int] = Integer(
             primary_key=True,
@@ -440,26 +481,30 @@ def finalized_column_metadata_preserves_declaration_facts() -> None:
 def model_instances_are_frozen_after_construction() -> None:
     """Post-construction assignment raises the domain frozen error."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with one mutable-looking field."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
     user = User(email="alice@example.com")
 
     with assert_raises(FrozenModelError):
-        user.email = "eve@example.com"
+        user.email = "eve@example.com"  # ty: ignore[invalid-assignment]
 
     with assert_raises(FrozenModelError):
-        user.nickname = "alice"
+        user.nickname = "alice"  # ty: ignore[invalid-assignment]
 
 
 @test(mark="fast")
 def model_repr_equality_and_hashing_are_value_based() -> None:
     """Models compare by field values, omit PENDING_GENERATION in repr, and are unhashable."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model for deterministic value semantics."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -479,13 +524,17 @@ def model_repr_equality_and_hashing_are_value_based() -> None:
 def table_names_are_inferred_or_overridden_and_validated() -> None:
     """Model class creation resolves stable table names from public rules."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Table model using inferred table name."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model using explicit table name."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         __tablename__ = "users"
         email: User.Col[str] = Text(nullable=False)
@@ -495,8 +544,10 @@ def table_names_are_inferred_or_overridden_and_validated() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class InvalidName[S = Pending](Model[S, "InvalidName[Fetched]"]):
+        class InvalidName[S = Pending](Model[S]):
             """Table model with invalid table name."""
+
+            __row_type__: ClassVar[ReadType[InvalidName[Row]]]
 
             __tablename__ = "not valid"
             email: InvalidName.Col[str] = Text(nullable=False)
@@ -511,13 +562,17 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class PlainAnnotation[S = Pending](Model[S, "PlainAnnotation[Fetched]"]):
+        class PlainAnnotation[S = Pending](Model[S]):
             """Invalid table model with a plain instance annotation."""
+
+            __row_type__: ClassVar[ReadType[PlainAnnotation[Row]]]
 
             email: str
 
-    class WithClassVar[S = Pending](Model[S, "WithClassVar[Fetched]"]):
+    class WithClassVar[S = Pending](Model[S]):
         """Valid table model with an allowed class-level constant."""
+
+        __row_type__: ClassVar[ReadType[WithClassVar[Row]]]
 
         category: ClassVar[str] = "users"
         email: WithClassVar.Col[str] = Text(nullable=False)
@@ -526,8 +581,10 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class ComputedProperty[S = Pending](Model[S, "ComputedProperty[Fetched]"]):
+        class ComputedProperty[S = Pending](Model[S]):
             """Invalid table model with a computed property."""
+
+            __row_type__: ClassVar[ReadType[ComputedProperty[Row]]]
 
             email: ComputedProperty.Col[str] = Text(nullable=False)
 
@@ -537,8 +594,10 @@ def unsupported_model_body_members_raise_declaration_errors() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class AbstractModel[S = Pending](Model[S, "AbstractModel[Fetched]"]):
+        class AbstractModel[S = Pending](Model[S]):
             """Invalid abstract table model."""
+
+            __row_type__: ClassVar[ReadType[AbstractModel[Row]]]
 
             email: AbstractModel.Col[str] = Text(nullable=False)
 
@@ -559,8 +618,10 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class PrimaryKeyUnique[S = Pending](Model[S, "PrimaryKeyUnique[Fetched]"]):
+        class PrimaryKeyUnique[S = Pending](Model[S]):
             """Invalid redundant primary key unique declaration."""
+
+            __row_type__: ClassVar[ReadType[PrimaryKeyUnique[Row]]]
 
             id: PrimaryKeyUnique.GenCol[int] = Integer(
                 primary_key=True,
@@ -570,8 +631,10 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class IndexUnique[S = Pending](Model[S, "IndexUnique[Fetched]"]):
+        class IndexUnique[S = Pending](Model[S]):
             """Invalid redundant column index and unique declaration."""
+
+            __row_type__: ClassVar[ReadType[IndexUnique[Row]]]
 
             email: IndexUnique.Col[str] = Text(
                 nullable=False,
@@ -581,8 +644,10 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class IndexPrimaryKey[S = Pending](Model[S, "IndexPrimaryKey[Fetched]"]):
+        class IndexPrimaryKey[S = Pending](Model[S]):
             """Invalid redundant column index on a primary key."""
+
+            __row_type__: ClassVar[ReadType[IndexPrimaryKey[Row]]]
 
             id: IndexPrimaryKey.GenCol[int] = Integer(
                 primary_key=True,
@@ -592,16 +657,20 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class IndexCollision[S = Pending](Model[S, "IndexCollision[Fetched]"]):
+        class IndexCollision[S = Pending](Model[S]):
             """Invalid duplicate of a column index and a table-level index."""
+
+            __row_type__: ClassVar[ReadType[IndexCollision[Row]]]
 
             email: IndexCollision.Col[str] = Text(nullable=False, index=True)
             __indexes__: ClassVar[list[Index[Any]]] = [Index(email)]
 
     with assert_raises(ModelDeclarationError):
 
-        class TupleIndexes[S = Pending](Model[S, "TupleIndexes[Fetched]"]):
+        class TupleIndexes[S = Pending](Model[S]):
             """Invalid tuple index collection."""
+
+            __row_type__: ClassVar[ReadType[TupleIndexes[Row]]]
 
             email: TupleIndexes.Col[str] = Text(nullable=False)
             __indexes__ = (Index(email),)
@@ -609,9 +678,11 @@ def index_declarations_are_validated_in_model_bodies() -> None:
     with assert_raises(ModelDeclarationError):
 
         class DuplicateIndexColumns[S = Pending](
-            Model[S, "DuplicateIndexColumns[Fetched]"],
+            Model[S],
         ):
             """Invalid duplicate exact ordered column list."""
+
+            __row_type__: ClassVar[ReadType[DuplicateIndexColumns[Row]]]
 
             email: DuplicateIndexColumns.Col[str] = Text(nullable=False)
             __indexes__: ClassVar[list[Index[Any]]] = [
@@ -624,8 +695,10 @@ def index_declarations_are_validated_in_model_bodies() -> None:
 def non_direct_model_declarations_are_rejected() -> None:
     """V1 table models reject concrete subclasses and mixin bases."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Concrete table model."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -643,8 +716,10 @@ def non_direct_model_declarations_are_rejected() -> None:
 def model_construction_validates_logical_types_with_pydantic() -> None:
     """Constructing a pending model validates field values against the logical type."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Table model with a constrained integer column."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         receipt: Event.Col[PositiveInt] = Integer(nullable=False)
 
@@ -657,17 +732,14 @@ def model_construction_validates_logical_types_with_pydantic() -> None:
 
 
 @test(mark="fast")
-def construct_builds_pending_models_without_validation() -> None:
-    """The construct classmethod skips logical validation as an escape hatch."""
+def unchecked_construct_is_not_available() -> None:
+    """Applications cannot bypass logical validation through Model.construct."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
-        """Table model with a constrained integer column."""
-
+    class Event[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Event[Row]]]
         receipt: Event.Col[PositiveInt] = Integer(nullable=False)
 
-    event = Event.construct(receipt=-1)
-
-    assert_eq(event.receipt, -1)
+    assert_false(hasattr(Event, "construct"))
 
 
 @test(mark="fast")
@@ -676,8 +748,10 @@ def optional_annotation_requires_nullable_true() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class MissingNullable[S = Pending](Model[S, "MissingNullable[Fetched]"]):
+        class MissingNullable[S = Pending](Model[S]):
             """A `| None` annotation without nullable=True is a contradiction."""
+
+            __row_type__: ClassVar[ReadType[MissingNullable[Row]]]
 
             maybe: MissingNullable.Col[str | None] = Text(nullable=False)
 
@@ -686,8 +760,10 @@ def optional_annotation_requires_nullable_true() -> None:
 def optional_annotation_derives_nullable_when_unset() -> None:
     """An unset ``nullable=`` derives from the field's logical annotation."""
 
-    class DerivedNullable[S = Pending](Model[S, "DerivedNullable[Fetched]"]):
+    class DerivedNullable[S = Pending](Model[S]):
         """A `| None` annotation is the source of truth for SQL nullability."""
+
+        __row_type__: ClassVar[ReadType[DerivedNullable[Row]]]
 
         maybe: DerivedNullable.Col[str | None] = Text(default=None)
 
@@ -703,8 +779,10 @@ def unset_nullable_defaults_to_not_null() -> None:
     nullability is ``False``, not the old tri-state ``None``.
     """
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """A non-optional column declared without nullable= is NOT NULL."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         id: Account.GenCol[int] = Integer(
             primary_key=True,
@@ -722,8 +800,10 @@ def optional_primary_key_annotation_is_rejected() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class OptionalKey[S = Pending](Model[S, "OptionalKey[Fetched]"]):
+        class OptionalKey[S = Pending](Model[S]):
             """Invalid table with an optional primary-key read type."""
+
+            __row_type__: ClassVar[ReadType[OptionalKey[Row]]]
 
             id: OptionalKey.Col[int | None] = Integer(primary_key=True)
 
@@ -734,10 +814,10 @@ def non_optional_annotation_rejects_nullable_true() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class NullableNonOptional[S = Pending](
-            Model[S, "NullableNonOptional[Fetched]"]
-        ):
+        class NullableNonOptional[S = Pending](Model[S]):
             """nullable=True without `| None` would decode None into a `str`."""
+
+            __row_type__: ClassVar[ReadType[NullableNonOptional[Row]]]
 
             value: NullableNonOptional.Col[str] = Text(nullable=True)
 
@@ -746,8 +826,10 @@ def non_optional_annotation_rejects_nullable_true() -> None:
 def consistent_nullability_is_accepted() -> None:
     """Matching annotation and ``nullable=`` flag declare without objection."""
 
-    class Profile[S = Pending](Model[S, "Profile[Fetched]"]):
+    class Profile[S = Pending](Model[S]):
         """Every column's annotation agrees with its nullable flag."""
+
+        __row_type__: ClassVar[ReadType[Profile[Row]]]
 
         id: Profile.GenCol[int] = Integer(
             primary_key=True,
@@ -764,8 +846,10 @@ def consistent_nullability_is_accepted() -> None:
 def integer_columns_reject_float_in_strict_mode() -> None:
     """Strict validation rejects float for Integer columns."""
 
-    class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+    class Counter[S = Pending](Model[S]):
         """Table model with an integer column."""
+
+        __row_type__: ClassVar[ReadType[Counter[Row]]]
 
         value: Counter.Col[int] = Integer(nullable=False)
 
@@ -779,8 +863,10 @@ def integer_columns_coerce_bool_to_int() -> None:
     runtime coerces it to int rather than rejecting what the type already admits.
     """
 
-    class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+    class Counter[S = Pending](Model[S]):
         """Table model with an integer column."""
+
+        __row_type__: ClassVar[ReadType[Counter[Row]]]
 
         value: Counter.Col[int] = Integer(nullable=False)
 
@@ -794,8 +880,10 @@ def integer_columns_coerce_bool_to_int() -> None:
 def bool_columns_keep_bool_values() -> None:
     """A Col[bool] keeps a bool logical type, so its values are not coerced."""
 
-    class Flagged[S = Pending](Model[S, "Flagged[Fetched]"]):
+    class Flagged[S = Pending](Model[S]):
         """Table model with a boolean column stored as INTEGER."""
+
+        __row_type__: ClassVar[ReadType[Flagged[Row]]]
 
         flag: Flagged.Col[bool] = Integer(nullable=False)
 
@@ -809,8 +897,10 @@ def bool_columns_keep_bool_values() -> None:
 def json_columns_validate_annotated_shape() -> None:
     """Json columns validate the annotated container shape, not just dict-ness."""
 
-    class Settings[S = Pending](Model[S, "Settings[Fetched]"]):
+    class Settings[S = Pending](Model[S]):
         """Table model with a typed JSON column."""
+
+        __row_type__: ClassVar[ReadType[Settings[Row]]]
 
         options: Settings.Col[Json[dict[str, int]]] = Text(nullable=False)
 
@@ -830,8 +920,10 @@ def storage_classes_pair_with_their_logical_types() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        class Sample[S = Pending](Model[S, "Sample[Fetched]"]):
+        class Sample[S = Pending](Model[S]):
             """Table model pairing storage classes with their logical types."""
+
+            __row_type__: ClassVar[ReadType[Sample[Row]]]
 
             count: Sample.Col[int] = Integer(nullable=False)
             amount: Sample.Col[float] = Real(nullable=False)
@@ -851,13 +943,17 @@ def storage_classes_pair_with_their_logical_types() -> None:
 def foreign_key_annotation_storage_pairs_are_accepted() -> None:
     """A foreign-key column's key annotation is checked against derived storage."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table with an integer primary key."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table carrying an integer foreign key to ``User``."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
 
@@ -870,8 +966,10 @@ def storage_logical_pairs_are_not_constrained_at_declaration() -> None:
     annotation is the single source of truth and any pairing declares, with
     errors deferred to pydantic at encode/decode (ADR 0005)."""
 
-    class Wide[S = Pending](Model[S, "Wide[Fetched]"]):
+    class Wide[S = Pending](Model[S]):
         """Pairings the old exact-pair guard would have rejected."""
+
+        __row_type__: ClassVar[ReadType[Wide[Row]]]
 
         ratio: Wide.Col[float] = Integer(nullable=False)
         flag: Wide.Col[bool] = Integer(nullable=False)
@@ -892,8 +990,10 @@ def json_marker_columns_accept_any_payload_type() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        class Document[S = Pending](Model[S, "Document[Fetched]"]):
+        class Document[S = Pending](Model[S]):
             """Json marker columns accept any payload annotation."""
+
+            __row_type__: ClassVar[ReadType[Document[Row]]]
 
             when: Document.Col[Json[datetime]] = Text(nullable=False)
             items: Document.Col[Json[list[int]]] = Text(nullable=False)
@@ -916,8 +1016,10 @@ def later_function_local_payload_is_rejected_at_declaration() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+        class Mixed[S = Pending](Model[S]):
             """Model referring to a function-local payload declared later."""
+
+            __row_type__: ClassVar[ReadType[Mixed[Row]]]
 
             blob: Mixed.Col[Json[Payload]] = Text(nullable=False)
 
@@ -931,8 +1033,10 @@ def defined_function_local_payload_resolves_normally() -> None:
 
         value: str
 
-    class Mixed[S = Pending](Model[S, "Mixed[Fetched]"]):
+    class Mixed[S = Pending](Model[S]):
         """Optional scalar beside an already-defined local payload."""
+
+        __row_type__: ClassVar[ReadType[Mixed[Row]]]
 
         optional: Mixed.Col[int | None] = Integer(default=None)
         payload: Mixed.Col[Payload] = Text()
@@ -941,8 +1045,10 @@ def defined_function_local_payload_resolves_normally() -> None:
     mixed = Mixed(payload=Payload(value="ready"))
     assert_eq(mixed.payload, Payload(value="ready"))
 
-    class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
+    class Reading[S = Pending](Model[S]):
         """Table model with a real column."""
+
+        __row_type__: ClassVar[ReadType[Reading[Row]]]
 
         value: Reading.Col[float] = Real(nullable=False)
 

@@ -1,0 +1,2 @@
+
+Account[database.Row](name="Ada")  # expect-error

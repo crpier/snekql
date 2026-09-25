@@ -1,6 +1,7 @@
 """Self-contained driver contracts, also copied into isolated wheel installs."""
 
 from collections.abc import AsyncGenerator
+from typing import ClassVar
 
 from snektest import assert_eq, fixture, load_fixture, test
 
@@ -41,9 +42,8 @@ async def binary_values_survive_driver_binding() -> None:
     """All byte values round-trip without text decoding or SQL escape damage."""
     database = await load_fixture(provide_empty_database())
 
-    class BinaryRecord[S = mariadb.Pending](
-        mariadb.Model[S, "BinaryRecord[mariadb.Fetched]"]
-    ):
+    class BinaryRecord[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[BinaryRecord[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         payload: mariadb.Col[bytes] = mariadb.Blob()
 

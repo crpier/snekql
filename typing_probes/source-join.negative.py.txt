@@ -1,0 +1,3 @@
+
+
+database.select(Account).join(Account(account_id=1), on=Account.account_id.eq_col(Account.account_id))  # expect-error

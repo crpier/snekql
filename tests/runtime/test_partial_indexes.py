@@ -15,7 +15,8 @@ from snekql import mariadb, sqlite
 def partial_index_factory_scaffolds() -> None:
     """Bound-column predicates produce a named unique partial index."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         email: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[bool] = sqlite.Integer()
 
@@ -40,7 +41,8 @@ def partial_index_factory_scaffolds() -> None:
 async def matching_hand_created_predicate_verifies() -> None:
     """Predicate structure is verified, not merely the partial-index flag."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         email: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[bool] = sqlite.Integer()
 
@@ -76,7 +78,8 @@ def mariadb_rejects_partial_declaration() -> None:
     """A MariaDB declaration cannot accidentally emit SQLite partial-index SQL."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             label: mariadb.Col[str] = mariadb.Text()
 
             @classmethod
@@ -88,14 +91,16 @@ def mariadb_rejects_partial_declaration() -> None:
 def partial_unique_cannot_authorize_scalar_fk() -> None:
     """Uniqueness over selected rows does not make a complete candidate key."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
         def __indexes__(cls: type[Parent[S]]) -> list[sqlite.Index[Parent[S]]]:
             return [sqlite.Index(cls.label, unique=True, where=cls.label.ne(""))]
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         label: sqlite.FKCol[Parent, str] = sqlite.ForeignKey(Parent.label)
 
     with assert_raises(sqlite.SchemaError):
@@ -106,7 +111,8 @@ def partial_unique_cannot_authorize_scalar_fk() -> None:
 def partial_unique_cannot_authorize_table_fk() -> None:
     """Table-level foreign keys require uniqueness for every possible target row."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -115,7 +121,8 @@ def partial_unique_cannot_authorize_table_fk() -> None:
 
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+        class Child[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
             label: sqlite.Col[str] = sqlite.Text()
             __foreign_keys__: ClassVar = [
                 sqlite.ForeignKeyConstraint(label, references=(Parent.label,))
@@ -126,7 +133,8 @@ def partial_unique_cannot_authorize_table_fk() -> None:
 def distinct_predicates_can_share_columns() -> None:
     """Named full and distinct partial indexes retain the same indexed columns."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
         status: sqlite.Col[int] = sqlite.Integer()
 
@@ -145,7 +153,8 @@ def distinct_predicates_can_share_columns() -> None:
 def self_typed_index_factory() -> None:
     """Self keeps descriptor ownership exact without annotating cls explicitly."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -159,7 +168,8 @@ def self_typed_index_factory() -> None:
 async def unique_partial_insert_collision() -> None:
     """Two rows in the selected subset cannot share a unique indexed value."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[bool | None] = sqlite.Integer()
 
@@ -185,7 +195,8 @@ async def unique_partial_insert_collision() -> None:
 async def excluded_rows_can_duplicate(active: bool | None) -> None:  # noqa: FBT001
     """SQL false and unknown both exclude a row from the unique index."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[bool | None] = sqlite.Integer()
 
@@ -212,7 +223,8 @@ async def excluded_rows_can_duplicate(active: bool | None) -> None:  # noqa: FBT
 async def update_into_subset_enforces_uniqueness() -> None:
     """Changing the predicate column checks uniqueness even when it is not indexed."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         label: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[bool] = sqlite.Integer()
@@ -252,7 +264,8 @@ async def update_into_subset_enforces_uniqueness() -> None:
 async def catalog_predicate_classification(case: str) -> None:
     """Known differences drift; unsupported SQL never becomes a match."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[int] = sqlite.Integer()
 
@@ -300,7 +313,8 @@ def index_factory_runs_once() -> None:
     """Scaffold consumes the bound snapshot instead of rerunning application code."""
     calls: list[str] = []
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -320,7 +334,8 @@ def asynchronous_factory_is_rejected_before_start() -> None:
     with catch_warnings(record=True) as warnings:
         with assert_raises(sqlite.ModelDeclarationError):
 
-            class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+            class Entry[S = sqlite.Pending](sqlite.Model[S]):
+                __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
                 label: sqlite.Col[str] = sqlite.Text()
 
                 @classmethod
@@ -336,7 +351,8 @@ def factory_sees_frozen_columns() -> None:
     """The callback cannot rewrite column metadata used by its predicates."""
     with assert_raises(sqlite.FrozenModelError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             label: sqlite.Col[str] = sqlite.Text()
 
             @classmethod
@@ -349,7 +365,8 @@ def factory_sees_frozen_columns() -> None:
 async def escaped_predicate_round_trips() -> None:
     """Backslashes, quotes, NUL, and SQL-looking text stay literal data."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -386,12 +403,14 @@ async def escaped_predicate_round_trips() -> None:
 def unsupported_predicate_fails_before_io(case: str) -> None:
     """Only bounded local predicates and codec-valid literals can enter DDL."""
 
-    class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+    class Other[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer()
 
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             number: sqlite.Col[int] = sqlite.Integer()
             label: sqlite.Col[str] = sqlite.Text()
             encoded: sqlite.Col[Json[str]] = sqlite.Text()
@@ -422,14 +441,16 @@ def unsupported_predicate_fails_before_io(case: str) -> None:
 def full_unique_beside_partial_authorizes_fk() -> None:
     """Independent full uniqueness remains available to foreign-key validation."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text(unique=True)
 
         @classmethod
         def __indexes__(cls) -> list[sqlite.Index[Self]]:
             return [sqlite.Index(cls.label, where=cls.label.ne(""), name="ix_selected")]
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         label: sqlite.FKCol[Parent, str] = sqlite.ForeignKey(Parent.label)
 
     assert_in('REFERENCES "parent" ("label")', sqlite.scaffold([Parent, Child]))
@@ -440,7 +461,8 @@ def invalid_factory_return_is_rejected() -> None:
     """The callback returns a list, not an arbitrary iterable."""
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             label: sqlite.Col[str] = sqlite.Text()
 
             @classmethod
@@ -452,7 +474,8 @@ def invalid_factory_return_is_rejected() -> None:
 async def sqlite_identifier_case_normalizes() -> None:
     """ASCII identifier case changes do not change a partial predicate's column."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
         active: sqlite.Col[int] = sqlite.Integer()
 
@@ -480,7 +503,8 @@ async def sqlite_identifier_case_normalizes() -> None:
 async def unknown_quoted_operand_is_unchecked() -> None:
     """SQLite's double-quoted string fallback is not a fabricated column match."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -511,7 +535,8 @@ async def unknown_quoted_operand_is_unchecked() -> None:
 async def quoted_where_names_do_not_hide_predicate() -> None:
     """WHERE inside a name or string does not identify the predicate delimiter."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         where: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -535,7 +560,8 @@ def declaration_list_is_snapshotted() -> None:
     """Changing a returned list does not change an already bound schema predicate."""
     captured: list[Any] = []
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -555,7 +581,8 @@ def async_generator_factory_is_not_started() -> None:
     calls: list[str] = []
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             label: sqlite.Col[str] = sqlite.Text()
 
             @classmethod
@@ -570,7 +597,8 @@ def async_generator_factory_is_not_started() -> None:
 async def unsupported_predicate_does_not_fail_strict_verification() -> None:
     """An unchecked predicate is not silently promoted to either match or drift."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -599,7 +627,8 @@ async def unsupported_predicate_does_not_fail_strict_verification() -> None:
 async def changed_predicate_fails_strict_verification() -> None:
     """Strict verification rejects a recognized, structurally different predicate."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -624,7 +653,8 @@ async def changed_predicate_fails_strict_verification() -> None:
 async def column_only_upsert_does_not_target_partial_uniqueness() -> None:
     """Schema support does not invent an ON CONFLICT target predicate."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod

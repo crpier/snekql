@@ -2,20 +2,26 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.errors import SchemaVerificationError
 
 
-class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+class Parent[S = sqlite.Pending](sqlite.Model[S]):
     """The declared target."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
 
     id: Parent.Col[int] = sqlite.Integer(primary_key=True)
 
 
-class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+class Child[S = sqlite.Pending](sqlite.Model[S]):
     """A model declares one scalar relationship."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
 
     parent_id: Child.FKCol[Parent, int] = sqlite.ForeignKey(Parent.id, primary_key=True)
 

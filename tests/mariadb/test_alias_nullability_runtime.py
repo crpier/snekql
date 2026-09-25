@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import PlainSerializer
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
@@ -32,8 +32,10 @@ async def optional_alias_round_trip(value: int | None) -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
         """Both alias forms declare nullable columns."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
 
         value: Entry.Col[OptionalInteger] = mariadb.Integer(default=None)
         generic: Entry.Col[Maybe[int]] = mariadb.Integer(default=None)
@@ -62,8 +64,10 @@ async def alias_serializer_is_preserved() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
         """A serializer on the alias controls the wire value."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
 
         value: Entry.Col[SerializedOptional] = mariadb.Integer(default=None)
 
@@ -85,8 +89,10 @@ async def legacy_not_null_schema_is_not_rewritten() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
         """An optional alias is authoritative even over an older schema."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
 
         value: Entry.Col[OptionalInteger] = mariadb.Integer(default=None)
 

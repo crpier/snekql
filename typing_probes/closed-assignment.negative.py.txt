@@ -1,0 +1,3 @@
+
+
+unchecked: database.ClosedRead[Account[database.Row]] = database.select(Account).all()  # expect-error

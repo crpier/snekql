@@ -13,6 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 import anyio
 from aiosqlite import Connection, OperationalError
@@ -21,10 +22,11 @@ from snektest import assert_eq, assert_raises, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     Config,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     insert,
 )
 from snekql.sqlite.pool import close_sqlite_connection, open_sqlite_connection
@@ -33,8 +35,10 @@ from snekql.sqlite.runtime import SQLiteConnectionAdapter, initialize_runtime
 from tests.helpers import initialized_database
 
 
-class Counter[S = Pending](Model[S, "Counter[Fetched]"]):
+class Counter[S = Pending](Model[S]):
     """Single-column table used to drive concurrent inserts."""
+
+    __row_type__: ClassVar[ReadType[Counter[Row]]]
 
     id: Counter.GenCol[int] = Integer(
         primary_key=True,

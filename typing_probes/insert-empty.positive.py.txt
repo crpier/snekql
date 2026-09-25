@@ -1,0 +1,19 @@
+"""Single and explicit batch inserts retain distinct exact cardinalities."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.GenCol[int] = database.Integer(primary_key=True, auto_increment=True, default=database.PENDING_GENERATION)
+    name: database.Col[str] = database.Text()
+
+
+async def control(transaction: database.Transaction) -> None:
+    account = Account(name="Ada")
+    assert_type(await transaction.execute(database.insert(account)), None)
+    assert_type(await transaction.execute(database.insert(account).returning()), Account[database.Row])
+    assert_type(await transaction.execute(database.insert_many(Account, [account]).returning()), list[Account[database.Row]])
+    assert_type(await transaction.execute(database.insert_many(Account, (account,)).returning()), list[Account[database.Row]])
+    assert_type(await transaction.execute(database.insert_many(Account, []).returning()), list[Account[database.Row]])

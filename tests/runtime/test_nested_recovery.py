@@ -17,15 +17,19 @@ from tests.runtime.test_raw_execution import RawCase
 from tests.runtime.test_raw_lifecycle import provide_contended_case
 
 
-class SQLiteEntry[S = sqlite.Pending](sqlite.Model[S, "SQLiteEntry[sqlite.Fetched]"]):
+class SQLiteEntry[S = sqlite.Pending](sqlite.Model[S]):
     """Builder projection of the same physical table used by raw recovery tests."""
+
+    __row_type__: ClassVar[sqlite.ReadType[SQLiteEntry[sqlite.Row]]]
 
     __tablename__: ClassVar[str] = "nested_entries"
     value: SQLiteEntry.Col[int] = sqlite.Integer(primary_key=True)
 
 
-class MariaEntry[S = mariadb.Pending](mariadb.Model[S, "MariaEntry[mariadb.Fetched]"]):
+class MariaEntry[S = mariadb.Pending](mariadb.Model[S]):
     """MariaDB's typed write path must retain the same recovery guarantees."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaEntry[mariadb.Row]]]
 
     __tablename__: ClassVar[str] = "nested_entries"
     value: MariaEntry.Col[int] = mariadb.Integer(primary_key=True)

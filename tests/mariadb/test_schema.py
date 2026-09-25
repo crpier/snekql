@@ -22,10 +22,10 @@ from snekql import mariadb
 from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
-    Fetched,
     ForeignKey,
     Index,
     Pending,
+    Row,
     SchemaError,
     SchemaPolicy,
     SchemaVerificationError,
@@ -114,14 +114,18 @@ async def database_session(
 async def mariadb_model_foreign_key_verifies_without_implicit_index_drift() -> None:
     """MariaDB's required FK backing index is not an unexpected managed index."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue253_fk_user"
         id: User.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](mariadb.Model[S]):
         """Table with an enforced foreign key but no declared index."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Order[Row]]]
 
         __tablename__ = "issue253_fk_order"
         user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
@@ -139,14 +143,18 @@ async def mariadb_foreign_key_action_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue253_action_user"
         id: User.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](mariadb.Model[S]):
         """Model requiring cascading deletes."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Order[Row]]]
 
         __tablename__ = "issue253_action_order"
         user_id: Order.FKCol[User, int] = ForeignKey(
@@ -180,14 +188,18 @@ async def mariadb_missing_managed_foreign_key_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue253_missing_fk_user"
         id: User.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Order[S = Pending](mariadb.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](mariadb.Model[S]):
         """Model whose managed FK is absent from the live table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Order[Row]]]
 
         __tablename__ = "issue253_missing_fk_order"
         user_id: Order.FKCol[User, int] = ForeignKey(User.id, nullable=False)
@@ -214,8 +226,10 @@ async def mariadb_missing_managed_foreign_key_is_reported() -> None:
 async def mariadb_schema_creates_column_unique_indexes() -> None:
     """MariaDB startup creates column unique indexes."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model with a MariaDB column unique index."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_user_column_unique_indexes"
 
@@ -238,8 +252,10 @@ async def mariadb_schema_creates_column_unique_indexes() -> None:
 async def mariadb_schema_creates_column_non_unique_indexes() -> None:
     """MariaDB startup creates column ``index=True`` non-unique indexes."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model with a MariaDB column non-unique index."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue146_user_column_non_unique_indexes"
 
@@ -265,8 +281,10 @@ async def mariadb_schema_creates_column_non_unique_indexes() -> None:
 async def mariadb_schema_creates_table_indexes() -> None:
     """MariaDB startup creates declared table indexes."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model with MariaDB table indexes."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_user_table_indexes"
 
@@ -301,15 +319,19 @@ async def mariadb_schema_rejects_duplicate_index_names_before_mutation() -> None
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """First model using a duplicate index name."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_duplicate_user"
         email: User.Col[str] = mariadb.Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class Org[S = Pending](mariadb.Model[S, "Org[Fetched]"]):
+    class Org[S = Pending](mariadb.Model[S]):
         """Second model using a duplicate index name."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Org[Row]]]
 
         __tablename__ = "issue39_duplicate_org"
         name: Org.Col[str] = mariadb.Text(nullable=False)
@@ -339,8 +361,10 @@ async def mariadb_integer_signedness_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Counter[S = Pending](mariadb.Model[S, "Counter[Fetched]"]):
+    class Counter[S = Pending](mariadb.Model[S]):
         """Model expecting a signed BIGINT."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Counter[Row]]]
 
         __tablename__ = "issue253_signedness"
         value: Counter.Col[int] = mariadb.Integer(nullable=False)
@@ -365,8 +389,10 @@ async def mariadb_datetime_precision_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """Model expecting DATETIME(3)."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_datetime_precision"
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
@@ -391,8 +417,10 @@ async def mariadb_supported_server_default_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """Model requiring MariaDB's millisecond server clock."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_server_default"
         created_at: Event.GenCol[datetime] = mariadb.DateTime(
@@ -421,8 +449,10 @@ async def mariadb_supported_server_default_is_normalized() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """Model requiring MariaDB's millisecond server clock."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_normalized_default"
         created_at: Event.GenCol[datetime] = mariadb.DateTime(
@@ -448,8 +478,10 @@ async def mariadb_decimal_precision_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Price[S = Pending](mariadb.Model[S, "Price[Fetched]"]):
+    class Price[S = Pending](mariadb.Model[S]):
         """Model whose live decimal scale differs."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Price[Row]]]
 
         __tablename__ = "native_decimal_drift"
         amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
@@ -475,8 +507,10 @@ async def mariadb_strict_schema_policy_raises_on_table_drift() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model that expects more columns than the existing table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_table_drift"
         id: User.GenCol[int] = mariadb.Integer(
@@ -502,8 +536,10 @@ async def mariadb_strict_schema_policy_raises_on_index_drift() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model that expects a unique index absent from the existing table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_index_drift"
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
@@ -526,8 +562,10 @@ async def mariadb_index_prefix_length_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model requiring a full-column email index."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue253_index_prefix"
         email: User.Col[str] = mariadb.Text(nullable=False, index=True)
@@ -553,8 +591,10 @@ async def mariadb_index_type_drift_is_reported() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model requiring an ordinary email index."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue253_index_type"
         email: User.Col[str] = mariadb.Text(nullable=False, index=True)
@@ -580,8 +620,10 @@ async def mariadb_index_type_drift_is_reported() -> None:
 async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
     """Warn policy logs MariaDB schema drift without rejecting startup."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model used for warn-policy drift verification."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue39_warn_drift"
         id: User.GenCol[int] = mariadb.Integer(
@@ -613,8 +655,10 @@ async def mariadb_warn_schema_policy_logs_drift_and_continues() -> None:
 async def mariadb_reordered_columns_verify_semantically() -> None:
     """A live table whose columns are in a different order is not drift."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model verified against a semantically equal, reordered live table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue119_reordered"
         id: User.GenCol[int] = mariadb.Integer(
@@ -643,8 +687,10 @@ async def mariadb_reordered_columns_verify_semantically() -> None:
 async def mariadb_boolean_tinyint_alias_verifies_clean() -> None:
     """``BOOLEAN`` is a ``TINYINT(1)`` alias; either spelling is not drift."""
 
-    class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
+    class Flag[S = Pending](mariadb.Model[S]):
         """Model whose boolean column is migrated as the underlying TINYINT(1)."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Flag[Row]]]
 
         __tablename__ = "issue58_boolean_alias"
         id: Flag.GenCol[int] = mariadb.Integer(
@@ -680,8 +726,10 @@ async def mariadb_boolean_tinyint_alias_verifies_clean() -> None:
 async def mariadb_json_longtext_alias_verifies_clean() -> None:
     """``JSON`` is a ``LONGTEXT`` alias; either spelling is not drift."""
 
-    class Doc[S = Pending](mariadb.Model[S, "Doc[Fetched]"]):
+    class Doc[S = Pending](mariadb.Model[S]):
         """Model whose JSON column is migrated as the underlying LONGTEXT."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Doc[Row]]]
 
         __tablename__ = "issue58_json_alias"
         id: Doc.GenCol[int] = mariadb.Integer(
@@ -717,8 +765,10 @@ async def mariadb_strict_drift_error_names_the_divergent_column() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model whose email is NOT NULL while the live column is nullable."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue119_column_drift"
         id: User.GenCol[int] = mariadb.Integer(

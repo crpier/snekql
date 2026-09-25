@@ -123,13 +123,15 @@ class InsertState:
     describe optional atomic handling for a unique-key collision. ``returning``
     records whether the write should yield rows via ``RETURNING``;
     ``returning_fields`` records an explicit column projection for that clause
-    (empty means project every column and decode each row into a Fetched model).
+    (empty means project every column and decode each row into a Row model).
     ``multi`` records whether the builder was created from a sequence, so an
     empty bulk batch stays typed and executable as a no-op even though it carries
-    no rows to read a model from.
+    no rows to read a model from. `destination` retains the model supplied to
+    an explicit batch, including its backend and projection checks.
     """
 
     rows: tuple[Table[Any], ...]
+    destination: type[Table[Any]] | None = None
     conflict_action: DoUpdate[Any] | type[DoNothing] | None = None
     conflict_targets: tuple[Attr[Any, Any, Any, Any, Any], ...] = ()
     named_projection: NamedProjection | None = None
@@ -138,8 +140,10 @@ class InsertState:
     multi: bool = False
 
     def model(self) -> type[Table[Any]] | None:
-        """Return the inserted model class, or None for an empty bulk batch."""
+        """Keep an explicit destination even when an insert batch is empty."""
 
+        if self.destination is not None:
+            return self.destination
         if not self.rows:
             return None
         return type(self.rows[0])
@@ -271,9 +275,8 @@ def require_model_returning_fields(
     """Validate an explicit ``returning()`` projection against a written model.
 
     Each field must be a plain column bound to a table model; when the model is
-    known it must be a column of that model. An empty bulk insert has no model to
-    compare against, so each field is only checked for being a bound table column
-    -- it carries its own owner.
+    known it must be a column of that model. Explicit batch destinations preserve
+    this ownership check even when there are no rows to insert.
     """
 
     columns = require_model_columns(model_class) if model_class is not None else None
@@ -302,7 +305,7 @@ def require_insert_model(row: object) -> type[Table[Any]]:
     if not isinstance(row, Model):
         msg = "insert requires a snekql model instance"
         raise QueryConstructionError(msg)
-    model_row = cast("Model[Any, Any]", row)
+    model_row = cast("Model[Any]", row)
     if model_row._snekql_state_name() != "Pending":  # noqa: SLF001
         msg = "insert requires a Pending model instance"
         raise QueryConstructionError(msg)

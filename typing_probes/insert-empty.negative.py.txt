@@ -1,0 +1,3 @@
+
+
+database.insert([])  # expect-error

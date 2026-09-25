@@ -6,18 +6,19 @@ from collections.abc import Callable
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_is, assert_ne, assert_raises, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     delete,
     insert,
@@ -40,8 +41,10 @@ def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
 def predicates_reject_ambiguous_or_invalid_intent() -> None:
     """Predicate helpers reject null ambiguity, empty IN, and non-text LIKE."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by predicate construction checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.Col[int] = Integer(nullable=False)
         email: User.Col[str] = Text(nullable=False)
@@ -70,8 +73,10 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
 def select_builders_are_immutable_and_require_filter_intent() -> None:
     """Select chain methods return new queries except repeated all() no-ops."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by immutable select checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)
@@ -118,8 +123,10 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
 def update_compilation_requires_set_and_filter_intent() -> None:
     """Update SQL is parameterized and refuses implicit full-table updates."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by update compilation checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -164,8 +171,10 @@ def update_compilation_requires_set_and_filter_intent() -> None:
 def delete_compilation_requires_filter_intent() -> None:
     """Delete SQL requires explicit where() or all() before compilation."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by delete compilation checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)
@@ -204,8 +213,10 @@ def delete_compilation_requires_filter_intent() -> None:
 async def update_and_delete_execute_against_sqlite() -> None:
     """Mutation queries persist changes through the async transaction runtime."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by mutation execution checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)

@@ -6,7 +6,7 @@ from pathlib import Path
 from sqlite3 import IntegrityError, OperationalError, connect
 from tempfile import TemporaryDirectory
 from threading import Event as ThreadEvent
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import anyio
 import anyio.lowlevel
@@ -18,7 +18,6 @@ from snekql.sqlite import (
     PENDING_GENERATION,
     Config,
     Database,
-    Fetched,
     Integer,
     MigrationDeclarationError,
     MigrationError,
@@ -27,6 +26,8 @@ from snekql.sqlite import (
     MigrationResult,
     Model,
     Pending,
+    ReadType,
+    Row,
     SchemaVerificationError,
     Text,
 )
@@ -516,8 +517,10 @@ async def concurrent_runners_apply_a_non_idempotent_migration_once() -> None:
 async def verify_passes_against_migration_created_schema() -> None:
     """Verification passes when the migration-built schema matches the models."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose DDL matches the create-user migration body."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -538,8 +541,10 @@ async def verify_passes_against_migration_created_schema() -> None:
 async def verify_fails_when_a_model_has_no_migration() -> None:
     """Under strict, a model whose table no migration created is reported as drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose table is never created because migrations own creation."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -1023,8 +1028,10 @@ async def sqlite_history_ddl_rejects_nul_extended_checksums() -> None:
 async def replica_init_then_verify_catches_a_forgotten_migration() -> None:
     """An init -> verify replica path fails fast when a migration was not applied."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose table the replica expects an earlier deploy to have created."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION

@@ -3,51 +3,59 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from snekql import mariadb, sqlite
 
 
 class SqliteUser[S = sqlite.Pending](
-    sqlite.Model[S, "SqliteUser[sqlite.Fetched]"],
+    sqlite.Model[S],
 ):
+    __row_type__: ClassVar[sqlite.ReadType[SqliteUser[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
 class MariadbUser[S = mariadb.Pending](
-    mariadb.Model[S, "MariadbUser[mariadb.Fetched]"],
+    mariadb.Model[S],
 ):
+    __row_type__: ClassVar[mariadb.ReadType[MariadbUser[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 
 if TYPE_CHECKING:
 
     class SqliteMariaReference[S = sqlite.Pending](
-        sqlite.Model[S, "SqliteMariaReference[sqlite.Fetched]"],
+        sqlite.Model[S],
     ):
+        __row_type__: ClassVar[sqlite.ReadType[SqliteMariaReference[sqlite.Row]]]
         maria_user_id: sqlite.FKCol[MariadbUser, int] = sqlite.ForeignKey(  # ty: ignore[invalid-type-arguments]
             MariadbUser.id,
         )
 
     class MariadbSqliteReference[S = mariadb.Pending](
-        mariadb.Model[S, "MariadbSqliteReference[mariadb.Fetched]"],
+        mariadb.Model[S],
     ):
+        __row_type__: ClassVar[mariadb.ReadType[MariadbSqliteReference[mariadb.Row]]]
         sqlite_user_id: mariadb.FKCol[SqliteUser, int] = mariadb.ForeignKey(  # ty: ignore[invalid-type-arguments]
             SqliteUser.id,
         )
 
-    sqlite_model_select: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(
-        SqliteUser
-    ).all()
-    sqlite_value_select: sqlite.Select[int] = sqlite.select(SqliteUser.id).all()
-    sqlite_returning: sqlite.Write[SqliteUser[sqlite.Fetched]] = sqlite.insert(
+    sqlite_model_select: sqlite.ClosedRead[SqliteUser[sqlite.Row]] = sqlite.ready(
+        sqlite.select(SqliteUser).all()
+    )
+    sqlite_value_select: sqlite.ClosedRead[int] = sqlite.ready(
+        sqlite.select(SqliteUser.id).all()
+    )
+    sqlite_returning: sqlite.Write[SqliteUser[sqlite.Row]] = sqlite.insert(
         SqliteUser(id=1)
     ).returning()
-    mariadb_model_select: mariadb.Select[MariadbUser[mariadb.Fetched]] = mariadb.select(
-        MariadbUser
-    ).all()
-    mariadb_value_select: mariadb.Select[int] = mariadb.select(MariadbUser.id).all()
-    mariadb_returning: mariadb.Write[MariadbUser[mariadb.Fetched]] = mariadb.insert(
+    mariadb_model_select: mariadb.ClosedRead[MariadbUser[mariadb.Row]] = mariadb.ready(
+        mariadb.select(MariadbUser).all()
+    )
+    mariadb_value_select: mariadb.ClosedRead[int] = mariadb.ready(
+        mariadb.select(MariadbUser.id).all()
+    )
+    mariadb_returning: mariadb.Write[MariadbUser[mariadb.Row]] = mariadb.insert(
         MariadbUser(id=1)
     ).returning()
     _ = (
@@ -61,14 +69,14 @@ if TYPE_CHECKING:
 
     _ = sqlite.select(MariadbUser)  # ty: ignore[no-matching-overload]
     _ = sqlite.select(MariadbUser.id)  # ty: ignore[no-matching-overload]
-    _ = sqlite.insert(MariadbUser(id=1))  # ty: ignore[no-matching-overload]
+    _ = sqlite.insert(MariadbUser(id=1))  # ty: ignore[invalid-argument-type]
     _ = sqlite.update(MariadbUser)  # ty: ignore[invalid-argument-type]
     _ = sqlite.delete(MariadbUser)  # ty: ignore[invalid-argument-type]
     _ = sqlite.scaffold([MariadbUser])  # ty: ignore[invalid-argument-type]
 
     _ = mariadb.select(SqliteUser)  # ty: ignore[no-matching-overload]
     _ = mariadb.select(SqliteUser.id)  # ty: ignore[no-matching-overload]
-    _ = mariadb.insert(SqliteUser(id=1))  # ty: ignore[no-matching-overload]
+    _ = mariadb.insert(SqliteUser(id=1))  # ty: ignore[invalid-argument-type]
     _ = mariadb.update(SqliteUser)  # ty: ignore[invalid-argument-type]
     _ = mariadb.delete(SqliteUser)  # ty: ignore[invalid-argument-type]
     _ = mariadb.scaffold([SqliteUser])  # ty: ignore[invalid-argument-type]
@@ -116,9 +124,9 @@ if TYPE_CHECKING:
 
     async def stored_queries_keep_backend_identity(
         sqlite_transaction: sqlite.Transaction,
-        mariadb_select: mariadb.Select[int],
+        mariadb_select: mariadb.ClosedRead[int],
         mariadb_write: mariadb.Write[int],
-        sqlite_select: sqlite.Select[int],
+        sqlite_select: sqlite.ClosedRead[int],
         sqlite_write: sqlite.Write[int],
     ) -> None:
         await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]

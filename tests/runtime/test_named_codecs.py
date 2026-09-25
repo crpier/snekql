@@ -1,7 +1,7 @@
 """Named results consume decoded logical values, not database wire values."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 from uuid import UUID
 
 from pydantic import BaseModel, Json
@@ -11,19 +11,19 @@ from snekql import mariadb, sqlite
 from tests.helpers import provide_mariadb_server
 
 
-class LocalDocument[S = sqlite.Pending](
-    sqlite.Model[S, "LocalDocument[sqlite.Fetched]"]
-):
+class LocalDocument[S = sqlite.Pending](sqlite.Model[S]):
     """Text storage retaining UUID and JSON logical codecs."""
+
+    __row_type__: ClassVar[sqlite.ReadType[LocalDocument[sqlite.Row]]]
 
     id: LocalDocument.Col[UUID] = sqlite.Text(primary_key=True)
     payload: LocalDocument.Col[Json[list[int]]] = sqlite.Text()
 
 
-class MariaDocument[S = mariadb.Pending](
-    mariadb.Model[S, "MariaDocument[mariadb.Fetched]"]
-):
+class MariaDocument[S = mariadb.Pending](mariadb.Model[S]):
     """Native UUID and JSON storage with the same logical values."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaDocument[mariadb.Row]]]
 
     id: MariaDocument.Col[UUID] = mariadb.Uuid(primary_key=True)
     payload: MariaDocument.JsonCol[list[int]] = mariadb.Json()

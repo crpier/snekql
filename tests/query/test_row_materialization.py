@@ -1,13 +1,13 @@
 """Backend-neutral select-row materialization tests.
 
 Row materialization shared by every backend turns one database row into the
-result shape implied by the select query: a Fetched Model, a single scalar, or
+result shape implied by the select query: a Row Model, a single scalar, or
 a tuple of scalars. These tests pin that shared seam directly.
 """
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 
@@ -15,24 +15,28 @@ from snekql import sqlite
 from snekql._query_materialize import materialize_select_row_for_backend
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Pending,
     QueryConstructionError,
+    Row,
     Text,
     select,
 )
 
 
-class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+class Widget[S = Pending](sqlite.Model[S]):
     """Model exposing columns whose codecs make decoding observable."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
     label: Widget.Col[str] = Text(nullable=False)
     enabled: Widget.Col[bool] = Integer(nullable=False)
 
 
-class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
+class JoinUser[S = Pending](sqlite.Model[S]):
     """Referenced table for join materialization tests."""
+
+    __row_type__: ClassVar[sqlite.ReadType[JoinUser[Row]]]
 
     id: JoinUser.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -42,8 +46,10 @@ class JoinUser[S = Pending](sqlite.Model[S, "JoinUser[Fetched]"]):
     email: JoinUser.Col[str] = Text(nullable=False)
 
 
-class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
+class JoinOrder[S = Pending](sqlite.Model[S]):
     """Table with a foreign key to ``JoinUser``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[JoinOrder[Row]]]
 
     id: JoinOrder.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -56,12 +62,12 @@ class JoinOrder[S = Pending](sqlite.Model[S, "JoinOrder[Fetched]"]):
 
 @test(mark="fast")
 def model_select_materializes_a_fetched_model() -> None:
-    """A model select decodes the whole row into a Fetched Model instance."""
+    """A model select decodes the whole row into a Row Model instance."""
 
     query = select(Widget).all()
 
     fetched = cast(
-        "Widget[Fetched]",
+        "Widget[Row]",
         materialize_select_row_for_backend(query.state, ("hi", 0), backend="sqlite"),
     )
 
@@ -95,7 +101,7 @@ def multi_value_select_returns_a_decoded_tuple() -> None:
 
 @test(mark="fast")
 def inner_join_materializes_a_tuple_of_fetched_models() -> None:
-    """An inner join splits the flat row into one Fetched model per table."""
+    """An inner join splits the flat row into one Row model per table."""
 
     query = (
         select(JoinUser)
@@ -104,7 +110,7 @@ def inner_join_materializes_a_tuple_of_fetched_models() -> None:
     )
 
     result = cast(
-        "tuple[JoinUser[Fetched], JoinOrder[Fetched]]",
+        "tuple[JoinUser[Row], JoinOrder[Row]]",
         materialize_select_row_for_backend(
             query.state,
             (1, "a@b.c", 10, 1, "hello"),
@@ -130,7 +136,7 @@ def left_join_yields_none_when_the_right_side_is_all_null() -> None:
     )
 
     result = cast(
-        "tuple[JoinUser[Fetched], JoinOrder[Fetched] | None]",
+        "tuple[JoinUser[Row], JoinOrder[Row] | None]",
         materialize_select_row_for_backend(
             query.state,
             (1, "a@b.c", None, None, None),

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, test
 
 from snekql import sqlite
@@ -22,8 +24,10 @@ async def pagination_returns_expected_window(
 ) -> None:
     """Offset and explicit limits retain the existing SQLite window semantics."""
 
-    class Item[S = sqlite.Pending](sqlite.Model[S, "Item[sqlite.Fetched]"]):
+    class Item[S = sqlite.Pending](sqlite.Model[S]):
         """A deterministic pagination sequence."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Item[sqlite.Row]]]
 
         id: Item.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -52,8 +56,10 @@ async def pagination_returns_expected_window(
 def offset_only_inspection_preserves_parameter_order() -> None:
     """The unlimited-row sentinel is dialect SQL, not an extra bound parameter."""
 
-    class Item[S = sqlite.Pending](sqlite.Model[S, "Item[sqlite.Fetched]"]):
+    class Item[S = sqlite.Pending](sqlite.Model[S]):
         """A scalar pagination projection."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Item[sqlite.Row]]]
 
         id: Item.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -70,8 +76,10 @@ def offset_only_inspection_preserves_parameter_order() -> None:
 def explicit_window_inspection_preserves_parameter_order() -> None:
     """Explicit limits still bind between predicate values and the offset."""
 
-    class Item[S = sqlite.Pending](sqlite.Model[S, "Item[sqlite.Fetched]"]):
+    class Item[S = sqlite.Pending](sqlite.Model[S]):
         """A scalar pagination projection."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Item[sqlite.Row]]]
 
         id: Item.Col[int] = sqlite.Integer(primary_key=True)
 

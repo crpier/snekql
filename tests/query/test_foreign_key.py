@@ -9,7 +9,7 @@ two related columns, which `join()`/`left_join()` later compile into an
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_in, assert_raises, test
 
@@ -17,10 +17,10 @@ from snekql import mariadb, sqlite
 from snekql.expressions import JoinOn
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     ForeignKey,
     ModelDeclarationError,
     Pending,
+    Row,
 )
 
 
@@ -28,14 +28,14 @@ from snekql.sqlite import (
 def foreign_key_rejects_a_target_from_another_backend_family() -> None:
     """Dynamic declarations cannot bypass the static FK family bound."""
 
-    class MariaUser[S = mariadb.Pending](
-        mariadb.Model[S, "MariaUser[mariadb.Fetched]"]
-    ):
+    class MariaUser[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[MariaUser[mariadb.Row]]]
         id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
 
     with assert_raises(ModelDeclarationError):
 
-        class SqliteOrder[S = Pending](sqlite.Model[S, "SqliteOrder[Fetched]"]):
+        class SqliteOrder[S = Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[SqliteOrder[Row]]]
             user_id: Any = ForeignKey(cast("Any", MariaUser.id))
 
 
@@ -43,8 +43,10 @@ def foreign_key_rejects_a_target_from_another_backend_family() -> None:
 def references_builds_join_condition() -> None:
     """`references` produces a `JoinOn` accepted by the query builder."""
 
-    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    class User[S = Pending](sqlite.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
@@ -53,8 +55,10 @@ def references_builds_join_condition() -> None:
         )
         email: User.Col[str] = sqlite.Text(nullable=False)
 
-    class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](sqlite.Model[S]):
         """Table carrying a foreign key to ``User``."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = sqlite.Integer(
             primary_key=True,
@@ -77,8 +81,10 @@ def references_builds_join_condition() -> None:
 def foreign_key_records_its_target_column_on_the_descriptor() -> None:
     """`ForeignKey` stores the referenced column for later DDL resolution."""
 
-    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    class User[S = Pending](sqlite.Model[S]):
         """Referenced table whose primary key anchors the constraint."""
+
+        __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
@@ -86,8 +92,10 @@ def foreign_key_records_its_target_column_on_the_descriptor() -> None:
             default=PENDING_GENERATION,
         )
 
-    class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](sqlite.Model[S]):
         """Table with one FK column and one plain column."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
         note: Order.Col[str] = sqlite.Text(nullable=False)
@@ -100,16 +108,20 @@ def foreign_key_records_its_target_column_on_the_descriptor() -> None:
 def foreign_key_derives_its_storage_class_from_the_target_column() -> None:
     """An FK to a TEXT column is itself TEXT; storage is never restated."""
 
-    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    class User[S = Pending](sqlite.Model[S]):
         """Referenced table whose unique email is a non-PK target."""
+
+        __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True, default=PENDING_GENERATION
         )
         email: User.Col[str] = sqlite.Text(nullable=False, unique=True)
 
-    class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](sqlite.Model[S]):
         """Table referencing the target's TEXT email column."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
         owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
 

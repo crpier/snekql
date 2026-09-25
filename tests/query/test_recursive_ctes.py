@@ -1,5 +1,8 @@
 """Recursive definition construction through backend-owned query builders."""
 
+from collections.abc import Callable
+from typing import ClassVar
+
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_raises, test
 
@@ -7,7 +10,8 @@ from snekql import mariadb, sqlite
 from snekql.errors import QueryConstructionError
 
 
-class Category[S = sqlite.Pending](sqlite.Model[S, "Category[sqlite.Fetched]"]):
+class Category[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Category[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     parent_id: sqlite.Col[int | None] = sqlite.Integer()
 
@@ -222,7 +226,7 @@ def recursive_member_rejects_aggregates_without_grouping() -> None:
 @test(mark="fast")
 def completed_definition_does_not_publish_its_callback_self() -> None:
     """Only the returned relation can be consumed outside the callback."""
-    captured: list[sqlite.Select[Visit]] = []
+    captured: list[Callable[[], sqlite.CompiledQuery]] = []
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
     anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
@@ -233,7 +237,7 @@ def completed_definition_does_not_publish_its_callback_self() -> None:
         name="walk",
     ).step(
         lambda previous: (
-            captured.append(sqlite.select(previous).all()),
+            captured.append(sqlite.select(previous).all().compile),
             sqlite.select(previous)
             .where(previous.column(depth).lt(1))
             .project(
@@ -248,7 +252,7 @@ def completed_definition_does_not_publish_its_callback_self() -> None:
 
     assert_eq(len(captured), 1)
     with assert_raises(sqlite.QueryCompilationError):
-        captured[0].compile()
+        captured[0]()
 
 
 @test(mark="fast")
@@ -273,7 +277,7 @@ def incomplete_self_member_is_rejected_before_compilation() -> None:
 @test(mark="fast")
 def failed_callback_does_not_publish_its_self_reference() -> None:
     """A saved query stays unusable after its factory rejects the member."""
-    captured: list[sqlite.Select[Visit]] = []
+    captured: list[Callable[[], sqlite.CompiledQuery]] = []
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
     anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
@@ -285,13 +289,13 @@ def failed_callback_does_not_publish_its_self_reference() -> None:
             name="walk",
         ).step(
             lambda previous: (
-                captured.append(sqlite.select(previous).all()),
+                captured.append(sqlite.select(previous).all().compile),
                 anchor,
             )[1]
         )
 
     with assert_raises(sqlite.QueryCompilationError):
-        captured[0].compile()
+        captured[0]()
 
 
 @test(mark="fast")
@@ -404,7 +408,7 @@ def recursive_member_rejects_indirect_self_dependency() -> None:
 @test(mark="fast")
 def escaped_self_cannot_become_another_recursive_anchor() -> None:
     """A saved named self query never establishes a new legal anchor scope."""
-    captured: list[sqlite.Select[Visit]] = []
+    captured: list[object] = []
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
     anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
@@ -513,9 +517,8 @@ def recursive_member_cannot_widen_anchor_nullability() -> None:
 def recursive_member_cannot_change_anchor_codec() -> None:
     """The same logical int in TEXT is not the anchor's INTEGER wire contract."""
 
-    class TextIdentifier[S = sqlite.Pending](
-        sqlite.Model[S, "TextIdentifier[sqlite.Fetched]"]
-    ):
+    class TextIdentifier[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[TextIdentifier[sqlite.Row]]]
         id: sqlite.Col[int] = sqlite.Text()
 
     identifier = Category.id.label("id")
@@ -593,10 +596,12 @@ def nested_recursion_cannot_capture_outer_self_in_its_anchor() -> None:
 def recursive_member_cannot_widen_native_text_capacity() -> None:
     """Matching Python str types do not prove equal MariaDB SQL capacities."""
 
-    class Narrow[S = mariadb.Pending](mariadb.Model[S, "Narrow[mariadb.Fetched]"]):
+    class Narrow[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Narrow[mariadb.Row]]]
         value: mariadb.Col[str] = mariadb.Text(length=4)
 
-    class Wide[S = mariadb.Pending](mariadb.Model[S, "Wide[mariadb.Fetched]"]):
+    class Wide[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Wide[mariadb.Row]]]
         value: mariadb.Col[str] = mariadb.Text(length=8)
 
     class TextVisit(BaseModel):

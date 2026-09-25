@@ -341,7 +341,7 @@ def _returning_clause(
     projection: NamedProjection | None = None,
 ) -> str:
     # An explicit projection lists only the named columns; otherwise RETURNING
-    # spans every column so the row decodes back into a full Fetched model.
+    # spans every column so the row decodes back into a full Row model.
     if fields:
         names: tuple[str, ...] = tuple(
             require_column_name(require_field(field)) for field in fields
@@ -411,7 +411,7 @@ def _compile_insert_sql(
     dialect: QueryDialect,
 ) -> tuple[str, tuple[object, ...]]:
     model_class = state.model()
-    if model_class is None:
+    if model_class is None or not state.rows:
         msg = "insert requires at least one row"
         raise QueryCompilationError(msg)
     encoded_rows = [_encode_insert_row(row, model_class, dialect) for row in state.rows]

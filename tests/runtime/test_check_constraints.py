@@ -1,7 +1,7 @@
 """Named CHECK declarations through public schema interfaces."""
 
 from gc import collect
-from typing import Any
+from typing import Any, ClassVar
 from warnings import catch_warnings
 
 from pydantic import Json
@@ -15,7 +15,8 @@ from tests.helpers import provide_mariadb_server
 def check_scaffold_preserves_boolean_structure() -> None:
     """Deferred declarations compare bound local columns without parameters."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
         ceiling: sqlite.Col[int] = sqlite.Integer()
 
@@ -44,7 +45,8 @@ def check_scaffold_preserves_boolean_structure() -> None:
 def bounded_predicates_have_explicit_sql(operation: str) -> None:
     """Only the selected predicate family is emitted for each declaration."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
 
         @classmethod
@@ -76,7 +78,8 @@ def bounded_predicates_have_explicit_sql(operation: str) -> None:
 async def sqlite_check_rejects_invalid_pair() -> None:
     """Exercise the declared CHECK through native database enforcement."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
         ceiling: sqlite.Col[int] = sqlite.Integer()
 
@@ -102,7 +105,8 @@ async def sqlite_check_rejects_invalid_pair() -> None:
 async def sqlite_null_satisfies_check() -> None:
     """Exercise the declared CHECK through native database enforcement."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
 
         @classmethod
@@ -125,7 +129,8 @@ async def sqlite_null_satisfies_check() -> None:
 async def sqlite_text_literal_is_not_sql() -> None:
     """Exercise the declared CHECK through native database enforcement."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[str] = sqlite.Text()
 
         @classmethod
@@ -155,7 +160,8 @@ async def sqlite_text_literal_is_not_sql() -> None:
 async def sqlite_boolean_literal_uses_storage_codec() -> None:
     """Exercise the declared CHECK through native database enforcement."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[bool] = sqlite.Integer()
 
         @classmethod
@@ -179,7 +185,8 @@ async def mariadb_check_rejects_invalid_pair() -> None:
     """Exercise the declared CHECK through native database enforcement."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[int] = mariadb.Integer()
         ceiling: mariadb.Col[int] = mariadb.Integer()
 
@@ -204,7 +211,8 @@ async def mariadb_null_satisfies_check() -> None:
     """Exercise the declared CHECK through native database enforcement."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
 
         @classmethod
@@ -226,7 +234,8 @@ async def mariadb_text_literal_is_not_sql() -> None:
     """Exercise the declared CHECK through native database enforcement."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[str] = mariadb.Text()
 
         @classmethod
@@ -257,7 +266,8 @@ async def mariadb_boolean_literal_uses_storage_codec() -> None:
     """Exercise the declared CHECK through native database enforcement."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[bool] = mariadb.Boolean()
 
         @classmethod
@@ -284,7 +294,8 @@ async def mariadb_boolean_literal_uses_storage_codec() -> None:
 async def sqlite_verifies_hand_created_check(case: str) -> None:
     """Verification distinguishes presence, supported structure, and unknown SQL."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -337,7 +348,8 @@ async def mariadb_verifies_hand_created_check(case: str) -> None:
     """Verification distinguishes presence, supported structure, and unknown SQL."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[int] = mariadb.Integer()
 
         @classmethod
@@ -402,7 +414,8 @@ async def mariadb_verifies_hand_created_check(case: str) -> None:
 async def sqlite_scaffold_checks_verify(case: str) -> None:
     """Every supported declaration survives native catalog normalization."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         flag: sqlite.Col[bool] = sqlite.Integer()
         label: sqlite.Col[str] = sqlite.Text()
@@ -465,7 +478,8 @@ async def mariadb_scaffold_checks_verify(case: str) -> None:
     """Every supported declaration survives native catalog normalization."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         balance: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         flag: mariadb.Col[bool] = mariadb.Boolean()
         label: mariadb.Col[str] = mariadb.Text()
@@ -524,12 +538,14 @@ async def mariadb_scaffold_checks_verify(case: str) -> None:
 def invalid_checks_fail_before_io(case: str) -> None:
     """Only bounded predicates over the declaring table reach schema compilation."""
 
-    class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+    class Other[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
         value: sqlite.Col[int] = sqlite.Integer()
 
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+        class Account[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
             balance: sqlite.Col[int] = sqlite.Integer()
             label: sqlite.Col[str] = sqlite.Text()
             amount: sqlite.Col[float] = sqlite.Real()
@@ -555,7 +571,7 @@ def invalid_checks_fail_before_io(case: str) -> None:
                     "subquery": cls.balance.in_subquery(
                         sqlite.select(Other.value).all()
                     ),
-                    "mismatched-columns": cls.balance.eq_col(cls.label),  # ty: ignore[invalid-argument-type]
+                    "mismatched-columns": cls.balance.eq_col(cls.label),  # ty: ignore[no-matching-overload]
                 }
                 checks = [
                     sqlite.CheckConstraint(
@@ -571,7 +587,8 @@ def checks_are_bound_once() -> None:
     """Scaffolding reuses the immutable declaration rather than rerunning user code."""
     calls: list[str] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -589,7 +606,8 @@ def checks_are_bound_once() -> None:
 async def sqlite_null_keyword_is_not_a_quoted_column() -> None:
     """A keyword cannot be certified as the identically spelled local column."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         NULL: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -618,9 +636,8 @@ def asynchronous_check_factory_is_not_started() -> None:
     with catch_warnings(record=True) as captured:
         with assert_raises(sqlite.ModelDeclarationError):
 
-            class Account[S = sqlite.Pending](
-                sqlite.Model[S, "Account[sqlite.Fetched]"]
-            ):
+            class Account[S = sqlite.Pending](sqlite.Model[S]):
+                __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
                 balance: sqlite.Col[int] = sqlite.Integer()
 
                 @classmethod
@@ -649,7 +666,8 @@ def asynchronous_check_factory_is_not_started() -> None:
 async def unsupported_sqlite_expression_is_not_a_match(expression: str) -> None:
     """Unknown syntax stays unchecked even when a human could prove equivalence."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -677,7 +695,8 @@ def check_rejects_json_text_storage() -> None:
     """JSON-encoded logical strings are not ordinary SQL text operands."""
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+        class Account[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
             label: sqlite.Col[Json[str]] = sqlite.Text()
 
             @classmethod
@@ -691,7 +710,8 @@ def check_rejects_json_text_storage() -> None:
 async def unmanaged_checks_share_one_fact_per_name() -> None:
     """Anonymous catalog checks must not create duplicate fact identities."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
 
     async with await sqlite.Database.initialize(
@@ -719,7 +739,8 @@ def check_rejects_invalid_unicode_literal() -> None:
     """Unencodable text is a declaration error rather than a later driver failure."""
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+        class Account[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
             label: sqlite.Col[str] = sqlite.Text()
 
             @classmethod
@@ -731,7 +752,8 @@ def check_rejects_invalid_unicode_literal() -> None:
 async def non_sql_whitespace_is_not_discarded() -> None:
     """A nonbreaking-space identifier is not the numeric literal that follows it."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         balance: sqlite.Col[int] = sqlite.Integer()
 
         @classmethod
@@ -758,7 +780,8 @@ async def non_sql_whitespace_is_not_discarded() -> None:
 async def unicode_identifier_is_not_constraint_keyword() -> None:
     """Unicode uppercasing must not invent a CONSTRAINT name from a column."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         constraınt: sqlite.Col[int] = sqlite.Integer()  # noqa: PLC2401 - intentional SQL keyword lookalike
         balance: sqlite.Col[int] = sqlite.Integer()
 

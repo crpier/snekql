@@ -1,0 +1,26 @@
+"""A joined comparison keeps exact results and scalar operand inference."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Invoice[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Invoice[database.Row]]]
+    account_id: database.Col[int] = database.Integer()
+    optional_id: database.Col[int | None] = database.Integer(default=None)
+
+
+async def control(transaction: database.Transaction) -> None:
+    joined = database.select(Account).join(Invoice, on=Account.account_id.lt_col(Invoice.account_id)).all()
+    assert_type(await transaction.fetch_all(joined), list[tuple[Account[database.Row], Invoice[database.Row]]])
+    assert_type(Account.account_id.lt_col(database.scalar(database.select(Invoice.account_id).all())), database.Predicate[Account])
+
+    assert_type(Account.account_id.lt_col(Invoice.account_id), database.Predicate[Account | Invoice])
+    assert_type(Account.account_id.lt_col(Invoice.optional_id), database.Predicate[Account | Invoice])
+    assert_type(Invoice.optional_id.lt_col(Account.account_id), database.Predicate[Invoice | Account])
+    assert_type(Invoice.optional_id.lt_col(Invoice.optional_id), database.Predicate[Invoice])

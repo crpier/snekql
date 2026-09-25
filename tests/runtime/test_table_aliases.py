@@ -1,7 +1,7 @@
 """Self-join result shapes on real SQLite and MariaDB databases."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 from uuid import UUID
 
 from snektest import assert_eq, fixture, load_fixture, test
@@ -45,9 +45,9 @@ async def sqlite_repeated_left_joins_materialize_original_models() -> None:
         rows,
         list[
             tuple[
-                LocalParent[sqlite.Fetched],
-                LocalParent[sqlite.Fetched] | None,
-                LocalParent[sqlite.Fetched] | None,
+                LocalParent[sqlite.Row],
+                LocalParent[sqlite.Row] | None,
+                LocalParent[sqlite.Row] | None,
             ]
         ],
     )
@@ -94,9 +94,9 @@ async def mariadb_repeated_left_joins_materialize_original_models() -> None:
         rows,
         list[
             tuple[
-                MariaParent[mariadb.Fetched],
-                MariaParent[mariadb.Fetched] | None,
-                MariaParent[mariadb.Fetched] | None,
+                MariaParent[mariadb.Row],
+                MariaParent[mariadb.Row] | None,
+                MariaParent[mariadb.Row] | None,
             ]
         ],
     )
@@ -125,7 +125,7 @@ async def alias_as_from_source_returns_original_fetched_models() -> None:
             sqlite.select(manager).all().order_by(manager.column(LocalParent.id).asc())
         )
 
-    assert_type(rows, list[LocalParent[sqlite.Fetched]])
+    assert_type(rows, list[LocalParent[sqlite.Row]])
     assert_eq([row.id for row in rows], [1, 2, 3])
     assert_eq(type(rows[0]), LocalParent)
 
@@ -171,8 +171,10 @@ async def correlated_alias_subquery_preserves_outer_role() -> None:
     assert_eq(rows, [1, 2])
 
 
-class Document[S = sqlite.Pending](sqlite.Model[S, "Document[sqlite.Fetched]"]):
+class Document[S = sqlite.Pending](sqlite.Model[S]):
     """A logical value whose wire type differs from its Python type."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Document[sqlite.Row]]]
 
     token: Document.Col[UUID] = sqlite.Text(primary_key=True)
 

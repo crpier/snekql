@@ -3,26 +3,31 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     ZonedDatetime,
     insert,
+    insert_many,
     select,
 )
 from tests.helpers import initialized_database
 
 
-class ZonedEvent[S = Pending](Model[S, "ZonedEvent[Fetched]"]):
+class ZonedEvent[S = Pending](Model[S]):
     """Event whose datetime retains its civil timezone."""
+
+    __row_type__: ClassVar[ReadType[ZonedEvent[Row]]]
 
     id: ZonedEvent.Col[int] = Integer(primary_key=True)
     happened_at: ZonedEvent.Col[ZonedDatetime] = Text(nullable=False)
@@ -96,11 +101,12 @@ async def zoned_datetime_equality_requires_the_same_instant_and_timezone() -> No
     try:
         async with database.transaction() as transaction:
             await transaction.execute(
-                insert(
+                insert_many(
+                    ZonedEvent,
                     [
                         ZonedEvent(id=1, happened_at=new_york),
                         ZonedEvent(id=2, happened_at=los_angeles),
-                    ]
+                    ],
                 )
             )
             matching_ids = await transaction.fetch_all(

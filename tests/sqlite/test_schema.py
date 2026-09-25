@@ -19,12 +19,13 @@ from snekql.sqlite import (
     CurrentTimestamp,
     Database,
     DatabaseRuntimeError,
-    Fetched,
     ForeignKey,
     Index,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     SchemaDriftIssue,
     SchemaError,
     SchemaVerificationError,
@@ -141,8 +142,10 @@ class _SchemaConnection:
 async def verify_returns_an_immutable_checked_table_result() -> None:
     """A matching schema returns the ordered tables checked and no drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for structured verification output."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -168,8 +171,10 @@ async def verify_returns_an_immutable_checked_table_result() -> None:
 async def warn_verify_returns_machine_readable_drift() -> None:
     """Warn policy returns drift while allowing deployment tooling to continue."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose live email column has different nullability."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -197,8 +202,10 @@ async def warn_verify_returns_machine_readable_drift() -> None:
 async def verify_rejects_a_changed_supported_server_default() -> None:
     """A present but different default cannot satisfy `CurrentTimestamp`."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Model requiring snekql's canonical SQLite server clock."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         created_at: Event.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
@@ -225,8 +232,10 @@ async def verify_rejects_a_changed_supported_server_default() -> None:
 async def verify_normalizes_the_supported_server_default_expression() -> None:
     """Equivalent function case and spacing preserve `CurrentTimestamp` semantics."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Model requiring snekql's canonical SQLite server clock."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         created_at: Event.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
@@ -250,13 +259,17 @@ async def verify_normalizes_the_supported_server_default_expression() -> None:
 async def strict_verify_reports_drift_across_every_requested_table() -> None:
     """Strict policy raises only after collecting every requested table's drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """First drifting model."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
-    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+    class Team[S = Pending](Model[S]):
         """Second drifting model."""
+
+        __row_type__: ClassVar[ReadType[Team[Row]]]
 
         name: Team.Col[str] = Text(nullable=False)
 
@@ -294,8 +307,10 @@ async def strict_verify_reports_drift_across_every_requested_table() -> None:
 async def migrate_builds_quoted_strict_tables() -> None:
     """Scaffolded migrations build deterministic quoted STRICT tables."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for schema creation."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -323,8 +338,10 @@ async def migrate_builds_quoted_strict_tables() -> None:
 async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
     """`ForeignKey` renders a REFERENCES constraint; soft refs do not."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table whose primary key anchors the constraint."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -333,8 +350,10 @@ async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
         )
         email: User.Col[str] = Text(nullable=False)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table with an enforced and a typed-only reference to ``User``."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True,
@@ -368,22 +387,28 @@ async def migrate_emits_foreign_key_constraints_only_when_enabled() -> None:
 async def migrate_builds_and_verifies_a_composite_primary_key() -> None:
     """A join table keyed on a column pair builds valid DDL and verifies clean."""
 
-    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+    class Team[S = Pending](Model[S]):
         """Referenced table anchoring the join table's foreign keys."""
+
+        __row_type__: ClassVar[ReadType[Team[Row]]]
 
         id: Team.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table anchoring the join table's foreign keys."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
-    class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+    class TeamMember[S = Pending](Model[S]):
         """Join table whose identity is the (team, user) column pair."""
+
+        __row_type__: ClassVar[ReadType[TeamMember[Row]]]
 
         team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
         user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
@@ -415,8 +440,10 @@ async def migrate_builds_and_verifies_a_composite_primary_key() -> None:
 async def migrate_builds_and_verifies_a_text_primary_key() -> None:
     """A non-INTEGER single-column PK is NOT NULL under STRICT and verifies clean."""
 
-    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+    class Doc[S = Pending](Model[S]):
         """Table keyed on an app-generated TEXT (UUID) primary key."""
+
+        __row_type__: ClassVar[ReadType[Doc[Row]]]
 
         id: Doc.Col[str] = Text(primary_key=True)
 
@@ -440,8 +467,10 @@ async def migrate_builds_and_verifies_a_text_primary_key() -> None:
 async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None:
     """A `ForeignKey` to a unique non-PK column references that column by name."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table whose unique email is the FK target."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -450,8 +479,10 @@ async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None
         )
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table whose owner_email references ``user(email)``."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True,
@@ -480,15 +511,19 @@ async def migrate_emits_a_reference_to_a_non_primary_key_target_column() -> None
 async def migrate_emits_and_verifies_referential_actions() -> None:
     """`on_delete`/`on_update` render their clauses and verify clean afterwards."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table anchoring the cascading foreign key."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Owned table whose rows cascade on parent delete, restrict on update."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -521,15 +556,19 @@ async def migrate_emits_and_verifies_referential_actions() -> None:
 async def strict_verify_raises_on_referential_action_drift() -> None:
     """A live FK whose ON DELETE action differs from the model is strict drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table for referential-action drift detection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
         )
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Model expecting ON DELETE CASCADE against an action-free live table."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -561,8 +600,10 @@ async def strict_verify_raises_on_referential_action_drift() -> None:
 async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> None:
     """An existing table lacking a managed FK constraint is strict-policy drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table for foreign-key drift detection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -570,8 +611,10 @@ async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> Non
             default=PENDING_GENERATION,
         )
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table whose model declares a constraint absent from the database."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True,
@@ -604,8 +647,10 @@ async def strict_verify_raises_when_a_foreign_key_constraint_is_missing() -> Non
 async def initialize_accepts_sqlite_config_object() -> None:
     """SQLite configuration objects select the SQLite runtime explicitly."""
 
-    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    class User[S = Pending](sqlite.Model[S]):
         """Table model used for SQLite config initialization."""
+
+        __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True,
@@ -648,8 +693,10 @@ async def initialize_rejects_mixed_sqlite_config_and_legacy_database() -> None:
 async def migrate_builds_column_unique_indexes_after_tables() -> None:
     """Column unique declarations build separate deterministic unique indexes."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a unique public identifier."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         status: User.Col[str] = Text(nullable=False)
@@ -677,8 +724,10 @@ async def migrate_builds_column_unique_indexes_after_tables() -> None:
 async def migrate_builds_column_non_unique_indexes() -> None:
     """Column ``index=True`` declarations build non-unique ``ix_`` indexes."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a column-level non-unique index."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         status: User.Col[str] = Text(nullable=False, index=True)
@@ -704,8 +753,10 @@ async def migrate_builds_column_non_unique_indexes() -> None:
 async def migrate_builds_table_indexes_in_declaration_order() -> None:
     """Table index declarations build deterministic index SQL after uniques."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with single and composite table indexes."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         status: User.Col[str] = Text(nullable=False)
@@ -771,8 +822,10 @@ async def initialize_accepts_only_path_objects_and_exact_memory_string() -> None
 async def verify_accepts_existing_tables_after_controlled_normalization() -> None:
     """Equivalent snekql DDL with formatting differences verifies cleanly."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for existing schema verification."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -800,8 +853,10 @@ async def verify_accepts_existing_tables_after_controlled_normalization() -> Non
 async def cosmetically_different_ddl_verifies_semantically() -> None:
     """Unquoted identifiers, lowercase types, and reordered columns are not drift."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model verified against a table whose DDL differs only cosmetically."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -849,8 +904,10 @@ async def sqlite_type_affinity_follows_sqlite_rules() -> None:
 async def quoted_autoincrement_identifier_is_not_the_keyword() -> None:
     """Quoted identifier text cannot mark a primary key as auto-incrementing."""
 
-    class Token[S = Pending](Model[S, "Token[Fetched]"]):
+    class Token[S = Pending](Model[S]):
         """Model whose ordinary column is named after a SQLite keyword."""
+
+        __row_type__: ClassVar[ReadType[Token[Row]]]
 
         id: Token.Col[int] = Integer(primary_key=True)
         autoincrement: Token.Col[str] = Text(nullable=False)
@@ -875,8 +932,10 @@ async def quoted_autoincrement_identifier_is_not_the_keyword() -> None:
 async def verify_accepts_sqlite_integer_type_aliases() -> None:
     """A STRICT column declared ``INT`` shares INTEGER affinity and is not drift."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Model whose count column maps to INTEGER but is migrated as ``INT``."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         id: Event.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -903,8 +962,10 @@ async def verify_accepts_sqlite_integer_type_aliases() -> None:
 async def verify_collapses_sqlite_text_affinity_aliases() -> None:
     """A non-STRICT ``VARCHAR(255)`` column collapses to TEXT affinity, not drift."""
 
-    class Note[S = Pending](Model[S, "Note[Fetched]"]):
+    class Note[S = Pending](Model[S]):
         """Model whose body is TEXT but is migrated as ``VARCHAR(255)``."""
+
+        __row_type__: ClassVar[ReadType[Note[Row]]]
 
         body: Note.Col[str] = Text(nullable=False)
 
@@ -935,8 +996,10 @@ async def verify_collapses_sqlite_text_affinity_aliases() -> None:
 async def sqlite_column_collation_drift_is_reported() -> None:
     """A live NOCASE column differs from the model's default BINARY collation."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model expecting SQLite's default case-sensitive comparisons."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -960,8 +1023,10 @@ async def sqlite_column_collation_drift_is_reported() -> None:
 async def strict_verify_raises_on_meaningful_type_affinity_drift() -> None:
     """A live column whose affinity differs from the model is genuine drift."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Model whose label is TEXT while the live column has INTEGER affinity."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         id: Event.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -992,8 +1057,10 @@ async def strict_verify_raises_on_meaningful_type_affinity_drift() -> None:
 async def model_matching_migration_evolved_table_verifies_clean() -> None:
     """A model matches a table evolved by ALTER regardless of column order."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose age column was appended to the table by a later ALTER."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -1019,8 +1086,10 @@ async def model_matching_migration_evolved_table_verifies_clean() -> None:
 async def strict_drift_error_names_the_divergent_column() -> None:
     """A column whose nullability diverges is named precisely in the error."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model whose email is NOT NULL while the live column is nullable."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -1051,8 +1120,10 @@ async def strict_drift_error_names_the_divergent_column() -> None:
 async def strict_verify_raises_on_index_drift() -> None:
     """Strict schema verification rejects missing managed indexes."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model requiring an index for verification."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
@@ -1074,8 +1145,10 @@ async def strict_verify_raises_on_index_drift() -> None:
 async def partial_index_cannot_satisfy_a_full_model_index() -> None:
     """A SQLite partial index differs from the model's full index contract."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model requiring a full index over every email value."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str | None] = Text(nullable=True)
         __indexes__: ClassVar[list[Index[Any]]] = [
@@ -1104,16 +1177,20 @@ async def partial_index_cannot_satisfy_a_full_model_index() -> None:
 async def duplicate_resolved_index_names_are_rejected() -> None:
     """Verification rejects duplicate index names across configured models."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """First model using an explicit index name."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [
             Index(email, name="ix_conflict"),
         ]
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Second model reusing the explicit index name."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         email: Account.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [
@@ -1134,8 +1211,10 @@ async def duplicate_resolved_index_names_are_rejected() -> None:
 async def strict_verify_raises_on_schema_drift() -> None:
     """Strict schema verification rejects existing non-STRICT tables."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for drift detection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -1155,8 +1234,10 @@ async def strict_verify_raises_on_schema_drift() -> None:
 async def warn_verify_policy_logs_drift_and_continues() -> None:
     """Warn schema verification reports drift without raising."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for warn policy drift detection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -1175,14 +1256,18 @@ async def warn_verify_policy_logs_drift_and_continues() -> None:
 async def duplicate_resolved_table_names_are_rejected() -> None:
     """Verification rejects duplicate table names before inspecting the schema."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """First model for duplicate table detection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         __tablename__ = "account"
         email: User.Col[str] = Text(nullable=False)
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Second model with the same resolved table name."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         email: Account.Col[str] = Text(nullable=False)
 
@@ -1200,8 +1285,10 @@ async def duplicate_resolved_table_names_are_rejected() -> None:
 async def cancelled_sqlite_verification_rolls_back_before_returning() -> None:
     """Cancellation cannot strand the inspected SQLite connection in a transaction."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model used to enter catalog inspection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -1249,8 +1336,10 @@ async def cancelled_sqlite_verification_rolls_back_before_returning() -> None:
 async def failed_sqlite_verification_rolls_back_before_returning() -> None:
     """A catalog driver failure cannot leave its SQLite transaction open."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model used to enter catalog inspection."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -1279,8 +1368,10 @@ async def failed_sqlite_verification_rolls_back_before_returning() -> None:
 async def schema_verification_closes_control_cursors() -> None:
     """SQLite schema verification closes cursors returned by control statements."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Model used to force BEGIN, metadata fetch, and COMMIT."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 

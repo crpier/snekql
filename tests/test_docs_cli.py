@@ -4,8 +4,24 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from collections.abc import AsyncGenerator
 
-from snektest import assert_eq, assert_in, test
+from anyio import Path, TemporaryDirectory, run_process
+from snektest import Param, assert_eq, assert_in, fixture, load_fixture, test
+
+
+@fixture
+async def provide_quick_start(source_name: str) -> AsyncGenerator[str]:
+    """Copy the published first Python example without rewriting its source."""
+    if source_name == "agent-docs":
+        guide = await run_process(
+            [sys.executable, "-m", "snekql", "--agent-docs"], check=False
+        )
+        assert_eq(guide.returncode, 0, msg=guide.stderr.decode())
+        markdown = guide.stdout.decode()
+    else:
+        markdown = await Path("README.md").read_text()
+    yield markdown.split("```python\n", 1)[1].split("```", 1)[0]
 
 
 @test(mark="fast")
@@ -114,3 +130,55 @@ def docs_cli_rejects_unknown_positional_command() -> None:
 
     assert_eq(result.returncode, 2)
     assert_in("Unknown command", result.stderr)
+
+
+@test(
+    [Param("agent-docs", name="agent-docs"), Param("README", name="README")],
+    mark="fast",
+)
+async def documented_quick_start_runs(source_name: str) -> None:
+    """The printed quick start can create and read its documented SQLite row."""
+    source = await load_fixture(provide_quick_start(source_name))
+
+    async with TemporaryDirectory(prefix="snekql-docs-") as directory:
+        completed = await run_process(
+            [sys.executable, "-c", source + "\nimport asyncio\nasyncio.run(main())\n"],
+            cwd=directory,
+            check=False,
+        )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    assert_eq(completed.stdout.decode().strip(), "alice@example.com")
+
+
+@test(
+    [Param("agent-docs", name="agent-docs"), Param("README", name="README")],
+    mark="slow",
+)
+async def documented_quick_start_has_exact_row_type(source_name: str) -> None:
+    """Copied model declarations retain Pending construction and Row read results."""
+    source = await load_fixture(provide_quick_start(source_name))
+
+    async with TemporaryDirectory(prefix="snekql-docs-typing-") as directory:
+        caller = Path(directory) / "quick_start.py"
+        await caller.write_text(
+            source
+            + """
+from typing import assert_type
+
+assert_type(User(email="ada@example.com"), User[sqlite.Pending])
+
+async def check_result(transaction: sqlite.Transaction) -> None:
+    assert_type(
+        await transaction.fetch_all(sqlite.select(User).all()),
+        list[User[sqlite.Row]],
+    )
+"""
+        )
+        checked = await run_process(
+            [sys.executable, "-m", "ty", "check", str(caller)], check=False
+        )
+
+    assert_eq(
+        checked.returncode, 0, msg=checked.stdout.decode() + checked.stderr.decode()
+    )

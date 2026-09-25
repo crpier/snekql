@@ -9,13 +9,14 @@ from snektest import assert_eq, assert_raises, test
 from snekql._schema_plan import PlannedForeignKey, build_schema_plan
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     ForeignKey,
     Index,
     Integer,
     Model,
     ModelDeclarationError,
     Pending,
+    ReadType,
+    Row,
     SchemaError,
     Text,
 )
@@ -25,16 +26,20 @@ from snekql.sqlite import (
 def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
     """Schema startup derives table names and managed indexes once per model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """First table model in a schema plan."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         status: User.Col[str] = Text(nullable=False)
 
         __indexes__: ClassVar[list[Index[Any]]] = [Index(status)]
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Second table model in a schema plan."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
@@ -52,8 +57,10 @@ def schema_plan_preserves_model_order_and_normalizes_indexes() -> None:
 def schema_plan_emits_column_level_non_unique_indexes() -> None:
     """``index=True`` on a column emits a non-unique ``ix_<table>_<col>``."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a column-level non-unique index."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         status: User.Col[str] = Text(nullable=False, index=True)
@@ -70,26 +77,34 @@ def schema_plan_emits_column_level_non_unique_indexes() -> None:
 def schema_plan_rejects_duplicate_resolved_names() -> None:
     """Schema startup validates duplicate table and index names in one plan."""
 
-    class First[S = Pending](Model[S, "First[Fetched]"]):
+    class First[S = Pending](Model[S]):
         """First table model using a duplicate index name."""
+
+        __row_type__: ClassVar[ReadType[First[Row]]]
 
         email: First.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class Second[S = Pending](Model[S, "Second[Fetched]"]):
+    class Second[S = Pending](Model[S]):
         """Second table model using a duplicate index name."""
+
+        __row_type__: ClassVar[ReadType[Second[Row]]]
 
         email: Second.Col[str] = Text(nullable=False)
         __indexes__: ClassVar[list[Index[Any]]] = [Index(email, name="ix_duplicate")]
 
-    class DuplicateFirst[S = Pending](Model[S, "DuplicateFirst[Fetched]"]):
+    class DuplicateFirst[S = Pending](Model[S]):
         """First table model using a duplicate table name."""
+
+        __row_type__: ClassVar[ReadType[DuplicateFirst[Row]]]
 
         __tablename__ = "duplicate"
         email: DuplicateFirst.Col[str] = Text(nullable=False)
 
-    class DuplicateSecond[S = Pending](Model[S, "DuplicateSecond[Fetched]"]):
+    class DuplicateSecond[S = Pending](Model[S]):
         """Second table model using a duplicate table name."""
+
+        __row_type__: ClassVar[ReadType[DuplicateSecond[Row]]]
 
         __tablename__ = "duplicate"
         email: DuplicateSecond.Col[str] = Text(nullable=False)
@@ -110,8 +125,10 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
     constraint and is absent from the resolved foreign keys.
     """
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table whose primary key anchors the constraint."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -120,8 +137,10 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
         )
         email: User.Col[str] = Text(nullable=False)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table carrying an enforced and a typed-only reference to ``User``."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = Integer(
             primary_key=True,
@@ -151,14 +170,18 @@ def schema_plan_resolves_a_primary_key_target_named_explicitly() -> None:
 def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
     """`ForeignKey(User.email)` resolves to a unique non-PK target column."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table whose unique email is a non-PK target."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table referencing the target's unique email column."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         owner_email: Order.FKCol[User, str] = ForeignKey(User.email, nullable=False)
 
@@ -180,18 +203,24 @@ def schema_plan_resolves_a_non_primary_key_unique_target_column() -> None:
 def schema_plan_marks_composite_primary_key_columns() -> None:
     """Each PK column of a multi-column primary key is flagged ``composite_pk``."""
 
-    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+    class Team[S = Pending](Model[S]):
         """Referenced table anchoring the composite key's foreign keys."""
+
+        __row_type__: ClassVar[ReadType[Team[Row]]]
 
         id: Team.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table anchoring the composite key's foreign keys."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+    class TeamMember[S = Pending](Model[S]):
         """Join table whose identity is the (team, user) column pair."""
+
+        __row_type__: ClassVar[ReadType[TeamMember[Row]]]
 
         team_id: TeamMember.FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
         user_id: TeamMember.FKCol[User, int] = ForeignKey(User.id, primary_key=True)
@@ -208,8 +237,10 @@ def schema_plan_marks_composite_primary_key_columns() -> None:
 def schema_plan_leaves_single_primary_key_columns_unflagged() -> None:
     """A lone primary-key column is not treated as part of a composite key."""
 
-    class Widget[S = Pending](Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](Model[S]):
         """Table with a single-column primary key."""
+
+        __row_type__: ClassVar[ReadType[Widget[Row]]]
 
         id: Widget.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         name: Widget.Col[str] = Text(nullable=False)
@@ -225,10 +256,10 @@ def schema_plan_leaves_single_primary_key_columns_unflagged() -> None:
 def schema_plan_rejects_auto_increment_on_a_composite_primary_key() -> None:
     """``auto_increment`` requires a single INTEGER PK and is invalid for a pair."""
 
-    class CompositeAutoIncrement[S = Pending](
-        Model[S, "CompositeAutoIncrement[Fetched]"]
-    ):
+    class CompositeAutoIncrement[S = Pending](Model[S]):
         """Table illegally combining a composite key with auto-increment."""
+
+        __row_type__: ClassVar[ReadType[CompositeAutoIncrement[Row]]]
 
         left: CompositeAutoIncrement.Col[int] = Integer(
             primary_key=True, auto_increment=True
@@ -245,8 +276,10 @@ def model_declaration_rejects_a_nullable_composite_primary_key_column() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class CompositeNullable[S = Pending](Model[S, "CompositeNullable[Fetched]"]):
+        class CompositeNullable[S = Pending](Model[S]):
             """Table illegally declaring a composite-PK column nullable."""
+
+            __row_type__: ClassVar[ReadType[CompositeNullable[Row]]]
 
             left: CompositeNullable.Col[int | None] = Integer(
                 primary_key=True, nullable=True
@@ -258,14 +291,18 @@ def model_declaration_rejects_a_nullable_composite_primary_key_column() -> None:
 def schema_plan_rejects_a_foreign_key_to_a_non_unique_target_column() -> None:
     """An FK target column must be a primary key or carry a unique constraint."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table whose name column is neither PK nor unique."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         name: User.Col[str] = Text(nullable=False)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table referencing a non-unique target column."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         owner_name: Order.FKCol[User, str] = ForeignKey(User.name)
 
@@ -277,13 +314,17 @@ def schema_plan_rejects_a_foreign_key_to_a_non_unique_target_column() -> None:
 def schema_plan_records_referential_actions() -> None:
     """`on_delete`/`on_update` on a `ForeignKey` are carried onto the plan."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table anchoring the cascading foreign key."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table whose owner reference cascades on delete, restricts on update."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         user_id: Order.FKCol[User, int] = ForeignKey(
             User.id, on_delete="CASCADE", on_update="RESTRICT"
@@ -309,13 +350,17 @@ def schema_plan_records_referential_actions() -> None:
 def schema_plan_defaults_referential_actions_to_none() -> None:
     """An FK without declared actions records no action (today's behavior)."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table anchoring an action-free foreign key."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table whose reference declares no referential action."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         user_id: Order.FKCol[User, int] = ForeignKey(User.id)
 
@@ -330,13 +375,17 @@ def schema_plan_defaults_referential_actions_to_none() -> None:
 def schema_plan_rejects_set_null_on_a_non_nullable_foreign_key() -> None:
     """`ON DELETE SET NULL` can never fire on a NOT NULL column, so it is rejected."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Referenced table for the rejected SET NULL action."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table pairing SET NULL with a non-nullable foreign-key column."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         user_id: Order.FKCol[User, int] = ForeignKey(
             User.id, nullable=False, on_delete="SET NULL"
@@ -350,13 +399,17 @@ def schema_plan_rejects_set_null_on_a_non_nullable_foreign_key() -> None:
 def schema_plan_rejects_set_null_on_a_primary_key_foreign_key() -> None:
     """A primary-key FK column is non-nullable, so SET NULL is rejected there too."""
 
-    class Team[S = Pending](Model[S, "Team[Fetched]"]):
+    class Team[S = Pending](Model[S]):
         """Referenced table anchoring the join table's key column."""
+
+        __row_type__: ClassVar[ReadType[Team[Row]]]
 
         id: Team.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
-    class Membership[S = Pending](Model[S, "Membership[Fetched]"]):
+    class Membership[S = Pending](Model[S]):
         """Join table whose key column cannot be set null."""
+
+        __row_type__: ClassVar[ReadType[Membership[Row]]]
 
         team_id: Membership.FKCol[Team, int] = ForeignKey(
             Team.id, primary_key=True, on_update="SET NULL"
@@ -372,18 +425,24 @@ def schema_plan_rejects_a_foreign_key_whose_target_is_not_on_the_annotated_model
 ):
     """The recorded target column must belong to the annotation's target model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table owning the column the foreign key actually points at."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    class Region[S = Pending](Model[S, "Region[Fetched]"]):
+    class Region[S = Pending](Model[S]):
         """Unrelated table named as the annotated target."""
+
+        __row_type__: ClassVar[ReadType[Region[Row]]]
 
         code: Region.Col[str] = Text(nullable=False, unique=True)
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table whose annotation and recorded target disagree."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         owner: Order.FKCol[Region, str] = ForeignKey(User.email)
 

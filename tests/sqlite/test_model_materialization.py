@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import warnings
 from datetime import UTC, datetime
-from typing import cast
+from typing import ClassVar, cast
 
 from pydantic import Json, PositiveInt
 from snektest import assert_eq, assert_raises, test
 
 from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
-    Fetched,
     Integer,
     LexicalDatetimeWarning,
     Model,
@@ -19,19 +18,23 @@ from snekql.sqlite import (
     ModelValidationError,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
 )
 
 
 @test(mark="fast")
 def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
-    """SQLite Pending/Fetched Model conversion is handled by the materializer."""
+    """SQLite Pending/Row Model conversion is handled by the materializer."""
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-        class Event[S = Pending](Model[S, "Event[Fetched]"]):
+        class Event[S = Pending](Model[S]):
             """SQLite model used by materialization seam tests."""
+
+            __row_type__: ClassVar[ReadType[Event[Row]]]
 
             enabled: Event.Col[bool] = Integer(nullable=False)
             happened_at: Event.Col[datetime] = Text(nullable=False)
@@ -45,7 +48,7 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     )
     model_class, encoded_row = encode_model_row(pending_event, backend="sqlite")
     fetched_event = cast(
-        "Event[Fetched]",
+        "Event[Row]",
         decode_model_row(
             Event,
             {
@@ -77,8 +80,10 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
 def sqlite_model_materialization_asserts_database_row_shape() -> None:
     """SQLite model materialization treats row-shape mismatch as invariant failure."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """SQLite model used by row-shape checks."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = Integer(nullable=False)
 
@@ -93,8 +98,10 @@ def sqlite_model_materialization_asserts_database_row_shape() -> None:
 def sqlite_model_materialization_validates_logical_types() -> None:
     """Materialization validates wire-decoded values against the logical type."""
 
-    class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
+    class Receipt[S = Pending](Model[S]):
         """SQLite model with a constrained logical type."""
+
+        __row_type__: ClassVar[ReadType[Receipt[Row]]]
 
         amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
 
@@ -106,13 +113,15 @@ def sqlite_model_materialization_validates_logical_types() -> None:
 def sqlite_model_materialization_can_skip_validation() -> None:
     """Passing validate=False materializes the wire-decoded value unchecked."""
 
-    class Receipt[S = Pending](Model[S, "Receipt[Fetched]"]):
+    class Receipt[S = Pending](Model[S]):
         """SQLite model with a constrained logical type."""
+
+        __row_type__: ClassVar[ReadType[Receipt[Row]]]
 
         amount: Receipt.Col[PositiveInt] = Integer(nullable=False)
 
     fetched = cast(
-        "Receipt[Fetched]",
+        "Receipt[Row]",
         decode_model_row(Receipt, {"amount": -5}, backend="sqlite", validate=False),
     )
 

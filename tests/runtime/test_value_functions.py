@@ -1,7 +1,7 @@
 """SQL value functions materialize through real backend transactions."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 
 from snektest import assert_eq, fixture, load_fixture, test
 
@@ -16,10 +16,10 @@ from tests.runtime.test_arithmetic import (
 )
 
 
-class MariaProfile[S = mariadb.Pending](
-    mariadb.Model[S, "MariaProfile[mariadb.Fetched]"]
-):
+class MariaProfile[S = mariadb.Pending](mariadb.Model[S]):
     """Optional native text with a Unicode sample."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaProfile[mariadb.Row]]]
 
     id: MariaProfile.Col[int] = mariadb.Integer(primary_key=True)
     nickname: MariaProfile.Col[str | None] = mariadb.Text(nullable=True)
@@ -32,12 +32,13 @@ async def provide_sqlite_profiles() -> AsyncGenerator[sqlite.Database]:
         await database.migrate({"001_profiles": sqlite.scaffold([Profile])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                sqlite.insert(
+                sqlite.insert_many(
+                    Profile,
                     [
                         Profile(id=1, nickname=None),
                         Profile(id=2, nickname="Ada"),
                         Profile(id=3, nickname="é界"),
-                    ]
+                    ],
                 )
             )
         yield database
@@ -103,12 +104,13 @@ async def provide_mariadb_profiles() -> AsyncGenerator[mariadb.Database]:
         await database.migrate({"001_profiles": mariadb.scaffold([MariaProfile])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert(
+                mariadb.insert_many(
+                    MariaProfile,
                     [
                         MariaProfile(id=1, nickname=None),
                         MariaProfile(id=2, nickname="Ada"),
                         MariaProfile(id=3, nickname="é界"),
-                    ]
+                    ],
                 )
             )
         yield database

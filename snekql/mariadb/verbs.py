@@ -10,7 +10,7 @@ so the ``snekql.mariadb`` namespace surfaces MariaDB-specific guidance.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, Never, cast, overload
 
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Aggregate, ColumnRef, Scalar, _Scalar
 from snekql.mariadb.model import Model
-from snekql.model import Table, require_model_backend
+from snekql.model import Pending, Row, Table, require_model_backend
 from snekql.query import (
     DeleteQuery,
     InsertableModel,
@@ -32,8 +32,13 @@ from snekql.query import (
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    _check_read_query,
+    _DeclarationSource,
+    _ExecutableOptionalSelect,
+    _ExecutableSelect,
     _SelectableModelClass,
     build_insert,
+    build_insert_many,
     build_select,
 )
 from snekql.query import (
@@ -43,6 +48,23 @@ from snekql.query import (
     update as build_update,
 )
 from snekql.storage import Attr
+
+type ReadQuery[Scope, Result] = _ExecutableSelect[
+    Literal["mariadb"], Scope, Scope, Result
+]
+"""An executable read retaining the tables its expressions reference."""
+type OptionalRead[Scope, Result] = _ExecutableOptionalSelect[
+    Literal["mariadb"], Scope, Scope, Result
+]
+"""A read whose missing row is distinct from every possible row value."""
+type ClosedRead[Result] = ReadQuery[Never, Result]
+"""An execution/inspection view checked by ready, without fluent composition."""
+type ClosedOptional[Result] = OptionalRead[Never, Result]
+"""A checked read that still permits fetch_one_or_none."""
+type PendingInput[Owner: Model[Pending], Result: Table[Row]] = InsertableModel[
+    Literal["mariadb"], Owner, Result
+]
+"""Pending insertion input retaining its exact model owner and Row result."""
 
 
 def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
@@ -56,6 +78,9 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
     if isinstance(model, _Cte):
         msg = "CTEs cannot be mutation targets"
         raise QueryConstructionError(msg)
+    if not isinstance(model, type) or not issubclass(model, Table):
+        msg = "query source requires a table model or native query role"
+        raise QueryConstructionError(msg)
     received = require_model_backend(model)
     if received != "mariadb":
         msg = (
@@ -63,6 +88,29 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
             f"received {received} model {model.__name__}"
         )
         raise QueryConstructionError(msg)
+
+
+@overload
+def ready[Scope, Result](
+    query: OptionalRead[Scope, Result], /
+) -> ClosedOptional[Result]: ...
+
+
+@overload
+def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Result]: ...
+
+
+def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Result]:
+    """Check a finished read before returning it through a short helper annotation.
+
+    `return ready(select(User).all())` fits `ClosedRead[User[Row]]`.
+    This compiles SQL without database I/O and returns the same query. Finish
+    fluent composition before closing; ordinary execution does not need ready.
+    """
+    _check_read_query(query, backend="mariadb")
+    # Native compilation checked the references; Never records their closure.
+    # This annotation exposes execution and inspection, not more composition.
+    return cast("ClosedRead[Result]", query)
 
 
 @overload
@@ -77,7 +125,7 @@ def select[SourceT: Table[Any], ResultT: BaseModel, RoleT, NonNullableOwnerT](
 # BEGIN GENERATED BACKEND SELECT OVERLOADS
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     ReadT: Table[Any],
@@ -89,7 +137,7 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     ValueT,
@@ -104,7 +152,7 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     ValueT,
@@ -116,11 +164,11 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
@@ -142,15 +190,15 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
@@ -183,19 +231,19 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
@@ -234,23 +282,23 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
@@ -295,27 +343,27 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
@@ -366,31 +414,31 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any]
+    Owner7T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T7,
@@ -447,35 +495,35 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any]
+    Owner7T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T7,
-    Owner8T: Model[Any, Any]
+    Owner8T: Model[Any]
     | _AliasOwner[Literal["mariadb"], Any, Any]
     | _CteOwner[Literal["mariadb"], Any, Any],
     T8,
@@ -551,34 +599,42 @@ def select(*args: object) -> object:
     return query
 
 
-@overload
-def insert[OwnerT: Model[Any, Any], ReadT: Table[Any]](
-    row: InsertableModel[Literal["mariadb"], OwnerT, ReadT],
-    /,
-) -> InsertQuery[Literal["mariadb"], OwnerT, ReadT]: ...
-@overload
-def insert[OwnerT: Model[Any, Any], ReadT: Table[Any]](
-    rows: Sequence[InsertableModel[Literal["mariadb"], OwnerT, ReadT]],
-    /,
-) -> InsertManyQuery[Literal["mariadb"], OwnerT, ReadT]: ...
-def insert(row_or_rows: object, /) -> object:
-    """Build a MariaDB insert from a single pending model or a sequence of them.
+def insert[OwnerT: Model[Any], ReadT: Table[Any]](
+    row: InsertableModel[Literal["mariadb"], OwnerT, ReadT], /
+) -> InsertQuery[Literal["mariadb"], OwnerT, ReadT]:
+    """Insert one MariaDB Pending value; use insert_many(Model, rows) for batches.
 
-    A single model compiles to one ``INSERT ... VALUES (...)``; a sequence
-    compiles to one multi-row ``INSERT`` and is a no-op when empty. Executed
-    plain, the insert returns ``None``. Call ``.returning()`` to get the Fetched
-    model(s) MariaDB produced -- generated ``AUTO_INCREMENT`` keys and server
-    defaults -- read back through ``RETURNING``. Call ``.on_conflict`` with
-    ``DoUpdate`` or ``DoNothing`` for ``ON DUPLICATE KEY UPDATE`` handling.
+    `insert(user)` executes to `None`. `insert(user).returning()` returns the
+    Row produced by the database, including generated values. Conflict handling
+    remains available through `on_conflict` with `DoUpdate` or `DoNothing`.
+    RETURNING includes generated AUTO_INCREMENT keys and server defaults.
+    Conflict actions use MariaDB ON DUPLICATE KEY UPDATE handling.
     """
-
-    query = build_insert(row_or_rows)
-    _require_mariadb_model(cast("Any", query).state.model())
+    query = build_insert(row)
+    _require_mariadb_model(query.state.model())
     return query
 
 
-def update[ModelT: Model[Any, Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[Literal["mariadb"], ModelT, ReadT], /
+def insert_many[OwnerT: Model[Pending], ReadT: Table[Row]](
+    model: _DeclarationSource[Literal["mariadb"], OwnerT, ReadT],
+    rows: Sequence[OwnerT],
+    /,
+) -> InsertManyQuery[Literal["mariadb"], OwnerT, ReadT]:
+    """Insert Pending values into one declared model, including an empty batch.
+
+    `await transaction.execute(insert_many(User, users))` returns `None`.
+    `.returning()` uses MariaDB's existing INSERT RETURNING support and yields
+    a list of declared Row values. Empty batches execute no SQL. Conflict
+    handling and codecs use the same path as single-row `insert(user)`.
+    """
+    query = build_insert_many(model, rows)
+    # The builder has checked that this is a bare model declaration.
+    _require_mariadb_model(cast("type[Table[Any]]", model))
+    return query
+
+
+def update[ModelT: Model[Any], ReadT: Table[Any]](
+    model: _DeclarationSource[Literal["mariadb"], ModelT, ReadT], /
 ) -> UpdateQuery[Literal["mariadb"], ModelT, ReadT]:
     """Build a MariaDB ``UPDATE`` for a table model.
 
@@ -593,8 +649,8 @@ def update[ModelT: Model[Any, Any], ReadT: Table[Any]](
     return build_update(model)
 
 
-def delete[ModelT: Model[Any, Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[Literal["mariadb"], ModelT, ReadT], /
+def delete[ModelT: Model[Any], ReadT: Table[Any]](
+    model: _DeclarationSource[Literal["mariadb"], ModelT, ReadT], /
 ) -> DeleteQuery[Literal["mariadb"], ModelT, ReadT]:
     """Build a MariaDB ``DELETE`` for a table model.
 
@@ -623,8 +679,8 @@ def alias[
 
 
 @overload
-def alias[OwnerT: Model[Any, Any], ReadT: Table[Any], RoleT](
-    model: _SelectableModelClass[Literal["mariadb"], OwnerT, ReadT],
+def alias[OwnerT: Model[Any], ReadT: Table[Any], RoleT](
+    model: _DeclarationSource[Literal["mariadb"], OwnerT, ReadT],
     role: type[RoleT],
     *,
     name: str,

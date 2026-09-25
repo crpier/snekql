@@ -1,7 +1,7 @@
 """Callable self targets through native statements and materialization."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 from uuid import UUID
 
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
@@ -36,7 +36,7 @@ async def omitted_reference_round_trips() -> None:
             sqlite.select(Account).where(Account.account_id.eq(1))
         )
 
-    assert_type(account, Account[sqlite.Fetched])
+    assert_type(account, Account[sqlite.Row])
     assert_eq(account.manager_id, None)
     assert_eq(account.defaulted, 1)
 
@@ -88,8 +88,10 @@ async def aliased_reference_keeps_its_decoder() -> None:
     assert_eq(rows, [1])
 
 
-class UuidAccount[S = sqlite.Pending](sqlite.Model[S, "UuidAccount[sqlite.Fetched]"]):
+class UuidAccount[S = sqlite.Pending](sqlite.Model[S]):
     """A logical UUID key with backend-specific physical storage."""
+
+    __row_type__: ClassVar[sqlite.ReadType[UuidAccount[sqlite.Row]]]
 
     account_id: sqlite.Col[UUID] = sqlite.Blob(primary_key=True)
     manager_id: sqlite.FKCol[UuidAccount, UUID | None] = sqlite.ForeignKey(

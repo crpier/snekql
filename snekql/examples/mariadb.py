@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snekql import mariadb
-from snekql.mariadb import Database, Fetched, Pending, insert, select
+from snekql.mariadb import Database, Pending, Row, insert, select
 
 
-class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+class User[S = Pending](mariadb.Model[S]):
     """Example MariaDB table model."""
+
+    __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
     id: User.GenCol[int] = mariadb.Integer(
         primary_key=True,

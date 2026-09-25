@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from anyio import CancelScope, lowlevel
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
@@ -453,9 +453,8 @@ async def nested_typed_stream_rejects_cross_task_consumption() -> None:
     """Builder streams obey the savepoint owner just like buffered queries."""
     case = await load_fixture(provide_nested_case("sqlite"))
 
-    class NestedEntries[S = sqlite.Pending](
-        sqlite.Model[S, "NestedEntries[sqlite.Fetched]"]
-    ):
+    class NestedEntries[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[NestedEntries[sqlite.Row]]]
         value: NestedEntries.Col[int] = sqlite.Integer(primary_key=True)
 
     async with case.database.transaction() as transaction:  # noqa: SIM117 - keep transaction nesting explicit

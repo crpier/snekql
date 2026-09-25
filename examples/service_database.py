@@ -2,14 +2,17 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
 
 from snekql import sqlite
 
 
-class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+class Entry[S = sqlite.Pending](sqlite.Model[S]):
     """A service-owned record, with a caller-assigned primary key."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
     entry_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     label: sqlite.Col[str] = sqlite.Text()

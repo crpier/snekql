@@ -1,5 +1,7 @@
 """Nine named fields retain their row type without positional overloads."""
 
+from typing import ClassVar
+
 from typing import assert_type
 
 from pydantic import BaseModel
@@ -7,7 +9,8 @@ from pydantic import BaseModel
 from snekql import __BACKEND__ as database
 
 
-class Entry[S = database.Pending](database.Model[S, "Entry[database.Fetched]"]):
+class Entry[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
 
 
@@ -23,13 +26,13 @@ class Summary(BaseModel):
     i: int
 
 
-def named_query() -> database.Select[Summary]:
-    return database.select(Entry).all().project(
+def named_query() -> database.ClosedRead[Summary]:
+    return database.ready(database.select(Entry).all().project(
         Summary,
         a=Entry.id, b=Entry.id, c=Entry.id,
         d=Entry.id, e=Entry.id, f=Entry.id,
         g=Entry.id, h=Entry.id, i=Entry.id,
-    )
+    ))
 
 
 async def named_rows(transaction: database.Transaction) -> None:

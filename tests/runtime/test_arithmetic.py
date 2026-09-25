@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import assert_type
+from typing import ClassVar, assert_type
 
 from anyio import to_thread
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
@@ -14,10 +14,10 @@ from tests.helpers import provide_mariadb_server
 from tests.query.test_arithmetic import Inventory, NumericValues
 
 
-class MariaInventory[S = mariadb.Pending](
-    mariadb.Model[S, "MariaInventory[mariadb.Fetched]"]
-):
+class MariaInventory[S = mariadb.Pending](mariadb.Model[S]):
     """Stock and optimistic version counters on MariaDB."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaInventory[mariadb.Row]]]
 
     id: MariaInventory.Col[int] = mariadb.Integer(primary_key=True)
     quantity: MariaInventory.Col[int] = mariadb.Integer()
@@ -193,10 +193,10 @@ async def mariadb_integer_overflow_remains_an_execution_error() -> None:
             )
 
 
-class MariaNumericValues[S = mariadb.Pending](
-    mariadb.Model[S, "MariaNumericValues[mariadb.Fetched]"]
-):
+class MariaNumericValues[S = mariadb.Pending](mariadb.Model[S]):
     """Native numeric domains with independently nullable columns."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaNumericValues[mariadb.Row]]]
 
     id: MariaNumericValues.Col[int] = mariadb.Integer(primary_key=True)
     integer: MariaNumericValues.Col[int] = mariadb.Integer()
@@ -214,7 +214,8 @@ async def provide_sqlite_numeric_values() -> AsyncGenerator[sqlite.Database]:
         await database.migrate({"001_numeric": sqlite.scaffold([NumericValues])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                sqlite.insert(
+                sqlite.insert_many(
+                    NumericValues,
                     [
                         NumericValues(
                             id=1,
@@ -230,7 +231,7 @@ async def provide_sqlite_numeric_values() -> AsyncGenerator[sqlite.Database]:
                             real=2.5,
                             optional_real=1.5,
                         ),
-                    ]
+                    ],
                 )
             )
         yield database
@@ -312,7 +313,8 @@ async def provide_mariadb_numeric_values() -> AsyncGenerator[mariadb.Database]:
         await database.migrate({"001_numeric": mariadb.scaffold([MariaNumericValues])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert(
+                mariadb.insert_many(
+                    MariaNumericValues,
                     [
                         MariaNumericValues(
                             id=1,
@@ -328,7 +330,7 @@ async def provide_mariadb_numeric_values() -> AsyncGenerator[mariadb.Database]:
                             real=2.5,
                             optional_real=1.5,
                         ),
-                    ]
+                    ],
                 )
             )
         yield database

@@ -206,37 +206,35 @@ def compile_write_plan_for_dialect(
     query: object,
     dialect: QueryDialect,
     *,
-    default_backend: BackendFamily,
     validate: bool = True,
 ) -> WritePlan[object]:
     """Lower one write shape into a typed execution plan.
 
-    Empty bulk inserts remain backend-neutral no-ops, as before. Their plan uses
-    the compiling adapter's backend because no row exists from which to recover
-    model identity, and no SQL reaches that backend.
+    Empty batches execute no SQL and retain their declared destination's backend.
     """
 
     state = getattr(query, "state", None)
     if not isinstance(state, InsertState | UpdateState | DeleteState):
         msg = "execute requires a write query"
         raise QueryCompilationError(msg)
-    if isinstance(state, InsertState) and not state.rows:
-        cardinality: WriteCardinality = "many" if state.returning else "none"
-        return WritePlan(
-            sql=None,
-            params=(),
-            backend=default_backend,
-            cardinality=cardinality,
-            _state=state,
-            _validate=validate,
-        )
     if isinstance(state, InsertState):
         model = state.model()
         if model is None:
             msg = "insert plan lost its model"
             raise QueryCompilationError(msg)
         backend = require_model_backend(model)
-        cardinality = ("many" if state.multi else "one") if state.returning else "none"
+        cardinality: WriteCardinality = (
+            ("many" if state.multi else "one") if state.returning else "none"
+        )
+        if not state.rows:
+            return WritePlan(
+                sql=None,
+                params=(),
+                backend=backend,
+                cardinality=cardinality,
+                _state=state,
+                _validate=validate,
+            )
     else:
         backend = require_model_backend(state.model)
         cardinality = "many" if state.returning else "rowcount"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, assert_true, load_fixture, test
 
 from snekql import mariadb
@@ -9,9 +11,9 @@ from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
     ExecutionError,
-    Fetched,
     ForeignKey,
     Pending,
+    Row,
     SchemaVerificationError,
     insert,
 )
@@ -34,8 +36,10 @@ async def _scalar(server: TemporaryMariaDBServer, sql: str) -> str:
 async def created_tables_use_innodb_and_binary_text_collation() -> None:
     """Fresh MariaDB tables are InnoDB with case-sensitive utf8mb4_bin text."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table whose engine and text collation are inspected."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue96_engine_collation"
 
@@ -76,8 +80,10 @@ async def created_tables_use_innodb_and_binary_text_collation() -> None:
 async def unique_text_columns_compare_case_sensitively() -> None:
     """utf8mb4_bin gives SQLite-like case-sensitive uniqueness on MariaDB."""
 
-    class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](mariadb.Model[S]):
         """Table with a unique, case-sensitive text column."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Account[Row]]]
 
         __tablename__ = "issue96_case_sensitive"
 
@@ -108,8 +114,10 @@ async def unique_text_columns_compare_case_sensitively() -> None:
 async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     """foreign_key_checks plus InnoDB enforce the emitted FK constraint."""
 
-    class Parent[S = Pending](mariadb.Model[S, "Parent[Fetched]"]):
+    class Parent[S = Pending](mariadb.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Parent[Row]]]
 
         __tablename__ = "issue96_fk_parent"
 
@@ -119,8 +127,10 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
             default=PENDING_GENERATION,
         )
 
-    class Child[S = Pending](mariadb.Model[S, "Child[Fetched]"]):
+    class Child[S = Pending](mariadb.Model[S]):
         """Table whose parent_id is an enforced foreign key."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Child[Row]]]
 
         __tablename__ = "issue96_fk_child"
 
@@ -145,8 +155,10 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
 async def strict_policy_rejects_a_non_innodb_existing_table() -> None:
     """A MyISAM table cannot enforce foreign keys, so it is strict-policy drift."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Model whose columns match the existing non-InnoDB table."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue96_myisam_drift"
 
@@ -175,8 +187,10 @@ async def strict_policy_rejects_a_non_innodb_existing_table() -> None:
 async def reinitialization_verifies_managed_tables_without_drift() -> None:
     """Re-opening snekql-created tables under strict policy reports no drift."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table created on the first init and verified on the second."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue96_reverify"
 

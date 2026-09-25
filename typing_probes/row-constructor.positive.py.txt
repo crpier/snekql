@@ -1,0 +1,23 @@
+"""Pending constructors and Row annotations retain exact generated values."""
+
+from typing import ClassVar, assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.GenCol[int] = database.Integer(
+        primary_key=True, auto_increment=True, default=database.PENDING_GENERATION
+    )
+    name: database.Col[str] = database.Text()
+
+
+def pending_inputs() -> None:
+    assert_type(Account(name="Ada"), Account[database.Pending])
+    assert_type(Account[database.Pending](name="Ada"), Account[database.Pending])
+
+
+def row_value(account: Account[database.Row]) -> int:
+    assert_type(account.account_id, int)
+    return account.account_id

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import MinLen
 from pydantic import Json, PlainSerializer
@@ -18,8 +18,10 @@ from snekql import mariadb
 def json_marker_preserves_mariadb_constraints(storage: str) -> None:
     """Both native and marker-selected JSON enforce the same field constraints."""
 
-    class Batch[S = mariadb.Pending](mariadb.Model[S, "Batch[mariadb.Fetched]"]):
+    class Batch[S = mariadb.Pending](mariadb.Model[S]):
         """A nonempty JSON list."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Batch[mariadb.Row]]]
 
         items: Batch.Col[Annotated[Json[list[int]], MinLen(1)]] = (
             mariadb.Json() if storage == "native" else mariadb.Text()
@@ -39,8 +41,10 @@ def json_marker_preserves_mariadb_serializer(storage: str) -> None:
     def reverse_values(values: list[int]) -> list[int]:
         return list(reversed(values))
 
-    class Batch[S = mariadb.Pending](mariadb.Model[S, "Batch[mariadb.Fetched]"]):
+    class Batch[S = mariadb.Pending](mariadb.Model[S]):
         """JSON with an explicit wire serializer."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Batch[mariadb.Row]]]
 
         items: Batch.Col[
             Annotated[

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
-from typing import Any
+from typing import Any, ClassVar
 
 from snektest import (
     assert_eq,
@@ -19,9 +19,9 @@ from snekql.mariadb import (
     Database,
     DatabaseClosedError,
     ExecutionError,
-    Fetched,
     Pending,
     PoolTimeoutError,
+    Row,
     delete,
     exists,
     insert,
@@ -37,8 +37,10 @@ class _RollbackSentinelError(Exception):
     """Test-only exception used to force a transaction rollback."""
 
 
-class _UpdateUser[S = Pending](mariadb.Model[S, "_UpdateUser[Fetched]"]):
+class _UpdateUser[S = Pending](mariadb.Model[S]):
     """Table model for MariaDB update coverage."""
+
+    __row_type__: ClassVar[mariadb.ReadType[_UpdateUser[Row]]]
 
     __tablename__ = "issue38_user_update"
 
@@ -86,8 +88,10 @@ async def database_with_update_users() -> AsyncGenerator[Database]:
 async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
     """A MariaDB Database can insert, select, and close."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for the MariaDB runtime."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue37_user_round_trip"
 
@@ -116,7 +120,8 @@ async def mariadb_runtime_creates_schema_and_round_trips_model_rows() -> None:
 async def mariadb_runtime_rolls_back_failed_transactions() -> None:
     """MariaDB Transactions roll back when the body raises."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
         __tablename__ = "issue37_user_lifecycle"
 
         id: User.GenCol[int] = mariadb.Integer(
@@ -170,8 +175,10 @@ async def mariadb_runtime_rejects_transactions_after_close() -> None:
 async def mariadb_runtime_fetches_scalar_rows() -> None:
     """MariaDB fetch_all returns scalar rows for single-column selects."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB scalar result coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue38_user_scalar_result"
 
@@ -195,8 +202,10 @@ async def mariadb_runtime_fetches_scalar_rows() -> None:
 async def mariadb_runtime_fetches_tuple_rows() -> None:
     """MariaDB fetch_all returns tuples for multi-column selects."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB tuple result coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue38_user_tuple_result"
 
@@ -255,8 +264,10 @@ async def mariadb_runtime_updates_matching_rows() -> None:
 async def mariadb_runtime_streams_rows_in_chunks() -> None:
     """MariaDB fetch_chunks streams batches over a server-side cursor."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB streaming coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue59_user_stream"
 
@@ -290,8 +301,10 @@ async def mariadb_runtime_streams_rows_in_chunks() -> None:
 async def mariadb_runtime_closes_stream_cursor_on_early_break() -> None:
     """An early break frees the server-side cursor so the connection stays usable."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB streaming early-exit coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue59_user_stream_break"
 
@@ -326,8 +339,10 @@ async def mariadb_runtime_closes_stream_cursor_on_consumer_exception() -> None:
     class _ConsumerError(Exception):
         """Raised inside the stream body to force an error exit."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB streaming error-exit coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue59_user_stream_error"
 
@@ -360,8 +375,10 @@ async def mariadb_runtime_closes_stream_cursor_on_consumer_exception() -> None:
 async def mariadb_runtime_deletes_filtered_rows() -> None:
     """MariaDB delete removes rows matching the predicate."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB filtered delete coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue38_user_filtered_delete"
 
@@ -390,8 +407,10 @@ async def mariadb_runtime_deletes_filtered_rows() -> None:
 async def mariadb_runtime_deletes_all_rows() -> None:
     """MariaDB delete all removes every row."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB delete-all coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         __tablename__ = "issue38_user_delete_all"
 
@@ -419,8 +438,10 @@ async def mariadb_runtime_deletes_all_rows() -> None:
 async def mariadb_execution_errors_preserve_sql_and_params() -> None:
     """MariaDB write failures expose backend SQL and parameter context."""
 
-    class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](mariadb.Model[S]):
         """Table model for MariaDB execution error coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Account[Row]]]
 
         __tablename__ = "issue38_account_errors"
 
@@ -452,8 +473,10 @@ async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
     must make both agree, so SUM over an Integer column is a plain int here too.
     """
 
-    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+    class Sale[S = Pending](mariadb.Model[S]):
         """Integer-amount table for MariaDB aggregate normalization."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Sale[Row]]]
 
         __tablename__ = "issue109_sale_aggregate"
 
@@ -490,8 +513,10 @@ async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
     SUM normalization still applies to each group's DECIMAL result.
     """
 
-    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+    class Sale[S = Pending](mariadb.Model[S]):
         """Integer-amount table grouped by region for per-group normalization."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Sale[Row]]]
 
         __tablename__ = "issue112_sale_grouped"
 
@@ -528,8 +553,10 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
     the surviving group's DECIMAL SUM still normalizes to ``int``.
     """
 
-    class Sale[S = Pending](mariadb.Model[S, "Sale[Fetched]"]):
+    class Sale[S = Pending](mariadb.Model[S]):
         """Integer-amount table grouped by region for HAVING filtering."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Sale[Row]]]
 
         __tablename__ = "issue113_sale_having"
 
@@ -563,7 +590,8 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
 async def mariadb_json_path_hostile_input_remains_a_bound_value() -> None:
     """A quote-bearing JSON path cannot alter executable SQL."""
 
-    class Document[S = Pending](mariadb.Model[S, "Document[Fetched]"]):
+    class Document[S = Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[Row]]]
         __tablename__ = "issue255_json_path_binding"
 
         id: Document.Col[int] = mariadb.Integer(primary_key=True)
@@ -583,15 +611,19 @@ async def mariadb_json_path_hostile_input_remains_a_bound_value() -> None:
 async def mariadb_required_nullable_foreign_key_round_trips_null() -> None:
     """A required nullable enforced foreign key stores and reads SQL NULL."""
 
-    class Parent[S = Pending](mariadb.Model[S, "Parent[Fetched]"]):
+    class Parent[S = Pending](mariadb.Model[S]):
         """Referenced MariaDB row."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Parent[Row]]]
 
         __tablename__ = "issue236_parent"
 
         id: Parent.Col[str] = mariadb.Text(primary_key=True)
 
-    class Child[S = Pending](mariadb.Model[S, "Child[Fetched]"]):
+    class Child[S = Pending](mariadb.Model[S]):
         """MariaDB row with a required nullable foreign key."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Child[Row]]]
 
         __tablename__ = "issue236_child"
 
@@ -614,8 +646,10 @@ async def mariadb_required_nullable_foreign_key_round_trips_null() -> None:
 async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
     """Correlated EXISTS and a scalar subquery keep inner/outer params aligned."""
 
-    class Customer[S = Pending](mariadb.Model[S, "Customer[Fetched]"]):
+    class Customer[S = Pending](mariadb.Model[S]):
         """Outer table for MariaDB subquery coverage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Customer[Row]]]
 
         __tablename__ = "issue118_customer"
 
@@ -626,8 +660,10 @@ async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
         )
         country: Customer.Col[str] = mariadb.Text(nullable=False)
 
-    class Purchase[S = Pending](mariadb.Model[S, "Purchase[Fetched]"]):
+    class Purchase[S = Pending](mariadb.Model[S]):
         """Inner table with a foreign key back to ``Customer``."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Purchase[Row]]]
 
         __tablename__ = "issue118_purchase"
 

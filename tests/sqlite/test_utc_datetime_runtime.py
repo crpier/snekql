@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
+from typing import ClassVar
 
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     UtcDatetime,
     insert,
@@ -19,8 +21,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class TimedEvent[S = Pending](Model[S, "TimedEvent[Fetched]"]):
+class TimedEvent[S = Pending](Model[S]):
     """Event table with canonical timestamp text storage."""
+
+    __row_type__: ClassVar[ReadType[TimedEvent[Row]]]
 
     id: TimedEvent.Col[int] = Integer(primary_key=True)
     happened_at: TimedEvent.Col[UtcDatetime] = Text(nullable=False)

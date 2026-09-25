@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import cast
+from typing import ClassVar, cast
 
 from pydantic import ValidationError
 from snektest import assert_in, assert_isinstance, assert_raises, test
@@ -11,17 +11,20 @@ from snektest import assert_in, assert_isinstance, assert_raises, test
 from snekql.sqlite import (
     Database,
     DatabaseRuntimeError,
-    Fetched,
     Model,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     select,
 )
 
 
-class BoundaryUser[S = Pending](Model[S, "BoundaryUser[Fetched]"]):
+class BoundaryUser[S = Pending](Model[S]):
     """Table model used by select boundary validation tests."""
+
+    __row_type__: ClassVar[ReadType[BoundaryUser[Row]]]
 
     email: BoundaryUser.Col[str] = Text(nullable=False)
 

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import anyio
 import anyio.lowlevel
@@ -15,7 +15,6 @@ from snektest import assert_eq, assert_raises, test
 import snekql.runtime as runtime_module
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     ModelValidationError,
@@ -24,6 +23,8 @@ from snekql.sqlite import (
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -35,8 +36,10 @@ from tests.helpers import SQLITE_CODEC, initialized_database
 async def fetch_all_materializes_model_rows() -> None:
     """Model selects return fetched-state model instances decoded from rows."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model selected through the runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -57,13 +60,13 @@ async def fetch_all_materializes_model_rows() -> None:
     finally:
         await database.close()
 
-    fetched_user: User[Fetched] = rows[0]
+    fetched_user: User[Row] = rows[0]
     assert_eq(fetched_user.id, 1)
     assert_eq(fetched_user.email, "a@example.com")
     assert_eq(fetched_user.status, "active")
     assert_eq(
         repr(fetched_user),
-        "User[Fetched](id=1, email='a@example.com', status='active')",
+        "User[Row](id=1, email='a@example.com', status='active')",
     )
     assert_eq([row.email for row in rows], ["a@example.com", "b@example.com"])
 
@@ -72,8 +75,10 @@ async def fetch_all_materializes_model_rows() -> None:
 async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
     """Single-column selects return decoded scalar values instead of row tuples."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model selected through the runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -105,8 +110,10 @@ async def fetch_all_returns_scalar_values_for_single_column_selects() -> None:
 async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
     """Multi-column selects return value tuples in selection order."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model selected through the runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -136,8 +143,10 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
 async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
     """A large fetch_all interleaves with other tasks instead of starving the loop."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model selected through the runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -165,7 +174,7 @@ async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
             await anyio.lowlevel.checkpoint()
             ticks += 1
 
-    rows: list[User[Fetched]] = []
+    rows: list[User[Row]] = []
     database = await initialized_database(database=":memory:", models=[User])
     try:
         async with database.transaction() as tx:
@@ -186,8 +195,10 @@ async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
 def select_rejects_mixed_model_and_field_selections() -> None:
     """V1 rejects mixed model+field selections before SQL compilation."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by invalid select construction checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -206,13 +217,17 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
     rejected -- the runtime mirror of the static dual-union scope check.
     """
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """First table model used by invalid select compilation checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Second table model used by invalid select compilation checks."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
@@ -223,8 +238,10 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
         _ = SQLITE_CODEC.compile_select_sql(query)
 
 
-class _Person[S = Pending](Model[S, "_Person[Fetched]"]):
+class _Person[S = Pending](Model[S]):
     """Table model with a nullable column for fetch cardinality tests."""
+
+    __row_type__: ClassVar[ReadType[_Person[Row]]]
 
     id: _Person.GenCol[int] = Integer(
         primary_key=True,
@@ -373,10 +390,12 @@ async def fetch_one_or_none_rejects_single_value_selects() -> None:
 
 @test(mark="medium")
 async def fetch_all_validates_decoded_database_values() -> None:
-    """Fetched rows are decoded and validated before model materialization."""
+    """Row rows are decoded and validated before model materialization."""
 
-    class FeatureFlag[S = Pending](Model[S, "FeatureFlag[Fetched]"]):
+    class FeatureFlag[S = Pending](Model[S]):
         """Table model with a ``bool`` logical type stored as INTEGER."""
+
+        __row_type__: ClassVar[ReadType[FeatureFlag[Row]]]
 
         id: FeatureFlag.GenCol[int] = Integer(
             primary_key=True, default=PENDING_GENERATION
@@ -416,8 +435,10 @@ async def fetch_all_validates_decoded_database_values() -> None:
 def sqlite_select_materialization_asserts_database_row_shape() -> None:
     """SQLite select materialization treats row-shape mismatch as invariant failure."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by row-shape materialization checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -434,8 +455,10 @@ def sqlite_select_materialization_asserts_database_row_shape() -> None:
 def select_compilation_requires_explicit_all_or_where() -> None:
     """Select queries must choose filtered or unfiltered operation to compile."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by select compilation checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -447,8 +470,10 @@ def select_compilation_requires_explicit_all_or_where() -> None:
 def select_compilation_parameterizes_filters_limits_and_offsets() -> None:
     """Compiled select SQL is quoted and parameterized in observable order."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used by select compilation checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
         status: User.Col[str] = Text(nullable=False)

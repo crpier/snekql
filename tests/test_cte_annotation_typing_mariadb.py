@@ -1,6 +1,6 @@
 """Public named helper annotations preserve composition contracts."""
 
-from typing import TYPE_CHECKING, Any, assert_type
+from typing import TYPE_CHECKING, Any, ClassVar, assert_type
 
 from pydantic import BaseModel
 
@@ -14,9 +14,8 @@ from tests.query.test_recursive_ctes import (
 )
 
 
-class NativeDetail[S = mariadb.Pending](
-    mariadb.Model[S, "NativeDetail[mariadb.Fetched]"]
-):
+class NativeDetail[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[NativeDetail[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 
@@ -220,7 +219,7 @@ if TYPE_CHECKING:
 
     prepared.step(different_source)  # ty: ignore[invalid-argument-type]
 
-    def generic_advance[SourceT: mariadb.Model[Any, Any]](
+    def generic_advance[SourceT: mariadb.Model[Any]](
         previous: mariadb.Cte[SourceT, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
         return (

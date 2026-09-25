@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_true, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import Fetched, Pending, insert, select
+from snekql.mariadb import Pending, Row, insert, select
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
@@ -15,8 +17,10 @@ async def mariadb_blob_storage_round_trips_bytes() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class BinaryRecord[S = Pending](mariadb.Model[S, "BinaryRecord[Fetched]"]):
+    class BinaryRecord[S = Pending](mariadb.Model[S]):
         """Binary record table with blob payload storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[BinaryRecord[Row]]]
 
         __tablename__ = "blob_roundtrip"
 
@@ -42,8 +46,10 @@ async def mariadb_blob_storage_round_trips_payload_variants() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class BinaryRecord[S = Pending](mariadb.Model[S, "BinaryRecord[Fetched]"]):
+    class BinaryRecord[S = Pending](mariadb.Model[S]):
         """Binary record table with blob payload storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[BinaryRecord[Row]]]
 
         __tablename__ = "blob_payload_variants"
 
@@ -75,10 +81,10 @@ async def mariadb_nullable_blob_storage_round_trips_null() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class OptionalBinaryRecord[S = Pending](
-        mariadb.Model[S, "OptionalBinaryRecord[Fetched]"]
-    ):
+    class OptionalBinaryRecord[S = Pending](mariadb.Model[S]):
         """Binary record table with a nullable blob payload."""
+
+        __row_type__: ClassVar[mariadb.ReadType[OptionalBinaryRecord[Row]]]
 
         __tablename__ = "blob_nullable"
 

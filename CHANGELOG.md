@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+### Breaking
+
+- Models now use one lifecycle coordinate, `Model[State]`, with a class-body
+  `__row_type__: ClassVar[ReadType[User[Row]]]` witness. `Row` replaces `Fetched`.
+  Direct construction is Pending-only; unchecked `.construct(...)` is removed.
+  Use backend `complete(Model, **values)` for validated logical Row snapshots
+  without I/O, and `is_complete` to check recorded state. Completeness does not
+  prove persistence. Addresses #414.
+- `insert` accepts one Pending value only. Batches, including empty batches,
+  require `insert_many(Model, rows)`. Empty batches retain their destination and
+  backend rather than adopting the executing adapter's backend.
+- Removed result-only `Select`. Read helpers use `ReadQuery[Scope, Result]` or
+  `OptionalRead[Scope, Result]`; result-only boundaries use `ready(query)` with
+  `ClosedRead[Result]` or `ClosedOptional[Result]`. `PendingInput[Owner, Result]`
+  retains generic INSERT RETURNING results. `Write[Result]` remains available.
+- Column comparisons retain both owners; ty now rejects some valid enclosing-table
+  correlations in nested JOIN ON clauses that previously lost their right owner.
+  Runtime correlation support remains; those callers need a typing escape.
+  Field reassignment is statically rejected in Pending and Row states. Nested
+  JSON remains mutable, and explicit SQL assignments remain supported.
+- Query builders reject model instances and structural lookalikes as sources.
+  Explicit lifecycle specializations still require runtime rejection despite
+  passing ty. Native aliases and CTEs remain supported query roles.
+- Only ty is supported for the class-body interface. Pyright and mypy fail
+  required clean controls. See the [migration guide](docs/class-body-migration.md)
+  and [checker assessment](docs/typing-compatibility.md).
+
 ### Fixed
 
 - Defaulted typed-only `FKCol` declarations now retain their target type with

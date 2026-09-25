@@ -1,6 +1,6 @@
 """Named RETURNING contracts through public query compilation."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from snektest import assert_eq, assert_raises, test
 
@@ -24,10 +24,10 @@ def named_insert_returning_compiles_labels() -> None:
     assert_eq(compiled.params, (1, "Ada"))
 
 
-class MariaRecord[S = mariadb.Pending](
-    mariadb.Model[S, "MariaRecord[mariadb.Fetched]"]
-):
+class MariaRecord[S = mariadb.Pending](mariadb.Model[S]):
     """A MariaDB write target for capability checks."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaRecord[mariadb.Row]]]
 
     id: MariaRecord.Col[int] = mariadb.Integer(primary_key=True)
     name: MariaRecord.Col[str] = mariadb.Text()

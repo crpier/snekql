@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from decimal import Decimal, Inexact, Rounded, localcontext
+from typing import ClassVar
 
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
     CanonicalDecimal,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -19,8 +21,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class Price[S = Pending](Model[S, "Price[Fetched]"]):
+class Price[S = Pending](Model[S]):
     """Price table with canonical decimal text storage."""
+
+    __row_type__: ClassVar[ReadType[Price[Row]]]
 
     id: Price.Col[int] = Integer(primary_key=True)
     amount: Price.Col[CanonicalDecimal] = Text(nullable=False)

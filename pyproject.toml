@@ -92,12 +92,6 @@ ignore = [
   "TC003",   # Don't suggest putting stdlib imports in `TYPE_CHECKING` blocks. Mostly makes sense for Python>=3.11.
 ]
 
-[tool.ruff.lint.pyflakes]
-allowed-unused-imports = [
-  "snekql.sqlite.Fetched",
-  "snekql.mariadb.Fetched",
-]
-
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
   "FBT003",  # Allow boolean positional values in function calls. This is useful for assert_* function.

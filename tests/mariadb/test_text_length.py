@@ -12,7 +12,8 @@ from tests.helpers import provide_mariadb_server
 def scaffold_uses_declared_character_capacity() -> None:
     """An explicit length changes physical DDL without changing the string value family."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.Col[str] = mariadb.Text(length=512)
 
     assert_in(
@@ -25,10 +26,12 @@ def scaffold_uses_declared_character_capacity() -> None:
 def foreign_key_inherits_target_capacity() -> None:
     """Derived storage must retain length rather than silently reverting to VARCHAR(255)."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         code: mariadb.Col[str] = mariadb.Text(length=80, primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         parent: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.code)
 
     assert_in("`parent` VARCHAR(80)", mariadb.scaffold([Parent, Child]))
@@ -45,7 +48,8 @@ def foreign_key_inherits_target_capacity() -> None:
 def valid_lengths_scaffold(length: int) -> None:
     """Declaration bounds describe character capacity, not guaranteed row/index fit."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.Col[str] = mariadb.Text(length=length)
 
     assert_in(f"VARCHAR({length})", mariadb.scaffold([Entry]))
@@ -84,7 +88,8 @@ def length_is_not_coerced(length: object) -> None:
 def omitted_length_preserves_existing_ddl() -> None:
     """Unconfigured Text remains VARCHAR(255) with the existing collation."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.Col[str] = mariadb.Text()
 
     assert_in(
@@ -107,7 +112,8 @@ async def verify_hand_created_varchar(length: int) -> None:
     """Live verification compares the declared capacity against actual catalog length."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "length_entry"
         label: mariadb.Col[str] = mariadb.Text(length=80)
 
@@ -129,7 +135,8 @@ async def capacity_counts_characters_without_truncation() -> None:
     """Multibyte strings fit by character count; over-capacity writes fail on the server."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "length_entry"
         label: mariadb.Col[str] = mariadb.Text(length=2)
 
@@ -154,11 +161,13 @@ async def foreign_key_capacity_verifies_against_existing_tables() -> None:
     """A derived foreign key matches the target's native capacity in the live catalog."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         __tablename__ = "length_parent"
         code: mariadb.Col[str] = mariadb.Text(length=80, primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         __tablename__ = "length_child"
         code: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.code)
 
@@ -177,7 +186,8 @@ async def foreign_key_capacity_verifies_against_existing_tables() -> None:
 def length_preserves_defaults_and_nullability() -> None:
     """Capacity metadata does not turn Python defaults into SQL defaults or truncate values."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.Col[str] = mariadb.Text(length=2, default="longer")
         optional: mariadb.Col[str | None] = mariadb.Text(length=80, default=None)
         factory: mariadb.Col[str] = mariadb.Text(
@@ -194,7 +204,8 @@ async def composite_keys_and_indexes_keep_declared_lengths() -> None:
     """Configurable strings preserve existing compound key and index declarations."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "length_entry"
         tenant: mariadb.Col[str] = mariadb.Text(length=16, primary_key=True)
         code: mariadb.Col[str] = mariadb.Text(length=40, primary_key=True)
@@ -218,7 +229,8 @@ async def larger_capacity_round_trips_beyond_legacy_codec_limit() -> None:
     """The previous 255-character codec ceiling cannot override an explicit larger VARCHAR."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "length_entry"
         label: mariadb.Col[str] = mariadb.Text(length=512)
 

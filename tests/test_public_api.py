@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from inspect import isclass
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_raises, test
 from snektest.assertions import (
@@ -53,7 +53,7 @@ _NEUTRAL_NAMES = frozenset(
         "ExecutionError",
         "ExplainResult",
         "FKCol",
-        "Fetched",
+        "Row",
         "FailureCategory",
         "FrozenModelError",
         "GenCol",
@@ -92,6 +92,7 @@ _NEUTRAL_NAMES = frozenset(
         "RawResultShapeError",
         "RawResultValidationError",
         "ResultCardinalityError",
+        "ReadType",
         "Scalar",
         "SchemaDriftIssue",
         "SchemaError",
@@ -99,7 +100,6 @@ _NEUTRAL_NAMES = frozenset(
         "SchemaVerificationError",
         "SchemaVerificationFact",
         "SchemaVerificationResult",
-        "Select",
         "SnekqlError",
         "SnekqlWarning",
         "TelemetryEvent",
@@ -114,6 +114,7 @@ _NEUTRAL_NAMES = frozenset(
         "ZonedDatetime",
         "ZonedDatetimeError",
         "exists",
+        "is_complete",
         "literal",
         "recursive_cte",
         "not_exists",
@@ -123,7 +124,7 @@ _NEUTRAL_NAMES = frozenset(
 )
 # Write verbs are owned by each backend namespace so their docstrings can
 # describe driver-specific write semantics while preserving the same query API.
-_WRITE_VERB_NAMES = frozenset({"delete", "insert", "update"})
+_WRITE_VERB_NAMES = frozenset({"delete", "insert", "insert_many", "update"})
 # Dialect-specific symbols shared by both backends: each backend's ``Model``
 # base, ``Config``, ``scaffold`` (bound to that backend's DDL dialect), and the
 # four storage-primitive column constructors.
@@ -140,8 +141,15 @@ _DIALECT_NAMES = frozenset(
         "RawStatement",
         "Real",
         "Text",
+        "ClosedOptional",
+        "ClosedRead",
+        "OptionalRead",
+        "PendingInput",
+        "ReadQuery",
+        "ready",
         "alias",
         "case",
+        "complete",
         "raw",
         "scaffold",
     },
@@ -219,6 +227,8 @@ def backend_namespaces_hide_implementation_types() -> None:
         "DeleteReturningTupleQuery",
         "DeleteReturningValueQuery",
         "FKAttr",
+        "Fetched",
+        "Select",
         "InsertManyQuery",
         "InsertManyReturningQuery",
         "InsertManyReturningTupleQuery",
@@ -249,10 +259,17 @@ def backend_namespaces_hide_implementation_types() -> None:
 
 @test()
 def result_oriented_query_annotations_are_not_constructors() -> None:
-    """Select and Write name results without exposing constructible query states."""
+    """Query annotations do not expose constructible builder states."""
 
     for namespace in (sqlite, mariadb):
-        assert not callable(namespace.Select)
+        for annotation in (
+            namespace.ClosedRead,
+            namespace.ClosedOptional,
+            namespace.ReadQuery,
+            namespace.OptionalRead,
+            namespace.PendingInput,
+        ):
+            assert not callable(annotation)
         assert not callable(namespace.Write)
 
 
@@ -325,10 +342,10 @@ def query_factory_functions_reject_empty_selects() -> None:
 def column_declarations_produce_query_attributes() -> None:
     """Column declarations leave public descriptors on table model classes."""
 
-    class AttributeUser[S = sqlite.Pending](
-        sqlite.Model[S, "AttributeUser[sqlite.Fetched]"]
-    ):
+    class AttributeUser[S = sqlite.Pending](sqlite.Model[S]):
         """Table model for descriptor smoke checks."""
+
+        __row_type__: ClassVar[sqlite.ReadType[AttributeUser[sqlite.Row]]]
 
         email: AttributeUser.Col[str] = sqlite.Text(nullable=False)
 
@@ -347,7 +364,7 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     assert sqlite.select is not mariadb.select
     assert_is(sqlite.ColumnRef, mariadb.ColumnRef)
     assert_is(sqlite.Predicate, mariadb.Predicate)
-    assert_is(sqlite.Select, mariadb.Select)
+    assert sqlite.ClosedRead is not mariadb.ClosedRead
     assert_is(sqlite.Write, mariadb.Write)
 
     # The Model base differs per backend; the native MariaDB column types
@@ -359,8 +376,10 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     assert_not_in("Uuid", sqlite.__all__)
     assert_not_in("JsonAttr", mariadb.__all__)
 
-    class SqliteUser[S = sqlite.Pending](sqlite.Model[S, "SqliteUser[sqlite.Fetched]"]):
+    class SqliteUser[S = sqlite.Pending](sqlite.Model[S]):
         """SQLite table model declared through the SQLite namespace."""
+
+        __row_type__: ClassVar[sqlite.ReadType[SqliteUser[sqlite.Row]]]
 
         email: SqliteUser.Col[str] = sqlite.Text(nullable=False)
 
@@ -372,10 +391,10 @@ def backend_namespaces_diverge_on_dialect_specific_names() -> None:
 def mutation_query_chain_methods_return_query_objects() -> None:
     """Public update/delete chain methods keep returning mutation query objects."""
 
-    class MutationUser[S = sqlite.Pending](
-        sqlite.Model[S, "MutationUser[sqlite.Fetched]"]
-    ):
+    class MutationUser[S = sqlite.Pending](sqlite.Model[S]):
         """Table model for mutation chain smoke checks."""
+
+        __row_type__: ClassVar[sqlite.ReadType[MutationUser[sqlite.Row]]]
 
         email: MutationUser.Col[str] = sqlite.Text(nullable=False)
         status: MutationUser.Col[str] = sqlite.Text(nullable=False)
@@ -409,8 +428,10 @@ def mutation_query_chain_methods_return_query_objects() -> None:
 def select_query_chain_methods_return_query_objects() -> None:
     """Public select chain methods keep returning select query objects."""
 
-    class ChainUser[S = sqlite.Pending](sqlite.Model[S, "ChainUser[sqlite.Fetched]"]):
+    class ChainUser[S = sqlite.Pending](sqlite.Model[S]):
         """Table model for select chain smoke checks."""
+
+        __row_type__: ClassVar[sqlite.ReadType[ChainUser[sqlite.Row]]]
 
     query = sqlite.select(ChainUser)
 
@@ -454,7 +475,7 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.DoNothing,
         sqlite.DoUpdate,
         sqlite.ExecutionError,
-        sqlite.Fetched,
+        sqlite.Row,
         sqlite.FrozenModelError,
         sqlite.CheckConstraint,
         sqlite.ForeignKeyConstraint,

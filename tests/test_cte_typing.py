@@ -1,6 +1,6 @@
 """Consumer typing for query-only definitions and token-derived outputs."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from pydantic import BaseModel
 
@@ -8,10 +8,12 @@ from snekql import mariadb, sqlite
 
 if TYPE_CHECKING:
 
-    class Local[S = sqlite.Pending](sqlite.Model[S, "Local[sqlite.Fetched]"]):
+    class Local[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Local[sqlite.Row]]]
         id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
     class Result(BaseModel):
@@ -37,8 +39,10 @@ if TYPE_CHECKING:
         .project(Result, id=native_id)
         .cte(NativeRole, name="native_rows")
     )
-    local_query: sqlite.Select[Result] = sqlite.select(local).all()
-    native_query: mariadb.Select[Result] = mariadb.select(native).all()
+    local_query: sqlite.ClosedRead[Result] = sqlite.ready(sqlite.select(local).all())
+    native_query: mariadb.ClosedRead[Result] = mariadb.ready(
+        mariadb.select(native).all()
+    )
 
     async def consume_local(transaction: sqlite.Transaction) -> None:
         """Named rows, optional fetches and scalar tokens retain their types."""

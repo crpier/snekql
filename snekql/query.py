@@ -101,7 +101,16 @@ from snekql.expressions import (
     _require_predicate_node,
     _Scalar,
 )
-from snekql.model import Pending, Table, require_model_backend, require_model_columns
+from snekql.model import (
+    BackendFamily,
+    Model,
+    ModelMeta,
+    Pending,
+    Row,
+    Table,
+    require_model_backend,
+    require_model_columns,
+)
 from snekql.storage import Attr
 from snekql.validation import NonNegativeInt, validate_boundary
 
@@ -125,8 +134,17 @@ class _SelectableModelClass(Protocol[FamilyT_co, SelectableOwnerT, SelectableRea
     """Structural type for model classes accepted by `select(Model)`.
 
     The protocol lets the checker connect the writable owner model type with the
-    fetched read model type exposed by table model classes.
+    Row type exposed by table model classes. Nominal class evidence keeps model
+    instances out while retaining native alias and CTE objects. Specializations
+    can still look like classes to a checker and need runtime rejection.
     """
+
+    @property
+    def __class__(
+        self,
+    ) -> type[
+        ModelMeta | TableAlias[Any, Any, Any, Any] | _Cte[Any, Any, Any, Any, Any]
+    ]: ...
 
     @classmethod
     def __backend_family_type__(cls) -> FamilyT_co: ...
@@ -138,7 +156,20 @@ class _SelectableModelClass(Protocol[FamilyT_co, SelectableOwnerT, SelectableRea
     def __owner_invariant__(cls, owner: SelectableOwnerT) -> SelectableOwnerT: ...
 
     @classmethod
-    def __read_type__(cls) -> type[SelectableReadT_co]: ...
+    def __row_type__(cls) -> type[SelectableReadT_co]: ...
+
+
+class _DeclarationSource(
+    _SelectableModelClass[FamilyT_co, SelectableOwnerT, SelectableReadT_co],
+    Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co],
+):
+    """Require a model declaration, not an instance or another selectable role."""
+
+    @property
+    def __class__(self) -> type[ModelMeta]: ...
+
+    @property
+    def __mro__(self) -> tuple[type[object], ...]: ...
 
 
 class _GroupingColumn[OwnerT: Table[Any]](Protocol):
@@ -167,7 +198,7 @@ class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]
     the owner anchors backend validation, and the read type is what a
     `.returning()` write yields. The protocol matches an instance (not a class),
     so a `User[Pending]` value binds owner to `User[Pending]` and read to
-    `User[Fetched]`.
+    `User[Row]`.
     """
 
     @classmethod
@@ -180,7 +211,7 @@ class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]
     def __owner_invariant__(cls, owner: SelectableOwnerT) -> SelectableOwnerT: ...
 
     @classmethod
-    def __read_type__(cls) -> type[SelectableReadT_co]: ...
+    def __row_type__(cls) -> type[SelectableReadT_co]: ...
 
     def __state_type__(self) -> Pending: ...
 
@@ -365,15 +396,17 @@ type _ExecutableOptionalSelect[  # noqa: PYI047 - imported by Query Runtime
     RefT,
     RowT,
 ] = _OptionalQueryShape[FamilyT, ScopeT, RefT, RowT, _ExecutableQuery]
-type _Select[FamilyT, RowT] = _ExecutableSelect[FamilyT, Any, Any, RowT]
-type Select[RowT] = _Select[Any, RowT]
-"""Public annotation for an executable select yielding `RowT` per row.
 
-The executable specialization rejects builders without `.all()` or `.where()`.
-The `Any` scope coordinates deliberately erase private builder state at a stored
-query or function boundary. Direct builder calls retain their concrete scope and
-reference coordinates, so the Query Runtime can still reject unjoined references.
-"""
+
+def _check_read_query(query: object, *, backend: BackendFamily) -> None:
+    """Compile a native read before its helper annotation drops table references."""
+    if not isinstance(query, _QueryShape):
+        msg = "ready requires a native read query"
+        raise QueryConstructionError(msg)
+    compiled = query.compile()
+    if compiled.backend != backend:
+        msg = f"ready requires a {backend} query, received {compiled.backend}"
+        raise QueryConstructionError(msg)
 
 
 def _named_contract(
@@ -789,8 +822,8 @@ class JoinModelQuery[
     `JoinOwnerT` accumulates a union of every joined table's `Pending` owner, so
     `where`/`order_by` accept predicates from any joined table (via the covariant
     `Predicate`) and reject columns from tables not in the query. `*ResultTs`
-    accumulates the per-table fetched models: `join` appends `T[Fetched]` and
-    `left_join` appends `T[Fetched] | None`.
+    accumulates the per-table fetched models: `join` appends `T[Row]` and
+    `left_join` appends `T[Row] | None`.
     """
 
     def project[ResultT: BaseModel](
@@ -1541,7 +1574,7 @@ class InsertQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
     def returning(self, *fields: object) -> object:
         """Recover columns the database produced for the inserted row.
 
-        With no arguments the inserted row comes back as a Fetched model. Naming
+        With no arguments the inserted row comes back as a Row model. Naming
         columns instead projects only those: one column yields its decoded scalar,
         several yield a tuple in the order given.
         """
@@ -1662,7 +1695,7 @@ class InsertManyQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
     def returning(self, *fields: object) -> object:
         """Recover columns the database produced for each inserted row.
 
-        With no arguments each inserted row comes back as a Fetched model. Naming
+        With no arguments each inserted row comes back as a Row model. Naming
         columns instead projects only those: one column yields a list of decoded
         scalars, several yield a list of tuples in the order given.
         """
@@ -1680,14 +1713,14 @@ class InsertReturningQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
     _BaseInsertQuery[FamilyT, OwnerT],
     _ReturningQuery[FamilyT, ReadT],
 ):
-    """Single insert whose execution yields the Fetched model it produced."""
+    """Single insert whose execution yields the Row model it produced."""
 
 
 class InsertManyReturningQuery[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
     _BaseInsertQuery[FamilyT, OwnerT],
     _ReturningQuery[FamilyT, list[ReadT]],
 ):
-    """Bulk insert whose execution yields the Fetched models it produced."""
+    """Bulk insert whose execution yields the Row models it produced."""
 
 
 class InsertReturningValueQuery[FamilyT, OwnerT: Table[Any], T](
@@ -2010,7 +2043,7 @@ class UpdateReturningQuery[
     ReadT: Table[Any],
     ReadinessT = _EmptyUpdate,
 ](_UpdateQuery[FamilyT, ModelT, ReadT, list[ReadT], ReadinessT]):
-    """Update whose execution yields a Fetched model for each returned row."""
+    """Update whose execution yields a Row model for each returned row."""
 
 
 class UpdateReturningValueQuery[
@@ -2218,7 +2251,7 @@ class DeleteReturningQuery[
     ReadT: Table[Any],
     ReadinessT = _IncompleteQuery,
 ](_DeleteQuery[FamilyT, ModelT, ReadT, list[ReadT], ReadinessT]):
-    """Delete whose execution yields a Fetched model for each returned row."""
+    """Delete whose execution yields a Row model for each returned row."""
 
 
 class DeleteReturningValueQuery[
@@ -3008,58 +3041,43 @@ def scalar[T, CompareT](
     return _Scalar(subquery=subquery)
 
 
-@overload
 def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
-    row: InsertableModel[FamilyT, OwnerT, ReadT],
+    row: InsertableModel[FamilyT, OwnerT, ReadT], /
+) -> InsertQuery[FamilyT, OwnerT, ReadT]:
+    """Insert one Pending value. Batches use the backend's insert_many factory."""
+    return build_insert(row)
+
+
+def build_insert(row: object, /) -> InsertQuery[Any, Any, Any]:
+    """Validate one Pending value before constructing native insert state."""
+    _ = require_insert_model(row)
+    return InsertQuery(InsertState(rows=(cast("Table[Any]", row),)))
+
+
+def build_insert_many[FamilyT, OwnerT: Model[Pending], ReadT: Table[Row]](
+    model: _DeclarationSource[FamilyT, OwnerT, ReadT],
+    rows: Sequence[OwnerT],
     /,
-) -> InsertQuery[FamilyT, OwnerT, ReadT]: ...
-
-
-@overload
-def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](
-    rows: Sequence[InsertableModel[FamilyT, OwnerT, ReadT]],
-    /,
-) -> InsertManyQuery[FamilyT, OwnerT, ReadT]: ...
-
-
-def insert(row_or_rows: object, /) -> object:
-    """Build an insert from a single pending model or a sequence of them.
-
-    A single model compiles to one ``INSERT ... VALUES (...)``; a sequence
-    compiles to one multi-row ``INSERT ... VALUES (...), (...)`` and is a no-op
-    when empty. Call ``.returning()`` on either to get the Fetched model(s) the
-    database produced (generated keys, server defaults) back from the write.
-
-    Backend namespaces wrap this dialect-blind builder with their own
-    ``insert`` that documents the driver's write behavior.
-    """
-
-    return build_insert(row_or_rows)
-
-
-def build_insert(row_or_rows: object, /) -> object:
-    """Build an insert query without overload narrowing, for backend wrappers."""
-
-    if isinstance(row_or_rows, Sequence):
-        rows = tuple(cast("Sequence[Table[Any]]", row_or_rows))
-        model: type[Table[Any]] | None = None
-        for row in rows:
-            row_model = require_insert_model(row)
-            if model is None:
-                model = row_model
-            elif row_model is not model:
-                msg = "bulk insert rows must be instances of the same model"
-                raise QueryConstructionError(msg)
-        return InsertManyQuery[Any, Any, Any](InsertState(rows=rows, multi=True))
-    _ = require_insert_model(row_or_rows)
-    return InsertQuery[Any, Any, Any](
-        InsertState(rows=(cast("Table[Any]", row_or_rows),)),
-    )
+) -> InsertManyQuery[FamilyT, OwnerT, ReadT]:
+    """Validate destination and Pending rows before constructing native batch state."""
+    if not isinstance(model, type) or not issubclass(model, Model):
+        msg = "insert_many requires a model declaration"
+        raise QueryConstructionError(msg)
+    captured = tuple(rows)
+    if any(type(row) is not model for row in captured):
+        msg = "insert_many rows must belong to the destination model"
+        raise QueryConstructionError(msg)
+    for row in captured:
+        _ = require_insert_model(row)
+    return InsertManyQuery(InsertState(rows=captured, multi=True, destination=model))
 
 
 def update[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[FamilyT, ModelT, ReadT], /
+    model: _DeclarationSource[FamilyT, ModelT, ReadT], /
 ) -> UpdateQuery[FamilyT, ModelT, ReadT]:
+    if not isinstance(model, ModelMeta) or not issubclass(model, Model):
+        msg = "update requires a model declaration"
+        raise QueryConstructionError(msg)
     try:
         _ = require_model_columns(cast("type[object]", model))
     except ModelDeclarationError as error:
@@ -3071,8 +3089,11 @@ def update[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
 
 
 def delete[FamilyT, ModelT: Table[Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[FamilyT, ModelT, ReadT], /
+    model: _DeclarationSource[FamilyT, ModelT, ReadT], /
 ) -> DeleteQuery[FamilyT, ModelT, ReadT]:
+    if not isinstance(model, ModelMeta) or not issubclass(model, Model):
+        msg = "delete requires a model declaration"
+        raise QueryConstructionError(msg)
     try:
         _ = require_model_columns(cast("type[object]", model))
     except ModelDeclarationError as error:

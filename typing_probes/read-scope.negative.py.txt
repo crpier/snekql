@@ -1,0 +1,4 @@
+
+
+async def invalid(transaction: database.Transaction) -> None:
+    await read_all(transaction, database.select(Account.account_id, Post.post_id).all())  # expect-error

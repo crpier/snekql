@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb
@@ -9,8 +11,10 @@ from snekql.errors import QueryCompilationError
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Item[S = mariadb.Pending](mariadb.Model[S, "Item[mariadb.Fetched]"]):
+class Item[S = mariadb.Pending](mariadb.Model[S]):
     """A row that must survive rejected returning writes unchanged."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Item[mariadb.Row]]]
 
     id: Item.Col[int] = mariadb.Integer(primary_key=True)
     score: Item.Col[int] = mariadb.Integer(nullable=False)

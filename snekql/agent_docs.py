@@ -22,12 +22,14 @@ snekql is an async typed query builder and runtime for SQLite and MariaDB.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from snekql import sqlite
-from snekql.sqlite import Database, Fetched, Pending, insert, select
+from snekql.sqlite import Database, Pending, insert, select
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
@@ -41,7 +43,7 @@ MIGRATIONS = {
         'CREATE TABLE "user" ('
         '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
         '"email" TEXT NOT NULL'
-        ') STRICT'
+        ") STRICT"
     ),
     "0002_user_email_unique": (
         'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
@@ -66,6 +68,21 @@ async def main() -> None:
 
 - Import a backend namespace: `from snekql import sqlite` or `from snekql import mariadb`.
 - Import model bases, storage constructors, verbs, and runtime classes from that backend namespace.
+- Declare `class User[State = sqlite.Pending](sqlite.Model[State])` with
+  `__row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]` in its body.
+- Construction is Pending-only. SELECT/RETURNING and validated `complete` snapshots
+  produce Row values; completeness does not prove persistence.
+- Use `insert(user)` for one Pending value and `insert_many(User, rows)` for a batch.
+- Preserve `ReadQuery[Scope, Result]` in generic read helpers. For result-only
+  helpers, finish composition and return `ready(query)` as `ClosedRead[Result]`.
+  Optional-row helpers need `OptionalRead` or `ClosedOptional`; nullable scalars
+  do not distinguish SQL NULL from no row. These annotations are not constructors.
+- Use bare model declarations as table sources, not lifecycle specializations or
+  instances. Native aliases and CTEs are query-only roles.
+- Fields are shallowly frozen in Pending and Row states. Nested JSON containers
+  remain mutable; SQL writes use explicit assignments rather than field mutation.
+- Only ty is supported for this interface. Keep runtime checks for erased types,
+  snapshot keyword schemas, declaration consistency, and SQL scope.
 - Declare generated columns as `GenCol[T]` and use `PENDING_GENERATION` for values the database fills.
 - Own migrations as committed raw SQL. Use `scaffold([Model])` during development,
   then review and paste each statement into the migration declaration. Never call

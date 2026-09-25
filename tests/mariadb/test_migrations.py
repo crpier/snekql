@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from hashlib import sha256
+from typing import ClassVar
 
 import anyio
 from snektest import (
@@ -27,12 +28,12 @@ from snekql.examples.mariadb import User as ExampleUser
 from snekql.mariadb import (
     PENDING_GENERATION,
     Database,
-    Fetched,
     MigrationDeclarationError,
     MigrationError,
     MigrationHistoryError,
     MigrationResult,
     Pending,
+    Row,
 )
 from snekql.testing.mariadb import TemporaryMariaDBServer
 from tests.helpers import provide_mariadb_server
@@ -592,8 +593,10 @@ async def multi_statement_body_can_leave_a_partial_object() -> None:
 async def verify_passes_against_migration_created_schema() -> None:
     """Verification runs after migration and passes on a matching schema."""
 
-    class MigUser[S = Pending](mariadb.Model[S, "MigUser[Fetched]"]):
+    class MigUser[S = Pending](mariadb.Model[S]):
         """Model whose DDL matches the create-user migration body."""
+
+        __row_type__: ClassVar[mariadb.ReadType[MigUser[Row]]]
 
         __tablename__ = "mig_verify_t3"
 

@@ -1,13 +1,17 @@
 """Named set operations through public compilation and construction."""
 
+from typing import ClassVar
+
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
 
 
-class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+class Event[S = sqlite.Pending](sqlite.Model[S]):
     """A physical source shared by filtered operands."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Event[sqlite.Row]]]
 
     event_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -38,10 +42,10 @@ def named_union_all_compiles_in_operand_parameter_order() -> None:
     assert_eq(compiled.params, (2, 8))
 
 
-class NullableEvent[S = sqlite.Pending](
-    sqlite.Model[S, "NullableEvent[sqlite.Fetched]"]
-):
+class NullableEvent[S = sqlite.Pending](sqlite.Model[S]):
     """A genuinely nullable SQL output, independent of the result model."""
+
+    __row_type__: ClassVar[sqlite.ReadType[NullableEvent[sqlite.Row]]]
 
     event_id: sqlite.Col[int | None] = sqlite.Integer()
 
@@ -71,8 +75,10 @@ def nullable_left_contract_accepts_nonnullable_right() -> None:
     assert_eq(compiled.params, ())
 
 
-class MariaEvent[S = mariadb.Pending](mariadb.Model[S, "MariaEvent[mariadb.Fetched]"]):
+class MariaEvent[S = mariadb.Pending](mariadb.Model[S]):
     """A backend-distinct source with the same logical field."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaEvent[mariadb.Row]]]
 
     event_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 

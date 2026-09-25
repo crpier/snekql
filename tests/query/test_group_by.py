@@ -9,23 +9,27 @@ group, and every non-aggregate projected column must appear in ``group_by``.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    Row,
     insert,
     select,
 )
 from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Base table with a groupable column for GROUP BY tests."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -35,8 +39,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     country: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Table with a numeric column to aggregate per group under a join."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,

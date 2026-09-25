@@ -3,7 +3,8 @@
 snekql's public API is designed so model declaration, query construction, and
 runtime result shapes are visible to static type checkers. ty remains the primary
 checker. See the [versioned compatibility assessment](typing-compatibility.md)
-for the tested Pyright consumer profile, known mypy failures and editor limits.
+for measured Pyright/mypy limitations and editor guidance. Only ty is supported
+for the class-body interface.
 Unless stated otherwise, static guarantees below refer to the ty contract.
 
 ## Model states
@@ -11,7 +12,23 @@ Unless stated otherwise, static guarantees below refer to the ty contract.
 A table model class is generic in its lifecycle state:
 
 ```python
-class User[S = Pending](Model[S, "User[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import (
+    PENDING_GENERATION,
+    Col,
+    GenCol,
+    Integer,
+    Model,
+    Pending,
+    ReadType,
+    Row,
+    Text,
+)
+
+
+class User[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[User[Row]]]
     id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
@@ -26,52 +43,61 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
 pending_user = User(email="alice@example.com")  # User[Pending]
 ```
 
-`Fetched` is the state returned by database reads:
+`Row` is the state returned by database reads:
 
 ```python
 fetched_user = await tx.fetch_one(select(User).where(User.email.eq("x")))
-# fetched_user: User[Fetched] | None
+# fetched_user: User[Row]; fetch_one raises NoResultError when absent
 ```
 
 ### Instance methods and `self`
 
 Model classes are generic in their lifecycle state, so methods that assume a
-specific state must say so on `self`. Leave `self` unannotated only when the
-method works for both `User[Pending]` and `User[Fetched]`.
+specific state must say so on `self`. For a shared method, an explicit
+`self: User[Pending] | User[Row]` or an application protocol can describe the fields
+it needs. Arbitrary state-generic descriptor getters are not a supported contract.
 
 ```python
-class User[S = Pending](Model[S, "User[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import ReadType, Row
+
+
+class User[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[User[Row]]]
     id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     email: Col[str] = Text()
 
     def insert_payload(self: User[Pending]) -> dict[str, str]:
         return {"email": self.email}
 
-    def cache_key(self: User[Fetched]) -> str:
+    def cache_key(self: User[Row]) -> str:
         return f"user:{self.id}"
 ```
 
-A bare `User` means the default state, `User[Pending]`; spell `User[Fetched]`
-when a method requires a database-materialized row. The state annotation is for
-static typing and is erased at runtime. The Query Runtime separately tags rows
-it materializes so lifecycle-sensitive operations can reject them.
+A bare `User` means `User[Pending]`. `__row_type__` must name the same model in
+Row state, for example `ClassVar[ReadType[User[Row]]]`. This witness supplies the
+whole-model result of SELECT, RETURNING, and `complete`. It does not choose scalar,
+tuple, or named result types. Runtime declaration checks validate the witness;
+the checker does not reject every malformed declaration.
 
-`insert(...)` is the lifecycle transition: it accepts `Pending` instances only.
-A model returned by the Query Runtime is `Fetched` and is rejected if passed back
-to `insert`; construct a new pending model explicitly when copying a row.
+Direct construction is Pending-only, even when every generated field is supplied.
+`User[Row](...)` is rejected. Use `complete(User, id=7, email="ada@example.com")`
+for a logically validated Row snapshot without I/O. Supply all fields; defaults
+are not filled, extra fields and generation markers are rejected. This validates
+logical values, not wire-encoded storage. Keyword names and domains are checked
+at runtime, not statically.
 
-Because `Fetched` is used in string forward references such as
-`Model[S, "User[Fetched]"]`, Ruff's Pyflakes `F401` check may not see the import
-as used. Projects that lint model declarations with Ruff should allow the
-qualified backend imports:
+`is_complete(value)` checks recorded Row state and narrows its true branch. It
+does not infer completeness from populated fields or prove database existence.
+Insertion accepts only Pending values and does not mutate their lifecycle state.
+Use `insert(user)` for one value, `insert_many(User, rows)` for a batch. Row values
+from either SELECT/RETURNING or `complete` cannot be inserted.
 
-```toml
-[tool.ruff.lint.pyflakes]
-allowed-unused-imports = [
-  "snekql.sqlite.Fetched",
-  "snekql.mariadb.Fetched",
-]
-```
+Field reassignment is rejected by ty and raises `FrozenModelError` at runtime,
+for both states. This is shallow freezing: nested JSON dict/list mutation remains
+possible. SQL assignments such as `User.email.to("grace@example.com")` remain valid,
+including assignments to generated columns where the backend permits them.
 
 Module-level column annotations may refer to logical payload types declared later
 in the module; snekql retries those unresolved hints after module population. In
@@ -89,12 +115,12 @@ retain that namespace's backend family under static typing:
 ```python
 from snekql import mariadb, sqlite
 
-sqlite_query: sqlite.Select[SqliteUser[sqlite.Fetched]] = sqlite.select(
-    SqliteUser
-).all()
-mariadb_query: mariadb.Select[MariadbUser[mariadb.Fetched]] = mariadb.select(
-    MariadbUser
-).all()
+sqlite_query: sqlite.ClosedRead[SqliteUser[sqlite.Row]] = sqlite.ready(
+    sqlite.select(SqliteUser).all()
+)
+mariadb_query: mariadb.ClosedRead[MariadbUser[mariadb.Row]] = mariadb.ready(
+    mariadb.select(MariadbUser).all()
+)
 
 await sqlite_tx.fetch_all(mariadb_query)  # type error
 sqlite.select(SqliteUser).join(MariadbUser, on=...)  # type error
@@ -102,7 +128,7 @@ sqlite.scaffold([MariadbUser])  # type error
 ```
 
 The family coordinate is private. Application annotations keep the public forms
-`Model[State, ReadModel]`, `Select[Row]`, `Write[Result]`, and `Transaction`
+`Model[State]`, `ReadQuery[Scope, Result]`, `Write[Result]`, and `Transaction`
 without a backend type argument. Import those names and every query verb from the
 same backend namespace.
 
@@ -136,12 +162,77 @@ an assignment. Ordering, grouping, limits, offsets, and distinctness likewise
 preserve it. Nested selects passed to `scalar`, `exists`, `not_exists`,
 `in_subquery`, or `not_in_subquery` must already be executable.
 
-`Transaction` accepts only executable `Select[Row]` and `Write[Result]` carriers,
-so `ty` rejects guaranteed-incomplete queries before Query Compilation. The
-readiness coordinate stays private: application annotations retain one result
-type argument. Keep Query Compilation error handling because runtime validation
+`Transaction` accepts executable reads and `Write[Result]` carriers, so ty rejects
+guaranteed-incomplete queries before Query Compilation. The readiness coordinate
+stays private. Read helpers retain `Scope` as well as `Result`, or explicitly close
+the scope with `ready` after finishing composition. Keep Query Compilation error handling because runtime validation
 still protects dynamic values introduced through `Any`, casts, untyped callers,
 or state forgery.
+
+## Read helper boundaries
+
+Keep scope in a reusable helper. Neither ordinary execution nor a scoped helper
+needs `ready`:
+
+```python
+from snekql import sqlite
+
+
+async def fetch_rows[Scope, Result](
+    transaction: sqlite.Transaction,
+    query: sqlite.ReadQuery[Scope, Result],
+) -> list[Result]:
+    return await transaction.fetch_all(query)
+
+
+async def fetch_optional[Scope, Result](
+    transaction: sqlite.Transaction,
+    query: sqlite.OptionalRead[Scope, Result],
+) -> Result | None:
+    return await transaction.fetch_one_or_none(query)
+```
+
+For a result-only helper, finish composition first:
+
+```python
+def users() -> sqlite.ClosedRead[User[sqlite.Row]]:
+    return sqlite.ready(sqlite.select(User).all().order_by(User.id.asc()))
+
+
+def user_by_email(email: str) -> sqlite.ClosedOptional[User[sqlite.Row]]:
+    return sqlite.ready(sqlite.select(User).where(User.email.eq(email)))
+```
+
+`ready` compiles and checks backend ownership without executing SQL. It returns
+the same object and does not repair incomplete queries or missing joins, prove
+that tables exist, or cache compilation for later execution. Closed annotations
+permit execution and inspection, not further joins or filtering. A normal scoped
+query cannot be directly assigned to `ClosedRead`; use `ready` at that boundary.
+The closed aliases use `Never` scope, which does not mean an empty SQL FROM.
+
+Optional reads distinguish an absent row from a present row. A nullable scalar
+cannot supply this distinction because SQL NULL also becomes `None`. `ready`
+preserves optional-fetch eligibility; it does not make nullable scalars eligible.
+All read helper names are nonconstructible annotations.
+
+A generic single-insert helper can retain its Pending owner and Row result:
+
+```python
+def insert_row[Owner: sqlite.Model[sqlite.Pending], Result: sqlite.Model[sqlite.Row]](
+    pending: sqlite.PendingInput[Owner, Result],
+) -> sqlite.Write[Result]:
+    return sqlite.insert(pending).returning()
+```
+
+## Query sources
+
+Use bare model declarations, such as `select(User)`, `update(User)`, or
+`alias(User, AuthorRole, name="author")`. Native aliases and CTEs are also valid
+read sources; they cannot be mutation targets. Ty rejects model instances and
+structural lookalikes at these boundaries. Explicit lifecycle specializations
+such as `User[Pending]` and `User[Row]` still pass ty in the tested source calls;
+runtime builders reject them. Any/callable erasure can hide evidence, so runtime
+checks remain necessary.
 
 ## `Col` and `GenCol`
 
@@ -155,7 +246,7 @@ Use `GenCol[T]` for server-filled/generated values. Pending instances may have
 pending_user = User(email="alice@example.com")
 pending_user.id  # int | PendingGeneration
 
-fetched_user: User[Fetched]
+fetched_user: User[Row]
 fetched_user.id  # int
 ```
 
@@ -216,7 +307,7 @@ The selected shape controls the runtime return type:
 
 ```python
 await tx.fetch_all(select(User).all())
-# list[User[Fetched]]
+# list[User[Row]]
 
 await tx.fetch_all(select(User.email).all())
 # list[str]
@@ -236,7 +327,7 @@ await tx.fetch_one(select(User.email).all())
 # str            (raises NoResultError / MultipleResultsError on 0 / >1 rows)
 
 await tx.fetch_one(select(User).all())
-# User[Fetched]
+# User[Row]
 ```
 
 `fetch_one_or_none(...)` is the **zero-or-one** variant: it returns the row or
@@ -246,7 +337,7 @@ mean a missing row:
 
 ```python
 await tx.fetch_one_or_none(select(User).all())
-# User[Fetched]  (raises when no row matches)
+# User[Row]  (raises when no row matches)
 
 await tx.fetch_one_or_none(select(User.email, User.status).all())
 # tuple[str, str] | None
@@ -266,7 +357,7 @@ shape exactly as `fetch_all` does:
 
 ```python
 async with tx.fetch_chunks(select(User).all(), size=500) as stream:
-    async for batch in stream:  # batch: list[User[Fetched]]
+    async for batch in stream:  # batch: list[User[Row]]
         ...
 
 async with tx.fetch_chunks(select(User.email).all(), size=500) as stream:
@@ -298,19 +389,19 @@ MIN/MAX/SUM/AVG results are `None`.
 model. ty rejects a target or assignment from another model:
 
 ```python
-from snekql.sqlite import DoNothing, DoUpdate, insert
+from snekql.sqlite import DoNothing, DoUpdate, insert, insert_many
 
 update_email = insert(User(email=email, status=status)).on_conflict(
     User.email,
     action=DoUpdate(User.status.to_inserted()),
 )
-# InsertQuery[User[Pending], User[Fetched]]
+# execute(update_email.returning()) returns User[Row]
 
-ignore_email = insert([User(email=email, status=status)]).on_conflict(
+ignore_email = insert_many(User, [User(email=email, status=status)]).on_conflict(
     User.email,
     action=DoNothing,
 )
-# InsertManyQuery[User[Pending], User[Fetched]]
+# execute(ignore_email) returns None
 ```
 
 `DoUpdate` requires at least one assignment and accepts several. A literal
@@ -332,7 +423,13 @@ relationship is carried in the annotation, so it participates in type checking
 at zero runtime cost:
 
 ```python
-class User[S = Pending](Model[S, "User[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import ReadType, Row
+
+
+class User[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[User[Row]]]
     id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
@@ -341,7 +438,8 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     email: Col[str] = Text()
 
 
-class Order[S = Pending](Model[S, "Order[Fetched]"]):
+class Order[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[Order[Row]]]
     id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,
@@ -378,10 +476,12 @@ anchor, preceding joins, and the newly joined model. An unrelated predicate
 owner or a mixed-backend join is a type error, with runtime checks for dynamic
 callers. Joining preserves Query Readiness and the existing result shapes.
 
-The existing `*_col` comparison annotations retain the left operand's owner;
-they do not statically track the right operand's owner, which may correlate to
-an enclosing query. Query Compilation checks those right-hand references using
-the ON clause's scope, not the final join graph. Subqueries in ON inherit that
+The six `*_col` comparisons retain both column owners, including nullable RHS
+columns and aliases. Scalar-subquery comparisons retain the outer column owner.
+This catches a missing joined table, but can reject valid enclosing-table
+correlation in a nested JOIN ON. Such a query currently needs a typing escape;
+general correlation typing is not redesigned. Query Compilation still checks
+references using each ON clause's scope, not the final join graph. Subqueries in ON inherit that
 same scope, so neither direct comparisons nor nested correlations may reach a
 later join. Aggregate filters directly in ON are rejected at construction.
 
@@ -391,7 +491,7 @@ relationship checks.
 
 ### Model-select joins
 
-A model-select join accumulates a tuple of `Fetched` models. `left_join` makes
+A model-select join accumulates a tuple of `Row` models. `left_join` makes
 the right side optional:
 
 ```python
@@ -400,12 +500,12 @@ await tx.fetch_all(
     .join(Order, on=Order.user_id.references(User.id))
     .where(User.email.eq("a@b.c") & Order.note.eq("x")),
 )
-# list[tuple[User[Fetched], Order[Fetched]]]
+# list[tuple[User[Row], Order[Row]]]
 
 await tx.fetch_all(
     select(User).left_join(Order, on=Order.user_id.references(User.id)),
 )
-# list[tuple[User[Fetched], Order[Fetched] | None]]
+# list[tuple[User[Row], Order[Row] | None]]
 ```
 
 `where(...)` and `order_by(...)` accept predicates and orderings from any joined
@@ -462,14 +562,15 @@ select(manager).where(User.email.eq("a@b.c"))  # Type error
 manager.column(Order.note)  # Type error
 ```
 
-`alias` infers the model owner and Fetched result type. `column(...)` requires
+`alias` infers the model owner and Row result type. `column(...)` requires
 an original descriptor from that model and retains its logical read and
-comparison types. An alias select returns the original Fetched Model; a model
+comparison types. An alias select returns the original Row Model; a model
 join appends that same model type, optional on the right of a left join. Alias
 columns also retain scalar and tuple projection types.
 
-The backend and role scope coordinates remain private. Store completed queries
-at existing `Select[Row]` helper seams. Aliases are not mutation or schema
+The backend coordinate remains private. Generic helpers retain role scope through
+`ReadQuery[Scope, Result]`. Finish composition before using `ready(query)` and a
+`ClosedRead[Result]` execution-only annotation. Aliases are not mutation or schema
 targets, and an alias-owned assignment cannot update the physical model.
 
 Runtime checks supplement the types. SQL names must be distinct within visible
@@ -506,15 +607,18 @@ from both backend namespaces and does not change column construction or joins.
 
 ```python
 from typing import ClassVar
+
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
-class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+class Entry[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
     tenant_id: sqlite.Col[int] = sqlite.Integer()
     account_id: sqlite.Col[int] = sqlite.Integer()
     __foreign_keys__: ClassVar = [
@@ -574,11 +678,13 @@ There are no constraint-name, MATCH, or deferral declaration options yet.
 `__indexes__` classmethod to build predicates from bound columns:
 
 ```python
-from typing import Self
+from typing import ClassVar, Self
+
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     email: sqlite.Col[str] = sqlite.Text()
     active: sqlite.Col[bool | None] = sqlite.Integer()
 
@@ -631,10 +737,12 @@ Use `prefix_lengths` to index leading characters of ordinary text columns:
 
 ```python
 from typing import ClassVar
+
 from snekql import mariadb
 
 
-class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+class Document[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
     tenant_id: mariadb.Col[int] = mariadb.Integer()
     body: mariadb.Col[str] = mariadb.LongText()
     __indexes__: ClassVar = [
@@ -690,10 +798,13 @@ Pass `LiteralDefault(value)` through `default=` to declare a SQL DEFAULT rather
 than a Python construction default. Both backend namespaces export the marker.
 
 ```python
+from typing import ClassVar
+
 from snekql import sqlite
 
 
-class Job[S = sqlite.Pending](sqlite.Model[S, "Job[sqlite.Fetched]"]):
+class Job[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Job[sqlite.Row]]]
     attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(0))
     status: sqlite.GenCol[str] = sqlite.Text(
         default=sqlite.LiteralDefault("pending"),
@@ -741,10 +852,13 @@ in the class body is not supported because `ty` treats those field variables as
 dataclass fields rather than bound column descriptors.
 
 ```python
+from typing import ClassVar
+
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     balance: sqlite.Col[int] = sqlite.Integer()
     ceiling: sqlite.Col[int] = sqlite.Integer()
 
@@ -805,7 +919,13 @@ and requires `T | None` in the annotation. Without a default, callers must still
 provide the field:
 
 ```python
-class RequiredChild[S = Pending](Model[S, "RequiredChild[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import ReadType, Row
+
+
+class RequiredChild[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[RequiredChild[Row]]]
     parent_id: FKCol[User, int | None] = ForeignKey(
         User.id,
         nullable=True,
@@ -820,7 +940,13 @@ RequiredChild()  # type error: parent_id is required
 Add `default=None` when omission should supply `None`:
 
 ```python
-class OmittableChild[S = Pending](Model[S, "OmittableChild[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import ReadType, Row
+
+
+class OmittableChild[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[OmittableChild[Row]]]
     parent_id: FKCol[User, int | None] = ForeignKey(
         User.id,
         nullable=True,
@@ -831,7 +957,7 @@ class OmittableChild[S = Pending](Model[S, "OmittableChild[Fetched]"]):
 OmittableChild()  # ok: parent_id defaults to None
 ```
 
-Both forms materialize `parent_id` as `int | None` on Fetched Models. The
+Both forms materialize `parent_id` as `int | None` on Row Models. The
 difference applies only while constructing Pending Models.
 
 ### Defaulted typed-only and self references
@@ -845,10 +971,12 @@ existing table-level constraint:
 
 ```python
 from typing import ClassVar
+
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     account_id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
@@ -882,10 +1010,13 @@ Both backends also accept a zero-argument callback with an explicit Python
 `default`. This form derives storage and emits a scalar foreign-key constraint:
 
 ```python
+from typing import ClassVar
+
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     account_id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
@@ -969,7 +1100,13 @@ Marking more than one column `primary_key=True` declares a composite
 identity *is* the referenced column pair:
 
 ```python
-class TeamMember[S = Pending](Model[S, "TeamMember[Fetched]"]):
+from typing import ClassVar
+
+from snekql.sqlite import ReadType, Row
+
+
+class TeamMember[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[TeamMember[Row]]]
     team_id: FKCol[Team, int] = ForeignKey(Team.id, primary_key=True)
     user_id: FKCol[User, int] = ForeignKey(User.id, primary_key=True)
     role: Col[str] = Text()
@@ -995,9 +1132,10 @@ the type checker will not flag them ahead of time:
 - **`limit`/`offset` bounds.** Their parameter is `NonNegativeInt`, which `ty`
   sees as plain `int`, so a negative literal type-checks; a negative value raises
   `QueryConstructionError` at construction.
-- **Bulk insert homogeneity.** Every row in one `insert([...])` batch must be an
-  instance of the same model. The Query Builder rejects mixed batches at runtime;
-  `ty` may infer `Unknown` rather than diagnose a heterogeneous sequence.
+- **Bulk insert column sets.** `insert_many(User, rows)` fixes the destination
+  and Row result even for an empty batch. Ty rejects wrong-model and Row inputs;
+  runtime checks also reject them after type erasure. Every row must supply the
+  same columns, which compilation checks rather than the type checker.
 
 A scalar subquery (`scalar(...)`), by contrast, **is** reflected in the types: it
 evaluates to SQL `NULL` on an empty/no-match result set, so its projected slot is
@@ -1009,10 +1147,13 @@ only in later slots.
 ## MariaDB text capacity
 
 ```python
+from typing import ClassVar
+
 from snekql import mariadb
 
 
-class Article[S = mariadb.Pending](mariadb.Model[S, "Article[mariadb.Fetched]"]):
+class Article[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Article[mariadb.Row]]]
     title: mariadb.Col[str] = mariadb.Text(length=200)
     summary: mariadb.Col[str | None] = mariadb.Text(length=2000, default=None)
 ```
@@ -1032,7 +1173,11 @@ SQLite `Text()` has no equivalent `length` keyword.
 ### MariaDB native long text
 
 ```python
-class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+from typing import ClassVar
+
+
+class Document[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
     body: mariadb.Col[str] = mariadb.LongText()
     note: mariadb.Col[str | None] = mariadb.LongText(default=None)
 ```
@@ -1092,11 +1237,14 @@ or `snekql.mariadb` and import the whole surface from it -- the dialect-neutral
 verbs as well as that backend's `Model` and column declarations:
 
 ```python
+from typing import ClassVar
+
 from snekql import mariadb, sqlite
-from snekql.sqlite import PENDING_GENERATION, Database, Fetched, Pending
+from snekql.sqlite import PENDING_GENERATION, Pending
 
 
-class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
+class SqliteUser[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[SqliteUser[sqlite.Row]]]
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
@@ -1104,7 +1252,8 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     )
 
 
-class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
+class MariadbUser[S = Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[MariadbUser[mariadb.Row]]]
     id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
@@ -1170,11 +1319,12 @@ change without notice.
   Dialect for SQL inspection — see
   [ADR 0004](adr/0004-dialect-blind-core-with-open-ast-dialect-expressions.md).)
 
-**Queries and expressions are named by result.** Use `Select[RowT]` for an
-executable read query and `Write[ResultT]` for an executable mutation. The
+**Read helpers preserve scope.** Use `ReadQuery[Scope, Result]` for an executable
+read and `Write[Result]` for an executable mutation. For a result-only read helper,
+return `ready(query)` as `ClosedRead[Result]`. The
 state-specific builder classes and
 concrete expression nodes are private implementation vocabulary. Build queries
-through `select`, `insert`, `update`, and `delete`; obtain `Predicate`,
+through `select`, `insert`, `insert_many`, `update`, and `delete`; obtain `Predicate`,
 `Aggregate`, `Scalar`, `JoinOn`, `OrderBy`, and `Assignment` values from
 model/column methods and expression factories. Those names are
 non-constructible annotations.
@@ -1193,21 +1343,21 @@ def user_filter[T](
 
 def user_projection[T](
     column: ColumnRef[User[Pending], T],
-) -> Select[T]:
+) -> ReadQuery[User[Pending], T]:
     return select(column).all()
 ```
 
-`Select` and `Write` are annotation-only aliases rather than runtime classes, so
+Read helper annotations and `Write` are aliases rather than runtime classes, so
 do not construct them or use them with `isinstance`. Incomplete fluent builders
 do not satisfy these aliases; finish their required row scope and assignments
 before storing them at an application seam. An annotated query remains
 executable through `Transaction`:
 
 ```python
-async def load_users(
+async def load_users[Scope](
     tx: Transaction,
-    query: Select[User[Fetched]],
-) -> list[User[Fetched]]:
+    query: ReadQuery[Scope, User[Row]],
+) -> list[User[Row]]:
     return await tx.fetch_all(query)
 ```
 
@@ -1251,8 +1401,8 @@ uv run ty check examples/typed_queries.py tests/test_public_typing.py
 
 Native numeric `.add`, `.sub`, and `.mul` operations retain their query-source
 owner and result domain. SQL nullability follows both operands, including nested
-expressions. Completed queries retain the existing `Select[Row]` and
-`Write[Result]` helper annotations.
+expressions. Executable reads retain `ReadQuery[Scope, Result]`; writes retain
+`Write[Result]`. Use `ready` for result-only closed read helpers.
 
 | Operands | Result |
 | --- | --- |
@@ -1318,9 +1468,9 @@ non-null fallback can remove it explicitly.
 Python permits integer literals in float annotations. CASE normalizes those
 literals to floating bindings after validation, while invariant expression
 contracts reject mixing integer and float columns. Boolean literals and two
-literal NULL branches require runtime rejection. CASE also checks the runtime
-ownership of both sides of column comparisons because `*_col` tracks only the
-left owner's type. Row-local restrictions exclude subqueries and aggregates.
+literal NULL branches require runtime rejection. Column comparisons retain both
+owners statically; CASE also validates ownership at runtime for erased inputs.
+Row-local restrictions exclude subqueries and aggregates.
 
 ## Named result contracts
 
@@ -1329,7 +1479,7 @@ plain Pydantic `BaseModel` subclass `Result`. The same operation is available
 after model joins. This replaces positional projection overloads with one
 result-type parameter, so nine or more fields retain the full named result type.
 
-Use existing `Select[Result]` annotations for completed queries. The projection
+Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for read helpers. The projection
 preserves the current readiness state: `.project(...)`, grouping, and HAVING do
 not replace the required `.all()` or `.where(...)`. Query backend identity also
 survives the result contract, which itself is reusable across backends.
@@ -1371,4 +1521,5 @@ example and nullable-anchor rules.
 coordinate. `NamedOperand` retains the backend, exact named result class and
 completed readiness required by UNION and recursive member composition. It does
 not expose fluent editing or direct Transaction execution after scope erasure.
-Use `Select[Result]` for the execution-only helper contract instead.
+Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for
+execution helpers instead.

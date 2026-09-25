@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
@@ -22,11 +22,12 @@ from snekql.sqlite import (
     Config,
     Database,
     ExecutionError,
-    Fetched,
     Integer,
     Model,
     Pending,
     PoolTimeoutError,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -105,8 +106,10 @@ def database_initialization_takes_no_logger() -> None:
 async def lifecycle_verbs_emit_events() -> None:
     """Initialization, migrate, and verify log backend and schema context."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used to observe lifecycle logging."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -141,8 +144,10 @@ async def lifecycle_verbs_emit_events() -> None:
 async def warn_verify_policy_logs_drift() -> None:
     """Verify under the warn policy reports drift as a warning record."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used for warn policy drift logging."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
@@ -162,8 +167,10 @@ async def warn_verify_policy_logs_drift() -> None:
 async def transaction_execution_logs_redacted_query_context() -> None:
     """Normal query logs retain SQL while redacting parameter values."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used to observe query execution logging."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(
             primary_key=True,
@@ -205,8 +212,10 @@ async def transaction_execution_logs_redacted_query_context() -> None:
 async def query_failure_logs_redacted_error_context() -> None:
     """Execution failures keep bound values out of normal error telemetry."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a unique field used to force a write failure."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
@@ -234,7 +243,8 @@ async def query_failure_logs_redacted_error_context() -> None:
 async def parameter_values_require_an_explicit_runtime_opt_in() -> None:
     """The values policy restores raw diagnostics only when requested."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[User[Row]]]
         email: User.Col[str] = Text(nullable=False, unique=True)
 
     with _capture_snekql_logs() as logs:

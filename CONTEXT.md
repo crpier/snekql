@@ -25,7 +25,7 @@ The static fact that a query has the minimum explicit intent needed for executio
 _Avoid_: query validity, compiled query
 
 **Materialization**:
-The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Fetched Model; for scalar or tuple selects, it produces decoded Python values.
+The Query Runtime's read-side conversion of database result values into the result shape promised by a select query. For a table-model select, materialization produces a Row Model; for scalar or tuple selects, it produces decoded Python values.
 _Avoid_: hydration, insert encoding, write compilation
 
 **Execution Plan**:
@@ -185,7 +185,7 @@ A snekql-exported curated Logical Type for elapsed time: normalized to whole-mil
 _Avoid_: timedelta (for the curated type), interval, wall-clock time
 
 **Generated Column**:
-A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Fetched Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
+A column the database can supply a value for (auto-increment or Server Default), declared with `GenCol`: its value may be PendingGeneration on a Pending Model but is always present on a Row Model. The name marks this shape difference, not immutability — a Generated Column is writable like any other.
 _Avoid_: computed property, Python default, immutable column
 
 **Foreign-Key Column**:
@@ -200,6 +200,6 @@ _Avoid_: None, NULL, empty value
 A model instance constructed by application code for write-side query building.
 _Avoid_: Draft, unsaved entity, materialized model
 
-**Fetched Model**:
-A Table Model instance produced by materializing a table-model select result.
-_Avoid_: Loaded, read model, entity
+**Row Model**:
+A complete Table Model value with no unavailable generated fields, produced by a database result or by validating an explicit snapshot. Its state does not prove that a corresponding database row exists.
+_Avoid_: Fetched Model, Loaded, read model, entity

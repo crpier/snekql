@@ -1,7 +1,7 @@
 """Named UNION behavior through real backend transactions."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -27,19 +27,21 @@ from tests.runtime.test_named_codecs import (
 )
 
 
-class MariaNullable[S = mariadb.Pending](
-    mariadb.Model[S, "MariaNullable[mariadb.Fetched]"]
-):
+class MariaNullable[S = mariadb.Pending](mariadb.Model[S]):
     """Nullable native outputs for database set equality."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaNullable[mariadb.Row]]]
 
     event_id: mariadb.Col[int | None] = mariadb.Integer()
 
 
-class LocalText[S = sqlite.Pending](sqlite.Model[S, "LocalText[sqlite.Fetched]"]):
+class LocalText[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[LocalText[sqlite.Row]]]
     value: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
 
 
-class NativeText[S = mariadb.Pending](mariadb.Model[S, "NativeText[mariadb.Fetched]"]):
+class NativeText[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[NativeText[mariadb.Row]]]
     value: mariadb.Col[str] = mariadb.Text(length=80, collation="utf8mb4_unicode_ci")
 
 
@@ -56,15 +58,20 @@ async def provide_sqlite_events() -> AsyncGenerator[sqlite.Database]:
         )
         async with database.transaction() as transaction:
             await transaction.execute(
-                sqlite.insert([Event(event_id=number) for number in (1, 2, 3)])
-            )
-            await transaction.execute(
-                sqlite.insert(
-                    [NullableEvent(event_id=number) for number in (None, None, 1)]
+                sqlite.insert_many(
+                    Event, [Event(event_id=number) for number in (1, 2, 3)]
                 )
             )
             await transaction.execute(
-                sqlite.insert([LocalText(value=value) for value in ("a", "A")])
+                sqlite.insert_many(
+                    NullableEvent,
+                    [NullableEvent(event_id=number) for number in (None, None, 1)],
+                )
+            )
+            await transaction.execute(
+                sqlite.insert_many(
+                    LocalText, [LocalText(value=value) for value in ("a", "A")]
+                )
             )
         yield database
 
@@ -79,15 +86,20 @@ async def provide_mariadb_events() -> AsyncGenerator[mariadb.Database]:
         )
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert([MariaEvent(event_id=number) for number in (1, 2, 3)])
-            )
-            await transaction.execute(
-                mariadb.insert(
-                    [MariaNullable(event_id=number) for number in (None, None, 1)]
+                mariadb.insert_many(
+                    MariaEvent, [MariaEvent(event_id=number) for number in (1, 2, 3)]
                 )
             )
             await transaction.execute(
-                mariadb.insert([NativeText(value=value) for value in ("a", "A")])
+                mariadb.insert_many(
+                    MariaNullable,
+                    [MariaNullable(event_id=number) for number in (None, None, 1)],
+                )
+            )
+            await transaction.execute(
+                mariadb.insert_many(
+                    NativeText, [NativeText(value=value) for value in ("a", "A")]
+                )
             )
         yield database
 

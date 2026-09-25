@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 import anyio
 from snektest import assert_eq, assert_raises, test
@@ -19,11 +20,12 @@ from snektest import assert_eq, assert_raises, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     Database,
-    Fetched,
     Integer,
     Model,
     Pending,
     PoolTimeoutError,
+    ReadType,
+    Row,
     Text,
     TransactionClosedError,
     TransactionNotStartedError,
@@ -35,8 +37,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class MisuseUser[S = Pending](Model[S, "MisuseUser[Fetched]"]):
+class MisuseUser[S = Pending](Model[S]):
     """Table model used by transaction misuse tests."""
+
+    __row_type__: ClassVar[ReadType[MisuseUser[Row]]]
 
     id: MisuseUser.GenCol[int] = Integer(
         primary_key=True,

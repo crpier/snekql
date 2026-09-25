@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 
@@ -16,21 +16,24 @@ from snekql import sqlite
 from snekql.expressions import BetweenPredicate, ComparisonPredicate
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
     Predicate,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     insert,
     select,
 )
 from tests.helpers import SQLITE_CODEC, initialized_database
 
 
-class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
+class Reading[S = Pending](Model[S]):
     """Single table used by comparison compilation checks."""
+
+    __row_type__: ClassVar[ReadType[Reading[Row]]]
 
     id: Reading.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     value: Reading.Col[int] = Integer(nullable=False)
@@ -87,15 +90,19 @@ def comparison_predicates_compose_with_boolean_operators() -> None:
 def comparison_predicates_qualify_columns_across_joins() -> None:
     """Joined selects qualify comparison and range columns with their table."""
 
-    class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+    class User[S = Pending](sqlite.Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
         id: User.GenCol[int] = sqlite.Integer(
             primary_key=True, default=PENDING_GENERATION
         )
 
-    class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](sqlite.Model[S]):
         """Table with a foreign key to ``User`` and a numeric column."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
         id: Order.GenCol[int] = sqlite.Integer(
             primary_key=True, default=PENDING_GENERATION

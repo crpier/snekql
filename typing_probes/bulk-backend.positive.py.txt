@@ -1,0 +1,32 @@
+"""Explicit batch destinations retain exact owner and Row types, even when empty."""
+
+from typing import ClassVar, Literal, assert_type
+
+from snekql import __BACKEND__ as database
+from snekql import __OTHER_BACKEND__ as foreign
+from snekql.query import InsertManyQuery
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Other[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Other[database.Row]]]
+    account_id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Foreign[State = foreign.Pending](foreign.Model[State]):
+    __row_type__: ClassVar[foreign.ReadType[Foreign[foreign.Row]]]
+    account_id: foreign.Col[int] = foreign.Integer(primary_key=True)
+
+
+assert_type(
+    database.insert_many(Account, [Account(account_id=1)]),
+    InsertManyQuery[Literal["__BACKEND__"], Account[database.Pending], Account[database.Row]],
+)
+assert_type(
+    database.insert_many(Account, []),
+    InsertManyQuery[Literal["__BACKEND__"], Account[database.Pending], Account[database.Row]],
+)

@@ -8,16 +8,20 @@ decodes it through the leaf-owned ``__decode__``.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
 from snekql.errors import ModelValidationError
-from snekql.mariadb import Fetched, Pending, select
+from snekql.mariadb import Pending, Row, select
 from tests.helpers import MARIADB_CODEC
 
 
-class _Profiled[S = Pending](mariadb.Model[S, "_Profiled[Fetched]"]):
+class _Profiled[S = Pending](mariadb.Model[S]):
     """MariaDB model with a JSON column carrying the dialect operators."""
+
+    __row_type__: ClassVar[mariadb.ReadType[_Profiled[Row]]]
 
     name: _Profiled.Col[str] = mariadb.Text(nullable=False)
     profile: _Profiled.JsonCol[dict[str, object]] = mariadb.Json(nullable=False)

@@ -14,7 +14,8 @@ from tests.helpers import provide_mariadb_server
 def ordered_prefix_scaffold() -> None:
     """A mixed full-column and text-prefix index preserves member order."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         tenant_id: mariadb.Col[int] = mariadb.Integer()
         title: mariadb.Col[str] = mariadb.Text(length=1000)
         __indexes__: ClassVar = [
@@ -49,7 +50,8 @@ def invalid_prefix_declaration(prefixes: Any) -> None:
     """Prefix counts and lengths are validated before DDL can be emitted."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.Text(length=10)
             __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=prefixes)]
 
@@ -58,7 +60,8 @@ def invalid_prefix_declaration(prefixes: Any) -> None:
 def long_text_prefix_scaffold() -> None:
     """LONGTEXT becomes indexable only through an explicit character prefix."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.LongText()
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(128,))]
 
@@ -70,7 +73,8 @@ def sqlite_rejects_prefixes() -> None:
     """Even an all-full prefix option is not a SQLite declaration."""
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             title: sqlite.Col[str] = sqlite.Text()
             __indexes__: ClassVar = [sqlite.Index(title, prefix_lengths=(None,))]
 
@@ -80,7 +84,8 @@ def integer_rejects_prefix() -> None:
     """Character prefixes cannot be attached to numeric storage."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             number: mariadb.Col[int] = mariadb.Integer()
             __indexes__: ClassVar = [mariadb.Index(number, prefix_lengths=(1,))]
 
@@ -90,7 +95,8 @@ def encoded_text_rejects_prefix() -> None:
     """A JSON text codec is not ordinary string prefix indexing."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             title: mariadb.Col[Json[str]] = mariadb.Text()
             __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(1,))]
 
@@ -100,7 +106,8 @@ async def hand_created_prefix_matches() -> None:
     """Catalog SUB_PART values match ordered full and prefix declarations."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         tenant_id: mariadb.Col[int] = mariadb.Integer()
         title: mariadb.Col[str] = mariadb.LongText()
         __indexes__: ClassVar = [
@@ -125,13 +132,15 @@ async def hand_created_prefix_matches() -> None:
 def prefix_unique_is_not_table_foreign_key_target() -> None:
     """Prefix uniqueness cannot authorize a complete-value foreign key."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(3,))]
 
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+        class Child[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.Text()
             __foreign_keys__: ClassVar = [
                 mariadb.ForeignKeyConstraint(title, references=(Parent.title,))
@@ -142,11 +151,13 @@ def prefix_unique_is_not_table_foreign_key_target() -> None:
 def prefix_unique_is_not_scalar_foreign_key_target() -> None:
     """The scalar storage-deriving declaration also needs full-column uniqueness."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(3,))]
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         title: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.title)
 
     with assert_raises(mariadb.SchemaError):
@@ -158,10 +169,12 @@ async def unmanaged_prefix_is_not_hidden_as_fk_support() -> None:
     """An extra partial-value index remains drift beside a real supporting index."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text(primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         title: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.title)
 
     async with await mariadb.Database.initialize(server.config()) as database:
@@ -187,7 +200,8 @@ async def unmanaged_prefix_is_not_hidden_as_fk_support() -> None:
 def distinct_prefixes_can_coexist() -> None:
     """Named full and prefix indexes can share the same ordered columns."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [
             mariadb.Index(title, name="ix_full"),
@@ -217,7 +231,8 @@ async def unique_prefix_rejects_distinct_suffix(storage: str) -> None:
     """Distinct complete values still collide when their indexed prefixes match."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = (
             mariadb.LongText() if storage == "longtext" else mariadb.Text()
         )
@@ -238,7 +253,8 @@ async def prefix_counts_characters_not_bytes() -> None:
     """Distinct second characters remain distinct after a four-byte character."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(2,))]
 
@@ -265,7 +281,8 @@ async def changed_prefix_index_is_drift(case: str) -> None:
     """Independent catalog changes cannot certify the declared index."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         tenant_id: mariadb.Col[int] = mariadb.Integer()
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [
@@ -307,7 +324,8 @@ async def prefix_at_varchar_capacity_verifies() -> None:
     """A prefix equal to the declared VARCHAR capacity remains representable."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text(length=3)
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(3,))]
 
@@ -322,7 +340,8 @@ async def prefix_at_varchar_capacity_verifies() -> None:
 def prefix_declaration_is_frozen() -> None:
     """The declaration cannot change its prefix tuple after construction."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
 
     index = mariadb.Index(Entry.title, prefix_lengths=(3,))
@@ -334,7 +353,8 @@ def prefix_declaration_is_frozen() -> None:
 def index_list_is_snapshotted() -> None:
     """Mutating the original declaration list cannot erase a bound prefix index."""
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(3,))]
 
@@ -348,7 +368,8 @@ def duplicate_prefixes_are_rejected() -> None:
     """Different names do not bypass duplicate declared index-member validation."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.Text()
             __indexes__: ClassVar = [
                 mariadb.Index(title, prefix_lengths=(3,), name="first"),
@@ -361,7 +382,8 @@ def all_full_prefixes_duplicate_ordinary_index() -> None:
     """Explicit None entries mean exactly the same full-column index as omission."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.Text()
             __indexes__: ClassVar = [
                 mariadb.Index(title, name="first"),
@@ -373,11 +395,13 @@ def all_full_prefixes_duplicate_ordinary_index() -> None:
 def full_unique_beside_prefix_remains_fk_target() -> None:
     """An additional prefix index cannot invalidate independent full uniqueness."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text(unique=True)
         __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(3,))]
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         title: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.title)
 
     assert_in("REFERENCES `parent` (`title`)", mariadb.scaffold([Parent, Child]))
@@ -387,13 +411,15 @@ def full_unique_beside_prefix_remains_fk_target() -> None:
 def full_length_prefix_is_still_not_fk_candidate() -> None:
     """An explicit prefix is conservatively excluded even at VARCHAR capacity."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         title: mariadb.Col[str] = mariadb.Text(length=3)
         __indexes__: ClassVar = [mariadb.Index(title, unique=True, prefix_lengths=(3,))]
 
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+        class Child[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.Text(length=3)
             __foreign_keys__: ClassVar = [
                 mariadb.ForeignKeyConstraint(title, references=(Parent.title,))
@@ -408,7 +434,8 @@ async def prefix_does_not_truncate_stored_text(storage: str) -> None:
     """Indexing a short prefix does not shorten the row value or its codec limit."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         title: mariadb.Col[str] = (
             mariadb.LongText() if storage == "longtext" else mariadb.Text(length=1000)
         )
@@ -429,6 +456,7 @@ def prefix_cannot_exceed_long_text_capacity() -> None:
     """An impossible LONGTEXT character count fails without formatting huge SQL."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             title: mariadb.Col[str] = mariadb.LongText()
             __indexes__: ClassVar = [mariadb.Index(title, prefix_lengths=(2**20000,))]

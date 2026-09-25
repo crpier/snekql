@@ -1,17 +1,17 @@
 """Storage declarations retain soft-FK targets across default forms."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from snekql import sqlite
 
 
-class Target[S = sqlite.Pending](sqlite.Model[S, "Target[sqlite.Fetched]"]):
+class Target[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Target[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
-class IntegerDefaults[S = sqlite.Pending](
-    sqlite.Model[S, "IntegerDefaults[sqlite.Fetched]"]
-):
+class IntegerDefaults[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[IntegerDefaults[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True, default=1)
     null: sqlite.FKCol[Target, int | None] = sqlite.Integer(default=None)
     literal: sqlite.FKCol[Target, int] = sqlite.Integer(default=1)
@@ -21,7 +21,8 @@ class IntegerDefaults[S = sqlite.Pending](
     )
 
 
-class RealDefaults[S = sqlite.Pending](sqlite.Model[S, "RealDefaults[sqlite.Fetched]"]):
+class RealDefaults[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[RealDefaults[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True, default=1)
     null: sqlite.FKCol[Target, float | None] = sqlite.Real(default=None)
     literal: sqlite.FKCol[Target, float] = sqlite.Real(default=1.5)
@@ -31,7 +32,8 @@ class RealDefaults[S = sqlite.Pending](sqlite.Model[S, "RealDefaults[sqlite.Fetc
     )
 
 
-class TextDefaults[S = sqlite.Pending](sqlite.Model[S, "TextDefaults[sqlite.Fetched]"]):
+class TextDefaults[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[TextDefaults[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True, default=1)
     null: sqlite.FKCol[Target, str | None] = sqlite.Text(default=None)
     literal: sqlite.FKCol[Target, str] = sqlite.Text(default="key")
@@ -41,7 +43,8 @@ class TextDefaults[S = sqlite.Pending](sqlite.Model[S, "TextDefaults[sqlite.Fetc
     )
 
 
-class BlobDefaults[S = sqlite.Pending](sqlite.Model[S, "BlobDefaults[sqlite.Fetched]"]):
+class BlobDefaults[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[BlobDefaults[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True, default=1)
     null: sqlite.FKCol[Target, bytes | None] = sqlite.Blob(default=None)
     literal: sqlite.FKCol[Target, bytes] = sqlite.Blob(default=b"key")

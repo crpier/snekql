@@ -11,11 +11,12 @@ from snektest import assert_eq, assert_raises, assert_true, test
 from snekql._schema_shape import ColumnShape, IndexShape, TableShape
 from snekql._schema_startup import verify_schema
 from snekql.sqlite import (
-    Fetched,
     Index,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     SchemaVerificationError,
     SchemaVerificationFact,
     Text,
@@ -104,14 +105,18 @@ class _FakeSchemaBackend:
         }
 
 
-class Team[S = Pending](Model[S, "Team[Fetched]"]):
+class Team[S = Pending](Model[S]):
     """Second table used to prove one bulk catalog inspection."""
+
+    __row_type__: ClassVar[ReadType[Team[Row]]]
 
     name: Team.Col[str] = Text(nullable=False)
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Table model with one index used by schema verification flow tests."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: User.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     email: User.Col[str] = Text(nullable=False)

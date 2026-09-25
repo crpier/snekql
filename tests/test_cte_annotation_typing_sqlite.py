@@ -1,6 +1,6 @@
 """Public named helper annotations preserve composition contracts."""
 
-from typing import TYPE_CHECKING, Any, assert_type
+from typing import TYPE_CHECKING, Any, ClassVar, assert_type
 
 from pydantic import BaseModel
 
@@ -14,7 +14,8 @@ from tests.query.test_recursive_ctes import (
 )
 
 
-class Detail[S = sqlite.Pending](sqlite.Model[S, "Detail[sqlite.Fetched]"]):
+class Detail[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Detail[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
@@ -210,7 +211,7 @@ if TYPE_CHECKING:
 
     prepared.step(different_source)  # ty: ignore[invalid-argument-type]
 
-    def generic_advance[SourceT: sqlite.Model[Any, Any]](
+    def generic_advance[SourceT: sqlite.Model[Any]](
         previous: sqlite.Cte[SourceT, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
         return (

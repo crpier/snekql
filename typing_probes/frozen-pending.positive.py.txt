@@ -1,0 +1,24 @@
+"""Frozen snapshots keep readable values and permit explicit SQL assignments."""
+
+from typing import ClassVar, assert_type
+from pydantic import Json
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.GenCol[int] = database.Integer(primary_key=True, auto_increment=True, default=database.PENDING_GENERATION)
+    name: database.Col[str] = database.Text()
+    payload: database.Col[Json[dict[str, int]]] = database.Text()
+
+
+def control(account: Account[database.Row]) -> None:
+    assert_type(account.name, str)
+    assert_type(account.account_id, int)
+    assert_type(account.payload, dict[str, int])
+    account.payload["count"] = 2
+    assert_type(Account.name.to("Grace"), database.Assignment[Account])
+    assert_type(Account.account_id.to(7), database.Assignment[Account])
+    pending = Account(name="Ada", payload={"count": 1})
+    assert_type(pending, Account[database.Pending])
+    assert_type(pending.account_id, int | database.PendingGeneration)

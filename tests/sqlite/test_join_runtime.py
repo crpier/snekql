@@ -6,15 +6,18 @@ row materialization into tuples of fetched models.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     ForeignKey,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -22,8 +25,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class JoinUser[S = Pending](Model[S, "JoinUser[Fetched]"]):
+class JoinUser[S = Pending](Model[S]):
     """Referenced table."""
+
+    __row_type__: ClassVar[ReadType[JoinUser[Row]]]
 
     id: JoinUser.GenCol[int] = Integer(
         primary_key=True,
@@ -33,8 +38,10 @@ class JoinUser[S = Pending](Model[S, "JoinUser[Fetched]"]):
     email: JoinUser.Col[str] = Text(nullable=False)
 
 
-class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
+class JoinOrder[S = Pending](Model[S]):
     """Table with a foreign key to ``JoinUser``."""
+
+    __row_type__: ClassVar[ReadType[JoinOrder[Row]]]
 
     id: JoinOrder.GenCol[int] = Integer(
         primary_key=True,
@@ -45,14 +52,18 @@ class JoinOrder[S = Pending](Model[S, "JoinOrder[Fetched]"]):
     note: JoinOrder.Col[str] = Text(nullable=False)
 
 
-class Pipeline[S = Pending](Model[S, "Pipeline[Fetched]"]):
+class Pipeline[S = Pending](Model[S]):
     """Table keyed on an app-generated TEXT (UUID) primary key."""
+
+    __row_type__: ClassVar[ReadType[Pipeline[Row]]]
 
     id: Pipeline.Col[str] = Text(primary_key=True)
 
 
-class Secret[S = Pending](Model[S, "Secret[Fetched]"]):
+class Secret[S = Pending](Model[S]):
     """Row with a nullable optional foreign key to ``Pipeline``."""
+
+    __row_type__: ClassVar[ReadType[Secret[Row]]]
 
     id: Secret.Col[str] = Text(primary_key=True)
     pipeline_id: Secret.FKCol[Pipeline, str | None] = ForeignKey(
@@ -60,8 +71,10 @@ class Secret[S = Pending](Model[S, "Secret[Fetched]"]):
     )
 
 
-class RequiredSecret[S = Pending](Model[S, "RequiredSecret[Fetched]"]):
+class RequiredSecret[S = Pending](Model[S]):
     """Row with a required nullable foreign key to ``Pipeline``."""
+
+    __row_type__: ClassVar[ReadType[RequiredSecret[Row]]]
 
     id: RequiredSecret.Col[str] = Text(primary_key=True)
     pipeline_id: RequiredSecret.FKCol[Pipeline, str | None] = ForeignKey(

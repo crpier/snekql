@@ -15,7 +15,8 @@ from snekql import sqlite
 async def self_target_resolves_after_declaration() -> None:
     """A callable can name its enclosing model once Python has bound the name."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
@@ -36,7 +37,8 @@ async def callback_runs_once_across_model_uses() -> None:
     """Construction and repeated scaffolding share the resolved target."""
     calls: list[str] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
@@ -60,7 +62,8 @@ async def callback_runs_once_across_model_uses() -> None:
 async def deferred_column_can_have_a_class_body_index() -> None:
     """Index declarations wait for actual target storage rather than a placeholder."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
@@ -81,7 +84,8 @@ async def deferred_column_can_have_a_class_body_index() -> None:
 async def cyclic_target_storage_fails_closed() -> None:
     """Mutually dependent derived storage cannot manufacture a concrete key type."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
@@ -108,7 +112,8 @@ async def cyclic_target_storage_fails_closed() -> None:
 async def explicit_constraint_can_target_a_deferred_column() -> None:
     """A table-level constraint validates the resolved key rather than forcing lookup early."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True,
             auto_increment=True,
@@ -139,7 +144,8 @@ async def resolver_failure_is_terminal() -> None:
         msg = "target failed"
         raise sqlite.ModelDeclarationError(msg)
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             fail, default=None
@@ -149,7 +155,7 @@ async def resolver_failure_is_terminal() -> None:
         with assert_raises(sqlite.ModelDeclarationError):
             sqlite.scaffold([Account])
     with assert_raises(sqlite.ModelDeclarationError):
-        Account.construct(account_id=1)
+        Account(account_id=1)
 
     assert_eq(calls, ["target"])
 
@@ -158,7 +164,8 @@ async def resolver_failure_is_terminal() -> None:
 async def resolved_target_cannot_follow_later_rebinding() -> None:
     """A cached physical target cannot change when its callback closure changes."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         alternate: sqlite.Col[int] = sqlite.Integer(unique=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
@@ -179,7 +186,8 @@ async def deferred_hooks_run_once_after_target_binding() -> None:
     """Index and check hooks see frozen concrete metadata, once on first use."""
     calls: list[str] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: (calls.append("target"), Account.account_id)[1],
@@ -215,7 +223,8 @@ async def deferred_hooks_run_once_after_target_binding() -> None:
 async def invalid_hook_blocks_already_resolved_storage() -> None:
     """A failed model cannot expose a partial binding through column metadata."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: Account.account_id, default=None
@@ -236,14 +245,16 @@ async def invalid_hook_blocks_already_resolved_storage() -> None:
 async def callback_cannot_redirect_to_another_model() -> None:
     """Untyped input still has to match the frozen annotated target identity."""
 
-    class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+    class Other[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
     # Simulate a callback from untyped application code.
     def wrong_target() -> Any:
         return Other.account_id
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             wrong_target, default=None
@@ -260,7 +271,8 @@ async def callback_must_return_a_column(returned: object) -> None:
     def invalid() -> Any:
         return returned
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             invalid, default=None
@@ -274,7 +286,8 @@ async def callback_must_return_a_column(returned: object) -> None:
 async def storage_dependencies_can_resolve_without_a_cycle() -> None:
     """A self FK targeting another concrete-derived unique key is not a cycle."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         indirect: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: Account.direct, default=None
@@ -296,7 +309,8 @@ async def callback_cannot_reenter_schema_construction() -> None:
         sqlite.scaffold([Account])
         return Account.account_id
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             reenter, default=None
@@ -319,7 +333,8 @@ async def concurrent_first_use_shares_one_resolution() -> None:
         sleep(0.05)
         return Account.account_id
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             target, default=None
@@ -345,7 +360,8 @@ async def class_body_index_list_is_snapshotted() -> None:
     """Changing an application list cannot rewrite an already captured declaration."""
     declarations: list[sqlite.Index[Any]] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: Account.account_id, default=None
@@ -363,7 +379,8 @@ async def metadata_is_frozen_before_resolution() -> None:
     """Deferred storage is not a window for mutating declaration options."""
     calls: list[str] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: (calls.append("target"), Account.account_id)[1],
@@ -412,7 +429,8 @@ async def interrupted_resolution_does_not_retry() -> None:
         calls.append("target")
         raise KeyboardInterrupt
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             interrupted, default=None
@@ -433,7 +451,8 @@ async def query_use_resolves_pending_models(projection: str) -> None:
     """Even a projection of an ordinary column cannot bypass model binding."""
     calls: list[str] = []
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             lambda: (calls.append("target"), Account.account_id)[1],
@@ -457,7 +476,8 @@ async def failed_model_cannot_encode_an_ordinary_column() -> None:
     def invalid() -> Any:
         return None
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         manager_id: sqlite.FKCol[Account, int | None] = sqlite.ForeignKey(
             invalid, default=None

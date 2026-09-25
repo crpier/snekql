@@ -1,6 +1,6 @@
 """Declared column collations control database comparison semantics."""
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
@@ -12,7 +12,8 @@ from tests.helpers import provide_mariadb_server
 def sqlite_scaffold_declares_nocase() -> None:
     """An explicit text collation belongs to the physical column definition."""
 
-    class Label[S = sqlite.Pending](sqlite.Model[S, "Label[sqlite.Fetched]"]):
+    class Label[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Label[sqlite.Row]]]
         name: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
 
     assert_in("TEXT COLLATE NOCASE", sqlite.scaffold([Label]))
@@ -22,7 +23,8 @@ def sqlite_scaffold_declares_nocase() -> None:
 def mariadb_scaffold_declares_unicode_collation() -> None:
     """VARCHAR and LONGTEXT retain their utf8mb4 character set with a chosen collation."""
 
-    class Label[S = mariadb.Pending](mariadb.Model[S, "Label[mariadb.Fetched]"]):
+    class Label[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Label[mariadb.Row]]]
         name: mariadb.Col[str] = mariadb.Text(length=80, collation="utf8mb4_unicode_ci")
         body: mariadb.Col[str] = mariadb.LongText(collation="utf8mb4_general_ci")
 
@@ -35,10 +37,12 @@ def mariadb_scaffold_declares_unicode_collation() -> None:
 def sqlite_foreign_key_inherits_collation() -> None:
     """A scalar foreign key declares the target's comparison policy."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         code: sqlite.Col[str] = sqlite.Text(primary_key=True, collation="NOCASE")
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         code: sqlite.FKCol[Parent, str] = sqlite.ForeignKey(Parent.code)
 
     assert_eq(sqlite.scaffold([Parent, Child]).count("COLLATE NOCASE"), 2)
@@ -124,7 +128,8 @@ async def sqlite_verifies_hand_created_collations(
     """Matching physical collations verify; other supported choices remain drift."""
     expected, actual = case
 
-    class Label[S = sqlite.Pending](sqlite.Model[S, "Label[sqlite.Fetched]"]):
+    class Label[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Label[sqlite.Row]]]
         __tablename__ = "collation_label"
         name: sqlite.Col[str] = sqlite.Text(collation=expected)
 
@@ -159,7 +164,8 @@ async def mariadb_verifies_hand_created_collations(
     server = await load_fixture(provide_mariadb_server())
     kind, expected, actual = case
 
-    class Label[S = mariadb.Pending](mariadb.Model[S, "Label[mariadb.Fetched]"]):
+    class Label[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Label[mariadb.Row]]]
         __tablename__ = "collation_label"
         name: mariadb.Col[str] = (
             mariadb.Text(collation=expected)
@@ -212,7 +218,8 @@ async def sqlite_equality_uses_column_collation(case: SQLiteComparison) -> None:
     """SQL equality uses the selected built-in rule without changing stored Python strings."""
     collation, stored, probe, matches = case
 
-    class Label[S = sqlite.Pending](sqlite.Model[S, "Label[sqlite.Fetched]"]):
+    class Label[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Label[sqlite.Row]]]
         name: sqlite.Col[str] = sqlite.Text(collation=collation)
 
     async with await sqlite.Database.initialize(
@@ -252,7 +259,8 @@ async def mariadb_equality_uses_column_collation(case: MariaDBComparison) -> Non
     server = await load_fixture(provide_mariadb_server())
     collation, stored, probe, matches = case
 
-    class Label[S = mariadb.Pending](mariadb.Model[S, "Label[mariadb.Fetched]"]):
+    class Label[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Label[mariadb.Row]]]
         name: mariadb.Col[str] = mariadb.Text(collation=collation)
 
     async with await mariadb.Database.initialize(server.config()) as database:
@@ -271,7 +279,8 @@ async def long_text_equality_uses_unicode_collation() -> None:
     """LongText's chosen collation participates in ordinary equality predicates."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Label[S = mariadb.Pending](mariadb.Model[S, "Label[mariadb.Fetched]"]):
+    class Label[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Label[mariadb.Row]]]
         name: mariadb.Col[str] = mariadb.LongText(collation="utf8mb4_unicode_ci")
 
     async with await mariadb.Database.initialize(server.config()) as database:
@@ -289,7 +298,8 @@ async def long_text_equality_uses_unicode_collation() -> None:
 async def sqlite_unique_key_uses_nocase() -> None:
     """Unique keys reject distinct Python strings that the database considers equal."""
 
-    class Label[S = sqlite.Pending](sqlite.Model[S, "Label[sqlite.Fetched]"]):
+    class Label[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Label[sqlite.Row]]]
         name: sqlite.Col[str] = sqlite.Text(primary_key=True, collation="NOCASE")
 
     async with await sqlite.Database.initialize(
@@ -308,7 +318,8 @@ async def mariadb_unique_key_uses_unicode_collation() -> None:
     """Native keys apply case/accent equivalence independently of Python strings."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Label[S = mariadb.Pending](mariadb.Model[S, "Label[mariadb.Fetched]"]):
+    class Label[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Label[mariadb.Row]]]
         name: mariadb.Col[str] = mariadb.Text(
             primary_key=True, collation="utf8mb4_unicode_ci"
         )
@@ -327,12 +338,14 @@ async def mariadb_foreign_key_inherits_collation() -> None:
     """Foreign-key DDL and verification retain the target's native collation."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         code: mariadb.Col[str] = mariadb.Text(
             primary_key=True, collation="utf8mb4_unicode_ci"
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         code: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.code)
 
     async with await mariadb.Database.initialize(server.config()) as database:
@@ -353,10 +366,12 @@ async def mariadb_foreign_key_inherits_collation() -> None:
 async def sqlite_foreign_key_matches_parent_collation() -> None:
     """A foreign key keeps parent NOCASE semantics through DDL and verification."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         code: sqlite.Col[str] = sqlite.Text(primary_key=True, collation="NOCASE")
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         code: sqlite.FKCol[Parent, str] = sqlite.ForeignKey(Parent.code)
 
     async with await sqlite.Database.initialize(
@@ -386,7 +401,8 @@ async def sqlite_foreign_key_matches_parent_collation() -> None:
 async def sqlite_verifies_effective_collation(clause: str) -> None:
     """SQLite's accepted spelling and repeated clauses must resolve to its effective collation."""
 
-    class Label[S = sqlite.Pending](sqlite.Model[S, "Label[sqlite.Fetched]"]):
+    class Label[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Label[sqlite.Row]]]
         __tablename__ = "collation_label"
         name: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
 

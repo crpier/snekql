@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import ClassVar
 
 from anyio import TemporaryDirectory, wait_all_tasks_blocked
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
@@ -319,15 +320,13 @@ async def history_approval_does_not_override_schema_verification(
     """The old model matches initially, but approved extra columns still report drift."""
     old, config, known = await load_fixture(provide_rollout_case(backend))
 
-    class SQLiteEntry[S = sqlite.Pending](
-        sqlite.Model[S, "SQLiteEntry[sqlite.Fetched]"]
-    ):
+    class SQLiteEntry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[SQLiteEntry[sqlite.Row]]]
         __tablename__ = "rollout_entries"
         id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class MariaDBEntry[S = mariadb.Pending](
-        mariadb.Model[S, "MariaDBEntry[mariadb.Fetched]"]
-    ):
+    class MariaDBEntry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[MariaDBEntry[mariadb.Row]]]
         __tablename__ = "rollout_entries"
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 

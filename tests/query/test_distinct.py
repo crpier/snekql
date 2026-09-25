@@ -7,15 +7,18 @@ every select query class. The keyword is identical in SQLite and MariaDB.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -23,8 +26,10 @@ from snekql.sqlite import (
 from tests.helpers import SQLITE_CODEC, initialized_database
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Referenced table used by join distinct compilation."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -34,8 +39,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Table with a foreign key to ``User``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -148,8 +155,10 @@ def distinct_is_idempotent() -> None:
 async def distinct_collapses_duplicate_rows_at_runtime() -> None:
     """An end-to-end distinct select returns each duplicated value once."""
 
-    class Visit[S = Pending](Model[S, "Visit[Fetched]"]):
+    class Visit[S = Pending](Model[S]):
         """Table holding duplicate status values."""
+
+        __row_type__: ClassVar[ReadType[Visit[Row]]]
 
         id: Visit.GenCol[int] = Integer(
             primary_key=True,

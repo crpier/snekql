@@ -16,16 +16,21 @@ non-ASCII letters) is accepted and survives the full declaration -> schema-DDL
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import (
+    Any,
+    ClassVar,  # noqa: F401 - dynamic class annotations resolve this module name
+    cast,
+)
 
 from hypothesis import settings
 from hypothesis import strategies as st
 from snektest import assert_eq, assert_raises, assert_true, test, test_hypothesis
 
+from snekql import sqlite
 from snekql.mariadb import scaffold as scaffold_mariadb_ddl
 from snekql.mariadb import select as select_mariadb
 from snekql.mariadb.identifiers import quote_identifier as quote_mariadb
-from snekql.sqlite import Index, Integer, Model, ModelDeclarationError, select
+from snekql.sqlite import Index, Integer, ModelDeclarationError, select
 from snekql.sqlite import scaffold as scaffold_sqlite_ddl
 from snekql.sqlite.identifiers import quote_identifier as quote_sqlite
 from tests.helpers import MARIADB_CODEC, SQLITE_CODEC
@@ -127,62 +132,57 @@ _AWKWARD_VALID_IDENTIFIERS = (
 )
 
 
-def _model_with_table_name(
-    table_name: str, *, backend: str = "sqlite"
-) -> type[Model[Any, Any]]:
-    return cast(
-        "type[Model[Any, Any]]",
-        type(
-            "T",
-            (Model,),
-            {
-                "__tablename__": table_name,
-                "__snekql_backend__": backend,
-                "id": Integer(primary_key=True, auto_increment=True, nullable=False),
+def _model_with_table_name(table_name: str, *, backend: str = "sqlite") -> Any:
+    """Dynamic identifier tests deliberately construct classes outside static typing."""
+    return type(
+        "T",
+        (sqlite.Model,),
+        {
+            "__annotations__": {
+                "__row_type__": "ClassVar[sqlite.ReadType[T[sqlite.Row]]]"
             },
-        ),
+            "__tablename__": table_name,
+            "__module__": __name__,
+            "__snekql_backend__": backend,
+            "id": Integer(primary_key=True, auto_increment=True, nullable=False),
+        },
     )
 
 
-def _model_with_column_name(
-    column_name: str, *, backend: str = "sqlite"
-) -> type[Model[Any, Any]]:
-    # The annotation is read from the literal ``Model`` base, not the
-    # dynamically built subclass: ``_extract_logical_type`` only inspects the
-    # generic alias's own name/args, never which class produced it, so this
-    # is a faithful stand-in for a normal ``some_model.Col[int]`` annotation
-    # and lets predicate compilation encode a real value through it.
-    return cast(
-        "type[Model[Any, Any]]",
-        type(
-            "T",
-            (Model,),
-            {
-                "__annotations__": {column_name: Model.Col[int]},
-                "__snekql_backend__": backend,
-                "id": Integer(primary_key=True, auto_increment=True, nullable=False),
-                column_name: Integer(nullable=False),
+def _model_with_column_name(column_name: str, *, backend: str = "sqlite") -> Any:
+    """The logical field annotation enables value encoding for dynamic columns."""
+    return type(
+        "T",
+        (sqlite.Model,),
+        {
+            "__annotations__": {
+                "__row_type__": "ClassVar[sqlite.ReadType[T[sqlite.Row]]]",
+                column_name: "sqlite.Col[int]",
             },
-        ),
+            "__module__": __name__,
+            "__snekql_backend__": backend,
+            "id": Integer(primary_key=True, auto_increment=True, nullable=False),
+            column_name: Integer(nullable=False),
+        },
     )
 
 
-def _model_with_index_name(
-    index_name: str, *, backend: str = "sqlite"
-) -> type[Model[Any, Any]]:
+def _model_with_index_name(index_name: str, *, backend: str = "sqlite") -> Any:
+    """Keep the field declaration fixed while exercising arbitrary index names."""
     column = Integer(nullable=False)
-    return cast(
-        "type[Model[Any, Any]]",
-        type(
-            "T",
-            (Model,),
-            {
-                "__snekql_backend__": backend,
-                "id": Integer(primary_key=True, auto_increment=True, nullable=False),
-                "value": column,
-                "__indexes__": [Index(column, name=index_name)],
+    return type(
+        "T",
+        (sqlite.Model,),
+        {
+            "__annotations__": {
+                "__row_type__": "ClassVar[sqlite.ReadType[T[sqlite.Row]]]"
             },
-        ),
+            "__module__": __name__,
+            "__snekql_backend__": backend,
+            "id": Integer(primary_key=True, auto_increment=True, nullable=False),
+            "value": column,
+            "__indexes__": [Index(column, name=index_name)],
+        },
     )
 
 
@@ -299,7 +299,7 @@ def awkward_but_valid_column_names_compile_safely_with_parameterized_values() ->
 
         mariadb_predicate = getattr(mariadb_model, name).eq(1)
         mariadb_sql, mariadb_params = MARIADB_CODEC.compile_select_sql(
-            select_mariadb(cast("Any", mariadb_model)).where(mariadb_predicate)
+            select_mariadb(mariadb_model).where(mariadb_predicate)
         )
         assert_true(quote_mariadb(name) in mariadb_sql)
         assert_eq(mariadb_sql.count("%s"), 1)

@@ -14,11 +14,13 @@ from tests.helpers import provide_mariadb_server
 def composite_constraint_scaffold_preserves_pair_order() -> None:
     """One ordered relationship emits one SQL constraint."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         tenant_id: sqlite.Col[int] = sqlite.Integer()
         account_id: sqlite.Col[int] = sqlite.Integer()
         __foreign_keys__: ClassVar = [
@@ -108,20 +110,24 @@ def malformed_constraint_is_rejected(problem: str) -> None:  # noqa: C901
 def invalid_bound_constraint_is_rejected(problem: str) -> None:  # noqa: C901
     """Model binding fixes ownership, storage, candidate-key, and action contracts."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         ordinary: sqlite.Col[int] = sqlite.Integer()
 
-    class Other[S = mariadb.Pending](mariadb.Model[S, "Other[mariadb.Fetched]"]):
+    class Other[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Other[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Foreign[S = sqlite.Pending](sqlite.Model[S, "Foreign[sqlite.Fetched]"]):
+    class Foreign[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Foreign[sqlite.Row]]]
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+        class Child[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
             first: sqlite.Col[int] = sqlite.Integer()
             second: sqlite.Col[int] = sqlite.Integer()
             __foreign_keys__: ClassVar[Any] = [
@@ -194,11 +200,13 @@ def invalid_bound_constraint_is_rejected(problem: str) -> None:  # noqa: C901
 async def sqlite_verification_compares_constraint_grouping(composite: bool) -> None:  # noqa: FBT001
     """Identical flattened pairs must not hide a split composite relationship."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer()
         second: sqlite.Col[int] = sqlite.Integer()
         __foreign_keys__: ClassVar = [
@@ -237,11 +245,13 @@ async def mariadb_verification_compares_constraint_grouping(composite: bool) -> 
     """Identical flattened pairs must not hide a split composite relationship."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         second: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer()
         second: mariadb.Col[int] = mariadb.Integer()
         __foreign_keys__: ClassVar = [
@@ -277,14 +287,16 @@ async def mariadb_verification_compares_constraint_grouping(composite: bool) -> 
 async def sqlite_rejects_mixed_parent_rows(key: str) -> None:
     """No pair may combine key members from two different parent rows."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         second: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [sqlite.Index(first, second, unique=True)]
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         second: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -318,14 +330,16 @@ async def sqlite_rejects_mixed_parent_rows(key: str) -> None:
 async def sqlite_allows_nullable_partial_keys(key: str) -> None:
     """A NULL member bypasses the default composite relationship check."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         second: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [sqlite.Index(first, second, unique=True)]
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         second: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -364,14 +378,16 @@ async def sqlite_allows_nullable_partial_keys(key: str) -> None:
 async def sqlite_cascades_parent_deletion(key: str) -> None:
     """Deleting the referenced pair removes its child row."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         second: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [sqlite.Index(first, second, unique=True)]
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         second: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -410,14 +426,16 @@ async def sqlite_cascades_parent_deletion(key: str) -> None:
 async def sqlite_nulls_every_local_member(key: str) -> None:
     """SET NULL changes every local member of the composite relationship."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         second: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [sqlite.Index(first, second, unique=True)]
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         second: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -456,14 +474,16 @@ async def sqlite_nulls_every_local_member(key: str) -> None:
 async def sqlite_cascades_parent_key_update(key: str) -> None:
     """Updating a referenced key member updates the matching child pair."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         second: sqlite.Col[int] = sqlite.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [sqlite.Index(first, second, unique=True)]
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         second: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -507,14 +527,16 @@ async def mariadb_rejects_mixed_parent_rows(key: str) -> None:
     """No pair may combine key members from two different parent rows."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         second: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [mariadb.Index(first, second, unique=True)]
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -547,14 +569,16 @@ async def mariadb_allows_nullable_partial_keys(key: str) -> None:
     """A NULL member bypasses the default composite relationship check."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         second: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [mariadb.Index(first, second, unique=True)]
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -592,14 +616,16 @@ async def mariadb_cascades_parent_deletion(key: str) -> None:
     """Deleting the referenced pair removes its child row."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         second: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [mariadb.Index(first, second, unique=True)]
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -637,14 +663,16 @@ async def mariadb_nulls_every_local_member(key: str) -> None:
     """SET NULL changes every local member of the composite relationship."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         second: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [mariadb.Index(first, second, unique=True)]
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -682,14 +710,16 @@ async def mariadb_cascades_parent_key_update(key: str) -> None:
     """Updating a referenced key member updates the matching child pair."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         second: mariadb.Col[int] = mariadb.Integer(primary_key=key == "primary")
         __indexes__: ClassVar = (
             [] if key == "primary" else [mariadb.Index(first, second, unique=True)]
         )
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
         __foreign_keys__: ClassVar = [
@@ -728,11 +758,13 @@ async def composite_second_member_index_is_not_hidden_as_support() -> None:
     """An index on only the second member cannot support the composite FK."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         second: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer()
         second: mariadb.Col[int] = mariadb.Integer()
         __foreign_keys__: ClassVar = [
@@ -770,7 +802,8 @@ async def composite_second_member_index_is_not_hidden_as_support() -> None:
 def native_storage_parameters_must_match(attribute: str) -> None:
     """Explicit local storage is checked rather than copied from the target."""
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         text: mariadb.Col[str] = mariadb.Text(
             length=80, collation="utf8mb4_unicode_ci", unique=True
         )
@@ -780,7 +813,8 @@ def native_storage_parameters_must_match(attribute: str) -> None:
 
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+        class Child[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
             text: mariadb.Col[str] = mariadb.Text(
                 length=81 if attribute == "length" else 80,
                 collation="utf8mb4_bin"
@@ -801,10 +835,12 @@ def native_storage_parameters_must_match(attribute: str) -> None:
 def declarations_snapshot_the_constraint_list() -> None:
     """Mutating the class-body list cannot change the model's fixed contract."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         parent_id: sqlite.Col[int] = sqlite.Integer()
         __foreign_keys__: ClassVar = [
             sqlite.ForeignKeyConstraint(parent_id, references=(Parent.id,))
@@ -837,11 +873,13 @@ def constraint_values_are_frozen() -> None:
 async def sqlite_grouped_catalog_drift(change: str) -> None:
     """Ordered pairs, referential actions, and multiplicity participate in drift."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer()
         second: sqlite.Col[int] = sqlite.Integer()
         __foreign_keys__: ClassVar = [
@@ -883,12 +921,14 @@ async def sqlite_grouped_catalog_drift(change: str) -> None:
 async def sqlite_overlapping_constraints_remain_distinct() -> None:
     """A scalar relationship can coexist with repeated composite relationships."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         __indexes__: ClassVar = [sqlite.Index(first, unique=True)]
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         first: sqlite.FKCol[Parent, int] = sqlite.ForeignKey(Parent.first)
         second: sqlite.Col[int] = sqlite.Integer()
         __foreign_keys__: ClassVar = [
@@ -923,11 +963,13 @@ async def mariadb_grouped_catalog_drift(change: str) -> None:
     """Ordered pairs, referential actions, and multiplicity participate in drift."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         second: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer()
         second: mariadb.Col[int] = mariadb.Integer()
         __foreign_keys__: ClassVar = [
@@ -968,12 +1010,14 @@ async def mariadb_overlapping_constraints_remain_distinct() -> None:
     """A scalar relationship can coexist with repeated composite relationships."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         second: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         __indexes__: ClassVar = [mariadb.Index(first, unique=True)]
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         first: mariadb.FKCol[Parent, int] = mariadb.ForeignKey(Parent.first)
         second: mariadb.Col[int] = mariadb.Integer()
         __foreign_keys__: ClassVar = [
@@ -999,7 +1043,8 @@ async def mariadb_overlapping_constraints_remain_distinct() -> None:
 async def sqlite_self_references_bind_after_column_ownership() -> None:
     """A local descriptor tuple can target the declaring table's composite key."""
 
-    class Node[S = sqlite.Pending](sqlite.Model[S, "Node[sqlite.Fetched]"]):
+    class Node[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Node[sqlite.Row]]]
         tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         node_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         parent_tenant: sqlite.Col[int | None] = sqlite.Integer(nullable=True)
@@ -1027,7 +1072,8 @@ async def mariadb_self_references_bind_after_column_ownership() -> None:
     """A local descriptor tuple can target the declaring table's composite key."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Node[S = mariadb.Pending](mariadb.Model[S, "Node[mariadb.Fetched]"]):
+    class Node[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Node[mariadb.Row]]]
         tenant_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         node_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         parent_tenant: mariadb.Col[int | None] = mariadb.Integer(nullable=True)

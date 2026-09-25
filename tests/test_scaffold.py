@@ -10,19 +10,22 @@ from snektest import assert_eq, assert_raises, assert_true, test
 from snekql import mariadb
 from snekql.mariadb import scaffold as scaffold_mariadb
 from snekql.sqlite import (
-    Fetched,
     ForeignKey,
     Index,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     scaffold,
 )
 
 
-class ScaffoldUser[S = Pending](Model[S, "ScaffoldUser[Fetched]"]):
+class ScaffoldUser[S = Pending](Model[S]):
     """Model with an index used to assert scaffolded DDL text."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldUser[Row]]]
 
     id: ScaffoldUser.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     email: ScaffoldUser.Col[str] = Text(nullable=False)
@@ -31,21 +34,27 @@ class ScaffoldUser[S = Pending](Model[S, "ScaffoldUser[Fetched]"]):
     ]
 
 
-class ScaffoldPost[S = Pending](Model[S, "ScaffoldPost[Fetched]"]):
+class ScaffoldPost[S = Pending](Model[S]):
     """Model with a foreign key used to assert scaffolded FK DDL."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldPost[Row]]]
 
     id: ScaffoldPost.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     author_id: ScaffoldPost.FKCol[ScaffoldUser, int] = ForeignKey(ScaffoldUser.id)
 
 
-class ScaffoldTeam[S = Pending](Model[S, "ScaffoldTeam[Fetched]"]):
+class ScaffoldTeam[S = Pending](Model[S]):
     """Referenced table anchoring the join table's foreign keys."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldTeam[Row]]]
 
     id: ScaffoldTeam.GenCol[int] = Integer(primary_key=True, auto_increment=True)
 
 
-class ScaffoldMember[S = Pending](Model[S, "ScaffoldMember[Fetched]"]):
+class ScaffoldMember[S = Pending](Model[S]):
     """Join table whose identity is a (team, user) column pair."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldMember[Row]]]
 
     team_id: ScaffoldMember.FKCol[ScaffoldTeam, int] = ForeignKey(
         ScaffoldTeam.id, primary_key=True
@@ -72,8 +81,10 @@ def scaffold_emits_create_table_and_index_ddl() -> None:
     assert_eq(ddl, _EXPECTED_USER_DDL)
 
 
-class ScaffoldDefaultNull[S = Pending](Model[S, "ScaffoldDefaultNull[Fetched]"]):
+class ScaffoldDefaultNull[S = Pending](Model[S]):
     """Model whose column omits ``nullable=`` to exercise the NOT NULL default."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldDefaultNull[Row]]]
 
     id: ScaffoldDefaultNull.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     name: ScaffoldDefaultNull.Col[str] = Text()
@@ -102,8 +113,10 @@ def scaffold_emits_foreign_key_constraint() -> None:
     assert_true('REFERENCES "scaffold_user" ("id")' in ddl)
 
 
-class ScaffoldComment[S = Pending](Model[S, "ScaffoldComment[Fetched]"]):
+class ScaffoldComment[S = Pending](Model[S]):
     """Owned model whose author reference declares referential actions."""
+
+    __row_type__: ClassVar[ReadType[ScaffoldComment[Row]]]
 
     id: ScaffoldComment.GenCol[int] = Integer(primary_key=True, auto_increment=True)
     author_id: ScaffoldComment.FKCol[ScaffoldUser, int] = ForeignKey(
@@ -126,8 +139,10 @@ def scaffold_emits_referential_actions() -> None:
 def mariadb_scaffold_emits_decimal_precision_and_scale() -> None:
     """MariaDB native Decimal columns render DECIMAL(precision, scale)."""
 
-    class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+    class Price[S = mariadb.Pending](mariadb.Model[S]):
         """Model with a native MariaDB decimal column."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
 
         amount: Price.Col[Decimal] = mariadb.Decimal(7, 2, nullable=False)
 
@@ -140,10 +155,12 @@ def mariadb_scaffold_emits_decimal_precision_and_scale() -> None:
 def mariadb_scaffold_emits_referential_actions() -> None:
     """MariaDB renders referential actions through its family-specific scaffold."""
 
-    class User[S = mariadb.Pending](mariadb.Model[S, "User[mariadb.Fetched]"]):
+    class User[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
         id: User.GenCol[int] = mariadb.Integer(primary_key=True)
 
-    class Comment[S = mariadb.Pending](mariadb.Model[S, "Comment[mariadb.Fetched]"]):
+    class Comment[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Comment[mariadb.Row]]]
         author_id: Comment.FKCol[User, int] = mariadb.ForeignKey(
             User.id,
             on_delete="CASCADE",
@@ -162,9 +179,8 @@ def scaffold_rejects_models_from_another_backend_family() -> None:
     with assert_raises(mariadb.ModelDeclarationError):
         _ = scaffold_mariadb(cast("Any", [ScaffoldUser]))
 
-    class MariaUser[S = mariadb.Pending](
-        mariadb.Model[S, "MariaUser[mariadb.Fetched]"]
-    ):
+    class MariaUser[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[MariaUser[mariadb.Row]]]
         id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
 
     with assert_raises(mariadb.ModelDeclarationError):

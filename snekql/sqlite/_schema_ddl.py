@@ -138,7 +138,7 @@ SCHEMA_DIALECT = SchemaDialect(
 )
 
 
-def scaffold_sqlite_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
+def scaffold_sqlite_ddl(models: Sequence[type[Model[Any]]]) -> str:
     """Emit the initial CREATE TABLE (and index) DDL for SQLite models as text."""
 
     require_scaffold_models("sqlite", models)
@@ -146,7 +146,7 @@ def scaffold_sqlite_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
 
 
 def scaffold_sqlite_statements(
-    models: Sequence[type[Model[Any, Any]]],
+    models: Sequence[type[Model[Any]]],
 ) -> list[tuple[str, str]]:
     """Return (label, DDL) statement pairs for SQLite model creation."""
 

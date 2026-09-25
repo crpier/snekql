@@ -7,7 +7,7 @@ attribute instead of four pass-through methods.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 
@@ -15,7 +15,7 @@ from snekql import mariadb, sqlite
 from snekql._query_codec import DialectQueryCodec
 from snekql._query_dialect import query_dialect_for_backend
 from snekql.errors import QueryCompilationError
-from snekql.sqlite import Fetched, Pending
+from snekql.sqlite import Pending, Row
 from snekql.storage import StorageBackend
 
 
@@ -23,8 +23,10 @@ from snekql.storage import StorageBackend
 def sqlite_codec_compiles_select_with_sqlite_dialect() -> None:
     """The SQLite codec renders `?` placeholders and double-quoted names."""
 
-    class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](sqlite.Model[S]):
         """Model compiled through the SQLite codec."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = sqlite.Text(nullable=False)
 
@@ -42,8 +44,10 @@ def sqlite_codec_compiles_select_with_sqlite_dialect() -> None:
 def mariadb_codec_compiles_select_with_mariadb_dialect() -> None:
     """The MariaDB codec renders `%s` placeholders and backtick-quoted names."""
 
-    class Widget[S = Pending](mariadb.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](mariadb.Model[S]):
         """Model compiled through the MariaDB codec."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = mariadb.Text(nullable=False)
 
@@ -61,8 +65,10 @@ def mariadb_codec_compiles_select_with_mariadb_dialect() -> None:
 def sqlite_codec_compiles_write_with_sqlite_dialect() -> None:
     """The SQLite codec compiles writes with the SQLite dialect."""
 
-    class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](sqlite.Model[S]):
         """Model inserted through the SQLite codec."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = sqlite.Text(nullable=False)
 
@@ -80,8 +86,10 @@ def sqlite_codec_compiles_write_with_sqlite_dialect() -> None:
 def mariadb_codec_compiles_write_with_mariadb_dialect() -> None:
     """The MariaDB codec compiles writes with MariaDB value encoding."""
 
-    class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
+    class Flag[S = Pending](mariadb.Model[S]):
         """Model whose boolean encoding differs from Python's."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Flag[Row]]]
 
         enabled: Flag.Col[bool] = mariadb.Boolean(nullable=False)
 
@@ -99,8 +107,10 @@ def mariadb_codec_compiles_write_with_mariadb_dialect() -> None:
 def sqlite_codec_materializes_select_rows_with_backend_decoding() -> None:
     """The SQLite codec decodes select rows with SQLite column codecs."""
 
-    class Widget[S = Pending](sqlite.Model[S, "Widget[Fetched]"]):
+    class Widget[S = Pending](sqlite.Model[S]):
         """Model materialized through the SQLite codec."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Widget[Row]]]
 
         label: Widget.Col[str] = sqlite.Text(nullable=False)
 
@@ -118,8 +128,10 @@ def sqlite_codec_materializes_select_rows_with_backend_decoding() -> None:
 def mariadb_codec_materializes_write_rows_with_backend_decoding() -> None:
     """The MariaDB codec decodes RETURNING rows with MariaDB column codecs."""
 
-    class Flag[S = Pending](mariadb.Model[S, "Flag[Fetched]"]):
+    class Flag[S = Pending](mariadb.Model[S]):
         """Model whose boolean decodes from MariaDB's integer wire value."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Flag[Row]]]
 
         enabled: Flag.Col[bool] = mariadb.Boolean(nullable=False)
 

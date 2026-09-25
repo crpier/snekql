@@ -1,0 +1,4 @@
+
+
+async def invalid(transaction: database.Transaction) -> None:
+    await transaction.fetch_one_or_none(database.ready(database.select(Account.nickname).all()))  # expect-error

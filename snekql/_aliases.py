@@ -90,7 +90,7 @@ class TableAlias[FamilyT, OwnerT, ReadT, RoleT]:
         return owner
 
     @classmethod
-    def __read_type__(cls) -> type[ReadT]:
+    def __row_type__(cls) -> type[ReadT]:
         raise NotImplementedError
 
     def __repr__(self) -> str:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import PlainSerializer
 from snektest import Param, assert_eq, assert_raises, test
@@ -30,8 +30,10 @@ type SerializedOptional = Annotated[int | None, PlainSerializer(double)]
 async def optional_alias_round_trip(value: int | None) -> None:
     """Scaffolded nullable columns accept both default None and ordinary values."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """Both alias forms declare nullable columns."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[OptionalInteger] = sqlite.Integer(default=None)
         generic: Entry.Col[Maybe[int]] = sqlite.Integer(default=None)
@@ -57,8 +59,10 @@ async def optional_alias_round_trip(value: int | None) -> None:
 async def alias_serializer_is_preserved() -> None:
     """Nullability inspection must not replace Pydantic's original logical alias."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """A serializer on the alias controls the wire value."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[SerializedOptional] = sqlite.Integer(default=None)
 
@@ -78,8 +82,10 @@ async def alias_serializer_is_preserved() -> None:
 async def legacy_not_null_schema_is_not_rewritten() -> None:
     """Corrected inference reports old NOT NULL DDL as drift without altering it."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """An optional alias is authoritative even over an older schema."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[OptionalInteger] = sqlite.Integer(default=None)
 

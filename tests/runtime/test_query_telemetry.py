@@ -4,7 +4,7 @@ from asyncio import CancelledError, create_task
 from collections.abc import Iterable
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar
 from unittest.mock import patch
 
 from aiomysql import Cursor as MariaDBCursor
@@ -95,7 +95,8 @@ async def buffered_result_policies_are_measured(operation: str) -> None:
 async def explain_packaging_is_measured() -> None:
     """Inspection results have a packaging phase separate from optimizer I/O."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         number: sqlite.Col[int] = sqlite.Integer()
 
     events: list[sqlite.TelemetryEvent] = []
@@ -400,7 +401,8 @@ async def caught_stream_failure_marks_lifetime(backend: BackendFamily) -> None:
 async def compiled_fingerprint_matches_builder_execution() -> None:
     """Applications can allowlist the same identifier that runtime events carry."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.Col[str] = sqlite.Text()
 
     events: list[sqlite.TelemetryEvent] = []

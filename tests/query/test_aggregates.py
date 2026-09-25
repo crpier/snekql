@@ -10,18 +10,20 @@ identical SQL in SQLite and MariaDB. ``GROUP BY``/``HAVING`` are separate slices
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryConstructionError,
+    ReadType,
     Real,
+    Row,
     Text,
     UtcDatetime,
     insert,
@@ -30,8 +32,10 @@ from snekql.sqlite import (
 from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Base table for aggregate compilation tests."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -41,8 +45,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Table with numeric columns to aggregate over."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -137,8 +143,10 @@ async def count_returns_row_count_at_runtime() -> None:
 async def sum_normalizes_to_int_for_integer_column() -> None:
     """SUM over an Integer column decodes to int; over no rows decodes to None."""
 
-    class Sale[S = Pending](Model[S, "Sale[Fetched]"]):
+    class Sale[S = Pending](Model[S]):
         """Integer-amount table for sum normalization."""
+
+        __row_type__: ClassVar[ReadType[Sale[Row]]]
 
         id: Sale.GenCol[int] = Integer(
             primary_key=True,
@@ -190,8 +198,10 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
     for MIN/MAX, otherwise the static ``datetime | None`` type is unsound.
     """
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
         """Datetime table stored as TEXT on SQLite."""
+
+        __row_type__: ClassVar[ReadType[Event[Row]]]
 
         id: Event.GenCol[int] = Integer(
             primary_key=True,
@@ -230,8 +240,10 @@ def aggregate_over_unjoined_table_is_a_construction_error() -> None:
 async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
     """MIN/MAX reuse the column's decode; an empty set decodes to None."""
 
-    class Label[S = Pending](Model[S, "Label[Fetched]"]):
+    class Label[S = Pending](Model[S]):
         """Text table for min/max decoding."""
+
+        __row_type__: ClassVar[ReadType[Label[Row]]]
 
         id: Label.GenCol[int] = Integer(
             primary_key=True,
@@ -261,8 +273,10 @@ async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
 async def avg_decodes_to_float_and_none_over_empty() -> None:
     """AVG decodes to float, and to None over an empty set."""
 
-    class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
+    class Reading[S = Pending](Model[S]):
         """Real-valued table for avg decoding."""
+
+        __row_type__: ClassVar[ReadType[Reading[Row]]]
 
         id: Reading.GenCol[int] = Integer(
             primary_key=True,

@@ -33,7 +33,6 @@ from snekql._common import (
     ExecutionError,
     ExplainResult,
     FailureCategory,
-    Fetched,
     ForeignKeyConstraint,
     FrozenModelError,
     Index,
@@ -69,6 +68,7 @@ from snekql._common import (
     RawResultShapeError,
     RawResultValidationError,
     ResultCardinalityError,
+    Row,
     Scalar,
     SchemaDriftIssue,
     SchemaError,
@@ -92,12 +92,10 @@ from snekql._common import (
     scalar,
 )
 from snekql._common import (
-    Select as _RuntimeSelect,
-)
-from snekql._common import (
     Write as _RuntimeWrite,
 )
-from snekql.query import _Select, _Write
+from snekql.model import ReadType, is_complete
+from snekql.query import _Write
 from snekql.runtime import Database as _Database
 from snekql.runtime import Transaction as _Transaction
 
@@ -108,8 +106,21 @@ from snekql.sqlite._raw import RawStatement, raw
 from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
 from snekql.sqlite.config import Config
 from snekql.sqlite.functions import case, literal
-from snekql.sqlite.model import Col, FKCol, GenCol, Model
-from snekql.sqlite.verbs import alias, delete, insert, select, update
+from snekql.sqlite.model import Col, FKCol, GenCol, Model, complete
+from snekql.sqlite.verbs import (
+    ClosedOptional,
+    ClosedRead,
+    OptionalRead,
+    PendingInput,
+    ReadQuery,
+    alias,
+    delete,
+    insert,
+    insert_many,
+    ready,
+    select,
+    update,
+)
 from snekql.storage import (
     Blob,
     CurrentTimestamp,
@@ -121,12 +132,10 @@ from snekql.storage import (
 
 if TYPE_CHECKING:
     Database = _Database[Literal["sqlite"]]
-    type Select[RowT] = _Select[Literal["sqlite"], RowT]
     Transaction = _Transaction[Literal["sqlite"]]
     type Write[ResultT] = _Write[Literal["sqlite"], ResultT]
 else:
     Database = _Database
-    Select = _RuntimeSelect
     Transaction = _Transaction
     Write = _RuntimeWrite
 
@@ -141,6 +150,8 @@ __all__ = [
     "CanonicalDecimal",
     "CheckConstraint",
     "ChunkStream",
+    "ClosedOptional",
+    "ClosedRead",
     "Col",
     "ColumnRef",
     "CommitOutcome",
@@ -162,7 +173,6 @@ __all__ = [
     "ExplainResult",
     "FKCol",
     "FailureCategory",
-    "Fetched",
     "ForeignKey",
     "ForeignKeyConstraint",
     "FrozenModelError",
@@ -190,10 +200,12 @@ __all__ = [
     "NamedOperand",
     "NoResultError",
     "Observer",
+    "OptionalRead",
     "OrderBy",
     "OrderPreserving",
     "Pending",
     "PendingGeneration",
+    "PendingInput",
     "PoolStats",
     "PoolTimeoutError",
     "Predicate",
@@ -203,8 +215,11 @@ __all__ = [
     "RawResultShapeError",
     "RawResultValidationError",
     "RawStatement",
+    "ReadQuery",
+    "ReadType",
     "Real",
     "ResultCardinalityError",
+    "Row",
     "Scalar",
     "SchemaDriftIssue",
     "SchemaError",
@@ -212,7 +227,6 @@ __all__ = [
     "SchemaVerificationError",
     "SchemaVerificationFact",
     "SchemaVerificationResult",
-    "Select",
     "SnekqlError",
     "SnekqlWarning",
     "TelemetryEvent",
@@ -229,12 +243,16 @@ __all__ = [
     "ZonedDatetimeError",
     "alias",
     "case",
+    "complete",
     "delete",
     "exists",
     "insert",
+    "insert_many",
+    "is_complete",
     "literal",
     "not_exists",
     "raw",
+    "ready",
     "recursive_cte",
     "scaffold",
     "scalar",

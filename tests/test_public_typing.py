@@ -45,13 +45,13 @@ from snekql.sqlite import (
     Aggregate,
     CanonicalDecimal,
     ChunkStream,
+    ClosedRead,
     Col,
     ColumnRef,
     CurrentTimestamp,
     DoNothing,
     DoUpdate,
     Duration,
-    Fetched,
     FKCol,
     ForeignKey,
     GenCol,
@@ -63,8 +63,9 @@ from snekql.sqlite import (
     Pending,
     PendingGeneration,
     Predicate,
+    ReadType,
+    Row,
     Scalar,
-    Select,
     Text,
     Transaction,
     UtcDatetime,
@@ -73,7 +74,9 @@ from snekql.sqlite import (
     delete,
     exists,
     insert,
+    insert_many,
     not_exists,
+    ready,
     scalar,
     select,
     update,
@@ -81,8 +84,10 @@ from snekql.sqlite import (
 from snekql.testing import mariadb as testing_mariadb
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Canonical table model used by public API typing examples."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: GenCol[int] = Integer(
         primary_key=True,
@@ -97,14 +102,18 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     elapsed: Col[Duration] = Integer(nullable=False, default=timedelta(0))
 
 
-class ZonedEvent[S = Pending](Model[S, "ZonedEvent[Fetched]"]):
+class ZonedEvent[S = Pending](Model[S]):
     """Table carrying a timezone-preserving datetime."""
+
+    __row_type__: ClassVar[ReadType[ZonedEvent[Row]]]
 
     happened_at: Col[ZonedDatetime] = Text(nullable=False)
 
 
-class Order[S = Pending](Model[S, "Order[Fetched]"]):
+class Order[S = Pending](Model[S]):
     """Table with a foreign key to ``User`` for join typing examples."""
+
+    __row_type__: ClassVar[ReadType[Order[Row]]]
 
     id: GenCol[int] = Integer(
         primary_key=True,
@@ -120,14 +129,18 @@ class Order[S = Pending](Model[S, "Order[Fetched]"]):
     note: Col[str] = Text(nullable=False)
 
 
-class Region[S = Pending](Model[S, "Region[Fetched]"]):
+class Region[S = Pending](Model[S]):
     """Unjoined table used to probe out-of-scope rejections."""
+
+    __row_type__: ClassVar[ReadType[Region[Row]]]
 
     code: Col[str] = Text(nullable=False)
 
 
-class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
+class SqliteUser[S = Pending](sqlite.Model[S]):
     """SQLite namespace table model used by public API typing examples."""
+
+    __row_type__: ClassVar[sqlite.ReadType[SqliteUser[Row]]]
 
     id: GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -139,8 +152,10 @@ class SqliteUser[S = Pending](sqlite.Model[S, "SqliteUser[Fetched]"]):
     account_id: Col[uuid.UUID] = sqlite.Text(nullable=False, default_factory=uuid.uuid4)
 
 
-class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
+class MariadbUser[S = Pending](mariadb.Model[S]):
     """MariaDB namespace table model used by public API typing examples."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariadbUser[Row]]]
 
     id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
@@ -163,25 +178,25 @@ class MariadbUser[S = Pending](mariadb.Model[S, "MariadbUser[Fetched]"]):
 
 if TYPE_CHECKING:
 
-    def _sqlite_predicate_from_column[OwnerT: sqlite.Model[Any, Any], ValueT](
+    def _sqlite_predicate_from_column[OwnerT: sqlite.Model[Any], ValueT](
         column: sqlite.ColumnRef[OwnerT, ValueT],
         value: ValueT,
     ) -> sqlite.Predicate[OwnerT]:
         return column.eq(value)
 
-    def _sqlite_projection_from_column[OwnerT: sqlite.Model[Any, Any], ValueT](
+    def _sqlite_projection_from_column[OwnerT: sqlite.Model[Any], ValueT](
         column: sqlite.ColumnRef[OwnerT, ValueT],
-    ) -> sqlite.Select[ValueT]:
+    ) -> sqlite.ReadQuery[OwnerT, ValueT]:
         return sqlite.select(column).all()
 
     def _sqlite_pair_projection_from_columns[
-        OwnerT: sqlite.Model[Any, Any],
+        OwnerT: sqlite.Model[Any],
         FirstT,
         SecondT,
     ](
         first: sqlite.ColumnRef[OwnerT, FirstT],
         second: sqlite.ColumnRef[OwnerT, SecondT],
-    ) -> sqlite.Select[tuple[FirstT, SecondT]]:
+    ) -> sqlite.ReadQuery[OwnerT, tuple[FirstT, SecondT]]:
         return sqlite.select(first, second).all()
 
     def _column_ref_cannot_build_assignments[OwnerT, ValueT](
@@ -190,21 +205,21 @@ if TYPE_CHECKING:
     ) -> None:
         _ = column.to(value)  # ty: ignore[unresolved-attribute]
 
-    def _mariadb_predicate_from_column[OwnerT: mariadb.Model[Any, Any], ValueT](
+    def _mariadb_predicate_from_column[OwnerT: mariadb.Model[Any], ValueT](
         column: mariadb.ColumnRef[OwnerT, ValueT],
         value: ValueT,
     ) -> mariadb.Predicate[OwnerT]:
         return column.eq(value)
 
-    def _mariadb_projection_from_column[OwnerT: mariadb.Model[Any, Any], ValueT](
+    def _mariadb_projection_from_column[OwnerT: mariadb.Model[Any], ValueT](
         column: mariadb.ColumnRef[OwnerT, ValueT],
-    ) -> mariadb.Select[ValueT]:
+    ) -> mariadb.ReadQuery[OwnerT, ValueT]:
         return mariadb.select(column).all()
 
-    class ValidForeignKeyDeclarations[S = Pending](
-        Model[S, "ValidForeignKeyDeclarations[Fetched]"]
-    ):
+    class ValidForeignKeyDeclarations[S = Pending](Model[S]):
         """Valid required-nullable and defaulted foreign-key declarations."""
+
+        __row_type__: ClassVar[ReadType[ValidForeignKeyDeclarations[Row]]]
 
         required_nullable_user_id: FKCol[User, int | None] = ForeignKey(
             User.id,
@@ -217,10 +232,12 @@ if TYPE_CHECKING:
             default=1,
         )
 
-    class ValidMariadbForeignKeyDeclarations[S = Pending](
-        mariadb.Model[S, "ValidMariadbForeignKeyDeclarations[Fetched]"]
-    ):
+    class ValidMariadbForeignKeyDeclarations[S = Pending](mariadb.Model[S]):
         """The shared foreign-key field specifier works in MariaDB models."""
+
+        __row_type__: ClassVar[
+            mariadb.ReadType[ValidMariadbForeignKeyDeclarations[Row]]
+        ]
 
         required_nullable_user_id: mariadb.FKCol[MariadbUser, int | None] = (
             mariadb.ForeignKey(MariadbUser.id, nullable=True)
@@ -250,16 +267,16 @@ if TYPE_CHECKING:
     )
 
     def check_required_nullable_fetched(
-        row: ValidForeignKeyDeclarations[Fetched],
+        row: ValidForeignKeyDeclarations[Row],
     ) -> None:
-        """Fetched required-nullable foreign keys retain their optional value."""
+        """Row required-nullable foreign keys retain their optional value."""
 
         _ = assert_type(row.required_nullable_user_id, int | None)
 
-    class InvalidSqliteDefaults[S = Pending](
-        Model[S, "InvalidSqliteDefaults[Fetched]"]
-    ):
+    class InvalidSqliteDefaults[S = Pending](Model[S]):
         """Invalid default declarations rejected by static typing."""
+
+        __row_type__: ClassVar[ReadType[InvalidSqliteDefaults[Row]]]
 
         text_default: Col[int] = Text(default="nan")  # ty: ignore[invalid-assignment]
         factory_default: Col[int] = Integer(default_factory=lambda: "nan")  # ty: ignore[invalid-assignment]
@@ -274,18 +291,20 @@ if TYPE_CHECKING:
             default_factory=lambda: 2,
         )
 
-    class InvalidOrderDefaults[S = Pending](Model[S, "InvalidOrderDefaults[Fetched]"]):
+    class InvalidOrderDefaults[S = Pending](Model[S]):
         """Invalid foreign-key default declarations rejected by static typing."""
+
+        __row_type__: ClassVar[ReadType[InvalidOrderDefaults[Row]]]
 
         user_id: FKCol[User, int] = ForeignKey(  # ty: ignore[no-matching-overload]
             User.id,
             default="nan",
         )
 
-    class InvalidMariadbDefaults[S = Pending](
-        mariadb.Model[S, "InvalidMariadbDefaults[Fetched]"]
-    ):
+    class InvalidMariadbDefaults[S = Pending](mariadb.Model[S]):
         """Invalid MariaDB default declarations rejected by static typing."""
+
+        __row_type__: ClassVar[mariadb.ReadType[InvalidMariadbDefaults[Row]]]
 
         text_default: mariadb.Col[int] = mariadb.Text(default="nan")  # ty: ignore[invalid-assignment]
         factory_default: mariadb.Col[int] = mariadb.Uuid(default_factory=lambda: "nan")  # ty: ignore[invalid-assignment]
@@ -301,10 +320,10 @@ if TYPE_CHECKING:
     _ = User()  # ty: ignore[missing-argument]
     _ = MariadbUser(email="alice@example.com")  # ty: ignore[missing-argument]
     public_email: ColumnRef[User[Pending], str] = User.email
-    _incomplete_select: Select[User[Fetched]] = select(  # ty: ignore[invalid-assignment]
+    _incomplete_select: sqlite.ReadQuery[User, User[Row]] = select(  # ty: ignore[invalid-assignment]
         User
     )
-    public_select: Select[User[Fetched]] = select(User).all()
+    public_select: ClosedRead[User[Row]] = ready(select(User).all())
     public_insert: Write[None] = insert(User(email="alice@example.com"))
     _unscoped_delete: Write[int] = delete(User)  # ty: ignore[invalid-assignment]
     _assignmentless_update: Write[int] = update(  # ty: ignore[invalid-assignment]
@@ -338,7 +357,7 @@ if TYPE_CHECKING:
     _ = assert_type(sqlite_user.account_id, uuid.UUID)
     _ = assert_type(
         select(SqliteUser),
-        SelectModelQuery[Literal["sqlite"], SqliteUser[Pending], SqliteUser[Fetched]],
+        SelectModelQuery[Literal["sqlite"], SqliteUser[Pending], SqliteUser[Row]],
     )
 
     _ = assert_type(mariadb.Model.__snekql_backend__, Literal["mariadb"])
@@ -400,9 +419,7 @@ if TYPE_CHECKING:
     _ = assert_type(mariadb_user.prefs, dict[str, object] | None)
     _ = assert_type(
         mariadb.select(MariadbUser),
-        SelectModelQuery[
-            Literal["mariadb"], MariadbUser[Pending], MariadbUser[Fetched]
-        ],
+        SelectModelQuery[Literal["mariadb"], MariadbUser[Pending], MariadbUser[Row]],
     )
 
     # Open-AST dialect operator (ADR 0004): the MariaDB JSON path operator is a
@@ -454,16 +471,16 @@ if TYPE_CHECKING:
     _ = assert_type(pending_user.email, str)
     _ = assert_type(pending_user.created_at, datetime | PendingGeneration)
 
-    def check_fetched_user(fetched_user: User[Fetched]) -> None:
-        """Fetched-state generated values are narrowed by descriptor overloads."""
+    def check_fetched_user(fetched_user: User[Row]) -> None:
+        """Row-state generated values are narrowed by descriptor overloads."""
 
         _ = assert_type(fetched_user.id, int)
         _ = assert_type(fetched_user.email, str)
         _ = assert_type(fetched_user.created_at, datetime)
-        _ = insert(fetched_user)  # ty: ignore[no-matching-overload]
+        _ = insert(fetched_user)  # ty: ignore[invalid-argument-type]
 
     _ = assert_type(
-        select(User), SelectModelQuery[Literal["sqlite"], User[Pending], User[Fetched]]
+        select(User), SelectModelQuery[Literal["sqlite"], User[Pending], User[Row]]
     )
     _ = assert_type(
         select(User.email).where(User.email.eq("alice@example.com")).all(),
@@ -480,9 +497,7 @@ if TYPE_CHECKING:
         select(User)
         .where(User.email.eq("alice@example.com"), User.status.eq("active"))
         .order_by(User.email.asc(), User.id.desc()),
-        SelectModelQuery[
-            Literal["sqlite"], User[Pending], User[Fetched], _ExecutableQuery
-        ],
+        SelectModelQuery[Literal["sqlite"], User[Pending], User[Row], _ExecutableQuery],
     )
     _ = assert_type(
         select(User.email, User.status),
@@ -726,10 +741,12 @@ if TYPE_CHECKING:
     _ = update(User).set()  # ty: ignore[no-matching-overload]
     _ = update(User).where()  # ty: ignore[no-matching-overload]
     _ = delete(User).where()  # ty: ignore[no-matching-overload]
-    # Subqueries: a column-vs-column comparison keeps the left column's owner; a
+    # Subqueries: a column-vs-column comparison keeps both column owners; a
     # single-column subquery types in_subquery; exists() carries no outer column;
     # scalar() carries the projected value type for projections and comparisons.
-    _ = assert_type(Order.user_id.eq_col(User.id), Predicate[Order[Pending]])
+    _ = assert_type(
+        Order.user_id.eq_col(User.id), Predicate[Order[Pending] | User[Pending]]
+    )
     _ = assert_type(
         Order.reviewer_id.references(User.id),
         JoinOn[Order[Pending], User[Pending]],
@@ -768,8 +785,8 @@ if TYPE_CHECKING:
         User.id.gt_col(scalar(select(Order.id.avg()).all())),
         Predicate[User[Pending]],
     )
-    _ = User.id.gt_col(
-        scalar(select(Order.note).all())  # ty: ignore[invalid-argument-type]
+    _ = User.id.gt_col(  # ty: ignore[no-matching-overload]
+        scalar(select(Order.note).all())
     )
     # A multi-column IN subquery is rejected: in_subquery wants a single column.
     _ = User.id.in_subquery(
@@ -795,8 +812,8 @@ if TYPE_CHECKING:
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             _IncompleteQuery,
-            User[Fetched],
-            Order[Fetched],
+            User[Row],
+            Order[Row],
         ],
     )
     _ = assert_type(
@@ -808,8 +825,8 @@ if TYPE_CHECKING:
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
             _ExecutableQuery,
-            User[Fetched],
-            Order[Fetched],
+            User[Row],
+            Order[Row],
         ],
     )
     _ = _user_orders.where(User.email.eq("a@b.c") & Order.note.eq("x"))
@@ -822,8 +839,8 @@ if TYPE_CHECKING:
             User[Pending] | Order[Pending],
             User[Pending],
             _IncompleteQuery,
-            User[Fetched],
-            Order[Fetched] | None,
+            User[Row],
+            Order[Row] | None,
         ],
     )
     _ = select(User).join(  # ty: ignore[no-matching-overload]
@@ -900,11 +917,11 @@ if TYPE_CHECKING:
     _ = Index("email")  # ty: ignore[invalid-argument-type]
     _ = assert_type(
         insert(pending_user),
-        InsertQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        InsertQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
-        insert([pending_user, pending_user]),
-        InsertManyQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        insert_many(User, [pending_user, pending_user]),
+        InsertManyQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
         DoUpdate(User.email.to_inserted(), User.status.to("active")),
@@ -915,19 +932,19 @@ if TYPE_CHECKING:
             User.email,
             action=DoUpdate(User.status.to_inserted()),
         ),
-        InsertQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        InsertQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
-        insert([pending_user]).on_conflict(User.email, action=DoNothing),
-        InsertManyQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        insert_many(User, [pending_user]).on_conflict(User.email, action=DoNothing),
+        InsertManyQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
         insert(pending_user).returning(),
-        InsertReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        InsertReturningQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
-        insert([pending_user]).returning(),
-        InsertManyReturningQuery[Literal["sqlite"], User[Pending], User[Fetched]],
+        insert_many(User, [pending_user]).returning(),
+        InsertManyReturningQuery[Literal["sqlite"], User[Pending], User[Row]],
     )
     _ = assert_type(
         insert(pending_user).returning(User.id),
@@ -938,11 +955,11 @@ if TYPE_CHECKING:
         InsertReturningTupleQuery[Literal["sqlite"], User[Pending], int, str],
     )
     _ = assert_type(
-        insert([pending_user]).returning(User.id),
+        insert_many(User, [pending_user]).returning(User.id),
         InsertManyReturningValueQuery[Literal["sqlite"], User[Pending], int],
     )
     _ = assert_type(
-        insert([pending_user]).returning(User.id, User.email),
+        insert_many(User, [pending_user]).returning(User.id, User.email),
         InsertManyReturningTupleQuery[Literal["sqlite"], User[Pending], int, str],
     )
     _ = assert_type(
@@ -970,7 +987,7 @@ if TYPE_CHECKING:
         ],
     )
     _ = assert_type(
-        insert([pending_user]).returning(
+        insert_many(User, [pending_user]).returning(
             User.id,
             User.email,
             User.status,
@@ -998,7 +1015,7 @@ if TYPE_CHECKING:
         _UpdateQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             int,
             _AssignedUpdate,
         ],
@@ -1008,7 +1025,7 @@ if TYPE_CHECKING:
         _UpdateQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             int,
             _ScopedUpdate,
         ],
@@ -1020,7 +1037,7 @@ if TYPE_CHECKING:
         _UpdateQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             int,
             _ExecutableUpdate,
         ],
@@ -1030,7 +1047,7 @@ if TYPE_CHECKING:
         _UpdateQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             int,
             _ExecutableUpdate,
         ],
@@ -1040,7 +1057,7 @@ if TYPE_CHECKING:
         UpdateReturningValueQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             _ExecutableUpdate,
             int,
         ],
@@ -1050,7 +1067,7 @@ if TYPE_CHECKING:
         _DeleteQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             int,
             _ExecutableQuery,
         ],
@@ -1060,21 +1077,19 @@ if TYPE_CHECKING:
         _DeleteQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             list[int],
             _ExecutableQuery,
         ],
     )
     _ = assert_type(
         update(User).returning(),
-        UpdateReturningQuery[
-            Literal["sqlite"], User[Pending], User[Fetched], _EmptyUpdate
-        ],
+        UpdateReturningQuery[Literal["sqlite"], User[Pending], User[Row], _EmptyUpdate],
     )
     _ = assert_type(
         delete(User).returning(),
         DeleteReturningQuery[
-            Literal["sqlite"], User[Pending], User[Fetched], _IncompleteQuery
+            Literal["sqlite"], User[Pending], User[Row], _IncompleteQuery
         ],
     )
     _ = assert_type(
@@ -1087,7 +1102,7 @@ if TYPE_CHECKING:
         UpdateReturningTupleQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             _EmptyUpdate,
             int,
             str,
@@ -1105,7 +1120,7 @@ if TYPE_CHECKING:
         DeleteReturningTupleQuery[
             Literal["sqlite"],
             User[Pending],
-            User[Fetched],
+            User[Row],
             _IncompleteQuery,
             int,
             str,
@@ -1142,7 +1157,7 @@ if TYPE_CHECKING:
     )
 
     async def check_write_types(transaction: Transaction) -> None:
-        """Runtime write overloads type returning inserts as Fetched models."""
+        """Runtime write overloads type returning inserts as Row models."""
 
         _ = assert_type(await transaction.execute(insert(pending_user)), None)
         _ = assert_type(
@@ -1150,7 +1165,7 @@ if TYPE_CHECKING:
             None,
         )
         _ = assert_type(
-            await transaction.execute(insert([pending_user])),
+            await transaction.execute(insert_many(User, [pending_user])),
             None,
         )
         _ = assert_type(
@@ -1166,21 +1181,21 @@ if TYPE_CHECKING:
         )
         _ = assert_type(
             await transaction.execute(insert(pending_user).returning()),
-            User[Fetched],
+            User[Row],
         )
         _ = assert_type(
-            await transaction.execute(insert([pending_user]).returning()),
-            list[User[Fetched]],
+            await transaction.execute(insert_many(User, [pending_user]).returning()),
+            list[User[Row]],
         )
         _ = assert_type(
             await transaction.execute(
                 update(User).set(User.status.to("active")).all().returning()
             ),
-            list[User[Fetched]],
+            list[User[Row]],
         )
         _ = assert_type(
             await transaction.execute(delete(User).all().returning()),
-            list[User[Fetched]],
+            list[User[Row]],
         )
         _ = await transaction.execute(  # ty: ignore[no-matching-overload]
             delete(User)
@@ -1215,19 +1230,20 @@ if TYPE_CHECKING:
             tuple[int, str],
         )
         _ = assert_type(
-            await transaction.execute(insert([pending_user]).returning(User.id)),
+            await transaction.execute(
+                insert_many(User, [pending_user]).returning(User.id)
+            ),
             list[int],
         )
         _ = assert_type(
             await transaction.execute(
-                insert([pending_user]).returning(User.id, User.email)
+                insert_many(User, [pending_user]).returning(User.id, User.email)
             ),
             list[tuple[int, str]],
         )
 
-    class SizedText[S = mariadb.Pending](
-        mariadb.Model[S, "SizedText[mariadb.Fetched]"]
-    ):
+    class SizedText[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[SizedText[mariadb.Row]]]
         value: mariadb.Col[str] = mariadb.Text(
             collation="utf8mb4_unicode_ci", length=80
         )
@@ -1252,9 +1268,8 @@ if TYPE_CHECKING:
     _ = assert_type(SizedText(value="text").value, str)
     _ = assert_type(SizedText(value="text").optional, str | None)
 
-    class LongTextValues[S = mariadb.Pending](
-        mariadb.Model[S, "LongTextValues[mariadb.Fetched]"]
-    ):
+    class LongTextValues[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[LongTextValues[mariadb.Row]]]
         value: mariadb.Col[str] = mariadb.LongText(collation="utf8mb4_general_ci")
         optional: mariadb.Col[str | None] = mariadb.LongText(
             collation="utf8mb4_general_ci", default=None
@@ -1284,9 +1299,8 @@ if TYPE_CHECKING:
     mariadb.Text(length="80")  # ty: ignore[invalid-argument-type]
     sqlite.Text(length=80)  # ty: ignore[no-matching-overload]
 
-    class CollatedSQLiteValues[S = sqlite.Pending](
-        sqlite.Model[S, "CollatedSQLiteValues[sqlite.Fetched]"]
-    ):
+    class CollatedSQLiteValues[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[CollatedSQLiteValues[sqlite.Row]]]
         value: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
         optional: sqlite.Col[str | None] = sqlite.Text(collation="RTRIM", default=None)
         literal: sqlite.Col[str] = sqlite.Text(collation="NOCASE", default="Alpha")
@@ -1352,15 +1366,13 @@ if TYPE_CHECKING:
             True,  # ty: ignore[too-many-positional-arguments]
         )
 
-    class ConstraintParent[S = sqlite.Pending](
-        sqlite.Model[S, "ConstraintParent[sqlite.Fetched]"]
-    ):
+    class ConstraintParent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[ConstraintParent[sqlite.Row]]]
         tenant_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         code: sqlite.Col[str] = sqlite.Text(primary_key=True)
 
-    class ConstraintChild[S = sqlite.Pending](
-        sqlite.Model[S, "ConstraintChild[sqlite.Fetched]"]
-    ):
+    class ConstraintChild[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[ConstraintChild[sqlite.Row]]]
         tenant_id: sqlite.Col[int] = sqlite.Integer()
         code: sqlite.Col[str] = sqlite.Text()
         __foreign_keys__: ClassVar = [
@@ -1404,14 +1416,14 @@ if TYPE_CHECKING:
 
     async def execute_public_query_annotations(
         transaction: Transaction,
-        read_query: Select[User[Fetched]],
+        read_query: ClosedRead[User[Row]],
         write_query: Write[int],
     ) -> None:
         """Result-oriented annotations remain executable after type erasure."""
 
         _ = assert_type(
             await transaction.fetch_all(read_query),
-            list[User[Fetched]],
+            list[User[Row]],
         )
         _ = assert_type(await transaction.execute(write_query), int)
 
@@ -1420,7 +1432,7 @@ if TYPE_CHECKING:
 
         _ = assert_type(
             await transaction.fetch_all(select(User).all()),
-            list[User[Fetched]],
+            list[User[Row]],
         )
         _ = await transaction.fetch_all(  # ty: ignore[no-matching-overload]
             select(User)
@@ -1460,7 +1472,7 @@ if TYPE_CHECKING:
         # ChunkStream of row batches.
         _ = assert_type(
             transaction.fetch_chunks(select(User).all(), size=100),
-            ChunkStream[User[Fetched]],
+            ChunkStream[User[Row]],
         )
         _ = assert_type(
             transaction.fetch_chunks(select(User.email).all(), size=100),
@@ -1486,7 +1498,7 @@ if TYPE_CHECKING:
         )
         _ = assert_type(
             await transaction.fetch_one(select(User).all()),
-            User[Fetched],
+            User[Row],
         )
         _ = assert_type(
             await transaction.fetch_one(
@@ -1499,7 +1511,7 @@ if TYPE_CHECKING:
         # ``None`` can only mean a missing row.
         _ = assert_type(
             await transaction.fetch_one_or_none(select(User).all()),
-            User[Fetched] | None,
+            User[Row] | None,
         )
         _ = assert_type(
             await transaction.fetch_one_or_none(select(User.email, User.status).all()),
@@ -1565,13 +1577,13 @@ if TYPE_CHECKING:
         condition = Order.user_id.eq_col(User.id) & Order.note.ne("hidden")
         assert_type(
             await transaction.fetch_all(select(User).join(Order, on=condition).all()),
-            list[tuple[User[Fetched], Order[Fetched]]],
+            list[tuple[User[Row], Order[Row]]],
         )
         assert_type(
             await transaction.fetch_all(
                 select(User).left_join(Order, on=condition).all()
             ),
-            list[tuple[User[Fetched], Order[Fetched] | None]],
+            list[tuple[User[Row], Order[Row] | None]],
         )
         assert_type(
             await transaction.fetch_all(

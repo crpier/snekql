@@ -30,25 +30,33 @@ fetched_user = await tx.fetch_one(
 fetched_user = await tx.execute(insert(user).returning())
 ```
 
-`.returning()` is the write-side bridge from a Pending model to a Fetched one;
+`.returning()` is the write-side bridge from a Pending model to a Row one;
 it is always explicit, so a plain `insert(...)` still returns `None`.
 
 ## Bulk inserts
 
-Pass a sequence to `insert` to write many rows in one statement instead of one
-round-trip per row. `.returning()` then yields one Fetched model per row, in
-order:
+Use `insert_many(User, rows)` to write a Pending batch to its declared table.
+`.returning()` yields a list of `User[Row]`, including a typed empty list for an
+empty batch:
 
 ```python
-await tx.execute(insert([User(email="a@example.com"), User(email="b@example.com")]))
+from snekql.sqlite import insert_many
+
+await tx.execute(
+    insert_many(User, [User(email="a@example.com"), User(email="b@example.com")])
+)
 
 created = await tx.execute(
-    insert([User(email="c@example.com"), User(email="d@example.com")]).returning(),
+    insert_many(
+        User, [User(email="c@example.com"), User(email="d@example.com")]
+    ).returning(),
 )
 ```
 
-Every row in a bulk insert must set the same columns (so they share one
-`VALUES` list); an empty sequence is a no-op that issues no SQL.
+Every row must belong to the destination model and supply the same columns for
+one `VALUES` list. Empty batches execute no SQL but retain their backend, so
+executing them through the wrong backend still raises an error. `insert(user)`
+accepts one Pending value, never a sequence.
 
 ## What snekql avoids
 
@@ -92,6 +100,7 @@ When editing or extending snekql, preserve these terms:
 - Use **Transaction**, not session.
 - Use **Query Runtime**, not persistence layer.
 - Use **Pending Model** for application-constructed instances.
-- Use **Fetched Model** for rows materialized by the runtime.
+- Use **Row Model** for complete values from database results or validated
+  `complete` snapshots. Completeness does not prove persistence.
 
 See `CONTEXT.md` for the project language glossary.

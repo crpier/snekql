@@ -4,18 +4,19 @@ from __future__ import annotations
 
 import warnings
 from datetime import timedelta
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
     ExecutionError,
-    Fetched,
     Integer,
     LexicalDurationWarning,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -23,8 +24,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class IntegerDurationRow[S = Pending](Model[S, "IntegerDurationRow[Fetched]"]):
+class IntegerDurationRow[S = Pending](Model[S]):
     """Table declaring a timedelta over an Integer storage class."""
+
+    __row_type__: ClassVar[ReadType[IntegerDurationRow[Row]]]
 
     id: IntegerDurationRow.Col[int] = Integer(primary_key=True)
     elapsed: IntegerDurationRow.Col[timedelta] = Integer(nullable=False)
@@ -33,8 +36,10 @@ class IntegerDurationRow[S = Pending](Model[S, "IntegerDurationRow[Fetched]"]):
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", LexicalDurationWarning)
 
-    class TextDurationRow[S = Pending](Model[S, "TextDurationRow[Fetched]"]):
+    class TextDurationRow[S = Pending](Model[S]):
         """Table declaring a timedelta over a Text storage class."""
+
+        __row_type__: ClassVar[ReadType[TextDurationRow[Row]]]
 
         id: TextDurationRow.Col[int] = Integer(primary_key=True)
         elapsed: TextDurationRow.Col[timedelta] = Text(nullable=False)
@@ -73,7 +78,7 @@ def duration_text_decodes_back_to_timedelta() -> None:
     """Lax fetch decoding recovers the timedelta from duration text."""
 
     fetched = cast(
-        "TextDurationRow[Fetched]",
+        "TextDurationRow[Row]",
         decode_model_row(
             TextDurationRow,
             {"id": 1, "elapsed": "PT9S"},
@@ -93,7 +98,7 @@ def integer_database_value_decodes_as_whole_seconds() -> None:
     """
 
     fetched = cast(
-        "IntegerDurationRow[Fetched]",
+        "IntegerDurationRow[Row]",
         decode_model_row(
             IntegerDurationRow,
             {"id": 1, "elapsed": 9000},

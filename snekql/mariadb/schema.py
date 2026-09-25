@@ -672,7 +672,7 @@ async def verify_mariadb_schema(
     )
 
 
-def scaffold_mariadb_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
+def scaffold_mariadb_ddl(models: Sequence[type[Model[Any]]]) -> str:
     """Emit the initial CREATE TABLE (and index) DDL for MariaDB models as text."""
 
     require_scaffold_models("mariadb", models)
@@ -680,7 +680,7 @@ def scaffold_mariadb_ddl(models: Sequence[type[Model[Any, Any]]]) -> str:
 
 
 def scaffold_mariadb_statements(
-    models: Sequence[type[Model[Any, Any]]],
+    models: Sequence[type[Model[Any]]],
 ) -> list[tuple[str, str]]:
     """Return (label, DDL) statement pairs for MariaDB model creation."""
 

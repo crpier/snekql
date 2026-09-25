@@ -1,15 +1,18 @@
 # Native integer literals
 
 Both backend namespaces provide `literal(integer)` for an owner-free, native
-signed-64 SQL value. This is the depth-seed prerequisite for typed recursive
-CTEs. Recursive builder construction is not implemented yet.
+signed-64 SQL value. It can seed depth in [typed recursive CTEs](recursive-ctes.md).
 
 ```python
+from typing import ClassVar
+
 from pydantic import BaseModel
+
 from snekql import sqlite
 
 
-class Category[S = sqlite.Pending](sqlite.Model[S, "Category[sqlite.Fetched]"]):
+class Category[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Category[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
@@ -62,7 +65,7 @@ before the signed cast preserves both signed-64 boundaries. Construction has
 already rejected values outside that range; this does not cast arbitrary SUM,
 AVG or user column outputs into a narrower domain.
 
-The native tests embed compiled literal anchors into raw recursive SQL to check
-32-bit boundary crossings and signed-64 edge values. They do not imply that the
-future recursive builder, growing text paths, cycle detection or general
-termination analysis is already implemented.
+Native tests check recursive 32-bit boundary crossings and signed-64 edge values.
+See [recursive CTE acceptance](recursive-ctes.md#acceptance-coverage) for builder
+coverage. Growing text paths, implicit cycle detection and general termination
+analysis remain unsupported.

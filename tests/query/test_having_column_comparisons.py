@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, assert_raises, test
 
 from snekql import sqlite
@@ -9,8 +11,10 @@ from snekql.errors import QueryConstructionError
 from tests.helpers import initialized_database
 
 
-class Sale[S = sqlite.Pending](sqlite.Model[S, "Sale[sqlite.Fetched]"]):
+class Sale[S = sqlite.Pending](sqlite.Model[S]):
     """A grouped key and a separate ungrouped amount."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Sale[sqlite.Row]]]
 
     category: Sale.Col[int] = sqlite.Integer(nullable=False)
     amount: Sale.Col[int] = sqlite.Integer(nullable=False)
@@ -66,8 +70,10 @@ def having_accepts_both_grouped_operands() -> None:
 def having_checks_table_membership_separately_from_grouping() -> None:
     """An unknown right-hand table fails scope validation before grouping."""
 
-    class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+    class Other[S = sqlite.Pending](sqlite.Model[S]):
         """An unrelated table absent from the query."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
 
         amount: Other.Col[int] = sqlite.Integer(nullable=False)
 
@@ -107,8 +113,10 @@ async def grouped_column_comparison_filters_groups() -> None:
 async def having_scalar_subquery_keeps_its_own_column_scope() -> None:
     """Inner ungrouped columns do not become outer HAVING grouping operands."""
 
-    class Detail[S = sqlite.Pending](sqlite.Model[S, "Detail[sqlite.Fetched]"]):
+    class Detail[S = sqlite.Pending](sqlite.Model[S]):
         """A correlated inner source with its own non-grouped columns."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Detail[sqlite.Row]]]
 
         category: Detail.Col[int] = sqlite.Integer(nullable=False)
         amount: Detail.Col[int] = sqlite.Integer(nullable=False)

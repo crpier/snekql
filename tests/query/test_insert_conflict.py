@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
@@ -9,12 +11,13 @@ from snekql.sqlite import (
     PENDING_GENERATION,
     DoNothing,
     DoUpdate,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     insert,
     update,
@@ -26,8 +29,10 @@ from tests.helpers import MARIADB_CODEC, SQLITE_CODEC
 def sqlite_conflict_update_compiles_multiple_inserted_values() -> None:
     """SQLite updates each named column from the attempted insert."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with one conflict target and two mutable columns."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
         name: User.Col[str] = Text(nullable=False)
@@ -54,8 +59,10 @@ def sqlite_conflict_update_compiles_multiple_inserted_values() -> None:
 def sqlite_conflict_do_nothing_compiles_without_assignments() -> None:
     """SQLite can discard an insert that conflicts with the named target."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a unique email conflict target."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
@@ -76,8 +83,10 @@ def sqlite_conflict_do_nothing_compiles_without_assignments() -> None:
 def conflict_do_nothing_rejects_returning_result_shape() -> None:
     """DoNothing cannot satisfy a returning insert's promised row result."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a unique email conflict target."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
@@ -95,8 +104,10 @@ def conflict_do_nothing_rejects_returning_result_shape() -> None:
 def conflict_action_requires_an_assignment() -> None:
     """DoUpdate rejects an action with no columns to update."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model that anchors the action's owner type."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
     with assert_raises(QueryConstructionError):
         _ = DoUpdate[User[Pending]]()  # ty: ignore[no-matching-overload]
@@ -106,8 +117,10 @@ def conflict_action_requires_an_assignment() -> None:
 def conflict_action_requires_a_target_column() -> None:
     """on_conflict rejects an action without a conflict target."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with one mutable status column."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         status: User.Col[str] = Text(nullable=False)
 
@@ -121,13 +134,17 @@ def conflict_action_requires_a_target_column() -> None:
 def conflict_target_requires_an_inserted_model_column() -> None:
     """A conflict target cannot name a column from another model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Inserted table model."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Unrelated table model."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         email: Account.Col[str] = Text(nullable=False, unique=True)
 
@@ -142,13 +159,17 @@ def conflict_target_requires_an_inserted_model_column() -> None:
 def conflict_update_requires_inserted_model_assignments() -> None:
     """A conflict update cannot assign a column from another model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Inserted table model."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False, unique=True)
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Unrelated table model."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         status: Account.Col[str] = Text(nullable=False)
 
@@ -163,8 +184,10 @@ def conflict_update_requires_inserted_model_assignments() -> None:
 def conflict_action_rejects_default_values_insert() -> None:
     """Conflict handling cannot be silently dropped from a default-values insert."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Table model whose insert supplies no explicit columns."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         id: AuditLog.GenCol[int] = Integer(
             primary_key=True,
@@ -181,8 +204,10 @@ def conflict_action_rejects_default_values_insert() -> None:
 def inserted_value_rejects_regular_update_context() -> None:
     """An attempted-insert value is only valid inside a conflict update."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with one mutable status column."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         status: User.Col[str] = Text(nullable=False)
 
@@ -196,8 +221,10 @@ def inserted_value_rejects_regular_update_context() -> None:
 def mariadb_conflict_update_uses_duplicate_key_and_values() -> None:
     """MariaDB maps inserted values to its duplicate-key update syntax."""
 
-    class User[S = mariadb.Pending](mariadb.Model[S, "User[mariadb.Fetched]"]):
+    class User[S = mariadb.Pending](mariadb.Model[S]):
         """Table model with a unique email conflict target."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
 
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
         name: User.Col[str] = mariadb.Text(nullable=False)
@@ -225,8 +252,10 @@ def mariadb_conflict_update_uses_duplicate_key_and_values() -> None:
 def mariadb_conflict_do_nothing_compiles_as_no_op_update() -> None:
     """MariaDB discards a duplicate through an update that changes nothing."""
 
-    class User[S = mariadb.Pending](mariadb.Model[S, "User[mariadb.Fetched]"]):
+    class User[S = mariadb.Pending](mariadb.Model[S]):
         """Table model with a unique email conflict target."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
 
         email: User.Col[str] = mariadb.Text(nullable=False, unique=True)
 

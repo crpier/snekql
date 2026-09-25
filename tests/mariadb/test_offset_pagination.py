@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, load_fixture, test
 
 from snekql import mariadb
@@ -25,8 +27,10 @@ async def pagination_returns_expected_window(
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Item[S = mariadb.Pending](mariadb.Model[S, "Item[mariadb.Fetched]"]):
+    class Item[S = mariadb.Pending](mariadb.Model[S]):
         """A deterministic pagination sequence."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Item[mariadb.Row]]]
 
         id: Item.Col[int] = mariadb.Integer(primary_key=True)
 
@@ -55,8 +59,10 @@ async def pagination_returns_expected_window(
 def offset_only_inspection_preserves_parameter_order() -> None:
     """The unlimited-row sentinel is dialect SQL, not an extra bound parameter."""
 
-    class Item[S = mariadb.Pending](mariadb.Model[S, "Item[mariadb.Fetched]"]):
+    class Item[S = mariadb.Pending](mariadb.Model[S]):
         """A scalar pagination projection."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Item[mariadb.Row]]]
 
         id: Item.Col[int] = mariadb.Integer(primary_key=True)
 
@@ -74,8 +80,10 @@ def offset_only_inspection_preserves_parameter_order() -> None:
 def explicit_window_inspection_preserves_parameter_order() -> None:
     """Explicit limits still bind between predicate values and the offset."""
 
-    class Item[S = mariadb.Pending](mariadb.Model[S, "Item[mariadb.Fetched]"]):
+    class Item[S = mariadb.Pending](mariadb.Model[S]):
         """A scalar pagination projection."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Item[mariadb.Row]]]
 
         id: Item.Col[int] = mariadb.Integer(primary_key=True)
 

@@ -142,7 +142,6 @@ class DialectQueryCodec:
         return compile_write_plan_for_dialect(
             query,
             self.dialect,
-            default_backend=self.backend,
             validate=validate,
         )
 

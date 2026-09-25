@@ -44,7 +44,7 @@ def decode_model_row(
     backend: StorageBackend,
     validate: bool = True,
 ) -> object:
-    """Materialize a Fetched Model from backend row values."""
+    """Materialize a Row Model from backend row values."""
 
     remaining_values = dict(row)
     model_instance = object.__new__(model)
@@ -53,7 +53,7 @@ def decode_model_row(
         object.__getattribute__(model_instance, "__dict__"),
     )
     storage["_snekql_frozen"] = False
-    storage["_snekql_state"] = "Fetched"
+    storage["_snekql_state"] = "Row"
     for name, column in require_model_columns(model).items():
         assert name in remaining_values, (  # noqa: S101
             f"missing database value for {name!r}"

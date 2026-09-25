@@ -11,7 +11,7 @@ from snekql.mariadb.model import Model
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: int | ExpressionMethods[OwnerT, int],
@@ -20,7 +20,7 @@ def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: int
@@ -35,7 +35,7 @@ def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: float | ExpressionMethods[OwnerT, float],
@@ -44,7 +44,7 @@ def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: float
@@ -59,7 +59,7 @@ def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: str | ExpressionMethods[OwnerT, str],
@@ -68,7 +68,7 @@ def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
 
 
 @overload
-def case[OwnerT: Model[Any, Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
+def case[OwnerT: Model[Any] | _AliasOwner[Literal["mariadb"], Any, Any]](
     condition: Predicate[OwnerT],
     *,
     then: str

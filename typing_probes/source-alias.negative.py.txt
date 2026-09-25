@@ -1,0 +1,3 @@
+
+
+database.alias(Account(account_id=1), Peer, name="peer")  # expect-error

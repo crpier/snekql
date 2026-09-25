@@ -1,0 +1,3 @@
+
+
+database.insert_many(Account, [Account(account_id=1), Other(account_id=2)])  # expect-error

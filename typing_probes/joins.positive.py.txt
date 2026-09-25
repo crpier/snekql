@@ -1,23 +1,27 @@
 """Left joins infer an optional fetched model on the right."""
 
+from typing import ClassVar
+
 from typing import assert_type
 
 from snekql import __BACKEND__ as database
 
 
-class Parent[S = database.Pending](database.Model[S, "Parent[database.Fetched]"]):
+class Parent[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Parent[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
 
 
-class Child[S = database.Pending](database.Model[S, "Child[database.Fetched]"]):
+class Child[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Child[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
     parent_id: database.FKCol[Parent, int] = database.ForeignKey(Parent.id)
 
 
-def joined() -> database.Select[tuple[Parent[database.Fetched], Child[database.Fetched] | None]]:
-    return database.select(Parent).left_join(
+def joined() -> database.ClosedRead[tuple[Parent[database.Row], Child[database.Row] | None]]:
+    return database.ready(database.select(Parent).left_join(
         Child, on=Child.parent_id.references(Parent.id),
-    ).all()
+    ).all())
 
 
 async def optional_child(transaction: database.Transaction) -> None:
@@ -26,9 +30,9 @@ async def optional_child(transaction: database.Transaction) -> None:
     ).all()
     assert_type(
         await transaction.fetch_all(inferred),
-        list[tuple[Parent[database.Fetched], Child[database.Fetched] | None]],
+        list[tuple[Parent[database.Row], Child[database.Row] | None]],
     )
     assert_type(
         await transaction.fetch_all(joined()),
-        list[tuple[Parent[database.Fetched], Child[database.Fetched] | None]],
+        list[tuple[Parent[database.Row], Child[database.Row] | None]],
     )

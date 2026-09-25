@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import BeforeValidator, Field, Json
 from snektest import assert_eq, assert_raises, test
@@ -17,8 +17,10 @@ type OptionalInteger = int | None
 def optional_alias_accepts_none_default() -> None:
     """A named optional integer behaves like the expanded union."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """A None default must agree with inferred nullable storage."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[OptionalInteger] = sqlite.Integer(default=None)
 
@@ -41,8 +43,10 @@ type Unresolved = NotDeclared  # noqa: F821  # ty: ignore[unresolved-reference]
 def optional_alias_forms_accept_matching_flags() -> None:
     """Chaining, wrappers and specialization retain field-level None membership."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """Each spelling promises the same nullable field contract."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         chained: Entry.Col[ChainedOptional] = sqlite.Integer(
             nullable=True, default=None
@@ -74,8 +78,10 @@ def optional_alias_forms_accept_matching_flags() -> None:
 def nonoptional_aliases_remain_not_null() -> None:
     """Specialized aliases do not infer nullability from arbitrary arguments."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """Nonnullable aliases and containers keep NOT NULL storage."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         plain: Entry.Col[IntegerAlias] = sqlite.Integer(nullable=False)
         generic: Entry.Col[Identity[int]] = sqlite.Integer(nullable=False)
@@ -101,8 +107,10 @@ def optional_alias_rejects_not_null_flag() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """A contradictory assertion must fail before schema creation."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[OptionalInteger] = sqlite.Integer(nullable=False)
 
@@ -113,8 +121,10 @@ def nonoptional_alias_rejects_nullable_flag() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """A generic alias must use its actual argument."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[Identity[int]] = sqlite.Integer(nullable=True)
 
@@ -125,8 +135,10 @@ def cyclic_alias_requires_explicit_nullability() -> None:
 
     with assert_raises(ModelDeclarationError) as error:
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """Cycles terminate under the existing unresolved-field policy."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[Cycle] = sqlite.Integer()
 
@@ -142,8 +154,10 @@ def unresolved_alias_requires_explicit_nullability() -> None:
 
     with assert_raises(ModelDeclarationError) as error:
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """Undefined alias targets need an explicit flag."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[Unresolved] = sqlite.Integer()
 
@@ -159,8 +173,10 @@ def deferred_alias_retains_explicit_nullability() -> None:
 
     type Late = Later
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """Annotation resolution may legitimately wait for its declaring scope."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[Late] = sqlite.Integer(nullable=True)
 
@@ -182,8 +198,10 @@ def alias_inspection_does_not_call_validators() -> None:
 
     type Validated = Annotated[int | None, BeforeValidator(observe), Field(ge=0)]
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """The logical alias still owns its validators."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         value: Entry.Col[Validated] = sqlite.Integer(default=None)
 
@@ -206,8 +224,10 @@ def unresolved_alias_default_requires_explicit_nullability() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """Missing generic defaults must not leak raw NameError."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[UnresolvedDefault] = sqlite.Integer()
 
@@ -218,8 +238,10 @@ def recursive_generic_alias_terminates() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """Unknown nullability requires an explicit assertion."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[Growing[int]] = sqlite.Integer()
 
@@ -228,8 +250,10 @@ def recursive_generic_alias_terminates() -> None:
 def generic_argument_order_controls_nullability() -> None:
     """Nested aliases retain their caller's bindings instead of guessing from args."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
         """The same alias can specialize to opposite nullability contracts."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
         optional: Entry.Col[Reordered[int, int | None]] = sqlite.Integer(default=None)
         required: Entry.Col[Reordered[int | None, int]] = sqlite.Integer(nullable=False)
@@ -243,7 +267,9 @@ def optional_alias_cannot_be_primary_key() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
             """A primary key cannot admit None through an alias."""
+
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
 
             value: Entry.Col[OptionalInteger] = sqlite.Integer(primary_key=True)

@@ -23,11 +23,15 @@ any usable CTE. Reusing the prepared builder creates an independent definition;
 failed construction cannot publish or leave behind a usable self relation.
 
 ```python
+from typing import ClassVar
+
 from pydantic import BaseModel
+
 from snekql import sqlite
 
 
-class Category[S = sqlite.Pending](sqlite.Model[S, "Category[sqlite.Fetched]"]):
+class Category[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Category[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     parent_id: sqlite.Col[int | None] = sqlite.Integer()
 
@@ -150,8 +154,9 @@ Both namespaces export these nonconstructible annotations:
 
 `NamedOperand` deliberately exposes no fluent query editing after source scope
 has been erased. It is neither an anchor annotation nor a directly fetchable
-query annotation. Use `Select[Result]` for helpers returning queries to a
-Transaction, and keep anchor builder inference intact.
+query annotation. Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after
+`ready`, for helpers returning queries to a Transaction. Keep anchor builder
+inference intact.
 
 For a left-joined anchor over `Category | Detail`, pass the nonnullable source
 explicitly, for example `Cte[Category | Detail, Visit, WalkRole, Category]`.

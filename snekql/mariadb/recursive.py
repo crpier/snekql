@@ -30,7 +30,7 @@ type NamedOperand[ResultT: BaseModel] = _NamedSetOperand[
 
 Use for helpers returning UNION operands or recursive members. It preserves the
 backend, result class and readiness without exposing scope-erased fluent edits.
-Use `Select[ResultT]` instead for queries passed directly to a Transaction.
+Use `ReadQuery[Scope, ResultT]` for queries passed directly to a Transaction.
 """
 
 
