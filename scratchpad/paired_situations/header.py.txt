@@ -1,0 +1,11 @@
+from typing import Any, ClassVar, assert_type
+from datetime import UTC, datetime
+from decimal import Decimal
+from snekql import sqlite as native
+from scratchpad.paired_situations import nested as n, body as b
+from scratchpad.class_body_usage import current as original
+from scratchpad.class_body_usage.helpers import insert_generic as original_insert
+
+
+async def caller(nt: n.sqlite.Transaction, bt: b.sqlite.Transaction, nm: n.mariadb.Transaction, bm: b.mariadb.Transaction, nr: n.User, br: b.User[native.Fetched], no: n.Order, bo: b.Order[native.Fetched]) -> None:
+    pass

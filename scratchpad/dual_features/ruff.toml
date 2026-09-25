@@ -1,0 +1,9 @@
+extend = "../../pyproject.toml"
+[lint.per-file-ignores]
+"test_*.py" = ["PLR2004", "FBT003", "RUF029", "S608", "S101"]
+"*.pyi" = ["PYI019", "PYI021", "UP046"]
+"runtime.py" = ["UP046", "S608", "FBT003"]
+
+# Declarations import query helpers only when used, avoiding the prototype cycle.
+"models.py" = ["PLC0415"]
+"records.py" = ["PLC0415"]

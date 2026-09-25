@@ -1,0 +1,96 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "ty": "0.0.77",
+  "ruff": "0.16.5",
+  "sources": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bridge.py": "5068fe9fd42528d431d76e85889cd3f8b9aa23acb40b99ab15d838b4674e33ab",
+    "check.py": "31039fdc040da9adff33edf6b15e1f3b776f3f73fbe636a8ddaa636594976440",
+    "current.py": "b596e5833acb457630c1d961a5b5ec3b65e7ba339e1ee1638f48e8a41504c833",
+    "current_maria.py": "7ba48a0e8f716bfaee3dd9ab8e2e8ed7bde9651f9a757ba1f1374b5639083351",
+    "domain.py": "cd5b95b5d646a5d3300bf106ddeb5fe19566a50a4400042af02a52582e51431f",
+    "dual.py": "d047b2bf45e945311a9854cf1dbf1ee4631b586a242cf67c9b51fd43e7901f21",
+    "evidence.py": "0edecbf8314f6f9f0d2c3f127227241a5dcca6e578b1e0a0425d6d83521346e7",
+    "helpers.py": "b9b108eda401ff09c33d24aab1fa5f1d0dd22d809317ce1dcb3ee6d3504fb134",
+    "strict_columns.py": "35021889b87b37f41ed3545e05ad1d79c31caa30333c81600b9b27af81731a0d",
+    "test_advanced.py": "5545dee0ad61b048f3ed06e6ffbcef856bff921c57117d19b7694a17cf51fa79",
+    "test_bridge.py": "92405755b4d023c8e28e4abca51c4cce3984cf1bec2dcfecbdc96ed5178c371d",
+    "test_defaults.py": "03ee2e8e7ed0ec7ba75c21d6132a1551cfeda969e498bcdae3649c74cfd124cc",
+    "test_limits.py": "39342199093ac913096484de7bdfb8c214109b2ed5c5a32feb16e25d5de674ab"
+  },
+  "scaffold": "CREATE TABLE \"users\" (\"user_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"balance\" INTEGER NOT NULL, \"nickname\" TEXT) STRICT;\nCREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\");\nCREATE TABLE \"posts\" (\"post_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"author_id\" INTEGER NOT NULL, \"title\" TEXT NOT NULL, FOREIGN KEY (\"author_id\") REFERENCES \"users\" (\"user_id\")) STRICT;",
+  "compiled_pairs": {
+    "model": {
+      "sql": "SELECT \"user_id\", \"email\", \"balance\", \"nickname\" FROM \"users\"",
+      "params": []
+    },
+    "tuple": {
+      "sql": "SELECT \"user_id\", \"email\" FROM \"users\"",
+      "params": []
+    },
+    "inner": {
+      "sql": "SELECT \"users\".\"user_id\", \"users\".\"email\", \"users\".\"balance\", \"users\".\"nickname\", \"posts\".\"post_id\", \"posts\".\"author_id\", \"posts\".\"title\" FROM \"users\" INNER JOIN \"posts\" ON \"posts\".\"author_id\" = \"users\".\"user_id\"",
+      "params": []
+    },
+    "left": {
+      "sql": "SELECT \"users\".\"user_id\", \"users\".\"email\", \"users\".\"balance\", \"users\".\"nickname\", \"posts\".\"post_id\", \"posts\".\"author_id\", \"posts\".\"title\" FROM \"users\" LEFT JOIN \"posts\" ON \"posts\".\"author_id\" = \"users\".\"user_id\"",
+      "params": []
+    },
+    "ordered": {
+      "sql": "SELECT DISTINCT \"email\" FROM \"users\" ORDER BY \"email\" DESC LIMIT ? OFFSET ?",
+      "params": [
+        2,
+        1
+      ]
+    },
+    "arithmetic": {
+      "sql": "SELECT (\"balance\" + ?) FROM \"users\"",
+      "params": [
+        3
+      ]
+    },
+    "named": {
+      "sql": "SELECT \"email\" AS \"email\", \"balance\" AS \"balance\" FROM \"users\"",
+      "params": []
+    },
+    "cte": {
+      "sql": "WITH \"summary\" AS (SELECT \"email\" AS \"email\", \"balance\" AS \"balance\", 1 AS \"__snekql_present\" FROM \"users\") SELECT \"summary\".\"email\" AS \"email\", \"summary\".\"balance\" AS \"balance\" FROM \"summary\"",
+      "params": []
+    },
+    "union": {
+      "sql": "SELECT \"__snekql_union\".\"balance\" AS \"balance\", \"__snekql_union\".\"email\" AS \"email\" FROM (SELECT \"balance\" AS \"balance\", \"email\" AS \"email\" FROM \"users\" UNION ALL SELECT \"balance\" AS \"balance\", \"email\" AS \"email\" FROM \"users\") AS \"__snekql_union\"",
+      "params": []
+    },
+    "exists": {
+      "sql": "SELECT \"user_id\", \"email\", \"balance\", \"nickname\" FROM \"users\" WHERE (EXISTS (SELECT \"posts\".\"title\" FROM \"posts\" WHERE (\"posts\".\"author_id\" = \"users\".\"user_id\")))",
+      "params": []
+    },
+    "insert": {
+      "sql": "INSERT INTO \"users\" (\"email\", \"balance\", \"nickname\") VALUES (?, ?, ?) RETURNING \"user_id\", \"email\", \"balance\", \"nickname\"",
+      "params": [
+        "A",
+        12,
+        null
+      ]
+    },
+    "upsert": {
+      "sql": "INSERT INTO \"users\" (\"email\", \"balance\", \"nickname\") VALUES (?, ?, ?) ON CONFLICT (\"email\") DO UPDATE SET \"balance\" = ? RETURNING \"user_id\", \"email\", \"balance\", \"nickname\"",
+      "params": [
+        "A",
+        12,
+        null,
+        18
+      ]
+    },
+    "update": {
+      "sql": "UPDATE \"users\" SET \"balance\" = ? RETURNING \"user_id\", \"email\", \"balance\", \"nickname\"",
+      "params": [
+        18
+      ]
+    },
+    "delete": {
+      "sql": "DELETE FROM \"users\" RETURNING \"user_id\", \"email\", \"balance\", \"nickname\"",
+      "params": []
+    }
+  }
+}

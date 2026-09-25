@@ -1,0 +1,12 @@
+extend = "../../pyproject.toml"
+
+[lint]
+extend-ignore = ["TRY003", "EM101"] # Match existing research exception style; no typing/import suppression.
+
+[lint.pyflakes]
+allowed-unused-imports = []
+
+[lint.per-file-ignores]
+"sqlite.py" = ["SLF001", "N805", "C901", "PLR0912"] # Private native integration, metaclass validation.
+"nested.py" = ["SLF001", "N802"] # Existing research metadata compiler, nested result witness.
+"test_*.py" = ["PLC0415", "PLR2004", "RUF029", "A003", "FBT003"]

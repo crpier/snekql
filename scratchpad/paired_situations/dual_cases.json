@@ -1,0 +1,1802 @@
+[
+  {
+    "name": "dual-basic-results",
+    "situation": 1,
+    "challenge": "assert_type(await d.create_user(dt,\"A\"),d.UserRow)\nassert_type(await d.fetch_user(dt,d.UserId(1)),d.UserRow | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-counter",
+    "situation": 2,
+    "challenge": "assert_type(d.complete_counter(42,3).counter_id,int)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-pending-counter",
+    "situation": 2,
+    "challenge": "assert_type(d.pending_counter().count,int | d.sqlite.Omitted)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-pending-not-complete",
+    "situation": 2,
+    "challenge": "d.public_user(d.User(email=\"A\"))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-constructor-count=3",
+    "situation": 2,
+    "challenge": "d.CounterRow(count=3)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-constructor-counter_id=42",
+    "situation": 2,
+    "challenge": "d.CounterRow(counter_id=42)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-constructor-counter_id=n.OMITTED,count=3",
+    "situation": 2,
+    "challenge": "d.CounterRow(counter_id=d.OMITTED,count=3)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,nickname=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-timezone-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,nickname=None,timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-timezone-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,nickname=None,timezone=\"Europe/Paris\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,nickname=None,timezone=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-nickname-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-nickname-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-enabled-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-enabled-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=False)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-note-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-note-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-note-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=\"hello\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-digest_hour-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-digest_hour-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=18)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=d.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-locale-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-locale-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=\"en\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=d.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-created_at-none",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-created_at-value",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "d.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=d.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-foreign-id",
+    "situation": 4,
+    "challenge": "d.Post(author_id=d.PostId(1),title=\"wrong\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-foreign-join",
+    "situation": 4,
+    "challenge": "assert_type(await d.author_emails(dt),list[str])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-self-reference",
+    "situation": 5,
+    "challenge": "assert_type(await d.create_comment(dt,1,None,\"root\"),d.CommentRow)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-mutual-signature",
+    "situation": 6,
+    "challenge": "assert_type(await d.mutual_foreign_keys(),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-large-input",
+    "situation": 7,
+    "challenge": "assert_type(d.sample_order(),d.Order)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-large-result",
+    "situation": 7,
+    "challenge": "assert_type(await d.create_order(dt),d.OrderRow)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-shared-methods",
+    "situation": 8,
+    "challenge": "assert_type(d.sample_order().total(),Decimal)\nassert_type(d.sample_order().is_paid(),bool)\nassert_type(do.receipt_key(),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-pending-receipt",
+    "situation": 8,
+    "challenge": "d.sample_order().receipt_key()",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-maria-result",
+    "situation": 9,
+    "challenge": "assert_type(await d.create_product(dm),d.ProductRow)\nassert_type(await d.product_answers(dm),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await d.execute_write(dt,d.insert_generic(d.pending_counter())),d.CounterRow)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-query-helper",
+    "situation": 10,
+    "challenge": "assert_type(await d.execute_write(dt,d.sqlite.insert(d.pending_counter()).returning()),d.CounterRow)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-ready-helper",
+    "situation": 10,
+    "challenge": "assert_type(await dt.fetch_all(d.users_query()),list[d.UserRow])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-patch-result",
+    "situation": 11,
+    "challenge": "assert_type(await d.patch_user(dt,d.UserId(1),{\"display_name\":None}),d.UserRow | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-patch-wrong-field",
+    "situation": 11,
+    "challenge": "await d.patch_user(dt,d.UserId(1),{\"email\":\"other\"})",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-settings-upsert",
+    "situation": 11,
+    "challenge": "assert_type(await d.save_settings(dt,1,\"UTC\"),d.SettingsRow)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-navigation-caller",
+    "situation": 12,
+    "challenge": "assert_type(d.receipt_destination(do),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-basic-results",
+    "situation": 1,
+    "challenge": "assert_type(await b.create_user(bt,\"A\"),b.User[native.Fetched])\nassert_type(await b.fetch_user(bt,b.UserId(1)),b.User[native.Fetched] | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-counter",
+    "situation": 2,
+    "challenge": "assert_type(b.complete_counter(42,3).counter_id,int)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-counter",
+    "situation": 2,
+    "challenge": "assert_type(b.pending_counter().count,int | native.PendingGeneration)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-not-complete",
+    "situation": 2,
+    "challenge": "b.public_user(b.User(email=\"A\"))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-count=3",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](count=3)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-counter_id=42",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](counter_id=42)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-counter_id=b.OMITTED,count=3",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](counter_id=b.OMITTED,count=3)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-unchecked-constructor",
+    "situation": 2,
+    "challenge": "assert_type(b.Counter[native.Fetched].construct(count=3).counter_id,int)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=\"Europe/Paris\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=False)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=\"hello\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=18)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=\"en\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-foreign-id",
+    "situation": 4,
+    "challenge": "b.Post(author_id=b.PostId(1),title=\"wrong\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-foreign-join",
+    "situation": 4,
+    "challenge": "assert_type(await b.author_emails(bt),list[str])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-self-reference",
+    "situation": 5,
+    "challenge": "assert_type(await b.create_comment(bt,1,None,\"root\"),b.Comment[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-mutual-signature",
+    "situation": 6,
+    "challenge": "assert_type(await b.mutual_foreign_keys(),list[int | None])",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-large-input",
+    "situation": 7,
+    "challenge": "assert_type(b.sample_order(),b.Order[native.Pending])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-large-result",
+    "situation": 7,
+    "challenge": "assert_type(await b.create_order(bt),b.Order[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-shared-methods",
+    "situation": 8,
+    "challenge": "assert_type(b.sample_order().total(),Decimal)\nassert_type(b.sample_order().is_paid(),bool)\nassert_type(bo.receipt_key(),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-receipt",
+    "situation": 8,
+    "challenge": "b.sample_order().receipt_key()",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-maria-result",
+    "situation": 9,
+    "challenge": "assert_type(await b.create_product(bm),b.Product[native.Fetched])\nassert_type(await b.product_answers(bm),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.insert_generic(b.pending_counter())),Any)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-query-helper",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.sqlite.insert(b.pending_counter()).returning()),b.Counter[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-ready-helper",
+    "situation": 10,
+    "challenge": "assert_type(await bt.fetch_all(b.users_query()),list[b.User[native.Fetched]])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-patch-result",
+    "situation": 11,
+    "challenge": "assert_type(await b.patch_user(bt,b.UserId(1),{\"display_name\":None}),b.User[native.Fetched] | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-patch-wrong-field",
+    "situation": 11,
+    "challenge": "await b.patch_user(bt,b.UserId(1),{\"email\":\"other\"})",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-settings-upsert",
+    "situation": 11,
+    "challenge": "assert_type(await b.save_settings(bt,1,\"UTC\"),b.Settings[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-navigation-caller",
+    "situation": 12,
+    "challenge": "assert_type(b.receipt_destination(bo),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "original-base-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await bt.execute(original_insert(original.User(email=\"A\"))),original.User[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-base-helper-not-exact",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.insert_generic(b.pending_counter())),b.Counter[native.Fetched])",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "body-specialized-source",
+    "situation": 12,
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User[native.Fetched]).all()),list[b.User[native.Fetched]])",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-timezone-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-nickname-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-enabled-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-note-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-note-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-digest_hour-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-locale-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-created_at-null",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-complete-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "d.SettingsRow(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=d.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\")",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-plain-self-method",
+    "situation": 8,
+    "challenge": "class Plain[State=native.Pending](b.Model[State]):\n    __read_type__: ClassVar[b.ReadType[Plain[native.Fetched]]]\n    email: native.Col[str] = native.Text()\n    def label(self)->str:\n        return self.email",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-constructor-unknown-keyword",
+    "situation": 1,
+    "challenge": "d.User(email=\"A\",emali=\"B\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-frozen-value",
+    "situation": 7,
+    "challenge": "do.customer_email=\"B\"",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "dual-json-wrong-input",
+    "situation": 9,
+    "challenge": "d.Product(price=Decimal(1),code=\"a\",token=__import_uuid,payload={\"answer\":\"wrong\"},description=\"x\",image=b\"\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "from uuid import UUID\n__import_uuid = UUID(int=1)"
+  },
+  {
+    "name": "b-constructor-unknown-keyword",
+    "situation": 1,
+    "challenge": "b.User(email=\"A\",emali=\"B\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-frozen-assignment-statically-accepted",
+    "situation": 7,
+    "challenge": "bo.customer_email=\"B\"",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-json-wrong-input",
+    "situation": 9,
+    "challenge": "b.Product(price=Decimal(1),code=\"a\",token=__import_uuid,payload={\"answer\":\"wrong\"},description=\"x\",image=b\"\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "from uuid import UUID\n__import_uuid = UUID(int=1)"
+  },
+  {
+    "name": "original-frozen-assignment-statically-accepted",
+    "situation": 7,
+    "control": "pass",
+    "challenge": "original_row = original.User[native.Fetched](user_id=1,email=\"A\")\noriginal_row.email=\"B\"",
+    "rejects": false,
+    "kind": "counterexample"
+  },
+  {
+    "name": "d-query-model",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "assert_type(await dt.fetch_all(q),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-scalar",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-nullable",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.display_name).all()),list[str | None])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-generated-id",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.user_id).all()),list[d.UserId])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-wrong-value",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "d.UserRow.user_id.eq(\"wrong\")",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-wrong-nominal-id",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "d.UserRow.user_id.eq(d.PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-wrong-where-owner",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "d.sqlite.select(d.UserRow).where(d.PostRow.title.eq(\"wrong scope\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-unscoped-execution",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "await dt.fetch_all(d.sqlite.select(d.UserRow))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-unscoped-compilation",
+    "control": "q = d.sqlite.select(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1)))",
+    "challenge": "d.sqlite.select(d.UserRow).compile()",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-fk-wrong-column",
+    "control": "d.PostRow.author_id.references(d.UserRow.user_id)",
+    "challenge": "d.PostRow.author_id.references(d.UserRow.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 4
+  },
+  {
+    "name": "d-query-fk-wrong-owner",
+    "control": "d.PostRow.author_id.references(d.UserRow.user_id)",
+    "challenge": "d.PostRow.author_id.references(d.PostRow.post_id)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 4
+  },
+  {
+    "name": "d-query-join",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.email).join(d.PostRow,on=d.PostRow.author_id.references(d.UserRow.user_id)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-join-wrong-owner",
+    "control": "pass",
+    "challenge": "d.sqlite.select(d.UserRow.email).join(d.PostRow,on=d.SettingsRow.timezone.eq(\"UTC\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-wrong-conflict-target",
+    "control": "pass",
+    "challenge": "d.sqlite.insert(d.User(email=\"A\")).on_conflict(d.SettingsRow.user_id,action=d.sqlite.DoUpdate(d.UserRow.email.to_inserted()))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "d-query-wrong-conflict-assignment",
+    "control": "pass",
+    "challenge": "d.sqlite.insert(d.User(email=\"A\")).on_conflict(d.UserRow.email,action=d.sqlite.DoUpdate(d.SettingsRow.timezone.to_inserted()))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "d-query-wrong-assignment-value",
+    "control": "pass",
+    "challenge": "d.UserRow.display_name.to(42)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "d-query-projection",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.user_id,d.UserRow.email).all()),list[tuple[d.UserId,str]])",
+    "rejects": true,
+    "kind": "unsupported",
+    "situation": 10
+  },
+  {
+    "name": "d-query-update-returning",
+    "control": "pass",
+    "challenge": "assert_type(await dt.execute(d.sqlite.update(d.UserRow).set(d.UserRow.display_name.to(None)).where(d.UserRow.user_id.eq(d.UserId(1))).returning()),list[d.UserRow])",
+    "rejects": true,
+    "kind": "unsupported",
+    "situation": 11
+  },
+  {
+    "name": "d-query-delete-returning",
+    "control": "pass",
+    "challenge": "assert_type(await dt.execute(d.sqlite.delete(d.UserRow).where(d.UserRow.user_id.eq(d.UserId(1))).returning()),list[d.UserRow])",
+    "rejects": true,
+    "kind": "unsupported",
+    "situation": 11
+  },
+  {
+    "name": "d-query-wrong-execution-backend",
+    "control": "pass",
+    "challenge": "await dm.fetch_all(d.sqlite.select(d.UserRow).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-wrong-source-backend",
+    "control": "pass",
+    "challenge": "d.sqlite.select(d.ProductRow)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-model",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "assert_type(await bt.fetch_all(q),list[b.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-scalar",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-nullable",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User.display_name).all()),list[str | None])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-generated-id",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User.user_id).all()),list[b.UserId])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-wrong-value",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "b.User.user_id.eq(\"wrong\")",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-wrong-nominal-id",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "b.User.user_id.eq(b.PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-wrong-where-owner",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "b.sqlite.select(b.User).where(b.Post.title.eq(\"wrong scope\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-unscoped-execution",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "await bt.fetch_all(b.sqlite.select(b.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-unscoped-compilation",
+    "control": "q = b.sqlite.select(b.User).where(b.User.user_id.eq(b.UserId(1)))",
+    "challenge": "b.sqlite.select(b.User).compile()",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-fk-wrong-column",
+    "control": "b.Post.author_id.references(b.User.user_id)",
+    "challenge": "b.Post.author_id.references(b.User.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 4
+  },
+  {
+    "name": "b-query-fk-wrong-owner",
+    "control": "b.Post.author_id.references(b.User.user_id)",
+    "challenge": "b.Post.author_id.references(b.Post.post_id)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 4
+  },
+  {
+    "name": "b-query-join",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User.email).join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-join-wrong-owner",
+    "control": "pass",
+    "challenge": "b.sqlite.select(b.User.email).join(b.Post,on=b.Settings.timezone.eq(\"UTC\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-wrong-conflict-target",
+    "control": "pass",
+    "challenge": "b.sqlite.insert(b.User(email=\"A\")).on_conflict(b.Settings.user_id,action=b.sqlite.DoUpdate(b.User.email.to_inserted()))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "b-query-wrong-conflict-assignment",
+    "control": "pass",
+    "challenge": "b.sqlite.insert(b.User(email=\"A\")).on_conflict(b.User.email,action=b.sqlite.DoUpdate(b.Settings.timezone.to_inserted()))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "b-query-wrong-assignment-value",
+    "control": "pass",
+    "challenge": "b.User.display_name.to(42)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 11
+  },
+  {
+    "name": "b-query-projection",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User.user_id,b.User.email).all()),list[tuple[b.UserId,str]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-update-returning",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(b.sqlite.update(b.User).set(b.User.display_name.to(None)).where(b.User.user_id.eq(b.UserId(1))).returning()),list[b.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 11
+  },
+  {
+    "name": "b-query-delete-returning",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(b.sqlite.delete(b.User).where(b.User.user_id.eq(b.UserId(1))).returning()),list[b.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 11
+  },
+  {
+    "name": "b-query-wrong-execution-backend",
+    "control": "pass",
+    "challenge": "await bm.fetch_all(b.sqlite.select(b.User).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "b-query-wrong-source-backend",
+    "control": "pass",
+    "challenge": "b.sqlite.select(b.Product)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-input-model-not-source",
+    "control": "d.sqlite.select(d.UserRow)",
+    "challenge": "d.sqlite.select(d.User)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-input-column-not-source",
+    "control": "d.sqlite.select(d.UserRow.email)",
+    "challenge": "d.sqlite.select(d.User.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-input-predicate-not-row",
+    "control": "d.sqlite.select(d.UserRow).where(d.UserRow.email.eq(\"A\"))",
+    "challenge": "d.sqlite.select(d.UserRow).where(d.User.email.eq(\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-populated-input-not-row",
+    "control": "pass",
+    "challenge": "d.public_user(d.User(user_id=d.UserId(1),email=\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 2
+  },
+  {
+    "name": "dual-row-is-input",
+    "control": "pass",
+    "challenge": "input_value: d.User = dr\nassert_type(input_value,d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 8
+  },
+  {
+    "name": "dual-native-helper-incompatible",
+    "control": "pass",
+    "challenge": "original_insert(d.User(email=\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-input-only-construction",
+    "control": "pass",
+    "challenge": "assert_type(d.User(email=\"A\"),d.User)",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 1
+  },
+  {
+    "name": "dual-missing-blob",
+    "control": "from uuid import UUID\n__import_uuid=UUID(int=7)",
+    "challenge": "d.Order(tenant_id=d.TenantId(1),customer_email=\"A\",subtotal=Decimal(1),external_id=__import_uuid,metadata={},item_count=1)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 7
+  },
+  {
+    "name": "d-query-joined-model-pair",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).join(d.PostRow,on=d.PostRow.author_id.references(d.UserRow.user_id)).all()),list[tuple[d.UserRow,d.PostRow]])",
+    "rejects": true,
+    "kind": "unsupported",
+    "situation": 10
+  },
+  {
+    "name": "d-query-left-joined-models",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).left_join(d.PostRow,on=d.PostRow.author_id.references(d.UserRow.user_id)).all()),list[tuple[d.UserRow,d.PostRow | None]])",
+    "rejects": true,
+    "kind": "unsupported",
+    "situation": 10
+  },
+  {
+    "name": "d-query-instance-not-source",
+    "control": "pass",
+    "challenge": "d.sqlite.select(d.User(email=\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "d-query-read-helper",
+    "control": "async def read_d[Result](tx: d.sqlite.Transaction, query: d.Select[Result]) -> list[Result]:\n    return await tx.fetch_all(query)",
+    "challenge": "assert_type(await read_d(dt,d.sqlite.select(d.UserRow.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "d-query-json-specialized-operator",
+    "control": "class Wrong(d.mariadb.Model):\n    payload: d.mariadb.Col[dict[str,int]] = d.mariadb.Json()\nclass WrongRow(Wrong,d.mariadb.Row):\n    table_name = \"wrong_json\"\n",
+    "challenge": "WrongRow.payload.json_extract_int(\"$.answer\")",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 9
+  },
+  {
+    "name": "b-query-joined-model-pair",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User).join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[tuple[b.User[native.Fetched],b.Post[native.Fetched]]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-left-joined-models",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User).left_join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[tuple[b.User[native.Fetched],b.Post[native.Fetched] | None]])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-instance-not-source",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User(email=\"A\")).all()),list[b.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "situation": 10
+  },
+  {
+    "name": "b-query-read-helper",
+    "control": "async def read_b[Result](tx: b.sqlite.Transaction, query: b.sqlite.Select[Result]) -> list[Result]:\n    return await tx.fetch_all(query)",
+    "challenge": "assert_type(await read_b(bt,b.sqlite.select(b.User.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "b-query-json-specialized-operator",
+    "control": "class Wrong[State=native.Pending](b.MariaModel[State]):\n    __read_type__: ClassVar[b.ReadType[Wrong[native.Fetched]]]\n    payload: b.mariadb.Col[dict[str,int]] = b.mariadb.Json()\n",
+    "challenge": "Wrong.payload.json_extract_int(\"$.answer\")",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 9
+  },
+  {
+    "name": "dual-model-join-keeps-selected-model",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).join(d.PostRow,on=d.PostRow.author_id.references(d.UserRow.user_id)).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "dual-wrong-pair-witness",
+    "control": "pass",
+    "challenge": "class Wrong(d.sqlite.Model):\n    __row__: ClassVar[type[d.CounterRow]]\n    count: d.sqlite.Col[int] = d.sqlite.Integer()\nd.sqlite.insert(Wrong(count=1))",
+    "rejects": false,
+    "kind": "counterexample",
+    "situation": 1
+  },
+  {
+    "name": "original-instance-source",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(native.select(original.User(email=\"A\")).all()),list[original.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "situation": 10
+  },
+  {
+    "name": "body-protocol-insert-helper",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(b.insert_via_protocol(b.Counter())),b.Counter[native.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "body-protocol-rejects-complete-input",
+    "control": "pass",
+    "challenge": "b.insert_via_protocol(br)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "body-protocol-rejects-other-backend",
+    "control": "from uuid import UUID\n__import_uuid=UUID(int=7)",
+    "challenge": "b.insert_via_protocol(b.Product(price=Decimal(1),code=\"a\",token=__import_uuid,payload={},description=\"x\",image=b\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "dual-complete-row-is-insertable",
+    "control": "pass",
+    "challenge": "assert_type(await dt.execute(d.sqlite.insert(dr).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "situation": 10
+  },
+  {
+    "name": "body-complete-row-is-not-insertable",
+    "control": "pass",
+    "challenge": "b.sqlite.insert(br)",
+    "rejects": true,
+    "kind": "rejection",
+    "situation": 10
+  },
+  {
+    "name": "original-specialized-query-source",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(native.select(original.User[native.Fetched]).all()),list[original.User[native.Fetched]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "situation": 10
+  }
+]

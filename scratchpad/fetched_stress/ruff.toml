@@ -1,0 +1,16 @@
+extend = "../../pyproject.toml"
+
+[lint]
+extend-ignore = ["TRY003", "EM101"] # Match earlier research declaration guards.
+
+[lint.pyflakes]
+allowed-unused-imports = []
+
+[lint.per-file-ignores]
+"contracts.py" = ["SLF001", "C901", "PLR0912", "PLR0915", "PLC0415"] # Private metadata adapter, not production extraction.
+"sqlite.py" = ["SLF001", "N802"] # Match native Column Type names.
+"mariadb.py" = ["SLF001", "N802"] # Match native Column Type names.
+"test_*.py" = ["PLC0415", "PLR2004", "RUF029", "FBT003"]
+
+"large.py" = ["FBT003"] # Explicit input default values.
+"maria_models.py" = ["FBT003"]

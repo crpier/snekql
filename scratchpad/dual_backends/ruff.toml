@@ -1,0 +1,12 @@
+extend = "../dual_features/ruff.toml"
+[lint]
+extend-ignore = ["EM101", "EM102", "TRY003"] # Throwaway declaration diagnostics.
+[lint.per-file-ignores]
+"interface.py" = ["UP046", "PLR0913", "C901", "PLR0912", "PLR0915", "PLR2004", "SLF001"] # Bounded native-finalization adapter and invariant witnesses.
+"test_*.py" = ["PLR2004", "FBT003", "RUF029", "S101", "PLC0415", "A003"]
+"examples.py" = ["A003"]
+"current.py" = ["A003"]
+"core.py" = ["UP046", "PYI059", "SLF001", "PLR0913"] # Invariant witnesses; Generic must precede the older non-cooperative Record hook.
+"sqlite.py" = ["N802"] # Public Column Type constructor names.
+"mariadb.py" = ["N802"]
+"options.py" = ["PYI019"] # Preserve generic-self control; rewriting to Self changes the observation.

@@ -1,0 +1,55 @@
+"""Comparison-only native column names; constructors and descriptors are unchanged."""
+
+from scratchpad.fetched_stress.mariadb import (
+    OMIT,
+    Blob,
+    Boolean,
+    DateTime,
+    Decimal,
+    ForeignKey,
+    Index,
+    Integer,
+    Json,
+    LongText,
+    Omitted,
+    Pending,
+    Row,
+    Text,
+    Transaction,
+    Uuid,
+    default,
+    insert,
+    omitted,
+    scaffold,
+    select,
+)
+from scratchpad.fetched_stress.mariadb import Field as Col
+from scratchpad.fetched_stress.mariadb import ForeignField as FKCol
+from scratchpad.fetched_stress.mariadb import JsonField as JsonCol
+
+__all__ = [
+    "OMIT",
+    "Blob",
+    "Boolean",
+    "Col",
+    "DateTime",
+    "Decimal",
+    "FKCol",
+    "ForeignKey",
+    "Index",
+    "Integer",
+    "Json",
+    "JsonCol",
+    "LongText",
+    "Omitted",
+    "Pending",
+    "Row",
+    "Text",
+    "Transaction",
+    "Uuid",
+    "default",
+    "insert",
+    "omitted",
+    "scaffold",
+    "select",
+]

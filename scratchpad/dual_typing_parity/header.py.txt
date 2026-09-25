@@ -1,0 +1,26 @@
+from typing import Any, ClassVar, Literal, Protocol, Self, assert_type
+from decimal import Decimal
+from pydantic import BaseModel
+from snekql import sqlite, mariadb
+from scratchpad.dual_typing_parity import bridge, current as n, dual as d, helpers
+from scratchpad.dual_typing_parity.domain import UserId, PostId
+from scratchpad.dual_typing_parity import strict_columns as strict
+from scratchpad.dual_typing_parity import current_maria as nm
+from scratchpad.paired_situations import dual as app
+
+class Summary(BaseModel):
+    email: str
+    balance: int
+
+class Group(BaseModel):
+    balance: int
+    total: int
+
+class Walk(BaseModel):
+    depth: int
+
+class Role: pass
+class OtherRole: pass
+
+async def caller(nt: sqlite.Transaction, dt: d.sqlite.Transaction, bt: bridge.Transaction, mt: mariadb.Transaction, pending: d.User, row: d.UserRow, native_pending: n.User, native_row: n.User[sqlite.Fetched]) -> None:
+    pass

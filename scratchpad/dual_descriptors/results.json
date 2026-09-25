@@ -1,0 +1,5773 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "ty": "0.0.77",
+  "sources": {
+    "header.py.txt": "bc13afba0bd6cbd22c2779a57ad91179c032f4c03d05e4ccf0fb134f2eb1c53b",
+    "cases.json": "acf5498cf6fa65b0331ce21dae923a90ebc22ba608d4ae13ed93ead0ab5963cb",
+    "../dual_typing_parity/bridge.py": "5068fe9fd42528d431d76e85889cd3f8b9aa23acb40b99ab15d838b4674e33ab",
+    "application.py": "bad2ac72736950d43d6c5aaad898293576d5509ece2c73d862642e0bfa83c063",
+    "sqlite.py": "7a1898a0ffda1766826c1162a3625c8122fe6181c701392c0b1ccfdafbee647f",
+    "mariadb.py": "f590925268e3b4bbc91e116819b3c4be67bea0dc973f2176ffda148899ff90bf",
+    "columns.py": "b14079c51b069e14f7256491521a56b5c1c75a39b420ab9dd3c16793afde2bd8",
+    "maria_models.py": "c0c4ff9ec43c74f5e413a014d38e5f0ac27c164065dafdf6b60766f5761b9f3a",
+    "check.py": "9a94dd3da5112cf78a49178675745d1889b35fe201111bf6976f0a3d209d9e26",
+    "../paired_advanced/body.py": "b580e0e41670d639d1b5b392f416992f149df81e48308285991c5624e8e8441c",
+    "../paired_advanced/contracts.py": "eeb54382a0be497394aba66aa9311d817b7dcb0baee360469e3a3faaf74a9155",
+    "../dual_typing_parity/strict_columns.py": "35021889b87b37f41ed3545e05ad1d79c31caa30333c81600b9b27af81731a0d",
+    "../class_body_usage/sqlite.py": "c415b1bdb1648491f3440baa0eb521ef9a23759465b81d52e4b4c18f5db0c006",
+    "../state_declarations/sqlite.py": "1947fb60b28edff6a99d4b7f48a81949aa45c0a8eb0693954de49dd885ff30a4",
+    "../paired_advanced/helpers.py": "7cce56c7eb2ae3e5a84d1d8fbea55a19c59e2a74137e214aaf4356588cc64850",
+    "../paired_situations/dual_sqlite.py": "8cae3b97c5658cdae71af2257a13717b7169558ef8de3f040fdfa91a6e42610b",
+    "../paired_situations/dual.py": "845f62144797b98a895b0aeea1a6543d0d588237b0f8249376bc1249bb506512",
+    "../paired_situations/dual_gaps.py": "0e56302c045fe09c41349d9cb148855fa0f160ae55aaf3becf482d47998c38a5",
+    "../paired_situations/dual_mariadb.py": "8c66572a3d3618188d690bf82cd20b896fb36cb27885d6236bb68acbda4410c0",
+    "../dual_pairing/sqlite.py": "c0731182c8a773ac0e45a70c3edba6714c28b5fe489813dcdd94aa9804ad0c4a",
+    "../dual_basics/sqlite.py": "22081e47c048f616c8667ce0e2585c18c9e8e3624781f16eab9f5b00af1f6628",
+    "../dual_backends/core.py": "d62a2d82c48fb5b5880455a94b1caa3c8cf2adc19fa88773fb30766314e4eaa4",
+    "../dual_backends/sqlite.py": "3689652bc70f91ec484586cd3b0cacb55f0858cbe659ffd9ab37ca4f8ba824da",
+    "../dual_backends/mariadb.py": "714ef68d6b27e03aaf458bd4c026fadc48c9256c76d9e3ec94788a6b2e2abcdb",
+    "../dual_finalization/interface.py": "3bd89f12d6bb54800217ea28104376dbe11b5eabc12250b0041877d88b427fbf",
+    "../dual_storage/interface.py": "3999a185341e909e205df02de43a6ab5b4acba2f5ffb9779206e21294f258b3b",
+    "../dual_features/records.py": "071545f17fc7698811dc24a16e8d6f4a8fd09fb21c5e2c754a4c1ac1c08f8b6c",
+    "../../snekql/model.py": "cea0fef70a942596e96cb454aa58ac5195ef81a5c05eb3145f735405bf6203ad",
+    "../../snekql/query.py": "1dd9682321d983e4fd27140e813fd4050cc489a8b0eef6e0c4f702dde4de65b2",
+    "../../snekql/storage.py": "b4bd1d1852f9f4f0e08d1cc3c08b4c84ce75e617a0cd87dcea86c99a38bbfaa2",
+    "../../snekql/expressions.py": "287b33ec44ecf61565980f12d6cdaade4c729f70ce051d5246417162feb43c74",
+    "../../snekql/_aliases.py": "f07490fb4f5dfe7d877d19f185a63c44b3cdf2d199b3f039ccfa0ceef2b19d49",
+    "../../snekql/_cte.py": "ee787a682111387737a203608ccb992ff396b96f6bd017127fd97d9931454369",
+    "../../snekql/_model_materialization.py": "3d5440f2a6c712682c498aa20cdd47b547ac7cb2c2f297d4b084ea3f2296fe5c",
+    "../../snekql/sqlite/model.py": "c8619f8911eafea8061a786c5e7e1fbccf838fd3e3a40e774ca936d280c97b1c",
+    "../../snekql/sqlite/verbs.py": "57d66f9fa0e496917022bd0574e8ab4dc15f4b0fa344b509cf9dd823e95ef83b",
+    "../../snekql/mariadb/model.py": "c558414935fb77b45faf4ddbbc2b5de7de5aa69f9455b4060b90a4b68467721d",
+    "../../snekql/mariadb/storage.py": "f242fa04cfa3abc352bd705b9a5f94c7bc437f3d870c42f78cc04f5afefa2641",
+    "../../snekql/_declaration_binding.py": "ee593fb1f728389a585bb9b6664fe235e0c981c24ccd3f8451ce10ab0b56be42",
+    "../../snekql/mariadb/verbs.py": "5a626f9be374df81b02d62f150a97264fa9774c0b178f82cb3cdf7af14a870c1",
+    "../../snekql/runtime.py": "867dd2a16de3367156f24b0d09dd3f40267f4165e74904a9cd82780ed990e772"
+  },
+  "observations": [
+    {
+      "name": "direct-model-result",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-tuple-result",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-unjoined-projection",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_all` is incorrect: Expected `_ExecutableSelect[Literal[\"sqlite\"], Owner[UserRow] | Owner[PostRow], Owner[UserRow] | Owner[PostRow], tuple[str, str]]`, found `SelectTupleQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow] | Owner[PostRow], _ExecutableQuery, str, str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 77
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-model-join",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-model-left-join",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-scalar-join",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-scope",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectModelQuery.where` is incorrect: Expected `Predicate[Owner[UserRow]]`, found `Predicate[Owner[PostRow]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 50
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 73
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-nominal-key",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `UserId`, found `PostId`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 26
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 35
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-fk-target",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `FKAttr.references` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 52
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-unscoped",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_all` is incorrect: Expected `_ExecutableSelect[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], UserRow]`, found `SelectModelQuery[Literal[\"sqlite\"], Owner[UserRow], UserRow, _IncompleteQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 62
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-ordering-pagination",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-aggregate-count",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-aggregate-sum",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-arithmetic",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-arithmetic-bad-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ExpressionMethods.add` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 27
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-nullable-coalesce",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-text-functions",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-case-expression",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-named-output",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-named-wrong-domain",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "Named keyword bindings have runtime validation, not field-by-field static checking.",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-named-wrong-label",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-named-unscoped",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_all` is incorrect: Expected `_ExecutableSelect[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], AccountSummary]`, found `NamedSelectQuery[Literal[\"sqlite\"], Owner[UserRow], AccountSummary, _IncompleteQuery, Owner[UserRow]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 136
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-group-having",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-count",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-row",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-scalar",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-named",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-no-scope",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.execute` is incorrect: Expected `Write[int]`, found `_UpdateQuery[Literal[\"sqlite\"], Owner[UserRow], UserRow, int, _AssignedUpdate]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 90
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-update-no-assignment",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.execute` is incorrect: Expected `Write[int]`, found `_UpdateQuery[Literal[\"sqlite\"], Owner[UserRow], UserRow, int, _ScopedUpdate]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 66
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-update-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `_UpdateQuery.set` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 74
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-update-wrong-value",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Attr.to` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 48
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 75
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-update-generated-id",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-update-expression",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-delete-count",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-delete-row",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-delete-unscoped",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.execute` is incorrect: Expected `Write[int]`, found `DeleteQuery[Literal[\"sqlite\"], Owner[UserRow], UserRow, _IncompleteQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 60
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-insert-row",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-insert-scalar",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-insert-named",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-conflict-update",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-conflict-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `_BaseInsertQuery.on_conflict` is incorrect: Expected `Attr[Any, Any, Owner[UserRow], Any, Any, Any, Any]`, found `Attr[Table[Pending], Table[Fetched], Owner[PostRow], str, str, str, str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 40
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 55
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-conflict-ignore",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-correlated-exists",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-subquery-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.in_subquery` is incorrect: Expected `_ColumnSubquery[UserId, _ExecutableQuery]`, found `SelectValueQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], str, str, _ExecutableQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 71
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-subquery-unscoped",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.in_subquery` is incorrect: Expected `_ColumnSubquery[UserId, _ExecutableQuery]`, found `SelectValueQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], UserId, UserId, _IncompleteQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 67
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-subquery-in",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-self-join-alias",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-alias-wrong-role",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectModelQuery.where` is incorrect: Expected `Predicate[_AliasOwner[Literal[\"sqlite\"], Owner[UserRow], FirstRole]]`, found `Predicate[_AliasOwner[Literal[\"sqlite\"], Owner[UserRow], SecondRole]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 22,
+                    "column": 32
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 70
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-alias-wrong-model-column",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `TableAlias.column` is incorrect: Expected `Attr[Any, Any, Owner[UserRow], Any, str, Any, str]`, found `Attr[Table[Pending], Table[Fetched], Owner[PostRow], str, str, str, str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 22,
+                    "column": 18
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 33
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-alias-mutation-target",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `update` is incorrect: Argument type `_AliasOwner[Literal[\"sqlite\"], Owner[UserRow], FirstRole]` does not satisfy upper bound `Model[Any, Any]` of type variable `ModelT`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 22,
+                    "column": 19
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 24
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-cte-model",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-cte-column",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-cte-wrong-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 23,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 23,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `str`, found `Literal[1]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 23,
+                    "column": 32
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 33
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-cte-mutation-target",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 23,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 23,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `delete` is incorrect: Argument type `_CteOwner[Literal[\"sqlite\"], Owner[UserRow], FirstRole]` does not satisfy upper bound `Model[Any, Any]` of type variable `ModelT`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 23,
+                    "column": 19
+                  },
+                  "end": {
+                    "line": 23,
+                    "column": 22
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-union",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-union-all",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-recursive-cte",
+      "rejects": false,
+      "kind": "capability",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-recursive-bad-depth",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "query-parity",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.lt` is incorrect: Expected `int`, found `Literal[\"bad\"]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 201
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 206
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-column-comparison-omits-right-owner",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "scope",
+      "subject": "direct",
+      "note": "Native eq_col tracks the left owner only; compilation checks the other source.",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-exact-one",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-optional-one",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-optional-scalar",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_one_or_none` is incorrect: Expected `_ExecutableOptionalSelect[Literal[\"sqlite\"], Unknown, Unknown, Unknown]`, found `SelectValueQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], str, str, _ExecutableQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 32
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 68
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-stream-batches",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-unchecked-read",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-unchecked-write",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-bulk-model",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-bulk-named",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-backend-query",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 44
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-backend-execution",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Transaction.fetch_all` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 69
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-backend-column",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 36
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-projection-left-join",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit.",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type",
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectValueQuery.left_join` is incorrect: Expected `Never`, found `type[Owner[UserRow]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 69
+                  }
+                }
+              }
+            },
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectValueQuery.left_join` is incorrect: Expected `Never`, found `Predicate[Owner[UserRow]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 71
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 97
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-positional-nine-slots",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 171
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wide-named",
+      "rejects": false,
+      "kind": "capability",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-scalar-readonly-contract",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "consumption",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `ColumnRef[Owner[UserRow], str]` has no attribute `to`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 9
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 18
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-scalar-subquery",
+      "rejects": false,
+      "kind": "capability",
+      "category": "subqueries",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-scalar-subquery-unscoped",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "subqueries",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `scalar` is incorrect: Expected `SelectValueQuery[Any, Any, Any, int, int, _ExecutableQuery]`, found `SelectValueQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], int, int, _IncompleteQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 19
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 51
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-owner-does-not-widen",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "scope",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `type[Owner[UserRow]]` is not assignable to `type[Owner[Row]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 45
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 68
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-shared-method",
+      "rejects": false,
+      "kind": "capability",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-row-insertion",
+      "rejects": false,
+      "kind": "capability",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-bare-parameter",
+      "rejects": false,
+      "kind": "capability",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 22,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-mutation",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Property `email` defined in `UserRow` is read-only",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 14
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-complete-missing-id",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `user_id`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 36
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-complete-none-id",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `UserId`, found `None`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 27
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-id",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `UserId`, found `PostId`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 15
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 32
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-plain-generic-getter",
+      "rejects": false,
+      "kind": "capability",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-class-discrimination",
+      "rejects": false,
+      "kind": "capability",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-wrong-witness",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-source-input",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `table` is incorrect: Expected `type[Table[Literal[\"sqlite\"], Unknown]]`, found `<class 'User'>`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 18
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 24
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-source-instance",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `table` is incorrect: Expected `type[Table[Literal[\"sqlite\"], Unknown]]`, found `UserRow`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 18
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 21
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "direct-native-consumer-bypass",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-inherited-constructor-factory",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "constructors",
+      "subject": "direct",
+      "note": "Input subclass constructors may need extra generated arguments; runtime rejects.",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "direct-stale-default",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "comparison",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "inline-scalar-precise",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "inline-subquery-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.in_subquery` is incorrect: Expected `_ColumnSubquery[UserId, _ExecutableQuery]`, found `SelectValueQuery[Literal[\"sqlite\"], Owner[UserRow], Owner[UserRow], str, str, _ExecutableQuery]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 35
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 71
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "input-column-access",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 34
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "input-fk-access",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 36
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "literal-none-comparison",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `str`, found `None`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 27
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 31
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nullable-coalesce-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ExpressionMethods.coalesce` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 36
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "fk-not-plain-column",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Attr[Table[Pending], Table[Fetched], Owner[UserRow], UserId, UserId, UserId, UserId]` has no attribute `references`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 33
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "wrong-fk-annotation",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "ty accepts the required field declaration despite the wrong target; native graph binding rejects it. Explicit-default declarations and ordinary assignments have separate rejection controls.",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "wrong-deferred-fk-annotation",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `dataclasses.Field[FKCol[UserRow, UserId | None]]` is not assignable to `FKCol[PostRow, UserId | None]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 22,
+                    "column": 53
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 110
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "fk-instance-value",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "nullable-scalar-inline",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "fk-scalar-inline",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "insert-generated-inline",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "arithmetic-scalar-inline",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "nullable-fk-comparison-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `UserId`, found `PostId`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 29
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 38
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "instance-query-source",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 31
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "application-author_posts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-optional_posts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-referrers",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-balance_groups",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-account_page",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-active_authors",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-balance_reference",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-named_accounts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-account_union",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-referral_chain",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-import_accounts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-award_bonus",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-remove_new_accounts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-refresh_nickname",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-lookup_account",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "application-stream_accounts",
+      "rejects": false,
+      "kind": "capability",
+      "category": "application",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 7,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "input-class-field-is-opaque",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-inline-json",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-inline-json-document",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-inline-decimal",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-inline-tuple",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-input-value",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-bad-json-domain",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.gt` is incorrect: Expected `int`, found `Literal[\"42\"]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 53
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 57
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-non-json-method",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Attr[Table[Pending], Table[Fetched], Owner[ProductRow], Decimal, Decimal, Decimal, Decimal]` has no attribute `json_extract_int`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 38
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-cross-sqlite-projection",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 39
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-cross-sqlite-consumer",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Transaction.fetch_all` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 11
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 66
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-wrong-fk-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-type-arguments",
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-type-arguments",
+              "message": "invalid-type-arguments: Type `ProductRow` is not assignable to upper bound `Row` of type variable `Target@FKCol`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 32
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 42
+                  }
+                }
+              }
+            },
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `ForeignKey` is incorrect: Expected `Column[Unknown, int, Any]`, found `Attr[Table[Pending], Table[Fetched], Owner[ProductRow], int, int, int, int]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 67
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 86
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-cross-source",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 44
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-owner-does-not-widen",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `type[Owner[ProductRow]]` is not assignable to `type[Owner[Row]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 40
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 63
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-locking",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-aliased-json-value",
+      "rejects": false,
+      "kind": "capability",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-alias-loses-json-operator",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Attr[Never, Never, _AliasOwner[Literal[\"mariadb\"], Owner[ProductRow], FirstRole], Never, dict[str, int], Never, dict[str, int]]` has no attribute `json_extract_int`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 52
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "native-alias-loses-json-operator",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Attr[Never, Never, _AliasOwner[Literal[\"mariadb\"], Product[Pending], FirstRole], Never, dict[str, int], Never, dict[str, int]]` has no attribute `json_extract_int`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 58
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-decimal-arithmetic-unsupported",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ExpressionMethods.add` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 39
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "native-decimal-arithmetic-unsupported",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ExpressionMethods.add` matches arguments",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 5
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 42
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-model-materialization-gap",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "maria-json-field-family",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `JsonCol[Any]` is not assignable to `Col[dict[str, int]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 41
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 53
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-sqlite-field-family",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `scratchpad.dual_descriptors.sqlite.Col[Any]` is not assignable to `scratchpad.dual_descriptors.mariadb.Col[str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 29
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 43
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sibling-owner-is-not-interchangeable",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 26,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 26,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectModelQuery.where` is incorrect: Expected `Predicate[Owner[First]]`, found `Predicate[Owner[Second]]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 26,
+                    "column": 46
+                  },
+                  "end": {
+                    "line": 26,
+                    "column": 66
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "missing-row-refinement-not-static",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "column-owner-does-not-widen",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `Attr[Table[Pending], Table[Fetched], Owner[UserRow], str, str, str, str]` is not assignable to `ColumnRef[Owner[Row], str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 58
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 73
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "column-cannot-change-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `Attr[Table[Pending], Table[Fetched], Owner[UserRow], str, str, str, str]` is not assignable to `ColumnRef[Owner[PostRow], str]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 57
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 72
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "callback-without-default-unsupported",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `ForeignKey` is incorrect: Expected `Column[Unknown, Unknown, Any]`, found `() -> Attr[Table[Pending], Table[Fetched], Owner[UserRow], UserId, UserId, UserId, UserId]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 24
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 48
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "callback-required-wrong-target-unsupported",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `ForeignKey` is incorrect: Expected `Column[PostRow, UserId, Any]`, found `() -> Attr[Table[Pending], Table[Fetched], Owner[UserRow], UserId, UserId, UserId, UserId]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 21,
+                    "column": 67
+                  },
+                  "end": {
+                    "line": 21,
+                    "column": 91
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "callback-explicit-default-wrong-target",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 21,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `dataclasses.Field[FKCol[UserRow, UserId]]` is not assignable to `FKCol[PostRow, UserId]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 22,
+                    "column": 48
+                  },
+                  "end": {
+                    "line": 22,
+                    "column": 110
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "maria-callback-without-default-unsupported",
+      "rejects": true,
+      "kind": "unsupported",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `ForeignKey` is incorrect: Expected `Column[Unknown, Unknown, Any]`, found `() -> Attr[Table[Pending], Table[Fetched], Owner[ProductRow], int, int, int, int]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 22
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 48
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "required-fk-result-cannot-change-target",
+      "rejects": true,
+      "kind": "rejection",
+      "category": "descriptor",
+      "subject": "direct",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 1,
+          "stderr": "",
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Object of type `FKCol[UserRow, UserId]` is not assignable to `FKCol[PostRow, UserId]`",
+              "location": {
+                "path": ".git/dual-descriptors/tmpicf028ku/caller.py",
+                "positions": {
+                  "begin": {
+                    "line": 20,
+                    "column": 43
+                  },
+                  "end": {
+                    "line": 20,
+                    "column": 48
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "body-required-fk-target-not-statically-checked",
+      "rejects": false,
+      "kind": "counterexample",
+      "category": "descriptor",
+      "subject": "class-body",
+      "note": "",
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "challenge_start": 20,
+          "exit_code": 0,
+          "stderr": "",
+          "diagnostics": []
+        }
+      ]
+    }
+  ]
+}

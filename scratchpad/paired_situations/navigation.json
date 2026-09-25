@@ -1,0 +1,182 @@
+{
+  "ty": "0.0.77",
+  "capability": true,
+  "results": {
+    "row_class": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 11,
+              "line": 300
+            },
+            "start": {
+              "character": 6,
+              "line": 300
+            }
+          },
+          "path": "scratchpad/paired_situations/nested.py",
+          "source": "class Order(sqlite.Row):",
+          "sha256": "7674b8fbfb9f764f00b662eb9366e17432343ec3e5aaca3c7d0ae4519159b8db",
+          "declared_value_fields": [
+            "order_id",
+            "tenant_id",
+            "customer_email",
+            "status",
+            "currency",
+            "subtotal",
+            "tax",
+            "discount",
+            "external_id",
+            "receipt",
+            "metadata",
+            "note",
+            "region",
+            "active",
+            "retry_count",
+            "item_count",
+            "shipping_days",
+            "paid_at",
+            "created_at",
+            "revision"
+          ]
+        }
+      ]
+    },
+    "body_class": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 11,
+              "line": 256
+            },
+            "start": {
+              "character": 6,
+              "line": 256
+            }
+          },
+          "path": "scratchpad/paired_situations/body.py",
+          "source": "class Order[State = Pending](Model[State]):",
+          "sha256": "bfa134f012120a386e07d6702821c2ff8331830af0b3f1aad28bcbc09252fc6b",
+          "declared_value_fields": [
+            "__read_type__",
+            "order_id",
+            "tenant_id",
+            "customer_email",
+            "status",
+            "currency",
+            "subtotal",
+            "tax",
+            "discount",
+            "external_id",
+            "receipt",
+            "metadata",
+            "note",
+            "region",
+            "active",
+            "retry_count",
+            "item_count",
+            "shipping_days",
+            "paid_at",
+            "created_at",
+            "revision"
+          ]
+        }
+      ]
+    },
+    "row_attribute": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 18,
+              "line": 306
+            },
+            "start": {
+              "character": 4,
+              "line": 306
+            }
+          },
+          "path": "scratchpad/paired_situations/nested.py",
+          "source": "    customer_email: sqlite.Col[str] = sqlite.Text()",
+          "sha256": "7674b8fbfb9f764f00b662eb9366e17432343ec3e5aaca3c7d0ae4519159b8db"
+        }
+      ]
+    },
+    "body_attribute": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 18,
+              "line": 263
+            },
+            "start": {
+              "character": 4,
+              "line": 263
+            }
+          },
+          "path": "scratchpad/paired_situations/body.py",
+          "source": "    customer_email: sqlite.Col[str] = sqlite.Text()",
+          "sha256": "bfa134f012120a386e07d6702821c2ff8331830af0b3f1aad28bcbc09252fc6b"
+        }
+      ]
+    },
+    "dual_class": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 14,
+              "line": 329
+            },
+            "start": {
+              "character": 6,
+              "line": 329
+            }
+          },
+          "path": "scratchpad/paired_situations/dual.py",
+          "source": "class OrderRow(Order, sqlite.Row):",
+          "sha256": "845f62144797b98a895b0aeea1a6543d0d588237b0f8249376bc1249bb506512",
+          "declared_value_fields": [
+            "order_id",
+            "created_at",
+            "revision"
+          ]
+        }
+      ]
+    },
+    "dual_attribute": {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "result": [
+        {
+          "range": {
+            "end": {
+              "character": 18,
+              "line": 299
+            },
+            "start": {
+              "character": 4,
+              "line": 299
+            }
+          },
+          "path": "scratchpad/paired_situations/dual.py",
+          "source": "    customer_email: sqlite.Col[str] = sqlite.Text()",
+          "sha256": "845f62144797b98a895b0aeea1a6543d0d588237b0f8249376bc1249bb506512"
+        }
+      ]
+    }
+  }
+}

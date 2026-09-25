@@ -1,3 +1,7 @@
+> **Historical research archive:** this branch preserves the dual-class experiments.
+> The maintainer selected class-body declarations. Start with
+> [the archive guide](DUAL_CLASS_RESEARCH.md); this branch is not intended for merging or release.
+
 # snekql
 
 snekql is a Python async-first query builder and query runtime for SQL.

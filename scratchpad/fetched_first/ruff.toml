@@ -1,0 +1,14 @@
+extend = "../../pyproject.toml"
+
+[lint]
+extend-ignore = ["TRY003", "EM101"] # Match the existing research exception style.
+
+[lint.pyflakes]
+allowed-unused-imports = []
+
+[lint.per-file-ignores]
+"sqlite.py" = ["SLF001", "N805", "C901", "PLR0912"] # Native/research metadata bridge, metaclass hooks.
+"bound.py" = ["SLF001", "N805"] # Same bridge, class descriptor hook.
+"test_*.py" = ["PLC0415", "PLR2004", "RUF029", "FBT003"]
+
+"navigation.py" = ["C901", "PLR0915"] # Bounded LSP evidence collector reused from row-first research.

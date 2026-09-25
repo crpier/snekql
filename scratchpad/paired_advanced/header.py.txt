@@ -1,0 +1,12 @@
+from typing import Any, ClassVar, Literal, Protocol, assert_type
+from snekql import sqlite, mariadb
+from pydantic import BaseModel
+from snekql.sqlite import Pending, Fetched
+from scratchpad.class_body_usage.sqlite import Model, ReadType
+from scratchpad.paired_advanced import body as b, dual as d, helpers
+from scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId
+from scratchpad.dual_typing_parity import bridge
+from scratchpad.dual_typing_parity import strict_columns as strict
+class Walk(BaseModel):
+    depth:int
+async def caller(nt: sqlite.Transaction, bt: bridge.Transaction, mt:mariadb.Transaction, pending: d.User, row: d.UserRow, native_pending: b.User, native_row: b.User[Fetched]) -> None:

@@ -1,0 +1,1306 @@
+[
+  {
+    "name": "n-basic-results",
+    "situation": 1,
+    "challenge": "assert_type(await n.create_user(nt,\"A\"),n.User)\nassert_type(await n.fetch_user(nt,n.UserId(1)),n.User | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-counter",
+    "situation": 2,
+    "challenge": "assert_type(n.complete_counter(42,3).counter_id,int)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-pending-counter",
+    "situation": 2,
+    "challenge": "assert_type(n.pending_counter().count,int | n.sqlite.Omitted)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-pending-not-complete",
+    "situation": 2,
+    "challenge": "n.public_user(n.User.Pending(email=\"A\"))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-constructor-count=3",
+    "situation": 2,
+    "challenge": "n.Counter(count=3)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-constructor-counter_id=42",
+    "situation": 2,
+    "challenge": "n.Counter(counter_id=42)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-constructor-counter_id=n.OMITTED,count=3",
+    "situation": 2,
+    "challenge": "n.Counter(counter_id=n.OMITTED,count=3)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,nickname=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-timezone-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,nickname=None,timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-timezone-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,nickname=None,timezone=\"Europe/Paris\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,nickname=None,timezone=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-nickname-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-nickname-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=\"Ada\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-enabled-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-enabled-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,enabled=False)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,enabled=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-note-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-note-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-note-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,note=\"hello\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,note=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-digest_hour-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-digest_hour-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=18)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=n.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-locale-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-locale-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,locale=\"en\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,locale=n.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-created_at-none",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-created_at-value",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "n.Settings.Pending(user_id=1,timezone=\"UTC\",nickname=None,created_at=n.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-foreign-id",
+    "situation": 4,
+    "challenge": "n.Post.Pending(author_id=n.PostId(1),title=\"wrong\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-foreign-join",
+    "situation": 4,
+    "challenge": "assert_type(await n.author_emails(nt),list[str])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-self-reference",
+    "situation": 5,
+    "challenge": "assert_type(await n.create_comment(nt,1,None,\"root\"),n.Comment)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-mutual-signature",
+    "situation": 6,
+    "challenge": "assert_type(await n.mutual_foreign_keys(),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-large-input",
+    "situation": 7,
+    "challenge": "assert_type(n.sample_order(),n.Order.Pending)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-large-result",
+    "situation": 7,
+    "challenge": "assert_type(await n.create_order(nt),n.Order)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-shared-methods",
+    "situation": 8,
+    "challenge": "assert_type(n.sample_order().total(),Decimal)\nassert_type(n.sample_order().is_paid(),bool)\nassert_type(no.receipt_key(),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-pending-receipt",
+    "situation": 8,
+    "challenge": "n.sample_order().receipt_key()",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-maria-result",
+    "situation": 9,
+    "challenge": "assert_type(await n.create_product(nm),n.Product)\nassert_type(await n.product_answers(nm),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await n.execute_write(nt,n.insert_generic(n.pending_counter())),n.Counter)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-query-helper",
+    "situation": 10,
+    "challenge": "assert_type(await n.execute_write(nt,n.sqlite.insert(n.pending_counter()).returning()),n.Counter)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-ready-helper",
+    "situation": 10,
+    "challenge": "assert_type(await nt.fetch_all(n.users_query()),list[n.User])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-patch-result",
+    "situation": 11,
+    "challenge": "assert_type(await n.patch_user(nt,n.UserId(1),{\"display_name\":None}),n.User | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-patch-wrong-field",
+    "situation": 11,
+    "challenge": "await n.patch_user(nt,n.UserId(1),{\"email\":\"other\"})",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-settings-upsert",
+    "situation": 11,
+    "challenge": "assert_type(await n.save_settings(nt,1,\"UTC\"),n.Settings)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-navigation-caller",
+    "situation": 12,
+    "challenge": "assert_type(n.receipt_destination(no),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-basic-results",
+    "situation": 1,
+    "challenge": "assert_type(await b.create_user(bt,\"A\"),b.User[native.Fetched])\nassert_type(await b.fetch_user(bt,b.UserId(1)),b.User[native.Fetched] | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-counter",
+    "situation": 2,
+    "challenge": "assert_type(b.complete_counter(42,3).counter_id,int)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-counter",
+    "situation": 2,
+    "challenge": "assert_type(b.pending_counter().count,int | native.PendingGeneration)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-not-complete",
+    "situation": 2,
+    "challenge": "b.public_user(b.User(email=\"A\"))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-count=3",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](count=3)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-counter_id=42",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](counter_id=42)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-constructor-counter_id=b.OMITTED,count=3",
+    "situation": 2,
+    "challenge": "b.Counter[native.Fetched](counter_id=b.OMITTED,count=3)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-unchecked-constructor",
+    "situation": 2,
+    "challenge": "assert_type(b.Counter[native.Fetched].construct(count=3).counter_id,int)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=\"Europe/Paris\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,nickname=None,timezone=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=False)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,enabled=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=\"hello\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,note=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=18)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,digest_hour=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=\"en\")",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,locale=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-none",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-value",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "b.Settings(user_id=1,timezone=\"UTC\",nickname=None,created_at=b.OMITTED)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-foreign-id",
+    "situation": 4,
+    "challenge": "b.Post(author_id=b.PostId(1),title=\"wrong\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-foreign-join",
+    "situation": 4,
+    "challenge": "assert_type(await b.author_emails(bt),list[str])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-self-reference",
+    "situation": 5,
+    "challenge": "assert_type(await b.create_comment(bt,1,None,\"root\"),b.Comment[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-mutual-signature",
+    "situation": 6,
+    "challenge": "assert_type(await b.mutual_foreign_keys(),list[int | None])",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-large-input",
+    "situation": 7,
+    "challenge": "assert_type(b.sample_order(),b.Order[native.Pending])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-large-result",
+    "situation": 7,
+    "challenge": "assert_type(await b.create_order(bt),b.Order[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-shared-methods",
+    "situation": 8,
+    "challenge": "assert_type(b.sample_order().total(),Decimal)\nassert_type(b.sample_order().is_paid(),bool)\nassert_type(bo.receipt_key(),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-pending-receipt",
+    "situation": 8,
+    "challenge": "b.sample_order().receipt_key()",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-maria-result",
+    "situation": 9,
+    "challenge": "assert_type(await b.create_product(bm),b.Product[native.Fetched])\nassert_type(await b.product_answers(bm),list[int | None])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.insert_generic(b.pending_counter())),Any)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-query-helper",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.sqlite.insert(b.pending_counter()).returning()),b.Counter[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-ready-helper",
+    "situation": 10,
+    "challenge": "assert_type(await bt.fetch_all(b.users_query()),list[b.User[native.Fetched]])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-patch-result",
+    "situation": 11,
+    "challenge": "assert_type(await b.patch_user(bt,b.UserId(1),{\"display_name\":None}),b.User[native.Fetched] | None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-patch-wrong-field",
+    "situation": 11,
+    "challenge": "await b.patch_user(bt,b.UserId(1),{\"email\":\"other\"})",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-settings-upsert",
+    "situation": 11,
+    "challenge": "assert_type(await b.save_settings(bt,1,\"UTC\"),b.Settings[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-navigation-caller",
+    "situation": 12,
+    "challenge": "assert_type(b.receipt_destination(bo),str)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "original-base-generic-helper",
+    "situation": 10,
+    "challenge": "assert_type(await bt.execute(original_insert(original.User(email=\"A\"))),original.User[native.Fetched])",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-base-helper-not-exact",
+    "situation": 10,
+    "challenge": "assert_type(await b.execute_write(bt,b.insert_generic(b.pending_counter())),b.Counter[native.Fetched])",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "nested-not-native-model",
+    "situation": 10,
+    "challenge": "original_insert(n.User.Pending(email=\"A\"))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "nested-no-typed-update",
+    "situation": 11,
+    "challenge": "n.sqlite.update(n.User)",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "body-specialized-source",
+    "situation": 12,
+    "challenge": "assert_type(await bt.fetch_all(b.sqlite.select(b.User[native.Fetched]).all()),list[b.User[native.Fetched]])",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "nested-wrong-witness",
+    "situation": 1,
+    "challenge": "class Wrong(n.sqlite.Row):\n    count: n.sqlite.Col[int] = n.sqlite.Integer()\n    class Pending(n.sqlite.Pending):\n        __row__: ClassVar[type[n.Counter]]\n        count: n.sqlite.Col[int]",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-wrong-witness",
+    "situation": 1,
+    "challenge": "class Wrong[State=native.Pending](b.Model[State]):\n    __read_type__: ClassVar[b.ReadType[b.Counter[native.Fetched]]]\n    count: native.Col[int] = native.Integer()",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-timezone-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-nickname-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-enabled-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-note-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-note-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-digest_hour-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-locale-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-created_at-null",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-complete-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "n.Settings(user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=n.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-timezone-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),timezone=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-nickname-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),nickname=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-enabled-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",note=\"hello\",digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),enabled=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-note-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,digest_hour=18,locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),note=b.OMITTED)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-digest_hour-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",locale=\"en\",created_at=datetime(2026,1,1,tzinfo=UTC),digest_hour=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC))",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=None)",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-locale-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,created_at=datetime(2026,1,1,tzinfo=UTC),locale=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-missing",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\")",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-null",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-complete-defaults-created_at-omitted",
+    "situation": 3,
+    "challenge": "b.Settings[native.Fetched](user_id=1,timezone=\"UTC\",nickname=\"Ada\",enabled=False,note=\"hello\",digest_hour=18,locale=\"en\",created_at=b.OMITTED)",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "nested-foreign-owner-disagreement",
+    "situation": 4,
+    "challenge": "class Wrong(n.sqlite.Row):\n    parent: n.sqlite.FKCol[n.User,n.UserId] = n.sqlite.ForeignKey(n.User.user_id)\n    class Pending(n.sqlite.Pending):\n        __row__: ClassVar[type[Wrong]]\n        parent: n.sqlite.FKCol[n.Post,n.UserId]",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "nested-foreign-domain-disagreement",
+    "situation": 4,
+    "challenge": "class Wrong(n.sqlite.Row):\n    parent: n.sqlite.FKCol[n.User,str] = n.sqlite.ForeignKey(n.User.user_id)\n    class Pending(n.sqlite.Pending):\n        __row__: ClassVar[type[Wrong]]\n        parent: n.sqlite.FKCol[n.User,str]",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "nested-json-kind-drift",
+    "situation": 9,
+    "challenge": "class Wrong(n.mariadb.Row):\n    payload: n.mariadb.JsonCol[dict[str,int]] = n.mariadb.Json()\n    class Pending(n.mariadb.Pending):\n        __row__: ClassVar[type[Wrong]]\n        payload: n.mariadb.Col[dict[str,int]]",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "body-plain-self-method",
+    "situation": 8,
+    "challenge": "class Plain[State=native.Pending](b.Model[State]):\n    __read_type__: ClassVar[b.ReadType[Plain[native.Fetched]]]\n    email: native.Col[str] = native.Text()\n    def label(self)->str:\n        return self.email",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-constructor-unknown-keyword",
+    "situation": 1,
+    "challenge": "n.User.Pending(email=\"A\",emali=\"B\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-frozen-value",
+    "situation": 7,
+    "challenge": "no.customer_email=\"B\"",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "n-json-wrong-input",
+    "situation": 9,
+    "challenge": "n.Product.Pending(price=Decimal(1),code=\"a\",token=__import_uuid,payload={\"answer\":\"wrong\"},description=\"x\",image=b\"\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "from uuid import UUID\n__import_uuid = UUID(int=1)"
+  },
+  {
+    "name": "b-constructor-unknown-keyword",
+    "situation": 1,
+    "challenge": "b.User(email=\"A\",emali=\"B\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "pass"
+  },
+  {
+    "name": "b-frozen-assignment-statically-accepted",
+    "situation": 7,
+    "challenge": "bo.customer_email=\"B\"",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass"
+  },
+  {
+    "name": "b-json-wrong-input",
+    "situation": 9,
+    "challenge": "b.Product(price=Decimal(1),code=\"a\",token=__import_uuid,payload={\"answer\":\"wrong\"},description=\"x\",image=b\"\")",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "from uuid import UUID\n__import_uuid = UUID(int=1)"
+  },
+  {
+    "name": "original-frozen-assignment-statically-accepted",
+    "situation": 7,
+    "control": "pass",
+    "challenge": "original_row = original.User[native.Fetched](user_id=1,email=\"A\")\noriginal_row.email=\"B\"",
+    "rejects": false,
+    "kind": "counterexample"
+  }
+]

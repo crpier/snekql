@@ -1,0 +1,14 @@
+extend = "../../pyproject.toml"
+
+[lint]
+extend-ignore = ["TRY003", "EM101"] # Match the research declaration guard style.
+
+[lint.pyflakes]
+allowed-unused-imports = []
+
+[lint.per-file-ignores]
+"test_*.py" = ["PLC0415", "PLR2004", "FBT003"]
+
+"body.py" = ["FBT003"] # A literal Boolean is normal query syntax.
+"current.py" = ["FBT003"]
+"compare.py" = ["C901", "PLR0912", "PLR0915"] # Bounded AST/SQL evidence collector.

@@ -1,0 +1,8 @@
+extend = "../../pyproject.toml"
+[lint]
+extend-ignore = ["TRY003", "EM101"]
+[lint.per-file-ignores]
+"sqlite.py" = ["N802"] # Native Column Type spelling.
+"mariadb.py" = ["N802"]
+"columns.py" = ["SLF001"] # Explicit canonical descriptor assembly.
+"test_*.py" = ["PLR2004", "PLC0415"]

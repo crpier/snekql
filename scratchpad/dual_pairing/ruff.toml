@@ -1,0 +1,7 @@
+extend = "../dual_basics/ruff.toml"
+[lint.per-file-ignores]
+"sqlite.py" = ["SLF001", "B010"] # Install a descriptor behind the declared class attribute.
+"generic.py" = ["UP046", "B010"] # Invariant parameter and descriptor installation.
+"controls.py" = ["SLF001", "B010"] # Runtime discovery uses the same private preparation adapter.
+"test_*.py" = ["PLR2004", "FBT003", "RUF029", "S101", "PLC0415", "A003", "S106"]
+"tour.py" = ["S106"]

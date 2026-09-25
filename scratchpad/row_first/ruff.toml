@@ -1,0 +1,9 @@
+extend = "../dual_pairing/ruff.toml"
+[lint.per-file-ignores]
+"sqlite.py" = ["UP046", "SLF001", "N802", "B010", "PLR0913", "C901", "PLR0912", "PYI059"] # Bounded metadata bridge and invariant result witness.
+"test_*.py" = ["PLR2004", "FBT003", "RUF029", "S101", "PLC0415", "A003", "S106"]
+
+"generate.py" = ["C901"] # Bounded AST validation, not a general model generator.
+
+"navigation.py" = ["C901", "PLR0915"] # Small standalone LSP evidence collector.
+"tour.py" = ["S106"] # Opaque storage fixtures, not password hashing.

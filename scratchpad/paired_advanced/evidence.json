@@ -1,0 +1,179 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "ty": "0.0.77",
+  "ruff": "0.16.5",
+  "sources": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "body.py": "b580e0e41670d639d1b5b392f416992f149df81e48308285991c5624e8e8441c",
+    "check.py": "879afe398677012cb8fd55588f44e9c6a285a7eb735175510e15e3a3e178ce3e",
+    "contracts.py": "eeb54382a0be497394aba66aa9311d817b7dcb0baee360469e3a3faaf74a9155",
+    "dual.py": "4f850165a571b81542f16afba37bcea6c06d50b9519bbf410bfbbd3a7ba7919f",
+    "evidence.py": "207048a6a2c8a401a0e9f982d19273b735c1d18a3d3b2022739329ce61e12865",
+    "fixtures.py": "f40972cfdc1d1c3405bd9259f7f64f0cf28ffcbe85959c5de38be05ef984f859",
+    "helpers.py": "7cce56c7eb2ae3e5a84d1d8fbea55a19c59e2a74137e214aaf4356588cc64850",
+    "test_application.py": "6adcb8bff4f58d6dd024699cb4cad584e9c54d023df7ee69f42e33be79e07784",
+    "test_limits.py": "d1b17cb5d8243e6e3699ebc1833128254f6a0933c5e2461db582e6423621c283",
+    "tour.py": "efe93a42bb481845b516e9d58b5e690c17f888964dc1fdfb7b4cc0f3d3dff2d7"
+  },
+  "matching_algorithms": [
+    "author_posts",
+    "optional_posts",
+    "referrers",
+    "balance_groups",
+    "account_page",
+    "active_authors",
+    "balance_reference",
+    "named_accounts",
+    "account_union",
+    "referral_chain",
+    "import_accounts",
+    "award_bonus",
+    "remove_new_accounts",
+    "refresh_nickname",
+    "lookup_account",
+    "stream_accounts"
+  ],
+  "scaffold": "CREATE TABLE \"users\" (\"user_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"balance\" INTEGER NOT NULL, \"nickname\" TEXT, \"inviter_id\" INTEGER, FOREIGN KEY (\"inviter_id\") REFERENCES \"users\" (\"user_id\")) STRICT;\nCREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\");\nCREATE TABLE \"posts\" (\"post_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"author_id\" INTEGER NOT NULL, \"title\" TEXT NOT NULL, FOREIGN KEY (\"author_id\") REFERENCES \"users\" (\"user_id\")) STRICT;",
+  "compiled_pairs": {
+    "author_posts": [
+      {
+        "sql": "SELECT \"users\".\"user_id\", \"users\".\"email\", \"users\".\"balance\", \"users\".\"nickname\", \"users\".\"inviter_id\", \"posts\".\"post_id\", \"posts\".\"author_id\", \"posts\".\"title\" FROM \"users\" INNER JOIN \"posts\" ON \"posts\".\"author_id\" = \"users\".\"user_id\" ORDER BY \"posts\".\"post_id\" ASC",
+        "params": []
+      }
+    ],
+    "optional_posts": [
+      {
+        "sql": "SELECT \"users\".\"user_id\", \"users\".\"email\", \"users\".\"balance\", \"users\".\"nickname\", \"users\".\"inviter_id\", \"posts\".\"post_id\", \"posts\".\"author_id\", \"posts\".\"title\" FROM \"users\" LEFT JOIN \"posts\" ON \"posts\".\"author_id\" = \"users\".\"user_id\" ORDER BY \"users\".\"user_id\" ASC, \"posts\".\"post_id\" ASC",
+        "params": []
+      }
+    ],
+    "referrers": [
+      {
+        "sql": "SELECT \"invitee\".\"user_id\", \"invitee\".\"email\", \"invitee\".\"balance\", \"invitee\".\"nickname\", \"invitee\".\"inviter_id\", \"inviter\".\"user_id\", \"inviter\".\"email\", \"inviter\".\"balance\", \"inviter\".\"nickname\", \"inviter\".\"inviter_id\" FROM \"users\" AS \"invitee\" LEFT JOIN \"users\" AS \"inviter\" ON \"invitee\".\"inviter_id\" = \"inviter\".\"user_id\" ORDER BY \"invitee\".\"user_id\" ASC",
+        "params": []
+      }
+    ],
+    "balance_groups": [
+      {
+        "sql": "SELECT \"balance\" AS \"balance\", COUNT(*) AS \"total\" FROM \"users\" GROUP BY \"balance\" HAVING (COUNT(*) > ?) ORDER BY \"balance\" ASC",
+        "params": [
+          1
+        ]
+      }
+    ],
+    "account_page": [
+      {
+        "sql": "SELECT DISTINCT \"email\", (\"balance\" + ?), COALESCE(\"nickname\", ?), CASE WHEN \"balance\" >= ? THEN ? ELSE ? END FROM \"users\" ORDER BY \"email\" ASC LIMIT ? OFFSET ?",
+        "params": [
+          3,
+          "anonymous",
+          10,
+          "regular",
+          "new",
+          2,
+          1
+        ]
+      }
+    ],
+    "active_authors": [
+      {
+        "sql": "SELECT \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\" FROM \"users\" WHERE (EXISTS (SELECT \"posts\".\"title\" FROM \"posts\" WHERE (\"posts\".\"author_id\" = \"users\".\"user_id\"))) ORDER BY \"user_id\" ASC",
+        "params": []
+      }
+    ],
+    "balance_reference": [
+      {
+        "sql": "SELECT \"email\", (SELECT \"users\".\"balance\" FROM \"users\" ORDER BY \"users\".\"user_id\" ASC LIMIT ?) FROM \"users\" ORDER BY \"user_id\" ASC",
+        "params": [
+          1
+        ]
+      }
+    ],
+    "named_accounts": [
+      {
+        "sql": "WITH \"accounts\" AS (SELECT \"email\" AS \"email\", \"balance\" AS \"balance\", 1 AS \"__snekql_present\" FROM \"users\" WHERE (\"balance\" >= ?)) SELECT \"accounts\".\"email\" AS \"email\", \"accounts\".\"balance\" AS \"balance\" FROM \"accounts\" WHERE (\"accounts\".\"email\" = ?)",
+        "params": [
+          10,
+          "Grace"
+        ]
+      }
+    ],
+    "account_union": [
+      {
+        "sql": "WITH \"accounts\" AS (SELECT \"__snekql_union\".\"balance\" AS \"balance\", \"__snekql_union\".\"email\" AS \"email\", 1 AS \"__snekql_present\" FROM (SELECT \"balance\" AS \"balance\", \"email\" AS \"email\" FROM \"users\" WHERE (\"balance\" >= ?) UNION ALL SELECT \"balance\" AS \"balance\", \"email\" AS \"email\" FROM \"users\" WHERE (\"balance\" < ?)) AS \"__snekql_union\") SELECT \"accounts\".\"balance\" AS \"balance\", \"accounts\".\"email\" AS \"email\" FROM \"accounts\" ORDER BY \"accounts\".\"email\" ASC",
+        "params": [
+          10,
+          10
+        ]
+      }
+    ],
+    "referral_chain": [
+      {
+        "sql": "WITH RECURSIVE \"referrals\" AS (SELECT ? AS \"depth\", \"inviter_id\" AS \"inviter_id\", \"user_id\" AS \"user_id\", 1 AS \"__snekql_present\" FROM \"users\" WHERE (\"user_id\" = ?) UNION ALL SELECT (\"referrals\".\"depth\" + ?) AS \"depth\", \"users\".\"inviter_id\" AS \"inviter_id\", \"users\".\"user_id\" AS \"user_id\", 1 AS \"__snekql_present\" FROM \"users\" INNER JOIN \"referrals\" ON \"referrals\".\"inviter_id\" = \"users\".\"user_id\" WHERE (\"referrals\".\"depth\" < ?)) SELECT \"referrals\".\"depth\" AS \"depth\", \"referrals\".\"inviter_id\" AS \"inviter_id\", \"referrals\".\"user_id\" AS \"user_id\" FROM \"referrals\" ORDER BY \"referrals\".\"depth\" ASC",
+        "params": [
+          0,
+          3,
+          1,
+          8
+        ]
+      }
+    ],
+    "import_accounts": [
+      {
+        "sql": "INSERT INTO \"users\" (\"email\", \"balance\", \"nickname\", \"inviter_id\") VALUES (?, ?, ?, ?), (?, ?, ?, ?) RETURNING \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\"",
+        "params": [
+          "Barbara",
+          7,
+          null,
+          null,
+          "Margaret",
+          9,
+          null,
+          null
+        ]
+      }
+    ],
+    "award_bonus": [
+      {
+        "sql": "UPDATE \"users\" SET \"balance\" = (\"balance\" + ?) WHERE (\"user_id\" = ?) RETURNING \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\"",
+        "params": [
+          5,
+          2
+        ]
+      }
+    ],
+    "remove_new_accounts": [
+      {
+        "sql": "DELETE FROM \"users\" WHERE (\"balance\" < ?) RETURNING \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\"",
+        "params": [
+          10
+        ]
+      }
+    ],
+    "refresh_nickname": [
+      {
+        "sql": "INSERT INTO \"users\" (\"email\", \"balance\", \"nickname\", \"inviter_id\") VALUES (?, ?, ?, ?) ON CONFLICT (\"email\") DO UPDATE SET \"nickname\" = excluded.\"nickname\" RETURNING \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\"",
+        "params": [
+          "Ada",
+          0,
+          "A",
+          null
+        ]
+      }
+    ],
+    "lookup_account": [
+      {
+        "sql": "SELECT \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\" FROM \"users\" WHERE (\"email\" = ?)",
+        "params": [
+          "Missing"
+        ]
+      }
+    ],
+    "stream_accounts": [
+      {
+        "sql": "SELECT \"user_id\", \"email\", \"balance\", \"nickname\", \"inviter_id\" FROM \"users\" ORDER BY \"user_id\" ASC",
+        "params": []
+      }
+    ]
+  }
+}

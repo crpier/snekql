@@ -1,0 +1,2327 @@
+[
+  {
+    "name": "body-author_posts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User).join(Post, on=Post.author_id.references(User.user_id)).all().order_by(Post.post_id.asc())),list[tuple[User[Fetched], Post[Fetched]]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-optional_posts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User).left_join(Post, on=Post.author_id.references(User.user_id)).all().order_by(User.user_id.asc(), Post.post_id.asc())),list[tuple[User[Fetched], Post[Fetched] | None]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-referrers",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "invitee = sqlite.alias(User, FirstRole, name='invitee')\ninviter = sqlite.alias(User, SecondRole, name='inviter')\nassert_type(await transaction.fetch_all(sqlite.select(invitee).left_join(inviter, on=invitee.column(User.inviter_id).eq_col(inviter.column(User.user_id))).all().order_by(invitee.column(User.user_id).asc())),list[tuple[User[Fetched], User[Fetched] | None]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-balance_groups",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User).all().project(BalanceGroup, balance=User.balance, total=User.count_all()).group_by(User.balance).having(User.count_all().gt(1)).order_by(User.balance.asc())),list[BalanceGroup])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-account_page",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User.email, User.balance.add(3), User.nickname.coalesce('anonymous'), sqlite.case(User.balance.gte(10), then='regular', otherwise='new')).all().distinct().order_by(User.email.asc()).offset(1).limit(2)),list[tuple[str, int, str, str]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-active_authors",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User).where(sqlite.exists(sqlite.select(Post.title).where(Post.author_id.eq_col(User.user_id)))).order_by(User.user_id.asc())),list[User[Fetched]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-balance_reference",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(User.email, sqlite.scalar(sqlite.select(User.balance).all().order_by(User.user_id.asc()).limit(1))).all().order_by(User.user_id.asc())),list[tuple[str, int | None]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-named_accounts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = User.email.label('email')\naccounts = sqlite.select(User).where(User.balance.gte(10)).project(AccountSummary, email=email, balance=User.balance).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).where(accounts.column(email).eq('Grace'))),list[AccountSummary])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-account_union",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = User.email.label('email')\nactive = sqlite.select(User).where(User.balance.gte(10)).project(AccountSummary, email=email, balance=User.balance)\nnew = sqlite.select(User).where(User.balance.lt(10)).project(AccountSummary, email=email, balance=User.balance)\naccounts = active.union_all(new).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).all().order_by(accounts.column(email).asc())),list[AccountSummary])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-referral_chain",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "identity = User.user_id.label('user_id')\nparent = User.inviter_id.label('inviter_id')\ndepth = sqlite.literal(0).label('depth')\nanchor = sqlite.select(User).where(User.user_id.eq(start)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=depth)\nwalk = sqlite.recursive_cte(anchor, FirstRole, name='referrals').step(lambda previous: sqlite.select(User).join(previous, on=previous.column(parent).eq_col(User.user_id)).where(previous.column(depth).lt(max_depth)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=previous.column(depth).add(1)))\nassert_type(await transaction.fetch_all(sqlite.select(walk).all().order_by(walk.column(depth).asc())),list[ReferralStep])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, start: UserId, max_depth: int=8) -> None:\n"
+  },
+  {
+    "name": "body-import_accounts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(sqlite.insert([User(email=email, balance=balance) for email, balance in accounts]).returning()),list[User[Fetched]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, accounts: list[tuple[str, int]]) -> None:\n"
+  },
+  {
+    "name": "body-award_bonus",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(sqlite.update(User).set(User.balance.to_expr(User.balance.add(amount))).where(User.user_id.eq(identity)).returning()),list[User[Fetched]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, identity: UserId, amount: int) -> None:\n"
+  },
+  {
+    "name": "body-remove_new_accounts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(sqlite.delete(User).where(User.balance.lt(10)).returning()),list[User[Fetched]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-refresh_nickname",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(sqlite.insert(User(email=email_value, balance=0, nickname=nickname_value)).on_conflict(User.email, action=sqlite.DoUpdate(User.nickname.to_inserted())).returning()),User[Fetched])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, email_value: str, nickname_value: str) -> None:\n"
+  },
+  {
+    "name": "body-lookup_account",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_one_or_none(sqlite.select(User).where(User.email.eq(email_value))),User[Fetched] | None)",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, email_value: str) -> None:\n"
+  },
+  {
+    "name": "body-stream_accounts",
+    "subject": "body",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "async with transaction.fetch_chunks(sqlite.select(User).all().order_by(User.user_id.asc()), size=2) as batches:\n    async for batch in batches:\n        assert_type(batch,list[User[Fetched]])",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-author_posts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "users, posts = (table(UserRow), table(PostRow))\nauthor, identity = (column(PostRow.author_id), column(UserRow.user_id))\npost_id = column(PostRow.post_id)\nassert_type(await transaction.fetch_all(sqlite.select(users).join(posts, on=author.references(identity)).all().order_by(post_id.asc())),list[tuple[UserRow, PostRow]])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-optional_posts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "author = column(PostRow.author_id)\nidentity = column(UserRow.user_id)\npost_id = column(PostRow.post_id)\nusers = table(UserRow)\nposts = table(PostRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).left_join(posts, on=author.references(identity)).all().order_by(identity.asc(), post_id.asc())),list[tuple[UserRow, PostRow | None]])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-referrers",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "inviter_id = column(UserRow.inviter_id)\nidentity = column(UserRow.user_id)\nusers = table(UserRow)\ninvitee = sqlite.alias(users, FirstRole, name='invitee')\ninviter = sqlite.alias(users, SecondRole, name='inviter')\nassert_type(await transaction.fetch_all(sqlite.select(invitee).left_join(inviter, on=invitee.column(inviter_id).eq_col(inviter.column(identity))).all().order_by(invitee.column(identity).asc())),list[tuple[UserRow, UserRow | None]])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-balance_groups",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "balance = column(UserRow.balance)\nusers = table(UserRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).all().project(BalanceGroup, balance=balance, total=users.count_all()).group_by(balance).having(users.count_all().gt(1)).order_by(balance.asc())),list[BalanceGroup])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-account_page",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = column(UserRow.email)\nbalance = column(UserRow.balance)\nnickname = column(UserRow.nickname)\nassert_type(await transaction.fetch_all(sqlite.select(email, balance.add(3), nickname.coalesce('anonymous'), sqlite.case(balance.gte(10), then='regular', otherwise='new')).all().distinct().order_by(email.asc()).offset(1).limit(2)),list[tuple[str, int, str, str]])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-active_authors",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "title = column(PostRow.title)\nauthor = column(PostRow.author_id)\nidentity = column(UserRow.user_id)\nusers = table(UserRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).where(sqlite.exists(sqlite.select(title).where(author.eq_col(identity)))).order_by(identity.asc())),list[UserRow])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-balance_reference",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = column(UserRow.email)\nbalance = column(UserRow.balance)\nidentity = column(UserRow.user_id)\nassert_type(await transaction.fetch_all(sqlite.select(email, sqlite.scalar(sqlite.select(balance).all().order_by(identity.asc()).limit(1))).all().order_by(identity.asc())),list[tuple[str, int | None]])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-named_accounts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email_column = column(UserRow.email)\nbalance = column(UserRow.balance)\nusers = table(UserRow)\nemail = email_column.label('email')\naccounts = sqlite.select(users).where(balance.gte(10)).project(AccountSummary, email=email, balance=balance).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).where(accounts.column(email).eq('Grace'))),list[AccountSummary])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-account_union",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email_column = column(UserRow.email)\nbalance = column(UserRow.balance)\nusers = table(UserRow)\nemail = email_column.label('email')\nactive = sqlite.select(users).where(balance.gte(10)).project(AccountSummary, email=email, balance=balance)\nnew = sqlite.select(users).where(balance.lt(10)).project(AccountSummary, email=email, balance=balance)\naccounts = active.union_all(new).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).all().order_by(accounts.column(email).asc())),list[AccountSummary])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-referral_chain",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "user_id = column(UserRow.user_id)\ninviter_id = column(UserRow.inviter_id)\nusers = table(UserRow)\nidentity = user_id.label('user_id')\nparent = inviter_id.label('inviter_id')\ndepth = sqlite.literal(0).label('depth')\nanchor = sqlite.select(users).where(user_id.eq(start)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=depth)\nwalk = sqlite.recursive_cte(anchor, FirstRole, name='referrals').step(lambda previous: sqlite.select(users).join(previous, on=previous.column(parent).eq_col(user_id)).where(previous.column(depth).lt(max_depth)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=previous.column(depth).add(1)))\nassert_type(await transaction.fetch_all(sqlite.select(walk).all().order_by(walk.column(depth).asc())),list[ReferralStep])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, start: UserId, max_depth: int=8) -> None:\n"
+  },
+  {
+    "name": "dual-import_accounts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(insert_many([User(email=email, balance=balance) for email, balance in accounts]).returning()),list[UserRow])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, accounts: list[tuple[str, int]]) -> None:\n"
+  },
+  {
+    "name": "dual-award_bonus",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "balance = column(UserRow.balance)\nuser_id = column(UserRow.user_id)\nusers = table(UserRow)\nassert_type(await transaction.execute(sqlite.update(users).set(balance.to_expr(balance.add(amount))).where(user_id.eq(identity)).returning()),list[UserRow])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, identity: UserId, amount: int) -> None:\n"
+  },
+  {
+    "name": "dual-remove_new_accounts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "balance = column(UserRow.balance)\nusers = table(UserRow)\nassert_type(await transaction.execute(sqlite.delete(users).where(balance.lt(10)).returning()),list[UserRow])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "dual-refresh_nickname",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = column(UserRow.email)\nnickname = column(UserRow.nickname)\nassert_type(await transaction.execute(insert(User(email=email_value, balance=0, nickname=nickname_value)).on_conflict(email, action=sqlite.DoUpdate(nickname.to_inserted())).returning()),UserRow)",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, email_value: str, nickname_value: str) -> None:\n"
+  },
+  {
+    "name": "dual-lookup_account",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "email = column(UserRow.email)\nusers = table(UserRow)\nassert_type(await transaction.fetch_one_or_none(sqlite.select(users).where(email.eq(email_value))),UserRow | None)",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, email_value: str) -> None:\n"
+  },
+  {
+    "name": "dual-stream_accounts",
+    "subject": "dual",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nidentity = column(UserRow.user_id)\nasync with transaction.fetch_chunks(sqlite.select(users).all().order_by(identity.asc()), size=2) as batches:\n    async for batch in batches:\n        assert_type(batch,list[UserRow])",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction) -> None:\n"
+  },
+  {
+    "name": "body-wrong-filter-owner",
+    "subject": "body",
+    "category": "scope",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User.email).all()),list[str])",
+    "challenge": "sqlite.select(b.User).where(b.Post.title.eq(\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-filter-value",
+    "subject": "body",
+    "category": "scope",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User.email).all()),list[str])",
+    "challenge": "sqlite.select(b.User).where(b.User.email.eq(42))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-model-result",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-tuple-result",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.user_id,b.User.email).all()),list[tuple[UserId,str]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-unjoined-projection",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(b.User.email,b.Post.title).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-model-join",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[tuple[b.User[sqlite.Fetched],b.Post[sqlite.Fetched]]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-model-left-join",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).left_join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[tuple[b.User[sqlite.Fetched],b.Post[sqlite.Fetched]|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-scalar-join",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.email).join(b.Post,on=b.Post.author_id.references(b.User.user_id)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-scope",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.select(b.User).where(b.Post.title.eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-nominal-key",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "b.User.user_id.eq(PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-fk-target",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "b.Post.author_id.references(b.Post.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-unscoped",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(b.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-ordering-pagination",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.email).all().distinct().order_by(b.User.email.desc()).limit(2).offset(1)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-aggregate-count",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.count_all()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-aggregate-sum",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.balance.sum()).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-arithmetic",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.balance.add(1)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-arithmetic-bad-domain",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "b.User.email.add(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-nullable-coalesce",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.nickname.coalesce(\"anonymous\")).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-text-functions",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.email.lower().char_length()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-case-expression",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(sqlite.case(b.User.balance.gt(0),then=b.User.balance,otherwise=0)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-named-output",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).all().project(AccountSummary,email=b.User.email,balance=b.User.balance)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-named-wrong-domain",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(b.User).all().project(AccountSummary,email=b.User.balance,balance=b.User.email)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Named keyword bindings have runtime validation, not field-by-field static checking."
+  },
+  {
+    "name": "body-named-wrong-label",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(b.User).all().project(AccountSummary,emali=b.User.email,balance=b.User.balance)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "body-named-unscoped",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(b.User).project(AccountSummary,email=b.User.email,balance=b.User.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-group-having",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).all().project(BalanceGroup,balance=b.User.balance,total=b.User.count_all()).group_by(b.User.balance).having(b.User.count_all().gt(0))),list[BalanceGroup])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-count",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.balance.to(18)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-row",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.balance.to(18)).all().returning()),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-scalar",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.balance.to(18)).all().returning(b.User.email)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-named",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.balance.to(18)).all().returning_as(AccountSummary,email=b.User.email,balance=b.User.balance)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-no-scope",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.update(b.User).set(b.User.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-update-no-assignment",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.update(b.User).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-update-wrong-owner",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(b.User).set(b.Post.title.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-update-wrong-value",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(b.User).set(b.User.balance.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-update-generated-id",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.user_id.to(UserId(10))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-update-expression",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.balance.to_expr(b.User.balance.add(1))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-delete-count",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.delete(b.User).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-delete-row",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.delete(b.User).all().returning()),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-delete-unscoped",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.delete(b.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-insert-row",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning()),b.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-insert-scalar",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning(b.User.user_id)),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-insert-named",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning_as(AccountSummary,email=b.User.email,balance=b.User.balance)),AccountSummary)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-conflict-update",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).on_conflict(b.User.email,action=sqlite.DoUpdate(b.User.balance.to(18))).returning()),b.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-conflict-wrong-owner",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.insert(native_pending).on_conflict(b.Post.title,action=sqlite.DoUpdate(b.User.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-conflict-ignore",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).on_conflict(b.User.email,action=sqlite.DoNothing)),None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-correlated-exists",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).where(sqlite.exists(sqlite.select(b.Post.title).where(b.Post.author_id.eq_col(b.User.user_id))))),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-subquery-domain",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "b.User.user_id.in_subquery(sqlite.select(b.User.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-subquery-unscoped",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "b.User.user_id.in_subquery(sqlite.select(b.User.user_id))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-subquery-in",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).where(b.User.user_id.in_subquery(sqlite.select(b.Post.author_id).all()))),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-self-join-alias",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(b.User,FirstRole,name=\"first\")\nsecond=sqlite.alias(b.User,SecondRole,name=\"second\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(first).join(second,on=first.column(b.User.user_id).eq_col(second.column(b.User.user_id))).all()),list[tuple[b.User[sqlite.Fetched],b.User[sqlite.Fetched]]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-alias-wrong-role",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(b.User,FirstRole,name=\"first\")\nsecond=sqlite.alias(b.User,SecondRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.select(first).where(second.column(b.User.email).eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-alias-wrong-model-column",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(b.User,FirstRole,name=\"first\")\nsecond=sqlite.alias(b.User,SecondRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "first.column(b.Post.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-alias-mutation-target",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(b.User,FirstRole,name=\"first\")\nsecond=sqlite.alias(b.User,SecondRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(first)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-cte-model",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(cte).all()),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-cte-column",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(cte.column(email_token)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-cte-wrong-domain",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "cte.column(email_token).eq(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-cte-mutation-target",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.delete(cte)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-union",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(source.union(source)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-union-all",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "email_token=b.User.email.label(\"email\")\nsource=sqlite.select(b.User).all().project(AccountSummary,email=email_token,balance=b.User.balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(source.union_all(source)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-recursive-cte",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "depth=sqlite.literal(0).label(\"depth\")",
+    "challenge": "walk=sqlite.recursive_cte(sqlite.select(b.User).all().project(Walk,depth=depth),FirstRole,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(3)).project(Walk,depth=previous.column(depth).add(1)))\nassert_type(await nt.fetch_all(sqlite.select(walk).all()),list[Walk])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-recursive-bad-depth",
+    "subject": "body",
+    "category": "query-parity",
+    "control": "depth=sqlite.literal(0).label(\"depth\")\nassert_type(await nt.fetch_all(sqlite.select(b.User).all()),list[b.User[sqlite.Fetched]])",
+    "challenge": "sqlite.recursive_cte(sqlite.select(b.User).all().project(Walk,depth=depth),FirstRole,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(\"bad\")).project(Walk,depth=previous.column(depth).add(1)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-result",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-tuple-result",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(uid,email).all()),list[tuple[UserId,str]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unjoined-projection",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(email,title).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-join",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[tuple[d.UserRow,d.PostRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-left-join",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).left_join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[tuple[d.UserRow,d.PostRow|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-join",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email).join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-scope",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(title.eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-nominal-key",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.eq(PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-fk-target",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "author.references(title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-unscoped",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-ordering-pagination",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email).all().distinct().order_by(email.desc()).limit(2).offset(1)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-aggregate-count",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow).count_all()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-aggregate-sum",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(balance.sum()).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-arithmetic",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(balance.add(1)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-arithmetic-bad-domain",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "email.add(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-nullable-coalesce",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(nick.coalesce(\"anonymous\")).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-text-functions",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email.lower().char_length()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-case-expression",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(sqlite.case(balance.gt(0),then=balance,otherwise=0)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-output",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email,balance=balance)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-wrong-domain",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=balance,balance=email)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Named keyword bindings have runtime validation, not field-by-field static checking."
+  },
+  {
+    "name": "bridge-named-wrong-label",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,emali=email,balance=balance)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-unscoped",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).project(AccountSummary,email=email,balance=balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-group-having",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(BalanceGroup,balance=balance,total=bridge.table(d.UserRow).count_all()).group_by(balance).having(bridge.table(d.UserRow).count_all().gt(0))),list[BalanceGroup])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-count",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-row",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-scalar",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning(email)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-named",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning_as(AccountSummary,email=email,balance=balance)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-no-scope",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-no-assignment",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-wrong-owner",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(title.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-wrong-value",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(balance.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-generated-id",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(uid.to(UserId(10))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-expression",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to_expr(balance.add(1))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-count",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-row",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all().returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-unscoped",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.delete(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-row",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-scalar",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning(uid)),UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-named",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning_as(AccountSummary,email=email,balance=balance)),AccountSummary)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-update",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(email,action=sqlite.DoUpdate(balance.to(18))).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-wrong-owner",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "bridge.insert(pending).on_conflict(title,action=sqlite.DoUpdate(balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-ignore",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(email,action=sqlite.DoNothing)),None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-correlated-exists",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(sqlite.exists(sqlite.select(title).where(author.eq_col(uid))))),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-domain",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.in_subquery(sqlite.select(email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-unscoped",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.in_subquery(sqlite.select(uid))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-in",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(uid.in_subquery(sqlite.select(author).all()))),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-self-join-alias",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),FirstRole,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),SecondRole,name=\"second\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(first).join(second,on=first.column(uid).eq_col(second.column(uid))).all()),list[tuple[d.UserRow,d.UserRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-wrong-role",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),FirstRole,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),SecondRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.select(first).where(second.column(email).eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-wrong-model-column",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),FirstRole,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),SecondRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "first.column(title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-mutation-target",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),FirstRole,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),SecondRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(first)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-model",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte).all()),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-column",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte.column(email_token)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-wrong-domain",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "cte.column(email_token).eq(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-mutation-target",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.delete(cte)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-union",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(source.union(source)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-union-all",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary,email=email_token,balance=balance)\ncte=source.cte(FirstRole,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(source.union_all(source)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-recursive-cte",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\ndepth=sqlite.literal(0).label(\"depth\")",
+    "challenge": "walk=sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk,depth=depth),FirstRole,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(3)).project(Walk,depth=previous.column(depth).add(1)))\nassert_type(await bt.fetch_all(sqlite.select(walk).all()),list[Walk])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-recursive-bad-depth",
+    "subject": "dual",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\ndepth=sqlite.literal(0).label(\"depth\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk,depth=depth),FirstRole,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(\"bad\")).project(Walk,depth=previous.column(depth).add(1)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-column-comparison-omits-right-owner",
+    "subject": "body",
+    "category": "scope",
+    "control": "pass",
+    "challenge": "sqlite.select(b.User).where(b.User.email.eq_col(b.Post.title))",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native eq_col tracks the left owner only; compilation checks the other source."
+  },
+  {
+    "name": "bridge-column-comparison-omits-right-owner",
+    "subject": "dual",
+    "category": "scope",
+    "control": "email=bridge.column(d.UserRow.email)\ntitle=bridge.column(d.PostRow.title)",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(email.eq_col(title))",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native eq_col tracks the left owner only; compilation checks the other source."
+  },
+  {
+    "name": "body-exact-one",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-optional-one",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_one_or_none(sqlite.select(b.User).all()),b.User[sqlite.Fetched]|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-optional-scalar",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "await nt.fetch_one_or_none(sqlite.select(b.User.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-stream-batches",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "async with nt.fetch_chunks(sqlite.select(b.User).all(),size=2) as stream:\n    async for batch in stream:\n        assert_type(batch,list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-unchecked-read",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User).all(),validate=False),list[object])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-unchecked-write",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(b.User).set(b.User.email.to(\"changed\")).all().returning(),validate=False),object)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-bulk-model",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert([native_pending]).returning()),list[b.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-bulk-named",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert([native_pending]).returning_as(AccountSummary,email=b.User.email,balance=b.User.balance)),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-backend-query",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "mariadb.select(b.User)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-backend-execution",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "await mt.fetch_all(sqlite.select(b.User).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-wrong-backend-column",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "mariadb.select(b.User.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-projection-left-join",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "sqlite.select(b.User.email).left_join(b.User,on=b.User.email.eq(\"x\"))",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit."
+  },
+  {
+    "name": "body-positional-nine-slots",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "sqlite.select(b.User.email,b.User.email,b.User.email,b.User.email,b.User.email,b.User.email,b.User.email,b.User.email,b.User.email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "body-wide-named",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "class Wide(BaseModel):\n    e0: str\n    e1: str\n    e2: str\n    e3: str\n    e4: str\n    e5: str\n    e6: str\n    e7: str\n    e8: str\nassert_type(await nt.fetch_all(sqlite.select(b.User).all().project(Wide,e0=b.User.email,e1=b.User.email,e2=b.User.email,e3=b.User.email,e4=b.User.email,e5=b.User.email,e6=b.User.email,e7=b.User.email,e8=b.User.email)),list[Wide])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-scalar-readonly-contract",
+    "subject": "body",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(b.User).all()),b.User[sqlite.Fetched])",
+    "challenge": "def accepts(column: sqlite.ColumnRef[b.User,str]) -> None:\n    column.to(\"x\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-exact-one",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-optional-one",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_one_or_none(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-optional-scalar",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "await bt.fetch_one_or_none(sqlite.select(email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-stream-batches",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "async with bt.fetch_chunks(sqlite.select(bridge.table(d.UserRow)).all(),size=2) as stream:\n    async for batch in stream:\n        assert_type(batch,list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unchecked-read",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all(),validate=False),list[object])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unchecked-write",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(email.to(\"changed\")).all().returning(),validate=False),object)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-bulk-model",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-bulk-named",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning_as(AccountSummary,email=email,balance=bridge.column(d.UserRow.balance))),list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-query",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "mariadb.select(bridge.table(d.UserRow))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-execution",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "await mt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-column",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "mariadb.select(email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-projection-left-join",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "sqlite.select(email).left_join(bridge.table(d.UserRow),on=email.eq(\"x\"))",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit."
+  },
+  {
+    "name": "bridge-positional-nine-slots",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "sqlite.select(email,email,email,email,email,email,email,email,email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "bridge-wide-named",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "class Wide(BaseModel):\n    e0: str\n    e1: str\n    e2: str\n    e3: str\n    e4: str\n    e5: str\n    e6: str\n    e7: str\n    e8: str\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(Wide,e0=email,e1=email,e2=email,e3=email,e4=email,e5=email,e6=email,e7=email,e8=email)),list[Wide])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-readonly-contract",
+    "subject": "dual",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "def accepts(column: sqlite.ColumnRef[bridge.Owner[d.UserRow],str]) -> None:\n    column.to(\"x\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-scalar-subquery",
+    "subject": "body",
+    "category": "subqueries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(b.User.email,sqlite.scalar(sqlite.select(b.User.balance).all().limit(1))).all()),list[tuple[str,int|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "body-scalar-subquery-unscoped",
+    "subject": "body",
+    "category": "subqueries",
+    "control": "pass\nsqlite.scalar(sqlite.select(b.User.balance).all())",
+    "challenge": "sqlite.scalar(sqlite.select(b.User.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-subquery",
+    "subject": "dual",
+    "category": "subqueries",
+    "control": "email=bridge.column(d.UserRow.email)\nbalance=bridge.column(d.UserRow.balance)",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email,sqlite.scalar(sqlite.select(balance).all().limit(1))).all()),list[tuple[str,int|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-subquery-unscoped",
+    "subject": "dual",
+    "category": "subqueries",
+    "control": "email=bridge.column(d.UserRow.email)\nbalance=bridge.column(d.UserRow.balance)\nsqlite.scalar(sqlite.select(balance).all())",
+    "challenge": "sqlite.scalar(sqlite.select(balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-owner-does-not-widen",
+    "subject": "dual",
+    "category": "scope",
+    "control": "assert_type(bridge.table(d.UserRow),type[bridge.Owner[d.UserRow]])",
+    "challenge": "owner: type[bridge.Owner[bridge.Row]] = bridge.table(d.UserRow)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-shared-method",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(native_row.label(),str)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "body-generic-preserved",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(helpers.body_checked(native_row),b.User[Fetched])",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "body-protocol-contact",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(helpers.contact_label(native_row),str)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "body-generic-insert",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(helpers.body_insert(b.User(email=\"A\",balance=1))),b.User[Fetched])",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "body-row-insertion",
+    "subject": "body",
+    "category": "comparison",
+    "control": "sqlite.insert(b.User(email=\"A\",balance=1))",
+    "challenge": "sqlite.insert(native_row)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "body-bare-parameter",
+    "subject": "body",
+    "category": "comparison",
+    "control": "def accept(value:b.User)->str:\n    return value.email\naccept(b.User(email=\"A\",balance=1))",
+    "challenge": "accept(native_row)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "body-mutation",
+    "subject": "body",
+    "category": "comparison",
+    "control": "assert_type(native_row.email,str)",
+    "challenge": "native_row.email=\"B\"",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-complete-missing-id",
+    "subject": "body",
+    "category": "comparison",
+    "control": "b.User[Fetched](user_id=UserId(1),email=\"A\",balance=1)",
+    "challenge": "b.User[Fetched](email=\"A\",balance=1)",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-complete-none-id",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "b.User[Fetched](user_id=None,email=\"A\",balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "body-wrong-id",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "b.User[Fetched](user_id=PostId(1),email=\"A\",balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "body-plain-generic-getter",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "def read[Account:b.User[Pending]|b.User[Fetched]](account:Account)->str:\n    return account.email",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "body-class-discrimination",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "if isinstance(native_row,b.User[Fetched]):\n    assert_type(native_row.user_id,UserId)",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-wrong-witness",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "class Wrong[State=Pending](Model[State]):\n    __read_type__:ClassVar[ReadType[b.Post[Fetched]]]\n    email:sqlite.Col[str]=sqlite.Text()",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "dual-shared-method",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(row.label(),str)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-generic-preserved",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(helpers.dual_checked(row),d.UserRow)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-protocol-contact",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(helpers.contact_label(row),str)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-generic-insert",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(helpers.dual_insert(d.User(email=\"A\",balance=1))),d.UserRow)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-row-insertion",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "bridge.insert(d.User(email=\"A\",balance=1))",
+    "challenge": "bridge.insert(row)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-bare-parameter",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "def accept(value:d.User)->str:\n    return value.email\naccept(d.User(email=\"A\",balance=1))",
+    "challenge": "accept(row)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-mutation",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "assert_type(row.email,str)",
+    "challenge": "row.email=\"B\"",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-complete-missing-id",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "d.UserRow(user_id=UserId(1),email=\"A\",balance=1)",
+    "challenge": "d.UserRow(email=\"A\",balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-complete-none-id",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "d.UserRow(user_id=None,email=\"A\",balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-wrong-id",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "d.UserRow(user_id=PostId(1),email=\"A\",balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-plain-generic-getter",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "def read[Account:d.User](account:Account)->str:\n    return account.email",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-class-discrimination",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "if isinstance(row,d.UserRow):\n    assert_type(row.user_id,UserId)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "dual-wrong-witness",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "class Wrong(d.storage.Model):\n    __row__:ClassVar[type[d.PostRow]]\n    email:d.storage.Col[str]=d.storage.Text()",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-source-instance",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "sqlite.select(b.User(email=\"A\",balance=1))",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-source-specialization",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "sqlite.select(b.User[Fetched])",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "dual-source-input",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "bridge.table(d.UserRow)",
+    "challenge": "bridge.table(d.User)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-source-instance",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "bridge.table(d.UserRow)",
+    "challenge": "bridge.table(row)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-native-consumer-bypass",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-nominal-helper-erasure",
+    "subject": "body",
+    "category": "comparison",
+    "control": "def old[Read:sqlite.Model[Any,Any]](pending:sqlite.Model[Pending,Read])->sqlite.Write[Read]:\n    return sqlite.insert(pending).returning()",
+    "challenge": "assert_type(await nt.execute(old(native_pending)),Any)",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-body-state-generic-getter",
+    "subject": "body",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "def label[State:(Pending,Fetched)](value:b.User[State])->str:\n    return value.email",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "dual-inherited-constructor-factory",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "def factory(model:type[d.User]) -> d.User:\n    return model(email=\"A\",balance=12)\nfactory(d.UserRow)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Input subclass constructors may need extra generated arguments; runtime rejects."
+  },
+  {
+    "name": "bridge-inline-scalar-erases",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.column(d.UserRow.email)).all()),list[Any])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Inlining a generic column conversion into native overloads loses the scalar result. Prebinding preserves it."
+  },
+  {
+    "name": "bridge-inline-scalar-exact",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.column(d.UserRow.email)).all()),list[str])",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "bridge-inline-subquery-domain-hole",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "bridge.column(d.UserRow.user_id).in_subquery(sqlite.select(bridge.column(d.UserRow.email)).all())",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "bridge-body-consumer-bypasses-decoding",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native Transaction accepts the phantom query but materializes private native rows. Must use bridge.Transaction; not a shippable integration."
+  },
+  {
+    "name": "body-erased-select-helper-unjoined",
+    "subject": "body",
+    "category": "helpers",
+    "control": "pass",
+    "challenge": "def ready(query: sqlite.Select[tuple[str,str]]) -> sqlite.Select[tuple[str,str]]:\n    return query\nassert_type(await nt.fetch_all(ready(sqlite.select(b.User.email,b.Post.title).all())),list[tuple[str,str]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Result-only alias erases the source relation. Direct native/bridge Transaction still rejects missing sources."
+  },
+  {
+    "name": "bridge-erased-select-helper-unjoined",
+    "subject": "bridge",
+    "category": "helpers",
+    "control": "email=bridge.column(d.UserRow.email)\ntitle=bridge.column(d.PostRow.title)",
+    "challenge": "def ready(query: sqlite.Select[tuple[str,str]]) -> sqlite.Select[tuple[str,str]]:\n    return query\nassert_type(await bt.fetch_all(ready(sqlite.select(email,title).all())),list[tuple[str,str]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Result-only alias erases the source relation. Direct native/bridge Transaction still rejects missing sources."
+  },
+  {
+    "name": "typed-dual-valid-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[Literal[\"queued\",\"done\"]] = strict.Text(default=\"queued\")\nassert_type(Input().status,Literal[\"queued\",\"done\"])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-stale-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[Literal[\"queued\"]] = strict.Text(default=\"draft\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-null-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str|None] = strict.Text(default=None)\nassert_type(Input().status,str|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-wrong-domain-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str] = strict.Text(default=42)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-required-field",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str] = strict.Text()\nInput()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "body-stale-default",
+    "subject": "body",
+    "category": "comparison",
+    "control": "b.User(email=\"A\",balance=1)",
+    "challenge": "class Wrong[State=Pending](Model[State]):\n    __read_type__:ClassVar[ReadType[Wrong[Fetched]]]\n    status:sqlite.Col[Literal[\"queued\"]]=sqlite.Text(default=\"draft\")",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "dual-stale-default",
+    "subject": "dual",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "class Wrong(d.storage.Model):\n    status:d.storage.Col[Literal[\"queued\"]]=d.storage.Text(default=\"draft\")",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "body-nullable-cte-right-operand",
+    "subject": "body",
+    "category": "cte-comparison",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "identity = User.user_id.label('user_id')\nparent = User.inviter_id.label('inviter_id')\ndepth = sqlite.literal(0).label('depth')\nanchor = sqlite.select(User).where(User.user_id.eq(start)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=depth)\nwalk = sqlite.recursive_cte(anchor, FirstRole, name='referrals').step(lambda previous: sqlite.select(User).join(previous, on=previous.column(parent).eq_col(User.user_id)).where(previous.column(depth).lt(max_depth)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=previous.column(depth).add(1)))\nassert_type(await transaction.fetch_all(sqlite.select(walk).all().order_by(walk.column(depth).asc())),list[ReferralStep])",
+    "challenge": "sqlite.recursive_cte(anchor,SecondRole,name=\"other\").step(lambda previous:sqlite.select(User).join(previous,on=User.user_id.eq_col(previous.column(parent))).all().project(ReferralStep,user_id=identity,inviter_id=parent,depth=previous.column(depth).add(1)))",
+    "header": "from scratchpad.paired_advanced.body import User, Post, Transaction\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, start: UserId, max_depth: int=8) -> None:\n"
+  },
+  {
+    "name": "dual-nullable-cte-right-operand",
+    "subject": "dual",
+    "category": "cte-comparison",
+    "kind": "unsupported",
+    "rejects": true,
+    "control": "user_id = column(UserRow.user_id)\ninviter_id = column(UserRow.inviter_id)\nusers = table(UserRow)\nidentity = user_id.label('user_id')\nparent = inviter_id.label('inviter_id')\ndepth = sqlite.literal(0).label('depth')\nanchor = sqlite.select(users).where(user_id.eq(start)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=depth)\nwalk = sqlite.recursive_cte(anchor, FirstRole, name='referrals').step(lambda previous: sqlite.select(users).join(previous, on=previous.column(parent).eq_col(user_id)).where(previous.column(depth).lt(max_depth)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=previous.column(depth).add(1)))\nassert_type(await transaction.fetch_all(sqlite.select(walk).all().order_by(walk.column(depth).asc())),list[ReferralStep])",
+    "challenge": "sqlite.recursive_cte(anchor,SecondRole,name=\"other\").step(lambda previous:sqlite.select(users).join(previous,on=user_id.eq_col(previous.column(parent))).all().project(ReferralStep,user_id=identity,inviter_id=parent,depth=previous.column(depth).add(1)))",
+    "header": "from scratchpad.paired_advanced.dual import User, Post, Transaction, UserRow, PostRow, table, column, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import AccountSummary, BalanceGroup, FirstRole, SecondRole, ReferralStep, UserId, PostId\nfrom snekql import sqlite\nfrom snekql.sqlite import Pending, Fetched\nfrom typing import Any, ClassVar, Literal, Protocol, assert_type\nfrom scratchpad.paired_advanced import body as b, dual as d, helpers\nfrom scratchpad.class_body_usage.sqlite import Model, ReadType\nasync def caller(transaction: Transaction, start: UserId, max_depth: int=8) -> None:\n"
+  }
+]

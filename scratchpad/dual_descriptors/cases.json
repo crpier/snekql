@@ -1,0 +1,1501 @@
+[
+  {
+    "name": "direct-model-result",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-tuple-result",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.user_id, d.UserRow.email).all()), list[tuple[UserId, str]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-unjoined-projection",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(d.UserRow.email, d.PostRow.title).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-model-join",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).join(bridge.table(d.PostRow), on=d.PostRow.author_id.references(d.UserRow.user_id)).all()), list[tuple[d.UserRow, d.PostRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-model-left-join",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).left_join(bridge.table(d.PostRow), on=d.PostRow.author_id.references(d.UserRow.user_id)).all()), list[tuple[d.UserRow, d.PostRow | None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-scalar-join",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.email).join(bridge.table(d.PostRow), on=d.PostRow.author_id.references(d.UserRow.user_id)).all()), list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-scope",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(d.PostRow.title.eq('x'))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-nominal-key",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "d.UserRow.user_id.eq(PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-fk-target",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "d.PostRow.author_id.references(d.PostRow.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-unscoped",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-ordering-pagination",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.email).all().distinct().order_by(d.UserRow.email.desc()).limit(2).offset(1)), list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-aggregate-count",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow).count_all()).all()), list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-aggregate-sum",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.balance.sum()).all()), list[int | None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-arithmetic",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.balance.add(1)).all()), list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-arithmetic-bad-domain",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "d.UserRow.email.add(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-nullable-coalesce",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.nickname.coalesce('anonymous')).all()), list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-text-functions",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.email.lower().char_length()).all()), list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-case-expression",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(sqlite.case(d.UserRow.balance.gt(0), then=d.UserRow.balance, otherwise=0)).all()), list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-named-output",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=d.UserRow.email, balance=d.UserRow.balance)), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-named-wrong-domain",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=d.UserRow.balance, balance=d.UserRow.email)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Named keyword bindings have runtime validation, not field-by-field static checking."
+  },
+  {
+    "name": "direct-named-wrong-label",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, emali=d.UserRow.email, balance=d.UserRow.balance)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "direct-named-unscoped",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).project(AccountSummary, email=d.UserRow.email, balance=d.UserRow.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-group-having",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(BalanceGroup, balance=d.UserRow.balance, total=bridge.table(d.UserRow).count_all()).group_by(d.UserRow.balance).having(bridge.table(d.UserRow).count_all().gt(0))), list[BalanceGroup])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-count",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to(18)).all()), int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-row",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to(18)).all().returning()), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-scalar",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to(18)).all().returning(d.UserRow.email)), list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-named",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to(18)).all().returning_as(AccountSummary, email=d.UserRow.email, balance=d.UserRow.balance)), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-no-scope",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-update-no-assignment",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-update-wrong-owner",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(d.PostRow.title.to('bad')).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-update-wrong-value",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to('bad')).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-update-generated-id",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.user_id.to(UserId(10))).all()), int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-update-expression",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.balance.to_expr(d.UserRow.balance.add(1))).all()), int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-delete-count",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all()), int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-delete-row",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all().returning()), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-delete-unscoped",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.delete(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-insert-row",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning()), d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-insert-scalar",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning(d.UserRow.user_id)), UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-insert-named",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning_as(AccountSummary, email=d.UserRow.email, balance=d.UserRow.balance)), AccountSummary)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-conflict-update",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(d.UserRow.email, action=sqlite.DoUpdate(d.UserRow.balance.to(18))).returning()), d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-conflict-wrong-owner",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "bridge.insert(pending).on_conflict(d.PostRow.title, action=sqlite.DoUpdate(d.UserRow.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-conflict-ignore",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(d.UserRow.email, action=sqlite.DoNothing)), None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-correlated-exists",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(sqlite.exists(sqlite.select(d.PostRow.title).where(d.PostRow.author_id.eq_col(d.UserRow.user_id))))), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-subquery-domain",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "d.UserRow.user_id.in_subquery(sqlite.select(d.UserRow.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-subquery-unscoped",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "d.UserRow.user_id.in_subquery(sqlite.select(d.UserRow.user_id))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-subquery-in",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(d.UserRow.user_id.in_subquery(sqlite.select(d.PostRow.author_id).all()))), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-self-join-alias",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "first = sqlite.alias(bridge.table(d.UserRow), FirstRole, name='first')\nsecond = sqlite.alias(bridge.table(d.UserRow), SecondRole, name='second')",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(first).join(second, on=first.column(d.UserRow.user_id).eq_col(second.column(d.UserRow.user_id))).all()), list[tuple[d.UserRow, d.UserRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-alias-wrong-role",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "first = sqlite.alias(bridge.table(d.UserRow), FirstRole, name='first')\nsecond = sqlite.alias(bridge.table(d.UserRow), SecondRole, name='second')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.select(first).where(second.column(d.UserRow.email).eq('x'))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-alias-wrong-model-column",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "first = sqlite.alias(bridge.table(d.UserRow), FirstRole, name='first')\nsecond = sqlite.alias(bridge.table(d.UserRow), SecondRole, name='second')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "first.column(d.PostRow.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-alias-mutation-target",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "first = sqlite.alias(bridge.table(d.UserRow), FirstRole, name='first')\nsecond = sqlite.alias(bridge.table(d.UserRow), SecondRole, name='second')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.update(first)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-cte-model",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte).all()), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-cte-column",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte.column(email_token)).all()), list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-cte-wrong-domain",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "cte.column(email_token).eq(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-cte-mutation-target",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.delete(cte)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-union",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')",
+    "challenge": "assert_type(await bt.fetch_all(source.union(source)), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-union-all",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "email_token = d.UserRow.email.label('email')\nsource = sqlite.select(bridge.table(d.UserRow)).all().project(AccountSummary, email=email_token, balance=d.UserRow.balance)\ncte = source.cte(FirstRole, name='summary')",
+    "challenge": "assert_type(await bt.fetch_all(source.union_all(source)), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-recursive-cte",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "depth = sqlite.literal(0).label('depth')",
+    "challenge": "walk = sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk, depth=depth), FirstRole, name='walk').step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(3)).project(Walk, depth=previous.column(depth).add(1)))\nassert_type(await bt.fetch_all(sqlite.select(walk).all()), list[Walk])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-recursive-bad-depth",
+    "subject": "direct",
+    "category": "query-parity",
+    "control": "depth = sqlite.literal(0).label('depth')\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "challenge": "sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk, depth=depth), FirstRole, name='walk').step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt('bad')).project(Walk, depth=previous.column(depth).add(1)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-column-comparison-omits-right-owner",
+    "subject": "direct",
+    "category": "scope",
+    "control": "pass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(d.UserRow.email.eq_col(d.PostRow.title))",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native eq_col tracks the left owner only; compilation checks the other source."
+  },
+  {
+    "name": "direct-exact-one",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-optional-one",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_one_or_none(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow | None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-optional-scalar",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "await bt.fetch_one_or_none(sqlite.select(d.UserRow.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-stream-batches",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "async with bt.fetch_chunks(sqlite.select(bridge.table(d.UserRow)).all(), size=2) as stream:\n    async for batch in stream:\n        assert_type(batch, list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-unchecked-read",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all(), validate=False), list[object])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-unchecked-write",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(d.UserRow.email.to('changed')).all().returning(), validate=False), object)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-bulk-model",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning()), list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-bulk-named",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning_as(AccountSummary, email=d.UserRow.email, balance=d.UserRow.balance)), list[AccountSummary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-backend-query",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "mariadb.select(bridge.table(d.UserRow))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-backend-execution",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "await mt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-wrong-backend-column",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "mariadb.select(d.UserRow.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-projection-left-join",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "sqlite.select(d.UserRow.email).left_join(bridge.table(d.UserRow), on=d.UserRow.email.eq('x'))",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit."
+  },
+  {
+    "name": "direct-positional-nine-slots",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "sqlite.select(d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email, d.UserRow.email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "direct-wide-named",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "class Wide(BaseModel):\n    e0: str\n    e1: str\n    e2: str\n    e3: str\n    e4: str\n    e5: str\n    e6: str\n    e7: str\n    e8: str\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(Wide, e0=d.UserRow.email, e1=d.UserRow.email, e2=d.UserRow.email, e3=d.UserRow.email, e4=d.UserRow.email, e5=d.UserRow.email, e6=d.UserRow.email, e7=d.UserRow.email, e8=d.UserRow.email)), list[Wide])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-scalar-readonly-contract",
+    "subject": "direct",
+    "category": "consumption",
+    "control": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()), d.UserRow)",
+    "challenge": "def accepts(column: sqlite.ColumnRef[bridge.Owner[d.UserRow], str]) -> None:\n    column.to('x')",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-scalar-subquery",
+    "subject": "direct",
+    "category": "subqueries",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.email, sqlite.scalar(sqlite.select(d.UserRow.balance).all().limit(1))).all()), list[tuple[str, int | None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "direct-scalar-subquery-unscoped",
+    "subject": "direct",
+    "category": "subqueries",
+    "control": "sqlite.scalar(sqlite.select(d.UserRow.balance).all())",
+    "challenge": "sqlite.scalar(sqlite.select(d.UserRow.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-owner-does-not-widen",
+    "subject": "direct",
+    "category": "scope",
+    "control": "assert_type(bridge.table(d.UserRow), type[bridge.Owner[d.UserRow]])",
+    "challenge": "owner: type[bridge.Owner[bridge.Row]] = bridge.table(d.UserRow)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "direct-shared-method",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(row.label(), str)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "direct-row-insertion",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "bridge.insert(d.User(email='A', balance=1))",
+    "challenge": "bridge.insert(row)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "direct-bare-parameter",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "def accept(value: d.User) -> str:\n    return value.email\naccept(d.User(email='A', balance=1))",
+    "challenge": "accept(row)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "direct-mutation",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "assert_type(row.email, str)",
+    "challenge": "row.email = 'B'",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-complete-missing-id",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "d.UserRow(user_id=UserId(1), email='A', balance=1)",
+    "challenge": "d.UserRow(email='A', balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-complete-none-id",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "d.UserRow(user_id=None, email='A', balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-wrong-id",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "d.UserRow(user_id=PostId(1), email='A', balance=1)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-plain-generic-getter",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "def read[Account: d.User](account: Account) -> str:\n    return account.email",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "direct-class-discrimination",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "if isinstance(row, d.UserRow):\n    assert_type(row.user_id, UserId)",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "direct-wrong-witness",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "class Wrong(d.storage.Model):\n    __row__: ClassVar[type[d.PostRow]]\n    email: d.storage.Col[str] = d.storage.Text()",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "direct-source-input",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "bridge.table(d.UserRow)",
+    "challenge": "bridge.table(d.User)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-source-instance",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "bridge.table(d.UserRow)",
+    "challenge": "bridge.table(row)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "direct-native-consumer-bypass",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()), list[d.UserRow])",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "direct-inherited-constructor-factory",
+    "subject": "direct",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "def factory(model: type[d.User]) -> d.User:\n    return model(email='A', balance=12)\nfactory(d.UserRow)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Input subclass constructors may need extra generated arguments; runtime rejects."
+  },
+  {
+    "name": "direct-stale-default",
+    "subject": "direct",
+    "category": "comparison",
+    "control": "pass",
+    "challenge": "class Wrong(d.storage.Model):\n    status: d.storage.Col[Literal['queued']] = d.storage.Text(default='draft')",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "inline-scalar-precise",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.email).all()),list[str])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "inline-subquery-domain",
+    "challenge": "d.UserRow.user_id.in_subquery(sqlite.select(d.UserRow.email).all())",
+    "control": "d.UserRow.user_id.in_subquery(sqlite.select(d.UserRow.user_id).all())",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "input-column-access",
+    "challenge": "sqlite.select(d.User.balance)",
+    "control": "assert_type(pending.balance,int)",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "input-fk-access",
+    "challenge": "sqlite.select(d.Post.author_id)",
+    "control": "assert_type(d.Post(author_id=UserId(1),title=\"x\").author_id,UserId)",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "literal-none-comparison",
+    "challenge": "d.UserRow.nickname.eq(None)",
+    "control": "d.UserRow.nickname.is_null()",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "nullable-coalesce-domain",
+    "challenge": "d.UserRow.nickname.coalesce(42)",
+    "control": "d.UserRow.nickname.coalesce(\"unknown\")",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "fk-not-plain-column",
+    "challenge": "d.UserRow.user_id.references(d.PostRow.author_id)",
+    "control": "d.PostRow.author_id.references(d.UserRow.user_id)",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "wrong-fk-annotation",
+    "challenge": "class Input(storage.Model):\n    author:storage.FKCol[d.PostRow,UserId]=storage.ForeignKey(d.UserRow.user_id)",
+    "control": "class Good(storage.Model):\n    author:storage.FKCol[d.UserRow,UserId]=storage.ForeignKey(d.UserRow.user_id)",
+    "kind": "counterexample",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor",
+    "note": "ty accepts the required field declaration despite the wrong target; native graph binding rejects it. Explicit-default declarations and ordinary assignments have separate rejection controls."
+  },
+  {
+    "name": "wrong-deferred-fk-annotation",
+    "challenge": "class Input(storage.Model):\n    author:storage.FKCol[d.PostRow,UserId|None]=storage.ForeignKey(lambda:d.UserRow.user_id,default=None)",
+    "control": "class Good(storage.Model):\n    author:storage.FKCol[d.UserRow,UserId|None]=storage.ForeignKey(lambda:d.UserRow.user_id,default=None)",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "fk-instance-value",
+    "challenge": "assert_type(row.inviter_id,UserId|None)",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "nullable-scalar-inline",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.nickname).all()),list[str|None])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "fk-scalar-inline",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.PostRow.author_id).all()),list[UserId])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "insert-generated-inline",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning(d.UserRow.user_id)),UserId)",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "arithmetic-scalar-inline",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(d.UserRow.balance.add(1)).all()),list[int])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "nullable-fk-comparison-domain",
+    "challenge": "d.UserRow.inviter_id.eq(PostId(2))",
+    "control": "d.UserRow.inviter_id.eq(UserId(2))",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "instance-query-source",
+    "challenge": "sqlite.select(row.balance)",
+    "control": "assert_type(row.balance,int)",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "application-author_posts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users, posts = (table(UserRow), table(PostRow))\nassert_type(await transaction.fetch_all(sqlite.select(users).join(posts, on=PostRow.author_id.references(UserRow.user_id)).all().order_by(PostRow.post_id.asc())),list[tuple[UserRow, PostRow]])"
+  },
+  {
+    "name": "application-optional_posts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nposts = table(PostRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).left_join(posts, on=PostRow.author_id.references(UserRow.user_id)).all().order_by(UserRow.user_id.asc(), PostRow.post_id.asc())),list[tuple[UserRow, PostRow | None]])"
+  },
+  {
+    "name": "application-referrers",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\ninvitee = sqlite.alias(users, FirstRole, name='invitee')\ninviter = sqlite.alias(users, SecondRole, name='inviter')\nassert_type(await transaction.fetch_all(sqlite.select(invitee).left_join(inviter, on=invitee.column(UserRow.inviter_id).eq_col(inviter.column(UserRow.user_id))).all().order_by(invitee.column(UserRow.user_id).asc())),list[tuple[UserRow, UserRow | None]])"
+  },
+  {
+    "name": "application-balance_groups",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).all().project(BalanceGroup, balance=UserRow.balance, total=users.count_all()).group_by(UserRow.balance).having(users.count_all().gt(1)).order_by(UserRow.balance.asc())),list[BalanceGroup])"
+  },
+  {
+    "name": "application-account_page",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(UserRow.email, UserRow.balance.add(3), UserRow.nickname.coalesce('anonymous'), sqlite.case(UserRow.balance.gte(10), then='regular', otherwise='new')).all().distinct().order_by(UserRow.email.asc()).offset(1).limit(2)),list[tuple[str, int, str, str]])"
+  },
+  {
+    "name": "application-active_authors",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nassert_type(await transaction.fetch_all(sqlite.select(users).where(sqlite.exists(sqlite.select(PostRow.title).where(PostRow.author_id.eq_col(UserRow.user_id)))).order_by(UserRow.user_id.asc())),list[UserRow])"
+  },
+  {
+    "name": "application-balance_reference",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "assert_type(await transaction.fetch_all(sqlite.select(UserRow.email, sqlite.scalar(sqlite.select(UserRow.balance).all().order_by(UserRow.user_id.asc()).limit(1))).all().order_by(UserRow.user_id.asc())),list[tuple[str, int | None]])"
+  },
+  {
+    "name": "application-named_accounts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nemail = UserRow.email.label('email')\naccounts = sqlite.select(users).where(UserRow.balance.gte(10)).project(AccountSummary, email=email, balance=UserRow.balance).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).where(accounts.column(email).eq('Grace'))),list[AccountSummary])"
+  },
+  {
+    "name": "application-account_union",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nemail = UserRow.email.label('email')\nactive = sqlite.select(users).where(UserRow.balance.gte(10)).project(AccountSummary, email=email, balance=UserRow.balance)\nnew = sqlite.select(users).where(UserRow.balance.lt(10)).project(AccountSummary, email=email, balance=UserRow.balance)\naccounts = active.union_all(new).cte(FirstRole, name='accounts')\nassert_type(await transaction.fetch_all(sqlite.select(accounts).all().order_by(accounts.column(email).asc())),list[AccountSummary])"
+  },
+  {
+    "name": "application-referral_chain",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction, start: UserId, max_depth: int=8)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nidentity = UserRow.user_id.label('user_id')\nparent = UserRow.inviter_id.label('inviter_id')\ndepth = sqlite.literal(0).label('depth')\nanchor = sqlite.select(users).where(UserRow.user_id.eq(start)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=depth)\nwalk = sqlite.recursive_cte(anchor, FirstRole, name='referrals').step(lambda previous: sqlite.select(users).join(previous, on=previous.column(parent).eq_col(UserRow.user_id)).where(previous.column(depth).lt(max_depth)).project(ReferralStep, user_id=identity, inviter_id=parent, depth=previous.column(depth).add(1)))\nassert_type(await transaction.fetch_all(sqlite.select(walk).all().order_by(walk.column(depth).asc())),list[ReferralStep])"
+  },
+  {
+    "name": "application-import_accounts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction, accounts: list[tuple[str, int]])->None:\n",
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(insert_many([User(email=email, balance=balance) for email, balance in accounts]).returning()),list[UserRow])"
+  },
+  {
+    "name": "application-award_bonus",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction, identity: UserId, amount: int)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nassert_type(await transaction.execute(sqlite.update(users).set(UserRow.balance.to_expr(UserRow.balance.add(amount))).where(UserRow.user_id.eq(identity)).returning()),list[UserRow])"
+  },
+  {
+    "name": "application-remove_new_accounts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nassert_type(await transaction.execute(sqlite.delete(users).where(UserRow.balance.lt(10)).returning()),list[UserRow])"
+  },
+  {
+    "name": "application-refresh_nickname",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction, email_value: str, nickname_value: str)->None:\n",
+    "control": "pass",
+    "challenge": "assert_type(await transaction.execute(insert(User(email=email_value, balance=0, nickname=nickname_value)).on_conflict(UserRow.email, action=sqlite.DoUpdate(UserRow.nickname.to_inserted())).returning()),UserRow)"
+  },
+  {
+    "name": "application-lookup_account",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction, email_value: str)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nassert_type(await transaction.fetch_one_or_none(sqlite.select(users).where(UserRow.email.eq(email_value))),UserRow | None)"
+  },
+  {
+    "name": "application-stream_accounts",
+    "subject": "direct",
+    "category": "application",
+    "kind": "capability",
+    "rejects": false,
+    "header": "from typing import assert_type\nfrom snekql import sqlite\nfrom scratchpad.dual_descriptors.application import User, UserRow, Post, PostRow, Transaction, table, insert, insert_many\nfrom scratchpad.paired_advanced.contracts import UserId, PostId, AccountSummary, BalanceGroup, ReferralStep, FirstRole, SecondRole\nasync def caller(transaction: Transaction)->None:\n",
+    "control": "pass",
+    "challenge": "users = table(UserRow)\nasync with transaction.fetch_chunks(sqlite.select(users).all().order_by(UserRow.user_id.asc()), size=2) as batches:\n    async for batch in batches:\n        assert_type(batch,list[UserRow])"
+  },
+  {
+    "name": "input-class-field-is-opaque",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "def field(model:type[d.User])->object:\n    return model.balance\nassert_type(field(d.UserRow),object)",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-inline-json",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(ProductRow.data.json_extract_int(\"$.answer\")).all()),list[int|None])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-inline-json-document",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(ProductRow.data).all()),list[dict[str,int]])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-inline-decimal",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(ProductRow.price).all()),list[Decimal])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-inline-tuple",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(ProductRow.identity,ProductRow.price,ProductRow.data).all()),list[tuple[int,Decimal,dict[str,int]]])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-input-value",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(Product(identity=1,price=Decimal(\"1.00\"),data={}).data,dict[str,int])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-bad-json-domain",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "ProductRow.data.json_extract_int(\"$.answer\").gt(\"42\")",
+    "control": "ProductRow.data.json_extract_int(\"$.answer\").gt(42)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-non-json-method",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "ProductRow.price.json_extract_int(\"$.answer\")",
+    "control": "ProductRow.data.json_extract_int(\"$.answer\")",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-cross-sqlite-projection",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "sqlite.select(ProductRow.identity)",
+    "control": "mariadb.select(ProductRow.identity)",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-cross-sqlite-consumer",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "await nt.fetch_all(mariadb.select(ProductRow.identity).all())",
+    "control": "await mt.fetch_all(mariadb.select(ProductRow.identity).all())",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-wrong-fk-backend",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "class Wrong(storage.Model):\n    identity:storage.FKCol[ProductRow,int]=storage.ForeignKey(ProductRow.identity)",
+    "control": "pass",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-cross-source",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "mariadb.select(bridge.table(d.UserRow))",
+    "control": "mariadb.select(maria.table(ProductRow))",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-owner-does-not-widen",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "owner:type[maria.Owner[maria.Row]]=maria.table(ProductRow)",
+    "control": "assert_type(maria.table(ProductRow),type[maria.Owner[ProductRow]])",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-locking",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(ProductRow.price).all().for_update()),list[Decimal])",
+    "control": "pass",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-aliased-json-value",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(source.column(ProductRow.data)).all()),list[dict[str,int]])",
+    "control": "source=mariadb.alias(maria.table(ProductRow),FirstRole,name=\"p\")",
+    "kind": "capability",
+    "rejects": false
+  },
+  {
+    "name": "maria-alias-loses-json-operator",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "source.column(ProductRow.data).json_extract_int(\"$.answer\")",
+    "control": "source=mariadb.alias(maria.table(ProductRow),FirstRole,name=\"p\")",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "native-alias-loses-json-operator",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "source.column(NativeProduct.payload).json_extract_int(\"$.answer\")",
+    "control": "source=mariadb.alias(NativeProduct,FirstRole,name=\"p\")",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "maria-decimal-arithmetic-unsupported",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "ProductRow.price.add(Decimal(\"1\"))",
+    "control": "ProductRow.price.eq(Decimal(\"1\"))",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "native-decimal-arithmetic-unsupported",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "NativeProduct.price.add(Decimal(\"1\"))",
+    "control": "NativeProduct.price.eq(Decimal(\"1\"))",
+    "kind": "unsupported",
+    "rejects": true
+  },
+  {
+    "name": "maria-model-materialization-gap",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(maria.table(ProductRow)).all()),list[ProductRow])",
+    "control": "pass",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "maria-json-field-family",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "class Wrong(storage.Model):\n    data:storage.Col[dict[str,int]]=maria.Json()",
+    "control": "pass",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "maria-sqlite-field-family",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "class Wrong(maria.Model):\n    name:maria.Col[str]=storage.Text()",
+    "control": "pass",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "sibling-owner-is-not-interchangeable",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "sqlite.select(bridge.table(First)).where(Second.balance.eq(1))",
+    "control": "class Input(storage.Model):\n    balance:storage.Col[int]=storage.Integer()\nclass First(Input,storage.Row):\n    table_name=\"first\"\nclass Second(Input,storage.Row):\n    table_name=\"second\"\nsqlite.select(bridge.table(First)).where(First.balance.eq(1))",
+    "kind": "rejection",
+    "rejects": true
+  },
+  {
+    "name": "missing-row-refinement-not-static",
+    "category": "descriptor",
+    "subject": "direct",
+    "challenge": "class Input(storage.Model):\n    identity:storage.Col[int|storage.Omitted]=storage.Integer(primary_key=True,auto_increment=True,default=storage.OMIT)\nclass Complete(Input,storage.Row):\n    table_name=\"incomplete\"\nsqlite.select(Complete.identity).all()",
+    "control": "pass",
+    "kind": "counterexample",
+    "rejects": false
+  },
+  {
+    "name": "column-owner-does-not-widen",
+    "challenge": "value:sqlite.ColumnRef[bridge.Owner[bridge.Row],str]=d.UserRow.email",
+    "control": "value:sqlite.ColumnRef[bridge.Owner[d.UserRow],str]=d.UserRow.email",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "column-cannot-change-owner",
+    "challenge": "value:sqlite.ColumnRef[bridge.Owner[d.PostRow],str]=d.UserRow.email",
+    "control": "value:sqlite.ColumnRef[bridge.Owner[d.UserRow],str]=d.UserRow.email",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "callback-without-default-unsupported",
+    "challenge": "storage.ForeignKey(lambda:d.UserRow.user_id)",
+    "control": "storage.ForeignKey(lambda:d.UserRow.user_id,default=None)",
+    "kind": "unsupported",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "callback-required-wrong-target-unsupported",
+    "challenge": "class Bad(storage.Model):\n    parent:storage.FKCol[d.PostRow,UserId]=storage.ForeignKey(lambda:d.UserRow.user_id)",
+    "control": "storage.ForeignKey(d.UserRow.user_id)",
+    "kind": "unsupported",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "callback-explicit-default-wrong-target",
+    "challenge": "class Bad(storage.Model):\n    parent:storage.FKCol[d.PostRow,UserId]=storage.ForeignKey(lambda:d.UserRow.user_id,default=UserId(1))",
+    "control": "class Good(storage.Model):\n    parent:storage.FKCol[d.UserRow,UserId]=storage.ForeignKey(lambda:d.UserRow.user_id,default=UserId(1))",
+    "kind": "rejection",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "maria-callback-without-default-unsupported",
+    "challenge": "maria.ForeignKey(lambda:ProductRow.identity)",
+    "control": "maria.ForeignKey(lambda:ProductRow.identity,default=None)",
+    "kind": "unsupported",
+    "rejects": true,
+    "subject": "direct",
+    "category": "descriptor"
+  },
+  {
+    "name": "required-fk-result-cannot-change-target",
+    "category": "descriptor",
+    "subject": "direct",
+    "kind": "rejection",
+    "rejects": true,
+    "control": "value=storage.ForeignKey(d.UserRow.user_id)",
+    "challenge": "wrong:storage.FKCol[d.PostRow,UserId]=value"
+  },
+  {
+    "name": "body-required-fk-target-not-statically-checked",
+    "category": "descriptor",
+    "subject": "class-body",
+    "kind": "counterexample",
+    "rejects": false,
+    "control": "pass",
+    "challenge": "class Wrong[State=Pending](Model[State]):\n    __read_type__:ClassVar[ReadType[Wrong[Fetched]]]\n    author:sqlite.FKCol[b.Post,UserId]=sqlite.ForeignKey(b.User.user_id)"
+  }
+]

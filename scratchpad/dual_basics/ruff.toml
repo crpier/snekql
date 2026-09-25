@@ -1,0 +1,6 @@
+extend = "../dual_backends/ruff.toml"
+
+[lint.per-file-ignores]
+"test_*.py" = ["S106", "PLR2004", "FBT003", "RUF029", "S101", "PLC0415", "A003"] # Opaque password-hash fixtures, not credentials or hashing code.
+"fixtures.py" = ["S106"]
+"tour.py" = ["S106"]

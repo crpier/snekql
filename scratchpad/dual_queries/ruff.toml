@@ -1,0 +1,9 @@
+extend = "../dual_features/ruff.toml"
+[lint.per-file-ignores]
+"interface.py" = ["UP046"]
+# Deliberate invariant/covariant coordinates and documented rejected designs.
+"options.pyi" = ["UP046", "PYI021"]
+
+# Source/target/write-phase coordinates intentionally remain invariant.
+"relationships.py" = ["UP046"]
+"writes.py" = ["UP046"]

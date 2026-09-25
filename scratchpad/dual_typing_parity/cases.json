@@ -1,0 +1,2622 @@
+[
+  {
+    "name": "dual-pending-identity",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(pending.user_id,UserId | d.sqlite.Omitted)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-row-identity",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(row.user_id,UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-nullable",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(row.nickname,str|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-plain-email",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(pending.email,str)\nassert_type(row.email,str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-shared-method",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(pending.label(),str)\nassert_type(row.label(),str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-row-method",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(row.identity(),UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-input-row-method",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass\nrow.identity()",
+    "challenge": "pending.identity()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-protocol-helper",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(helpers.structural_label(pending),str)\nassert_type(helpers.structural_label(row),str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-insert-result",
+    "subject": "dual",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "assert_type(await dt.execute(d.sqlite.insert(pending).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-insert-complete",
+    "subject": "dual",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "d.sqlite.insert(row)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Row-as-input subtyping permits reinsertion in dual."
+  },
+  {
+    "name": "dual-instance-mutation",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "row.email=\"Changed\"",
+    "rejects": true,
+    "kind": "rejection",
+    "note": "Both runtime objects are frozen; native typing permits the assignment."
+  },
+  {
+    "name": "dual-nominal-identity",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "wrong: PostId = row.user_id",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-constructor-missing",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass\nd.User(email=\"A\",balance=12)",
+    "challenge": "d.User(balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-constructor-wrong-value",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass\nd.User(email=\"A\",balance=12)",
+    "challenge": "d.User(email=42,balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-constructor-typo",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass\nd.User(email=\"A\",balance=12)",
+    "challenge": "d.User(emali=\"A\",balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-constructor-complete",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "assert_type(d.UserRow(user_id=UserId(1),email=\"A\",balance=12),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-constructor-row-missing-id",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass\nd.User(email=\"A\",balance=12)",
+    "challenge": "d.UserRow(email=\"A\",balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-bare-helper",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "def label(user: d.User) -> str:\n    return user.email\nlabel(row)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-generic-state-helper",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "def label[Value: d.User](user: Value) -> str:\n    return user.email\nassert_type(label(row),str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-input-to-row",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "ready: d.UserRow = pending",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-row-to-input",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "input_value: d.User = row",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-pending-identity",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(native_pending.user_id,UserId | sqlite.PendingGeneration)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-row-identity",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(native_row.user_id,UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-nullable",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(native_row.nickname,str|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-plain-email",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "assert_type(native_pending.email,str)\nassert_type(native_row.email,str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-shared-method",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(native_pending.label(),str)\nassert_type(native_row.label(),str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-row-method",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(native_row.identity(),UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-input-row-method",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass\nnative_row.identity()",
+    "challenge": "native_pending.identity()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-protocol-helper",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "assert_type(helpers.structural_label(native_pending),str)\nassert_type(helpers.structural_label(native_row),str)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-insert-result",
+    "subject": "native",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning()),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-insert-complete",
+    "subject": "native",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "sqlite.insert(native_row)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": "Row-as-input subtyping permits reinsertion in dual."
+  },
+  {
+    "name": "native-instance-mutation",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "native_row.email=\"Changed\"",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Both runtime objects are frozen; native typing permits the assignment."
+  },
+  {
+    "name": "native-nominal-identity",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "wrong: PostId = native_row.user_id",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-constructor-missing",
+    "subject": "native",
+    "category": "constructors",
+    "control": "pass\nn.User(email=\"A\",balance=12)",
+    "challenge": "n.User(balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-constructor-wrong-value",
+    "subject": "native",
+    "category": "constructors",
+    "control": "pass\nn.User(email=\"A\",balance=12)",
+    "challenge": "n.User(email=42,balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-constructor-typo",
+    "subject": "native",
+    "category": "constructors",
+    "control": "pass\nn.User(email=\"A\",balance=12)",
+    "challenge": "n.User(emali=\"A\",balance=12)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-constructor-complete",
+    "subject": "native",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "assert_type(n.User[sqlite.Fetched](user_id=UserId(1),email=\"A\",balance=12),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-constructor-row-missing-id",
+    "subject": "native",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "n.User[sqlite.Fetched](email=\"A\",balance=12)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-bare-helper",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass\nassert_type(native_pending.label(),str)\nassert_type(native_row.label(),str)",
+    "challenge": "def label(user: n.User) -> str:\n    return user.email\nlabel(native_row)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-generic-state-helper",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass\nassert_type(native_pending.label(),str)\nassert_type(native_row.label(),str)",
+    "challenge": "def label[State: (sqlite.Pending,sqlite.Fetched)](user: n.User[State]) -> str:\n    return user.email\nassert_type(label(native_row),str)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "native-input-to-row",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "ready: n.User[sqlite.Fetched] = native_pending",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-row-to-input",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "input_value: n.User = native_row",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-select-result",
+    "subject": "dual",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-select-scalar",
+    "subject": "dual",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-query-instance",
+    "subject": "dual",
+    "category": "queries",
+    "control": "pass\nassert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).all()),list[d.UserRow])",
+    "challenge": "d.sqlite.select(row)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-query-unscoped",
+    "subject": "dual",
+    "category": "readiness",
+    "control": "pass",
+    "challenge": "await dt.fetch_all(d.sqlite.select(d.UserRow))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-wrong-filter-owner",
+    "subject": "dual",
+    "category": "scope",
+    "control": "pass\nassert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.email).all()),list[str])",
+    "challenge": "d.sqlite.select(d.UserRow).where(d.PostRow.title.eq(\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-wrong-filter-value",
+    "subject": "dual",
+    "category": "scope",
+    "control": "pass\nassert_type(await dt.fetch_all(d.sqlite.select(d.UserRow.email).all()),list[str])",
+    "challenge": "d.sqlite.select(d.UserRow).where(d.UserRow.email.eq(42))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-select-result",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-select-scalar",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.email).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-query-instance",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "sqlite.select(native_row)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-query-unscoped",
+    "subject": "native",
+    "category": "readiness",
+    "control": "pass",
+    "challenge": "await nt.fetch_all(sqlite.select(n.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-filter-owner",
+    "subject": "native",
+    "category": "scope",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User.email).all()),list[str])",
+    "challenge": "sqlite.select(n.User).where(n.Post.title.eq(\"A\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-filter-value",
+    "subject": "native",
+    "category": "scope",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User.email).all()),list[str])",
+    "challenge": "sqlite.select(n.User).where(n.User.email.eq(42))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-query-input-class",
+    "subject": "dual",
+    "category": "queries",
+    "control": "pass\nassert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).all()),list[d.UserRow])",
+    "challenge": "d.sqlite.select(d.User)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-query-input-column",
+    "subject": "dual",
+    "category": "queries",
+    "control": "pass\nassert_type(await dt.fetch_all(d.sqlite.select(d.UserRow).all()),list[d.UserRow])",
+    "challenge": "d.sqlite.select(d.User.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-specialized-source",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "sqlite.select(n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-protocol-insert-helper",
+    "subject": "native",
+    "category": "helpers",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(helpers.native_insert(native_pending)),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-protocol-reject-row",
+    "subject": "native",
+    "category": "helpers",
+    "control": "pass",
+    "challenge": "helpers.native_insert(native_row)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-isinstance-narrows",
+    "subject": "dual",
+    "category": "values",
+    "control": "pass",
+    "challenge": "if isinstance(pending,d.UserRow):\n    assert_type(pending.user_id,UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-isinstance-specialization",
+    "subject": "native",
+    "category": "values",
+    "control": "pass",
+    "challenge": "isinstance(native_pending,n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "dual-inherited-constructor-factory",
+    "subject": "dual",
+    "category": "constructors",
+    "control": "pass",
+    "challenge": "def factory(model:type[d.User]) -> d.User:\n    return model(email=\"A\",balance=12)\nfactory(d.UserRow)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Input subclass constructors may need extra generated arguments; runtime rejects."
+  },
+  {
+    "name": "native-model-result",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-tuple-result",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.user_id,n.User.email).all()),list[tuple[UserId,str]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-unjoined-projection",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(n.User.email,n.Post.title).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-model-join",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).join(n.Post,on=n.Post.author_id.references(n.User.user_id)).all()),list[tuple[n.User[sqlite.Fetched],n.Post[sqlite.Fetched]]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-model-left-join",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).left_join(n.Post,on=n.Post.author_id.references(n.User.user_id)).all()),list[tuple[n.User[sqlite.Fetched],n.Post[sqlite.Fetched]|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-scalar-join",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.email).join(n.Post,on=n.Post.author_id.references(n.User.user_id)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-scope",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.select(n.User).where(n.Post.title.eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-nominal-key",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "n.User.user_id.eq(PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-fk-target",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "n.Post.author_id.references(n.Post.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-unscoped",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(n.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-ordering-pagination",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.email).all().distinct().order_by(n.User.email.desc()).limit(2).offset(1)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-aggregate-count",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.count_all()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-aggregate-sum",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.balance.sum()).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-arithmetic",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.balance.add(1)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-arithmetic-bad-domain",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "n.User.email.add(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-nullable-coalesce",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.nickname.coalesce(\"anonymous\")).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-text-functions",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.email.lower().char_length()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-case-expression",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(sqlite.case(n.User.balance.gt(0),then=n.User.balance,otherwise=0)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-named-output",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).all().project(Summary,email=n.User.email,balance=n.User.balance)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-named-wrong-domain",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(n.User).all().project(Summary,email=n.User.balance,balance=n.User.email)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Named keyword bindings have runtime validation, not field-by-field static checking."
+  },
+  {
+    "name": "native-named-wrong-label",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "sqlite.select(n.User).all().project(Summary,emali=n.User.email,balance=n.User.balance)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-named-unscoped",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.fetch_all(sqlite.select(n.User).project(Summary,email=n.User.email,balance=n.User.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-group-having",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).all().project(Group,balance=n.User.balance,total=n.User.count_all()).group_by(n.User.balance).having(n.User.count_all().gt(0))),list[Group])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-count",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.balance.to(18)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-row",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.balance.to(18)).all().returning()),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-scalar",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.balance.to(18)).all().returning(n.User.email)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-named",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.balance.to(18)).all().returning_as(Summary,email=n.User.email,balance=n.User.balance)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-no-scope",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.update(n.User).set(n.User.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-update-no-assignment",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.update(n.User).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-update-wrong-owner",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(n.User).set(n.Post.title.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-update-wrong-value",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(n.User).set(n.User.balance.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-update-generated-id",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.user_id.to(UserId(10))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-update-expression",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.balance.to_expr(n.User.balance.add(1))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-delete-count",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.delete(n.User).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-delete-row",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.delete(n.User).all().returning()),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-delete-unscoped",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "await nt.execute(sqlite.delete(n.User))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-insert-row",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning()),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-insert-scalar",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning(n.User.user_id)),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-insert-named",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning_as(Summary,email=n.User.email,balance=n.User.balance)),Summary)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-conflict-update",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).on_conflict(n.User.email,action=sqlite.DoUpdate(n.User.balance.to(18))).returning()),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-conflict-wrong-owner",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.insert(native_pending).on_conflict(n.Post.title,action=sqlite.DoUpdate(n.User.balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-conflict-ignore",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).on_conflict(n.User.email,action=sqlite.DoNothing)),None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-correlated-exists",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).where(sqlite.exists(sqlite.select(n.Post.title).where(n.Post.author_id.eq_col(n.User.user_id))))),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-subquery-domain",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "n.User.user_id.in_subquery(sqlite.select(n.User.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-subquery-unscoped",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "n.User.user_id.in_subquery(sqlite.select(n.User.user_id))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-subquery-in",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).where(n.User.user_id.in_subquery(sqlite.select(n.Post.author_id).all()))),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-self-join-alias",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(n.User,Role,name=\"first\")\nsecond=sqlite.alias(n.User,OtherRole,name=\"second\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(first).join(second,on=first.column(n.User.user_id).eq_col(second.column(n.User.user_id))).all()),list[tuple[n.User[sqlite.Fetched],n.User[sqlite.Fetched]]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-alias-wrong-role",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(n.User,Role,name=\"first\")\nsecond=sqlite.alias(n.User,OtherRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.select(first).where(second.column(n.User.email).eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-alias-wrong-model-column",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(n.User,Role,name=\"first\")\nsecond=sqlite.alias(n.User,OtherRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "first.column(n.Post.title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-alias-mutation-target",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "first=sqlite.alias(n.User,Role,name=\"first\")\nsecond=sqlite.alias(n.User,OtherRole,name=\"second\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.update(first)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-cte-model",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(cte).all()),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-cte-column",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(cte.column(email_token)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-cte-wrong-domain",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "cte.column(email_token).eq(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-cte-mutation-target",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.delete(cte)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-union",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(source.union(source)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-union-all",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "email_token=n.User.email.label(\"email\")\nsource=sqlite.select(n.User).all().project(Summary,email=email_token,balance=n.User.balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await nt.fetch_all(source.union_all(source)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-recursive-cte",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "depth=sqlite.literal(0).label(\"depth\")",
+    "challenge": "walk=sqlite.recursive_cte(sqlite.select(n.User).all().project(Walk,depth=depth),Role,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(3)).project(Walk,depth=previous.column(depth).add(1)))\nassert_type(await nt.fetch_all(sqlite.select(walk).all()),list[Walk])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-recursive-bad-depth",
+    "subject": "native",
+    "category": "query-parity",
+    "control": "depth=sqlite.literal(0).label(\"depth\")\nassert_type(await nt.fetch_all(sqlite.select(n.User).all()),list[n.User[sqlite.Fetched]])",
+    "challenge": "sqlite.recursive_cte(sqlite.select(n.User).all().project(Walk,depth=depth),Role,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(\"bad\")).project(Walk,depth=previous.column(depth).add(1)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-result",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-tuple-result",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(uid,email).all()),list[tuple[UserId,str]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unjoined-projection",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(email,title).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-join",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[tuple[d.UserRow,d.PostRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-model-left-join",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).left_join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[tuple[d.UserRow,d.PostRow|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-join",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email).join(bridge.table(d.PostRow),on=author.references(uid)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-scope",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(title.eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-nominal-key",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.eq(PostId(1))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-fk-target",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "author.references(title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-unscoped",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-ordering-pagination",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email).all().distinct().order_by(email.desc()).limit(2).offset(1)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-aggregate-count",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow).count_all()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-aggregate-sum",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(balance.sum()).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-arithmetic",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(balance.add(1)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-arithmetic-bad-domain",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "email.add(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-nullable-coalesce",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(nick.coalesce(\"anonymous\")).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-text-functions",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email.lower().char_length()).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-case-expression",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(sqlite.case(balance.gt(0),then=balance,otherwise=0)).all()),list[int])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-output",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email,balance=balance)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-wrong-domain",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=balance,balance=email)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Named keyword bindings have runtime validation, not field-by-field static checking."
+  },
+  {
+    "name": "bridge-named-wrong-label",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).all().project(Summary,emali=email,balance=balance)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "bridge-named-unscoped",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).project(Summary,email=email,balance=balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-group-having",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(Group,balance=balance,total=bridge.table(d.UserRow).count_all()).group_by(balance).having(bridge.table(d.UserRow).count_all().gt(0))),list[Group])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-count",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-row",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-scalar",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning(email)),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-named",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)).all().returning_as(Summary,email=email,balance=balance)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-no-scope",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-no-assignment",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.update(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-wrong-owner",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(title.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-wrong-value",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(bridge.table(d.UserRow)).set(balance.to(\"bad\")).all()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-generated-id",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(uid.to(UserId(10))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-update-expression",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(balance.to_expr(balance.add(1))).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-count",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all()),int)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-row",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(sqlite.delete(bridge.table(d.UserRow)).all().returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-delete-unscoped",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "await bt.execute(sqlite.delete(bridge.table(d.UserRow)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-row",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-scalar",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning(uid)),UserId)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-insert-named",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).returning_as(Summary,email=email,balance=balance)),Summary)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-update",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(email,action=sqlite.DoUpdate(balance.to(18))).returning()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-wrong-owner",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "bridge.insert(pending).on_conflict(title,action=sqlite.DoUpdate(balance.to(18)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-conflict-ignore",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.execute(bridge.insert(pending).on_conflict(email,action=sqlite.DoNothing)),None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-correlated-exists",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(sqlite.exists(sqlite.select(title).where(author.eq_col(uid))))),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-domain",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.in_subquery(sqlite.select(email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-unscoped",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "uid.in_subquery(sqlite.select(uid))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-subquery-in",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\npass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).where(uid.in_subquery(sqlite.select(author).all()))),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-self-join-alias",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),Role,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),OtherRole,name=\"second\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(first).join(second,on=first.column(uid).eq_col(second.column(uid))).all()),list[tuple[d.UserRow,d.UserRow]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-wrong-role",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),Role,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),OtherRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.select(first).where(second.column(email).eq(\"x\"))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-wrong-model-column",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),Role,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),OtherRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "first.column(title)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-alias-mutation-target",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nfirst=sqlite.alias(bridge.table(d.UserRow),Role,name=\"first\")\nsecond=sqlite.alias(bridge.table(d.UserRow),OtherRole,name=\"second\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.update(first)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-model",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte).all()),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-column",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(cte.column(email_token)).all()),list[str])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-wrong-domain",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "cte.column(email_token).eq(1)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-cte-mutation-target",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.delete(cte)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-union",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(source.union(source)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-union-all",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\nemail_token=email.label(\"email\")\nsource=sqlite.select(bridge.table(d.UserRow)).all().project(Summary,email=email_token,balance=balance)\ncte=source.cte(Role,name=\"summary\")",
+    "challenge": "assert_type(await bt.fetch_all(source.union_all(source)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-recursive-cte",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\ndepth=sqlite.literal(0).label(\"depth\")",
+    "challenge": "walk=sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk,depth=depth),Role,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(3)).project(Walk,depth=previous.column(depth).add(1)))\nassert_type(await bt.fetch_all(sqlite.select(walk).all()),list[Walk])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-recursive-bad-depth",
+    "subject": "bridge",
+    "category": "query-parity",
+    "control": "email=bridge.column(d.UserRow.email)\nuid=bridge.column(d.UserRow.user_id)\nbalance=bridge.column(d.UserRow.balance)\nnick=bridge.column(d.UserRow.nickname)\ntitle=bridge.column(d.PostRow.title)\nauthor=bridge.column(d.PostRow.author_id)\ndepth=sqlite.literal(0).label(\"depth\")\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "challenge": "sqlite.recursive_cte(sqlite.select(bridge.table(d.UserRow)).all().project(Walk,depth=depth),Role,name=\"walk\").step(lambda previous: sqlite.select(previous).where(previous.column(depth).lt(\"bad\")).project(Walk,depth=previous.column(depth).add(1)))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-inline-scalar-erases",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.column(d.UserRow.email)).all()),list[Any])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Inlining a generic column conversion into native overloads loses the scalar result. Prebinding preserves it."
+  },
+  {
+    "name": "bridge-inline-scalar-exact",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.column(d.UserRow.email)).all()),list[str])",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "bridge-inline-subquery-domain-hole",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "bridge.column(d.UserRow.user_id).in_subquery(sqlite.select(bridge.column(d.UserRow.email)).all())",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "bridge-native-consumer-bypasses-decoding",
+    "subject": "bridge",
+    "category": "bridge-limits",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native Transaction accepts the phantom query but materializes private native rows. Must use bridge.Transaction; not a shippable integration."
+  },
+  {
+    "name": "dual-plain-self-method",
+    "subject": "dual",
+    "category": "behavior",
+    "control": "pass",
+    "challenge": "class Example(d.sqlite.Model):\n    email: d.sqlite.Col[str] = d.sqlite.Text()\n    def label(self) -> str:\n        return self.email",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-bad-client-default",
+    "subject": "dual",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Example(d.sqlite.Model):\n    status: d.sqlite.Col[Literal[\"queued\"]] = d.sqlite.Text(default=\"draft\")",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-plain-self-method",
+    "subject": "native",
+    "category": "behavior",
+    "control": "pass\nassert_type(native_pending.label(),str)\nassert_type(native_row.label(),str)",
+    "challenge": "class Example[State = sqlite.Pending](sqlite.Model[State,\"Example[sqlite.Fetched]\"]):\n    email: sqlite.Col[str] = sqlite.Text()\n    def label(self) -> str:\n        return self.email",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "native-bad-client-default",
+    "subject": "native",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Example[State = sqlite.Pending](sqlite.Model[State,\"Example[sqlite.Fetched]\"]):\n    status: sqlite.Col[Literal[\"queued\"]] = sqlite.Text(default=\"draft\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-missing-generated-refinement",
+    "subject": "dual",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Missing(d.User,bridge.Row):\n    table_name=\"missing\"\nassert_type(Missing(email=\"x\",balance=1).user_id,UserId|d.sqlite.Omitted)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "The inherited value type still includes omission; binding rejects this row."
+  },
+  {
+    "name": "dual-wrong-pair-witness",
+    "subject": "dual",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Wrong(d.sqlite.Model):\n    __row__: ClassVar[type[d.PostRow]]\n    email: d.sqlite.Col[str] = d.sqlite.Text()\nassert_type(await dt.execute(d.sqlite.insert(Wrong(email=\"x\")).returning()),d.PostRow)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-result-witness",
+    "subject": "native",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Wrong[State=sqlite.Pending](sqlite.Model[State,\"n.Post[sqlite.Fetched]\"]):\n    email: sqlite.Col[str] = sqlite.Text()\nassert_type(await nt.fetch_all(sqlite.select(Wrong).all()),list[n.Post[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-scalar-id-exact",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.user_id).all()),list[UserId])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-bound-returning-id",
+    "subject": "native",
+    "category": "queries",
+    "control": "identifier=n.User.user_id\nassert_type(await nt.fetch_all(sqlite.select(identifier).all()),list[UserId])",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning(identifier)),UserId)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "native-inline-returning-id-erases-nominality",
+    "subject": "native",
+    "category": "queries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert(native_pending).returning(n.User.user_id)),int)",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "native-column-comparison-omits-right-owner",
+    "subject": "native",
+    "category": "scope",
+    "control": "pass",
+    "challenge": "sqlite.select(n.User).where(n.User.email.eq_col(n.Post.title))",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native eq_col tracks the left owner only; compilation checks the other source."
+  },
+  {
+    "name": "native-erased-select-helper-unjoined",
+    "subject": "native",
+    "category": "helpers",
+    "control": "pass",
+    "challenge": "def ready(query: sqlite.Select[tuple[str,str]]) -> sqlite.Select[tuple[str,str]]:\n    return query\nassert_type(await nt.fetch_all(ready(sqlite.select(n.User.email,n.Post.title).all())),list[tuple[str,str]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Result-only alias erases the source relation. Direct native/bridge Transaction still rejects missing sources."
+  },
+  {
+    "name": "bridge-column-comparison-omits-right-owner",
+    "subject": "bridge",
+    "category": "scope",
+    "control": "email=bridge.column(d.UserRow.email)\ntitle=bridge.column(d.PostRow.title)",
+    "challenge": "sqlite.select(bridge.table(d.UserRow)).where(email.eq_col(title))",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Native eq_col tracks the left owner only; compilation checks the other source."
+  },
+  {
+    "name": "bridge-erased-select-helper-unjoined",
+    "subject": "bridge",
+    "category": "helpers",
+    "control": "email=bridge.column(d.UserRow.email)\ntitle=bridge.column(d.PostRow.title)",
+    "challenge": "def ready(query: sqlite.Select[tuple[str,str]]) -> sqlite.Select[tuple[str,str]]:\n    return query\nassert_type(await bt.fetch_all(ready(sqlite.select(email,title).all())),list[tuple[str,str]])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Result-only alias erases the source relation. Direct native/bridge Transaction still rejects missing sources."
+  },
+  {
+    "name": "typed-dual-valid-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[Literal[\"queued\",\"done\"]] = strict.Text(default=\"queued\")\nassert_type(Input().status,Literal[\"queued\",\"done\"])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-stale-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[Literal[\"queued\"]] = strict.Text(default=\"draft\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-null-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str|None] = strict.Text(default=None)\nassert_type(Input().status,str|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-wrong-domain-default",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str] = strict.Text(default=42)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "typed-dual-required-field",
+    "subject": "typed-default",
+    "category": "declarations",
+    "control": "pass",
+    "challenge": "class Input(strict.Model):\n    status: strict.Col[str] = strict.Text()\nInput()",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-exact-one",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-optional-one",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_one_or_none(sqlite.select(n.User).all()),n.User[sqlite.Fetched]|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-optional-scalar",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "await nt.fetch_one_or_none(sqlite.select(n.User.email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-stream-batches",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "async with nt.fetch_chunks(sqlite.select(n.User).all(),size=2) as stream:\n    async for batch in stream:\n        assert_type(batch,list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-unchecked-read",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User).all(),validate=False),list[object])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-unchecked-write",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.update(n.User).set(n.User.email.to(\"changed\")).all().returning(),validate=False),object)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-bulk-model",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert([native_pending]).returning()),list[n.User[sqlite.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-bulk-named",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "assert_type(await nt.execute(sqlite.insert([native_pending]).returning_as(Summary,email=n.User.email,balance=n.User.balance)),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-backend-query",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "mariadb.select(n.User)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-backend-execution",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "await mt.fetch_all(sqlite.select(n.User).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-wrong-backend-column",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "mariadb.select(n.User.email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-projection-left-join",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "sqlite.select(n.User.email).left_join(n.User,on=n.User.email.eq(\"x\"))",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit."
+  },
+  {
+    "name": "native-positional-nine-slots",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "sqlite.select(n.User.email,n.User.email,n.User.email,n.User.email,n.User.email,n.User.email,n.User.email,n.User.email,n.User.email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "native-wide-named",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass",
+    "challenge": "class Wide(BaseModel):\n    e0: str\n    e1: str\n    e2: str\n    e3: str\n    e4: str\n    e5: str\n    e6: str\n    e7: str\n    e8: str\nassert_type(await nt.fetch_all(sqlite.select(n.User).all().project(Wide,e0=n.User.email,e1=n.User.email,e2=n.User.email,e3=n.User.email,e4=n.User.email,e5=n.User.email,e6=n.User.email,e7=n.User.email,e8=n.User.email)),list[Wide])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-scalar-readonly-contract",
+    "subject": "native",
+    "category": "consumption",
+    "control": "pass\nassert_type(await nt.fetch_one(sqlite.select(n.User).all()),n.User[sqlite.Fetched])",
+    "challenge": "def accepts(column: sqlite.ColumnRef[n.User,str]) -> None:\n    column.to(\"x\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-exact-one",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-optional-one",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_one_or_none(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow|None)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-optional-scalar",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "await bt.fetch_one_or_none(sqlite.select(email).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-stream-batches",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "async with bt.fetch_chunks(sqlite.select(bridge.table(d.UserRow)).all(),size=2) as stream:\n    async for batch in stream:\n        assert_type(batch,list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unchecked-read",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all(),validate=False),list[object])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-unchecked-write",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(sqlite.update(bridge.table(d.UserRow)).set(email.to(\"changed\")).all().returning(),validate=False),object)",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-bulk-model",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning()),list[d.UserRow])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-bulk-named",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "assert_type(await bt.execute(bridge.insert_many([pending]).returning_as(Summary,email=email,balance=bridge.column(d.UserRow.balance))),list[Summary])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-query",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "mariadb.select(bridge.table(d.UserRow))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-execution",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "await mt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all())",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-wrong-backend-column",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "mariadb.select(email)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-projection-left-join",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "sqlite.select(email).left_join(bridge.table(d.UserRow),on=email.eq(\"x\"))",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Native projection LEFT JOIN is deliberately unsupported; the bridge inherits that limit."
+  },
+  {
+    "name": "bridge-positional-nine-slots",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "sqlite.select(email,email,email,email,email,email,email,email,email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": ""
+  },
+  {
+    "name": "bridge-wide-named",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)",
+    "challenge": "class Wide(BaseModel):\n    e0: str\n    e1: str\n    e2: str\n    e3: str\n    e4: str\n    e5: str\n    e6: str\n    e7: str\n    e8: str\nassert_type(await bt.fetch_all(sqlite.select(bridge.table(d.UserRow)).all().project(Wide,e0=email,e1=email,e2=email,e3=email,e4=email,e5=email,e6=email,e7=email,e8=email)),list[Wide])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-readonly-contract",
+    "subject": "bridge",
+    "category": "consumption",
+    "control": "email=bridge.column(d.UserRow.email)\nassert_type(await bt.fetch_one(sqlite.select(bridge.table(d.UserRow)).all()),d.UserRow)",
+    "challenge": "def accepts(column: sqlite.ColumnRef[bridge.Owner[d.UserRow],str]) -> None:\n    column.to(\"x\")",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "native-bulk-mixed-models",
+    "subject": "native",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "sqlite.insert([native_pending,n.Post(author_id=UserId(1),title=\"x\")])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "bridge-bulk-mixed-models",
+    "subject": "bridge",
+    "category": "writes",
+    "control": "pass",
+    "challenge": "bridge.insert_many([pending,d.Post(author_id=UserId(1),title=\"x\")])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": ""
+  },
+  {
+    "name": "dual-cross-family",
+    "subject": "dual",
+    "category": "backend",
+    "control": "app.mariadb.select(app.ProductRow).all()",
+    "challenge": "d.sqlite.select(app.ProductRow)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "dual-maria-json",
+    "subject": "dual",
+    "category": "backend",
+    "control": "pass",
+    "challenge": "assert_type(await app.mariadb.Transaction(mt).fetch_all(app.mariadb.select(app.ProductRow.payload.json_extract_int(\"$.answer\")).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-maria-json",
+    "subject": "native",
+    "category": "backend",
+    "control": "pass",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(nm.Product.payload.json_extract_int(\"$.answer\")).all()),list[int|None])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-maria-decimal",
+    "subject": "native",
+    "category": "backend",
+    "control": "pass",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(nm.Product.price).all()),list[Decimal])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "dual-maria-decimal",
+    "subject": "dual",
+    "category": "backend",
+    "control": "pass",
+    "challenge": "assert_type(await app.mariadb.Transaction(mt).fetch_all(app.mariadb.select(app.ProductRow.price).all()),list[Decimal])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-maria-lock",
+    "subject": "native",
+    "category": "backend",
+    "control": "pass",
+    "challenge": "assert_type(await mt.fetch_all(mariadb.select(nm.Product).all().for_update()),list[nm.Product[mariadb.Fetched]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "existing-adapter-tuple",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow.email,app.UserRow.user_id)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-named",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow).all().project(Summary,email=app.UserRow.email,balance=1)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-ordered",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow).all().order_by(app.UserRow.email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-paginated",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow).all().limit(2)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-distinct",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow.email).all().distinct()",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-aliases",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.alias(app.UserRow,Role,name=\"other\")",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-left-join",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.select(app.UserRow).left_join(app.PostRow,on=app.PostRow.author_id.references(app.UserRow.user_id)).all()",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-update",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.update(app.UserRow)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-delete",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.delete(app.UserRow)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-bulk",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.insert([app.User(email=\"A\"),app.User(email=\"B\")])",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-scalar-returning",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.sqlite.insert(app.User(email=\"A\")).returning(app.UserRow.email)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-optional",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "await dt.fetch_one_or_none(app.sqlite.select(app.UserRow).all())",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-stream",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "dt.fetch_chunks(app.sqlite.select(app.UserRow).all(),size=2)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-unchecked",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "await dt.fetch_all(app.sqlite.select(app.UserRow).all(),validate=False)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-arithmetic",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.CounterRow.count.add(1)",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-text-functions",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.UserRow.email.lower()",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-locking",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "app.sqlite.select(app.UserRow).all()",
+    "challenge": "app.mariadb.select(app.ProductRow).all().for_update()",
+    "rejects": true,
+    "kind": "unsupported",
+    "note": "Missing in the existing adapter, not a demonstrated dual-class typing limit."
+  },
+  {
+    "name": "existing-adapter-join-retains-root",
+    "subject": "existing-adapter",
+    "category": "gaps",
+    "control": "pass",
+    "challenge": "assert_type(await dt.fetch_all(app.sqlite.select(app.UserRow).join(app.PostRow,on=app.PostRow.author_id.references(app.UserRow.user_id)).all()),list[app.UserRow])",
+    "rejects": false,
+    "kind": "counterexample",
+    "note": "Existing adapter joins do not append models. The native-reuse bridge does."
+  },
+  {
+    "name": "native-scalar-subquery",
+    "subject": "native",
+    "category": "subqueries",
+    "control": "pass",
+    "challenge": "assert_type(await nt.fetch_all(sqlite.select(n.User.email,sqlite.scalar(sqlite.select(n.User.balance).all().limit(1))).all()),list[tuple[str,int|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "native-scalar-subquery-unscoped",
+    "subject": "native",
+    "category": "subqueries",
+    "control": "pass\nsqlite.scalar(sqlite.select(n.User.balance).all())",
+    "challenge": "sqlite.scalar(sqlite.select(n.User.balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-subquery",
+    "subject": "bridge",
+    "category": "subqueries",
+    "control": "email=bridge.column(d.UserRow.email)\nbalance=bridge.column(d.UserRow.balance)",
+    "challenge": "assert_type(await bt.fetch_all(sqlite.select(email,sqlite.scalar(sqlite.select(balance).all().limit(1))).all()),list[tuple[str,int|None]])",
+    "rejects": false,
+    "kind": "capability",
+    "note": ""
+  },
+  {
+    "name": "bridge-scalar-subquery-unscoped",
+    "subject": "bridge",
+    "category": "subqueries",
+    "control": "email=bridge.column(d.UserRow.email)\nbalance=bridge.column(d.UserRow.balance)\nsqlite.scalar(sqlite.select(balance).all())",
+    "challenge": "sqlite.scalar(sqlite.select(balance))",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  },
+  {
+    "name": "bridge-owner-does-not-widen",
+    "subject": "bridge",
+    "category": "scope",
+    "control": "assert_type(bridge.table(d.UserRow),type[bridge.Owner[d.UserRow]])",
+    "challenge": "owner: type[bridge.Owner[bridge.Row]] = bridge.table(d.UserRow)",
+    "rejects": true,
+    "kind": "rejection",
+    "note": ""
+  }
+]

@@ -1,0 +1,13 @@
+extend = "../../pyproject.toml"
+[lint]
+extend-ignore = ["TRY003", "EM101"]
+[lint.pyflakes]
+allowed-unused-imports = []
+[lint.per-file-ignores]
+"test_*.py" = ["PLC0415", "PLR2004", "FBT003"]
+"nested.py" = ["FBT003"]
+"navigation.py" = ["C901", "PLR0915"] # Bounded LSP request/response evidence.
+"evidence.py" = ["C901", "PLR0912", "PLR0915"] # Sequential comparison report.
+"evolution.py" = ["C901", "PLR0912", "PLR0915"] # Isolated source-edit report.
+"dual_sqlite.py" = ["N802"] # Native Column Type constructor vocabulary.
+"dual_mariadb.py" = ["N802", "SLF001"] # Column Types and explicit storage adapter boundary.

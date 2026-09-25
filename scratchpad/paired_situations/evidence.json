@@ -1,0 +1,118 @@
+{
+  "nested": {
+    "sha256": "7674b8fbfb9f764f00b662eb9366e17432343ec3e5aaca3c7d0ae4519159b8db",
+    "lines": 551,
+    "lint": [],
+    "order_field_counts": [
+      20,
+      20
+    ]
+  },
+  "body": {
+    "sha256": "bfa134f012120a386e07d6702821c2ff8331830af0b3f1aad28bcbc09252fc6b",
+    "lines": 470,
+    "lint": [],
+    "order_field_counts": [
+      20
+    ]
+  },
+  "dual": {
+    "sha256": "845f62144797b98a895b0aeea1a6543d0d588237b0f8249376bc1249bb506512",
+    "lines": 515,
+    "lint": [],
+    "order_field_counts": [
+      20,
+      3
+    ]
+  },
+  "nested_declaration_lint": [],
+  "dual_declaration_lint": [],
+  "body_declaration_lint": [],
+  "scaffold": {
+    "User": "CREATE TABLE \"users\" (\"user_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"display_name\" TEXT) STRICT;\nCREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\");",
+    "Counter": "CREATE TABLE \"counters\" (\"counter_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"count\" INTEGER NOT NULL DEFAULT 0) STRICT;",
+    "Settings": "CREATE TABLE \"settings\" (\"user_id\" INTEGER PRIMARY KEY, \"timezone\" TEXT NOT NULL, \"nickname\" TEXT, \"enabled\" INTEGER NOT NULL, \"note\" TEXT, \"digest_hour\" INTEGER NOT NULL DEFAULT 9, \"locale\" TEXT DEFAULT NULL, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))) STRICT;",
+    "Post": "CREATE TABLE \"users\" (\"user_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"email\" TEXT NOT NULL, \"display_name\" TEXT) STRICT;\nCREATE UNIQUE INDEX \"ux_users_email\" ON \"users\" (\"email\");\nCREATE TABLE \"posts\" (\"post_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"author_id\" INTEGER NOT NULL, \"title\" TEXT NOT NULL, FOREIGN KEY (\"author_id\") REFERENCES \"users\" (\"user_id\")) STRICT;",
+    "Comment": "CREATE TABLE \"comments\" (\"comment_id\" INTEGER PRIMARY KEY, \"parent_id\" INTEGER, \"body\" TEXT NOT NULL, FOREIGN KEY (\"parent_id\") REFERENCES \"comments\" (\"comment_id\") ON DELETE SET NULL) STRICT;",
+    "Order": "CREATE TABLE \"orders\" (\"order_id\" INTEGER PRIMARY KEY AUTOINCREMENT, \"tenant_id\" INTEGER NOT NULL, \"customer_email\" TEXT NOT NULL, \"status\" TEXT NOT NULL, \"currency\" TEXT NOT NULL, \"subtotal\" TEXT NOT NULL, \"tax\" TEXT NOT NULL, \"discount\" TEXT NOT NULL, \"external_id\" TEXT NOT NULL, \"receipt\" BLOB NOT NULL, \"metadata\" TEXT NOT NULL, \"note\" TEXT, \"region\" TEXT NOT NULL, \"active\" INTEGER NOT NULL, \"retry_count\" INTEGER NOT NULL, \"item_count\" INTEGER NOT NULL, \"shipping_days\" INTEGER, \"paid_at\" TEXT, \"created_at\" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')), \"revision\" INTEGER NOT NULL DEFAULT 1) STRICT;\nCREATE UNIQUE INDEX \"ux_orders_external_id\" ON \"orders\" (\"external_id\");",
+    "Product": "CREATE TABLE `products` (`product_id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, `price` DECIMAL(12,2) NOT NULL, `code` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `token` UUID NOT NULL, `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), `payload` JSON NOT NULL, `active` BOOLEAN NOT NULL, `description` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `image` BLOB NOT NULL) ENGINE=InnoDB;\nCREATE UNIQUE INDEX `ux_products_price` ON `products` (`price`);\nCREATE UNIQUE INDEX `ux_products_code` ON `products` (`code`);\nCREATE INDEX `description_prefix` ON `products` (`description`(16));"
+  },
+  "compiled_queries": {
+    "user-insert": {
+      "backend": "sqlite",
+      "params": [
+        "A",
+        null
+      ],
+      "sql": "INSERT INTO \"users\" (\"email\", \"display_name\") VALUES (?, ?) RETURNING \"user_id\", \"email\", \"display_name\""
+    },
+    "counter-default": {
+      "backend": "sqlite",
+      "params": [],
+      "sql": "INSERT INTO \"counters\" DEFAULT VALUES RETURNING \"counter_id\", \"count\""
+    },
+    "settings-defaults": {
+      "backend": "sqlite",
+      "params": [
+        1,
+        "UTC",
+        null,
+        true,
+        null
+      ],
+      "sql": "INSERT INTO \"settings\" (\"user_id\", \"timezone\", \"nickname\", \"enabled\", \"note\") VALUES (?, ?, ?, ?, ?) RETURNING \"user_id\", \"timezone\", \"nickname\", \"enabled\", \"note\", \"digest_hour\", \"locale\", \"created_at\""
+    },
+    "order-insert": {
+      "backend": "sqlite",
+      "params": [
+        7,
+        "ada@example.com",
+        "draft",
+        "USD",
+        "12.5",
+        "2.5",
+        "0",
+        "00000000-0000-0000-0000-000000000007",
+        {
+          "bytes_hex": "696e766f696365"
+        },
+        "{\"channel\":\"web\"}",
+        null,
+        "US",
+        true,
+        0,
+        2,
+        null,
+        null
+      ],
+      "sql": "INSERT INTO \"orders\" (\"tenant_id\", \"customer_email\", \"status\", \"currency\", \"subtotal\", \"tax\", \"discount\", \"external_id\", \"receipt\", \"metadata\", \"note\", \"region\", \"active\", \"retry_count\", \"item_count\", \"shipping_days\", \"paid_at\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"order_id\", \"tenant_id\", \"customer_email\", \"status\", \"currency\", \"subtotal\", \"tax\", \"discount\", \"external_id\", \"receipt\", \"metadata\", \"note\", \"region\", \"active\", \"retry_count\", \"item_count\", \"shipping_days\", \"paid_at\", \"created_at\", \"revision\""
+    },
+    "users-select": {
+      "backend": "sqlite",
+      "params": [],
+      "sql": "SELECT \"user_id\", \"email\", \"display_name\" FROM \"users\""
+    },
+    "email-projection": {
+      "backend": "sqlite",
+      "params": [],
+      "sql": "SELECT \"email\" FROM \"users\""
+    },
+    "author-join": {
+      "backend": "sqlite",
+      "params": [],
+      "sql": "SELECT \"users\".\"email\" FROM \"users\" INNER JOIN \"posts\" ON \"posts\".\"author_id\" = \"users\".\"user_id\""
+    },
+    "settings-upsert": {
+      "backend": "sqlite",
+      "params": [
+        1,
+        "UTC",
+        null,
+        true,
+        null
+      ],
+      "sql": "INSERT INTO \"settings\" (\"user_id\", \"timezone\", \"nickname\", \"enabled\", \"note\") VALUES (?, ?, ?, ?, ?) ON CONFLICT (\"user_id\") DO UPDATE SET \"timezone\" = excluded.\"timezone\" RETURNING \"user_id\", \"timezone\", \"nickname\", \"enabled\", \"note\", \"digest_hour\", \"locale\", \"created_at\""
+    }
+  },
+  "mariadb": "mariadbd  Ver 12.3.2-MariaDB for Linux on x86_64 (Arch Linux)"
+}

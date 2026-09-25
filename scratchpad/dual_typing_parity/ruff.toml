@@ -1,0 +1,8 @@
+extend = "../../pyproject.toml"
+[lint]
+extend-ignore = ["TRY003", "EM101"]
+[lint.per-file-ignores]
+"test_*.py" = ["PLC0415", "PLR2004", "FBT003"]
+
+"bridge.py" = ["SLF001"] # Explicit study-only native storage translation.
+"strict_columns.py" = ["N802"] # Keep native Column Type spelling.

@@ -1,0 +1,5319 @@
+{
+  "python": "3.14.2 (main, Jan 14 2026, 19:38:07) [Clang 21.1.4 ]",
+  "ty": "0.0.77",
+  "sources": {
+    "dual_header.py.txt": "db6afc3aa6dbab9d3d5352ad5465ec93ac180e13cdce91f8fc9aca861b548a65",
+    "dual_cases.json": "27764f72ffe6c927a7045b9600a7e69560afd88950abd4f6595b9002c0d89833",
+    "nested.py": "7674b8fbfb9f764f00b662eb9366e17432343ec3e5aaca3c7d0ae4519159b8db",
+    "nested_sqlite.py": "b561845df3e7e2f67dd4947f89d97dd6b8db858327235c088e1a075de29f125b",
+    "nested_mariadb.py": "42ad633928ccfb468cc9992431847a73e644c4fc9f38412c345dfe3cbe19f644",
+    "body.py": "bfa134f012120a386e07d6702821c2ff8331830af0b3f1aad28bcbc09252fc6b",
+    "body_maria.py": "2536a3b67addfbb7e71797c35e89b85304d878d14b095c705ac98b1b3d66ae3f",
+    "gaps.py": "91702df35cf85dca7ed2e0d1116fea792120b87af0299897583321e304f7ed33",
+    "dual.py": "845f62144797b98a895b0aeea1a6543d0d588237b0f8249376bc1249bb506512",
+    "dual_sqlite.py": "8cae3b97c5658cdae71af2257a13717b7169558ef8de3f040fdfa91a6e42610b",
+    "dual_mariadb.py": "8c66572a3d3618188d690bf82cd20b896fb36cb27885d6236bb68acbda4410c0",
+    "dual_gaps.py": "0e56302c045fe09c41349d9cb148855fa0f160ae55aaf3becf482d47998c38a5",
+    "../dual_pairing/sqlite.py": "c0731182c8a773ac0e45a70c3edba6714c28b5fe489813dcdd94aa9804ad0c4a",
+    "../class_body_usage/current.py": "9896f10ace195331ac197da77a8c64a4e01adf6df0419ddbc9d820d1473e4c39",
+    "../class_body_usage/helpers.py": "e581981c5e5e59b9cafeb80589869a3ea34031d4015e4de390c69ec39240b017",
+    "../../snekql/model.py": "cea0fef70a942596e96cb454aa58ac5195ef81a5c05eb3145f735405bf6203ad",
+    "../../snekql/query.py": "1dd9682321d983e4fd27140e813fd4050cc489a8b0eef6e0c4f702dde4de65b2",
+    "../../snekql/sqlite/model.py": "c8619f8911eafea8061a786c5e7e1fbccf838fd3e3a40e774ca936d280c97b1c",
+    "../../snekql/sqlite/verbs.py": "57d66f9fa0e496917022bd0574e8ab4dc15f4b0fa344b509cf9dd823e95ef83b",
+    "../class_body_usage/sqlite.py": "c415b1bdb1648491f3440baa0eb521ef9a23759465b81d52e4b4c18f5db0c006",
+    "../state_declarations/sqlite.py": "1947fb60b28edff6a99d4b7f48a81949aa45c0a8eb0693954de49dd885ff30a4",
+    "../fetched_stress/sqlite.py": "500901a9bb1df678bcc0dfd2c5f1a3c01171ea6390a6fc9296dc1dca220c99c3",
+    "../fetched_stress/mariadb.py": "a534f20d627f0ac7182effd3d7181154c42e9b6d6685550c0b8bbc1c39dcdc92",
+    "../fetched_stress/contracts.py": "ba5afe650366b0ad76983b8f64ee53826c32fe8e6a386ff71032f742f7d62464",
+    "../fetched_first/sqlite.py": "c24ad2572a3405f0bbb47c2fbb1e5d1333c65ab9c26e9c9b943f402143e7f202",
+    "../dual_storage/interface.py": "3999a185341e909e205df02de43a6ab5b4acba2f5ffb9779206e21294f258b3b",
+    "../dual_features/records.py": "071545f17fc7698811dc24a16e8d6f4a8fd09fb21c5e2c754a4c1ac1c08f8b6c",
+    "../dual_basics/sqlite.py": "22081e47c048f616c8667ce0e2585c18c9e8e3624781f16eab9f5b00af1f6628",
+    "../dual_basics/runtime.py": "df75793b5d0e6238ec468677640ad7d97bb5a479ccefbe3181ae3b1f600f4386",
+    "../dual_backends/mariadb.py": "714ef68d6b27e03aaf458bd4c026fadc48c9256c76d9e3ec94788a6b2e2abcdb",
+    "../dual_backends/sqlite.py": "3689652bc70f91ec484586cd3b0cacb55f0858cbe659ffd9ab37ca4f8ba824da",
+    "../row_first/sqlite.py": "bac71259df01a3e5ab604365337c3bab9b39747199e0f1439fbda7a69f5a3554",
+    "../dual_backends/core.py": "d62a2d82c48fb5b5880455a94b1caa3c8cf2adc19fa88773fb30766314e4eaa4",
+    "../dual_finalization/interface.py": "3bd89f12d6bb54800217ea28104376dbe11b5eabc12250b0041877d88b427fbf"
+  },
+  "observations": [
+    {
+      "name": "dual-basic-results",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-counter",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-pending-counter",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-pending-not-complete",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `public_user` is incorrect: Expected `UserRow`, found `User`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-constructor-count=3",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `counter_id`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-constructor-counter_id=42",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `count`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-constructor-counter_id=n.OMITTED,count=3",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-timezone-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `timezone`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-timezone-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-timezone-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-timezone-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-nickname-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `nickname`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-nickname-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-nickname-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-nickname-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-enabled-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-enabled-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-enabled-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-enabled-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-note-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-note-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-note-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-note-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-digest_hour-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-digest_hour-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int | Omitted`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-digest_hour-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-digest_hour-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-locale-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-locale-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-locale-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-locale-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-created_at-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-created_at-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `datetime | Omitted`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-created_at-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-defaults-created_at-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-foreign-id",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `UserId`, found `PostId`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-foreign-join",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-self-reference",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 5,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-mutual-signature",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 6,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-large-input",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-large-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-shared-methods",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-pending-receipt",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Order` has no attribute `receipt_key`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-maria-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-generic-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-query-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-ready-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-patch-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-patch-wrong-field",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type",
+        "invalid-key"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `patch_user` is incorrect: Expected `ProfilePatch`, found `dict[str, str]`"
+            },
+            {
+              "code": "invalid-key",
+              "message": "invalid-key: Unknown key \"email\" for TypedDict `ProfilePatch`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-settings-upsert",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-navigation-caller",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 12,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-basic-results",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-counter",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-pending-counter",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-pending-not-complete",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `public_user` is incorrect: Expected `User[Fetched]`, found `User[Pending]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-constructor-count=3",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-constructor-counter_id=42",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-constructor-counter_id=b.OMITTED,count=3",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-unchecked-constructor",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-timezone-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `timezone`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-timezone-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-timezone-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-timezone-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-nickname-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `nickname`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-nickname-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-nickname-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-nickname-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-enabled-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-enabled-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-enabled-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-enabled-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-note-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-note-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-note-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-note-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-digest_hour-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-digest_hour-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int | PendingGeneration`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-digest_hour-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-digest_hour-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-locale-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-locale-none",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-locale-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-locale-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-created_at-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-created_at-none",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `datetime | PendingGeneration`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-created_at-value",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-defaults-created_at-omitted",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-foreign-id",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `UserId`, found `PostId`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-foreign-join",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-self-reference",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 5,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-mutual-signature",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 6,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-large-input",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-large-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-shared-methods",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-pending-receipt",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Order.receipt_key` is incorrect: Expected `Order[Fetched]`, found `Order[Pending]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-maria-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-generic-helper",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-ready-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-patch-result",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-patch-wrong-field",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type",
+        "invalid-key"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `patch_user` is incorrect: Expected `ProfilePatch`, found `dict[str, str]`"
+            },
+            {
+              "code": "invalid-key",
+              "message": "invalid-key: Unknown key \"email\" for TypedDict `ProfilePatch`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-settings-upsert",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-navigation-caller",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 12,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "original-base-generic-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-base-helper-not-exact",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `Any` does not match asserted type `Counter[Fetched]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "body-specialized-source",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 12,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-timezone-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `timezone`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-timezone-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-timezone-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-nickname-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `nickname`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-nickname-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-nickname-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-enabled-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-enabled-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-enabled-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-note-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-note-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-note-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-digest_hour-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `digest_hour`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-digest_hour-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-digest_hour-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-locale-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `locale`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-locale-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-locale-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-created_at-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `created_at`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-created_at-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `datetime`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-defaults-created_at-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `datetime`, found `Omitted`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-timezone-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `timezone`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-timezone-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-timezone-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-nickname-missing",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `nickname`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-nickname-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-nickname-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-enabled-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-enabled-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-enabled-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `bool`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-note-missing",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-note-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-note-omitted",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `str | None`, found `PendingGeneration`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-digest_hour-missing",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-digest_hour-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `int | PendingGeneration`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-digest_hour-omitted",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-locale-missing",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-locale-null",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-locale-omitted",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-created_at-missing",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-created_at-null",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `datetime | PendingGeneration`, found `None`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-complete-defaults-created_at-omitted",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 3,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-plain-self-method",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-attribute-access",
+        "unsound-return-statement"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-attribute-access",
+              "message": "invalid-attribute-access: Invalid access to descriptor attribute `email` on type `Self@label`: No overload of function `Attr.__get__` matches arguments"
+            },
+            {
+              "code": "unsound-return-statement",
+              "message": "unsound-return-statement: Unsound return statement: `Unknown` is not a subtype of `str`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-constructor-unknown-keyword",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [
+        "unknown-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "unknown-argument",
+              "message": "unknown-argument: Argument `emali` does not match any known parameter"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-frozen-value",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-assignment"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-assignment",
+              "message": "invalid-assignment: Property `customer_email` defined in `OrderRow` is read-only"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-json-wrong-input",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `dict[str, int]`, found `dict[str, int | str]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-constructor-unknown-keyword",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [
+        "unknown-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "unknown-argument",
+              "message": "unknown-argument: Argument `emali` does not match any known parameter"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-frozen-assignment-statically-accepted",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-json-wrong-input",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument is incorrect: Expected `dict[str, int]`, found `dict[str, int | str]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "original-frozen-assignment-statically-accepted",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-model",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-scalar",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-nullable",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-generated-id",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-value",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Column.eq` is incorrect: Expected `UserId`, found `Literal[\"wrong\"]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-nominal-id",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Column.eq` is incorrect: Expected `UserId`, found `PostId`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-where-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Query.where` is incorrect: Expected `Condition[Literal[\"sqlite\"], UserRow]`, found `Condition[Literal[\"sqlite\"], PostRow]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-unscoped-execution",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_all` is incorrect: Expected `Select[Literal[\"sqlite\"], Unknown]`, found `Query[Literal[\"sqlite\"], UserRow, Unscoped, UserRow]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-unscoped-compilation",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Query.compile` is incorrect: Expected `Query[Literal[\"sqlite\"], UserRow, Ready, UserRow]`, found `Query[Literal[\"sqlite\"], UserRow, Unscoped, UserRow]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-fk-wrong-column",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ForeignColumn.references` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-fk-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `ForeignColumn.references` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-join",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-join-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Query.join` is incorrect: Expected `type[Table[Literal[\"sqlite\"], PostRow | SettingsRow]]`, found `<class 'PostRow'>`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-conflict-target",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Insert.on_conflict` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-conflict-assignment",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Insert.on_conflict` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-assignment-value",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Column.to` is incorrect: Expected `str | None | type[CurrentTimestamp]`, found `Literal[42]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-projection",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure",
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `list[Unknown]` does not match asserted type `list[tuple[UserId, str]]`"
+            },
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Namespace.select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-update-returning",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure",
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `Unknown` does not match asserted type `list[UserRow]`"
+            },
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Module `scratchpad.paired_situations.dual_sqlite` has no member `update`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-delete-returning",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure",
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `Unknown` does not match asserted type `list[UserRow]`"
+            },
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Module `scratchpad.paired_situations.dual_sqlite` has no member `delete`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-execution-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Transaction.fetch_all` is incorrect: Expected `Select[Literal[\"mariadb\"], Unknown]`, found `Query[Literal[\"sqlite\"], UserRow, Ready, UserRow]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-wrong-source-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Namespace.select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-model",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-scalar",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-nullable",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-generated-id",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-value",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `UserId`, found `Literal[\"wrong\"]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-nominal-id",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Comparable.eq` is incorrect: Expected `UserId`, found `PostId`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-where-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `SelectModelQuery.where` is incorrect: Expected `Predicate[User[Pending]]`, found `Predicate[Post[Pending]]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-unscoped-execution",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Transaction.fetch_all` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-unscoped-compilation",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-fk-wrong-column",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `FKAttr.references` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-fk-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 4,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `FKAttr.references` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-join",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-join-wrong-owner",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `SelectValueQuery.join` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-conflict-target",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `_BaseInsertQuery.on_conflict` is incorrect: Expected `Attr[Any, Any, User[Pending], Any, Any, Any, Any]`, found `Attr[Table[Pending], Table[Fetched], Settings[Pending], int, int, int, int]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-conflict-assignment",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `_BaseInsertQuery.on_conflict` is incorrect: Expected `DoUpdate[User[Pending]] | type[DoNothing]`, found `DoUpdate[Settings[Pending]]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-assignment-value",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Attr.to` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-projection",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-update-returning",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-delete-returning",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 11,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-execution-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Transaction.fetch_all` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-wrong-source-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-input-model-not-source",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Namespace.select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-input-column-not-source",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Namespace.select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-input-predicate-not-row",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to bound method `Query.where` is incorrect: Expected `Condition[Literal[\"sqlite\"], UserRow]`, found `Condition[Literal[\"sqlite\"], User]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-populated-input-not-row",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 2,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `public_user` is incorrect: Expected `UserRow`, found `User`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-row-is-input",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 8,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-native-helper-incompatible",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `insert_generic` is incorrect: Expected `Model[Pending, Unknown]`, found `User`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-input-only-construction",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-missing-blob",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 7,
+      "matched": true,
+      "diagnostic_codes": [
+        "missing-argument"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "missing-argument",
+              "message": "missing-argument: No argument provided for required parameter `receipt`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-joined-model-pair",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `list[UserRow]` does not match asserted type `list[tuple[UserRow, PostRow]]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-left-joined-models",
+      "rejects": true,
+      "kind": "unsupported",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "type-assertion-failure",
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "type-assertion-failure",
+              "message": "type-assertion-failure: Type `list[Unknown]` does not match asserted type `list[tuple[UserRow, PostRow | None]]`"
+            },
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Query[Literal[\"sqlite\"], UserRow, Unscoped, UserRow]` has no attribute `left_join`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-instance-not-source",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of bound method `Namespace.select` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "d-query-read-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "d-query-json-specialized-operator",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Column[Literal[\"mariadb\"], WrongRow, dict[str, int]]` has no attribute `json_extract_int`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "b-query-joined-model-pair",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-left-joined-models",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-instance-not-source",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-read-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "b-query-json-specialized-operator",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 9,
+      "matched": true,
+      "diagnostic_codes": [
+        "unresolved-attribute"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "unresolved-attribute",
+              "message": "unresolved-attribute: Object of type `Attr[Table[Pending], Table[Fetched], Wrong[Pending], dict[str, int], dict[str, int], dict[str, int], dict[str, int]]` has no attribute `json_extract_int`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-model-join-keeps-selected-model",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "dual-wrong-pair-witness",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 1,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "original-instance-source",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-protocol-insert-helper",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-protocol-rejects-complete-input",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `insert_via_protocol` is incorrect: Expected `InsertableModel[Literal[\"sqlite\"], Unknown, Unknown]`, found `User[Fetched]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "body-protocol-rejects-other-backend",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "invalid-argument-type"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "invalid-argument-type",
+              "message": "invalid-argument-type: Argument to function `insert_via_protocol` is incorrect: Expected `InsertableModel[Literal[\"sqlite\"], Unknown, Unknown]`, found `Product[Pending]`"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dual-complete-row-is-insertable",
+      "rejects": false,
+      "kind": "capability",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    },
+    {
+      "name": "body-complete-row-is-not-insertable",
+      "rejects": true,
+      "kind": "rejection",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [
+        "no-matching-overload"
+      ],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": [
+            {
+              "code": "no-matching-overload",
+              "message": "no-matching-overload: No overload of function `insert` matches arguments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "original-specialized-query-source",
+      "rejects": false,
+      "kind": "counterexample",
+      "situation": 10,
+      "matched": true,
+      "diagnostic_codes": [],
+      "phases": [
+        {
+          "challenge": false,
+          "matched": true,
+          "diagnostics": []
+        },
+        {
+          "challenge": true,
+          "matched": true,
+          "diagnostics": []
+        }
+      ]
+    }
+  ]
+}
