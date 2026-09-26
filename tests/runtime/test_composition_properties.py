@@ -109,3 +109,36 @@ async def union_all_preserves_filtered_multiplicity(
         for _ in range(2 if (7 if value is None else value) == boundary else 1)
     ]
     assert_eq(actual, expected)
+
+
+@settings(max_examples=80, derandomize=True, deadline=None)
+@test_hypothesis(
+    lists(one_of(none(), integers(-10, 10)), max_size=12),
+    mark="medium",
+)
+async def grouped_nulls_preserve_counts_and_totals(values: list[int | None]) -> None:
+    """NULL forms a group but is excluded from COUNT(column) and SUM(column)."""
+    async with samples(values) as database:
+        query = (
+            sqlite.select(
+                Sample.value,
+                Sample.count_all(),
+                Sample.value.count(),
+                Sample.value.sum(),
+            )
+            .group_by(Sample.value)
+            .having(Sample.count_all().gt(0))
+            .order_by(Sample.value.asc())
+        )
+
+        async with database.transaction() as transaction:
+            actual = await transaction.fetch_all(query)
+
+    expected = []
+    for group in sorted(set(values), key=lambda value: (value is not None, value or 0)):
+        members = [value for value in values if value == group]
+        present = [value for value in members if value is not None]
+        expected.append(
+            (group, len(members), len(present), sum(present) if present else None)
+        )
+    assert_eq(actual, expected)

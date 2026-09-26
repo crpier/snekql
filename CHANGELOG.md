@@ -38,6 +38,13 @@
 
 ### Fixed
 
+- Include SQLite generated columns in schema verification. Their presence and
+  exposed metadata are checked; their expressions remain unchecked.
+- Reject anonymous IANA zones and unrepresentable UTC instants when constructing
+  `ZonedDatetime`, before hashing or serialization can fail.
+- Keep SQLite busy-retry backoff bounded for large retry budgets instead of
+  overflowing while calculating an already-capped delay.
+
 - Preserve scalar comparison domains through read-only `ColumnRef` helpers, and
   exact scalar-projection results through `ready()`.
 - Keep nullable computed result types separate from non-null comparison inputs.
