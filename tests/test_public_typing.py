@@ -283,7 +283,7 @@ if TYPE_CHECKING:
         pending_generation_default: Col[int] = Integer(  # ty: ignore[invalid-assignment]
             default=PENDING_GENERATION
         )
-        server_default: Col[datetime] = Text(  # ty: ignore[invalid-assignment]
+        server_default: Col[UtcDatetime] = Text(  # ty: ignore[invalid-assignment]
             default=CurrentTimestamp
         )
         conflicting_default: Col[int] = Integer(  # ty: ignore[no-matching-overload]
@@ -467,14 +467,14 @@ if TYPE_CHECKING:
     _ = assert_type(pending_user, User[Pending])
     _ = assert_type(pending_user.id, int | PendingGeneration)
     _ = assert_type(pending_user.email, str)
-    _ = assert_type(pending_user.created_at, datetime | PendingGeneration)
+    _ = assert_type(pending_user.created_at, UtcDatetime | PendingGeneration)
 
     def check_fetched_user(fetched_user: User[Row]) -> None:
         """Row-state generated values are narrowed by descriptor overloads."""
 
         _ = assert_type(fetched_user.id, int)
         _ = assert_type(fetched_user.email, str)
-        _ = assert_type(fetched_user.created_at, datetime)
+        _ = assert_type(fetched_user.created_at, UtcDatetime)
         _ = insert(fetched_user)  # ty: ignore[invalid-argument-type]
 
     _ = assert_type(
@@ -1273,7 +1273,7 @@ if TYPE_CHECKING:
         generated: mariadb.GenCol[str] = mariadb.LongText(
             collation="utf8mb4_general_ci", default=mariadb.PENDING_GENERATION
         )
-        timestamp: mariadb.GenCol[datetime] = mariadb.LongText(
+        timestamp: mariadb.GenCol[UtcDatetime] = mariadb.LongText(
             collation="utf8mb4_general_ci", default=mariadb.CurrentTimestamp
         )
 
@@ -1298,7 +1298,7 @@ if TYPE_CHECKING:
         generated: sqlite.GenCol[str] = sqlite.Text(
             collation="NOCASE", default=sqlite.PENDING_GENERATION
         )
-        timestamp: sqlite.GenCol[datetime] = sqlite.Text(
+        timestamp: sqlite.GenCol[UtcDatetime] = sqlite.Text(
             collation="BINARY", default=sqlite.CurrentTimestamp
         )
 

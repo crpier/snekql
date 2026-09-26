@@ -62,7 +62,6 @@ _NEUTRAL_NAMES = frozenset(
         "Index",
         "IsolationLevel",
         "JoinOn",
-        "LexicalDatetimeWarning",
         "LexicalDecimalWarning",
         "LexicalDurationWarning",
         "LiteralDefault",
@@ -110,6 +109,8 @@ _NEUTRAL_NAMES = frozenset(
         "TransactionReuseError",
         "TransactionStateError",
         "UtcDatetime",
+        "LocalDatetime",
+        "DatetimeError",
         "Write",
         "ZonedDatetime",
         "ZonedDatetimeError",
@@ -160,6 +161,7 @@ _DIALECT_NAMES = frozenset(
 _MARIADB_ONLY_NAMES = frozenset(
     {
         "Boolean",
+        "Date",
         "DateTime",
         "Decimal",
         "Json",

@@ -15,6 +15,7 @@ Read these in order, or jump to the task you have now:
 
 [Why not an ORM?](why-not-orm.md) explains what snekql deliberately leaves out.
 [Choosing storage](storage.md) covers Python values versus database types.
+[Dates and datetimes](temporal-contracts.md) covers temporal meanings and upgrades.
 
 ## Write more involved queries
 

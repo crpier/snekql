@@ -9,7 +9,7 @@ from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
 from snekql._model_materialization import decode_model_row, encode_model_row
-from snekql.mariadb import Pending, Row, select
+from snekql.mariadb import Pending, Row, UtcDatetime, select
 from tests.helpers import MARIADB_CODEC
 
 
@@ -23,12 +23,12 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
         payload: Event.Col[dict[str, object]] = mariadb.Json(nullable=False)
 
     pending_event = Event(
         enabled=True,
-        happened_at=datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC),
+        happened_at=UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)),
         payload={"ok": True},
     )
     model_class, encoded_row = encode_model_row(pending_event, backend="mariadb")
@@ -38,7 +38,7 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
             Event,
             {
                 "enabled": 0,
-                "happened_at": "2026-01-02 03:04:05.678",
+                "happened_at": "2026-01-02 03:04:05.678901",
                 "payload": b'{"ok":true}',
             },
             backend="mariadb",
@@ -50,13 +50,14 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
         encoded_row,
         {
             "enabled": 1,
-            "happened_at": "2026-01-02 03:04:05.678",
+            "happened_at": "2026-01-02 03:04:05.678901",
             "payload": '{"ok":true}',
         },
     )
     assert_eq(fetched_event.enabled, False)
     assert_eq(
-        fetched_event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)
+        fetched_event.happened_at,
+        UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)),
     )
     assert_eq(fetched_event.payload, {"ok": True})
 
@@ -114,12 +115,12 @@ def mariadb_min_max_decode_to_logical_type() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
     earliest = MARIADB_CODEC.materialize_select_row(
-        select(Event.happened_at.min()), ("2026-01-02 03:04:05.678",)
+        select(Event.happened_at.min()), ("2026-01-02 03:04:05.678901",)
     )
     flag = MARIADB_CODEC.materialize_select_row(select(Event.enabled.max()), (1,))
 
-    assert_eq(earliest, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
+    assert_eq(earliest, UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)))
     assert_eq(flag, True)

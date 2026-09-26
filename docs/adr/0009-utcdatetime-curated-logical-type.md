@@ -1,6 +1,7 @@
 # UtcDatetime: a curated logical type with an order-preserving wire form
 
-Status: **Accepted**. Extends
+Status: **Superseded by [ADR 0022](0022-explicit-temporal-meanings.md)**.
+The historical decision below extended
 [ADR 0005](0005-storage-primitive-constructors-with-derived-codecs.md).
 Origin: issue #212.
 

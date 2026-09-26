@@ -4,7 +4,7 @@ These complement the example-based tests in ``test_storage_codecs.py`` by
 asserting the codec invariants across Hypothesis-generated inputs. They exercise
 the column descriptors' ``encode``/``decode`` surface directly -- no live server
 -- so they stay fast and deterministic. Where MariaDB's contract differs from a
-plain round-trip (DATETIME normalizes to UTC at millisecond precision; TEXT and
+plain round-trip (DATETIME normalizes to UTC at microsecond precision; TEXT and
 BLOB are length-bounded), the property encodes that documented behaviour.
 """
 
@@ -37,6 +37,7 @@ from snekql.mariadb import (
     Real,
     Row,
     Text,
+    UtcDatetime,
     Uuid,
 )
 
@@ -58,7 +59,7 @@ class Scalars[S = Pending](Model[S]):
     label: Scalars.Col[str] = Text(nullable=False)
     blob: Scalars.Col[bytes] = Blob(nullable=False)
     flag: Scalars.Col[bool] = Boolean(nullable=False)
-    when: Scalars.Col[datetime] = DateTime(nullable=False)
+    when: Scalars.Col[UtcDatetime] = DateTime(nullable=False)
     account_id: Scalars.Col[uuid.UUID] = Uuid(nullable=False)
     data: Scalars.Col[dict[str, Any]] = Json(nullable=False)
 
@@ -93,14 +94,6 @@ _aware_datetimes = st.datetimes(
     max_value=datetime(2200, 1, 1),  # noqa: DTZ001
     timezones=st.just(UTC) | _offsets,
 )
-
-
-def _expected_datetime(value: datetime) -> datetime:
-    """MariaDB DATETIME stores UTC at millisecond precision (truncating)."""
-
-    normalized = value.astimezone(UTC)
-    milliseconds = (normalized.microsecond // 1000) * 1000
-    return normalized.replace(microsecond=milliseconds)
 
 
 @settings(deadline=None)
@@ -214,13 +207,13 @@ def boolean_decode_rejects_non_binary_integers(value: int) -> None:
 
 @settings(deadline=None)
 @test_hypothesis(_aware_datetimes, mark="fast")
-def datetime_normalizes_to_utc_milliseconds(value: datetime) -> None:
-    """An aware datetime encodes to its UTC instant at millisecond precision and
+def datetime_preserves_utc_microseconds(value: datetime) -> None:
+    """An aware datetime encodes to its UTC instant at microsecond precision and
     decodes back to that normalized value."""
 
-    encoded = Scalars.when.encode(value, backend=BACKEND)
+    encoded = Scalars.when.encode(UtcDatetime(value), backend=BACKEND)
     decoded = Scalars.when.decode(encoded, backend=BACKEND)
-    assert_eq(decoded, _expected_datetime(value))
+    assert_eq(decoded, UtcDatetime(value))
 
 
 @settings(deadline=None)

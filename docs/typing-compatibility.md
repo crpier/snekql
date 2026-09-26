@@ -11,15 +11,15 @@ For application annotations, see the [typing reference](typing.md).
 ## Tested versions and scope
 
 Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
-has 58 cases on each backend, producing 116 positive/negative pairs. Reports
+has 59 cases on each backend, producing 118 positive/negative pairs. Reports
 record dependency versions, commands, revision and dirty status, and SHA-256
 hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 
 | Tool | Version | Result |
 | --- | --- | --- |
-| ty | 0.0.84 | Supported; 116/116 pairs, plus native repository typing validation |
-| Pyright CLI | 1.1.414 | Not supported for this interface; 18/116 pairs |
-| mypy | 2.3.1 | Not supported for this interface; 4/116 pairs |
+| ty | 0.0.84 | Supported; 118/118 pairs, plus native repository typing validation |
+| Pyright CLI | 1.1.414 | Not supported for this interface; 18/118 pairs |
+| mypy | 2.3.1 | Not supported for this interface; 4/118 pairs |
 | Pylance | Not assessed | No editor conformance claim |
 
 All tools target Python 3.14 and use the project interpreter's dependencies.
@@ -54,11 +54,14 @@ The paired callers exercise both namespaces through their public APIs:
   projections, FK columns, and expression helper annotations. An additional 80
   native checker tests cover operator composition, aliases, CTEs, compound output
   tokens, generated columns, and positional projection widths.
+- Nominal UTC/local comparison domains and concrete temporal result types through
+  aliases, CTEs, optional fields, aggregates, and scalar subqueries. Another 22
+  exact-line challenges cover typed helper boundaries and incompatible inputs.
 - Positional width, named results, nullable model joins, raw query contracts,
   and defaulted typed foreign keys.
 
 The templates and native typing tests contain exact `assert_type` controls.
-The 116 observations are paired backend cases, not 116 independent API guarantees.
+The 118 observations are paired backend cases, not 118 independent API guarantees.
 
 ## Remaining limits
 
@@ -114,7 +117,7 @@ reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
 
 Use `--backend sqlite|mariadb` and `--case <name>` to select narrower checks.
-Defaults cover all 58 cases on both backends. The CLI checks types; it does not
+Defaults cover all 59 cases on both backends. The CLI checks types; it does not
 execute callers or connect to a database. Templates live in
 [`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
 not include intentional errors.
@@ -133,10 +136,12 @@ specific expected diagnostics, including abstract expression constructors.
 
 Current reports:
 
-- [ty](../typing_probes/results/2026-09-26-remove-select-all/ty.json)
-- [Pyright](../typing_probes/results/2026-09-26-remove-select-all/pyright.json)
-- [mypy](../typing_probes/results/2026-09-26-remove-select-all/mypy.json)
+- [ty](../typing_probes/results/2026-09-26-temporal-contracts/ty.json)
+- [Pyright](../typing_probes/results/2026-09-26-temporal-contracts/pyright.json)
+- [mypy](../typing_probes/results/2026-09-26-temporal-contracts/mypy.json)
 
+The reports under `typing_probes/results/2026-09-26-remove-select-all/` retain
+the 116-pair baseline before concrete temporal values.
 The reports under `typing_probes/results/2026-09-26-select-readiness/` retain
 the 114-pair baseline before SELECT `.all()` removal.
 The reports under `typing_probes/results/2026-09-26-expression-families/` retain

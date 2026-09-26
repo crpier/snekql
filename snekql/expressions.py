@@ -129,6 +129,10 @@ class PredicateCompiler(Protocol):
 
     def value_encoder(self, operand: object) -> Callable[[object], object]: ...
 
+    def ensure_comparable(
+        self, left: object, right: object, *, subquery: bool = False
+    ) -> None: ...
+
     def render_comparison_operand(
         self, other: object
     ) -> tuple[str, tuple[object, ...]]: ...
@@ -415,6 +419,7 @@ class ColumnComparisonPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, Fa
         self,
         compiler: PredicateCompiler,
     ) -> tuple[str, tuple[object, ...]]:
+        compiler.ensure_comparable(self.operand, self.other)
         rendered, rendered_params = compiler.render_operand(self.operand)
         operator = _COMPARISON_SQL_OPERATORS[self.operator]
         other = self.other
@@ -453,6 +458,7 @@ class SubqueryMembershipPredicate[OwnerT, FamilyT = Any](
         self,
         compiler: PredicateCompiler,
     ) -> tuple[str, tuple[object, ...]]:
+        compiler.ensure_comparable(self.operand, self.subquery, subquery=True)
         rendered, operand_params = compiler.render_operand(self.operand)
         sub_sql, sub_params = compiler.compile_subquery(
             self.subquery,

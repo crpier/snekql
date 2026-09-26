@@ -10,6 +10,7 @@ from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
 from snekql.errors import ModelValidationError
+from snekql.mariadb import UtcDatetime
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
@@ -140,7 +141,7 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
 
         timestamp: Event.Col[mariadb.UtcDatetime] = mariadb.Text(nullable=False)
 
-    when = datetime(2026, 1, 1, tzinfo=UTC)
+    when = UtcDatetime(datetime(2026, 1, 1, tzinfo=UTC))
     async with await initialized_database(server.config(), models=[Event]) as database:
         async with database.transaction() as setup:
             await setup.execute(mariadb.insert(Event(timestamp=when)))
@@ -151,4 +152,4 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
             )
 
     assert_eq(row, (when, when))
-    assert_eq(tuple(type(value) for value in row), (datetime, datetime))
+    assert_eq(tuple(type(value) for value in row), (UtcDatetime, UtcDatetime))

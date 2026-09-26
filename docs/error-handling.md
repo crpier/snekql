@@ -234,6 +234,11 @@ The example rethrows unknown and committed-close failures. Adapt that branch to
 record or reconcile the application's request ID; do not broaden its category
 filter and accidentally retry ambiguous commits.
 
+`DatetimeError` rejects invalid UTC/local value construction; `ZonedDatetimeError`
+is its zoned-value subclass. Model validation translates value failures to
+`ModelValidationError`. Bare datetime temporal declarations raise
+`ModelDeclarationError`; the former `LexicalDatetimeWarning` is removed.
+
 ## Warnings
 
 Alongside the exception hierarchy, snekql raises advisory warnings for
@@ -248,15 +253,6 @@ from snekql.sqlite import SnekqlWarning
 warnings.filterwarnings("ignore", category=SnekqlWarning)
 ```
 
-- `LexicalDatetimeWarning`: a SQLite `Text()` column carries a datetime logical
-  type without an order-preserving wire form (bare `datetime` and pydantic
-  `AwareDatetime` both qualify), so SQL `=`, `ORDER BY`, and range predicates
-  compare the stored text lexically rather than by instant. The warning fires
-  once per offending column at **model declaration time**, not first encode, and
-  keys on the absence of the public `OrderPreserving` marker. Annotate the column
-  with `UtcDatetime` (which carries the marker) to silence it and get
-  instant-correct comparisons; see
-  [ADR 0009](adr/0009-utcdatetime-curated-logical-type.md).
 - `LexicalDecimalWarning`: a `Text()` column on either backend carries a
   `decimal.Decimal` logical type without a canonical wire form. SQL equality,
   `IN`, and unique indexes can miss because the same decimal value can serialize

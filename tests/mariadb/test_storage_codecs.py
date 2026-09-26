@@ -27,6 +27,7 @@ from snekql.mariadb import (
     ModelValidationError,
     Pending,
     Row,
+    UtcDatetime,
     insert,
     select,
 )
@@ -54,9 +55,9 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
 
         flag: Event.Col[bool] = mariadb.Boolean(nullable=False)
         payload: Event.Col[dict[str, object]] = mariadb.Json(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
-    timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+    timestamp = UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC))
 
     assert_eq(Event.flag.encode(True, backend="mariadb"), 1)
     assert_eq(Event.flag.decode(0, backend="mariadb"), False)
@@ -64,11 +65,11 @@ def mariadb_storage_codecs_encode_and_decode_representative_values() -> None:
     assert_eq(Event.payload.decode('{"ok":true}', backend="mariadb"), {"ok": True})
     assert_eq(
         Event.happened_at.encode(timestamp, backend="mariadb"),
-        "2026-01-02 03:04:05.678",
+        "2026-01-02 03:04:05.678901",
     )
     assert_eq(
         Event.happened_at.decode("2026-01-02 03:04:05.678", backend="mariadb"),
-        datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
+        UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)),
     )
 
 
@@ -264,18 +265,18 @@ def mariadb_datetime_codec_decodes_native_driver_datetimes() -> None:
 
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
     naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
     assert_eq(
         Event.happened_at.decode(naive, backend="mariadb"),
-        datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC),
+        UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC)),
     )
 
     aware = datetime(
         2026, 1, 2, 3, 4, 5, 678000, tzinfo=timezone(timedelta(hours=5, minutes=30))
     )
-    assert_eq(Event.happened_at.decode(aware, backend="mariadb"), aware)
+    assert_eq(Event.happened_at.decode(aware, backend="mariadb"), UtcDatetime(aware))
 
 
 @test()
@@ -291,7 +292,7 @@ def mariadb_datetime_codec_rejects_naive_datetimes_on_encode() -> None:
 
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
     naive = datetime(2026, 1, 2, 3, 4, 5, 678000)  # noqa: DTZ001
     with assert_raises(ModelValidationError):
@@ -299,12 +300,14 @@ def mariadb_datetime_codec_rejects_naive_datetimes_on_encode() -> None:
 
     # Aware datetimes are unaffected: they carry the offset needed to reduce to a
     # single unambiguous UTC instant.
-    aware = datetime(
-        2026, 1, 2, 3, 4, 5, 678000, tzinfo=timezone(timedelta(hours=5, minutes=30))
+    aware = UtcDatetime(
+        datetime(
+            2026, 1, 2, 3, 4, 5, 678000, tzinfo=timezone(timedelta(hours=5, minutes=30))
+        )
     )
     assert_eq(
         Event.happened_at.encode(aware, backend="mariadb"),
-        "2026-01-01 21:34:05.678",
+        "2026-01-01 21:34:05.678000",
     )
 
 
@@ -319,7 +322,7 @@ def mariadb_server_defaults_require_generated_datetime_columns() -> None:
 
             __row_type__: ClassVar[mariadb.ReadType[BadEvent[Row]]]
 
-            created_at: BadEvent.Col[datetime] = mariadb.DateTime(  # ty: ignore[invalid-assignment]
+            created_at: BadEvent.Col[UtcDatetime] = mariadb.DateTime(  # ty: ignore[invalid-assignment]
                 default=CurrentTimestamp,
             )
 
@@ -349,7 +352,7 @@ def mariadb_nullable_columns_round_trip_none_and_reject_required_nulls() -> None
             nullable=True, default=None
         )
         flag: Profile.Col[bool | None] = mariadb.Boolean(nullable=True, default=None)
-        seen_at: Profile.Col[datetime | None] = mariadb.DateTime(
+        seen_at: Profile.Col[UtcDatetime | None] = mariadb.DateTime(
             nullable=True, default=None
         )
 
@@ -529,16 +532,16 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
         account_id: Event.Col[uuid.UUID] = mariadb.Uuid(nullable=False)
         amount: Event.Col[float] = mariadb.Real(nullable=False)
         content: Event.Col[bytes] = mariadb.Blob(nullable=False)
-        created_at: Event.GenCol[datetime] = mariadb.DateTime(
+        created_at: Event.GenCol[UtcDatetime] = mariadb.DateTime(
             default=CurrentTimestamp,
         )
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
         message: Event.Col[str] = mariadb.Text(nullable=False)
         payload: Event.Col[dict[str, Any]] = mariadb.Json(nullable=False)
 
     database = await initialized_database(_config_from_server(server), models=[Event])
-    happened_at = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+    happened_at = UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC))
     account_id = uuid.uuid4()
     try:
         async with database.transaction() as tx:
@@ -563,8 +566,8 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
     assert_eq(event.account_id, account_id)
     assert_eq(event.amount, 12.5)
     assert_eq(event.content, b"hello")
-    assert_isinstance(event.created_at, datetime)
+    assert_isinstance(event.created_at, UtcDatetime)
     assert_eq(event.enabled, True)
-    assert_eq(event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
+    assert_eq(event.happened_at, happened_at)
     assert_eq(event.message, "created")
     assert_eq(event.payload, {"count": 2, "ok": True})

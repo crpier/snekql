@@ -34,17 +34,19 @@ class TimedEvent[S = Pending](Model[S]):
 async def utc_datetime_text_queries_compare_by_instant() -> None:
     """Equality, ordering, and ranges use instant-correct canonical text."""
 
-    same_instant_utc = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
-    same_instant_offset = datetime(
-        2026,
-        7,
-        1,
-        17,
-        30,
-        0,
-        tzinfo=timezone(timedelta(hours=5, minutes=30)),
+    same_instant_utc = UtcDatetime(datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC))
+    same_instant_offset = UtcDatetime(
+        datetime(
+            2026,
+            7,
+            1,
+            17,
+            30,
+            0,
+            tzinfo=timezone(timedelta(hours=5, minutes=30)),
+        )
     )
-    later = datetime(2026, 7, 1, 13, 0, 0, tzinfo=UTC)
+    later = UtcDatetime(datetime(2026, 7, 1, 13, 0, 0, tzinfo=UTC))
     database = await initialized_database(database=":memory:", models=[TimedEvent])
     try:
         async with database.transaction() as tx:

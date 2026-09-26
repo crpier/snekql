@@ -19,7 +19,7 @@ from snekql._schema_dialect import SchemaDialect
 from snekql._schema_shape import ColumnShape, IndexShape
 from snekql._server_defaults import LiteralDefaultShape, render_literal_default
 from snekql.defaults import LiteralDefault
-from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
+from snekql.sqlite._dialect_sql import current_timestamp_sql
 from snekql.sqlite.identifiers import quote_identifier
 from snekql.storage import CurrentTimestamp
 
@@ -90,7 +90,7 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
     if _requires_not_null(planned_column):
         parts.append("NOT NULL")
     if column.server_default is CurrentTimestamp:
-        parts.append(f"DEFAULT ({CURRENT_TIMESTAMP_SQL})")
+        parts.append(f"DEFAULT ({current_timestamp_sql(column)})")
     elif isinstance(column.server_default, LiteralDefault):
         parts.append(
             f"DEFAULT {render_literal_default(column.server_default, 'sqlite')}"

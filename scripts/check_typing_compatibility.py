@@ -69,6 +69,7 @@ _CASES = (
     "source-alias",
     "readiness",
     "select-all",
+    "temporal-domains",
     "backend-identity",
     "positional-width",
     "named-result",

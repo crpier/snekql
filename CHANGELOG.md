@@ -4,6 +4,18 @@
 
 ### Breaking
 
+- Reorganize date/datetime contracts around concrete `UtcDatetime`, new
+  `LocalDatetime`, existing `ZonedDatetime`, and Python `date`. Pass explicit
+  wrappers to models and predicates; use `.datetime` for standard-library access.
+  Bare datetime temporal declarations and `LexicalDatetimeWarning` are removed.
+- Preserve six fractional digits in UTC/civil text. Add MariaDB `Date()` and
+  `DateTime(precision=6)` with explicit 0–6 precision. Lower-precision writes
+  reject lost digits while comparison bounds retain their full precision.
+  `CurrentTimestamp` now requires UTC values and emits column-appropriate SQL.
+  Temporal readers reject noncanonical text, including alternate zoned spellings.
+  Existing text rows/defaults and native DATETIME declarations need deliberate
+  migration; see [dates and datetimes](docs/temporal-contracts.md). Addresses #439.
+
 - Remove SELECT `.all()`. Delete that call from existing reads; SELECT is already
   executable. UPDATE/DELETE `.all()` still acknowledges full-table writes, and
   `fetch_all()` still returns all result rows. Addresses #432.

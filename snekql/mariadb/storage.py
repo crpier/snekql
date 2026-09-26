@@ -1048,8 +1048,98 @@ def Boolean(  # noqa: N802
 
 
 @overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: PendingGeneration,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: type[CurrentTimestamp] | LiteralDefault[T],
+) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: None,
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: T,
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], None],
+) -> FKAttr[Any, Any, _UnboundOwner, T | None, T | None, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default_factory: Callable[[], T],
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
+
+
+@overload
+def Date[T, Target = Never](
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
+
+
+def Date(  # noqa: N802
+    *,
+    nullable: bool | None = None,
+    unique: bool = False,
+    index: bool = False,
+    default: object = ...,
+    default_factory: Callable[[], object] | EllipsisType = ...,
+) -> Any:
+    """MariaDB DATE column declaration for calendar dates."""
+    return FKAttr[Any, Any, Any, Any, Any, Any](
+        default=default,
+        default_factory=default_factory,
+        nullable=nullable,
+        index=index,
+        unique=unique,
+        storage_class="TEXT",
+        storage_type_name="Date",
+    )
+
+
+@overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1060,6 +1150,7 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1070,6 +1161,7 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1080,6 +1172,7 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1090,6 +1183,7 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1100,6 +1194,7 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
@@ -1110,21 +1205,26 @@ def DateTime[T, Target = Never](
 @overload
 def DateTime[T, Target = Never](
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
 ) -> FKAttr[Any, Any, _UnboundOwner, T, T, Target]: ...
 
 
-def DateTime(  # noqa: N802
+def DateTime(  # noqa: N802, PLR0913
     *,
+    precision: int = 6,
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
     default: object = ...,
     default_factory: Callable[[], object] | EllipsisType = ...,
 ) -> Any:
-    """MariaDB datetime column declaration for timezone-aware datetimes."""
+    """Native DATETIME storage for UTC or local civil values, without rounding."""
+    if type(precision) is not int or precision not in range(7):
+        msg = "DateTime precision must be an integer from 0 through 6"
+        raise ModelDeclarationError(msg)
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
         default_factory=default_factory,
@@ -1133,6 +1233,7 @@ def DateTime(  # noqa: N802
         unique=unique,
         storage_class="TEXT",
         storage_type_name="DateTime",
+        datetime_precision=precision,
     )
 
 
@@ -1252,6 +1353,7 @@ __all__ = [
     "Blob",
     "Boolean",
     "CurrentTimestamp",
+    "Date",
     "DateTime",
     "Decimal",
     "ForeignKey",

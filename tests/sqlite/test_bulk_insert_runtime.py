@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
@@ -112,7 +111,7 @@ async def single_returning_yields_generated_values() -> None:
     assert_eq(created.id, 1)
     assert_eq(created.email, "a@example.com")
     assert_eq(created.status, "active")
-    assert isinstance(created.created_at, datetime)
+    assert isinstance(created.created_at, UtcDatetime)
 
 
 @test(mark="medium")

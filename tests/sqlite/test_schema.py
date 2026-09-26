@@ -244,7 +244,7 @@ async def verify_normalizes_the_supported_server_default_expression() -> None:
         _execute_sql(
             database_path,
             'CREATE TABLE "event" ("created_at" TEXT NOT NULL DEFAULT '
-            "( STRFTIME ( '%Y-%m-%dT%H:%M:%fZ' , 'NOW' ) )) STRICT",
+            "( STRFTIME ( '%Y-%m-%dT%H:%M:%f' , 'NOW' ) || '000Z' )) STRICT",
         )
         database = await Database.initialize(database=database_path)
         try:

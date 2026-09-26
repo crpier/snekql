@@ -29,19 +29,19 @@ def utc_datetime_rejects_unknown_offset() -> None:
         __row_type__: ClassVar[sqlite.ReadType[Event[sqlite.Row]]]
         happened_at: sqlite.Col[sqlite.UtcDatetime] = sqlite.Text()
 
-    with assert_raises(sqlite.ModelValidationError):
-        Event(happened_at=datetime(2026, 1, 1, tzinfo=UnknownOffset()))
+    with assert_raises(sqlite.DatetimeError):
+        Event(
+            happened_at=sqlite.UtcDatetime(datetime(2026, 1, 1, tzinfo=UnknownOffset()))
+        )
 
 
 @test()
-def native_datetime_rejects_unknown_offset() -> None:
-    """MariaDB DateTime must not assume the machine's local timezone."""
+def native_datetime_requires_an_explicit_temporal_type() -> None:
+    """Native storage no longer defers timezone policy until encoding."""
+    with assert_raises(mariadb.ModelDeclarationError):
 
-    class Event[State = mariadb.Pending](mariadb.Model[State]):
-        __row_type__: ClassVar[mariadb.ReadType[Event[mariadb.Row]]]
-        happened_at: mariadb.Col[datetime] = mariadb.DateTime()
+        class Event[State = mariadb.Pending](mariadb.Model[State]):
+            __row_type__: ClassVar[mariadb.ReadType[Event[mariadb.Row]]]
+            happened_at: mariadb.Col[datetime] = mariadb.DateTime()
 
-    event = Event(happened_at=datetime(2026, 1, 1, tzinfo=UnknownOffset()))
-
-    with assert_raises(mariadb.ModelValidationError):
-        mariadb.insert(event).compile()
+        mariadb.scaffold([Event])

@@ -99,9 +99,9 @@ CTEs and named set operators from future builder syntax.
 | `Col[T]`, `GenCol[T]`, `PENDING_GENERATION` | Logical type and generated-value availability; storage comes from the column constructor |
 | `ForeignKey`, `ForeignKeyConstraint`, `FKCol` | Explicit columns, callable targets with Python defaults, and composite constraints; see [binding timing](typing.md#callable-self-reference-targets). These are not loaded relationships |
 | `Integer`, `Real`, `Text`, `Blob` | SQLite storage classes and corresponding MariaDB namespace constructors |
-| `Boolean`, `DateTime`, `Decimal`, `Json`, `JsonCol`, `Uuid`, `LongText` | Additional MariaDB-only declarations; not SQLite exports |
+| `Boolean`, `Date`, `DateTime`, `Decimal`, `Json`, `JsonCol`, `Uuid`, `LongText` | Additional MariaDB-only declarations; not SQLite exports |
 | `CurrentTimestamp`, `LiteralDefault` | Supported server defaults; distinguish them from Python defaults |
-| `UtcDatetime`, `ZonedDatetime`, `CanonicalDecimal`, `Duration` | Curated logical types with documented wire equality/order behavior |
+| `UtcDatetime`, `LocalDatetime`, `ZonedDatetime`, `CanonicalDecimal`, `Duration` | Curated logical types with documented wire equality/order behavior |
 | `Canonical`, `OrderPreserving` | Annotations for declared wire-form guarantees; see restrictions in the typing guide |
 | `Index`, `CheckConstraint` | Explicit schema facts, not automatic database alteration |
 | `scaffold([Model, ...])` | Dev-time initial DDL text for review; never regenerate deployed migration bodies at startup |
@@ -168,6 +168,7 @@ against both namespaces' `__all__` lists.
 | `DatabaseOperationTimeoutError` | yes | yes |
 | `DatabaseRuntimeError` | yes | yes |
 | `DateTime` | no | yes |
+| `Date` | no | yes |
 | `Decimal` | no | yes |
 | `DoNothing` | yes | yes |
 | `DoUpdate` | yes | yes |
@@ -186,7 +187,6 @@ against both namespaces' `__all__` lists.
 | `JoinOn` | yes | yes |
 | `Json` | no | yes |
 | `JsonCol` | no | yes |
-| `LexicalDatetimeWarning` | yes | yes |
 | `LexicalDecimalWarning` | yes | yes |
 | `LexicalDurationWarning` | yes | yes |
 | `LiteralDefault` | yes | yes |
@@ -246,6 +246,8 @@ against both namespaces' `__all__` lists.
 | `TransactionReuseError` | yes | yes |
 | `TransactionStateError` | yes | yes |
 | `UtcDatetime` | yes | yes |
+| `LocalDatetime` | yes | yes |
+| `DatetimeError` | yes | yes |
 | `Uuid` | no | yes |
 | `Write` | yes | yes |
 | `ZonedDatetime` | yes | yes |

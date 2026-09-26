@@ -37,6 +37,25 @@ MIGRATIONS = {
     "0002_user_email_unique": (
         'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
     ),
+    "0003_create_user_temporal": (
+        'CREATE TABLE "user_temporal" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL, '
+        '"created_at" TEXT NOT NULL DEFAULT '
+        "(strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z')) STRICT"
+    ),
+    "0004_copy_user_temporal": (
+        "INSERT INTO user_temporal (id, email, created_at) "
+        "SELECT id, email, CASE "
+        "WHEN length(created_at) = 24 AND "
+        "strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at "
+        "THEN substr(created_at, 1, 23) || '000Z' ELSE NULL END FROM user"
+    ),
+    "0005_drop_old_user": 'DROP TABLE "user"',
+    "0006_rename_user_temporal": 'ALTER TABLE "user_temporal" RENAME TO "user"',
+    "0007_restore_user_email_unique": (
+        'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
+    ),
 }
 
 

@@ -110,7 +110,7 @@ def update_set_current_timestamp_renders_server_expression() -> None:
         __row_type__: ClassVar[ReadType[Doc[Row]]]
 
         title: Doc.Col[str] = Text(nullable=False)
-        edited_at: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[UtcDatetime] = Text(nullable=False)
 
     query = (
         update(Doc)
@@ -122,7 +122,7 @@ def update_set_current_timestamp_renders_server_expression() -> None:
 
     expected_sql = (
         'UPDATE "doc" SET '
-        "\"edited_at\" = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), "
+        "\"edited_at\" = strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z', "
         '"title" = ? WHERE ("title" != ?)'
     )
     assert_eq(sql, expected_sql)
@@ -268,13 +268,18 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
 
         id: Doc.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         title: Doc.Col[str] = Text(nullable=False)
-        edited_at: Doc.Col[str] = Text(nullable=False)
+        edited_at: Doc.Col[UtcDatetime] = Text(nullable=False)
 
     database = await initialized_database(database=":memory:", models=[Doc])
     try:
         async with database.transaction() as tx:
             await tx.execute(
-                insert(Doc(title="draft", edited_at="2000-01-01T00:00:00.000Z")),
+                insert(
+                    Doc(
+                        title="draft",
+                        edited_at=UtcDatetime(datetime(2000, 1, 1, tzinfo=UTC)),
+                    )
+                ),
             )
             _ = await tx.execute(
                 update(Doc).set(Doc.edited_at.to(CurrentTimestamp)).all(),
@@ -285,7 +290,7 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
 
     # Server-filled ISO-8601 UTC sorts lexicographically, so a refreshed value is
     # strictly greater than the explicit epoch-era value written on insert.
-    assert_eq(refreshed > "2000-01-01T00:00:00.000Z", True)
+    assert_eq(refreshed > UtcDatetime(datetime(2000, 1, 1, tzinfo=UTC)), True)
 
 
 @test(mark="medium")
@@ -307,7 +312,7 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
         content: Memory.Col[str] = Text(nullable=False)
         updated_at: Memory.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
-    explicit = datetime(2000, 1, 1, tzinfo=UTC)
+    explicit = UtcDatetime(datetime(2000, 1, 1, tzinfo=UTC))
     database = await initialized_database(database=":memory:", models=[Memory])
     try:
         async with database.transaction() as tx:
@@ -327,9 +332,9 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
         await database.close()
 
     # Insert omitted the column, so the database supplied the value.
-    assert isinstance(filled, datetime)
+    assert isinstance(filled, UtcDatetime)
     # A generated column now accepts an explicit update value...
     assert_eq(overwritten, explicit)
     # ...and a server-clock refresh, which lands past the epoch-era value.
-    assert isinstance(refreshed, datetime)
+    assert isinstance(refreshed, UtcDatetime)
     assert_eq(refreshed > explicit, True)

@@ -25,10 +25,11 @@ class QueryDialect:
 
     conflict_do_nothing_sql: ConflictDoNothingCompiler
     conflict_update_sql: ConflictUpdateCompiler
-    current_timestamp_sql: str
+    current_timestamp_sql: Callable[[QueryColumn], str]
     empty_insert_sql: Callable[[str], str]
     encode_column_value: QueryValueEncoder
     encode_sum_value: QueryValueEncoder
+    encode_write_value: QueryValueEncoder
     inserted_value_sql: InsertedValueRenderer
     offset_only_limit_sql: str
     placeholder: str

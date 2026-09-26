@@ -22,7 +22,6 @@ uv init --bare --python 3.14
 uv add 'snekql[aiosqlite]'
 cat > smoke.py <<'PY'
 import asyncio
-from datetime import datetime
 from typing import ClassVar
 
 from snekql.sqlite import (
@@ -37,6 +36,7 @@ from snekql.sqlite import (
     Pending,
     ReadType,
     Text,
+    UtcDatetime,
     insert,
     select,
 )
@@ -50,7 +50,7 @@ class User[S = Pending](Model[S]):
         default=PENDING_GENERATION,
     )
     email: Col[str] = Text()
-    created_at: GenCol[datetime] = Text(default=CurrentTimestamp)
+    created_at: GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
 
 MIGRATIONS = {
@@ -59,7 +59,7 @@ MIGRATIONS = {
         '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
         '"email" TEXT NOT NULL, '
         '"created_at" TEXT NOT NULL DEFAULT '
-        "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
+        "(strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z')"
         ') STRICT'
     )
 }

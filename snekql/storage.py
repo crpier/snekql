@@ -1,4 +1,4 @@
-"""SQLite storage declarations and value codecs for table models."""
+"""Physical storage declarations and derived value codecs for table models."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ import inspect
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from json import JSONDecodeError, dumps, loads
+from json import JSONDecodeError, loads
 from math import isfinite
 from types import EllipsisType, UnionType
 from typing import (
@@ -28,13 +28,11 @@ from typing import (
     overload,
 )
 from uuid import UUID
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import (
     AfterValidator,
     AwareDatetime,
     BeforeValidator,
-    GetCoreSchemaHandler,
     PlainSerializer,
     TypeAdapter,
     ValidationError,
@@ -42,10 +40,13 @@ from pydantic import (
 from pydantic import (
     Json as _PydanticJson,
 )
-from pydantic_core import PydanticSerializationError, core_schema
+from pydantic_core import (
+    PydanticSerializationError,
+)
 
 from snekql._declaration_binding import _OnceBinding
 from snekql._output_label import _NullExtendedLabel
+from snekql._temporal import LocalDatetime, UtcDatetime, ZonedDatetime
 from snekql._value_expression import ExpressionMethods, ValueExpression
 from snekql.defaults import LiteralDefault
 from snekql.errors import (
@@ -54,7 +55,6 @@ from snekql.errors import (
     ModelValidationError,
     QueryConstructionError,
     SnekqlError,
-    ZonedDatetimeError,
 )
 from snekql.expressions import (
     Aggregate,
@@ -85,9 +85,11 @@ _JSON_MARKER_TYPE: type = cast("type", _PydanticJson)  # ty: ignore[disjoint-cas
 # Inclusive bounds of a signed 64-bit integer. SQLite INTEGER and MariaDB BIGINT
 # both top out here; values outside the range cannot be persisted, so the codec
 # rejects them with a domain error instead of letting the driver overflow.
+_NATIVE_DATE_MIN_YEAR = 1000
+"""Documented lower year for MariaDB native DATE and DATETIME storage."""
+
 _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
-_ZONED_DATETIME_WIRE_VERSION = 1
 
 
 # Curated logical types. Each curated type keeps its validators, serializer,
@@ -214,176 +216,6 @@ def column_lacks_canonical_decimal(
     return any(core_type is Decimal for core_type in _annotation_core_types(logical))
 
 
-def _normalize_utc_milliseconds(value: datetime) -> datetime:
-    """Reject naive datetimes and canonicalize aware values to UTC millis."""
-
-    if value.utcoffset() is None:
-        msg = "naive datetime rejected; UtcDatetime is aware-only"
-        raise ValueError(msg)
-    normalized = value.astimezone(UTC)
-    return normalized.replace(microsecond=(normalized.microsecond // 1000) * 1000)
-
-
-def _serialize_utc_milliseconds(value: datetime) -> str:
-    """Serialize canonical datetimes as fixed-width UTC millisecond text."""
-
-    return value.strftime("%Y-%m-%dT%H:%M:%S.") + f"{value.microsecond // 1000:03d}Z"
-
-
-UtcDatetime = Annotated[
-    datetime,
-    AfterValidator(_normalize_utc_milliseconds),
-    PlainSerializer(_serialize_utc_milliseconds, return_type=str, when_used="json"),
-    OrderPreserving,
-]
-
-
-def _zoned_timezone_identity(value: datetime) -> tuple[str, str | timedelta | None]:
-    """Identify a named IANA zone separately from a fixed UTC offset."""
-
-    if isinstance(value.tzinfo, ZoneInfo):
-        return ("iana", value.tzinfo.key)
-    return ("offset", value.utcoffset())
-
-
-@dataclass(frozen=True, slots=True, eq=False)
-class ZonedDatetime:
-    """A datetime paired with its persistent timezone identity.
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> value = ZonedDatetime(
-    ...     datetime(2026, 7, 1, 8, tzinfo=ZoneInfo("America/New_York"))
-    ... )
-    >>> value.datetime.tzinfo == ZoneInfo("America/New_York")
-    True
-    """
-
-    datetime: datetime
-
-    def __post_init__(self) -> None:
-        if self.datetime.utcoffset() is None:
-            msg = "ZonedDatetime requires an aware datetime"
-            raise ZonedDatetimeError(msg)
-        if not isinstance(self.datetime.tzinfo, ZoneInfo | timezone):
-            msg = "ZonedDatetime requires an IANA zone or fixed UTC offset"
-            raise ZonedDatetimeError(msg)
-        if isinstance(self.datetime.tzinfo, ZoneInfo):
-            reconstructed = self.datetime.astimezone(UTC).astimezone(
-                self.datetime.tzinfo
-            )
-            if (
-                reconstructed.replace(tzinfo=None) != self.datetime.replace(tzinfo=None)
-                or reconstructed.fold != self.datetime.fold
-            ):
-                msg = "ZonedDatetime requires an existing IANA civil time and fold"
-                raise ZonedDatetimeError(msg)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ZonedDatetime):
-            return False
-        return self.datetime.astimezone(UTC) == other.datetime.astimezone(
-            UTC
-        ) and _zoned_timezone_identity(self.datetime) == _zoned_timezone_identity(
-            other.datetime
-        )
-
-    def __hash__(self) -> int:
-        return hash(
-            (
-                self.datetime.astimezone(UTC),
-                _zoned_timezone_identity(self.datetime),
-            )
-        )
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls,
-        _source_type: object,
-        _handler: GetCoreSchemaHandler,
-    ) -> core_schema.CoreSchema:
-        """Validate instances and decode their canonical text wire form."""
-
-        return core_schema.no_info_plain_validator_function(
-            cls._validate,
-            serialization=core_schema.plain_serializer_function_ser_schema(
-                cls._serialize,
-                return_schema=core_schema.str_schema(),
-                when_used="json",
-            ),
-        )
-
-    @classmethod
-    def _validate(cls, value: object) -> ZonedDatetime:
-        if isinstance(value, cls):
-            return value
-        if isinstance(value, str):
-            return cls._from_wire(value)
-        msg = "ZonedDatetime value must be a ZonedDatetime or canonical text"
-        raise ValueError(msg)
-
-    @staticmethod
-    def _serialize(value: ZonedDatetime) -> str:
-        instant = value.datetime.astimezone(UTC).isoformat(timespec="microseconds")
-        instant = instant.removesuffix("+00:00") + "Z"
-        timezone_info = value.datetime.tzinfo
-        if isinstance(timezone_info, ZoneInfo):
-            timezone_kind = "iana"
-            timezone_value: str | int = timezone_info.key
-        else:
-            offset = value.datetime.utcoffset()
-            if offset is None:
-                msg = "ZonedDatetime lost its fixed UTC offset"
-                raise ZonedDatetimeError(msg)
-            timezone_kind = "offset"
-            timezone_value = offset // timedelta(microseconds=1)
-        return dumps(
-            [_ZONED_DATETIME_WIRE_VERSION, instant, timezone_kind, timezone_value],
-            ensure_ascii=True,
-            separators=(",", ":"),
-        )
-
-    @classmethod
-    def _from_wire(cls, value: str) -> ZonedDatetime:
-        try:
-            payload = loads(value)
-            if not isinstance(payload, list):
-                raise TypeError  # noqa: TRY301
-            version, instant_text, timezone_kind, timezone_value = payload
-            if version != _ZONED_DATETIME_WIRE_VERSION:
-                raise ValueError  # noqa: TRY301
-            if not isinstance(instant_text, str) or not instant_text.endswith("Z"):
-                raise ValueError  # noqa: TRY301
-            instant = datetime.fromisoformat(instant_text.removesuffix("Z") + "+00:00")
-            if timezone_kind == "iana" and isinstance(timezone_value, str):
-                timezone_info = ZoneInfo(timezone_value)
-            elif timezone_kind == "offset" and type(timezone_value) is int:
-                timezone_info = timezone(timedelta(microseconds=timezone_value))
-            else:
-                raise ValueError  # noqa: TRY301
-            return cls(instant.astimezone(timezone_info))
-        except (JSONDecodeError, TypeError, ValueError, ZoneInfoNotFoundError) as error:
-            msg = "invalid ZonedDatetime canonical text"
-            raise ValueError(msg) from error
-
-
-def column_lacks_order_preserving_datetime(
-    column: Attr[Any, Any, Any, Any, Any],
-    backend: StorageBackend,
-) -> bool:
-    """Whether a SQLite Text datetime column lacks order-safe text encoding."""
-
-    if backend != "sqlite":
-        return False
-    logical = _text_column_logical(column)
-    if logical is None or _carries_order_preserving_marker(logical):
-        return False
-    return any(
-        core_type is datetime or core_type is AwareDatetime
-        for core_type in _annotation_core_types(logical)
-    )
-
-
 def _decode_duration_milliseconds(value: object) -> object:
     """Decode integer wire values as milliseconds before timedelta validation."""
 
@@ -439,8 +271,6 @@ class _BackendCodec:
     only when a third backend needs materially different wire semantics.
     """
 
-    datetime_encode_format: str
-    datetime_encode_suffix: str
     decode_datetime: Callable[[object, str], datetime]
     json_accepts_bytes: bool
     # Length ceilings for the variable-width text/binary storage families, or
@@ -1109,6 +939,7 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
         primary_key=primary_key,
         storage_class=target_column.storage_class,
         storage_type_name=target_column.storage_type_name,
+        datetime_precision=target_column.datetime_precision,
         text_length=target_column.text_length,
         text_collation=target_column.text_collation,
         index=index,
@@ -1363,6 +1194,7 @@ class Attr[
         auto_increment: bool = False,
         default: object = ...,
         default_factory: Callable[[], object] | EllipsisType = ...,
+        datetime_precision: int | None = None,
         decimal_precision: int | None = None,
         decimal_scale: int | None = None,
         text_length: int | None = None,
@@ -1384,6 +1216,7 @@ class Attr[
         self.auto_increment: bool = auto_increment
         self.default: object = default
         self.default_factory: Callable[[], object] | EllipsisType = default_factory
+        self.datetime_precision: int | None = datetime_precision
         self.decimal_precision: int | None = decimal_precision
         self.decimal_scale: int | None = decimal_scale
         self.text_length: int | None = text_length
@@ -1545,7 +1378,7 @@ class Attr[
                 decoded = (
                     None
                     if value is None
-                    else codec.decode_datetime(value, self._require_name())
+                    else self._decode_native_datetime(value, codec)
                 )
             else:
                 if value is None:
@@ -1567,7 +1400,12 @@ class Attr[
             ) from error
 
     def encode(
-        self, value: object, *, backend: StorageBackend, integer_sum: bool = False
+        self,
+        value: object,
+        *,
+        backend: StorageBackend,
+        integer_sum: bool = False,
+        write: bool = False,
     ) -> object:
         """Encode a logical Python value through this column's backend codec.
 
@@ -1589,6 +1427,7 @@ class Attr[
                 value,
                 codec=_BACKEND_CODECS[backend],
                 integer_sum=integer_sum and backend == "mariadb",
+                write=write,
             )
         except SnekqlError:
             raise
@@ -1753,11 +1592,93 @@ class Attr[
 
         if self.storage_class == "BLOB" and isinstance(value, memoryview | bytearray):
             value = bytes(cast("Any", value))
+        adapter = self._logical_adapter()
         try:
-            return self._logical_adapter().validate_python(value)
+            decoded = adapter.validate_python(value)
         except ValidationError as error:
             msg = f"{self._require_name()!r} failed type validation: {error}"
             raise ModelValidationError(msg) from error
+        if (
+            type(decoded) is date
+            and self.storage_type_name in ("Text", "LongText")
+            and value != adapter.dump_python(decoded, mode="json")
+        ):
+            msg = "noncanonical date text; migrate the stored representation"
+            raise ModelValidationError(msg)
+        return decoded
+
+    def _temporal_type(
+        self,
+    ) -> type[UtcDatetime | LocalDatetime | ZonedDatetime] | None:
+        """Recover temporal meaning from the logical annotation, never from storage."""
+        if self.owner is None or self.name is None:
+            return None
+        logical = _extract_logical_type(
+            _resolve_model_hint(self.owner, self.name), self.name
+        )
+        types = _annotation_core_types(logical)
+        for temporal_type in (UtcDatetime, LocalDatetime, ZonedDatetime):
+            if temporal_type in types:
+                return temporal_type
+        return None
+
+    def validate_temporal_declaration(self, backend: StorageBackend) -> None:
+        """Reject ambiguous temporal storage before it can claim a query contract."""
+        logical = self._resolved_logical_type()
+        if logical is None:
+            return
+        is_json = self._is_json_column()
+        if self.storage_type_name in ("Date", "DateTime") and (
+            backend != "mariadb" or is_json
+        ):
+            msg = "native temporal storage requires MariaDB and a non-JSON logical type"
+            raise ModelDeclarationError(msg)
+        if is_json:
+            return
+        types = _annotation_core_types(logical)
+        temporal = self._temporal_type()
+        if temporal is not None and types != [temporal]:
+            msg = "a temporal column requires one meaning, optionally nullable"
+            raise ModelDeclarationError(msg)
+        if self.storage_type_name == "DateTime" and temporal not in (
+            UtcDatetime,
+            LocalDatetime,
+        ):
+            msg = "DateTime requires UtcDatetime or LocalDatetime"
+            raise ModelDeclarationError(msg)
+        if self.storage_type_name == "Date" and types != [date]:
+            msg = "Date requires the date logical type"
+            raise ModelDeclarationError(msg)
+        if (
+            self.storage_type_name in ("Text", "LongText")
+            and any(item is datetime or item is AwareDatetime for item in types)
+            and not _carries_order_preserving_marker(logical)
+        ):
+            msg = "datetime text requires UtcDatetime or LocalDatetime, or an explicit order-preserving codec"
+            raise ModelDeclarationError(msg)
+        if temporal is not None and self.storage_type_name not in (
+            "Text",
+            "LongText",
+            "DateTime",
+        ):
+            msg = "datetime values require canonical text or compatible native DateTime storage"
+            raise ModelDeclarationError(msg)
+        if self.server_default is CurrentTimestamp and temporal is not UtcDatetime:
+            msg = "CurrentTimestamp requires a UtcDatetime column"
+            raise ModelDeclarationError(msg)
+
+    def require_current_timestamp(self) -> None:
+        """A server clock supplies an instant, never civil fields or a timezone identity."""
+        if self._temporal_type() is not UtcDatetime:
+            msg = "CurrentTimestamp requires a UtcDatetime column"
+            raise QueryConstructionError(msg)
+
+    def _decode_native_datetime(self, value: object, codec: _BackendCodec) -> object:
+        """A native DATETIME carries fields; the annotation supplies their meaning."""
+        decoded = codec.decode_datetime(value, self._require_name())
+        if self._temporal_type() is LocalDatetime:
+            return LocalDatetime(decoded.replace(tzinfo=None))
+        return UtcDatetime(decoded)
 
     def _decode_boolean(self, value: object) -> bool:
         if value == 0:
@@ -1768,7 +1689,12 @@ class Attr[
         raise ModelValidationError(msg)
 
     def _encode_value(
-        self, value: object, *, codec: _BackendCodec, integer_sum: bool = False
+        self,
+        value: object,
+        *,
+        codec: _BackendCodec,
+        integer_sum: bool = False,
+        write: bool = False,
     ) -> object:
         """Wire-encode a logical value (Layer 1) for a backend.
 
@@ -1780,31 +1706,41 @@ class Attr[
             return None
         if self._is_json_column():
             return self._encode_json(value)
+        temporal = self._temporal_type()
+        if temporal is not None and not isinstance(value, temporal):
+            msg = "comparison or assignment value has an incompatible temporal meaning"
+            raise ModelValidationError(msg)
         if self.storage_type_name == "Boolean":
             return 1 if value else 0
         if self.storage_type_name == "Decimal":
             return self._encode_decimal(value)
-        if self.storage_type_name == "DateTime":
-            timestamp = cast("datetime", value)
-            # A native DateTime column stores offset-less UTC text. A naive input
-            # has no offset to reduce it to a single instant, so ``astimezone``
-            # would silently assume the machine's local zone -- the same
-            # wall-clock value would land as a different instant depending on
-            # where the write ran. Refuse it; awareness is the logical type's job.
-            if timestamp.utcoffset() is None:
-                msg = (
-                    f"{self._require_name()!r} naive datetime cannot be stored in "
-                    f"a DateTime column; attach a timezone (or annotate "
-                    f"Col[UtcDatetime]) so the instant is unambiguous"
-                )
-                raise ModelValidationError(msg)
-            timestamp = timestamp.astimezone(UTC)
-            return (
-                timestamp.strftime(codec.datetime_encode_format)
-                + f"{timestamp.microsecond // 1000:03d}"
-                + codec.datetime_encode_suffix
-            )
+        if self.storage_type_name in ("Date", "DateTime"):
+            return self._encode_native_temporal(value, write=write)
         return self._encode_primitive(value, codec=codec, integer_sum=integer_sum)
+
+    def _encode_native_temporal(self, value: object, *, write: bool) -> str:
+        """Enforce native bounds and exact writes without quantizing predicates."""
+        if self.storage_type_name == "Date":
+            if type(value) is not date or value.year < _NATIVE_DATE_MIN_YEAR:
+                msg = "Date requires a calendar date in the native range 1000 through 9999"
+                raise ModelValidationError(msg)
+            return value.isoformat()
+        if not isinstance(value, UtcDatetime | LocalDatetime):
+            msg = "DateTime requires a UtcDatetime or LocalDatetime value"
+            raise ModelValidationError(msg)
+        if value.datetime.year < _NATIVE_DATE_MIN_YEAR:
+            msg = "DateTime requires a year in the native range 1000 through 9999"
+            raise ModelValidationError(msg)
+        precision = self.datetime_precision
+        if precision is None:
+            msg = "DateTime lost its precision metadata"
+            raise ModelValidationError(msg)
+        if write and value.datetime.microsecond % (10 ** (6 - precision)):
+            msg = f"DateTime({precision}) cannot store this value without losing precision"
+            raise ModelValidationError(msg)
+        return value.datetime.replace(tzinfo=None).isoformat(
+            sep=" ", timespec="microseconds"
+        )
 
     def _encode_decimal(self, value: object) -> Decimal:
         """Reject DECIMAL values that cannot be stored without numeric change."""
@@ -1842,7 +1778,11 @@ class Attr[
         return decimal_value
 
     def _encode_primitive(
-        self, value: object, *, codec: _BackendCodec, integer_sum: bool = False
+        self,
+        value: object,
+        *,
+        codec: _BackendCodec,
+        integer_sum: bool = False,
     ) -> object:
         """Wire-encode a primitive-storage value through pydantic serialization.
 
@@ -2456,6 +2396,7 @@ class FKAttr[
 class _ResolvedForeignKey:
     """An immutable physical target and the complete storage derived from it."""
 
+    datetime_precision: int | None
     decimal_precision: int | None
     decimal_scale: int | None
     foreign_key_target: Attr[Any, Any, Any, Any, Any]
@@ -2557,6 +2498,7 @@ class _DeferredFKAttr(FKAttr[Any, Any, Any, Any, Any, Any]):
             storage_type_name=target.storage_type_name,
             text_length=target.text_length,
             text_collation=target.text_collation,
+            datetime_precision=target.datetime_precision,
             decimal_precision=target.decimal_precision,
             decimal_scale=target.decimal_scale,
         )
@@ -2601,11 +2543,9 @@ def _decode_unreachable_sqlite_datetime(_value: object, name: str) -> datetime:
 def _decode_mariadb_datetime(value: object, name: str) -> datetime:
     """The MariaDB driver returns DATETIME columns as ``datetime`` (or text).
 
-    Decode deliberately mirrors encode's asymmetry: encode rejects a naive input
-    because a *user* value carries no zone to reduce it to a single instant, but a
-    naive value read back here originates from offset-less UTC text this column
-    itself stored, so its zone is known to be UTC. Attaching ``UTC`` recovers the
-    original instant rather than guessing -- do not "fix" this to match encode.
+    UTC is an intermediate tag for timezone-free driver fields. The column's
+    logical annotation then selects a UTC instant or unchanged local civil fields;
+    native storage alone does not establish their meaning.
     """
 
     if isinstance(value, datetime):
@@ -2626,8 +2566,6 @@ def _decode_mariadb_datetime(value: object, name: str) -> datetime:
 
 
 _SQLITE_CODEC = _BackendCodec(
-    datetime_encode_format="%Y-%m-%dT%H:%M:%S.",
-    datetime_encode_suffix="Z",
     decode_datetime=_decode_unreachable_sqlite_datetime,
     json_accepts_bytes=False,
     # SQLite TEXT/BLOB share a single ~1 GB limit far above any practical row;
@@ -2636,8 +2574,6 @@ _SQLITE_CODEC = _BackendCodec(
     max_blob_bytes=None,
 )
 _MARIADB_CODEC = _BackendCodec(
-    datetime_encode_format="%Y-%m-%d %H:%M:%S.",
-    datetime_encode_suffix="",
     decode_datetime=_decode_mariadb_datetime,
     json_accepts_bytes=True,
     # Legacy Text defaults to VARCHAR(255); explicit larger capacities bypass

@@ -22,6 +22,8 @@ Start with [models](models.md) if you have not declared a table yet.
 | Text | `Col[str] = Text()` | `Col[str] = Text(length=...)` |
 | Bytes | `Col[bytes] = Blob()` | `Col[bytes] = Blob()` |
 | Boolean | `Col[bool] = Integer()` | `Col[bool] = Boolean()` |
+| Calendar date | `Col[date] = Text()` | `Col[date] = Date()` |
+| Local civil datetime | `Col[LocalDatetime] = Text()` | `Col[LocalDatetime] = DateTime()` |
 | Timestamp ordered by instant | `Col[UtcDatetime] = Text()` | `Col[UtcDatetime] = DateTime()` |
 | UUID | `Col[UUID] = Text()` or `Blob()` | `Col[UUID] = Uuid()` or `Blob()` |
 | JSON | `Col[Json[Payload]] = Text()` | `JsonCol[Payload] = Json()` |
@@ -32,45 +34,42 @@ row, the annotation is Python's `decimal.Decimal`; the constructor is
 `mariadb.Decimal(...)`. In the JSON row, `Json[Payload]` is Pydantic's marker.
 
 SQLite has only `Integer`, `Real`, `Text`, and `Blob` storage constructors.
-MariaDB also offers native `Boolean`, `DateTime`, `Decimal`, `Json`, `Uuid`, and
+MariaDB also offers native `Boolean`, `Date`, `DateTime`, `Decimal`, `Json`, `Uuid`, and
 `LongText`. Picking a Python type does not give SQLite a missing native type.
 
 Validation cannot make every pairing useful. Some mismatches fail only when
 encoding a write or decoding a read. Pick a representation whose database
 comparison rules match the queries you need.
 
-## Dates: sorting text is not sorting time
+## Dates and datetimes
 
-Use `UtcDatetime` when the database must compare timestamps chronologically.
-It rejects naive datetimes, converts aware values to UTC milliseconds, and uses
-a consistently ordered SQLite text representation.
-
-A plain `datetime` in SQLite `Text()` uses ISO text. Two offsets can describe the
-same instant with different strings, and text ordering need not follow time.
-Those declarations emit `LexicalDatetimeWarning`. Suppress it only if you have
-reviewed the representation and query behavior.
-
-MariaDB's native `DateTime()` cannot preserve a timezone. snekql stores UTC there
-and rejects a naive datetime rather than guessing its timezone.
-
-Use `ZonedDatetime` if the zone itself matters, such as an appointment scheduled
-in `America/New_York`:
+Use Python `date` for a calendar date. For datetime values, choose the meaning
+explicitly:
 
 ```python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import UTC, datetime
+from snekql.sqlite import LocalDatetime, UtcDatetime
 
-from snekql.sqlite import ZonedDatetime
-
-starts_at = ZonedDatetime(
-    datetime(2026, 7, 1, 8, tzinfo=ZoneInfo("America/New_York")),
-)
+occurred_at = UtcDatetime(datetime.now(UTC))
+opens_at = LocalDatetime(datetime(2026, 10, 1, 9, 0))
 ```
 
-Store it in `Text()` on either backend. It preserves the instant and the exact
-IANA zone key or fixed offset. Two values with the same instant but different
-zones are not equal. Equality, membership, and unique indexes work; ordering,
-ranges, MIN, and MAX are rejected. Choose `UtcDatetime` for chronological queries.
+`UtcDatetime` normalizes an aware input immediately and retains microseconds.
+`LocalDatetime` keeps timezone-free civil fields without inventing an instant.
+Both are immutable values exposing the standard datetime through `.datetime`.
+Bare datetime temporal declarations are rejected rather than warned about.
+
+MariaDB `DateTime(precision=6)` supports both meanings. Lower precision rejects
+lossy writes but does not truncate query bounds. UTC and local values cannot be
+compared to one another implicitly.
+
+Use `ZonedDatetime` for a resolved instant whose exact IANA zone key or fixed
+offset matters. Store it in `Text()` on either backend. Equality, membership, and
+unique indexes work; chronological ordering, ranges, MIN, and MAX are rejected.
+A resolved zoned value is not a recurring schedule.
+
+Read [dates and datetimes](temporal-contracts.md) for construction rules, canonical
+formats, clocks, native ranges, and the required migration from millisecond text.
 
 For elapsed time, `Col[Duration] = Integer()` stores signed whole milliseconds
 and normalizes Python timedeltas to that precision. It is a duration, not a
@@ -125,7 +124,7 @@ but binary equality predicates will not match it. Follow the
 ## Database defaults
 
 Use a `GenCol` when the database may supply a value. `CurrentTimestamp` asks it
-for the current timestamp; `LiteralDefault(value)` declares a supported SQL
+for the current UTC instant on a `UtcDatetime` column; `LiteralDefault(value)` declares a supported SQL
 literal default. Both are different from Python's `default=value`.
 
 Omitted generated values stay `PENDING_GENERATION` in the Pending object. Use

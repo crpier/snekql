@@ -82,6 +82,11 @@ class _StubCompiler:
         self.operands.append(operand)
         return "operand", ()
 
+    def ensure_comparable(
+        self, left: object, right: object, *, subquery: bool = False
+    ) -> None:
+        """These node-shape controls use only compatible integer columns."""
+
     def value_encoder(self, operand: object) -> Callable[[object], object]:
         self.operands.append(operand)
         return lambda value: ("encoded", value)

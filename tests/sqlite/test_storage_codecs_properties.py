@@ -29,7 +29,6 @@ from snektest import (
 from snekql.sqlite import (
     Blob,
     Integer,
-    LexicalDatetimeWarning,
     Model,
     ModelValidationError,
     Pending,
@@ -37,6 +36,7 @@ from snekql.sqlite import (
     Real,
     Row,
     Text,
+    UtcDatetime,
 )
 
 BACKEND = "sqlite"
@@ -46,7 +46,7 @@ _INT64_MAX = 2**63 - 1
 
 
 with warnings.catch_warnings():
-    warnings.simplefilter("ignore", LexicalDatetimeWarning)
+    warnings.simplefilter("always")
 
     class Scalars[S = Pending](Model[S]):
         """One column per SQLite storage class / logical type under test."""
@@ -58,7 +58,7 @@ with warnings.catch_warnings():
         label: Scalars.Col[str] = Text(nullable=False)
         blob: Scalars.Col[bytes] = Blob(nullable=False)
         flag: Scalars.Col[bool] = Integer(nullable=False)
-        when: Scalars.Col[datetime] = Text(nullable=False)
+        when: Scalars.Col[UtcDatetime] = Text(nullable=False)
         # The pydantic ``Json`` marker -- not the dict value -- selects the JSON wire
         # codec over a plain TEXT column.
         data: Scalars.Col[Json[dict[str, Any]]] = Text(nullable=False)
@@ -92,10 +92,10 @@ _json_objects = st.dictionaries(_json_text, _json_values, max_size=5)
 _whole_minute_offsets = st.integers(
     min_value=-(23 * 60 + 59), max_value=23 * 60 + 59
 ).map(lambda minutes: timezone(timedelta(minutes=minutes)))
-_datetimes = st.datetimes(  # ty: ignore[no-matching-overload]
+_datetimes = st.datetimes(
     min_value=datetime(1900, 1, 1),  # noqa: DTZ001
     max_value=datetime(2200, 1, 1),  # noqa: DTZ001
-    timezones=st.none() | st.just(UTC) | _whole_minute_offsets,
+    timezones=st.just(UTC) | _whole_minute_offsets,
 )
 
 _sub_minute_offsets = (
@@ -197,21 +197,18 @@ def boolean_decode_rejects_non_binary_integers(value: int) -> None:
 @test_hypothesis(_datetimes, mark="fast")
 def datetime_round_trips_at_microsecond_precision(value: datetime) -> None:
     """A datetime stored as ISO text round-trips to the same instant, preserving
-    microseconds and offset (SQLite does no UTC canonicalization)."""
+    microseconds while normalizing offsets to UTC."""
 
-    encoded = Scalars.when.encode(value, backend=BACKEND)
-    assert_eq(Scalars.when.decode(encoded, backend=BACKEND), value)
+    encoded = Scalars.when.encode(UtcDatetime(value), backend=BACKEND)
+    assert_eq(Scalars.when.decode(encoded, backend=BACKEND), UtcDatetime(value))
 
 
 @settings(deadline=None)
 @test_hypothesis(_sub_minute_datetimes, mark="fast")
-def datetime_with_sub_minute_offset_is_rejected(value: datetime) -> None:
-    """A sub-minute UTC offset cannot survive ISO-text serialization, so the
-    codec rejects it with a domain error instead of silently shifting the
-    instant."""
-
-    with assert_raises(ModelValidationError):
-        _ = Scalars.when.encode(value, backend=BACKEND)
+def datetime_with_sub_minute_offset_preserves_the_instant(value: datetime) -> None:
+    """UTC normalization retains historical offsets rather than truncating them."""
+    encoded = Scalars.when.encode(UtcDatetime(value), backend=BACKEND)
+    assert_eq(Scalars.when.decode(encoded, backend=BACKEND), UtcDatetime(value))
 
 
 @settings(deadline=None)

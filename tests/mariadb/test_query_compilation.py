@@ -121,7 +121,7 @@ def mariadb_update_compilation_renders_current_timestamp_expression() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Doc[Row]]]
 
         title: Doc.Col[str] = mariadb.Text(nullable=False)
-        edited_at: Doc.Col[str] = mariadb.Text(nullable=False)
+        edited_at: Doc.Col[mariadb.UtcDatetime] = mariadb.DateTime(nullable=False)
 
     update_sql, update_params = MARIADB_CODEC.compile_write_sql(
         update(Doc)
@@ -130,7 +130,7 @@ def mariadb_update_compilation_renders_current_timestamp_expression() -> None:
     )
 
     expected_sql = (
-        "UPDATE `doc` SET `edited_at` = CURRENT_TIMESTAMP(3), `title` = %s "
+        "UPDATE `doc` SET `edited_at` = CURRENT_TIMESTAMP(6), `title` = %s "
         "WHERE (`title` != %s)"
     )
     assert_eq(update_sql, expected_sql)
