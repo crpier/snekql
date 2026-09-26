@@ -18,9 +18,9 @@ snekql is an async typed query builder and runtime for SQLite and MariaDB.
 
 ## Quick start
 
-```python
-from __future__ import annotations
+Python 3.14+ defers annotations by default; no future import is needed.
 
+```python
 from pathlib import Path
 from typing import ClassVar
 

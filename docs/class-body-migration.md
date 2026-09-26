@@ -1,6 +1,6 @@
 # Migrate to class-body models
 
-This is a breaking change. There are no compatibility aliases for the old model
+Version 0.8.0 is a breaking change. There are no compatibility aliases for the old model
 arity, `Fetched`, result-only `Select`, sequence `insert`, or unchecked
 `.construct(...)`.
 
@@ -33,7 +33,10 @@ The witness names this same model in Row state. It supplies whole-model SELECT,
 RETURNING, and `complete` results. Scalar, tuple, and named projection results are
 unchanged. Runtime checks validate the witness; ty does not reject every malformed
 witness. A class-body annotation can refer to its own class, but an eager base
-expression cannot. Deferred annotations do not defer base expressions.
+expression cannot. Python 3.14+ defers annotations by default, so
+`from __future__ import annotations` is not required. That import selects
+stringized annotations instead; existing callers may keep it. Neither mode
+defers class bases or other ordinary expressions.
 
 ## Separate construction from completeness
 

@@ -1,6 +1,6 @@
 [project]
 name = "snekql"
-version = "0.7.0"
+version = "0.8.0"
 description = "Async typed query builder and runtime for SQLite and MariaDB"
 readme = "README.md"
 license = "MIT"

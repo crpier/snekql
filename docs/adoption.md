@@ -20,8 +20,6 @@ cd "$tmpdir"
 uv init --bare --python 3.14
 uv add 'snekql[aiosqlite]'
 cat > smoke.py <<'PY'
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime
 from typing import ClassVar
