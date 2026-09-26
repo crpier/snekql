@@ -32,7 +32,9 @@ _MAX_TEXT_LENGTH = 16383
 
 
 @dataclass(frozen=True)
-class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
+class _JsonExtractInt[OwnerT](
+    Comparable[OwnerT, int, "int | None", Literal["mariadb"]]
+):
     """``JSON_EXTRACT(col, path)`` typed as ``int | None`` (ADR 0004 open-AST seam).
 
     The first dialect-specific operator: it lives entirely in the MariaDB
@@ -56,9 +58,13 @@ class _JsonExtractInt[OwnerT](Comparable[OwnerT, int, "int | None"]):
     column: Attr[Any, Any, Any, Any, Any]
     path: str
 
-    def label(self, name: str) -> _NullExtendedLabel[OwnerT, int | None, int]:
+    def label(
+        self, name: str
+    ) -> _NullExtendedLabel[OwnerT, int | None, int, Literal["mariadb"]]:
         """Name the decoded optional integer without losing native JSON policy."""
-        return _NullExtendedLabel[OwnerT, int | None, int](name=name, operand=self)
+        return _NullExtendedLabel[OwnerT, int | None, int, Literal["mariadb"]](
+            name=name, operand=self
+        )
 
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness for singleton-select owner inference."""
@@ -121,6 +127,7 @@ class JsonAttr[
         Any,
         SetValueT,
         CompareT,
+        Literal["mariadb"],
     ],
 ):
     """MariaDB JSON column descriptor carrying the JSON path operators.

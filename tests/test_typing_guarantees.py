@@ -18,6 +18,12 @@ from snektest import Param, assert_eq, assert_true, test
             ("write-validation", "invalid-assignment"),
             ("returning-domain", "invalid-assignment"),
             ("exists-family", "invalid-argument-type"),
+            ("nested-exists-family", "invalid-argument-type"),
+            ("nested-scalar-family", "no-matching-overload"),
+            ("nested-membership-family", "invalid-argument-type"),
+            ("nested-projection-family", "invalid-argument-type"),
+            ("nested-fk-family", "invalid-argument-type"),
+            ("nested-helper-family", "invalid-argument-type"),
             ("not-exists-family", "invalid-argument-type"),
             ("scalar-family", "invalid-argument-type"),
         )

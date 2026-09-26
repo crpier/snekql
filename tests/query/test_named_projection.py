@@ -173,7 +173,8 @@ def named_scalar_projection_rejects_another_backend() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.select(Person).project(
-            MaybeId, id=mariadb.scalar(mariadb.select(ForeignPerson.id).all())
+            MaybeId,
+            id=mariadb.scalar(mariadb.select(ForeignPerson.id).all()),  # ty: ignore[invalid-argument-type]
         )
 
 

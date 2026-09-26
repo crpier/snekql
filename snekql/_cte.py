@@ -34,8 +34,10 @@ from snekql.model import BackendFamily, Table, require_model_backend
 from snekql.storage import Attr, StorageBackend
 
 
-class _LabelContract[OwnerT, T, CompareT](Protocol):
+class _LabelContract[OwnerT, T, CompareT, FamilyT = Any](Protocol):
     """Structural witnesses preserve domains when callers choose between tokens."""
+
+    def __expression_family_type__(self) -> FamilyT: ...
 
     def __owner_type__(self) -> OwnerT: ...
 
@@ -44,8 +46,8 @@ class _LabelContract[OwnerT, T, CompareT](Protocol):
     def __accepts_comparison__(self, value: CompareT, /) -> None: ...
 
 
-class _SensitiveLabelContract[OwnerT, T, CompareT](
-    _LabelContract[OwnerT, T, CompareT], Protocol
+class _SensitiveLabelContract[OwnerT, T, CompareT, FamilyT = Any](
+    _LabelContract[OwnerT, T, CompareT, FamilyT], Protocol
 ):
     """A token whose SQL value can be null-extended with its source owner."""
 
@@ -112,8 +114,8 @@ class _CtePresence:
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
-class _CteOutput[OwnerT: Table[Any], T, CompareT](
-    ExpressionMethods[OwnerT, T], Comparable[OwnerT, CompareT, T]
+class _CteOutput[OwnerT: Table[Any], T, CompareT, FamilyT = Any](
+    ExpressionMethods[OwnerT, T, FamilyT], Comparable[OwnerT, CompareT, T, FamilyT]
 ):
     """A readonly reference whose wire decoder remains the definition's source."""
 
@@ -168,7 +170,7 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
     def __output_domain__(self) -> OutputDomain:
         return self.__output_slot__().domain
 
-    def __value_operand__(self) -> ValueExpression[OwnerT, T]:
+    def __value_operand__(self) -> ValueExpression[OwnerT, T, T, FamilyT]:
         """Expose native wire-compatible operations without schema capabilities."""
         state = self.relation.definition.state
         value_type, nullable = _native_value_profile(state, state.fields[self.position])
@@ -179,16 +181,16 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
             nullable=nullable,
         )
 
-    def count(self) -> Aggregate[OwnerT, int]:
+    def count(self) -> Aggregate[OwnerT, int, int, FamilyT]:
         """Count non-NULL SQL outputs without decoding intermediate rows."""
         return _Aggregate(column=self, func="COUNT", owner=self.relation)
 
-    def sum(self) -> Aggregate[OwnerT, T | None, CompareT]:
+    def sum(self) -> Aggregate[OwnerT, T | None, CompareT, FamilyT]:
         """Sum numeric outputs using their original SQL result domain."""
         self._numeric_source()
         return _Aggregate(column=self, func="SUM", owner=self.relation)
 
-    def avg(self) -> Aggregate[OwnerT, float | None, float]:
+    def avg(self) -> Aggregate[OwnerT, float | None, float, FamilyT]:
         """Average numeric outputs, returning NULL for an empty input."""
         self._numeric_source()
         return _Aggregate(column=self, func="AVG", owner=self.relation)
@@ -231,12 +233,12 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
         msg = "sum()/avg() require a known numeric CTE output domain"
         raise QueryConstructionError(msg)
 
-    def min(self) -> Aggregate[OwnerT, T | None, CompareT]:
+    def min(self) -> Aggregate[OwnerT, T | None, CompareT, FamilyT]:
         """Select the least output, or NULL when no non-NULL value exists."""
         self._require_ordering()
         return _Aggregate(column=self, func="MIN", owner=self.relation)
 
-    def max(self) -> Aggregate[OwnerT, T | None, CompareT]:
+    def max(self) -> Aggregate[OwnerT, T | None, CompareT, FamilyT]:
         """Select the greatest output without decoding intermediate rows."""
         self._require_ordering()
         return _Aggregate(column=self, func="MAX", owner=self.relation)
@@ -265,7 +267,7 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT](
         if isinstance(source, Attr):
             source.asc()
 
-    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, CompareT]:
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, CompareT, FamilyT]:
         """Bind this SQL output into a downstream named definition."""
         return _NullExtendedLabel(name=name, operand=self)
 
@@ -305,18 +307,20 @@ class _Cte[
 
     @overload
     def column[T, CompareT](
-        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT]: ...
+        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT, FamilyT]: ...
 
     @overload
     def column[TokenOwnerT, T, CompareT](
-        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T | None, CompareT]: ...
+        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[
+        _CteOwner[FamilyT, SourceT, RoleT], T | None, CompareT, FamilyT
+    ]: ...
 
     @overload
     def column[TokenOwnerT, T, CompareT](
-        self, token: _LabelContract[TokenOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT]: ...
+        self, token: _LabelContract[TokenOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[_CteOwner[FamilyT, SourceT, RoleT], T, CompareT, FamilyT]: ...
 
     def column(self, token: object) -> _CteOutput[Any, Any, Any]:
         """Rebind a token actually present in this definition, by identity."""

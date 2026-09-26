@@ -95,14 +95,14 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
 
 def exists(
     subquery: _ExecutableSelect[Literal["mariadb"], Any, Any, Any], /
-) -> Predicate[Any]:
+) -> Predicate[Never, Literal["mariadb"]]:
     """Test whether a ready MariaDB subquery returns a row; correlation is allowed."""
     return build_exists(subquery)
 
 
 def not_exists(
     subquery: _ExecutableSelect[Literal["mariadb"], Any, Any, Any], /
-) -> Predicate[Any]:
+) -> Predicate[Never, Literal["mariadb"]]:
     """Test whether a ready MariaDB subquery is empty; correlation is allowed."""
     return build_not_exists(subquery)
 
@@ -112,7 +112,7 @@ def scalar[T, CompareT](
         Literal["mariadb"], Any, Any, T, CompareT, _ExecutableQuery
     ],
     /,
-) -> Scalar[Never, T | None, CompareT]:
+) -> Scalar[Never, T | None, CompareT, Literal["mariadb"]]:
     """Read one MariaDB subquery value, or NULL when it returns no row."""
     return build_scalar(subquery)
 
@@ -184,7 +184,7 @@ def select[
     | _CteOwner[Literal["mariadb"], Any, Any],
     ValueT,
 ](
-    field: ColumnRef[OwnerT, ValueT],
+    field: ColumnRef[OwnerT, ValueT, Literal["mariadb"]],
     /,
 ) -> SelectValueQuery[Literal["mariadb"], OwnerT, OwnerT, ValueT, ValueT]: ...
 
@@ -201,13 +201,13 @@ def select[
     T2,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     /,
 ) -> SelectTupleQuery[
@@ -231,18 +231,18 @@ def select[
     T3,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     /,
 ) -> SelectTupleQuery[
@@ -276,23 +276,23 @@ def select[
     T4,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
-    | ColumnRef[Owner4T, T4]
+    | ColumnRef[Owner4T, T4, Literal["mariadb"]]
     | Aggregate[Owner4T, T4, Any]
-    | Scalar[Owner4T, T4, Any]
+    | Scalar[Owner4T, T4, Any, Literal["mariadb"]]
     | DialectSelectable[Owner4T, T4, Any],
     /,
 ) -> SelectTupleQuery[
@@ -331,28 +331,28 @@ def select[
     T5,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
-    | ColumnRef[Owner4T, T4]
+    | ColumnRef[Owner4T, T4, Literal["mariadb"]]
     | Aggregate[Owner4T, T4, Any]
-    | Scalar[Owner4T, T4, Any]
+    | Scalar[Owner4T, T4, Any, Literal["mariadb"]]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
-    | ColumnRef[Owner5T, T5]
+    | ColumnRef[Owner5T, T5, Literal["mariadb"]]
     | Aggregate[Owner5T, T5, Any]
-    | Scalar[Owner5T, T5, Any]
+    | Scalar[Owner5T, T5, Any, Literal["mariadb"]]
     | DialectSelectable[Owner5T, T5, Any],
     /,
 ) -> SelectTupleQuery[
@@ -396,33 +396,33 @@ def select[
     T6,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
-    | ColumnRef[Owner4T, T4]
+    | ColumnRef[Owner4T, T4, Literal["mariadb"]]
     | Aggregate[Owner4T, T4, Any]
-    | Scalar[Owner4T, T4, Any]
+    | Scalar[Owner4T, T4, Any, Literal["mariadb"]]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
-    | ColumnRef[Owner5T, T5]
+    | ColumnRef[Owner5T, T5, Literal["mariadb"]]
     | Aggregate[Owner5T, T5, Any]
-    | Scalar[Owner5T, T5, Any]
+    | Scalar[Owner5T, T5, Any, Literal["mariadb"]]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
-    | ColumnRef[Owner6T, T6]
+    | ColumnRef[Owner6T, T6, Literal["mariadb"]]
     | Aggregate[Owner6T, T6, Any]
-    | Scalar[Owner6T, T6, Any]
+    | Scalar[Owner6T, T6, Any, Literal["mariadb"]]
     | DialectSelectable[Owner6T, T6, Any],
     /,
 ) -> SelectTupleQuery[
@@ -471,38 +471,38 @@ def select[
     T7,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
-    | ColumnRef[Owner4T, T4]
+    | ColumnRef[Owner4T, T4, Literal["mariadb"]]
     | Aggregate[Owner4T, T4, Any]
-    | Scalar[Owner4T, T4, Any]
+    | Scalar[Owner4T, T4, Any, Literal["mariadb"]]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
-    | ColumnRef[Owner5T, T5]
+    | ColumnRef[Owner5T, T5, Literal["mariadb"]]
     | Aggregate[Owner5T, T5, Any]
-    | Scalar[Owner5T, T5, Any]
+    | Scalar[Owner5T, T5, Any, Literal["mariadb"]]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
-    | ColumnRef[Owner6T, T6]
+    | ColumnRef[Owner6T, T6, Literal["mariadb"]]
     | Aggregate[Owner6T, T6, Any]
-    | Scalar[Owner6T, T6, Any]
+    | Scalar[Owner6T, T6, Any, Literal["mariadb"]]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
-    | ColumnRef[Owner7T, T7]
+    | ColumnRef[Owner7T, T7, Literal["mariadb"]]
     | Aggregate[Owner7T, T7, Any]
-    | Scalar[Owner7T, T7, Any]
+    | Scalar[Owner7T, T7, Any, Literal["mariadb"]]
     | DialectSelectable[Owner7T, T7, Any],
     /,
 ) -> SelectTupleQuery[
@@ -556,43 +556,43 @@ def select[
     T8,
 ](
     field1: Attr[Any, Any, Owner1T, Any, T1]
-    | ColumnRef[Owner1T, T1]
+    | ColumnRef[Owner1T, T1, Literal["mariadb"]]
     | Aggregate[Owner1T, T1, Any]
     | DialectSelectable[Owner1T, T1, Any],
     field2: Attr[Any, Any, Owner2T, Any, T2]
-    | ColumnRef[Owner2T, T2]
+    | ColumnRef[Owner2T, T2, Literal["mariadb"]]
     | Aggregate[Owner2T, T2, Any]
-    | Scalar[Owner2T, T2, Any]
+    | Scalar[Owner2T, T2, Any, Literal["mariadb"]]
     | DialectSelectable[Owner2T, T2, Any],
     field3: Attr[Any, Any, Owner3T, Any, T3]
-    | ColumnRef[Owner3T, T3]
+    | ColumnRef[Owner3T, T3, Literal["mariadb"]]
     | Aggregate[Owner3T, T3, Any]
-    | Scalar[Owner3T, T3, Any]
+    | Scalar[Owner3T, T3, Any, Literal["mariadb"]]
     | DialectSelectable[Owner3T, T3, Any],
     field4: Attr[Any, Any, Owner4T, Any, T4]
-    | ColumnRef[Owner4T, T4]
+    | ColumnRef[Owner4T, T4, Literal["mariadb"]]
     | Aggregate[Owner4T, T4, Any]
-    | Scalar[Owner4T, T4, Any]
+    | Scalar[Owner4T, T4, Any, Literal["mariadb"]]
     | DialectSelectable[Owner4T, T4, Any],
     field5: Attr[Any, Any, Owner5T, Any, T5]
-    | ColumnRef[Owner5T, T5]
+    | ColumnRef[Owner5T, T5, Literal["mariadb"]]
     | Aggregate[Owner5T, T5, Any]
-    | Scalar[Owner5T, T5, Any]
+    | Scalar[Owner5T, T5, Any, Literal["mariadb"]]
     | DialectSelectable[Owner5T, T5, Any],
     field6: Attr[Any, Any, Owner6T, Any, T6]
-    | ColumnRef[Owner6T, T6]
+    | ColumnRef[Owner6T, T6, Literal["mariadb"]]
     | Aggregate[Owner6T, T6, Any]
-    | Scalar[Owner6T, T6, Any]
+    | Scalar[Owner6T, T6, Any, Literal["mariadb"]]
     | DialectSelectable[Owner6T, T6, Any],
     field7: Attr[Any, Any, Owner7T, Any, T7]
-    | ColumnRef[Owner7T, T7]
+    | ColumnRef[Owner7T, T7, Literal["mariadb"]]
     | Aggregate[Owner7T, T7, Any]
-    | Scalar[Owner7T, T7, Any]
+    | Scalar[Owner7T, T7, Any, Literal["mariadb"]]
     | DialectSelectable[Owner7T, T7, Any],
     field8: Attr[Any, Any, Owner8T, Any, T8]
-    | ColumnRef[Owner8T, T8]
+    | ColumnRef[Owner8T, T8, Literal["mariadb"]]
     | Aggregate[Owner8T, T8, Any]
-    | Scalar[Owner8T, T8, Any]
+    | Scalar[Owner8T, T8, Any, Literal["mariadb"]]
     | DialectSelectable[Owner8T, T8, Any],
     /,
 ) -> SelectTupleQuery[

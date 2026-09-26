@@ -1345,6 +1345,22 @@ through `select`, `insert`, `insert_many`, `update`, and `delete`; obtain `Predi
 model/column methods and expression factories. Those names are
 non-constructible annotations.
 
+`Predicate`, `Scalar`, `Aggregate`, and `ColumnRef` annotations bind their backend
+family through the namespace you import. Their public type arguments are
+unchanged. A `sqlite.Scalar[...]` helper cannot return a MariaDB scalar, even when
+the scalar's inner query was correctly built through `mariadb.scalar`.
+
+The witness survives boolean composition, scalar comparisons, IN/NOT IN queries,
+computed values, aliases, output labels, and CTE rebinding. Named SELECT bindings
+also check family identity; their keyword schema, value domains, and token
+identity still require runtime validation. These checks do not make scalar
+subqueries legal in SQL positions that the backend forbids.
+
+`exists` and `not_exists` return `Predicate[Never]`. Scalar factories likewise
+use `Never` for their outer owner: inner tables do not become joined outer tables.
+The separate family witness still prevents mixing namespaces. Correlation scope
+remains subject to Query Compilation.
+
 Use `ColumnRef[OwnerT, T]` when a helper accepts a read-only model column. It
 supports equality comparisons and projection while intentionally omitting
 mutation operations. A scalar built from such a projection retains its comparison

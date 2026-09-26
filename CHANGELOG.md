@@ -18,7 +18,11 @@
   Unvalidated RETURNING yields `object`; validated boolean and nominal integer
   results retain their exact domains.
 - Pin `exists`, `not_exists`, and `scalar` factory inputs to their backend namespace.
-  Cross-family nested operands still require compilation checks.
+- Preserve backend identity after constructing nested expressions. Reject foreign
+  scalar comparisons, EXISTS predicates, IN/NOT IN queries, and named SELECT
+  bindings through public helpers, boolean composition, labels, aliases, and
+  CTEs. Keep expression annotation arity unchanged and retain compilation guards
+  for dynamically typed callers.
 
 - Preserve pool progress when cancellation lands between a waiter's wake-up and
   admission. Native asyncio cancellation also retains its cancellation exception

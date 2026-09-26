@@ -9,17 +9,15 @@ a backend namespace and import everything from it.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 from snekql._common import (
     PENDING_GENERATION,
-    Aggregate,
     Assignment,
     Canonical,
     CanonicalDecimal,
     CheckConstraint,
     ChunkStream,
-    ColumnRef,
     CommitOutcome,
     CompiledQuery,
     DatabaseClosedError,
@@ -62,7 +60,6 @@ from snekql._common import (
     PendingGeneration,
     PoolStats,
     PoolTimeoutError,
-    Predicate,
     QueryCompilationError,
     QueryConstructionError,
     QueryError,
@@ -70,7 +67,6 @@ from snekql._common import (
     RawResultValidationError,
     ResultCardinalityError,
     Row,
-    Scalar,
     SchemaDriftIssue,
     SchemaError,
     SchemaPolicy,
@@ -92,6 +88,10 @@ from snekql._common import (
 from snekql._common import (
     Write as _RuntimeWrite,
 )
+from snekql.expressions import Aggregate as _AggregateType
+from snekql.expressions import ColumnRef as _ColumnRef
+from snekql.expressions import Predicate as _Predicate
+from snekql.expressions import Scalar as _ScalarType
 
 # Importing the dialect module registers the MariaDB query Dialect so a built
 # MariaDB query can render its own SQL for inspection (see _query_dialect).
@@ -138,10 +138,21 @@ from snekql.runtime import Database as _Database
 from snekql.runtime import Transaction as _Transaction
 
 if TYPE_CHECKING:
+    _OwnerT = TypeVar("_OwnerT")
+    _ValueT = TypeVar("_ValueT")
+    _CompareT = TypeVar("_CompareT", default=_ValueT)
+    Scalar = _ScalarType[_OwnerT, _ValueT, _CompareT, Literal["mariadb"]]
+    Predicate = _Predicate[_OwnerT, Literal["mariadb"]]
+    Aggregate = _AggregateType[_OwnerT, _ValueT, _CompareT, Literal["mariadb"]]
+    ColumnRef = _ColumnRef[_OwnerT, _ValueT, Literal["mariadb"]]
     Database = _Database[Literal["mariadb"]]
     Transaction = _Transaction[Literal["mariadb"]]
     type Write[ResultT] = _Write[Literal["mariadb"], ResultT]
 else:
+    Scalar = _ScalarType
+    Predicate = _Predicate
+    Aggregate = _AggregateType
+    ColumnRef = _ColumnRef
     Database = _Database
     Transaction = _Transaction
     Write = _RuntimeWrite

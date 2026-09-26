@@ -251,7 +251,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 102)
+    assert_eq(len(report["cases"]), 114)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
@@ -296,6 +296,12 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "write-validation",
             "returning-domain",
             "exists-family",
+            "nested-exists-family",
+            "nested-scalar-family",
+            "nested-membership-family",
+            "nested-projection-family",
+            "nested-fk-family",
+            "nested-helper-family",
             "not-exists-family",
             "scalar-family",
             "readiness",
@@ -345,6 +351,12 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "write-validation",
             "returning-domain",
             "exists-family",
+            "nested-exists-family",
+            "nested-scalar-family",
+            "nested-membership-family",
+            "nested-projection-family",
+            "nested-fk-family",
+            "nested-helper-family",
             "not-exists-family",
             "scalar-family",
             "readiness",

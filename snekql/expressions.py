@@ -23,7 +23,13 @@ from snekql.errors import QueryCompilationError, QueryConstructionError
 type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
 
 
-class _OwnedColumnRef[Owner, Value](Protocol):
+class _ExpressionFamily[FamilyT](Protocol):
+    """Named inputs preserve backend identity; compilation checks operand shape."""
+
+    def __expression_family_type__(self) -> FamilyT: ...
+
+
+class _OwnedColumnRef[Owner, Value, Family = Any](_ExpressionFamily[Family], Protocol):
     """Read-only witnesses preserve both owners without requiring literal methods.
 
     A nullable right operand must remain compatible with a nonnullable left
@@ -37,13 +43,17 @@ class _OwnedColumnRef[Owner, Value](Protocol):
 
 
 @runtime_checkable
-class ColumnRef[OwnerT, T](Protocol):
+class ColumnRef[OwnerT, T, FamilyT = Any](Protocol):
     """Read-only public annotation for a model-owned column reference.
 
     Concrete descriptor classes remain private implementation details. Use this
     protocol when an application helper needs to accept any accessed column while
     preserving its model owner and decoded value type.
     """
+
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only family evidence preserved through read-only helpers."""
+        raise NotImplementedError
 
     def __column_owner_type__(self) -> OwnerT:
         """Typing-only witness for the model that owns this column."""
@@ -55,13 +65,15 @@ class ColumnRef[OwnerT, T](Protocol):
 
         raise NotImplementedError
 
-    def eq(self, value: T) -> Predicate[OwnerT]:
+    def eq(self, value: T) -> Predicate[OwnerT, FamilyT]:
         """Build an equality predicate for this column."""
 
         raise NotImplementedError
 
 
-class _ColumnSubquery[T_co, ReadinessT_co](Protocol):
+class _ColumnSubquery[T_co, ReadinessT_co, FamilyT_co](
+    _ExpressionFamily[FamilyT_co], Protocol
+):
     """Structural view of a single-column subquery's projected value type.
 
     Implemented by ``SelectValueQuery`` (via a typing-only witness). Declared
@@ -133,7 +145,7 @@ class PredicateCompiler(Protocol):
     def compile(self, predicate: Predicate[Any]) -> tuple[str, tuple[object, ...]]: ...
 
 
-class Predicate[OwnerT](ABC):
+class Predicate[OwnerT, FamilyT = Any](ABC):
     """Boolean SQL predicate for one table model.
 
     Predicates are produced by column descriptor methods such as `User.email.eq`.
@@ -150,12 +162,18 @@ class Predicate[OwnerT](ABC):
     def __init__(self, _private: Never, /) -> None:
         raise NotImplementedError
 
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only family evidence retained independently of table scope."""
+        raise NotImplementedError
+
     # Which nested-select shape this node carries, if any; validators read it
     # instead of maintaining kind sets.
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = None
 
-    def __and__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate[OwnerT | Other](
+    def __and__[Other](
+        self, other: Predicate[Other, FamilyT]
+    ) -> Predicate[OwnerT | Other, FamilyT]:
+        return CompoundPredicate[OwnerT | Other, FamilyT](
             operator="AND",
             children=(
                 _require_predicate_node(self),
@@ -163,8 +181,10 @@ class Predicate[OwnerT](ABC):
             ),
         )
 
-    def __or__[Other](self, other: Predicate[Other]) -> Predicate[OwnerT | Other]:
-        return CompoundPredicate[OwnerT | Other](
+    def __or__[Other](
+        self, other: Predicate[Other, FamilyT]
+    ) -> Predicate[OwnerT | Other, FamilyT]:
+        return CompoundPredicate[OwnerT | Other, FamilyT](
             operator="OR",
             children=(
                 _require_predicate_node(self),
@@ -172,7 +192,7 @@ class Predicate[OwnerT](ABC):
             ),
         )
 
-    def __invert__(self) -> Predicate[OwnerT]:
+    def __invert__(self) -> Predicate[OwnerT, FamilyT]:
         return NegatedPredicate(child=_require_predicate_node(self))
 
     def __bool__(self) -> bool:
@@ -191,7 +211,7 @@ class Predicate[OwnerT](ABC):
 
         return None
 
-    def __predicate_children__(self) -> tuple[Predicate[object], ...]:
+    def __predicate_children__(self) -> tuple[Predicate[object, Any], ...]:
         """Nested predicates the validators recurse into."""
 
         return ()
@@ -207,7 +227,7 @@ class Predicate[OwnerT](ABC):
         return () if subquery is None else (subquery,)
 
 
-class _PredicateNode[OwnerT](Predicate[OwnerT], ABC):
+class _PredicateNode[OwnerT, FamilyT = Any](Predicate[OwnerT, FamilyT], ABC):
     """Private base proving a predicate came from a supported factory."""
 
     def __predicate_grouping_operands__(self) -> tuple[object, ...]:
@@ -221,9 +241,9 @@ class _PredicateNode[OwnerT](Predicate[OwnerT], ABC):
         return () if operand is None else (operand,)
 
 
-def _require_predicate_node[OwnerT](
-    predicate: Predicate[OwnerT],
-) -> _PredicateNode[OwnerT]:
+def _require_predicate_node[OwnerT, FamilyT](
+    predicate: Predicate[OwnerT, FamilyT],
+) -> _PredicateNode[OwnerT, FamilyT]:
     """Keep caller-defined predicate implementations out of query state."""
 
     if not isinstance(predicate, _PredicateNode):
@@ -233,7 +253,7 @@ def _require_predicate_node[OwnerT](
 
 
 @dataclass(frozen=True)
-class ComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
+class ComparisonPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand <op> value`` for ``eq``/``ne``/``gt``/``gte``/``lt``/``lte``."""
 
     operand: object
@@ -262,7 +282,7 @@ class ComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class NullPredicate[OwnerT](_PredicateNode[OwnerT]):
+class NullPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand IS NULL`` / ``operand IS NOT NULL``."""
 
     operand: object
@@ -281,7 +301,7 @@ class NullPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class MembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
+class MembershipPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand IN (...)`` / ``operand NOT IN (...)`` over literal values."""
 
     operand: object
@@ -310,7 +330,7 @@ class MembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class BetweenPredicate[OwnerT](_PredicateNode[OwnerT]):
+class BetweenPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand BETWEEN low AND high``.
 
     Naming the bounds as two fields makes the "exactly two bounds" malformation
@@ -340,7 +360,7 @@ class BetweenPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class LikePredicate[OwnerT](_PredicateNode[OwnerT]):
+class LikePredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand LIKE pattern`` / ``operand NOT LIKE pattern``."""
 
     operand: object
@@ -370,7 +390,7 @@ class LikePredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
+class ColumnComparisonPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``operand <op> other`` where ``other`` is a column or scalar subquery."""
 
     operand: object
@@ -410,7 +430,9 @@ class ColumnComparisonPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class SubqueryMembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
+class SubqueryMembershipPredicate[OwnerT, FamilyT = Any](
+    _PredicateNode[OwnerT, FamilyT]
+):
     """``operand IN (subquery)`` / ``operand NOT IN (subquery)``."""
 
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = (
@@ -444,7 +466,7 @@ class SubqueryMembershipPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class ExistencePredicate[OwnerT](_PredicateNode[OwnerT]):
+class ExistencePredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``EXISTS (subquery)`` / ``NOT EXISTS (subquery)``; carries no operand."""
 
     __predicate_subquery_arity__: ClassVar[PredicateSubqueryArity | None] = "select"
@@ -468,7 +490,7 @@ class ExistencePredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class CompoundPredicate[OwnerT](_PredicateNode[OwnerT]):
+class CompoundPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``(left) AND (right)`` / ``(left) OR (right)``.
 
     Children are type-erased so the recursive field does not pin ``OwnerT`` to
@@ -476,9 +498,9 @@ class CompoundPredicate[OwnerT](_PredicateNode[OwnerT]):
     """
 
     operator: CompoundOperator
-    children: tuple[Predicate[object], ...]
+    children: tuple[Predicate[object, Any], ...]
 
-    def __predicate_children__(self) -> tuple[Predicate[object], ...]:
+    def __predicate_children__(self) -> tuple[Predicate[object, Any], ...]:
         return self.children
 
     def __compile_predicate_sql__(
@@ -497,12 +519,12 @@ class CompoundPredicate[OwnerT](_PredicateNode[OwnerT]):
 
 
 @dataclass(frozen=True)
-class NegatedPredicate[OwnerT](_PredicateNode[OwnerT]):
+class NegatedPredicate[OwnerT, FamilyT = Any](_PredicateNode[OwnerT, FamilyT]):
     """``NOT (child)``."""
 
-    child: Predicate[object]
+    child: Predicate[object, Any]
 
-    def __predicate_children__(self) -> tuple[Predicate[object], ...]:
+    def __predicate_children__(self) -> tuple[Predicate[object, Any], ...]:
         return (self.child,)
 
     def __compile_predicate_sql__(
@@ -513,13 +535,17 @@ class NegatedPredicate[OwnerT](_PredicateNode[OwnerT]):
         return f"NOT ({child_sql})", child_params
 
 
-class Scalar[OwnerT, T, CompareT = T](ABC):
+class Scalar[OwnerT, T, CompareT = T, FamilyT = Any](ABC):
     """Non-constructible annotation for a scalar subquery.
 
     Obtain scalar expressions from the public `scalar(...)` query factory.
     """
 
     def __init__(self, _private: Never, /) -> None:
+        raise NotImplementedError
+
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only family evidence independent of the scalar's outer owner."""
         raise NotImplementedError
 
     def __accepts_comparison__(self, _value: CompareT) -> None:
@@ -535,13 +561,15 @@ class Scalar[OwnerT, T, CompareT = T](ABC):
     def __column_value_type__(self) -> T:
         """Typing-only witness for singleton-select result inference."""
 
-    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT]:
+    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT, FamilyT]:
         """Name the scalar SQL output without changing its nullable result type."""
         return _OutputLabel(name=name, operand=self)
 
 
 @dataclass(frozen=True)
-class _Scalar[OwnerT, T, CompareT = T](Scalar[OwnerT, T, CompareT]):
+class _Scalar[OwnerT, T, CompareT = T, FamilyT = Any](
+    Scalar[OwnerT, T, CompareT, FamilyT]
+):
     """Private scalar-subquery node produced only by the Query Builder."""
 
     subquery: object
@@ -553,7 +581,7 @@ class _Scalar[OwnerT, T, CompareT = T](Scalar[OwnerT, T, CompareT]):
         raise NotImplementedError
 
 
-class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
+class Comparable[OwnerT, ValueT, ColumnValueT = ValueT, FamilyT = Any]:
     """Predicate-building surface shared by columns and aggregates.
 
     Both column descriptors (``Attr``) and :class:`Aggregate` mix this in so a
@@ -570,29 +598,33 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
     meaningful over an aggregate.
     """
 
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only family evidence for composed operands and predicates."""
+        raise NotImplementedError
+
     def __accepts_comparison__(self, _value: ValueT) -> None:
         """Typing-only contravariant witness for comparison-domain inference."""
 
-    def eq(self, value: ValueT) -> Predicate[OwnerT]:
+    def eq(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "eq(None) is invalid; use is_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="eq", value=value)
 
-    def ne(self, value: ValueT) -> Predicate[OwnerT]:
+    def ne(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "ne(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         return ComparisonPredicate(operand=self, operator="ne", value=value)
 
-    def is_null(self) -> Predicate[OwnerT]:
+    def is_null(self) -> Predicate[OwnerT, FamilyT]:
         return NullPredicate(operand=self, negated=False)
 
-    def is_not_null(self) -> Predicate[OwnerT]:
+    def is_not_null(self) -> Predicate[OwnerT, FamilyT]:
         return NullPredicate(operand=self, negated=True)
 
     @overload
-    def in_(self, value: ValueT, /) -> Predicate[OwnerT]: ...
+    def in_(self, value: ValueT, /) -> Predicate[OwnerT, FamilyT]: ...
     @overload
     def in_(
         self,
@@ -600,8 +632,8 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         second: ValueT,
         /,
         *values: ValueT,
-    ) -> Predicate[OwnerT]: ...
-    def in_(self, *values: ValueT | None) -> Predicate[OwnerT]:
+    ) -> Predicate[OwnerT, FamilyT]: ...
+    def in_(self, *values: ValueT | None) -> Predicate[OwnerT, FamilyT]:
         if not values:
             msg = "in_() requires at least one value"
             raise QueryConstructionError(msg)
@@ -611,7 +643,7 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         return MembershipPredicate(operand=self, values=values, negated=False)
 
     @overload
-    def not_in(self, value: ValueT, /) -> Predicate[OwnerT]: ...
+    def not_in(self, value: ValueT, /) -> Predicate[OwnerT, FamilyT]: ...
     @overload
     def not_in(
         self,
@@ -619,8 +651,8 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         second: ValueT,
         /,
         *values: ValueT,
-    ) -> Predicate[OwnerT]: ...
-    def not_in(self, *values: ValueT | None) -> Predicate[OwnerT]:
+    ) -> Predicate[OwnerT, FamilyT]: ...
+    def not_in(self, *values: ValueT | None) -> Predicate[OwnerT, FamilyT]:
         if not values:
             msg = "not_in() requires at least one value"
             raise QueryConstructionError(msg)
@@ -629,35 +661,35 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
             raise QueryConstructionError(msg)
         return MembershipPredicate(operand=self, values=values, negated=True)
 
-    def gt(self, value: ValueT) -> Predicate[OwnerT]:
+    def gt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "gt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         self._require_ordering()
         return ComparisonPredicate(operand=self, operator="gt", value=value)
 
-    def gte(self, value: ValueT) -> Predicate[OwnerT]:
+    def gte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "gte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         self._require_ordering()
         return ComparisonPredicate(operand=self, operator="gte", value=value)
 
-    def lt(self, value: ValueT) -> Predicate[OwnerT]:
+    def lt(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "lt(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         self._require_ordering()
         return ComparisonPredicate(operand=self, operator="lt", value=value)
 
-    def lte(self, value: ValueT) -> Predicate[OwnerT]:
+    def lte(self, value: ValueT) -> Predicate[OwnerT, FamilyT]:
         if value is None:
             msg = "lte(None) is invalid; use is_not_null()"
             raise QueryConstructionError(msg)
         self._require_ordering()
         return ComparisonPredicate(operand=self, operator="lte", value=value)
 
-    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT]:
+    def between(self, low: ValueT, high: ValueT) -> Predicate[OwnerT, FamilyT]:
         if low is None or high is None:
             msg = "between() bounds cannot be None; use is_null()/is_not_null()"
             raise QueryConstructionError(msg)
@@ -675,95 +707,113 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
     # witnesses, but their inner tables must not become outer predicate owners.
 
     @overload
-    def eq_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def eq_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def eq_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def eq_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="eq", other=other)
 
     @overload
-    def ne_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def ne_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def ne_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def ne_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
 
     @overload
-    def gt_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def gt_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def gt_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def gt_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
     @overload
-    def gte_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def gte_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def gte_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def gte_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
     @overload
-    def lt_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def lt_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def lt_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def lt_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
     @overload
-    def lte_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+    def lte_col(
+        self, other: Scalar[Any, Any, ValueT, FamilyT]
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def lte_col[OtherOwner](
-        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
-    ) -> Predicate[OwnerT | OtherOwner]: ...
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None, FamilyT]
+    ) -> Predicate[OwnerT | OtherOwner, FamilyT]: ...
 
     def lte_col(
         self,
-        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[Any]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None, FamilyT]
+        | Scalar[Any, Any, ValueT, FamilyT],
+    ) -> Predicate[Any, FamilyT]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)
@@ -781,8 +831,8 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
 
     def in_subquery(
         self,
-        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery],
-    ) -> Predicate[OwnerT]:
+        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery, FamilyT],
+    ) -> Predicate[OwnerT, FamilyT]:
         """Test membership against an executable single-column subquery."""
 
         return SubqueryMembershipPredicate(
@@ -793,8 +843,8 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
 
     def not_in_subquery(
         self,
-        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery],
-    ) -> Predicate[OwnerT]:
+        subquery: _ColumnSubquery[ColumnValueT, _ExecutableQuery, FamilyT],
+    ) -> Predicate[OwnerT, FamilyT]:
         """Negated membership against an executable single-column subquery."""
 
         return SubqueryMembershipPredicate(
@@ -804,8 +854,8 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
         )
 
 
-class Aggregate[OwnerT, T, CompareT = T](
-    Comparable[OwnerT, CompareT, CompareT],
+class Aggregate[OwnerT, T, CompareT = T, FamilyT = Any](
+    Comparable[OwnerT, CompareT, CompareT, FamilyT],
     ABC,
 ):
     """Non-constructible annotation for a SQL aggregate expression.
@@ -825,7 +875,7 @@ class Aggregate[OwnerT, T, CompareT = T](
     def __column_value_type__(self) -> T:
         """Typing-only witness for singleton-select result inference."""
 
-    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT]:
+    def label(self, name: str) -> _OutputLabel[OwnerT, T, CompareT, FamilyT]:
         """Name the aggregate result, retaining its value and comparison domains."""
         return _OutputLabel(name=name, operand=self)
 
@@ -841,7 +891,9 @@ class Aggregate[OwnerT, T, CompareT = T](
 
 
 @dataclass(frozen=True)
-class _Aggregate[OwnerT, T, CompareT = T](Aggregate[OwnerT, T, CompareT]):
+class _Aggregate[OwnerT, T, CompareT = T, FamilyT = Any](
+    Aggregate[OwnerT, T, CompareT, FamilyT]
+):
     """Private aggregate node produced only by model and column methods."""
 
     column: object | None

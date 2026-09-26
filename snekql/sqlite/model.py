@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, TypeVar, dataclass_transform
+from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
 
+from snekql.expressions import Aggregate, _Aggregate
 from snekql.indexes import NormalizedIndex
 from snekql.model import (
     _MODEL_BASE_MARKER,
@@ -51,13 +52,18 @@ class Model[StateT](
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
+    type Col[T] = Attr[
+        Table[Pending], Table[Row], _UnboundOwner, T, T, T, Any, Literal["sqlite"]
+    ]
     type GenCol[T] = Attr[
         Table[Pending],
         Table[Row],
         _UnboundOwner,
         T | PendingGeneration,
         T,
+        T | PendingGeneration,
+        Any,
+        Literal["sqlite"],
     ]
     type FKCol[Target: Model[Any], T] = _FKAttr[
         Table[Pending],
@@ -66,7 +72,17 @@ class Model[StateT](
         T,
         T,
         Target,
+        T,
+        Any,
+        Literal["sqlite"],
     ]
+
+    @classmethod
+    def count_all(cls) -> Aggregate[Self, int, int, Literal["sqlite"]]:
+        """Count rows, preserving the model's backend family."""
+        return _Aggregate[Self, int, int, Literal["sqlite"]](
+            func="COUNT", column=None, owner=cls
+        )
 
     @classmethod
     def __backend_family_type__(cls) -> Literal["sqlite"]:
@@ -75,17 +91,21 @@ class Model[StateT](
         return "sqlite"
 
 
-type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
-type GenCol[T] = Attr[
-    Table[Pending], Table[Row], _UnboundOwner, T | PendingGeneration, T
+type Col[T] = Attr[
+    Table[Pending], Table[Row], _UnboundOwner, T, T, T, Any, Literal["sqlite"]
 ]
-type FKCol[Target: Model[Any], T] = _FKAttr[
+type GenCol[T] = Attr[
     Table[Pending],
     Table[Row],
     _UnboundOwner,
+    T | PendingGeneration,
     T,
-    T,
-    Target,
+    T | PendingGeneration,
+    Any,
+    Literal["sqlite"],
+]
+type FKCol[Target: Model[Any], T] = _FKAttr[
+    Table[Pending], Table[Row], _UnboundOwner, T, T, Target, T, Any, Literal["sqlite"]
 ]
 
 

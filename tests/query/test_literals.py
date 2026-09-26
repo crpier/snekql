@@ -109,9 +109,9 @@ def invalid_native_literal_is_rejected(value: object) -> None:
 def literal_cannot_cross_backend_namespaces() -> None:
     """Owner freedom must not erase the constant's backend identity."""
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(Source).all().project(Depth, depth=mariadb.literal(0))
+        sqlite.select(Source).all().project(Depth, depth=mariadb.literal(0))  # ty: ignore[invalid-argument-type]
     with assert_raises(mariadb.QueryConstructionError):
-        mariadb.select(NativeSource).all().project(Depth, depth=sqlite.literal(0))
+        mariadb.select(NativeSource).all().project(Depth, depth=sqlite.literal(0))  # ty: ignore[invalid-argument-type]
 
 
 @test(mark="fast")

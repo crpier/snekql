@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, Literal, TypeVar, dataclass_transform
+from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
 
+from snekql.expressions import Aggregate, _Aggregate
 from snekql.indexes import NormalizedIndex
 from snekql.mariadb.storage import (
     Blob,
@@ -85,13 +86,18 @@ class Model[StateT](
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
+    type Col[T] = Attr[
+        Table[Pending], Table[Row], _UnboundOwner, T, T, T, Any, Literal["mariadb"]
+    ]
     type GenCol[T] = Attr[
         Table[Pending],
         Table[Row],
         _UnboundOwner,
         T | PendingGeneration,
         T,
+        T | PendingGeneration,
+        Any,
+        Literal["mariadb"],
     ]
     type FKCol[Target: Model[Any], T] = FKAttr[
         Table[Pending],
@@ -100,8 +106,18 @@ class Model[StateT](
         T,
         T,
         Target,
+        T,
+        Any,
+        Literal["mariadb"],
     ]
     type JsonCol[T] = JsonAttr[Table[Pending], Table[Row], _UnboundOwner, T, T]
+
+    @classmethod
+    def count_all(cls) -> Aggregate[Self, int, int, Literal["mariadb"]]:
+        """Count rows, preserving the model's backend family."""
+        return _Aggregate[Self, int, int, Literal["mariadb"]](
+            func="COUNT", column=None, owner=cls
+        )
 
     @classmethod
     def __backend_family_type__(cls) -> Literal["mariadb"]:
@@ -110,17 +126,21 @@ class Model[StateT](
         return "mariadb"
 
 
-type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
-type GenCol[T] = Attr[
-    Table[Pending], Table[Row], _UnboundOwner, T | PendingGeneration, T
+type Col[T] = Attr[
+    Table[Pending], Table[Row], _UnboundOwner, T, T, T, Any, Literal["mariadb"]
 ]
-type FKCol[Target: Model[Any], T] = FKAttr[
+type GenCol[T] = Attr[
     Table[Pending],
     Table[Row],
     _UnboundOwner,
+    T | PendingGeneration,
     T,
-    T,
-    Target,
+    T | PendingGeneration,
+    Any,
+    Literal["mariadb"],
+]
+type FKCol[Target: Model[Any], T] = FKAttr[
+    Table[Pending], Table[Row], _UnboundOwner, T, T, Target, T, Any, Literal["mariadb"]
 ]
 
 

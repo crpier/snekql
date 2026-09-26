@@ -1337,9 +1337,10 @@ class Attr[
     ReadValueT,
     SetValueT = WriteT,
     CompareT = Any,
+    FamilyT = Any,
 ](
-    Comparable[OwnerT, CompareT, ReadValueT],
-    ExpressionMethods[OwnerT, ReadValueT],
+    Comparable[OwnerT, CompareT, ReadValueT, FamilyT],
+    ExpressionMethods[OwnerT, ReadValueT, FamilyT],
 ):
     """Typed model column descriptor used for fields and query construction.
 
@@ -1348,7 +1349,9 @@ class Attr[
     helper methods on the model class.
     """
 
-    def label(self, name: str) -> _NullExtendedLabel[OwnerT, ReadValueT, CompareT]:
+    def label(
+        self, name: str
+    ) -> _NullExtendedLabel[OwnerT, ReadValueT, CompareT, FamilyT]:
         """Name this column for a named projection without changing its codec."""
         return _NullExtendedLabel(name=name, operand=self)
 
@@ -1449,6 +1452,7 @@ class Attr[
             NonNullT | None,
             SetValueT,
             Any,
+            FamilyT,
         ],
         instance: None,
         owner: type[AccessOwner],
@@ -1460,6 +1464,7 @@ class Attr[
         NonNullT | None,
         SetValueT,
         NonNullT,
+        FamilyT,
     ]: ...
     @overload
     def __get__[AccessOwner](
@@ -1471,6 +1476,7 @@ class Attr[
             ReadValueT,
             SetValueT,
             Any,
+            FamilyT,
         ],
         instance: None,
         owner: type[AccessOwner],
@@ -1482,6 +1488,7 @@ class Attr[
         ReadValueT,
         SetValueT,
         ReadValueT,
+        FamilyT,
     ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
@@ -1924,9 +1931,11 @@ class Attr[
 
     @overload
     def like(
-        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT],
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT, Any, FamilyT
+        ],
         pattern: str,
-    ) -> Predicate[OwnerT]: ...
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def like(
@@ -1937,11 +1946,13 @@ class Attr[
             WriteT,
             str | None,
             SetValueT,
+            Any,
+            FamilyT,
         ],
         pattern: str,
-    ) -> Predicate[OwnerT]: ...
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
-    def like(self, pattern: str) -> Predicate[OwnerT]:
+    def like(self, pattern: str) -> Predicate[OwnerT, FamilyT]:
         if not self._is_str_logical():
             msg = "like() is only valid for text columns"
             raise QueryConstructionError(msg)
@@ -1949,9 +1960,11 @@ class Attr[
 
     @overload
     def not_like(
-        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT],
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT, Any, FamilyT
+        ],
         pattern: str,
-    ) -> Predicate[OwnerT]: ...
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
     @overload
     def not_like(
@@ -1962,11 +1975,13 @@ class Attr[
             WriteT,
             str | None,
             SetValueT,
+            Any,
+            FamilyT,
         ],
         pattern: str,
-    ) -> Predicate[OwnerT]: ...
+    ) -> Predicate[OwnerT, FamilyT]: ...
 
-    def not_like(self, pattern: str) -> Predicate[OwnerT]:
+    def not_like(self, pattern: str) -> Predicate[OwnerT, FamilyT]:
         if not self._is_str_logical():
             msg = "not_like() is only valid for text columns"
             raise QueryConstructionError(msg)
@@ -2025,7 +2040,9 @@ class Attr[
             msg = "ZonedDatetime columns do not support ordering or range predicates"
             raise QueryConstructionError(msg)
 
-    def __value_operand__(self) -> ValueExpression[OwnerT, ReadValueT]:
+    def __value_operand__(
+        self,
+    ) -> ValueExpression[OwnerT, ReadValueT, ReadValueT, FamilyT]:
         """Only expose operations whose wire values match the logical domain."""
         if self._is_json_column():
             msg = "native value expressions do not support JSON-encoded columns"
@@ -2092,15 +2109,15 @@ class Attr[
             return int(value)
         return value
 
-    def count(self) -> Aggregate[OwnerT, int]:
+    def count(self) -> Aggregate[OwnerT, int, int, FamilyT]:
         """Aggregate this column as ``COUNT(col)`` (counts non-NULL values)."""
 
         return cast(
-            "Aggregate[OwnerT, int]",
+            "Aggregate[OwnerT, int, int, FamilyT]",
             _Aggregate(func="COUNT", column=self, owner=self.owner),
         )
 
-    def sum(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
+    def sum(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
         """Aggregate this column as ``SUM(col)`` (``None`` over an empty set).
 
         Rejected on non-numeric columns: ``SUM``/``AVG`` over text coerces to
@@ -2110,16 +2127,16 @@ class Attr[
 
         self._require_numeric_aggregate("sum")
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]",
             _Aggregate(func="SUM", column=self, owner=self.owner),
         )
 
-    def avg(self) -> Aggregate[OwnerT, float | None, float]:
+    def avg(self) -> Aggregate[OwnerT, float | None, float, FamilyT]:
         """Aggregate this column as ``AVG(col)`` (``float``, ``None`` if empty)."""
 
         self._require_numeric_aggregate("avg")
         return cast(
-            "Aggregate[OwnerT, float | None, float]",
+            "Aggregate[OwnerT, float | None, float, FamilyT]",
             _Aggregate(func="AVG", column=self, owner=self.owner),
         )
 
@@ -2128,21 +2145,21 @@ class Attr[
             msg = f"{func}() is only valid for numeric columns"
             raise QueryConstructionError(msg)
 
-    def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
+    def min(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
         """Aggregate this column as ``MIN(col)`` (``None`` over an empty set)."""
 
         self._require_ordering()
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]",
             _Aggregate(func="MIN", column=self, owner=self.owner),
         )
 
-    def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT]:
+    def max(self) -> Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]:
         """Aggregate this column as ``MAX(col)`` (``None`` over an empty set)."""
 
         self._require_ordering()
         return cast(
-            "Aggregate[OwnerT, ReadValueT | None, CompareT]",
+            "Aggregate[OwnerT, ReadValueT | None, CompareT, FamilyT]",
             _Aggregate(func="MAX", column=self, owner=self.owner),
         )
 
@@ -2178,49 +2195,81 @@ class Attr[
 
     @overload
     def to_expr(
-        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, int, SetValueT, CompareT],
-        expression: ExpressionMethods[OwnerT, int],
+        self: Attr[
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, int, SetValueT, CompareT, FamilyT
+        ],
+        expression: ExpressionMethods[OwnerT, int, FamilyT],
     ) -> Assignment[OwnerT]: ...
 
     @overload
     def to_expr(
         self: Attr[
-            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, int | None, SetValueT, CompareT
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            int | None,
+            SetValueT,
+            CompareT,
+            FamilyT,
         ],
-        expression: ExpressionMethods[OwnerT, int]
-        | ExpressionMethods[OwnerT, int | None],
+        expression: ExpressionMethods[OwnerT, int, FamilyT]
+        | ExpressionMethods[OwnerT, int | None, FamilyT],
     ) -> Assignment[OwnerT]: ...
 
     @overload
     def to_expr(
         self: Attr[
-            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, float, SetValueT, CompareT
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            float,
+            SetValueT,
+            CompareT,
+            FamilyT,
         ],
-        expression: ExpressionMethods[OwnerT, float],
+        expression: ExpressionMethods[OwnerT, float, FamilyT],
     ) -> Assignment[OwnerT]: ...
 
     @overload
     def to_expr(
         self: Attr[
-            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, float | None, SetValueT, CompareT
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            float | None,
+            SetValueT,
+            CompareT,
+            FamilyT,
         ],
-        expression: ExpressionMethods[OwnerT, float]
-        | ExpressionMethods[OwnerT, float | None],
-    ) -> Assignment[OwnerT]: ...
-
-    @overload
-    def to_expr(
-        self: Attr[WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT, CompareT],
-        expression: ExpressionMethods[OwnerT, str],
+        expression: ExpressionMethods[OwnerT, float, FamilyT]
+        | ExpressionMethods[OwnerT, float | None, FamilyT],
     ) -> Assignment[OwnerT]: ...
 
     @overload
     def to_expr(
         self: Attr[
-            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str | None, SetValueT, CompareT
+            WriteOwnerT, LoadedOwnerT, OwnerT, WriteT, str, SetValueT, CompareT, FamilyT
         ],
-        expression: ExpressionMethods[OwnerT, str]
-        | ExpressionMethods[OwnerT, str | None],
+        expression: ExpressionMethods[OwnerT, str, FamilyT],
+    ) -> Assignment[OwnerT]: ...
+
+    @overload
+    def to_expr(
+        self: Attr[
+            WriteOwnerT,
+            LoadedOwnerT,
+            OwnerT,
+            WriteT,
+            str | None,
+            SetValueT,
+            CompareT,
+            FamilyT,
+        ],
+        expression: ExpressionMethods[OwnerT, str, FamilyT]
+        | ExpressionMethods[OwnerT, str | None, FamilyT],
     ) -> Assignment[OwnerT]: ...
 
     def to_expr(self, expression: object) -> Assignment[OwnerT]:
@@ -2274,6 +2323,7 @@ class FKAttr[
     TargetOwnerT,
     SetValueT = WriteT,
     CompareT = Any,
+    FamilyT = Any,
 ](
     Attr[
         WriteOwnerT,
@@ -2283,6 +2333,7 @@ class FKAttr[
         ReadValueT,
         SetValueT,
         CompareT,
+        FamilyT,
     ],
 ):
     """Foreign-key column descriptor that declares the model it references.
@@ -2308,6 +2359,7 @@ class FKAttr[
             TargetOwnerT,
             SetValueT,
             Any,
+            FamilyT,
         ],
         instance: None,
         owner: type[AccessOwner],
@@ -2320,6 +2372,7 @@ class FKAttr[
         TargetOwnerT,
         SetValueT,
         NonNullT,
+        FamilyT,
     ]: ...
     @overload
     def __get__[AccessOwner](
@@ -2332,6 +2385,7 @@ class FKAttr[
             TargetOwnerT,
             SetValueT,
             Any,
+            FamilyT,
         ],
         instance: None,
         owner: type[AccessOwner],
@@ -2344,6 +2398,7 @@ class FKAttr[
         TargetOwnerT,
         SetValueT,
         ReadValueT,
+        FamilyT,
     ]: ...
     @overload
     def __get__(self, instance: WriteOwnerT, owner: type[Any]) -> WriteT: ...
@@ -2367,6 +2422,7 @@ class FKAttr[
             TargetOwnerT,
             SetValueT,
             Any,
+            FamilyT,
         ],
         other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
     ) -> JoinOn[OwnerT, TargetOwnerT]: ...
@@ -2382,6 +2438,7 @@ class FKAttr[
             TargetOwnerT,
             SetValueT,
             Any,
+            FamilyT,
         ],
         other: Attr[Any, Any, TargetOwnerT, Any, KeyT],
     ) -> JoinOn[OwnerT, TargetOwnerT]: ...

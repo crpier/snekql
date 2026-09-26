@@ -1,0 +1,3 @@
+
+
+Account.number.in_subquery(foreign.select(Foreign.number).all())  # expect-error

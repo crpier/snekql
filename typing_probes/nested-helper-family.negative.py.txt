@@ -1,0 +1,3 @@
+
+
+negate(foreign.exists(remote))  # expect-error

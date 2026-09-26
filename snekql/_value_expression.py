@@ -33,11 +33,11 @@ def _encode_native_literal(
     return cast("int | float | str | None", value)
 
 
-def _compose[OwnerT, T](
-    operand: ValueExpression[OwnerT, T],
+def _compose[OwnerT, T, FamilyT](
+    operand: ValueExpression[OwnerT, T, T, FamilyT],
     operator: Literal["+", "-", "*", "COALESCE"],
     value: object,
-) -> ValueExpression[OwnerT, Any]:
+) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
     if isinstance(value, ExpressionMethods):
         right = value.__value_operand__()
         if right.owner is not operand.owner:
@@ -71,17 +71,17 @@ def _compose[OwnerT, T](
     )
 
 
-class ExpressionMethods[OwnerT, T]:
+class ExpressionMethods[OwnerT, T, FamilyT = Any]:
     """Read-only SQL operations shared by columns and computed values."""
 
     def _value_identity(self, value: T) -> T:
         return value
 
-    def __value_operand__(self) -> ValueExpression[OwnerT, T, Any]:
+    def __value_operand__(self) -> ValueExpression[OwnerT, T, Any, FamilyT]:
         """Resolve a native column or an already computed value."""
         raise NotImplementedError
 
-    def __numeric_operand__(self) -> ValueExpression[OwnerT, T, Any]:
+    def __numeric_operand__(self) -> ValueExpression[OwnerT, T, Any, FamilyT]:
         """Reject arithmetic on non-numeric value expressions."""
         operand = self.__value_operand__()
         if operand.value_type not in (int, float):
@@ -91,218 +91,220 @@ class ExpressionMethods[OwnerT, T]:
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, int],
-        value: int | ExpressionMethods[OwnerT, int],
-    ) -> ValueExpression[OwnerT, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: int | ExpressionMethods[OwnerT, int, FamilyT],
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, int],
-        value: ExpressionMethods[OwnerT, int | None] | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: ExpressionMethods[OwnerT, int | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, int | None],
+        self: ExpressionMethods[OwnerT, int | None, FamilyT],
         value: int
-        | ExpressionMethods[OwnerT, int]
-        | ExpressionMethods[OwnerT, int | None]
+        | ExpressionMethods[OwnerT, int, FamilyT]
+        | ExpressionMethods[OwnerT, int | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, float],
-        value: float | ExpressionMethods[OwnerT, float],
-    ) -> ValueExpression[OwnerT, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: float | ExpressionMethods[OwnerT, float, FamilyT],
+    ) -> ValueExpression[OwnerT, float, float, FamilyT]: ...
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, float],
-        value: ExpressionMethods[OwnerT, float | None] | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: ExpressionMethods[OwnerT, float | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
     @overload
     def add(
-        self: ExpressionMethods[OwnerT, float | None],
+        self: ExpressionMethods[OwnerT, float | None, FamilyT],
         value: float
-        | ExpressionMethods[OwnerT, float]
-        | ExpressionMethods[OwnerT, float | None]
+        | ExpressionMethods[OwnerT, float, FamilyT]
+        | ExpressionMethods[OwnerT, float | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
-    def add(self, value: object) -> ValueExpression[OwnerT, Any]:
+    def add(self, value: object) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Add a literal or same-source expression, propagating SQL NULL."""
         return _compose(self.__numeric_operand__(), "+", value)
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, int],
-        value: int | ExpressionMethods[OwnerT, int],
-    ) -> ValueExpression[OwnerT, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: int | ExpressionMethods[OwnerT, int, FamilyT],
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, int],
-        value: ExpressionMethods[OwnerT, int | None] | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: ExpressionMethods[OwnerT, int | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, int | None],
+        self: ExpressionMethods[OwnerT, int | None, FamilyT],
         value: int
-        | ExpressionMethods[OwnerT, int]
-        | ExpressionMethods[OwnerT, int | None]
+        | ExpressionMethods[OwnerT, int, FamilyT]
+        | ExpressionMethods[OwnerT, int | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, float],
-        value: float | ExpressionMethods[OwnerT, float],
-    ) -> ValueExpression[OwnerT, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: float | ExpressionMethods[OwnerT, float, FamilyT],
+    ) -> ValueExpression[OwnerT, float, float, FamilyT]: ...
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, float],
-        value: ExpressionMethods[OwnerT, float | None] | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: ExpressionMethods[OwnerT, float | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
     @overload
     def sub(
-        self: ExpressionMethods[OwnerT, float | None],
+        self: ExpressionMethods[OwnerT, float | None, FamilyT],
         value: float
-        | ExpressionMethods[OwnerT, float]
-        | ExpressionMethods[OwnerT, float | None]
+        | ExpressionMethods[OwnerT, float, FamilyT]
+        | ExpressionMethods[OwnerT, float | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
-    def sub(self, value: object) -> ValueExpression[OwnerT, Any]:
+    def sub(self, value: object) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Subtract a literal or same-source expression, propagating SQL NULL."""
         return _compose(self.__numeric_operand__(), "-", value)
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, int],
-        value: int | ExpressionMethods[OwnerT, int],
-    ) -> ValueExpression[OwnerT, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: int | ExpressionMethods[OwnerT, int, FamilyT],
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, int],
-        value: ExpressionMethods[OwnerT, int | None] | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+        self: ExpressionMethods[OwnerT, int, FamilyT],
+        value: ExpressionMethods[OwnerT, int | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, int | None],
+        self: ExpressionMethods[OwnerT, int | None, FamilyT],
         value: int
-        | ExpressionMethods[OwnerT, int]
-        | ExpressionMethods[OwnerT, int | None]
+        | ExpressionMethods[OwnerT, int, FamilyT]
+        | ExpressionMethods[OwnerT, int | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, float],
-        value: float | ExpressionMethods[OwnerT, float],
-    ) -> ValueExpression[OwnerT, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: float | ExpressionMethods[OwnerT, float, FamilyT],
+    ) -> ValueExpression[OwnerT, float, float, FamilyT]: ...
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, float],
-        value: ExpressionMethods[OwnerT, float | None] | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+        self: ExpressionMethods[OwnerT, float, FamilyT],
+        value: ExpressionMethods[OwnerT, float | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
     @overload
     def mul(
-        self: ExpressionMethods[OwnerT, float | None],
+        self: ExpressionMethods[OwnerT, float | None, FamilyT],
         value: float
-        | ExpressionMethods[OwnerT, float]
-        | ExpressionMethods[OwnerT, float | None]
+        | ExpressionMethods[OwnerT, float, FamilyT]
+        | ExpressionMethods[OwnerT, float | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
-    def mul(self, value: object) -> ValueExpression[OwnerT, Any]:
+    def mul(self, value: object) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Multiply by a literal or same-source expression, propagating SQL NULL."""
         return _compose(self.__numeric_operand__(), "*", value)
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, int],
+        self: ExpressionMethods[OwnerT, int, FamilyT],
         fallback: int
-        | ExpressionMethods[OwnerT, int]
-        | ExpressionMethods[OwnerT, int | None]
+        | ExpressionMethods[OwnerT, int, FamilyT]
+        | ExpressionMethods[OwnerT, int | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, int]: ...
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, int | None],
-        fallback: int | ExpressionMethods[OwnerT, int],
-    ) -> ValueExpression[OwnerT, int]: ...
+        self: ExpressionMethods[OwnerT, int | None, FamilyT],
+        fallback: int | ExpressionMethods[OwnerT, int, FamilyT],
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, int | None],
-        fallback: ExpressionMethods[OwnerT, int | None] | None,
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+        self: ExpressionMethods[OwnerT, int | None, FamilyT],
+        fallback: ExpressionMethods[OwnerT, int | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, float],
+        self: ExpressionMethods[OwnerT, float, FamilyT],
         fallback: float
-        | ExpressionMethods[OwnerT, float]
-        | ExpressionMethods[OwnerT, float | None]
+        | ExpressionMethods[OwnerT, float, FamilyT]
+        | ExpressionMethods[OwnerT, float | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, float]: ...
+    ) -> ValueExpression[OwnerT, float, float, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, float | None],
-        fallback: float | ExpressionMethods[OwnerT, float],
-    ) -> ValueExpression[OwnerT, float]: ...
+        self: ExpressionMethods[OwnerT, float | None, FamilyT],
+        fallback: float | ExpressionMethods[OwnerT, float, FamilyT],
+    ) -> ValueExpression[OwnerT, float, float, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, float | None],
-        fallback: ExpressionMethods[OwnerT, float | None] | None,
-    ) -> ValueExpression[OwnerT, float | None, float]: ...
+        self: ExpressionMethods[OwnerT, float | None, FamilyT],
+        fallback: ExpressionMethods[OwnerT, float | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, float | None, float, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, str],
+        self: ExpressionMethods[OwnerT, str, FamilyT],
         fallback: str
-        | ExpressionMethods[OwnerT, str]
-        | ExpressionMethods[OwnerT, str | None]
+        | ExpressionMethods[OwnerT, str, FamilyT]
+        | ExpressionMethods[OwnerT, str | None, FamilyT]
         | None,
-    ) -> ValueExpression[OwnerT, str]: ...
+    ) -> ValueExpression[OwnerT, str, str, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, str | None],
-        fallback: str | ExpressionMethods[OwnerT, str],
-    ) -> ValueExpression[OwnerT, str]: ...
+        self: ExpressionMethods[OwnerT, str | None, FamilyT],
+        fallback: str | ExpressionMethods[OwnerT, str, FamilyT],
+    ) -> ValueExpression[OwnerT, str, str, FamilyT]: ...
 
     @overload
     def coalesce(
-        self: ExpressionMethods[OwnerT, str | None],
-        fallback: ExpressionMethods[OwnerT, str | None] | None,
-    ) -> ValueExpression[OwnerT, str | None, str]: ...
+        self: ExpressionMethods[OwnerT, str | None, FamilyT],
+        fallback: ExpressionMethods[OwnerT, str | None, FamilyT] | None,
+    ) -> ValueExpression[OwnerT, str | None, str, FamilyT]: ...
 
-    def coalesce(self, fallback: object) -> ValueExpression[OwnerT, Any]:
+    def coalesce(self, fallback: object) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Use the fallback only when SQL evaluates this value to NULL."""
         return _compose(self.__value_operand__(), "COALESCE", fallback)
 
     @overload
-    def lower(self: ExpressionMethods[OwnerT, str]) -> ValueExpression[OwnerT, str]: ...
+    def lower(
+        self: ExpressionMethods[OwnerT, str, FamilyT],
+    ) -> ValueExpression[OwnerT, str, str, FamilyT]: ...
 
     @overload
     def lower(
-        self: ExpressionMethods[OwnerT, str | None],
-    ) -> ValueExpression[OwnerT, str | None, str]: ...
+        self: ExpressionMethods[OwnerT, str | None, FamilyT],
+    ) -> ValueExpression[OwnerT, str | None, str, FamilyT]: ...
 
-    def lower(self) -> ValueExpression[OwnerT, Any]:
+    def lower(self) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Apply the backend's lower operation, preserving SQL NULL."""
         operand = self.__value_operand__()
         if operand.value_type is not str:
@@ -314,15 +316,15 @@ class ExpressionMethods[OwnerT, T]:
 
     @overload
     def char_length(
-        self: ExpressionMethods[OwnerT, str],
-    ) -> ValueExpression[OwnerT, int]: ...
+        self: ExpressionMethods[OwnerT, str, FamilyT],
+    ) -> ValueExpression[OwnerT, int, int, FamilyT]: ...
 
     @overload
     def char_length(
-        self: ExpressionMethods[OwnerT, str | None],
-    ) -> ValueExpression[OwnerT, int | None, int]: ...
+        self: ExpressionMethods[OwnerT, str | None, FamilyT],
+    ) -> ValueExpression[OwnerT, int | None, int, FamilyT]: ...
 
-    def char_length(self) -> ValueExpression[OwnerT, Any]:
+    def char_length(self) -> ValueExpression[OwnerT, Any, Any, FamilyT]:
         """Apply the backend's char_length operation, preserving SQL NULL."""
         operand = self.__value_operand__()
         if operand.value_type is not str:
@@ -371,8 +373,8 @@ class CaseRoot:
 
 
 @dataclass(frozen=True)
-class ValueExpression[OwnerT, T, CompareT = T](
-    ExpressionMethods[OwnerT, T], Comparable[OwnerT, CompareT, T]
+class ValueExpression[OwnerT, T, CompareT = T, FamilyT = Any](
+    ExpressionMethods[OwnerT, T, FamilyT], Comparable[OwnerT, CompareT, T, FamilyT]
 ):
     """A computed value with independent read and literal-comparison domains.
 
@@ -387,16 +389,16 @@ class ValueExpression[OwnerT, T, CompareT = T](
     operations: tuple[
         tuple[
             Literal["+", "-", "*", "COALESCE", "LOWER", "CHAR_LENGTH"],
-            int | float | str | ValueExpression[OwnerT, Any] | None,
+            int | float | str | ValueExpression[OwnerT, Any, Any, FamilyT] | None,
         ],
         ...,
     ] = ()
 
-    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, CompareT]:
+    def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, CompareT, FamilyT]:
         """Name the computed SQL value without evaluating it in Python."""
         return _NullExtendedLabel(name=name, operand=self)
 
-    def __value_operand__(self) -> ValueExpression[OwnerT, T, CompareT]:
+    def __value_operand__(self) -> ValueExpression[OwnerT, T, CompareT, FamilyT]:
         return self
 
     def __owner_model__(self) -> type[OwnerT]:
