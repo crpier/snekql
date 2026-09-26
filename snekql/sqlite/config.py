@@ -32,7 +32,7 @@ def _resolve_pool_size(
 ) -> PositiveInt:
     """Keep exact SQLite in-memory databases on a single connection."""
 
-    if database == ":memory:":
+    if str(database) == ":memory:":
         return 1
     return pool_size
 

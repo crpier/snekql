@@ -142,6 +142,12 @@ class ScopeResolver:
         what lets a doubly nested subquery correlate all the way out.
         """
 
+        families = {
+            require_model_backend(model) for model in (*inner_own, *self.models)
+        }
+        if len(families) > 1:
+            msg = "subquery backend differs from the enclosing query"
+            raise QueryCompilationError(msg)
         return ScopeResolver(own_models=inner_own, outer_models=self.models)
 
     def ensure_operand_in_scope(

@@ -13,11 +13,13 @@ from snekql.model import Table, require_model_table_name
 class _DefinitionGraph:
     """Walk SQL scopes without executing definitions or inspecting bound values."""
 
-    def __init__(self) -> None:
+    def __init__(self, outer_models: tuple[type[Table[Any]], ...]) -> None:
         self._definitions: list[_CteDefinition] = []
         self._emitted: set[_CteDefinition] = set()
         self._names: dict[str, _CteDefinition] = {}
-        self._physical_names: set[str] = set()
+        self._physical_names: set[str] = {
+            require_model_table_name(model).casefold() for model in outer_models
+        }
         self._visiting: set[_CteDefinition] = set()
         self._recursive_scope: tuple[SelectState, _CteDefinition | None] | None = None
 
@@ -101,8 +103,10 @@ class _DefinitionGraph:
         self._definitions.append(definition)
 
 
-def collect_cte_definitions(state: SelectState) -> tuple[_CteDefinition, ...]:
+def collect_cte_definitions(
+    state: SelectState, *, outer_models: tuple[type[Table[Any]], ...] = ()
+) -> tuple[_CteDefinition, ...]:
     """Resolve one statement's reachable definitions in dependency order."""
-    graph = _DefinitionGraph()
+    graph = _DefinitionGraph(outer_models)
     graph.collect(state)
     return graph.finish()

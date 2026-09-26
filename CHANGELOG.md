@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep SQLite `Path(":memory:")` databases on one connection, just like the
+  string form, instead of pooling independent in-memory databases.
+- Reject cross-backend subqueries during compilation, including EXISTS, IN,
+  scalar comparisons, and UPDATE/DELETE filters.
+- Include CTE definitions and their parameters in UPDATE/DELETE subqueries,
+  preserving correlation and rejecting names that shadow the mutation target.
+- Reject datetimes whose timezone object returns no UTC offset rather than
+  silently interpreting them in the machine's local timezone.
+- Reject extra arguments to `snekql example NAME` instead of ignoring them.
+- Reject missing or non-string MariaDB connection names with
+  `DatabaseRuntimeError` before driver initialization.
+
 ## 0.8.0 - 2026-09-26
 
 ### Breaking

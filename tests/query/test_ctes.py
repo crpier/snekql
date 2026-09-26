@@ -736,3 +736,27 @@ def projected_left_cte_output_requires_a_nullable_result_field() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         joined.project(Identifier, id=active.column(value))
+
+
+@test(mark="fast")
+def write_subquery_cte_cannot_shadow_mutation_target() -> None:
+    """Aliasing a CTE must not let its definition shadow the outer table."""
+
+    class Candidate[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Candidate[sqlite.Row]]]
+        id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+    identifier = Candidate.id.label("id")
+    definition = (
+        sqlite.select(Candidate)
+        .all()
+        .project(Identifier, id=identifier)
+        .cte(FilteredRole, name="person")
+    )
+    active = sqlite.alias(definition, ActiveRole, name="active")
+    query = sqlite.delete(Person).where(
+        Person.id.in_subquery(sqlite.select(active.column(identifier)).all())
+    )
+
+    with assert_raises(sqlite.QueryCompilationError):
+        query.compile()

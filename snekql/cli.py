@@ -65,6 +65,9 @@ def main(argv: list[str] | None = None) -> int:
         if len(namespace.command) < EXAMPLE_COMMAND_PARTS:
             print("Missing example name", file=sys.stderr)
             return ARGS_ERROR
+        if len(namespace.command) > EXAMPLE_COMMAND_PARTS:
+            print("Expected exactly one example name", file=sys.stderr)
+            return ARGS_ERROR
         example_name = namespace.command[1]
 
     if namespace.help:

@@ -940,3 +940,108 @@ async def native_cte_layout_preserves_binding_order_and_alias_codecs() -> None:
     assert_type(columns, tuple[UUID, list[int]])
     assert_eq(row, DocumentResult(key=UUID(int=1), values=[2, 3]))
     assert_eq(columns, (UUID(int=1), [2, 3]))
+
+
+@test(mark="medium")
+async def delete_can_filter_through_a_cte() -> None:
+    """A write's IN subquery must include the definition it reads."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.eq(1))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    query = sqlite.delete(Person).where(
+        Person.id.in_subquery(sqlite.select(active.column(identifier)).all())
+    )
+
+    async with database.transaction() as transaction:
+        deleted = await transaction.execute(query)
+
+    assert_eq(deleted, 1)
+
+
+@test(mark="medium")
+async def update_can_compare_a_cte_scalar() -> None:
+    """SET bindings precede the WITH bindings inside a scalar predicate."""
+    database = await load_fixture(provide_cte_people())
+    identifier = Person.id.label("id")
+    active = (
+        sqlite.select(Person)
+        .where(Person.id.eq(1))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    query = (
+        sqlite.update(Person)
+        .set(Person.id.to(2))
+        .where(
+            Person.id.eq_col(
+                sqlite.scalar(sqlite.select(active.column(identifier)).all())
+            )
+        )
+    )
+
+    async with database.transaction() as transaction:
+        await transaction.execute(query)
+    async with database.transaction() as transaction:
+        identifiers = await transaction.fetch_all(sqlite.select(Person.id).all())
+
+    assert_eq(identifiers, [2])
+
+
+@test(mark="slow")
+async def mariadb_delete_can_filter_through_a_cte() -> None:
+    """MariaDB embeds WITH inside the read rather than before DELETE."""
+    database = await load_fixture(provide_mariadb_inventory())
+    identifier = MariaInventory.id.label("id")
+    active = (
+        mariadb.select(MariaInventory)
+        .where(MariaInventory.id.eq(1))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    query = mariadb.delete(MariaInventory).where(
+        MariaInventory.id.in_subquery(mariadb.select(active.column(identifier)).all())
+    )
+
+    async with database.transaction() as transaction:
+        deleted = await transaction.execute(query)
+
+    assert_eq(deleted, 1)
+
+
+@test(mark="slow")
+async def mariadb_update_can_filter_through_cte_exists() -> None:
+    """A compound predicate retains its CTE definitions and parameter order."""
+    database = await load_fixture(provide_mariadb_inventory())
+    identifier = MariaInventory.id.label("id")
+    active = (
+        mariadb.select(MariaInventory)
+        .where(MariaInventory.id.eq(1))
+        .project(Identifier, id=identifier)
+        .cte(ActiveRole, name="active")
+    )
+    query = (
+        mariadb.update(MariaInventory)
+        .set(MariaInventory.quantity.to(7))
+        .where(
+            MariaInventory.id.eq(1)
+            & mariadb.exists(
+                mariadb.select(active.column(identifier)).where(
+                    active.column(identifier).eq_col(MariaInventory.id)
+                )
+            )
+        )
+    )
+
+    async with database.transaction() as transaction:
+        await transaction.execute(query)
+    async with database.transaction() as transaction:
+        quantity = await transaction.fetch_one(
+            mariadb.select(MariaInventory.quantity).all()
+        )
+
+    assert_eq(quantity, 7)

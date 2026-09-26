@@ -217,7 +217,7 @@ def column_lacks_canonical_decimal(
 def _normalize_utc_milliseconds(value: datetime) -> datetime:
     """Reject naive datetimes and canonicalize aware values to UTC millis."""
 
-    if value.tzinfo is None:
+    if value.utcoffset() is None:
         msg = "naive datetime rejected; UtcDatetime is aware-only"
         raise ValueError(msg)
     normalized = value.astimezone(UTC)
@@ -1784,7 +1784,7 @@ class Attr[
             # would silently assume the machine's local zone -- the same
             # wall-clock value would land as a different instant depending on
             # where the write ran. Refuse it; awareness is the logical type's job.
-            if timestamp.tzinfo is None:
+            if timestamp.utcoffset() is None:
                 msg = (
                     f"{self._require_name()!r} naive datetime cannot be stored in "
                     f"a DateTime column; attach a timezone (or annotate "
