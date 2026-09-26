@@ -15,6 +15,10 @@
 - When passing multiline text to `gh`, use `--body-file` with a real file or a heredoc; do not pass escaped `\n` sequences. Verify rendered bodies with `gh pr view` or `gh issue view`.
 - When doing feature/bug-fixing/refactoring or any code-related work, use TDD.
 
+## Dependency maintenance
+
+- For dependency bumps, lockfile refreshes, compatibility-cap changes, or CI tool/action upgrades, read `docs/dependency-maintenance.md` first. The agent owns release-note review, impact checks, validation, and the dated report.
+
 ## Release checklist
 
 For package releases:

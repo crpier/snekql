@@ -588,11 +588,11 @@ async def cancelled_stream_retains_caller_context(backend: BackendFamily) -> Non
 
     case = await load_fixture(provide_raw_case(backend, observer=observer))
     with request.set("cancelled-request"), assert_raises(CancelledError):
-        async with case.database.transaction() as transaction:
-            async with transaction.fetch_chunks(
-                case.namespace.raw("SELECT 1 AS number"), size=1
-            ):
-                raise CancelledError
+        async with (
+            case.database.transaction() as transaction,
+            transaction.fetch_chunks(case.namespace.raw("SELECT 1 AS number"), size=1),
+        ):
+            raise CancelledError
 
     assert_eq(
         [

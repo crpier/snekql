@@ -10,6 +10,11 @@
 
 ### Changed
 
+- Replace Dependabot update PRs with agent-reviewed dependency maintenance.
+  Refresh runtime, telemetry, testing, and benchmark dependencies; upgrade uv
+  and pin CI actions to reviewed commits. See
+  [the dependency review](docs/dependency-reviews/2026-09-26.md).
+
 - SELECT no longer requires `.all()` or `.where(...)` before execution, including
   nested queries, named projections, CTEs, UNION operands, and locking reads.
   UPDATE and DELETE retain explicit row-scope guards. Fetch cardinality is

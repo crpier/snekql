@@ -273,15 +273,17 @@ async def terminal_spans_keep_parent_without_exception_data(
             CancelledError if failure == "cancellation" else sqlite.ModelValidationError
         ),
     ):
-        async with case.database.transaction() as transaction:
-            async with transaction.fetch_chunks(
+        async with (
+            case.database.transaction() as transaction,
+            transaction.fetch_chunks(
                 case.namespace.raw("SELECT 'secret-input' AS value"), size=1
-            ) as stream:
-                await anext(stream)
-                message = "secret-error"
-                if failure == "cancellation":
-                    raise CancelledError(message)
-                raise sqlite.ModelValidationError(message)
+            ) as stream,
+        ):
+            await anext(stream)
+            message = "secret-error"
+            if failure == "cancellation":
+                raise CancelledError(message)
+            raise sqlite.ModelValidationError(message)
     terminal = [
         span
         for span in exporters.spans.get_finished_spans()

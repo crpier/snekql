@@ -59,6 +59,7 @@ Read these in order, or jump to the task you have now:
 ## Work on snekql
 
 Start with [contributing and local checks](contributing.md).
+For dependency updates, use the [review procedure](dependency-maintenance.md).
 
 Design records explain decisions; they are **not current usage instructions**:
 
