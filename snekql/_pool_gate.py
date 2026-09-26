@@ -16,12 +16,14 @@ order alone:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import deque
 from collections.abc import Callable
 from typing import Literal
 
 import anyio
+from anyio.lowlevel import checkpoint
 
 from snekql._observation import Telemetry
 from snekql.errors import PoolTimeoutError
@@ -42,7 +44,6 @@ class FairAdmissionGate:
 
     admitted: int
     capacity: PositiveInt
-    condition: anyio.Condition
 
     def __init__(
         self,
@@ -58,7 +59,10 @@ class FairAdmissionGate:
         self.telemetry: Telemetry = Telemetry(backend)
         self.admitted: int = 0
         self.capacity: PositiveInt = capacity
-        self.condition: anyio.Condition = anyio.Condition()
+        # Both drivers run on asyncio. Its Condition restores lock ownership
+        # even when Task.cancel() interrupts wake-up, not only cancellation
+        # originating from an AnyIO scope.
+        self.condition: asyncio.Condition = asyncio.Condition()
         self._check_accepting_work: Callable[[], None] = check_accepting_work
         self._log_label: str = log_label
         # FIFO queue of waiting-acquirer ticket numbers. A parked acquirer may
@@ -112,25 +116,30 @@ class FairAdmissionGate:
         """
 
         ticket: int | None = None
-        while True:
-            async with self.condition:
-                try:
+        try:
+            while True:
+                # Keep admission cancellable even when the asyncio lock is free.
+                await checkpoint()
+                async with self.condition:
                     self._check_accepting_work()
-                except BaseException:
-                    # Rejected (closing/closed) while already queued: drop our
-                    # ticket so later FIFO waiters are not blocked behind us.
-                    if ticket is not None:
+                    if self._waiter_is_served_first(ticket) and (
+                        self.admitted < self.capacity
+                    ):
+                        if ticket is not None:
+                            _ = self._waiters.popleft()
+                            ticket = None
+                        self.admitted += 1
+                        return
+                    ticket = self._enqueue_waiter(ticket)
+                    await self._wait_for_release(ticket, deadline, acquisition_timeout)
+        finally:
+            # A notified waiter must acquire the condition again on its next
+            # loop iteration. Cancellation there is outside condition.wait(),
+            # but still owns a queued ticket that must never block successors.
+            if ticket is not None:
+                with anyio.CancelScope(shield=True):
+                    async with self.condition:
                         self._discard_waiter(ticket)
-                    raise
-                if self._waiter_is_served_first(ticket) and (
-                    self.admitted < self.capacity
-                ):
-                    if ticket is not None:
-                        _ = self._waiters.popleft()
-                    self.admitted += 1
-                    return
-                ticket = self._enqueue_waiter(ticket)
-                await self._wait_for_release(ticket, deadline, acquisition_timeout)
 
     async def release(self) -> None:
         """Free an admission slot and wake the next FIFO waiter.

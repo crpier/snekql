@@ -54,7 +54,10 @@ with_or_without_orders = (
 ```
 
 The inner join keeps only matching pairs. The left join keeps users even when
-they have no qualifying order; the second tuple item is then `None`.
+they have no qualifying order; the second tuple item is then `None`. A matched
+row whose declared fields are all NULL is still a Row Model, not `None`. snekql
+adds a private presence field when no declared non-null column can distinguish
+the two cases.
 
 Putting the status condition in ON is important here. Moving it into WHERE can
 remove unmatched users. The database applies ordinary SQL join semantics.
@@ -103,7 +106,8 @@ model's column, or another alias's column, is rejected.
 
 Give each repeated role a distinct marker class and SQL name. Names must be ASCII
 SQL identifiers and cannot collide, ignoring case, with another visible source.
-That includes sources in an enclosing query. Reusing an alias in a separate query
+That includes sources in an enclosing query, even when distinct model classes
+name the same physical table. Reusing an alias in a separate query
 is fine; using the same model/role pair twice in one query is not.
 
 Aliases do not create tables. You cannot insert into, update, delete from, or

@@ -26,6 +26,7 @@ from snekql._query_scope import (
     ensure_having_targets,
     ensure_ordering_targets_models,
 )
+from snekql._query_sources import table_presence_name
 from snekql._query_state import (
     DeleteState,
     InsertState,
@@ -618,12 +619,27 @@ def _compile_select_list(
     return ", ".join(parts), params
 
 
-def _compile_source_sql(model: type[Table[Any]], dialect: QueryDialect) -> str:
+def _compile_source_sql(
+    model: type[Table[Any]], dialect: QueryDialect, *, presence: bool = False
+) -> str:
     """Render a physical table with its independent query-role name, if any."""
     name = dialect.quote_identifier(require_model_table_name(model))
     if issubclass(model, _CteRelation):
         definition = dialect.quote_identifier(model.definition.name)
         return definition if definition == name else f"{definition} AS {name}"
+    marker = table_presence_name(model) if presence else None
+    if marker is not None:
+        physical_model = (
+            model.source_model if issubclass(model, _AliasRelation) else model
+        )
+        physical = dialect.quote_identifier(require_model_table_name(physical_model))
+        columns = ", ".join(
+            dialect.quote_identifier(column) for column in require_model_columns(model)
+        )
+        return (
+            f"(SELECT {columns}, 1 AS {dialect.quote_identifier(marker)} "  # noqa: S608 - identifiers are dialect-quoted
+            f"FROM {physical}) AS {name}"
+        )
     if issubclass(model, _AliasRelation):
         physical = dialect.quote_identifier(
             require_model_table_name(model.source_model)
@@ -668,7 +684,9 @@ def _compile_select_source(
 ) -> tuple[str, tuple[object, ...]]:
     """Derived operands preserve binary grouping on both supported dialects."""
     if state.compound is None:
-        return _compile_source_sql(state.model, dialect), ()
+        return _compile_source_sql(
+            state.model, dialect, presence=state.returns_model and bool(state.joins)
+        ), ()
     left_sql, left_params = _compile_select_state(state.compound.left, dialect)
     right_sql, right_params = _compile_select_state(state.compound.right, dialect)
     alias = dialect.quote_identifier(require_model_table_name(state.model))
@@ -718,7 +736,9 @@ def _compile_select_state(
         f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
     for index, join in enumerate(state.joins):
-        join_table = _compile_source_sql(join.model, dialect)
+        join_table = _compile_source_sql(
+            join.model, dialect, presence=state.returns_model
+        )
         # ON can see the FROM anchor and preceding joins, never a later join.
         join_scope = ScopeResolver(
             own_models=own_models[: index + 2], outer_models=scope.outer_models

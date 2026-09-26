@@ -21,7 +21,7 @@ from typing import Any, cast
 
 from snekql._aliases import _AliasRelation
 from snekql._cte import _CteOutput, _CteRelation
-from snekql._dialect_expr import SqlCompilable
+from snekql._dialect_expr import ReferencedColumns, SqlCompilable
 from snekql._literal import _IntegerLiteral
 from snekql._query_sources import grouping_key
 from snekql._query_state import (
@@ -33,7 +33,6 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
-from snekql._value_expression import ValueExpression
 from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
@@ -45,6 +44,7 @@ from snekql.expressions import (
     _OrderBy,
     _PredicateNode,
     _require_predicate_node,
+    _Scalar,
 )
 from snekql.model import Table, require_model_backend, require_model_table_name
 from snekql.storage import Attr
@@ -112,10 +112,11 @@ class ScopeResolver:
             name = require_model_table_name(model).casefold()
             previous = names.get(name)
             if previous is not None and (
-                issubclass(model, (_AliasRelation, _CteRelation))
+                previous is not model
+                or issubclass(model, (_AliasRelation, _CteRelation))
                 or issubclass(previous, (_AliasRelation, _CteRelation))
             ):
-                msg = "alias name collides with a visible query source"
+                msg = "query source name collides with a visible query source"
                 raise QueryCompilationError(msg)
             names[name] = model
             if issubclass(model, _AliasRelation):
@@ -311,31 +312,94 @@ def ensure_grouping_targets_models(
         )
 
 
+def _correlated_columns(  # noqa: C901 - traverse operands and predicates across nested SQL scopes
+    state: SelectState,
+    bound_models: frozenset[type[Table[Any]]] = frozenset(),
+) -> tuple[object, ...]:
+    """Find free column reads without confusing inner rows with outer group keys."""
+    bound_models = bound_models.union(state.result_models())
+    columns: list[object] = []
+
+    def read_operand(operand: object) -> None:
+        if isinstance(operand, (Attr, _CteOutput)):
+            if selectable_owner_model(operand) not in bound_models:
+                columns.append(operand)
+        elif isinstance(operand, ReferencedColumns):
+            for referenced in operand.__referenced_columns__():
+                read_operand(referenced)
+        elif isinstance(operand, _Scalar):
+            columns.extend(
+                _correlated_columns(
+                    require_subquery_state(operand.subquery), bound_models
+                )
+            )
+
+    def read_predicate(predicate: _PredicateNode[Any]) -> None:
+        for operand in predicate.__predicate_grouping_operands__():
+            read_operand(operand)
+        for nested in predicate.__predicate_nested_selects__():
+            columns.extend(
+                _correlated_columns(require_subquery_state(nested), bound_models)
+            )
+        for child in predicate.__predicate_children__():
+            read_predicate(_require_predicate_node(child))
+
+    for operand in (
+        *state.fields,
+        *state.groupings,
+        *(entry.column for entry in state.orderings),
+    ):
+        read_operand(operand)
+    for predicate in (
+        *state.predicates,
+        *state.having,
+        *(join.predicate for join in state.joins),
+    ):
+        read_predicate(predicate)
+    if state.compound is not None:
+        columns.extend(_correlated_columns(state.compound.left, bound_models))
+        columns.extend(_correlated_columns(state.compound.right, bound_models))
+    return tuple(columns)
+
+
 def ensure_grouping_covers_projection(state: SelectState) -> None:
     """Reject an aggregated projection that selects an ungrouped bare column.
 
-    A query is aggregated when it projects an aggregate or carries a
-    ``group_by``; in either case SQL requires every non-aggregate projected
-    column to appear in the ``GROUP BY`` list. ``COUNT(*)``-style aggregates have
-    no column, so they never need grouping.
+    Grouping, HAVING, and aggregates in SELECT or ORDER BY require every
+    non-aggregate projected column to appear in GROUP BY. Aggregate context
+    cannot be hidden in a different clause to expose an arbitrary input row.
     """
 
-    has_aggregate = any(isinstance(field, _Aggregate) for field in state.fields)
-    if not (has_aggregate or state.groupings):
+    has_aggregate = any(isinstance(field, _Aggregate) for field in state.fields) or any(
+        isinstance(ordering.column, _Aggregate) for ordering in state.orderings
+    )
+    if not (has_aggregate or state.groupings or state.having):
         return
     grouped_keys = {grouping_key(column) for column in state.groupings}
-    for field in state.fields:
-        if isinstance(field, ValueExpression):
-            inputs = field.__referenced_columns__()
+    inputs: list[object] = []
+    for field in (*state.fields, *(ordering.column for ordering in state.orderings)):
+        if isinstance(field, ReferencedColumns):
+            inputs.extend(field.__referenced_columns__())
         elif isinstance(field, (Attr, _CteOutput)):
-            inputs = (field,)
-        else:
-            continue
-        for operand in inputs:
-            key = grouping_key(operand)
-            if key not in grouped_keys:
-                msg = "non-aggregated column in an aggregated select must appear in group_by()"
-                raise QueryCompilationError(msg)
+            inputs.append(field)
+        elif isinstance(field, _Scalar):
+            inputs.extend(_correlated_columns(require_subquery_state(field.subquery)))
+    predicates = list(state.having)
+    while predicates:
+        predicate = predicates.pop()
+        for nested in predicate.__predicate_nested_selects__():
+            inputs.extend(_correlated_columns(require_subquery_state(nested)))
+        predicates.extend(
+            _require_predicate_node(child)
+            for child in predicate.__predicate_children__()
+        )
+    for operand in inputs:
+        # A free reference to an enclosing query is constant within this local
+        # group. Its own enclosing grouping boundary checks it instead.
+        key = grouping_key(operand)
+        if key[0] in state.result_models() and key not in grouped_keys:
+            msg = "non-aggregated column in SELECT, HAVING or ORDER BY must appear in group_by()"
+            raise QueryCompilationError(msg)
 
 
 def ensure_assignment_targets_model(
