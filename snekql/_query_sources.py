@@ -1,17 +1,48 @@
 """Query source fields, separate from schema-owned column declarations."""
 
+from dataclasses import dataclass
 from typing import Any
 
 from snekql._aliases import require_query_source as require_table_source
 from snekql._cte import _Cte, _CteOutput, _CtePresence, _CteRelation
+from snekql._dialect_expr import CompileCtx
 from snekql._query_state import (
     Selectable,
     require_column_model,
     require_column_name,
     require_field,
 )
-from snekql.model import Table, require_model_columns
+from snekql.model import Table, require_model_columns, require_model_table_name
 from snekql.storage import Attr
+
+
+@dataclass(frozen=True, slots=True)
+class _TablePresence:
+    """A derived table's marker distinguishes a matched all-NULL payload."""
+
+    source: type[Table[Any]]
+    name: str
+
+    def __owner_model__(self) -> type[Table[Any]]:
+        return self.source
+
+    def __compile_sql__(self, ctx: CompileCtx) -> tuple[str, tuple[object, ...]]:
+        owner = ctx.quote_identifier(require_model_table_name(self.source))
+        return f"{owner}.{ctx.quote_identifier(self.name)}", ()
+
+
+def table_presence_name(source: type[Table[Any]]) -> str | None:
+    """Only tables without a non-nullable column need an extra presence witness."""
+    if issubclass(source, _CteRelation):
+        return None
+    columns = require_model_columns(source)
+    if any(not column.nullable for column in columns.values()):
+        return None
+    names = {name.casefold() for name in columns}
+    marker = "__snekql_present"
+    while marker.casefold() in names:
+        marker += "_"
+    return marker
 
 
 def require_query_source(value: object) -> type[Table[Any]]:
@@ -33,7 +64,9 @@ def query_fields(
             for position in range(len(source.definition.layout.slots))
         )
         return (*outputs, _CtePresence(source)) if presence else outputs
-    return tuple(require_model_columns(source).values())
+    columns = tuple(require_model_columns(source).values())
+    marker = table_presence_name(source) if presence else None
+    return (*columns, _TablePresence(source, marker)) if marker is not None else columns
 
 
 def require_grouping_column(

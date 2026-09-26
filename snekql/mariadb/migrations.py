@@ -767,7 +767,9 @@ class MariaDBMigrationBackend:
 async def _apply_body_and_history(
     connection: object,
     migration: Migration,
+    expected_history: MigrationPlan,
 ) -> None:
+    """Commit only after the body has preserved the canonical history contract."""
     await cast("Any", connection).begin()
     try:
         await _execute(connection, migration.sql)
@@ -786,6 +788,12 @@ async def _apply_body_and_history(
                 migration.name.encode("utf-8"),
                 migration.checksum.encode("ascii"),
             ),
+        )
+        if await _fetch_history_shape(connection) != "v2":
+            msg = "migration changed the owned Migration History schema"
+            raise MigrationHistoryError(msg)  # noqa: TRY301 - rollback belongs to this unit
+        validate_history_prefix(
+            await _fetch_history(connection), expected_history, require_head=True
         )
         await _commit(connection)
     except BaseException as error:
@@ -817,7 +825,9 @@ async def apply_mariadb_migrations(
             await _rollback(backend.connection)
             applied: list[str] = []
             for migration in migrations[len(history) :]:
-                await _apply_body_and_history(backend.connection, migration)
+                await _apply_body_and_history(
+                    backend.connection, migration, migrations[: migration.position]
+                )
                 applied.append(migration.name)
             return MigrationResult(
                 applied=tuple(applied),

@@ -4,6 +4,20 @@
 
 ### Fixed
 
+- Preserve pool progress when cancellation lands between a waiter's wake-up and
+  admission. Native asyncio cancellation also retains its cancellation exception
+  instead of failing during condition-lock cleanup.
+- Reject distinct model declarations whose SQL names would capture each other's
+  references in a join or correlated subquery.
+- Preserve matched all-NULL rows in whole-model joins, including aliased tables,
+  rather than materializing them as absent rows.
+- Check grouping across SELECT, HAVING, and ORDER BY, including columns read by
+  MariaDB JSON expressions and correlated scalar subqueries. Reject ungrouped
+  column reads instead of allowing invalid SQL or arbitrary per-group row values.
+- Verify MariaDB's history schema and complete expected prefix before committing
+  each migration. History corruption cannot silently report success; transactional
+  body changes roll back with the failed history check.
+
 - Keep SQLite `Path(":memory:")` databases on one connection, just like the
   string form, instead of pooling independent in-memory databases.
 - Reject cross-backend subqueries during compilation, including EXISTS, IN,

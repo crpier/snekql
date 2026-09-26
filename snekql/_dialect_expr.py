@@ -68,6 +68,13 @@ class SqlCompilable(Protocol):
 
 
 @runtime_checkable
+class ReferencedColumns(Protocol):
+    """Row-local expressions expose their input columns for grouping checks."""
+
+    def __referenced_columns__(self) -> tuple[object, ...]: ...
+
+
+@runtime_checkable
 class DialectSelectable[OwnerT: "Table[Any]", T, CompareT = T](Protocol):
     """A dialect expression owned by one table and projectable as ``T``.
 

@@ -396,6 +396,12 @@ changes with their actual constraints and data, including cascade behavior.
 
 ### MariaDB
 
+Before each migration commits, snekql checks that its history table still has the
+expected schema and exact declaration prefix. A body that changes earlier history
+raises `MigrationHistoryError`; transactional body writes roll back too. This does
+not undo MariaDB's implicit DDL commits. If a body alters the history schema, repair
+that schema before retrying.
+
 MariaDB holds one connection-scoped `GET_LOCK` across history upgrade,
 preflight, application, recording, and commits. Lock release is shielded and
 must return success; otherwise the physical connection is discarded.

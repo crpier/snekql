@@ -13,7 +13,7 @@ from snekql._aliases import _AliasRelation
 from snekql._cte import _CteRelation
 from snekql._model_materialization import decode_model_row
 from snekql._named_projection import NamedProjection
-from snekql._query_sources import query_fields
+from snekql._query_sources import query_fields, table_presence_name
 from snekql._query_state import (
     InsertState,
     Selectable,
@@ -37,8 +37,8 @@ def _materialize_join_row(
 ) -> tuple[object, ...]:
     """Split one joined row into a Row model per table, in join order.
 
-    A left-joined table whose columns are all NULL produced no matching row, so
-    its tuple slot is materialized as None rather than a model.
+    A missing left-joined row becomes None. Sources whose payload can be all
+    NULL carry an extra witness so a real all-NULL row remains a model.
     """
 
     elements: list[object] = []
@@ -46,12 +46,13 @@ def _materialize_join_row(
     for index, model in enumerate(state.result_models()):
         fields = query_fields(model)
         cte_source = issubclass(model, _CteRelation)
-        width = len(fields) + int(cte_source)
+        has_presence = cte_source or table_presence_name(model) is not None
+        width = len(fields) + int(has_presence)
         chunk = row[offset : offset + width]
         offset += width
         is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
         absent = (
-            chunk[-1] is None if cte_source else all(value is None for value in chunk)
+            chunk[-1] is None if has_presence else all(value is None for value in chunk)
         )
         if is_left_join and absent:
             elements.append(None)
