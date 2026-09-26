@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from snekql._aliases import TableAlias, _AliasOwner, build_alias
 from snekql._cte import _Cte, _CteOwner, build_cte_alias
 from snekql._dialect_expr import DialectSelectable
-from snekql._query_readiness import _IncompleteQuery
+from snekql._query_readiness import _ExecutableQuery, _IncompleteQuery
 from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
-from snekql.expressions import Aggregate, ColumnRef, Scalar, _Scalar
+from snekql.expressions import Aggregate, ColumnRef, Predicate, Scalar, _Scalar
 from snekql.mariadb.model import Model
 from snekql.model import Pending, Row, Table, require_model_backend
 from snekql.query import (
@@ -44,6 +44,9 @@ from snekql.query import (
 from snekql.query import (
     delete as build_delete,
 )
+from snekql.query import exists as build_exists
+from snekql.query import not_exists as build_not_exists
+from snekql.query import scalar as build_scalar
 from snekql.query import (
     update as build_update,
 )
@@ -88,6 +91,30 @@ def _require_mariadb_model(model: type[Table[Any]] | None) -> None:
             f"received {received} model {model.__name__}"
         )
         raise QueryConstructionError(msg)
+
+
+def exists(
+    subquery: _ExecutableSelect[Literal["mariadb"], Any, Any, Any], /
+) -> Predicate[Any]:
+    """Test whether a ready MariaDB subquery returns a row; correlation is allowed."""
+    return build_exists(subquery)
+
+
+def not_exists(
+    subquery: _ExecutableSelect[Literal["mariadb"], Any, Any, Any], /
+) -> Predicate[Any]:
+    """Test whether a ready MariaDB subquery is empty; correlation is allowed."""
+    return build_not_exists(subquery)
+
+
+def scalar[T, CompareT](
+    subquery: SelectValueQuery[
+        Literal["mariadb"], Any, Any, T, CompareT, _ExecutableQuery
+    ],
+    /,
+) -> Scalar[Never, T | None, CompareT]:
+    """Read one MariaDB subquery value, or NULL when it returns no row."""
+    return build_scalar(subquery)
 
 
 @overload
@@ -159,7 +186,7 @@ def select[
 ](
     field: ColumnRef[OwnerT, ValueT],
     /,
-) -> SelectValueQuery[Literal["mariadb"], OwnerT, OwnerT, ValueT, Any]: ...
+) -> SelectValueQuery[Literal["mariadb"], OwnerT, OwnerT, ValueT, ValueT]: ...
 
 
 @overload

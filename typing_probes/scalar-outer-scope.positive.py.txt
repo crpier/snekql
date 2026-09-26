@@ -1,0 +1,28 @@
+"""A scalar subquery does not erase unrelated outer projection owners."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int] = database.Integer()
+
+
+class Invoice[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Invoice[database.Row]]]
+    number: database.Col[int] = database.Integer()
+
+
+class Other[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Other[database.Row]]]
+    text: database.Col[str] = database.Text()
+
+
+async def control(transaction: database.Transaction) -> None:
+    amount = database.scalar(database.select(Invoice.number).all().limit(1))
+    query = database.select(Account.number, amount).all()
+    assert_type(await transaction.fetch_all(query), list[tuple[int, int | None]])
+    assert_type(database.ready(query), database.ClosedOptional[tuple[int, int | None]])
+    correlated = database.scalar(database.select(Invoice.number).where(Invoice.number.eq_col(Account.number)).limit(1))
+    assert_type(await transaction.fetch_all(database.select(Account.number, correlated).all()), list[tuple[int, int | None]])

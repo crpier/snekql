@@ -120,7 +120,7 @@ def _backend_select_overloads(backend: str) -> str:
         f"def select[OwnerT: {owner_bound}, ValueT](\n"
         "    field: ColumnRef[OwnerT, ValueT],\n"
         "    /,\n"
-        f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, Any]: ...\n\n\n"
+        f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, ValueT]: ...\n\n\n"
     )
     blocks = [model_overload, singleton_overload, column_ref_overload]
     for width in range(2, MAX_PROJECTION_WIDTH + 1):

@@ -1,0 +1,5 @@
+
+
+async def invalid(transaction: database.Transaction) -> None:
+    statement = database.insert(Account(number=7)).returning(Account.number)
+    number: int = await transaction.execute(statement, validate=False)  # expect-error

@@ -3024,12 +3024,15 @@ def not_exists(subquery: _ExecutableSelect[Any, Any, Any, Any], /) -> Predicate[
 
 def scalar[T, CompareT](
     subquery: SelectValueQuery[Any, Any, Any, T, CompareT, _ExecutableQuery], /
-) -> Scalar[Any, T | None, CompareT]:
+) -> Scalar[Never, T | None, CompareT]:
     """Wrap a single-column select as a scalar subquery usable as a value.
 
     The result is a selectable (projectable alongside columns) and a comparison
     operand (the right side of a ``*_col`` comparison). The subquery must project
     exactly one column and is expected to yield at most one row per evaluation.
+
+    Its outer owner is Never: the inner FROM does not join a table into the
+    enclosing query. Correlated references still require compilation checks.
 
     The projected value type is always optional: a SQL scalar subquery evaluates
     to ``NULL`` on an empty/no-match result set regardless of the inner column's
@@ -3038,7 +3041,7 @@ def scalar[T, CompareT](
     """
 
     _ = require_single_column_subquery(subquery)
-    return _Scalar(subquery=subquery)
+    return _Scalar[Never, T | None, CompareT](subquery=subquery)
 
 
 def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](

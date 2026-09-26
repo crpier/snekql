@@ -1,0 +1,24 @@
+"""Read-only column helpers preserve scalar comparison domains."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int] = database.Integer()
+    optional: database.Col[int | None] = database.Integer(default=None)
+    text: database.Col[str] = database.Text()
+
+
+async def control(
+    transaction: database.Transaction,
+    number: database.ColumnRef[Account, int],
+    optional: database.ColumnRef[Account, int | None],
+) -> None:
+    query = database.select(number).all()
+    nullable = database.select(optional).all()
+    assert_type(await transaction.fetch_all(query), list[int])
+    assert_type(await transaction.fetch_all(nullable), list[int | None])
+    assert_type(Account.number.eq_col(database.scalar(query)), database.Predicate[Account])
+    assert_type(Account.number.eq_col(database.scalar(nullable)), database.Predicate[Account])
