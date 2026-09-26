@@ -268,10 +268,16 @@ class ZonedDatetime:
         if not isinstance(self.datetime.tzinfo, ZoneInfo | timezone):
             msg = "ZonedDatetime requires an IANA zone or fixed UTC offset"
             raise ZonedDatetimeError(msg)
+        try:
+            instant = self.datetime.astimezone(UTC)
+        except OverflowError as e:
+            msg = "ZonedDatetime requires an instant within the UTC datetime range"
+            raise ZonedDatetimeError(msg) from e
         if isinstance(self.datetime.tzinfo, ZoneInfo):
-            reconstructed = self.datetime.astimezone(UTC).astimezone(
-                self.datetime.tzinfo
-            )
+            if self.datetime.tzinfo.key is None:
+                msg = "ZonedDatetime requires an IANA zone with a persistent key"
+                raise ZonedDatetimeError(msg)
+            reconstructed = instant.astimezone(self.datetime.tzinfo)
             if (
                 reconstructed.replace(tzinfo=None) != self.datetime.replace(tzinfo=None)
                 or reconstructed.fold != self.datetime.fold

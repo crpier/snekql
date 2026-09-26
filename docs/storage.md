@@ -71,6 +71,8 @@ Store it in `Text()` on either backend. It preserves the instant and the exact
 IANA zone key or fixed offset. Two values with the same instant but different
 zones are not equal. Equality, membership, and unique indexes work; ordering,
 ranges, MIN, and MAX are rejected. Choose `UtcDatetime` for chronological queries.
+Anonymous `ZoneInfo` objects without a persistent key are rejected. The instant
+must also fit Python's UTC datetime range, even if the local datetime is valid.
 
 For elapsed time, `Col[Duration] = Integer()` stores signed whole milliseconds
 and normalizes Python timedeltas to that precision. It is a duration, not a

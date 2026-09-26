@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone, tzinfo
+from io import BytesIO
+from struct import pack
 from zoneinfo import ZoneInfo
 
 from snektest import assert_eq, assert_raises, test
@@ -143,3 +145,19 @@ def zoned_datetime_rejects_a_timezone_without_a_stable_identity() -> None:
 
     with assert_raises(ZonedDatetimeError):
         _ = ZonedDatetime(datetime(2026, 7, 1, 8, 30, tzinfo=_UnsupportedTimezone()))
+
+
+@test(mark="fast")
+def zoned_datetime_rejects_anonymous_iana_data() -> None:
+    """A zone read from a file without a key cannot survive persisted decoding."""
+    tzif = (
+        b"TZif\0"
+        + b"\0" * 15
+        + pack(">6l", 0, 0, 0, 0, 1, 4)
+        + pack(">lbb", 0, 0, 0)
+        + b"UTC\0"
+    )
+    anonymous_zone = ZoneInfo.from_file(BytesIO(tzif))
+
+    with assert_raises(ZonedDatetimeError):
+        ZonedDatetime(datetime(2026, 1, 1, tzinfo=anonymous_zone))

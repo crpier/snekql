@@ -25,6 +25,7 @@ import random
 import sqlite3
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from math import ldexp
 
 import anyio
 
@@ -60,8 +61,14 @@ class BusyRetryPolicy:
     def backoff_for(self, retry_index: int) -> float:
         """Return the jittered backoff (seconds) before the given retry index."""
 
-        ceiling = min(self.max_backoff, self.base_backoff * (2**retry_index))
-        return random.uniform(0, ceiling)
+        ceiling = self.base_backoff
+        if ceiling:
+            try:
+                ceiling = ldexp(ceiling, retry_index)
+            except OverflowError:
+                # Saturate before jitter without constructing an unbounded integer.
+                ceiling = self.max_backoff if retry_index >= 0 else 0.0
+        return random.uniform(0, min(self.max_backoff, ceiling))
 
 
 DEFAULT_BUSY_RETRY_POLICY = BusyRetryPolicy()
