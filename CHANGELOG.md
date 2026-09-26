@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## 0.8.0 - 2026-09-26
+
 ### Breaking
 
 - Models now use one lifecycle coordinate, `Model[State]`, with a class-body
@@ -60,7 +62,7 @@
   helpers. An optional fourth `Cte` argument preserves nullable-anchor ownership.
   Backend identity and completed readiness remain enforced.
 
-- Draft recursive CTE construction now uses
+- Recursive CTE construction now uses
   `recursive_cte(anchor, Role, name=...).step(callback)` instead of the `step=`
   keyword. Staging preserves callback self inference and rejects incomplete
   self-only members statically. Prepared builders are not executable queries.
@@ -83,8 +85,8 @@
 - Backend-owned `literal(integer)` expressions for named projections and CTE
   outputs. Signed-64 validation, backend isolation and nonnullable constant
   labels preserve the native integer contract. MariaDB lowering establishes
-  full anchor width even for zero. Prerequisite for #373; the recursive builder
-  remains under review.
+  full anchor width even for zero. These expressions also support recursive
+  CTE anchors. Addresses #373.
 
 - Named UNION and UNION ALL builders with name-aligned fields, preserved binary
   grouping, combined-output ordering/pagination and CTE conversion. The left
@@ -109,9 +111,10 @@
   release provenance chain. Addresses #300.
 
 - Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
-  mypy 2.3.1 across both backends. ty stays primary; Pyright passes the documented
-  profile, while mypy rejects valid positional projections and left joins.
-  Reports preserve diagnostics and source hashes. Editor limits are explicit.
+  mypy 2.3.1 across both backends. Only ty supports the class-body contract:
+  84/84 paired observations conform, versus 14/84 for Pyright and 4/84 for mypy.
+  Reports preserve diagnostics and source hashes. Failed positive controls do
+  not establish static guarantees. Editor limits are explicit.
   Addresses #299.
 
 - Development-only comparative SQLite/MariaDB benchmarks cover raw drivers,
