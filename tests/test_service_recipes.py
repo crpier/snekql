@@ -201,7 +201,7 @@ async def database_fixture_replays_the_deployed_schema() -> None:
     database = await load_fixture(fresh_database())
 
     async with database.transaction() as transaction:
-        entries = await transaction.fetch_all(sqlite.select(Entry).all())
+        entries = await transaction.fetch_all(sqlite.select(Entry))
 
     assert_eq(entries, [])
 
@@ -267,7 +267,7 @@ async def invalid_http_batch_cannot_write_valid_prefix() -> None:
             },
         )
     async with open_service(config) as database, database.transaction() as transaction:
-        rows = await transaction.fetch_all(sqlite.select(Entry).all())
+        rows = await transaction.fetch_all(sqlite.select(Entry))
 
     assert_eq((response.status_code, rows), (422, []))
 
@@ -310,6 +310,6 @@ async def cancelled_worker_preserves_finished_deliveries() -> None:
         with assert_raises(asyncio.CancelledError):
             await worker
     async with open_service(config) as database, database.transaction() as transaction:
-        rows = await transaction.fetch_all(sqlite.select(Entry.label).all())
+        rows = await transaction.fetch_all(sqlite.select(Entry.label))
 
     assert_eq(rows, ["finished"])

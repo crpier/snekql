@@ -71,7 +71,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
 
 @test(mark="fast")
 def select_builders_preserve_immutable_composition() -> None:
-    """Select chain methods return new queries except repeated all() no-ops."""
+    """SELECT composition preserves the source query."""
 
     class User[S = Pending](Model[S]):
         """Table model used by immutable select checks."""
@@ -85,11 +85,9 @@ def select_builders_preserve_immutable_composition() -> None:
     filtered_query = base_query.where(User.status.eq("active"))
     ordered_query = filtered_query.order_by(User.email.asc())
     paged_query = ordered_query.limit(10).limit(2).offset(1)
-    all_query = base_query.all()
 
     assert_ne(filtered_query, base_query)
     assert_ne(ordered_query, filtered_query)
-    assert_is(all_query.all(), all_query)
 
     with assert_raises(QueryConstructionError):
         _ = base_query.where()  # ty: ignore[no-matching-overload]
@@ -97,14 +95,10 @@ def select_builders_preserve_immutable_composition() -> None:
     with assert_raises(QueryConstructionError):
         _ = base_query.order_by()  # ty: ignore[no-matching-overload]
 
-    assert_eq(
-        all_query.where(User.status.eq("active")).compile(), filtered_query.compile()
-    )
-    assert_eq(filtered_query.all().compile(), filtered_query.compile())
     assert_eq(base_query.compile().params, ())
 
     with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_write_sql(all_query)
+        _ = SQLITE_CODEC.compile_write_sql(base_query)
 
     sql, params = SQLITE_CODEC.compile_select_sql(paged_query)
 

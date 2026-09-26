@@ -29,11 +29,11 @@ async def control(transaction: database.Transaction) -> None:
     nested = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
     present = database.select(Account).where(database.exists(nested))
     absent = database.select(Account).where(database.not_exists(nested))
-    value = database.select(Account.number, database.scalar(nested)).all()
+    value = database.select(Account.number, database.scalar(nested))
     assert_type(await transaction.fetch_all(present), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(absent), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(value), list[tuple[int, int | None]])
 
 async def fk_control(transaction: database.Transaction) -> None:
-    query = database.select(Payment.account).where(Payment.account.in_subquery(database.select(Account.number).all()))
+    query = database.select(Payment.account).where(Payment.account.in_subquery(database.select(Account.number)))
     assert_type(await transaction.fetch_all(query), list[int])

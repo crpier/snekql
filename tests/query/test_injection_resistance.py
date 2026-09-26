@@ -137,7 +137,7 @@ async def injection_payloads_insert_as_literal_data() -> None:
             async with database.transaction() as tx:
                 for payload in _INJECTION_VALUES:
                     _ = await tx.execute(insert(Account(email=payload)))
-                rows = await tx.fetch_all(select(Account).all())
+                rows = await tx.fetch_all(select(Account))
         finally:
             await database.close()
 
@@ -255,7 +255,7 @@ async def update_set_stores_payload_without_touching_schema() -> None:
                 )
 
             async with database.transaction() as tx:
-                rows = await tx.fetch_all(select(Account).all())
+                rows = await tx.fetch_all(select(Account))
         finally:
             await database.close()
 
@@ -275,13 +275,11 @@ async def limit_and_offset_reject_non_integer_operands() -> None:
 
     for bad in ("1; DROP TABLE account", "1 OR 1=1", "-1"):
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().limit(bad)  # ty: ignore[invalid-argument-type]
+            _ = select(Account).limit(bad)  # ty: ignore[invalid-argument-type]
         with assert_raises(QueryConstructionError):
-            _ = select(Account).all().offset(bad)  # ty: ignore[invalid-argument-type]
+            _ = select(Account).offset(bad)  # ty: ignore[invalid-argument-type]
 
     # A legitimate integer limit binds as a placeholder, not inlined text.
-    sql, params = SQLITE_CODEC.compile_select_sql(
-        select(Account).all().limit(5).offset(10)
-    )
+    sql, params = SQLITE_CODEC.compile_select_sql(select(Account).limit(5).offset(10))
     assert_eq(sql.count("?"), 2)
     assert_eq(params, (5, 10))

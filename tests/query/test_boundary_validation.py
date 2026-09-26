@@ -41,19 +41,15 @@ def select_limit_and_offset_reject_invalid_values_at_boundary() -> None:
     # `NonNegativeInt` is plain `int` to the type checker, so a negative literal
     # type-checks; the bound is a runtime-only (loud) check (#203 F12).
     with assert_raises(QueryConstructionError):
-        _ = select(BoundaryUser).all().limit(-1)
+        _ = select(BoundaryUser).limit(-1)
 
     with assert_raises(QueryConstructionError):
-        _ = select(BoundaryUser).all().offset(True)
+        _ = select(BoundaryUser).offset(True)
 
     with assert_raises(QueryConstructionError):
         # We are intentionally calling offset with the wrong type.
-        _ = (
-            select(BoundaryUser)
-            .all()
-            .offset(
-                "1"  # ty: ignore[invalid-argument-type]
-            )
+        _ = select(BoundaryUser).offset(
+            "1"  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -61,7 +57,7 @@ def select_limit_and_offset_reject_invalid_values_at_boundary() -> None:
 def boundary_validation_uses_pydantic_message_with_domain_error() -> None:
     """Boundary validation preserves Pydantic detail on domain exceptions."""
 
-    limit_fn = cast("Callable[[object], object]", select(BoundaryUser).all().limit)
+    limit_fn = cast("Callable[[object], object]", select(BoundaryUser).limit)
 
     with assert_raises(QueryConstructionError) as error:
         _ = limit_fn(True)

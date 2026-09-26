@@ -32,11 +32,7 @@ async def provide_people() -> AsyncGenerator[sqlite.Database]:
 async def named_projection_materializes_declared_result() -> None:
     """Binding order does not change which named field receives a value."""
     database = await load_fixture(provide_people())
-    query = (
-        sqlite.select(Person)
-        .project(PersonSummary, name=Person.name, id=Person.id)
-        .all()
-    )
+    query = sqlite.select(Person).project(PersonSummary, name=Person.name, id=Person.id)
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -57,7 +53,6 @@ async def named_projection_preserves_unmatched_alias_null() -> None:
             on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(2),
         )
         .project(OptionalPersonSummary, id=Person.id, name=peer.column(Person.name))
-        .all()
     )
 
     async with database.transaction() as transaction:
@@ -71,21 +66,17 @@ async def named_projection_preserves_unmatched_alias_null() -> None:
 async def named_projection_fetches_more_than_eight_values() -> None:
     """Wide named rows do not depend on positional overload generation."""
     database = await load_fixture(provide_people())
-    query = (
-        sqlite.select(Person)
-        .project(
-            WidePerson,
-            first=Person.id,
-            second=Person.id,
-            third=Person.id,
-            fourth=Person.id,
-            fifth=Person.id,
-            sixth=Person.id,
-            seventh=Person.id,
-            eighth=Person.id,
-            ninth=Person.id,
-        )
-        .all()
+    query = sqlite.select(Person).project(
+        WidePerson,
+        first=Person.id,
+        second=Person.id,
+        third=Person.id,
+        fourth=Person.id,
+        fifth=Person.id,
+        sixth=Person.id,
+        seventh=Person.id,
+        eighth=Person.id,
+        ninth=Person.id,
     )
 
     async with database.transaction() as transaction:
@@ -116,7 +107,7 @@ async def named_result_constraints_survive_disabled_column_validation() -> None:
     class ShortName(BaseModel):
         name: Annotated[str, MaxLen(2)]
 
-    query = sqlite.select(Person).project(ShortName, name=Person.name).all()
+    query = sqlite.select(Person).project(ShortName, name=Person.name)
 
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
@@ -147,21 +138,17 @@ async def provide_maria_people() -> AsyncGenerator[mariadb.Database]:
 async def mariadb_named_projection_fetches_more_than_eight_values() -> None:
     """Wide named rows do not depend on positional overload generation."""
     database = await load_fixture(provide_maria_people())
-    query = (
-        mariadb.select(MariaPerson)
-        .project(
-            WidePerson,
-            first=MariaPerson.id,
-            second=MariaPerson.id,
-            third=MariaPerson.id,
-            fourth=MariaPerson.id,
-            fifth=MariaPerson.id,
-            sixth=MariaPerson.id,
-            seventh=MariaPerson.id,
-            eighth=MariaPerson.id,
-            ninth=MariaPerson.id,
-        )
-        .all()
+    query = mariadb.select(MariaPerson).project(
+        WidePerson,
+        first=MariaPerson.id,
+        second=MariaPerson.id,
+        third=MariaPerson.id,
+        fourth=MariaPerson.id,
+        fifth=MariaPerson.id,
+        sixth=MariaPerson.id,
+        seventh=MariaPerson.id,
+        eighth=MariaPerson.id,
+        ninth=MariaPerson.id,
     )
 
     async with database.transaction() as transaction:
@@ -199,7 +186,6 @@ async def mariadb_named_projection_preserves_unmatched_alias_null() -> None:
         .project(
             OptionalPersonSummary, id=MariaPerson.id, name=peer.column(MariaPerson.name)
         )
-        .all()
     )
 
     async with database.transaction() as transaction:
@@ -217,7 +203,7 @@ async def named_literal_contract_checks_values_after_decoding() -> None:
     class AdaOnly(BaseModel):
         name: Literal["Ada"]
 
-    query = sqlite.select(Person).project(AdaOnly, name=Person.name).all()
+    query = sqlite.select(Person).project(AdaOnly, name=Person.name)
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(query)
@@ -233,13 +219,9 @@ async def named_scalar_projection_preserves_empty_subquery_null() -> None:
     class OptionalId(BaseModel):
         value: int | None
 
-    query = (
-        sqlite.select(Person)
-        .project(
-            OptionalId,
-            value=sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(2))),
-        )
-        .all()
+    query = sqlite.select(Person).project(
+        OptionalId,
+        value=sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(2))),
     )
 
     async with database.transaction() as transaction:
@@ -262,7 +244,6 @@ async def named_grouped_projection_supports_having() -> None:
         .project(NameCount, name=Person.name, count=Person.id.count())
         .group_by(Person.name)
         .having(Person.id.count().gt(0))
-        .all()
     )
 
     async with database.transaction() as transaction:
@@ -283,7 +264,7 @@ async def named_result_rejects_validator_replacement() -> None:
         def discard(self) -> Self:
             return None  # ty: ignore[invalid-return-type]
 
-    query = sqlite.select(Person).project(Discarded, id=Person.id).all()
+    query = sqlite.select(Person).project(Discarded, id=Person.id)
 
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
@@ -294,11 +275,7 @@ async def named_result_rejects_validator_replacement() -> None:
 async def named_chunks_materialize_contract_instances() -> None:
     """Streaming uses the same named result validation as eager fetches."""
     database = await load_fixture(provide_people())
-    query = (
-        sqlite.select(Person)
-        .project(PersonSummary, id=Person.id, name=Person.name)
-        .all()
-    )
+    query = sqlite.select(Person).project(PersonSummary, id=Person.id, name=Person.name)
 
     async with (
         database.transaction() as transaction,
@@ -323,7 +300,6 @@ async def optional_fetch_distinguishes_named_null_field_from_no_row() -> None:
         sqlite.select(Person)
         .left_join(peer, on=peer.column(Person.id).eq(2))
         .project(MaybeName, name=peer.column(Person.name))
-        .all()
     )
 
     async with database.transaction() as transaction:

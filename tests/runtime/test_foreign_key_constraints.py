@@ -364,9 +364,7 @@ async def sqlite_allows_nullable_partial_keys(key: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Child(first=None, second=999)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(
-                sqlite.select(Child.first, Child.second).all()
-            )
+            rows = await transaction.fetch_all(sqlite.select(Child.first, Child.second))
 
     assert_eq(rows, [(None, 999)])
 
@@ -412,9 +410,7 @@ async def sqlite_cascades_parent_deletion(key: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.delete(Parent).where(Parent.first.eq(1)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(
-                sqlite.select(Child.first, Child.second).all()
-            )
+            rows = await transaction.fetch_all(sqlite.select(Child.first, Child.second))
 
     assert_eq(rows, [])
 
@@ -460,9 +456,7 @@ async def sqlite_nulls_every_local_member(key: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.delete(Parent).where(Parent.first.eq(1)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(
-                sqlite.select(Child.first, Child.second).all()
-            )
+            rows = await transaction.fetch_all(sqlite.select(Child.first, Child.second))
 
     assert_eq(rows, [(None, None)])
 
@@ -512,9 +506,7 @@ async def sqlite_cascades_parent_key_update(key: str) -> None:
                 .where(Parent.first.eq(1))
             )
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(
-                sqlite.select(Child.first, Child.second).all()
-            )
+            rows = await transaction.fetch_all(sqlite.select(Child.first, Child.second))
 
     assert_eq(rows, [(1, 11)])
 
@@ -602,7 +594,7 @@ async def mariadb_allows_nullable_partial_keys(key: str) -> None:
             await transaction.execute(mariadb.insert(Child(first=None, second=999)))
         async with database.transaction() as transaction:
             rows = await transaction.fetch_all(
-                mariadb.select(Child.first, Child.second).all()
+                mariadb.select(Child.first, Child.second)
             )
 
     assert_eq(rows, [(None, 999)])
@@ -649,7 +641,7 @@ async def mariadb_cascades_parent_deletion(key: str) -> None:
             await transaction.execute(mariadb.delete(Parent).where(Parent.first.eq(1)))
         async with database.transaction() as transaction:
             rows = await transaction.fetch_all(
-                mariadb.select(Child.first, Child.second).all()
+                mariadb.select(Child.first, Child.second)
             )
 
     assert_eq(rows, [])
@@ -696,7 +688,7 @@ async def mariadb_nulls_every_local_member(key: str) -> None:
             await transaction.execute(mariadb.delete(Parent).where(Parent.first.eq(1)))
         async with database.transaction() as transaction:
             rows = await transaction.fetch_all(
-                mariadb.select(Child.first, Child.second).all()
+                mariadb.select(Child.first, Child.second)
             )
 
     assert_eq(rows, [(None, None)])
@@ -747,7 +739,7 @@ async def mariadb_cascades_parent_key_update(key: str) -> None:
             )
         async with database.transaction() as transaction:
             rows = await transaction.fetch_all(
-                mariadb.select(Child.first, Child.second).all()
+                mariadb.select(Child.first, Child.second)
             )
 
     assert_eq(rows, [(1, 11)])

@@ -26,7 +26,6 @@ def _shared_layer(
     definition = (
         sqlite.select(left)
         .join(right, on=left.column(token).eq_col(right.column(token)))
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name=f"layer_{depth}")
     )
@@ -63,7 +62,7 @@ def shared_cte_graph_has_bounded_nominal_role_work() -> None:
     for depth in range(14):
         source, token = _shared_layer(source, token, LeftRole, RightRole, depth)
 
-    compiled = sqlite.select(source).all().compile()
+    compiled = sqlite.select(source).compile()
 
     assert_eq(compiled.sql.count(" AS (SELECT "), 15)
     assert_eq(compiled.params, (1,))

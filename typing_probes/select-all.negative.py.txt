@@ -1,0 +1,3 @@
+
+
+database.select(Entry).all()  # expect-error

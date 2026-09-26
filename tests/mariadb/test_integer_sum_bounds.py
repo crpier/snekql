@@ -38,7 +38,7 @@ async def sum_bound_exceeds_bigint(sign: int, kind: str) -> None:
             "between": total.between(bound - 1, bound + 1),
             "in": total.in_(0, bound),
         }[kind]
-        query = mariadb.select(total).all().having(predicate)
+        query = mariadb.select(total).having(predicate)
         assert_in(bound if kind != "between" else bound - 1, query.compile().params)
         async with database.transaction() as tx:
             rows = await tx.fetch_all(query)
@@ -67,10 +67,8 @@ async def sum_bound_retains_integer_serializer() -> None:
         async with database.transaction() as setup:
             await setup.execute(mariadb.insert(Quantity(amount=2**61 + 1)))
             await setup.execute(mariadb.insert(Quantity(amount=2**61 + 1)))
-        query = (
-            mariadb.select(Quantity.amount.sum())
-            .all()
-            .having(Quantity.amount.sum().eq(2**62 + 2))
+        query = mariadb.select(Quantity.amount.sum()).having(
+            Quantity.amount.sum().eq(2**62 + 2)
         )
         assert_eq(query.compile().params, (9223372036854775812,))
         async with database.transaction() as tx:
@@ -112,11 +110,7 @@ def sqlite_sum_bound_keeps_driver_limit() -> None:
         __row_type__: ClassVar[sqlite.ReadType[Quantity[sqlite.Row]]]
         amount: Quantity.Col[int] = sqlite.Integer(nullable=False)
 
-    query = (
-        sqlite.select(Quantity.amount.sum())
-        .all()
-        .having(Quantity.amount.sum().eq(2**63))
-    )
+    query = sqlite.select(Quantity.amount.sum()).having(Quantity.amount.sum().eq(2**63))
     with assert_raises(ModelValidationError):
         query.compile()
 
@@ -133,4 +127,4 @@ def ordinary_integer_comparisons_keep_bigint_limit() -> None:
         mariadb.select(Quantity.amount).where(Quantity.amount.eq(2**63)).compile()
     for operand in (Quantity.amount.min(), Quantity.amount.max()):
         with assert_raises(ModelValidationError):
-            mariadb.select(operand).all().having(operand.eq(2**63)).compile()
+            mariadb.select(operand).having(operand.eq(2**63)).compile()

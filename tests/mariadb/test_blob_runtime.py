@@ -31,7 +31,7 @@ async def mariadb_blob_storage_round_trips_bytes() -> None:
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(BinaryRecord(id=1, payload=b"\x00snek\xff")))
-            fetched = await tx.fetch_one(select(BinaryRecord.payload).all())
+            fetched = await tx.fetch_one(select(BinaryRecord.payload))
     finally:
         await database.close()
 
@@ -65,7 +65,7 @@ async def mariadb_blob_storage_round_trips_payload_variants() -> None:
             for index, payload in enumerate(payloads, start=1):
                 await tx.execute(insert(BinaryRecord(id=index, payload=payload)))
             fetched = await tx.fetch_all(
-                select(BinaryRecord.payload).all().order_by(BinaryRecord.id.asc())
+                select(BinaryRecord.payload).order_by(BinaryRecord.id.asc())
             )
     finally:
         await database.close()
@@ -101,9 +101,9 @@ async def mariadb_nullable_blob_storage_round_trips_null() -> None:
             await tx.execute(insert(OptionalBinaryRecord(id=1)))
             await tx.execute(insert(OptionalBinaryRecord(id=2, payload=b"present")))
             fetched = await tx.fetch_all(
-                select(OptionalBinaryRecord.payload)
-                .all()
-                .order_by(OptionalBinaryRecord.id.asc())
+                select(OptionalBinaryRecord.payload).order_by(
+                    OptionalBinaryRecord.id.asc()
+                )
             )
     finally:
         await database.close()

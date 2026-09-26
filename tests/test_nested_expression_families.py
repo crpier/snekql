@@ -122,12 +122,12 @@ from tests.test_typing_compatibility import provide_probe_checkout
             ),
             (
                 "having",
-                "database.select(Account.number.count()).all().having(foreign.exists(remote))",
+                "database.select(Account.number.count()).having(foreign.exists(remote))",
                 "invalid-argument-type",
             ),
             (
                 "join",
-                "database.select(Account).join(Invoice, on=foreign.exists(remote)).all()",
+                "database.select(Account).join(Invoice, on=foreign.exists(remote))",
                 "no-matching-overload",
             ),
             (
@@ -147,17 +147,17 @@ from tests.test_typing_compatibility import provide_probe_checkout
             ),
             (
                 "named-scalar",
-                "database.select(Account).all().project(Result, number=foreign.scalar(remote))",
+                "database.select(Account).project(Result, number=foreign.scalar(remote))",
                 "invalid-argument-type",
             ),
             (
                 "named-label",
-                "database.select(Account).all().project(Result, number=foreign.scalar(remote).label('number'))",
+                "database.select(Account).project(Result, number=foreign.scalar(remote).label('number'))",
                 "invalid-argument-type",
             ),
             (
                 "named-literal",
-                "database.select(Account).all().project(Result, number=foreign.literal(1).label('number'))",
+                "database.select(Account).project(Result, number=foreign.literal(1).label('number'))",
                 "invalid-argument-type",
             ),
             *(

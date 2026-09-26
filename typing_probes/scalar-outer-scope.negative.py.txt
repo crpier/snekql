@@ -1,5 +1,6 @@
 
 
 async def invalid(transaction: database.Transaction) -> None:
-    amount = database.scalar(database.select(Invoice.number).all().limit(1))
-    await transaction.fetch_all(database.select(Account.number, amount, Other.text).all())  # expect-error
+    amount = database.scalar(database.select(Invoice.number).limit(1))
+    query = database.select(Account.number, amount, Other.text)
+    await transaction.fetch_all(query)  # expect-error

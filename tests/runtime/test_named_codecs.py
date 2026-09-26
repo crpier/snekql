@@ -58,10 +58,8 @@ async def provide_sqlite_documents() -> AsyncGenerator[sqlite.Database]:
 async def sqlite_named_results_retain_logical_codecs() -> None:
     """Contract validation follows column decoding rather than replacing it."""
     database = await load_fixture(provide_sqlite_documents())
-    query = (
-        sqlite.select(LocalDocument)
-        .project(DocumentResult, values=LocalDocument.payload, key=LocalDocument.id)
-        .all()
+    query = sqlite.select(LocalDocument).project(
+        DocumentResult, values=LocalDocument.payload, key=LocalDocument.id
     )
 
     async with database.transaction() as transaction:
@@ -103,10 +101,8 @@ async def provide_mariadb_documents() -> AsyncGenerator[mariadb.Database]:
 async def mariadb_named_results_retain_logical_codecs() -> None:
     """Contract validation follows column decoding rather than replacing it."""
     database = await load_fixture(provide_mariadb_documents())
-    query = (
-        mariadb.select(MariaDocument)
-        .project(DocumentResult, values=MariaDocument.payload, key=MariaDocument.id)
-        .all()
+    query = mariadb.select(MariaDocument).project(
+        DocumentResult, values=MariaDocument.payload, key=MariaDocument.id
     )
 
     async with database.transaction() as transaction:
@@ -135,10 +131,8 @@ async def mariadb_named_returning_retains_logical_codecs() -> None:
 async def named_projection_accepts_dialect_expression() -> None:
     """A backend expression keeps its decoder and ordered parameter bindings."""
     database = await load_fixture(provide_mariadb_documents())
-    query = (
-        mariadb.select(MariaDocument)
-        .project(FirstValue, value=MariaDocument.payload.json_extract_int("$[0]"))
-        .all()
+    query = mariadb.select(MariaDocument).project(
+        FirstValue, value=MariaDocument.payload.json_extract_int("$[0]")
     )
 
     async with database.transaction() as transaction:
@@ -159,10 +153,8 @@ async def named_contract_supports_parameterized_type_aliases() -> None:
     class AliasedResult(BaseModel):
         values: Values[int]
 
-    query = (
-        sqlite.select(LocalDocument)
-        .project(AliasedResult, values=LocalDocument.payload)
-        .all()
+    query = sqlite.select(LocalDocument).project(
+        AliasedResult, values=LocalDocument.payload
     )
 
     async with database.transaction() as transaction:
@@ -179,10 +171,8 @@ async def opaque_expression_still_checks_named_result_type() -> None:
     class TextResult(BaseModel):
         value: str
 
-    query = (
-        mariadb.select(MariaDocument)
-        .project(TextResult, value=MariaDocument.payload.json_extract_int("$[0]"))
-        .all()
+    query = mariadb.select(MariaDocument).project(
+        TextResult, value=MariaDocument.payload.json_extract_int("$[0]")
     )
 
     async with database.transaction() as transaction:

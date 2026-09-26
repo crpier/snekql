@@ -23,14 +23,10 @@ from tests.runtime.test_named_projection import provide_people
 async def sqlite_labeled_columns_keep_logical_codecs() -> None:
     """A token does not replace UUID/JSON decoding with wire-value validation."""
     database = await load_fixture(provide_sqlite_documents())
-    query = (
-        sqlite.select(LocalDocument)
-        .all()
-        .project(
-            DocumentResult,
-            key=LocalDocument.id.label("key"),
-            values=LocalDocument.payload.label("values"),
-        )
+    query = sqlite.select(LocalDocument).project(
+        DocumentResult,
+        key=LocalDocument.id.label("key"),
+        values=LocalDocument.payload.label("values"),
     )
 
     async with database.transaction() as transaction:
@@ -44,14 +40,10 @@ async def sqlite_labeled_columns_keep_logical_codecs() -> None:
 async def mariadb_labeled_columns_keep_logical_codecs() -> None:
     """Native logical values still decode before the named contract validates."""
     database = await load_fixture(provide_mariadb_documents())
-    query = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(
-            DocumentResult,
-            key=MariaDocument.id.label("key"),
-            values=MariaDocument.payload.label("values"),
-        )
+    query = mariadb.select(MariaDocument).project(
+        DocumentResult,
+        key=MariaDocument.id.label("key"),
+        values=MariaDocument.payload.label("values"),
     )
 
     async with database.transaction() as transaction:
@@ -75,7 +67,7 @@ async def labeled_computation_validates_final_values_once() -> None:
             return value - 3
 
     increment = Person.id.add(4).label("increment")
-    query = sqlite.select(Person).all().project(Computed, increment=increment)
+    query = sqlite.select(Person).project(Computed, increment=increment)
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(query)
@@ -95,7 +87,7 @@ async def labeled_empty_scalar_materializes_null() -> None:
     absent = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(-1))).label(
         "absent"
     )
-    query = sqlite.select(Person).all().project(ScalarResult, absent=absent)
+    query = sqlite.select(Person).project(ScalarResult, absent=absent)
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(query)
@@ -139,14 +131,10 @@ async def labeled_native_json_retains_decoding_and_nulls() -> None:
         present: int | None
         missing: int | None
 
-    query = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(
-            Values,
-            present=MariaDocument.payload.json_extract_int("$[0]").label("present"),
-            missing=MariaDocument.payload.json_extract_int("$[9]").label("missing"),
-        )
+    query = mariadb.select(MariaDocument).project(
+        Values,
+        present=MariaDocument.payload.json_extract_int("$[0]").label("present"),
+        missing=MariaDocument.payload.json_extract_int("$[9]").label("missing"),
     )
 
     async with database.transaction() as transaction:
@@ -164,13 +152,9 @@ async def labeled_native_json_cannot_bypass_final_validation() -> None:
     class WrongResult(BaseModel):
         value: str
 
-    query = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(
-            WrongResult,
-            value=MariaDocument.payload.json_extract_int("$[0]").label("value"),
-        )
+    query = mariadb.select(MariaDocument).project(
+        WrongResult,
+        value=MariaDocument.payload.json_extract_int("$[0]").label("value"),
     )
 
     async with database.transaction() as transaction:
@@ -197,7 +181,6 @@ async def labeled_left_join_computation_preserves_null() -> None:
             on=Person.id.eq_col(missing.column(Person.id))
             & missing.column(Person.id).eq(-1),
         )
-        .all()
         .project(
             OptionalIncrement,
             increment=missing.column(Person.id).add(1).label("increment"),
@@ -230,7 +213,6 @@ async def labeled_coalesce_handles_an_absent_join_before_decoding() -> None:
             on=Person.id.eq_col(missing.column(Person.id))
             & missing.column(Person.id).eq(-1),
         )
-        .all()
         .project(
             Increment,
             increment=missing.column(Person.id).coalesce(0).add(1).label("increment"),
@@ -263,7 +245,6 @@ async def labeled_case_keeps_literal_branches_nonnullable() -> None:
             on=Person.id.eq_col(missing.column(Person.id))
             & missing.column(Person.id).eq(-1),
         )
-        .all()
         .project(Increment, increment=expression.label("increment"))
     )
 
@@ -292,7 +273,6 @@ async def mariadb_labeled_left_join_computation_preserves_null() -> None:
             on=MariaInventory.id.eq_col(missing.column(MariaInventory.id))
             & missing.column(MariaInventory.id).eq(-1),
         )
-        .all()
         .project(
             OptionalIncrement,
             increment=missing.column(MariaInventory.quantity).add(1).label("increment"),

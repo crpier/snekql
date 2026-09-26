@@ -31,9 +31,9 @@ async def sum_bound_can_exceed_input_precision() -> None:
             await setup.execute(mariadb.insert(Price(amount=Decimal(600))))
         async with database.transaction() as tx:
             rows = await tx.fetch_all(
-                mariadb.select(Price.amount.sum())
-                .all()
-                .having(Price.amount.sum().gt(Decimal(1000)))
+                mariadb.select(Price.amount.sum()).having(
+                    Price.amount.sum().gt(Decimal(1000))
+                )
             )
 
     assert_eq(rows, [Decimal(1200)])
@@ -55,7 +55,7 @@ async def negative_totals_support_comparisons_ranges_and_membership() -> None:
             total.in_(Decimal(2000), Decimal(-1200)),
         ):
             async with database.transaction() as tx:
-                rows = await tx.fetch_all(mariadb.select(total).all().having(predicate))
+                rows = await tx.fetch_all(mariadb.select(total).having(predicate))
             assert_eq(rows, [Decimal(-1200)])
 
 
@@ -69,11 +69,7 @@ async def sum_bounds_preserve_exact_digits_under_small_decimal_context() -> None
             await setup.execute(mariadb.insert(Price(amount=Decimal(600))))
             await setup.execute(mariadb.insert(Price(amount=Decimal(600))))
         bound = Decimal("1200.0000000000000000000000000001")
-        query = (
-            mariadb.select(Price.amount.sum())
-            .all()
-            .having(Price.amount.sum().lt(bound))
-        )
+        query = mariadb.select(Price.amount.sum()).having(Price.amount.sum().lt(bound))
         with localcontext() as context:
             context.prec = 6
             context.traps[Inexact] = True
@@ -95,10 +91,8 @@ async def sum_bounds_preserve_exact_digits_under_small_decimal_context() -> None
 def sum_bounds_reject_nonfinite_decimals(value: str) -> None:
     """Widening the result domain does not admit non-finite driver parameters."""
 
-    query = (
-        mariadb.select(Price.amount.sum())
-        .all()
-        .having(Price.amount.sum().eq(Decimal(value)))
+    query = mariadb.select(Price.amount.sum()).having(
+        Price.amount.sum().eq(Decimal(value))
     )
     with assert_raises(ModelValidationError):
         query.compile()
@@ -128,7 +122,7 @@ async def oversized_individual_writes_still_fail(
                     await tx.execute(mariadb.insert(Price(amount=Decimal(1000))))
 
         async with database.transaction() as tx:
-            rows = await tx.fetch_all(mariadb.select(Price.amount).all())
+            rows = await tx.fetch_all(mariadb.select(Price.amount))
 
     assert_eq(rows, [Decimal(600)])
 
@@ -140,6 +134,6 @@ def scalar_minimum_and_maximum_keep_the_column_codec() -> None:
     with assert_raises(ModelValidationError):
         mariadb.select(Price.amount).where(Price.amount.gt(Decimal(1000))).compile()
     for operand in (Price.amount.min(), Price.amount.max()):
-        query = mariadb.select(operand).all().having(operand.gt(Decimal(1000)))
+        query = mariadb.select(operand).having(operand.gt(Decimal(1000)))
         with assert_raises(ModelValidationError):
             query.compile()

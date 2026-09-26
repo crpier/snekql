@@ -79,9 +79,9 @@ async def _provide_execution_case(
                 )
             yield _ExecutionCase(
                 database=database,
-                many=mariadb.select(_MariaDBEntry.id, _MariaDBEntry.label)
-                .all()
-                .order_by(_MariaDBEntry.id.asc()),
+                many=mariadb.select(_MariaDBEntry.id, _MariaDBEntry.label).order_by(
+                    _MariaDBEntry.id.asc()
+                ),
                 one=mariadb.select(_MariaDBEntry.id, _MariaDBEntry.label).where(
                     _MariaDBEntry.id.eq(1)
                 ),
@@ -106,9 +106,9 @@ async def _provide_execution_case(
                 )
             yield _ExecutionCase(
                 database=database,
-                many=sqlite.select(_SQLiteEntry.id, _SQLiteEntry.label)
-                .all()
-                .order_by(_SQLiteEntry.id.asc()),
+                many=sqlite.select(_SQLiteEntry.id, _SQLiteEntry.label).order_by(
+                    _SQLiteEntry.id.asc()
+                ),
                 one=sqlite.select(_SQLiteEntry.id, _SQLiteEntry.label).where(
                     _SQLiteEntry.id.eq(1)
                 ),

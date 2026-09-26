@@ -29,30 +29,26 @@ if TYPE_CHECKING:
     native_id = Native.id.label("id")
     local = (
         sqlite.select(Local)
-        .all()
         .project(Result, id=local_id)
         .cte(LocalRole, name="local_rows")
     )
     native = (
         mariadb.select(Native)
-        .all()
         .project(Result, id=native_id)
         .cte(NativeRole, name="native_rows")
     )
-    local_query: sqlite.ClosedRead[Result] = sqlite.ready(sqlite.select(local).all())
-    native_query: mariadb.ClosedRead[Result] = mariadb.ready(
-        mariadb.select(native).all()
-    )
+    local_query: sqlite.ClosedRead[Result] = sqlite.ready(sqlite.select(local))
+    native_query: mariadb.ClosedRead[Result] = mariadb.ready(mariadb.select(native))
 
     async def consume_local(transaction: sqlite.Transaction) -> None:
         """Named rows, optional fetches and scalar tokens retain their types."""
         assert_type(await transaction.fetch_all(local_query), list[Result])
         assert_type(
-            await transaction.fetch_one_or_none(sqlite.select(local).all()),
+            await transaction.fetch_one_or_none(sqlite.select(local)),
             Result | None,
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(local.column(local_id)).all()),
+            await transaction.fetch_all(sqlite.select(local.column(local_id))),
             list[int],
         )
         async with transaction.fetch_chunks(local_query, size=2) as chunks:
@@ -62,11 +58,11 @@ if TYPE_CHECKING:
         """The same contract holds without erasing the native backend coordinate."""
         assert_type(await transaction.fetch_all(native_query), list[Result])
         assert_type(
-            await transaction.fetch_one_or_none(mariadb.select(native).all()),
+            await transaction.fetch_one_or_none(mariadb.select(native)),
             Result | None,
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(native.column(native_id)).all()),
+            await transaction.fetch_all(mariadb.select(native.column(native_id))),
             list[int],
         )
         async with transaction.fetch_chunks(native_query, size=2) as chunks:
@@ -112,30 +108,29 @@ if TYPE_CHECKING:
             .cte(LocalRole, name="conditional")
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(conditional.column(token)).all()),
+            await transaction.fetch_all(sqlite.select(conditional.column(token))),
             list[int | None],
         )
         conditional.column(token).eq("wrong")  # ty: ignore[invalid-argument-type]
         reference = sqlite.alias(conditional, ExtraRole, name="reference")
         assert_type(
-            await transaction.fetch_all(sqlite.select(reference.column(token)).all()),
+            await transaction.fetch_all(sqlite.select(reference.column(token))),
             list[int | None],
         )
         count = peer.column(Local.id).count().label("id")
-        counted = joined.all().project(Result, id=count).cte(LocalRole, name="counted")
+        counted = joined.project(Result, id=count).cte(LocalRole, name="counted")
         assert_type(
-            await transaction.fetch_all(sqlite.select(counted.column(count)).all()),
+            await transaction.fetch_all(sqlite.select(counted.column(count))),
             list[int],
         )
         extra_id = extra.column(Local.id).label("id")
         mixed = (
             joined.join(extra, on=Local.id.eq_col(extra.column(Local.id)))
-            .all()
             .project(Result, id=extra_id)
             .cte(LocalRole, name="mixed")
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(mixed.column(extra_id)).all()),
+            await transaction.fetch_all(sqlite.select(mixed.column(extra_id))),
             list[int],
         )
 
@@ -156,32 +151,29 @@ if TYPE_CHECKING:
             .cte(NativeRole, name="conditional")
         )
         assert_type(
-            await transaction.fetch_all(
-                mariadb.select(conditional.column(token)).all()
-            ),
+            await transaction.fetch_all(mariadb.select(conditional.column(token))),
             list[int | None],
         )
         conditional.column(token).eq("wrong")  # ty: ignore[invalid-argument-type]
         reference = mariadb.alias(conditional, ExtraRole, name="reference")
         assert_type(
-            await transaction.fetch_all(mariadb.select(reference.column(token)).all()),
+            await transaction.fetch_all(mariadb.select(reference.column(token))),
             list[int | None],
         )
         count = peer.column(Native.id).count().label("id")
-        counted = joined.all().project(Result, id=count).cte(NativeRole, name="counted")
+        counted = joined.project(Result, id=count).cte(NativeRole, name="counted")
         assert_type(
-            await transaction.fetch_all(mariadb.select(counted.column(count)).all()),
+            await transaction.fetch_all(mariadb.select(counted.column(count))),
             list[int],
         )
         extra_id = extra.column(Native.id).label("id")
         mixed = (
             joined.join(extra, on=Native.id.eq_col(extra.column(Native.id)))
-            .all()
             .project(Result, id=extra_id)
             .cte(NativeRole, name="mixed")
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(mixed.column(extra_id)).all()),
+            await transaction.fetch_all(mariadb.select(mixed.column(extra_id))),
             list[int],
         )
 

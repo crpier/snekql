@@ -62,7 +62,7 @@ async def mariadb_bulk_insert_persists_every_row() -> None:
 
     database = await load_fixture(database_session([_BulkUser]))
     async with database.transaction() as tx:
-        before = await tx.fetch_one(select(_BulkUser.id.count()).all())
+        before = await tx.fetch_one(select(_BulkUser.id.count()))
         result = await tx.execute(
             insert_many(
                 _BulkUser,
@@ -74,7 +74,7 @@ async def mariadb_bulk_insert_persists_every_row() -> None:
             )
         )
         stored = await tx.execute(insert(_BulkUser(email="d@example.com")))
-        after = await tx.fetch_one(select(_BulkUser.id.count()).all())
+        after = await tx.fetch_one(select(_BulkUser.id.count()))
 
     assert_is_none(result)
     assert_is_none(stored)
@@ -178,10 +178,10 @@ async def mariadb_empty_bulk_insert_is_a_no_op() -> None:
     database = await load_fixture(database_session([_BulkUser]))
     async with database.transaction() as tx:
         no_rows: list[_BulkUser[Pending]] = []
-        before = await tx.fetch_one(select(_BulkUser.id.count()).all())
+        before = await tx.fetch_one(select(_BulkUser.id.count()))
         result = await tx.execute(insert_many(_BulkUser, no_rows))
         returning = await tx.execute(insert_many(_BulkUser, no_rows).returning())
-        after = await tx.fetch_one(select(_BulkUser.id.count()).all())
+        after = await tx.fetch_one(select(_BulkUser.id.count()))
 
     assert_is_none(result)
     assert_eq(returning, [])

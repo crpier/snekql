@@ -156,7 +156,7 @@ foreign keys, Scaffold, Database verification, and Execution Plans.
 
 SELECT queries are executable immediately. Filters, ordering, limits, joins,
 projections, grouping, and HAVING refine the query without an acknowledgment.
-SELECT `.all()` remains a compatibility no-op, including before or after filters.
+SELECT has no `.all()` method. Delete that call when migrating older reads.
 
 Query Readiness still protects mutations: `delete(...)` needs `.all()` or
 `.where(...)`; `update(...)` needs both assignments and row scope, in either order.
@@ -1515,8 +1515,7 @@ after model joins. This replaces positional projection overloads with one
 result-type parameter, so nine or more fields retain the full named result type.
 
 Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for read
-helpers. Named projections, grouping, and HAVING need no `.all()` or `.where(...)`
-acknowledgment. Query backend identity survives the result contract, which itself
+helpers. Named projections, grouping, and HAVING need no scope acknowledgment. Query backend identity survives the result contract, which itself
 is reusable across backends.
 
 `.returning_as(Result, **bindings)` preserves write cardinality and readiness:

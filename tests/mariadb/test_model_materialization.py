@@ -90,7 +90,7 @@ def mariadb_select_materialization_asserts_database_row_shape() -> None:
 
         email: User.Col[str] = mariadb.Text(nullable=False)
 
-    query = select(User.email).all()
+    query = select(User.email)
 
     with assert_raises(AssertionError):
         _ = MARIADB_CODEC.materialize_select_row(query, ())
@@ -117,9 +117,9 @@ def mariadb_min_max_decode_to_logical_type() -> None:
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
 
     earliest = MARIADB_CODEC.materialize_select_row(
-        select(Event.happened_at.min()).all(), ("2026-01-02 03:04:05.678",)
+        select(Event.happened_at.min()), ("2026-01-02 03:04:05.678",)
     )
-    flag = MARIADB_CODEC.materialize_select_row(select(Event.enabled.max()).all(), (1,))
+    flag = MARIADB_CODEC.materialize_select_row(select(Event.enabled.max()), (1,))
 
     assert_eq(earliest, datetime(2026, 1, 2, 3, 4, 5, 678000, tzinfo=UTC))
     assert_eq(flag, True)

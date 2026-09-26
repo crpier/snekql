@@ -90,7 +90,7 @@ class User[S = sqlite.Pending](sqlite.Model[S]):
     __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: User.Col[int] = sqlite.Integer(primary_key=True)
 
-query: sqlite.ClosedRead[User[sqlite.Row]] = sqlite.ready(sqlite.select(User).all())
+query: sqlite.ClosedRead[User[sqlite.Row]] = sqlite.ready(sqlite.select(User))
 """
         )
         _run(str(python), "-I", str(runtime_smoke), cwd=directory)

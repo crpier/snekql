@@ -68,6 +68,7 @@ _CASES = (
     "source-delete",
     "source-alias",
     "readiness",
+    "select-all",
     "backend-identity",
     "positional-width",
     "named-result",

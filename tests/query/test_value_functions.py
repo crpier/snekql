@@ -20,7 +20,7 @@ class Profile[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def coalesce_binds_its_fallback() -> None:
     """The fallback remains a bound value rather than SQL text."""
-    compiled = sqlite.select(Profile.nickname.coalesce("anonymous")).all().compile()
+    compiled = sqlite.select(Profile.nickname.coalesce("anonymous")).compile()
 
     assert_eq(compiled.sql, 'SELECT COALESCE("nickname", ?) FROM "profile"')
     assert_eq(compiled.params, ("anonymous",))
@@ -29,9 +29,7 @@ def coalesce_binds_its_fallback() -> None:
 @test(mark="fast")
 def text_functions_compose_with_arithmetic() -> None:
     """Character count has an integer domain even when its input is text."""
-    compiled = (
-        sqlite.select(Profile.nickname.lower().char_length().add(1)).all().compile()
-    )
+    compiled = sqlite.select(Profile.nickname.lower().char_length().add(1)).compile()
 
     assert_eq(compiled.sql, 'SELECT (LENGTH(LOWER("nickname")) + ?) FROM "profile"')
     assert_eq(compiled.params, (1,))
@@ -94,7 +92,7 @@ def text_function_preserves_alias_owner() -> None:
         """Nominal display role."""
 
     profile = sqlite.alias(Profile, Role, name="display_profile")
-    compiled = sqlite.select(profile.column(Profile.nickname).lower()).all().compile()
+    compiled = sqlite.select(profile.column(Profile.nickname).lower()).compile()
 
     assert_eq(
         compiled.sql, 'SELECT LOWER("nickname") FROM "profile" AS "display_profile"'
@@ -106,28 +104,24 @@ if TYPE_CHECKING:
     async def check_function_result_types(transaction: sqlite.Transaction) -> None:
         """Both fallback and input nullability affect the inferred result."""
         assert_type(
+            await transaction.fetch_all(sqlite.select(Profile.nickname.coalesce(None))),
+            list[str | None],
+        )
+        assert_type(
             await transaction.fetch_all(
-                sqlite.select(Profile.nickname.coalesce(None)).all()
+                sqlite.select(Profile.nickname.coalesce(Profile.nickname))
             ),
             list[str | None],
         )
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(Profile.nickname.coalesce(Profile.nickname)).all()
-            ),
-            list[str | None],
-        )
-        assert_type(
-            await transaction.fetch_all(
-                sqlite.select(
-                    Profile.nickname.coalesce("fallback").coalesce(None)
-                ).all()
+                sqlite.select(Profile.nickname.coalesce("fallback").coalesce(None))
             ),
             list[str],
         )
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(Profile.nickname.coalesce("fallback").char_length()).all()
+                sqlite.select(Profile.nickname.coalesce("fallback").char_length())
             ),
             list[int],
         )
@@ -138,7 +132,7 @@ if TYPE_CHECKING:
 @test(mark="fast")
 def grouped_projection_rejects_ungrouped_expression_inputs() -> None:
     """A function must not bypass grouping rules for its source column."""
-    query = sqlite.select(Profile.id.count(), Profile.nickname.lower()).all()
+    query = sqlite.select(Profile.id.count(), Profile.nickname.lower())
 
     with assert_raises(sqlite.QueryCompilationError):
         query.compile()

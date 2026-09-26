@@ -30,7 +30,6 @@ def named_projection_compiles_field_labels() -> None:
     compiled = (
         sqlite.select(Person)
         .project(PersonSummary, name=Person.name, id=Person.id)
-        .all()
         .compile()
     )
 
@@ -106,9 +105,7 @@ if TYPE_CHECKING:
     def person_summary_query() -> sqlite.ClosedRead[PersonSummary]:
         """Completed named queries retain the existing result-oriented annotation."""
         return sqlite.ready(
-            sqlite.select(Person)
-            .project(PersonSummary, id=Person.id, name=Person.name)
-            .all()
+            sqlite.select(Person).project(PersonSummary, id=Person.id, name=Person.name)
         )
 
     async def check_named_readiness(transaction: sqlite.Transaction) -> None:
@@ -153,9 +150,7 @@ def named_projection_accepts_result_type_aliases() -> None:
     class AliasedSummary(BaseModel):
         name: DisplayName
 
-    compiled = (
-        sqlite.select(Person).project(AliasedSummary, name=Person.name).all().compile()
-    )
+    compiled = sqlite.select(Person).project(AliasedSummary, name=Person.name).compile()
 
     assert_eq(compiled.sql, 'SELECT "name" AS "name" FROM "person"')
 
@@ -174,7 +169,7 @@ def named_scalar_projection_rejects_another_backend() -> None:
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.select(Person).project(
             MaybeId,
-            id=mariadb.scalar(mariadb.select(ForeignPerson.id).all()),  # ty: ignore[invalid-argument-type]
+            id=mariadb.scalar(mariadb.select(ForeignPerson.id)),  # ty: ignore[invalid-argument-type]
         )
 
 
@@ -185,7 +180,7 @@ def named_row_is_not_a_scalar_subquery_contract() -> None:
     class OnlyId(BaseModel):
         id: int
 
-    query = sqlite.select(Person).project(OnlyId, id=Person.id).all()
+    query = sqlite.select(Person).project(OnlyId, id=Person.id)
 
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.scalar(query)  # ty: ignore[invalid-argument-type]

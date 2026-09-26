@@ -48,10 +48,8 @@ async def provide_sqlite_profiles() -> AsyncGenerator[sqlite.Database]:
 async def sqlite_coalesce_removes_nullability() -> None:
     """A non-null fallback gives every row a string result."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(Profile.nickname.coalesce("anonymous").lower())
-        .all()
-        .order_by(Profile.id.asc())
+    query = sqlite.select(Profile.nickname.coalesce("anonymous").lower()).order_by(
+        Profile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -65,9 +63,7 @@ async def sqlite_coalesce_removes_nullability() -> None:
 async def sqlite_character_length_counts_characters() -> None:
     """Multibyte characters count once; missing text remains NULL."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(Profile.nickname.char_length()).all().order_by(Profile.id.asc())
-    )
+    query = sqlite.select(Profile.nickname.char_length()).order_by(Profile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -90,7 +86,7 @@ async def sqlite_text_assignment_evaluates_in_database() -> None:
         await transaction.execute(query)
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(Profile.nickname).all().order_by(Profile.id.asc())
+            sqlite.select(Profile.nickname).order_by(Profile.id.asc())
         )
 
     assert_eq(rows, ["anonymous", "ada", "é界"])
@@ -120,11 +116,9 @@ async def provide_mariadb_profiles() -> AsyncGenerator[mariadb.Database]:
 async def mariadb_coalesce_removes_nullability() -> None:
     """A non-null fallback gives every row a string result."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(MariaProfile.nickname.coalesce("anonymous").lower())
-        .all()
-        .order_by(MariaProfile.id.asc())
-    )
+    query = mariadb.select(
+        MariaProfile.nickname.coalesce("anonymous").lower()
+    ).order_by(MariaProfile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -137,10 +131,8 @@ async def mariadb_coalesce_removes_nullability() -> None:
 async def mariadb_character_length_counts_characters() -> None:
     """Multibyte characters count once; missing text remains NULL."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(MariaProfile.nickname.char_length())
-        .all()
-        .order_by(MariaProfile.id.asc())
+    query = mariadb.select(MariaProfile.nickname.char_length()).order_by(
+        MariaProfile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -168,7 +160,7 @@ async def mariadb_text_assignment_evaluates_in_database() -> None:
         await transaction.execute(query)
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(MariaProfile.nickname).all().order_by(MariaProfile.id.asc())
+            mariadb.select(MariaProfile.nickname).order_by(MariaProfile.id.asc())
         )
 
     assert_eq(rows, ["anonymous", "ada", "é界"])
@@ -178,10 +170,8 @@ async def mariadb_text_assignment_evaluates_in_database() -> None:
 async def sqlite_floating_coalesce_normalizes_integer_fallback() -> None:
     """A float result must stay a float even when the bound fallback is an int."""
     database = await load_fixture(provide_sqlite_numeric_values())
-    query = (
-        sqlite.select(NumericValues.optional_real.coalesce(1))
-        .all()
-        .order_by(NumericValues.id.asc())
+    query = sqlite.select(NumericValues.optional_real.coalesce(1)).order_by(
+        NumericValues.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -195,10 +185,8 @@ async def sqlite_floating_coalesce_normalizes_integer_fallback() -> None:
 async def mariadb_floating_coalesce_normalizes_integer_fallback() -> None:
     """A float result must stay a float even when the bound fallback is an int."""
     database = await load_fixture(provide_mariadb_numeric_values())
-    query = (
-        mariadb.select(MariaNumericValues.optional_real.coalesce(1))
-        .all()
-        .order_by(MariaNumericValues.id.asc())
+    query = mariadb.select(MariaNumericValues.optional_real.coalesce(1)).order_by(
+        MariaNumericValues.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -212,9 +200,7 @@ async def mariadb_floating_coalesce_normalizes_integer_fallback() -> None:
 async def sqlite_nullable_fallback_preserves_missing_values() -> None:
     """COALESCE with only nullable operands may still produce SQL NULL."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(Profile.nickname.coalesce(None)).all().order_by(Profile.id.asc())
-    )
+    query = sqlite.select(Profile.nickname.coalesce(None)).order_by(Profile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -227,10 +213,8 @@ async def sqlite_nullable_fallback_preserves_missing_values() -> None:
 async def sqlite_function_results_compose_with_numeric_operations() -> None:
     """A non-null integer fallback can feed further numeric operations."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(Profile.nickname.char_length().coalesce(0).mul(2))
-        .all()
-        .order_by(Profile.id.asc())
+    query = sqlite.select(Profile.nickname.char_length().coalesce(0).mul(2)).order_by(
+        Profile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -244,10 +228,8 @@ async def sqlite_function_results_compose_with_numeric_operations() -> None:
 async def mariadb_nullable_fallback_preserves_missing_values() -> None:
     """COALESCE with only nullable operands may still produce SQL NULL."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(MariaProfile.nickname.coalesce(None))
-        .all()
-        .order_by(MariaProfile.id.asc())
+    query = mariadb.select(MariaProfile.nickname.coalesce(None)).order_by(
+        MariaProfile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -261,11 +243,9 @@ async def mariadb_nullable_fallback_preserves_missing_values() -> None:
 async def mariadb_function_results_compose_with_numeric_operations() -> None:
     """A non-null integer fallback can feed further numeric operations."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(MariaProfile.nickname.char_length().coalesce(0).mul(2))
-        .all()
-        .order_by(MariaProfile.id.asc())
-    )
+    query = mariadb.select(
+        MariaProfile.nickname.char_length().coalesce(0).mul(2)
+    ).order_by(MariaProfile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)

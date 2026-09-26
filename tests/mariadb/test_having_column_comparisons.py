@@ -32,7 +32,6 @@ async def grouped_column_comparison_filters_groups() -> None:
 
         query = (
             mariadb.select(Sale.category, Sale.amount)
-            .all()
             .group_by(Sale.category, Sale.amount)
             .having(Sale.category.lt_col(Sale.amount))
         )
@@ -72,7 +71,6 @@ async def having_scalar_subquery_keeps_its_own_column_scope() -> None:
         )
         query = (
             mariadb.select(Sale.category)
-            .all()
             .group_by(Sale.category)
             .having(Sale.category.lt_col(inner))
         )

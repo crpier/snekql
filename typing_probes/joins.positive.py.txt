@@ -21,13 +21,13 @@ class Child[S = database.Pending](database.Model[S]):
 def joined() -> database.ClosedRead[tuple[Parent[database.Row], Child[database.Row] | None]]:
     return database.ready(database.select(Parent).left_join(
         Child, on=Child.parent_id.references(Parent.id),
-    ).all())
+    ))
 
 
 async def optional_child(transaction: database.Transaction) -> None:
     inferred = database.select(Parent).left_join(
         Child, on=Child.parent_id.references(Parent.id),
-    ).all()
+    )
     assert_type(
         await transaction.fetch_all(inferred),
         list[tuple[Parent[database.Row], Child[database.Row] | None]],

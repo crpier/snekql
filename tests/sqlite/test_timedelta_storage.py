@@ -145,7 +145,7 @@ async def text_column_round_trips_timedelta_values() -> None:
                 insert(TextDurationRow(id=2, elapsed=timedelta(seconds=-5)))
             )
             fetched = await tx.fetch_all(
-                select(TextDurationRow.elapsed).all().order_by(TextDurationRow.id.asc())
+                select(TextDurationRow.elapsed).order_by(TextDurationRow.id.asc())
             )
     finally:
         await database.close()
@@ -175,7 +175,7 @@ async def text_column_orders_durations_lexically_not_by_magnitude() -> None:
             )
             await tx.execute(insert(TextDurationRow(id=4, elapsed=timedelta(hours=1))))
             ordered_ids = await tx.fetch_all(
-                select(TextDurationRow.id).all().order_by(TextDurationRow.elapsed.asc())
+                select(TextDurationRow.id).order_by(TextDurationRow.elapsed.asc())
             )
     finally:
         await database.close()

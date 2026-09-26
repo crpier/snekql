@@ -19,10 +19,10 @@ class Foreign[S = foreign.Pending](foreign.Model[S]):
 
 
 async def local_rows(transaction: database.Transaction) -> None:
-    query: database.ClosedRead[Local[database.Row]] = database.ready(database.select(Local).all())
+    query: database.ClosedRead[Local[database.Row]] = database.ready(database.select(Local))
     assert_type(await transaction.fetch_all(query), list[Local[database.Row]])
 
 
 async def foreign_rows(transaction: foreign.Transaction) -> None:
-    query: foreign.ClosedRead[Foreign[foreign.Row]] = foreign.ready(foreign.select(Foreign).all())
+    query: foreign.ClosedRead[Foreign[foreign.Row]] = foreign.ready(foreign.select(Foreign))
     assert_type(await transaction.fetch_all(query), list[Foreign[foreign.Row]])

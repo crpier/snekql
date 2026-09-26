@@ -79,18 +79,18 @@ async def query_before_enter_raises_not_started() -> None:
         tx = database.transaction()
 
         with assert_raises(TransactionNotStartedError) as caught:
-            _ = await tx.fetch_all(select(MisuseUser).all())
+            _ = await tx.fetch_all(select(MisuseUser))
         assert "not been started" in str(caught.exception)
         assert isinstance(caught.exception, TransactionStateError)
 
         with assert_raises(TransactionNotStartedError):
-            _ = await tx.fetch_one(select(MisuseUser).all())
+            _ = await tx.fetch_one(select(MisuseUser))
 
         with assert_raises(TransactionNotStartedError):
             await tx.execute(insert(MisuseUser(email="early@example.com")))
 
         with assert_raises(TransactionNotStartedError):
-            async with tx.fetch_chunks(select(MisuseUser).all(), size=10):
+            async with tx.fetch_chunks(select(MisuseUser), size=10):
                 pass
     finally:
         await database.close()
@@ -106,18 +106,18 @@ async def query_after_exit_raises_closed() -> None:
             await tx.execute(insert(MisuseUser(email="alice@example.com")))
 
         with assert_raises(TransactionClosedError) as caught:
-            _ = await tx.fetch_all(select(MisuseUser).all())
+            _ = await tx.fetch_all(select(MisuseUser))
         assert "closed" in str(caught.exception)
         assert isinstance(caught.exception, TransactionStateError)
 
         with assert_raises(TransactionClosedError):
-            _ = await tx.fetch_one(select(MisuseUser).all())
+            _ = await tx.fetch_one(select(MisuseUser))
 
         with assert_raises(TransactionClosedError):
             await tx.execute(insert(MisuseUser(email="late@example.com")))
 
         with assert_raises(TransactionClosedError):
-            async with tx.fetch_chunks(select(MisuseUser).all(), size=10):
+            async with tx.fetch_chunks(select(MisuseUser), size=10):
                 pass
     finally:
         await database.close()
@@ -192,7 +192,7 @@ async def concurrent_use_of_shared_transaction_serializes() -> None:
                         tx.execute,
                         insert(MisuseUser(email=f"user{index}@example.com")),
                     )
-            emails = await tx.fetch_all(select(MisuseUser.email).all())
+            emails = await tx.fetch_all(select(MisuseUser.email))
     finally:
         await database.close()
 

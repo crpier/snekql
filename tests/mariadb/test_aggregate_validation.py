@@ -42,7 +42,7 @@ async def extrema_respect_validation_policy(case: tuple[str, str, str]) -> None:
             await setup.execute(mariadb.raw("INSERT INTO reading (score) VALUES (-1)"))
 
         extremum = Reading.score.min() if case[0] == "min" else Reading.score.max()
-        query = mariadb.select(extremum).all()
+        query = mariadb.select(extremum)
         async with database.transaction() as tx:
 
             async def read_extremum() -> object:
@@ -55,9 +55,7 @@ async def extrema_respect_validation_policy(case: tuple[str, str, str]) -> None:
                     return await tx.fetch_all(query, validate=validate)
                 if case[1] == "scalar":
                     return await tx.fetch_one(
-                        mariadb.select(
-                            Reading.score.count(), mariadb.scalar(query)
-                        ).all(),
+                        mariadb.select(Reading.score.count(), mariadb.scalar(query)),
                         validate=validate,
                     )
                 values: list[object] = []
@@ -96,7 +94,7 @@ async def empty_aggregates_keep_null_and_count_semantics(mode: str) -> None:
                 Reading.score.count(),
                 Reading.score.sum(),
                 Reading.score.avg(),
-            ).all(),
+            ),
             validate=mode == "validated",
         )
 
@@ -120,7 +118,7 @@ async def numeric_aggregate_normalization_is_unchanged(mode: str) -> None:
             row = await tx.fetch_one(
                 mariadb.select(
                     Reading.score.count(), Reading.score.sum(), Reading.score.avg()
-                ).all(),
+                ),
                 validate=mode == "validated",
             )
 
@@ -149,7 +147,7 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
 
         async with database.transaction() as tx:
             row = await tx.fetch_one(
-                mariadb.select(Event.timestamp.min(), Event.timestamp.max()).all()
+                mariadb.select(Event.timestamp.min(), Event.timestamp.max())
             )
 
     assert_eq(row, (when, when))

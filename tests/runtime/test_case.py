@@ -23,15 +23,9 @@ from tests.runtime.test_value_functions import (
 async def sqlite_case_unknown_condition_uses_fallback() -> None:
     """NULL equality is UNKNOWN, so it takes the explicit fallback branch."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(
-            sqlite.case(
-                Profile.nickname.eq("Ada"), then="matched", otherwise="fallback"
-            )
-        )
-        .all()
-        .order_by(Profile.id.asc())
-    )
+    query = sqlite.select(
+        sqlite.case(Profile.nickname.eq("Ada"), then="matched", otherwise="fallback")
+    ).order_by(Profile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -45,10 +39,8 @@ async def sqlite_case_nullable_branch_composes_with_functions() -> None:
     """CASE nullability feeds COALESCE and subsequent text functions."""
     database = await load_fixture(provide_sqlite_profiles())
     expression = sqlite.case(Profile.id.eq(2), then=Profile.nickname, otherwise=None)
-    query = (
-        sqlite.select(expression.coalesce("missing").lower())
-        .all()
-        .order_by(Profile.id.asc())
+    query = sqlite.select(expression.coalesce("missing").lower()).order_by(
+        Profile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -79,7 +71,7 @@ async def sqlite_case_assignment_uses_current_values() -> None:
     async with database.transaction() as transaction:
         await transaction.execute(query)
     async with database.transaction() as transaction:
-        quantity = await transaction.fetch_one(sqlite.select(Inventory.quantity).all())
+        quantity = await transaction.fetch_one(sqlite.select(Inventory.quantity))
 
     assert_eq(quantity, 2)
 
@@ -88,11 +80,9 @@ async def sqlite_case_assignment_uses_current_values() -> None:
 async def sqlite_case_literal_floats_keep_float_domain() -> None:
     """Float literal branches decode as floats without borrowing a column codec."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(sqlite.case(Profile.id.eq(2), then=1.5, otherwise=2.5))
-        .all()
-        .order_by(Profile.id.asc())
-    )
+    query = sqlite.select(
+        sqlite.case(Profile.id.eq(2), then=1.5, otherwise=2.5)
+    ).order_by(Profile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -105,15 +95,11 @@ async def sqlite_case_literal_floats_keep_float_domain() -> None:
 async def mariadb_case_unknown_condition_uses_fallback() -> None:
     """NULL equality is UNKNOWN, so it takes the explicit fallback branch."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(
-            mariadb.case(
-                MariaProfile.nickname.eq("Ada"), then="matched", otherwise="fallback"
-            )
+    query = mariadb.select(
+        mariadb.case(
+            MariaProfile.nickname.eq("Ada"), then="matched", otherwise="fallback"
         )
-        .all()
-        .order_by(MariaProfile.id.asc())
-    )
+    ).order_by(MariaProfile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -129,10 +115,8 @@ async def mariadb_case_nullable_branch_composes_with_functions() -> None:
     expression = mariadb.case(
         MariaProfile.id.eq(2), then=MariaProfile.nickname, otherwise=None
     )
-    query = (
-        mariadb.select(expression.coalesce("missing").lower())
-        .all()
-        .order_by(MariaProfile.id.asc())
+    query = mariadb.select(expression.coalesce("missing").lower()).order_by(
+        MariaProfile.id.asc()
     )
 
     async with database.transaction() as transaction:
@@ -163,9 +147,7 @@ async def mariadb_case_assignment_uses_current_values() -> None:
     async with database.transaction() as transaction:
         await transaction.execute(query)
     async with database.transaction() as transaction:
-        quantity = await transaction.fetch_one(
-            mariadb.select(MariaInventory.quantity).all()
-        )
+        quantity = await transaction.fetch_one(mariadb.select(MariaInventory.quantity))
 
     assert_eq(quantity, 2)
 
@@ -174,11 +156,9 @@ async def mariadb_case_assignment_uses_current_values() -> None:
 async def mariadb_case_literal_floats_keep_float_domain() -> None:
     """Float literal branches decode as floats without borrowing a column codec."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(mariadb.case(MariaProfile.id.eq(2), then=1.5, otherwise=2.5))
-        .all()
-        .order_by(MariaProfile.id.asc())
-    )
+    query = mariadb.select(
+        mariadb.case(MariaProfile.id.eq(2), then=1.5, otherwise=2.5)
+    ).order_by(MariaProfile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -191,11 +171,9 @@ async def mariadb_case_literal_floats_keep_float_domain() -> None:
 async def sqlite_case_normalizes_integer_literal_in_float_domain() -> None:
     """Python's accepted integer literal must not break a float result contract."""
     database = await load_fixture(provide_sqlite_profiles())
-    query = (
-        sqlite.select(sqlite.case(Profile.id.eq(2), then=1, otherwise=2.5))
-        .all()
-        .order_by(Profile.id.asc())
-    )
+    query = sqlite.select(
+        sqlite.case(Profile.id.eq(2), then=1, otherwise=2.5)
+    ).order_by(Profile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -208,11 +186,9 @@ async def sqlite_case_normalizes_integer_literal_in_float_domain() -> None:
 async def mariadb_case_normalizes_integer_literal_in_float_domain() -> None:
     """Python's accepted integer literal must not break a float result contract."""
     database = await load_fixture(provide_mariadb_profiles())
-    query = (
-        mariadb.select(mariadb.case(MariaProfile.id.eq(2), then=1, otherwise=2.5))
-        .all()
-        .order_by(MariaProfile.id.asc())
-    )
+    query = mariadb.select(
+        mariadb.case(MariaProfile.id.eq(2), then=1, otherwise=2.5)
+    ).order_by(MariaProfile.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)

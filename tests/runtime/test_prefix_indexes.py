@@ -265,7 +265,7 @@ async def prefix_counts_characters_not_bytes() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(title="🐍b")))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry.title).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry.title))
 
     assert_eq(sorted(rows), ["🐍a", "🐍b"])
 
@@ -446,7 +446,7 @@ async def prefix_does_not_truncate_stored_text(storage: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(title="🐍" * 300)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry.title).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry.title))
 
     assert_eq(rows, ["🐍" * 300])
 

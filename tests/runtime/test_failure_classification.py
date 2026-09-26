@@ -370,14 +370,14 @@ async def late_cursor_failure_keeps_classification(operation: str) -> None:
             assert_raises(sqlite.ExecutionError) as caught,
         ):
             if operation == "fetchall":
-                await transaction.fetch_all(sqlite.select(SQLiteEntry).all())
+                await transaction.fetch_all(sqlite.select(SQLiteEntry))
             else:
                 async with transaction.fetch_chunks(
-                    sqlite.select(SQLiteEntry).all(), size=1
+                    sqlite.select(SQLiteEntry), size=1
                 ) as stream:
                     await anext(stream)
         with assert_raises(sqlite.DatabaseRuntimeError):
-            await transaction.fetch_all(sqlite.select(SQLiteEntry).all())
+            await transaction.fetch_all(sqlite.select(SQLiteEntry))
     failure = caught.exception.failure
     assert failure is not None
     assert_eq((failure.category, failure.code), ("lock_conflict", 5))
@@ -474,7 +474,7 @@ async def missing_native_code_does_not_trigger_message_guessing() -> None:
             patch.object(SQLiteCursor, "fetchall", fail_fetch),
             assert_raises(sqlite.ExecutionError) as caught,
         ):
-            await transaction.fetch_all(sqlite.select(SQLiteEntry).all())
+            await transaction.fetch_all(sqlite.select(SQLiteEntry))
     failure = caught.exception.failure
     assert failure is not None
     assert_eq(
@@ -502,7 +502,7 @@ async def non_driver_exception_does_not_supply_native_evidence() -> None:
             patch.object(SQLiteCursor, "fetchall", fail_fetch),
             assert_raises(sqlite.ExecutionError) as caught,
         ):
-            await transaction.fetch_all(sqlite.select(SQLiteEntry).all())
+            await transaction.fetch_all(sqlite.select(SQLiteEntry))
     assert_eq(caught.exception.failure, None)
 
 

@@ -62,10 +62,10 @@ if TYPE_CHECKING:
         _ = assert_type(fetched_account.created_at, datetime)
         _ = assert_type(fetched_account.cache_key(), str)
 
-    model_query: ClosedRead[Account[Row]] = ready(select(Account).all())
-    value_query: ClosedRead[str] = ready(select(Account.email).all())
+    model_query: ClosedRead[Account[Row]] = ready(select(Account))
+    value_query: ClosedRead[str] = ready(select(Account.email))
     tuple_query: ClosedRead[tuple[str, str]] = ready(
-        select(Account.email, Account.status).all()
+        select(Account.email, Account.status)
     )
     _ = assert_type(Account.email.eq("alice@example.com"), Predicate[Account[Pending]])
     insert_query: Write[None] = insert(pending_account)
@@ -75,26 +75,26 @@ if TYPE_CHECKING:
         """Runtime overloads preserve selected result shapes."""
 
         _ = assert_type(
-            await transaction.fetch_all(select(Account).all()),
+            await transaction.fetch_all(select(Account)),
             list[Account[Row]],
         )
         _ = assert_type(
-            await transaction.fetch_all(select(Account.email).all()),
+            await transaction.fetch_all(select(Account.email)),
             list[str],
         )
         _ = assert_type(
-            await transaction.fetch_all(select(Account.email, Account.status).all()),
+            await transaction.fetch_all(select(Account.email, Account.status)),
             list[tuple[str, str]],
         )
         # fetch_one is exactly-one (raises on zero or many rows), so the value
         # is never absent: a single-value result keeps the column read type.
         _ = assert_type(
-            await transaction.fetch_one(select(Account.email).all()),
+            await transaction.fetch_one(select(Account.email)),
             str,
         )
         # fetch_one_or_none is zero-or-one for model/tuple/join selects, where a
         # None result can only mean a missing row.
         _ = assert_type(
-            await transaction.fetch_one_or_none(select(Account).all()),
+            await transaction.fetch_one_or_none(select(Account)),
             Account[Row] | None,
         )

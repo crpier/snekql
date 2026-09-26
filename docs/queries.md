@@ -42,8 +42,8 @@ query = (
 
 A SELECT is executable as soon as you build it. Add `.where(...)` to filter
 rows, or use the unfiltered query directly. Ordering and limits need no separate
-acknowledgment. SELECT `.all()` remains a compatibility no-op; it neither removes
-filters nor prevents later filtering.
+acknowledgment. SELECT has no `.all()` method. When migrating older code,
+delete SELECT `.all()` calls; do not replace them with another call.
 
 UPDATE and DELETE still require `.where(...)` or an explicit `.all()`. UPDATE
 also needs `.set(...)`.

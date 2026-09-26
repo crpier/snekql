@@ -151,7 +151,7 @@ def compiled_representation_never_formats_parameters() -> None:
 @test(mark="fast")
 def invalid_visibility_rejected() -> None:
     """Misspelled policies must not silently enable or disable disclosure."""
-    query = sqlite.select(SQLiteAccount).all()
+    query = sqlite.select(SQLiteAccount)
     with assert_raises(sqlite.QueryConstructionError):
         query.inspect(parameter_visibility="invalid")  # ty: ignore[invalid-argument-type]
 

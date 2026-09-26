@@ -20,7 +20,7 @@ class Inventory[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def arithmetic_projection_binds_literals() -> None:
     """An increment is performed in SQL, with its operand bound separately."""
-    compiled = sqlite.select(Inventory.quantity.add(1)).all().compile()
+    compiled = sqlite.select(Inventory.quantity.add(1)).compile()
 
     assert_eq(compiled.sql, 'SELECT ("quantity" + ?) FROM "inventory"')
     assert_eq(compiled.params, (1,))
@@ -46,7 +46,7 @@ def counter_assignment_uses_current_column() -> None:
 @test(mark="fast")
 def arithmetic_composition_preserves_parentheses() -> None:
     """Chained methods retain their evaluation order instead of SQL precedence."""
-    compiled = sqlite.select(Inventory.quantity.sub(2).mul(3).add(1)).all().compile()
+    compiled = sqlite.select(Inventory.quantity.sub(2).mul(3).add(1)).compile()
 
     assert_eq(compiled.sql, 'SELECT ((("quantity" - ?) * ?) + ?) FROM "inventory"')
     assert_eq(compiled.params, (2, 3, 1))
@@ -90,9 +90,7 @@ def expression_assignments_are_update_only() -> None:
 @test(mark="fast")
 def arithmetic_accepts_nested_column_expressions() -> None:
     """Column operands retain their grouping inside another expression."""
-    compiled = (
-        sqlite.select(Inventory.quantity.add(Inventory.version.mul(2))).all().compile()
-    )
+    compiled = sqlite.select(Inventory.quantity.add(Inventory.version.mul(2))).compile()
 
     assert_eq(compiled.sql, 'SELECT ("quantity" + ("version" * ?)) FROM "inventory"')
     assert_eq(compiled.params, (2,))
@@ -152,7 +150,7 @@ def arithmetic_preserves_alias_scope() -> None:
         pass
 
     stock = sqlite.alias(Inventory, StockRole, name="stock")
-    compiled = sqlite.select(stock.column(Inventory.quantity).add(1)).all().compile()
+    compiled = sqlite.select(stock.column(Inventory.quantity).add(1)).compile()
 
     assert_eq(compiled.sql, 'SELECT ("quantity" + ?) FROM "inventory" AS "stock"')
 
@@ -172,7 +170,7 @@ class NumericValues[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def nullable_arithmetic_keeps_null_bindings() -> None:
     """NULL is a numeric operand, not a missing argument or Python default."""
-    compiled = sqlite.select(NumericValues.optional_integer.add(None)).all().compile()
+    compiled = sqlite.select(NumericValues.optional_integer.add(None)).compile()
 
     assert_eq(compiled.sql, 'SELECT ("optional_integer" + ?) FROM "numeric_values"')
     assert_eq(compiled.params, (None,))
@@ -181,11 +179,9 @@ def nullable_arithmetic_keeps_null_bindings() -> None:
 @test(mark="fast")
 def floating_arithmetic_binds_native_values() -> None:
     """REAL expressions keep floating operands and nested column references."""
-    compiled = (
-        sqlite.select(NumericValues.real.mul(1.5).add(NumericValues.optional_real))
-        .all()
-        .compile()
-    )
+    compiled = sqlite.select(
+        NumericValues.real.mul(1.5).add(NumericValues.optional_real)
+    ).compile()
 
     assert_eq(
         compiled.sql, 'SELECT (("real" * ?) + "optional_real") FROM "numeric_values"'
@@ -250,40 +246,32 @@ if TYPE_CHECKING:
     async def check_numeric_result_types(transaction: sqlite.Transaction) -> None:
         """Nullability follows both operands, including nested expressions."""
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(NumericValues.integer.add(1)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(NumericValues.integer.add(1))),
             list[int],
         )
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(NumericValues.integer.add(None)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(NumericValues.integer.add(None))),
             list[int | None],
         )
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(NumericValues.optional_integer.mul(2)).all()
+                sqlite.select(NumericValues.optional_integer.mul(2))
             ),
             list[int | None],
         )
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(NumericValues.real.sub(1.5)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(NumericValues.real.sub(1.5))),
             list[float],
         )
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(NumericValues.real.add(None)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(NumericValues.real.add(None))),
             list[float | None],
         )
         assert_type(
             await transaction.fetch_all(
                 sqlite.select(
                     NumericValues.real.add(NumericValues.optional_real.mul(2.0))
-                ).all()
+                )
             ),
             list[float | None],
         )

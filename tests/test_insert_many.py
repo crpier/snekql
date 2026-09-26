@@ -69,7 +69,7 @@ async def mariadb_batch_persists_logical_values() -> None:
             )
         async with database.transaction() as transaction:
             products = await transaction.fetch_all(
-                mariadb.select(Product).all().order_by(Product.product_id.asc())
+                mariadb.select(Product).order_by(Product.product_id.asc())
             )
 
     assert_type(result, None)
@@ -248,7 +248,7 @@ async def sqlite_batch_conflict_uses_attempted_values() -> None:
             )
         async with database.transaction() as transaction:
             settings = await transaction.fetch_all(
-                sqlite.select(Settings).all().order_by(Settings.account_id.asc())
+                sqlite.select(Settings).order_by(Settings.account_id.asc())
             )
 
     assert_eq(

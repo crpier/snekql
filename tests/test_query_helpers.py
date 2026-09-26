@@ -18,7 +18,7 @@ async def closed_scalar_helper_executes_native_query() -> None:
         __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         email: sqlite.Col[str] = sqlite.Text()
 
-    query = sqlite.select(Account.email).all()
+    query = sqlite.select(Account.email)
     closed: sqlite.ClosedRead[str] = sqlite.ready(query)
     assert_is(closed, query)
 
@@ -104,9 +104,9 @@ def ready_rejects_invalid_queries_after_erasure(kind: str) -> None:
         email: mariadb.Col[str] = mariadb.Text()
 
     queries: dict[str, Any] = {
-        "missing-source": sqlite.select(Account.email, Post.title).all(),
+        "missing-source": sqlite.select(Account.email, Post.title),
         "write": sqlite.insert(Account(email="Ada")),
-        "foreign": mariadb.select(Foreign).all(),
+        "foreign": mariadb.select(Foreign),
         "pretender": object(),
     }
 
@@ -124,7 +124,7 @@ async def mariadb_closed_helper_materializes_rows() -> None:
         email: mariadb.Col[str] = mariadb.Text()
 
     def accounts() -> mariadb.ClosedOptional[Account[mariadb.Row]]:
-        return mariadb.ready(mariadb.select(Account).all())
+        return mariadb.ready(mariadb.select(Account))
 
     async with await initialized_database(
         server.config(), models=[Account]
@@ -166,7 +166,7 @@ async def scoped_helper_streams_without_closing() -> None:
             batches: list[list[str]] = []
             async with stream(
                 transaction,
-                sqlite.select(Account.email).all().order_by(Account.email.asc()),
+                sqlite.select(Account.email).order_by(Account.email.asc()),
             ) as chunks:
                 assert_type(chunks, sqlite.ChunkStream[str])
                 batches.extend([batch async for batch in chunks])

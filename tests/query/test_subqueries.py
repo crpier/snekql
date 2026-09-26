@@ -124,7 +124,7 @@ def not_in_subquery_renders_negated_membership() -> None:
 
     sql, _params = SQLITE_CODEC.compile_select_sql(
         select(User.id).where(
-            User.id.not_in_subquery(select(Order.user_id).all()),
+            User.id.not_in_subquery(select(Order.user_id)),
         ),
     )
 
@@ -217,7 +217,7 @@ def scalar_subquery_in_projection_renders_parenthesized_select() -> None:
             scalar(
                 select(Order.amount.sum()).where(Order.user_id.eq_col(User.id)),
             ),
-        ).all(),
+        ),
     )
 
     expected = " ".join(
@@ -236,13 +236,13 @@ def scalar_subquery_cannot_anchor_projection() -> None:
 
     with assert_raises(QueryConstructionError):
         _ = select(  # ty: ignore[no-matching-overload]
-            scalar(select(Order.amount).all())
+            scalar(select(Order.amount))
         )
 
     with assert_raises(QueryConstructionError):
         _ = select(
             scalar(  # ty: ignore[invalid-argument-type]
-                select(Order.amount).all()
+                select(Order.amount)
             ),
             User.id,
         )
@@ -254,7 +254,7 @@ def scalar_subquery_as_comparison_operand() -> None:
 
     sql, params = SQLITE_CODEC.compile_select_sql(
         select(Order.id).where(
-            Order.amount.gt_col(scalar(select(Order.amount.avg()).all())),
+            Order.amount.gt_col(scalar(select(Order.amount.avg()))),
         ),
     )
 
@@ -372,9 +372,7 @@ async def scalar_subquery_projects_per_row_value() -> None:
                             Order.user_id.eq_col(User.id),
                         ),
                     ),
-                )
-                .all()
-                .order_by(User.id.asc()),
+                ).order_by(User.id.asc()),
             )
     finally:
         await database.close()
@@ -399,9 +397,7 @@ async def scalar_over_non_nullable_column_decodes_empty_to_none() -> None:
                 select(
                     User.id,
                     scalar(select(Order.amount).where(Order.id.eq(-999))),
-                )
-                .all()
-                .order_by(User.id.asc()),
+                ).order_by(User.id.asc()),
             )
     finally:
         await database.close()

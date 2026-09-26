@@ -246,7 +246,7 @@ async def update_execute_returns_affected_row_count() -> None:
                 .where(User.email.eq("missing@example.com")),
             )
             statuses = await tx.fetch_all(
-                select(User.status).all().order_by(User.id.asc()),
+                select(User.status).order_by(User.id.asc()),
             )
     finally:
         await database.close()
@@ -279,7 +279,7 @@ async def update_to_current_timestamp_refreshes_value_from_server_clock() -> Non
             _ = await tx.execute(
                 update(Doc).set(Doc.edited_at.to(CurrentTimestamp)).all(),
             )
-            refreshed = await tx.fetch_one(select(Doc.edited_at).all())
+            refreshed = await tx.fetch_one(select(Doc.edited_at))
     finally:
         await database.close()
 
@@ -312,17 +312,17 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(Memory(content="first")))
-            filled = await tx.fetch_one(select(Memory.updated_at).all())
+            filled = await tx.fetch_one(select(Memory.updated_at))
 
             _ = await tx.execute(
                 update(Memory).set(Memory.updated_at.to(explicit)).all(),
             )
-            overwritten = await tx.fetch_one(select(Memory.updated_at).all())
+            overwritten = await tx.fetch_one(select(Memory.updated_at))
 
             _ = await tx.execute(
                 update(Memory).set(Memory.updated_at.to(CurrentTimestamp)).all(),
             )
-            refreshed = await tx.fetch_one(select(Memory.updated_at).all())
+            refreshed = await tx.fetch_one(select(Memory.updated_at))
     finally:
         await database.close()
 

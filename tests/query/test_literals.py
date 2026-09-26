@@ -20,11 +20,7 @@ class Depth(BaseModel):
 @test(mark="fast")
 def integer_literal_is_bound_without_claiming_a_table_owner() -> None:
     """A depth seed has an integer domain without borrowing a source column."""
-    query = (
-        sqlite.select(Source)
-        .all()
-        .project(Depth, depth=sqlite.literal(0).label("depth"))
-    )
+    query = sqlite.select(Source).project(Depth, depth=sqlite.literal(0).label("depth"))
 
     compiled = query.compile()
 
@@ -40,10 +36,8 @@ class NativeSource[S = mariadb.Pending](mariadb.Model[S]):
 @test(mark="fast")
 def mariadb_integer_literal_establishes_signed_64_width() -> None:
     """A small constant must not narrow a future recursive anchor to INT32."""
-    query = (
-        mariadb.select(NativeSource)
-        .all()
-        .project(Depth, depth=mariadb.literal(0).label("depth"))
+    query = mariadb.select(NativeSource).project(
+        Depth, depth=mariadb.literal(0).label("depth")
     )
 
     compiled = query.compile()
@@ -63,9 +57,9 @@ class SeedRole:
 def integer_literal_retains_native_arithmetic_across_a_cte() -> None:
     """A literal anchor must compose with the computed next depth's wire policy."""
     token = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Source).all().project(Depth, depth=token)
+    anchor = sqlite.select(Source).project(Depth, depth=token)
     seed = anchor.cte(SeedRole, name="seed")
-    step = sqlite.select(seed).all().project(Depth, depth=seed.column(token).add(1))
+    step = sqlite.select(seed).project(Depth, depth=seed.column(token).add(1))
 
     compiled = anchor.union_all(step).compile()
 
@@ -76,12 +70,7 @@ def integer_literal_retains_native_arithmetic_across_a_cte() -> None:
 def literal_output_compares_as_a_native_integer() -> None:
     """The recursive depth predicate must bind through the literal's native policy."""
     token = sqlite.literal(0).label("depth")
-    seed = (
-        sqlite.select(Source)
-        .all()
-        .project(Depth, depth=token)
-        .cte(SeedRole, name="seed")
-    )
+    seed = sqlite.select(Source).project(Depth, depth=token).cte(SeedRole, name="seed")
 
     compiled = sqlite.select(seed).where(seed.column(token).lt(3)).compile()
 
@@ -109,9 +98,9 @@ def invalid_native_literal_is_rejected(value: object) -> None:
 def literal_cannot_cross_backend_namespaces() -> None:
     """Owner freedom must not erase the constant's backend identity."""
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(Source).all().project(Depth, depth=mariadb.literal(0))  # ty: ignore[invalid-argument-type]
+        sqlite.select(Source).project(Depth, depth=mariadb.literal(0))  # ty: ignore[invalid-argument-type]
     with assert_raises(mariadb.QueryConstructionError):
-        mariadb.select(NativeSource).all().project(Depth, depth=sqlite.literal(0))  # ty: ignore[invalid-argument-type]
+        mariadb.select(NativeSource).project(Depth, depth=sqlite.literal(0))  # ty: ignore[invalid-argument-type]
 
 
 @test(mark="fast")
@@ -125,13 +114,8 @@ def literal_does_not_supply_an_implicit_from_table() -> None:
 def cte_literal_supports_numeric_aggregation() -> None:
     """A rebound integer constant has a known native aggregate input domain."""
     token = sqlite.literal(1).label("depth")
-    seed = (
-        sqlite.select(Source)
-        .all()
-        .project(Depth, depth=token)
-        .cte(SeedRole, name="seed")
-    )
+    seed = sqlite.select(Source).project(Depth, depth=token).cte(SeedRole, name="seed")
 
-    compiled = sqlite.select(seed.column(token).sum()).all().compile()
+    compiled = sqlite.select(seed.column(token).sum()).compile()
 
     assert_eq(compiled.params, (1,))

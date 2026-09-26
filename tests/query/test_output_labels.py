@@ -28,7 +28,7 @@ def label_binds_its_source_to_a_named_result() -> None:
     """A token retains the original expression while naming a projected output."""
     identifier = Person.person_id.label("id")
 
-    compiled = sqlite.select(Person).all().project(Identifier, id=identifier).compile()
+    compiled = sqlite.select(Person).project(Identifier, id=identifier).compile()
 
     assert_eq(compiled.sql, 'SELECT "person_id" AS "id" FROM "person"')
     assert_eq(compiled.params, ())
@@ -40,7 +40,7 @@ def label_name_must_match_the_projection_binding() -> None:
     identifier = Person.person_id.label("different")
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(Person).all().project(Identifier, id=identifier)
+        sqlite.select(Person).project(Identifier, id=identifier)
 
 
 @test([Param("", name="empty"), Param("bad\x00label", name="nul")], mark="fast")
@@ -68,9 +68,7 @@ def labeled_binding_cannot_escape_its_query_scope() -> None:
         person_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(Person).all().project(
-            Identifier, id=Outside.person_id.label("id")
-        )
+        sqlite.select(Person).project(Identifier, id=Outside.person_id.label("id"))
 
 
 @test(mark="fast")
@@ -82,9 +80,7 @@ def labeled_binding_preserves_logical_type_validation() -> None:
         value: sqlite.Col[str] = sqlite.Text()
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(TextSource).all().project(
-            Identifier, id=TextSource.value.label("id")
-        )
+        sqlite.select(TextSource).project(Identifier, id=TextSource.value.label("id"))
 
 
 @test(mark="fast")
@@ -97,7 +93,6 @@ def labeled_projection_uses_the_mariadb_dialect() -> None:
 
     compiled = (
         mariadb.select(Native)
-        .all()
         .project(Identifier, id=Native.person_id.label("id"))
         .compile()
     )
@@ -111,7 +106,7 @@ def aggregate_label_keeps_aggregate_sql() -> None:
     """Labeling COUNT preserves aggregate semantics rather than becoming a column."""
     total = Person.person_id.count().label("id")
 
-    compiled = sqlite.select(Person).all().project(Identifier, id=total).compile()
+    compiled = sqlite.select(Person).project(Identifier, id=total).compile()
 
     assert_eq(compiled.sql, 'SELECT COUNT("person_id") AS "id" FROM "person"')
     assert_eq(compiled.params, ())
@@ -174,10 +169,7 @@ def json_label_preserves_native_path_binding() -> None:
     identifier = Document.payload.json_extract_int("$[0]").label("id")
 
     compiled = (
-        mariadb.select(Document)
-        .all()
-        .project(OptionalIdentifier, id=identifier)
-        .compile()
+        mariadb.select(Document).project(OptionalIdentifier, id=identifier).compile()
     )
 
     assert_eq(
@@ -209,10 +201,8 @@ def left_join_computation_requires_a_nullable_named_field() -> None:
         pass
 
     peer = sqlite.alias(Person, PeerRole, name="peer")
-    query = (
-        sqlite.select(Person)
-        .left_join(peer, on=Person.person_id.eq_col(peer.column(Person.person_id)))
-        .all()
+    query = sqlite.select(Person).left_join(
+        peer, on=Person.person_id.eq_col(peer.column(Person.person_id))
     )
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -227,10 +217,8 @@ def coalescing_left_join_output_keeps_a_nonnullable_named_field() -> None:
         pass
 
     peer = sqlite.alias(Person, PeerRole, name="peer")
-    query = (
-        sqlite.select(Person)
-        .left_join(peer, on=Person.person_id.eq_col(peer.column(Person.person_id)))
-        .all()
+    query = sqlite.select(Person).left_join(
+        peer, on=Person.person_id.eq_col(peer.column(Person.person_id))
     )
 
     compiled = query.project(
@@ -249,9 +237,7 @@ def arithmetic_after_coalesce_can_restore_outer_join_nullability() -> None:
 
     peer = sqlite.alias(Person, PeerRole, name="peer")
     column = peer.column(Person.person_id)
-    query = (
-        sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column)).all()
-    )
+    query = sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column))
 
     with assert_raises(sqlite.QueryConstructionError):
         query.project(Identifier, id=column.coalesce(0).add(column).label("id"))
@@ -266,9 +252,7 @@ def nested_coalesce_can_remove_outer_join_nullability() -> None:
 
     peer = sqlite.alias(Person, PeerRole, name="peer")
     column = peer.column(Person.person_id)
-    query = (
-        sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column)).all()
-    )
+    query = sqlite.select(Person).left_join(peer, on=Person.person_id.eq_col(column))
 
     compiled = query.project(
         Identifier, id=column.coalesce(column.coalesce(2)).label("id")

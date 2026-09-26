@@ -39,9 +39,7 @@ async def uuid_blob_stores_sixteen_bytes() -> None:
             )
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                sqlite.select(Account.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(sqlite.select(Account.account_id), validate=False)
 
     assert_eq(raw, bytes.fromhex("00112233445546778899aabbccddeeff"))
 
@@ -90,9 +88,7 @@ async def uuid_update_writes_binary_values() -> None:
             )
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                sqlite.select(Account.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(sqlite.select(Account.account_id), validate=False)
 
     assert_eq(raw, bytes.fromhex("00112233445546778899aabbccddeeff"))
 
@@ -169,9 +165,7 @@ async def custom_uuid_bytes_serializer_keeps_control_of_wire_form() -> None:
             await setup.execute(sqlite.insert(Custom(account_id=account_id)))
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                sqlite.select(Custom.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(sqlite.select(Custom.account_id), validate=False)
             logical = await tx.fetch_one(
                 sqlite.select(Custom.account_id).where(Custom.account_id.eq(account_id))
             )
@@ -203,7 +197,7 @@ async def text_uuid_encoding_is_unchanged() -> None:
 
         async with database.transaction() as tx:
             raw = await tx.fetch_one(
-                sqlite.select(TextAccount.account_id).all(), validate=False
+                sqlite.select(TextAccount.account_id), validate=False
             )
 
     assert_eq(raw, "00112233-4455-4677-8899-aabbccddeeff")

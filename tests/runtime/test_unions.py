@@ -221,11 +221,9 @@ async def nullable_union_uses_sql_null_equality() -> None:
     """Two NULL rows collapse under UNION without Python set equality."""
     database = await load_fixture(provide_sqlite_events())
     token = NullableEvent.event_id.label("event_id")
-    optional = sqlite.select(NullableEvent).all().project(OptionalRow, event_id=token)
-    required = (
-        sqlite.select(Event)
-        .all()
-        .project(OptionalRow, event_id=Event.event_id.label("event_id"))
+    optional = sqlite.select(NullableEvent).project(OptionalRow, event_id=token)
+    required = sqlite.select(Event).project(
+        OptionalRow, event_id=Event.event_id.label("event_id")
     )
     combined = optional.union(required)
 
@@ -263,7 +261,7 @@ async def compound_cte_filters_the_complete_result() -> None:
     """CTE consumption keeps the compound operation inside its definition."""
     database = await load_fixture(provide_sqlite_events())
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
     combined = operand.union_all(operand).cte(CombinedRole, name="combined")
     query = sqlite.select(combined).where(combined.column(token).eq(2))
 
@@ -278,7 +276,7 @@ async def compound_page_applies_after_duplicate_elimination() -> None:
     """The final limit/offset operates on ordered combined rows."""
     database = await load_fixture(provide_sqlite_events())
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
     combined = operand.union(operand)
 
     async with database.transaction() as transaction:
@@ -312,13 +310,12 @@ async def bounded_cte_inputs_keep_their_explicit_limits() -> None:
     token = Event.event_id.label("event_id")
     bounded = (
         sqlite.select(Event)
-        .all()
         .project(Row, event_id=token)
         .order_by(Event.event_id.asc())
         .limit(1)
         .cte(CombinedRole, name="bounded")
     )
-    operand = sqlite.select(bounded).all().project(Row, event_id=bounded.column(token))
+    operand = sqlite.select(bounded).project(Row, event_id=bounded.column(token))
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(operand.union_all(operand))
@@ -348,7 +345,7 @@ async def union_runs_only_final_result_validation() -> None:
     compound = operand.union(operand).cte(CombinedRole, name="validated")
 
     async with database.transaction() as transaction:
-        row = await transaction.fetch_one(sqlite.select(compound).all())
+        row = await transaction.fetch_one(sqlite.select(compound))
 
     assert_eq(row.event_id, 11)
 
@@ -357,10 +354,8 @@ async def union_runs_only_final_result_validation() -> None:
 async def union_preserves_rich_logical_codecs() -> None:
     """A compound decodes UUID/JSON outputs before validating its result model."""
     database = await load_fixture(provide_sqlite_documents())
-    operand = (
-        sqlite.select(LocalDocument)
-        .all()
-        .project(DocumentResult, key=LocalDocument.id, values=LocalDocument.payload)
+    operand = sqlite.select(LocalDocument).project(
+        DocumentResult, key=LocalDocument.id, values=LocalDocument.payload
     )
 
     async with database.transaction() as transaction:
@@ -373,15 +368,13 @@ async def union_preserves_rich_logical_codecs() -> None:
 async def mariadb_compound_cte_preserves_rich_codecs() -> None:
     """Native UUID/JSON policies survive the combined definition boundary."""
     database = await load_fixture(provide_mariadb_documents())
-    operand = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(DocumentResult, key=MariaDocument.id, values=MariaDocument.payload)
+    operand = mariadb.select(MariaDocument).project(
+        DocumentResult, key=MariaDocument.id, values=MariaDocument.payload
     )
     combined = operand.union_all(operand).cte(CombinedRole, name="documents")
 
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(mariadb.select(combined).all())
+        rows = await transaction.fetch_all(mariadb.select(combined))
 
     assert_eq(rows, [DocumentResult(key=UUID(int=1), values=[2, 3])] * 2)
 
@@ -400,7 +393,6 @@ async def compound_cte_presence_distinguishes_a_matched_null_row() -> None:
     query = (
         sqlite.select(Event)
         .left_join(combined, on=Event.event_id.eq(1))
-        .all()
         .order_by(Event.event_id.asc())
     )
 
@@ -415,11 +407,9 @@ async def mariadb_nullable_union_uses_sql_null_equality() -> None:
     """The native set operator collapses NULLs without widening left references."""
     database = await load_fixture(provide_mariadb_events())
     token = MariaNullable.event_id.label("event_id")
-    optional = mariadb.select(MariaNullable).all().project(OptionalRow, event_id=token)
-    required = (
-        mariadb.select(MariaEvent)
-        .all()
-        .project(OptionalRow, event_id=MariaEvent.event_id)
+    optional = mariadb.select(MariaNullable).project(OptionalRow, event_id=token)
+    required = mariadb.select(MariaEvent).project(
+        OptionalRow, event_id=MariaEvent.event_id
     )
     combined = optional.union(required)
 
@@ -435,7 +425,7 @@ async def mariadb_nullable_union_uses_sql_null_equality() -> None:
 async def sqlite_union_uses_source_collation() -> None:
     """Database equality, not Python string equality, removes duplicate rows."""
     database = await load_fixture(provide_sqlite_events())
-    operand = sqlite.select(LocalText).all().project(TextRow, value=LocalText.value)
+    operand = sqlite.select(LocalText).project(TextRow, value=LocalText.value)
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(operand.union(operand))
@@ -447,7 +437,7 @@ async def sqlite_union_uses_source_collation() -> None:
 async def mariadb_union_uses_source_collation() -> None:
     """Unicode collation semantics remain the database's responsibility."""
     database = await load_fixture(provide_mariadb_events())
-    operand = mariadb.select(NativeText).all().project(TextRow, value=NativeText.value)
+    operand = mariadb.select(NativeText).project(TextRow, value=NativeText.value)
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(operand.union(operand))
@@ -460,7 +450,7 @@ async def mariadb_compound_page_applies_after_duplicate_elimination() -> None:
     """Native final pagination sees the distinct combined set."""
     database = await load_fixture(provide_mariadb_events())
     token = MariaEvent.event_id.label("event_id")
-    operand = mariadb.select(MariaEvent).all().project(Row, event_id=token)
+    operand = mariadb.select(MariaEvent).project(Row, event_id=token)
     combined = operand.union(operand)
 
     async with database.transaction() as transaction:
@@ -481,9 +471,7 @@ async def compound_result_validation_is_strict_when_source_validation_is_disable
     class ConstrainedRow(BaseModel):
         event_id: int = Field(gt=10)
 
-    operand = (
-        sqlite.select(Event).all().project(ConstrainedRow, event_id=Event.event_id)
-    )
+    operand = sqlite.select(Event).project(ConstrainedRow, event_id=Event.event_id)
 
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
@@ -494,12 +482,8 @@ async def compound_result_validation_is_strict_when_source_validation_is_disable
 async def sqlite_extrema_union_decodes_the_original_column_domain() -> None:
     """MIN/MAX share the column wire format without requiring identical provenance."""
     database = await load_fixture(provide_sqlite_events())
-    left = (
-        sqlite.select(Event).all().project(OptionalRow, event_id=Event.event_id.min())
-    )
-    right = (
-        sqlite.select(Event).all().project(OptionalRow, event_id=Event.event_id.max())
-    )
+    left = sqlite.select(Event).project(OptionalRow, event_id=Event.event_id.min())
+    right = sqlite.select(Event).project(OptionalRow, event_id=Event.event_id.max())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(left.union_all(right))
@@ -511,15 +495,11 @@ async def sqlite_extrema_union_decodes_the_original_column_domain() -> None:
 async def mariadb_extrema_union_decodes_the_original_column_domain() -> None:
     """Native extrema retain their compatible source decoder across the set boundary."""
     database = await load_fixture(provide_mariadb_events())
-    left = (
-        mariadb.select(MariaEvent)
-        .all()
-        .project(OptionalRow, event_id=MariaEvent.event_id.min())
+    left = mariadb.select(MariaEvent).project(
+        OptionalRow, event_id=MariaEvent.event_id.min()
     )
-    right = (
-        mariadb.select(MariaEvent)
-        .all()
-        .project(OptionalRow, event_id=MariaEvent.event_id.max())
+    right = mariadb.select(MariaEvent).project(
+        OptionalRow, event_id=MariaEvent.event_id.max()
     )
 
     async with database.transaction() as transaction:

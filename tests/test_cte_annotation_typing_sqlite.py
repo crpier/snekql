@@ -27,7 +27,7 @@ class OtherVisit(BaseModel):
 if TYPE_CHECKING:
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    anchor = sqlite.select(Category).project(Visit, id=identifier, depth=depth)
 
     def advance(
         previous: sqlite.Cte[Category, Visit, WalkRole],
@@ -52,9 +52,9 @@ if TYPE_CHECKING:
     combined = anchor.union_all(branch())
 
     async def consume(transaction: sqlite.Transaction) -> None:
-        assert_type(await transaction.fetch_all(sqlite.select(walk).all()), list[Visit])
+        assert_type(await transaction.fetch_all(sqlite.select(walk)), list[Visit])
         assert_type(
-            await transaction.fetch_all(sqlite.select(walk.column(identifier)).all()),
+            await transaction.fetch_all(sqlite.select(walk.column(identifier))),
             list[int],
         )
         assert_type(await transaction.fetch_all(combined), list[Visit])
@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     def unnamed(
         previous: sqlite.Cte[Category, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
-        return sqlite.select(previous).all()  # ty: ignore[invalid-return-type]
+        return sqlite.select(previous)  # ty: ignore[invalid-return-type]
 
     def wrong_comparison(
         previous: sqlite.Cte[Category, Visit, WalkRole],
@@ -89,47 +89,31 @@ if TYPE_CHECKING:
         previous: sqlite.Cte[Category, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
         sqlite.select(previous).where(Category.id.eq(1))  # ty: ignore[invalid-argument-type]
-        return (
-            sqlite.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return sqlite.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def wrong_family(
         previous: sqlite.Cte[Category, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
-        return (
-            sqlite.select(previous)  # ty: ignore[invalid-return-type]
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return sqlite.select(previous).project(  # ty: ignore[invalid-return-type]
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def different_role(
         previous: sqlite.Cte[Category, Visit, PeerRole],
     ) -> sqlite.NamedOperand[Visit]:
-        return (
-            sqlite.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return sqlite.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def different_result(
         previous: sqlite.Cte[Category, Visit, WalkRole],
     ) -> sqlite.NamedOperand[OtherVisit]:
-        return (
-            sqlite.select(previous)
-            .all()
-            .project(
-                OtherVisit,
-                id=previous.column(identifier),
-                depth=previous.column(depth),
-            )
+        return sqlite.select(previous).project(
+            OtherVisit,
+            id=previous.column(identifier),
+            depth=previous.column(depth),
         )
 
     prepared = sqlite.recursive_cte(anchor, WalkRole, name="walk")
@@ -141,7 +125,6 @@ if TYPE_CHECKING:
     optional_anchor = (
         sqlite.select(Category)
         .left_join(Detail, on=Category.id.eq_col(Detail.id))
-        .all()
         .project(OptionalVisit, id=optional_id, depth=depth)
     )
 
@@ -167,17 +150,15 @@ if TYPE_CHECKING:
         previous: sqlite.Cte[Category | Detail, OptionalVisit, WalkRole, Category],
     ) -> None:
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(previous.column(optional_id)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(previous.column(optional_id))),
             list[int | None],
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(previous.column(depth)).all()),
+            await transaction.fetch_all(sqlite.select(previous.column(depth))),
             list[int],
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(optional_walk).all()),
+            await transaction.fetch_all(sqlite.select(optional_walk)),
             list[OptionalVisit],
         )
 
@@ -201,12 +182,8 @@ if TYPE_CHECKING:
     def different_source(
         previous: sqlite.Cte[Detail, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
-        return (
-            sqlite.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return sqlite.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     prepared.step(different_source)  # ty: ignore[invalid-argument-type]
@@ -231,9 +208,9 @@ if TYPE_CHECKING:
 
     async def consume_helper(transaction: sqlite.Transaction) -> None:
         assert_type(
-            await transaction.fetch_all(sqlite.select(generic_walk).all()), list[Visit]
+            await transaction.fetch_all(sqlite.select(generic_walk)), list[Visit]
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(alias_helper()).all()),
+            await transaction.fetch_all(sqlite.select(alias_helper())),
             list[Visit],
         )

@@ -1,4 +1,4 @@
 
 
-nested = database.select(Invoice.number).all()
+nested = database.select(Invoice.number)
 database.select(Account).where(Invoice.number.eq(1) & database.exists(nested))  # expect-error

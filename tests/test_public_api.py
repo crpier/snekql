@@ -435,7 +435,6 @@ def select_query_chain_methods_return_query_objects() -> None:
 
     query = sqlite.select(ChainUser)
 
-    assert_is(type(query.all()), type(query))
     assert_is(type(query.limit(10)), type(query))
     assert_is(type(query.offset(5)), type(query))
 

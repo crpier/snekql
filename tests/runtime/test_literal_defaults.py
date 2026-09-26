@@ -49,7 +49,7 @@ async def sqlite_supplies_omitted_text() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Entry.label).all())
+            rows = await transaction.fetch_all(sqlite.select(Entry.label))
 
     assert_eq(rows, ["quote'\\nul\0; --é"])
 
@@ -70,7 +70,7 @@ async def mariadb_supplies_omitted_text() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry.label).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry.label))
 
     assert_eq(rows, ["quote'\\nul\0; --é"])
 
@@ -305,7 +305,7 @@ async def mariadb_long_text_default_is_generated() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry.label).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry.label))
 
     assert_eq(rows, ["a" * 300])
 
@@ -335,7 +335,7 @@ async def sqlite_explicit_values_override_server_default(case: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(row))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Entry.label).all())
+            rows = await transaction.fetch_all(sqlite.select(Entry.label))
 
     assert_eq(rows, [{"omitted": "pending", "explicit": "ready", "null": None}[case]])
 
@@ -357,7 +357,7 @@ async def sqlite_boolean_default_materializes() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Entry).all())
+            rows = await transaction.fetch_all(sqlite.select(Entry))
 
     assert_eq([(type(row.enabled), row.enabled) for row in rows], [(bool, True)])
 
@@ -386,7 +386,7 @@ async def mariadb_explicit_values_override_server_default(case: str) -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(row))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry.label).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry.label))
 
     assert_eq(rows, [{"omitted": "pending", "explicit": "ready", "null": None}[case]])
 
@@ -407,7 +407,7 @@ async def mariadb_boolean_default_materializes() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Entry).all())
+            rows = await transaction.fetch_all(mariadb.select(Entry))
 
     assert_eq([(type(row.enabled), row.enabled) for row in rows], [(bool, True)])
 
@@ -510,7 +510,7 @@ async def sqlite_null_default_materializes() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Entry.label).all())
+            rows = await transaction.fetch_all(sqlite.select(Entry.label))
 
     assert_eq(rows, [None])
 

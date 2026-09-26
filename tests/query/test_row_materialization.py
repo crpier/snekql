@@ -64,7 +64,7 @@ class JoinOrder[S = Pending](sqlite.Model[S]):
 def model_select_materializes_a_fetched_model() -> None:
     """A model select decodes the whole row into a Row Model instance."""
 
-    query = select(Widget).all()
+    query = select(Widget)
 
     fetched = cast(
         "Widget[Row]",
@@ -79,7 +79,7 @@ def model_select_materializes_a_fetched_model() -> None:
 def single_value_select_unwraps_to_one_decoded_scalar() -> None:
     """A one-column select returns the decoded scalar, not a 1-tuple."""
 
-    query = select(Widget.enabled).all()
+    query = select(Widget.enabled)
 
     value = materialize_select_row_for_backend(query.state, (1,), backend="sqlite")
 
@@ -90,7 +90,7 @@ def single_value_select_unwraps_to_one_decoded_scalar() -> None:
 def multi_value_select_returns_a_decoded_tuple() -> None:
     """A multi-column select returns a tuple of decoded scalars in order."""
 
-    query = select(Widget.label, Widget.enabled).all()
+    query = select(Widget.label, Widget.enabled)
 
     values = materialize_select_row_for_backend(
         query.state, ("hi", 1), backend="sqlite"
@@ -103,10 +103,8 @@ def multi_value_select_returns_a_decoded_tuple() -> None:
 def inner_join_materializes_a_tuple_of_fetched_models() -> None:
     """An inner join splits the flat row into one Row model per table."""
 
-    query = (
-        select(JoinUser)
-        .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-        .all()
+    query = select(JoinUser).join(
+        JoinOrder, on=JoinOrder.user_id.references(JoinUser.id)
     )
 
     result = cast(
@@ -129,10 +127,8 @@ def inner_join_materializes_a_tuple_of_fetched_models() -> None:
 def left_join_yields_none_when_the_right_side_is_all_null() -> None:
     """A left join with no matching right row materializes the right as None."""
 
-    query = (
-        select(JoinUser)
-        .left_join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-        .all()
+    query = select(JoinUser).left_join(
+        JoinOrder, on=JoinOrder.user_id.references(JoinUser.id)
     )
 
     result = cast(
@@ -152,10 +148,8 @@ def left_join_yields_none_when_the_right_side_is_all_null() -> None:
 def projection_join_materializes_a_tuple_of_scalars() -> None:
     """A projection join decodes the row into the projected scalar tuple."""
 
-    query = (
-        select(JoinUser.email, JoinOrder.note)
-        .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-        .all()
+    query = select(JoinUser.email, JoinOrder.note).join(
+        JoinOrder, on=JoinOrder.user_id.references(JoinUser.id)
     )
 
     values = materialize_select_row_for_backend(
@@ -200,7 +194,7 @@ def single_column_projection_join_unwraps_to_one_scalar() -> None:
 def row_shape_mismatch_is_an_invariant_failure() -> None:
     """A row whose width differs from the select fields fails the invariant."""
 
-    query = select(Widget.label, Widget.enabled).all()
+    query = select(Widget.label, Widget.enabled)
 
     with assert_raises(AssertionError):
         _ = materialize_select_row_for_backend(query.state, ("hi",), backend="sqlite")

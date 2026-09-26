@@ -25,7 +25,7 @@ class RemoteAccount[State = mariadb.Pending](mariadb.Model[State]):
 def exists_cannot_read_another_backend() -> None:
     """EXISTS must not silently compile a foreign model in the outer dialect."""
     query = sqlite.select(LocalAccount).where(
-        mariadb.exists(mariadb.select(RemoteAccount).all())  # ty: ignore[invalid-argument-type]
+        mariadb.exists(mariadb.select(RemoteAccount))  # ty: ignore[invalid-argument-type]
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -36,7 +36,7 @@ def exists_cannot_read_another_backend() -> None:
 def mariadb_exists_cannot_read_sqlite() -> None:
     """The backend check applies in both directions."""
     query = mariadb.select(RemoteAccount).where(
-        sqlite.exists(sqlite.select(LocalAccount).all())  # ty: ignore[invalid-argument-type]
+        sqlite.exists(sqlite.select(LocalAccount))  # ty: ignore[invalid-argument-type]
     )
 
     with assert_raises(mariadb.QueryCompilationError):
@@ -47,7 +47,7 @@ def mariadb_exists_cannot_read_sqlite() -> None:
 def scalar_comparison_cannot_read_another_backend() -> None:
     """Scalar comparisons cannot bypass the nested SELECT backend check."""
     query = sqlite.select(LocalAccount).where(
-        LocalAccount.id.eq_col(mariadb.scalar(mariadb.select(RemoteAccount.id).all()))  # ty: ignore[no-matching-overload]
+        LocalAccount.id.eq_col(mariadb.scalar(mariadb.select(RemoteAccount.id)))  # ty: ignore[no-matching-overload]
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -58,7 +58,7 @@ def scalar_comparison_cannot_read_another_backend() -> None:
 def membership_cannot_read_another_backend() -> None:
     """IN subqueries must not read a foreign model in the outer dialect."""
     query = sqlite.select(LocalAccount).where(
-        LocalAccount.id.in_subquery(mariadb.select(RemoteAccount.id).all())  # ty: ignore[invalid-argument-type]
+        LocalAccount.id.in_subquery(mariadb.select(RemoteAccount.id))  # ty: ignore[invalid-argument-type]
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -69,7 +69,7 @@ def membership_cannot_read_another_backend() -> None:
 def delete_cannot_read_another_backend() -> None:
     """A foreign EXISTS predicate must fail before any rows can be deleted."""
     query = sqlite.delete(LocalAccount).where(
-        mariadb.exists(mariadb.select(RemoteAccount).all())  # ty: ignore[invalid-argument-type]
+        mariadb.exists(mariadb.select(RemoteAccount))  # ty: ignore[invalid-argument-type]
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -82,7 +82,7 @@ def update_cannot_read_another_backend() -> None:
     query = (
         sqlite.update(LocalAccount)
         .set(LocalAccount.id.to(2))
-        .where(mariadb.exists(mariadb.select(RemoteAccount).all()))  # ty: ignore[no-matching-overload]
+        .where(mariadb.exists(mariadb.select(RemoteAccount)))  # ty: ignore[no-matching-overload]
     )
 
     with assert_raises(sqlite.QueryCompilationError):

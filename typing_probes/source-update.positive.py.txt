@@ -15,10 +15,10 @@ class Peer:
 
 
 async def control(transaction: database.Transaction) -> None:
-    assert_type(await transaction.fetch_all(database.select(Account).all()), list[Account[database.Row]])
+    assert_type(await transaction.fetch_all(database.select(Account)), list[Account[database.Row]])
     peer = database.alias(Account, Peer, name="peer")
-    assert_type(await transaction.fetch_all(database.select(peer).all()), list[Account[database.Row]])
-    joined = database.select(Account).join(peer, on=Account.account_id.eq_col(peer.column(Account.account_id))).all()
+    assert_type(await transaction.fetch_all(database.select(peer)), list[Account[database.Row]])
+    joined = database.select(Account).join(peer, on=Account.account_id.eq_col(peer.column(Account.account_id)))
     assert_type(await transaction.fetch_all(joined), list[tuple[Account[database.Row], Account[database.Row]]])
 
 
@@ -52,12 +52,12 @@ class Lookalike:
 
 async def cte_control(transaction: database.Transaction) -> None:
     identifier = Account.account_id.label("account_id")
-    active = database.select(Account).all().project(Identifier, account_id=identifier).cte(Active, name="active")
-    assert_type(await transaction.fetch_all(database.select(active).all()), list[Identifier])
+    active = database.select(Account).project(Identifier, account_id=identifier).cte(Active, name="active")
+    assert_type(await transaction.fetch_all(database.select(active)), list[Identifier])
     peer = database.alias(active, Peer, name="active_peer")
-    query = database.select(Account).join(peer, on=Account.account_id.eq_col(peer.column(identifier))).all()
+    query = database.select(Account).join(peer, on=Account.account_id.eq_col(peer.column(identifier)))
     assert_type(await transaction.fetch_all(query), list[tuple[Account[database.Row], Identifier]])
-    left = database.select(Account).left_join(peer, on=Account.account_id.eq_col(peer.column(identifier))).all()
+    left = database.select(Account).left_join(peer, on=Account.account_id.eq_col(peer.column(identifier)))
     assert_type(await transaction.fetch_all(left), list[tuple[Account[database.Row], Identifier | None]])
 
 

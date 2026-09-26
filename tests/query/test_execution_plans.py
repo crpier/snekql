@@ -83,7 +83,7 @@ def select_plan_preserves_raw_materialization_policy() -> None:
     source = uuid4()
     plan = assert_type(
         DialectQueryCodec.for_backend("sqlite").compile_select_plan(
-            select(Token.value).all(),
+            select(Token.value),
             cardinality="one",
             validate=False,
         ),
@@ -229,7 +229,7 @@ async def fetch_all_executes_select_state_without_builder_dispatch() -> None:
     ) as database:
         async with database.transaction() as transaction:
             await transaction.execute(insert(Token(value=source)))
-        query = _UnlistedSelect[UUID](select(Token.value).all().state)
+        query = _UnlistedSelect[UUID](select(Token.value).state)
 
         async with database.transaction() as transaction:
             fetched = await transaction.fetch_all(query)
@@ -256,7 +256,7 @@ async def optional_fetch_executes_select_state_without_builder_dispatch() -> Non
     ) as database:
         async with database.transaction() as transaction:
             await transaction.execute(insert(Token(value=source)))
-        query = _UnlistedOptionalSelect[Token[Row]](select(Token).all().state)
+        query = _UnlistedOptionalSelect[Token[Row]](select(Token).state)
 
         async with database.transaction() as transaction:
             fetched = await transaction.fetch_one_or_none(query)
@@ -275,7 +275,7 @@ async def stream_executes_select_state_without_builder_dispatch() -> None:
     ) as database:
         async with database.transaction() as transaction:
             await transaction.execute(insert(Token(value=source)))
-        query = _UnlistedSelect[UUID](select(Token.value).all().state)
+        query = _UnlistedSelect[UUID](select(Token.value).state)
 
         async with (
             database.transaction() as transaction,

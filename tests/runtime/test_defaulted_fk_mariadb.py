@@ -88,10 +88,8 @@ async def soft_reference_does_not_create_a_constraint() -> None:
 async def soft_reference_retains_the_typed_join_helper() -> None:
     """A defaulted FKCol still exposes its target-checked references helper."""
     database = await load_fixture(provide_accounts())
-    query = (
-        mariadb.select(Defaults.account_id, Account.account_id)
-        .join(Account, on=Defaults.literal.references(Account.account_id))
-        .all()
+    query = mariadb.select(Defaults.account_id, Account.account_id).join(
+        Account, on=Defaults.literal.references(Account.account_id)
     )
 
     async with database.transaction() as transaction:
@@ -107,9 +105,7 @@ async def soft_defaults_round_trip() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(
-                Defaults.literal, Defaults.factory, Defaults.null_factory
-            ).all()
+            mariadb.select(Defaults.literal, Defaults.factory, Defaults.null_factory)
         )
 
     assert_type(rows, list[tuple[int, int, int | None]])

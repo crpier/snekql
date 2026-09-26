@@ -9,29 +9,25 @@ if TYPE_CHECKING:
     local_token = sqlite.literal(0).label("depth")
     local = (
         sqlite.select(Source)
-        .all()
         .project(Depth, depth=local_token)
         .cte(SeedRole, name="local_depth")
     )
     native_token = mariadb.literal(0).label("depth")
     native = (
         mariadb.select(NativeSource)
-        .all()
         .project(Depth, depth=native_token)
         .cte(SeedRole, name="native_depth")
     )
 
     async def consume_local(transaction: sqlite.Transaction) -> None:
         assert_type(
-            await transaction.fetch_all(sqlite.select(local.column(local_token)).all()),
+            await transaction.fetch_all(sqlite.select(local.column(local_token))),
             list[int],
         )
 
     async def consume_native(transaction: mariadb.Transaction) -> None:
         assert_type(
-            await transaction.fetch_all(
-                mariadb.select(native.column(native_token)).all()
-            ),
+            await transaction.fetch_all(mariadb.select(native.column(native_token))),
             list[int],
         )
 

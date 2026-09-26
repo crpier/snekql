@@ -1030,7 +1030,7 @@ class Transaction[FamilyT: BackendFamily]:
         closed and the connection released deterministically on full
         consumption, early ``break``, or an error mid-iteration::
 
-            async with tx.fetch_chunks(select(User).all(), size=500) as stream:
+            async with tx.fetch_chunks(select(User), size=500) as stream:
                 async for batch in stream:
                     ...
 

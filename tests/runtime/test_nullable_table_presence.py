@@ -48,7 +48,6 @@ async def matched_all_null_table_row_is_not_absent(source_kind: str) -> None:
             else NullableRow,
             on=Anchor.id.eq(1),
         )
-        .all()
         .order_by(Anchor.id.asc())
     )
 
@@ -101,7 +100,6 @@ async def native_matched_all_null_table_row_is_not_absent(source_kind: str) -> N
             else NativeNullableRow,
             on=NativeAnchor.id.eq(1),
         )
-        .all()
         .order_by(NativeAnchor.id.asc())
     )
 
@@ -123,7 +121,6 @@ async def nullable_anchor_keeps_joined_row_boundaries() -> None:
         sqlite.select(NullableRow)
         .left_join(peer, on=NullableRow.value.is_null())
         .join(Anchor, on=Anchor.id.eq(1))
-        .all()
     )
 
     async with database.transaction() as transaction:
@@ -144,7 +141,6 @@ async def native_nullable_anchor_keeps_joined_row_boundaries() -> None:
         mariadb.select(NativeNullableRow)
         .left_join(peer, on=NativeNullableRow.value.is_null())
         .join(NativeAnchor, on=NativeAnchor.id.eq(1))
-        .all()
     )
 
     async with database.transaction() as transaction:

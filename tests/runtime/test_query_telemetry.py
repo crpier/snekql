@@ -106,7 +106,7 @@ async def explain_packaging_is_measured() -> None:
         await database.migrate({"001": sqlite.scaffold([Entry])})
         async with database.transaction() as transaction:
             events.clear()
-            await transaction.explain(sqlite.select(Entry.number).all())
+            await transaction.explain(sqlite.select(Entry.number))
             recorded = tuple(events)
 
     assert_eq(
