@@ -149,7 +149,7 @@ async def capacity_counts_characters_without_truncation() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(label="🐍é")))
         async with database.transaction() as transaction:
-            value = await transaction.fetch_one(mariadb.select(Entry.label).all())
+            value = await transaction.fetch_one(mariadb.select(Entry.label))
         assert_eq(value, "🐍é")
         with assert_raises(mariadb.ExecutionError):
             async with database.transaction() as transaction:
@@ -243,5 +243,5 @@ async def larger_capacity_round_trips_beyond_legacy_codec_limit() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry(label="x" * 300)))
         async with database.transaction() as transaction:
-            value = await transaction.fetch_one(mariadb.select(Entry.label).all())
+            value = await transaction.fetch_one(mariadb.select(Entry.label))
         assert_eq(value, "x" * 300)

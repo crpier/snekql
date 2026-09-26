@@ -63,7 +63,7 @@ class Order[S = Pending](sqlite.Model[S]):
 def count_star_compiles_to_count_all() -> None:
     """A model ``_count()`` renders ``COUNT(*)``."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User.count_all()).all())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User.count_all()))
 
     assert_eq(sql, 'SELECT COUNT(*) FROM "user"')
     assert_eq(params, ())
@@ -73,7 +73,7 @@ def count_star_compiles_to_count_all() -> None:
 def count_column_compiles_to_count_of_column() -> None:
     """A column ``.count()`` renders ``COUNT(col)``."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User.id.count()).all())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User.id.count()))
 
     assert_eq(sql, 'SELECT COUNT("id") FROM "user"')
     assert_eq(params, ())
@@ -84,19 +84,19 @@ def sum_avg_min_max_compile_to_their_functions() -> None:
     """Each column aggregate renders its SQL function over the column."""
 
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.sum()).all())[0],
+        SQLITE_CODEC.compile_select_sql(select(Order.amount.sum()))[0],
         'SELECT SUM("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.avg()).all())[0],
+        SQLITE_CODEC.compile_select_sql(select(Order.amount.avg()))[0],
         'SELECT AVG("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.min()).all())[0],
+        SQLITE_CODEC.compile_select_sql(select(Order.amount.min()))[0],
         'SELECT MIN("amount") FROM "order"',
     )
     assert_eq(
-        SQLITE_CODEC.compile_select_sql(select(Order.amount.max()).all())[0],
+        SQLITE_CODEC.compile_select_sql(select(Order.amount.max()))[0],
         'SELECT MAX("amount") FROM "order"',
     )
 
@@ -118,7 +118,7 @@ def count_star_is_backend_portable() -> None:
     """COUNT(*) is identical SQL in MariaDB save for identifier quoting."""
 
     assert_eq(
-        MARIADB_CODEC.compile_select_sql(select(User.count_all()).all())[0],
+        MARIADB_CODEC.compile_select_sql(select(User.count_all()))[0],
         "SELECT COUNT(*) FROM `user`",
     )
 
@@ -132,7 +132,7 @@ async def count_returns_row_count_at_runtime() -> None:
         async with database.transaction() as tx:
             await tx.execute(insert(User(email="a@example.com")))
             await tx.execute(insert(User(email="b@example.com")))
-            total = await tx.fetch_one(select(User.count_all()).all())
+            total = await tx.fetch_one(select(User.count_all()))
     finally:
         await database.close()
 
@@ -158,10 +158,10 @@ async def sum_normalizes_to_int_for_integer_column() -> None:
     database = await initialized_database(database=":memory:", models=[Sale])
     try:
         async with database.transaction() as tx:
-            empty = await tx.fetch_one(select(Sale.amount.sum()).all())
+            empty = await tx.fetch_one(select(Sale.amount.sum()))
             await tx.execute(insert(Sale(amount=3)))
             await tx.execute(insert(Sale(amount=4)))
-            total = await tx.fetch_one(select(Sale.amount.sum()).all())
+            total = await tx.fetch_one(select(Sale.amount.sum()))
     finally:
         await database.close()
 
@@ -217,8 +217,8 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
         async with database.transaction() as tx:
             await tx.execute(insert(Event(when=earlier)))
             await tx.execute(insert(Event(when=later)))
-            lowest = await tx.fetch_one(select(Event.when.min()).all())
-            highest = await tx.fetch_one(select(Event.when.max()).all())
+            lowest = await tx.fetch_one(select(Event.when.min()))
+            highest = await tx.fetch_one(select(Event.when.max()))
     finally:
         await database.close()
 
@@ -255,12 +255,12 @@ async def min_and_max_decode_to_column_type_and_none_over_empty() -> None:
     database = await initialized_database(database=":memory:", models=[Label])
     try:
         async with database.transaction() as tx:
-            empty = await tx.fetch_one(select(Label.name.min()).all())
+            empty = await tx.fetch_one(select(Label.name.min()))
             await tx.execute(insert(Label(name="beta")))
             await tx.execute(insert(Label(name="alpha")))
             await tx.execute(insert(Label(name="gamma")))
-            lowest = await tx.fetch_one(select(Label.name.min()).all())
-            highest = await tx.fetch_one(select(Label.name.max()).all())
+            lowest = await tx.fetch_one(select(Label.name.min()))
+            highest = await tx.fetch_one(select(Label.name.max()))
     finally:
         await database.close()
 
@@ -288,10 +288,10 @@ async def avg_decodes_to_float_and_none_over_empty() -> None:
     database = await initialized_database(database=":memory:", models=[Reading])
     try:
         async with database.transaction() as tx:
-            empty = await tx.fetch_one(select(Reading.value.avg()).all())
+            empty = await tx.fetch_one(select(Reading.value.avg()))
             await tx.execute(insert(Reading(value=2.0)))
             await tx.execute(insert(Reading(value=3.0)))
-            mean = await tx.fetch_one(select(Reading.value.avg()).all())
+            mean = await tx.fetch_one(select(Reading.value.avg()))
     finally:
         await database.close()
 

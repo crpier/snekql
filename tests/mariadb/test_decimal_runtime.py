@@ -46,7 +46,7 @@ async def mariadb_decimal_columns_order_by_numeric_value() -> None:
             await tx.execute(insert(OrderedPrice(id=2, amount=Decimal("10.00"))))
             await tx.execute(insert(OrderedPrice(id=3, amount=Decimal("1.50"))))
             ordered_ids = await tx.fetch_all(
-                select(OrderedPrice.id).all().order_by(OrderedPrice.amount.asc())
+                select(OrderedPrice.id).order_by(OrderedPrice.amount.asc())
             )
             range_ids = await tx.fetch_all(
                 select(OrderedPrice.id)
@@ -70,7 +70,7 @@ async def mariadb_decimal_sum_returns_decimal_value() -> None:
         async with database.transaction() as tx:
             await tx.execute(insert(SummedPrice(id=1, amount=Decimal("1.50"))))
             await tx.execute(insert(SummedPrice(id=2, amount=Decimal("2.25"))))
-            total = await tx.fetch_one(select(SummedPrice.amount.sum()).all())
+            total = await tx.fetch_one(select(SummedPrice.amount.sum()))
     finally:
         await database.close()
 
@@ -102,6 +102,6 @@ async def mariadb_decimal_round_trip_preserves_maximum_precision() -> None:
             async with database.transaction() as transaction:
                 await transaction.execute(insert(PrecisePrice(amount=exact)))
             async with database.transaction() as transaction:
-                stored = await transaction.fetch_one(select(PrecisePrice.amount).all())
+                stored = await transaction.fetch_one(select(PrecisePrice.amount))
 
     assert_eq(stored, exact)

@@ -15,18 +15,18 @@ from tests.query.test_unions import (
 
 if TYPE_CHECKING:
     token = Event.event_id.label("event_id")
-    query = sqlite.select(Event).all().project(Row, event_id=token)
+    query = sqlite.select(Event).project(Row, event_id=token)
     combined = query.union_all(query)
     stored: sqlite.ClosedRead[Row] = sqlite.ready(combined)
     cte = combined.cte(CombinedRole, name="combined")
     nullable_token = NullableEvent.event_id.label("event_id")
-    nullable = (
-        sqlite.select(NullableEvent).all().project(OptionalRow, event_id=nullable_token)
+    nullable = sqlite.select(NullableEvent).project(
+        OptionalRow, event_id=nullable_token
     )
-    required = sqlite.select(Event).all().project(OptionalRow, event_id=token)
+    required = sqlite.select(Event).project(OptionalRow, event_id=token)
     nullable_combined = nullable.union(required)
     native_token = MariaEvent.event_id.label("event_id")
-    native = mariadb.select(MariaEvent).all().project(Row, event_id=native_token)
+    native = mariadb.select(MariaEvent).project(Row, event_id=native_token)
     native_combined = native.union_all(native)
     native_stored: mariadb.ClosedRead[Row] = mariadb.ready(native_combined)
 
@@ -35,13 +35,13 @@ if TYPE_CHECKING:
         assert_type(await transaction.fetch_all(stored), list[Row])
         assert_type(await transaction.fetch_one_or_none(combined), Row | None)
         assert_type(
-            await transaction.fetch_all(sqlite.select(cte.column(token)).all()),
+            await transaction.fetch_all(sqlite.select(cte.column(token))),
             list[int],
         )
         nullable_cte = nullable_combined.cte(CombinedRole, name="optional_combined")
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(nullable_cte.column(nullable_token)).all()
+                sqlite.select(nullable_cte.column(nullable_token))
             ),
             list[int | None],
         )
@@ -56,12 +56,12 @@ if TYPE_CHECKING:
     query.union(native)  # ty: ignore[invalid-argument-type]
     native.union(query)  # ty: ignore[invalid-argument-type]
     combined.union(native)  # ty: ignore[invalid-argument-type]
-    other_result = sqlite.select(Event).all().project(OtherRow, event_id=token)
+    other_result = sqlite.select(Event).project(OtherRow, event_id=token)
     query.union(other_result)  # ty: ignore[invalid-argument-type]
     query.union(sqlite.select(Event).project(Row, event_id=token))
     sqlite.select(Event).project(Row, event_id=token).union(query)
-    query.union(sqlite.select(Event.event_id).all())  # ty: ignore[invalid-argument-type]
-    query.union(sqlite.select(Event.event_id, Event.event_id).all())  # ty: ignore[invalid-argument-type]
+    query.union(sqlite.select(Event.event_id))  # ty: ignore[invalid-argument-type]
+    query.union(sqlite.select(Event.event_id, Event.event_id))  # ty: ignore[invalid-argument-type]
     combined.order_by(Event.event_id.asc())  # ty: ignore[invalid-argument-type]
     combined.column(token).eq("wrong")  # ty: ignore[invalid-argument-type]
     combined.column("event_id")  # ty: ignore[no-matching-overload]
@@ -82,14 +82,13 @@ if TYPE_CHECKING:
         left = (
             sqlite.select(Event)
             .left_join(peer, on=Event.event_id.eq_col(peer.column(Event.event_id)))
-            .all()
             .project(OptionalRow, event_id=peer_token)
         )
-        right = sqlite.select(Event).all().project(OptionalRow, event_id=token)
+        right = sqlite.select(Event).project(OptionalRow, event_id=token)
         combined_join = left.union_all(right).cte(CombinedRole, name="joined_union")
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(combined_join.column(peer_token)).all()
+                sqlite.select(combined_join.column(peer_token))
             ),
             list[int | None],
         )

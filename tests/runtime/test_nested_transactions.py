@@ -460,7 +460,7 @@ async def nested_typed_stream_rejects_cross_task_consumption() -> None:
     async with case.database.transaction() as transaction:  # noqa: SIM117 - keep transaction nesting explicit
         async with transaction.begin_nested():
             async with transaction.fetch_chunks(
-                sqlite.select(NestedEntries).all(), size=1
+                sqlite.select(NestedEntries), size=1
             ) as stream:
                 with assert_raises(sqlite.TransactionStateError):
                     await asyncio.create_task(anext(stream))

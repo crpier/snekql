@@ -57,7 +57,7 @@ class Order[S = Pending](sqlite.Model[S]):
 def distinct_model_select_emits_select_distinct() -> None:
     """A model select with distinct prefixes every column with DISTINCT."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User).all().distinct())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User).distinct())
 
     assert_eq(sql, 'SELECT DISTINCT "id", "email" FROM "user"')
     assert_eq(params, ())
@@ -67,7 +67,7 @@ def distinct_model_select_emits_select_distinct() -> None:
 def distinct_single_column_select_emits_select_distinct() -> None:
     """A single-column select with distinct emits SELECT DISTINCT."""
 
-    sql, params = SQLITE_CODEC.compile_select_sql(select(User.email).all().distinct())
+    sql, params = SQLITE_CODEC.compile_select_sql(select(User.email).distinct())
 
     assert_eq(sql, 'SELECT DISTINCT "email" FROM "user"')
     assert_eq(params, ())
@@ -78,7 +78,7 @@ def distinct_multi_column_select_emits_select_distinct() -> None:
     """A multi-column select with distinct emits SELECT DISTINCT."""
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.id, User.email).all().distinct(),
+        select(User.id, User.email).distinct(),
     )
 
     assert_eq(sql, 'SELECT DISTINCT "id", "email" FROM "user"')
@@ -90,7 +90,7 @@ def distinct_joined_select_emits_select_distinct() -> None:
     """A joined select with distinct prefixes the qualified column list."""
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User).join(Order, on=Order.user_id.references(User.id)).all().distinct(),
+        select(User).join(Order, on=Order.user_id.references(User.id)).distinct(),
     )
 
     expected = " ".join(
@@ -142,8 +142,8 @@ def distinct_is_order_independent() -> None:
 def distinct_is_idempotent() -> None:
     """Calling distinct twice is the same as calling it once."""
 
-    once = select(User.email).all().distinct()
-    twice = select(User.email).all().distinct().distinct()
+    once = select(User.email).distinct()
+    twice = select(User.email).distinct().distinct()
 
     assert_eq(
         SQLITE_CODEC.compile_select_sql(once),
@@ -174,7 +174,7 @@ async def distinct_collapses_duplicate_rows_at_runtime() -> None:
             await tx.execute(insert(Visit(status="active")))
             await tx.execute(insert(Visit(status="disabled")))
             rows = await tx.fetch_all(
-                select(Visit.status).all().order_by(Visit.status.asc()).distinct(),
+                select(Visit.status).order_by(Visit.status.asc()).distinct(),
             )
     finally:
         await database.close()

@@ -164,7 +164,7 @@ async def delete_returning_yields_deleted_projection() -> None:
             deleted = await tx.execute(
                 delete(User).where(User.status.eq("disabled")).returning(User.email),
             )
-            remaining = await tx.fetch_all(select(User.email).all())
+            remaining = await tx.fetch_all(select(User.email))
     finally:
         await database.close()
 
@@ -200,10 +200,10 @@ async def delete_execute_returns_affected_row_count() -> None:
                 delete(User).where(User.status.eq("disabled")),
             )
             remaining_after_filtered = await tx.fetch_all(
-                select(User.email).all().order_by(User.email.asc()),
+                select(User.email).order_by(User.email.asc()),
             )
             all_count = await tx.execute(delete(User).all())
-            remaining_after_all = await tx.fetch_all(select(User.email).all())
+            remaining_after_all = await tx.fetch_all(select(User.email))
     finally:
         await database.close()
 

@@ -46,7 +46,7 @@ def sqlite_rejects_locking_clauses() -> None:
         id: LocalJob.Col[int] = sqlite.Integer(primary_key=True)
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(LocalJob).all().for_update().compile()
+        sqlite.select(LocalJob).for_update().compile()
 
 
 @test(
@@ -67,15 +67,15 @@ def locking_rejects_unsupported_shapes(shape: str) -> None:
     peer = mariadb.alias(Job, Peer, name="peer")
     with assert_raises(mariadb.QueryCompilationError):
         if shape == "distinct":
-            mariadb.select(Job).all().for_update().distinct().compile()
+            mariadb.select(Job).for_update().distinct().compile()
         elif shape == "aggregate":
-            mariadb.select(Job.count_all()).all().for_update().compile()
+            mariadb.select(Job.count_all()).for_update().compile()
         elif shape == "grouped":
-            mariadb.select(Job.id).all().group_by(Job.id).for_update().compile()
+            mariadb.select(Job.id).group_by(Job.id).for_update().compile()
         else:
             mariadb.select(Job).join(
                 peer, on=Job.id.eq_col(peer.column(Job.id))
-            ).all().for_update().compile()
+            ).for_update().compile()
 
 
 @test(
@@ -93,7 +93,7 @@ def locking_subqueries_are_rejected(kind: str) -> None:
         if kind == "exists":
             mariadb.select(Job).where(mariadb.exists(inner)).compile()
         elif kind == "scalar":
-            mariadb.select(Job.id, mariadb.scalar(inner)).all().compile()
+            mariadb.select(Job.id, mariadb.scalar(inner)).compile()
         else:
             mariadb.select(Job).where(Job.id.in_subquery(inner)).compile()
 
@@ -102,9 +102,7 @@ def locking_subqueries_are_rejected(kind: str) -> None:
 def locking_rejects_aggregate_ordering() -> None:
     """An aggregate in ORDER BY is still an aggregate query, even without projection."""
     with assert_raises(mariadb.QueryCompilationError):
-        mariadb.select(Job.id).all().order_by(
-            Job.id.count().desc()
-        ).for_update().compile()
+        mariadb.select(Job.id).order_by(Job.id.count().desc()).for_update().compile()
 
 
 class JobSummary(BaseModel):
@@ -117,7 +115,7 @@ class JobSummary(BaseModel):
 @test(mark="fast")
 def locking_options_do_not_mutate_original_query() -> None:
     """Reconfiguring wait behavior creates another immutable query."""
-    original = mariadb.select(Job.id).all()
+    original = mariadb.select(Job.id)
     nowait = original.for_update(wait="nowait")
     blocking = nowait.for_update()
     assert_eq(original.compile().sql, "SELECT `id` FROM `job`")
@@ -136,7 +134,6 @@ def locking_named_alias_projection_retains_labels() -> None:
     compiled = (
         mariadb.select(jobs)
         .project(JobSummary, id=jobs.column(Job.id), status=jobs.column(Job.status))
-        .all()
         .for_update()
         .compile()
     )
@@ -157,9 +154,9 @@ def locking_select_needs_no_row_scope_acknowledgment() -> None:
 def locking_wait_argument_is_strict() -> None:
     """Only the reviewed wait choices are accepted, not SQL text or booleans."""
     with assert_raises(mariadb.QueryConstructionError):
-        mariadb.select(Job).all().for_update(wait="NOWAIT")  # ty: ignore[invalid-argument-type]
+        mariadb.select(Job).for_update(wait="NOWAIT")  # ty: ignore[invalid-argument-type]
     with assert_raises(mariadb.QueryConstructionError):
-        mariadb.select(Job).all().for_update(wait=True)  # ty: ignore[invalid-argument-type]
+        mariadb.select(Job).for_update(wait=True)  # ty: ignore[invalid-argument-type]
 
 
 if TYPE_CHECKING:
@@ -180,19 +177,18 @@ if TYPE_CHECKING:
             await transaction.fetch_all(job_claim_query()), list[Job[mariadb.Row]]
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(Job.id).all().for_update()),
+            await transaction.fetch_all(mariadb.select(Job.id).for_update()),
             list[int],
         )
         assert_type(
             await transaction.fetch_all(
-                mariadb.select(Job.id, Job.status).all().for_update()
+                mariadb.select(Job.id, Job.status).for_update()
             ),
             list[tuple[int, str]],
         )
         named = (
             mariadb.select(Job)
             .project(JobSummary, id=Job.id, status=Job.status)
-            .all()
             .for_update()
         )
         assert_type(await transaction.fetch_one_or_none(named), JobSummary | None)

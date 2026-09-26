@@ -82,8 +82,7 @@ def having_over_an_aggregate_renders_the_function() -> None:
     sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
-        .having(User.id.count().gt(5))
-        .all(),
+        .having(User.id.count().gt(5)),
     )
 
     expected = 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country" HAVING (COUNT("id") > ?)'
@@ -98,8 +97,7 @@ def having_over_a_grouped_column_renders_the_column() -> None:
     sql, params = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
-        .having(User.country.ne("antarctica"))
-        .all(),
+        .having(User.country.ne("antarctica")),
     )
 
     expected = 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country" HAVING ("country" != ?)'
@@ -115,8 +113,7 @@ def having_qualifies_aggregates_under_a_join() -> None:
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
         .group_by(User.country)
-        .having(Order.amount.sum().gt(10))
-        .all(),
+        .having(Order.amount.sum().gt(10)),
     )
 
     expected = " ".join(
@@ -138,8 +135,7 @@ def having_is_backend_portable() -> None:
         MARIADB_CODEC.compile_select_sql(
             select(User.country, User.id.count())
             .group_by(User.country)
-            .having(User.id.count().gt(5))
-            .all(),
+            .having(User.id.count().gt(5)),
         )[0],
         " ".join(
             [
@@ -184,8 +180,7 @@ async def having_filters_groups_at_runtime() -> None:
                 select(User.country, User.id.count())
                 .group_by(User.country)
                 .having(User.id.count().gt(1))
-                .order_by(User.country.asc())
-                .all(),
+                .order_by(User.country.asc()),
             )
     finally:
         await database.close()
@@ -210,8 +205,7 @@ async def having_over_a_sum_filters_per_group() -> None:
                 .join(Order, on=Order.user_id.references(User.id))
                 .group_by(User.country)
                 .having(Order.amount.sum().gt(5))
-                .order_by(User.country.asc())
-                .all(),
+                .order_by(User.country.asc()),
             )
     finally:
         await database.close()

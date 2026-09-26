@@ -50,7 +50,7 @@ before using EXPLAIN/ANALYZE in production.
 
 | Name or method | Meaning and restrictions |
 | --- | --- |
-| `select(...)` | Start a typed select; establish row scope with `.all()` or `.where(...)` before execution |
+| `select(...)` | Build an immediately executable typed SELECT; add filters with `.where(...)` |
 | `.where(...)`, `.group_by(...)`, `.having(...)` | SQL predicates and aggregate filtering with checked ownership |
 | `.join(...)`, `.left_join(...)` | Join explicit declared relationships; LEFT joins make the right result optional |
 | `alias(Model, ...)` | A distinct table occurrence for self-joins and correlated work |

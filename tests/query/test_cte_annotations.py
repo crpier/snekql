@@ -13,7 +13,7 @@ def named_recursive_callback_preserves_its_contract() -> None:
     """Public helper annotations retain the named row through recursion."""
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    anchor = sqlite.select(Category).project(Visit, id=identifier, depth=depth)
 
     def advance(
         previous: sqlite.Cte[Category, Visit, WalkRole],
@@ -29,7 +29,7 @@ def named_recursive_callback_preserves_its_contract() -> None:
         )
 
     walk = sqlite.recursive_cte(anchor, WalkRole, name="walk").step(advance)
-    compiled = sqlite.select(walk).all().compile()
+    compiled = sqlite.select(walk).compile()
 
     assert_eq(compiled.params, (0, 1, 2))
     assert_eq(
@@ -51,9 +51,7 @@ def native_named_recursive_callback_preserves_its_contract() -> None:
     """Public helper annotations retain the named row through recursion."""
     identifier = NativeCategory.id.label("id")
     depth = mariadb.literal(0).label("depth")
-    anchor = (
-        mariadb.select(NativeCategory).all().project(Visit, id=identifier, depth=depth)
-    )
+    anchor = mariadb.select(NativeCategory).project(Visit, id=identifier, depth=depth)
 
     def advance(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
@@ -69,7 +67,7 @@ def native_named_recursive_callback_preserves_its_contract() -> None:
         )
 
     walk = mariadb.recursive_cte(anchor, WalkRole, name="walk").step(advance)
-    compiled = mariadb.select(walk).all().compile()
+    compiled = mariadb.select(walk).compile()
 
     assert_eq(compiled.params, (0, 1, 2))
     assert_eq(

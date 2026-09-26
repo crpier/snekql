@@ -34,16 +34,8 @@ class UuidResult(BaseModel):
 @test(mark="fast")
 def union_rejects_mixed_uuid_encodings() -> None:
     """A matching final UUID annotation does not establish a shared decoder."""
-    left = (
-        sqlite.select(TextUuid)
-        .all()
-        .project(UuidResult, identifier=TextUuid.identifier)
-    )
-    right = (
-        sqlite.select(BlobUuid)
-        .all()
-        .project(UuidResult, identifier=BlobUuid.identifier)
-    )
+    left = sqlite.select(TextUuid).project(UuidResult, identifier=TextUuid.identifier)
+    right = sqlite.select(BlobUuid).project(UuidResult, identifier=BlobUuid.identifier)
 
     with assert_raises(sqlite.QueryConstructionError):
         left.union_all(right)
@@ -72,8 +64,8 @@ class Doubled[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def union_rejects_different_source_validation_policies() -> None:
     """The library must not run the left validator against right-hand values."""
-    left = sqlite.select(Adjusted).all().project(Row, event_id=Adjusted.event_id)
-    right = sqlite.select(Doubled).all().project(Row, event_id=Doubled.event_id)
+    left = sqlite.select(Adjusted).project(Row, event_id=Adjusted.event_id)
+    right = sqlite.select(Doubled).project(Row, event_id=Doubled.event_id)
 
     with assert_raises(sqlite.QueryConstructionError):
         left.union_all(right)
@@ -92,8 +84,8 @@ class TextNumber[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def union_rejects_json_marker_decode_mismatch() -> None:
     """Logical int and TEXT storage alone do not establish the same codec."""
-    left = sqlite.select(JsonNumber).all().project(Row, event_id=JsonNumber.event_id)
-    right = sqlite.select(TextNumber).all().project(Row, event_id=TextNumber.event_id)
+    left = sqlite.select(JsonNumber).project(Row, event_id=JsonNumber.event_id)
+    right = sqlite.select(TextNumber).project(Row, event_id=TextNumber.event_id)
 
     with assert_raises(sqlite.QueryConstructionError):
         left.union(right)
@@ -102,10 +94,8 @@ def union_rejects_json_marker_decode_mismatch() -> None:
 @test(mark="fast")
 def unknown_dialect_output_policy_is_rejected() -> None:
     """Identical opaque operands do not prove compatible SQL domains."""
-    operand = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(FirstValue, value=MariaDocument.payload.json_extract_int("$[0]"))
+    operand = mariadb.select(MariaDocument).project(
+        FirstValue, value=MariaDocument.payload.json_extract_int("$[0]")
     )
 
     with assert_raises(mariadb.QueryConstructionError):
@@ -117,8 +107,8 @@ def right_token_cannot_address_left_contract() -> None:
     """Equal label text is not token identity."""
     left_token = Event.event_id.label("event_id")
     right_token = Event.event_id.label("event_id")
-    left = sqlite.select(Event).all().project(Row, event_id=left_token)
-    right = sqlite.select(Event).all().project(Row, event_id=right_token)
+    left = sqlite.select(Event).project(Row, event_id=left_token)
+    right = sqlite.select(Event).project(Row, event_id=right_token)
     combined = left.union_all(right)
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -129,7 +119,7 @@ def right_token_cannot_address_left_contract() -> None:
 def earlier_compound_token_cannot_order_a_new_combination() -> None:
     """Identical static roles still have distinct runtime query identities."""
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
     first = operand.union_all(operand)
     second = first.union_all(operand)
 
@@ -179,9 +169,7 @@ class UnknownEvent[S = sqlite.Pending](sqlite.Model[S]):
 @test(mark="fast")
 def unknown_alias_domain_is_not_a_compatibility_proof() -> None:
     """An alias must not hide Any from the output-domain guard."""
-    operand = (
-        sqlite.select(UnknownEvent).all().project(Row, event_id=UnknownEvent.event_id)
-    )
+    operand = sqlite.select(UnknownEvent).project(Row, event_id=UnknownEvent.event_id)
 
     with assert_raises(sqlite.QueryConstructionError):
         operand.union_all(operand)
@@ -191,25 +179,21 @@ def unknown_alias_domain_is_not_a_compatibility_proof() -> None:
 def combined_column_cannot_become_an_independent_source() -> None:
     """A standalone reference must not silently read only the left operand."""
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
     combined = operand.union_all(operand)
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(combined.column(token)).all().compile()
+        sqlite.select(combined.column(token)).compile()
 
 
 @test(mark="fast")
 def extrema_share_their_source_wire_codec() -> None:
     """Different SQL operations can still preserve the same output wire policy."""
-    left = (
-        sqlite.select(Event)
-        .all()
-        .project(OptionalRow, event_id=Event.event_id.min().label("event_id"))
+    left = sqlite.select(Event).project(
+        OptionalRow, event_id=Event.event_id.min().label("event_id")
     )
-    right = (
-        sqlite.select(Event)
-        .all()
-        .project(OptionalRow, event_id=Event.event_id.max().label("event_id"))
+    right = sqlite.select(Event).project(
+        OptionalRow, event_id=Event.event_id.max().label("event_id")
     )
 
     compiled = left.union_all(right).compile()

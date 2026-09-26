@@ -123,9 +123,7 @@ async def sqlite_transaction_rejects_mariadb_queries() -> None:
     try:
         async with sqlite_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await tx.fetch_all(
-                    cast("Any", untyped_select(MariadbIdentityUser).all())
-                )
+                _ = await tx.fetch_all(cast("Any", untyped_select(MariadbIdentityUser)))
     finally:
         await sqlite_database.close()
 
@@ -166,7 +164,7 @@ async def mariadb_transaction_rejects_sqlite_queries() -> None:
     try:
         async with mariadb_database.transaction() as tx:
             with assert_raises(DatabaseRuntimeError) as error:
-                _ = await tx.fetch_all(select(SqliteIdentityUser).all())
+                _ = await tx.fetch_all(select(SqliteIdentityUser))
     finally:
         await mariadb_database.close()
 

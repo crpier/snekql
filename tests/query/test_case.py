@@ -12,13 +12,9 @@ from tests.query.test_value_functions import Profile
 @test(mark="fast")
 def case_binds_condition_then_fallback_in_sql_order() -> None:
     """Both branches stay parameterized and the condition selects the owner."""
-    compiled = (
-        sqlite.select(
-            sqlite.case(Inventory.quantity.gte(100), then="gold", otherwise="standard")
-        )
-        .all()
-        .compile()
-    )
+    compiled = sqlite.select(
+        sqlite.case(Inventory.quantity.gte(100), then="gold", otherwise="standard")
+    ).compile()
 
     assert_eq(
         compiled.sql,
@@ -31,7 +27,7 @@ def case_binds_condition_then_fallback_in_sql_order() -> None:
 def case_rejects_hidden_scalar_subquery_conditions() -> None:
     """Row-local CASE must not hide dependency reads inside a scalar SELECT."""
     condition = Inventory.id.eq_col(
-        sqlite.scalar(sqlite.select(Inventory.version).all().limit(1))
+        sqlite.scalar(sqlite.select(Inventory.version).limit(1))
     )
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -68,7 +64,7 @@ def nested_case_preserves_parameter_order() -> None:
         then=sqlite.case(Inventory.version.eq(2), then="yes", otherwise="no"),
         otherwise="empty",
     ).lower()
-    compiled = sqlite.select(expression).all().compile()
+    compiled = sqlite.select(expression).compile()
 
     assert_eq(compiled.params, (1, 2, "yes", "no", "empty"))
     assert_eq(
@@ -122,17 +118,13 @@ def case_preserves_alias_source() -> None:
         """Nominal query role."""
 
     profile = sqlite.alias(Profile, Role, name="display")
-    compiled = (
-        sqlite.select(
-            sqlite.case(
-                profile.column(Profile.id).eq(1),
-                then=profile.column(Profile.nickname),
-                otherwise=None,
-            )
+    compiled = sqlite.select(
+        sqlite.case(
+            profile.column(Profile.id).eq(1),
+            then=profile.column(Profile.nickname),
+            otherwise=None,
         )
-        .all()
-        .compile()
-    )
+    ).compile()
 
     assert_eq(
         compiled.sql,
@@ -144,15 +136,11 @@ def case_preserves_alias_source() -> None:
 @test(mark="fast")
 def joined_case_qualifies_predicate_columns() -> None:
     """CASE conditions use the same column qualification as their enclosing query."""
-    query = (
-        sqlite.select(
-            sqlite.case(
-                Profile.id.eq_col(Profile.id), then=Profile.nickname, otherwise=None
-            )
+    query = sqlite.select(
+        sqlite.case(
+            Profile.id.eq_col(Profile.id), then=Profile.nickname, otherwise=None
         )
-        .join(Inventory, on=Profile.id.eq_col(Inventory.id))
-        .all()
-    )
+    ).join(Inventory, on=Profile.id.eq_col(Inventory.id))
     compiled = query.compile()
 
     assert_eq(
@@ -166,7 +154,7 @@ def case_condition_respects_grouping_rules() -> None:
     """Literal branches do not remove the condition's column dependency."""
     query = sqlite.select(
         Inventory.id.count(), sqlite.case(Inventory.quantity.gt(0), then=1, otherwise=0)
-    ).all()
+    )
 
     with assert_raises(sqlite.QueryCompilationError):
         query.compile()
@@ -178,17 +166,13 @@ if TYPE_CHECKING:
         """CASE tracks branch nullability without narrowing based on predicates."""
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(
-                    sqlite.case(Inventory.id.eq(1), then=1, otherwise=2)
-                ).all()
+                sqlite.select(sqlite.case(Inventory.id.eq(1), then=1, otherwise=2))
             ),
             list[int],
         )
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(
-                    sqlite.case(Inventory.id.eq(1), then=1, otherwise=None)
-                ).all()
+                sqlite.select(sqlite.case(Inventory.id.eq(1), then=1, otherwise=None))
             ),
             list[int | None],
         )
@@ -198,7 +182,7 @@ if TYPE_CHECKING:
                     sqlite.case(
                         Profile.id.eq(1), then=Profile.nickname, otherwise="fallback"
                     )
-                ).all()
+                )
             ),
             list[str | None],
         )
@@ -206,7 +190,7 @@ if TYPE_CHECKING:
             await transaction.fetch_all(
                 sqlite.select(
                     sqlite.case(Profile.id.eq(1), then="first", otherwise="second")
-                ).all()
+                )
             ),
             list[str],
         )
@@ -221,7 +205,7 @@ def case_compares_computed_right_operand() -> None:
     expression = sqlite.case(
         Inventory.quantity.gt_col(Inventory.version.add(2)), then=1, otherwise=0
     )
-    compiled = sqlite.select(expression).all().compile()
+    compiled = sqlite.select(expression).compile()
 
     assert_eq(
         compiled.sql,
@@ -244,7 +228,6 @@ def case_comparison_cannot_reference_a_future_join() -> None:
             ),
         )
         .join(NumericValues, on=Inventory.id.eq_col(NumericValues.id))
-        .all()
     )
 
     with assert_raises(sqlite.QueryCompilationError):

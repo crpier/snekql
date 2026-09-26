@@ -116,7 +116,7 @@ def sqlite_codec_materializes_select_rows_with_backend_decoding() -> None:
     codec = DialectQueryCodec.for_backend("sqlite")
 
     value = codec.materialize_select_row(
-        sqlite.select(Widget.label).all(),
+        sqlite.select(Widget.label),
         ("a",),
     )
 

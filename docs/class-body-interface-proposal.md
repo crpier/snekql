@@ -83,7 +83,7 @@ async def author_posts(
     transaction: sqlite.Transaction,
 ) -> list[tuple[User[sqlite.Row], Post[sqlite.Row]]]:
     return await transaction.fetch_all(
-        sqlite.select(User).join(Post, on=Post.author_id.references(User.user_id)).all()
+        sqlite.select(User).join(Post, on=Post.author_id.references(User.user_id))
     )
 
 
@@ -143,14 +143,14 @@ You do not normally need it:
 
 ```python
 async def list_users(transaction: sqlite.Transaction) -> list[User[sqlite.Row]]:
-    return await transaction.fetch_all(sqlite.select(User).all())
+    return await transaction.fetch_all(sqlite.select(User))
 ```
 
 It is proposed for functions that return a query instead of executing it:
 
 ```python
 def users() -> sqlite.ClosedRead[User[sqlite.Row]]:
-    query = sqlite.select(User).all().order_by(User.user_id.asc())
+    query = sqlite.select(User).order_by(User.user_id.asc())
     return sqlite.ready(query)
 ```
 

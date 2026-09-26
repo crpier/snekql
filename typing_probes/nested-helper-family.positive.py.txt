@@ -32,11 +32,11 @@ class Role:
 
 
 def scalar_value() -> database.Scalar[Never, int | None, int]:
-    return database.scalar(database.select(Invoice.number).all())
+    return database.scalar(database.select(Invoice.number))
 
 
 def existence() -> database.Predicate[Never]:
-    return database.exists(database.select(Invoice).all())
+    return database.exists(database.select(Invoice))
 
 
 def negate[Owner](predicate: database.Predicate[Owner]) -> database.Predicate[Owner]:
@@ -52,12 +52,12 @@ def total() -> database.Aggregate[Account, int]:
 
 
 token = Account.number.label("number")
-named = database.select(Account).all().project(Result, number=token)
+named = database.select(Account).project(Result, number=token)
 derived = named.cte(Role, name="derived")
 compound = named.union_all(named)
 aliased = database.alias(Account, Role, name="aliased")
 local = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
-remote = foreign.select(Foreign.number).all()
+remote = foreign.select(Foreign.number)
 
 
 async def control(transaction: database.Transaction) -> None:
@@ -81,13 +81,13 @@ async def control(transaction: database.Transaction) -> None:
     assert_type(Account.number.in_subquery(local), database.Predicate[Account])
     assert_type(Account.number.not_in_subquery(local), database.Predicate[Account])
     assert_type(await transaction.fetch_all(database.select(Account).where(negate(database.not_exists(local)))), list[Account[database.Row]])
-    assert_type(await transaction.fetch_all(database.select(column(Account.number), scalar_value()).all()), list[tuple[int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(aliased.column(Account.number)).where(aliased.column(Account.number).in_subquery(database.select(Invoice.number).all()))), list[int])
-    assert_type(await transaction.fetch_all(database.select(derived.column(token)).where(derived.column(token).in_subquery(database.select(Invoice.number).all()))), list[int])
+    assert_type(await transaction.fetch_all(database.select(column(Account.number), scalar_value())), list[tuple[int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(aliased.column(Account.number)).where(aliased.column(Account.number).in_subquery(database.select(Invoice.number)))), list[int])
+    assert_type(await transaction.fetch_all(database.select(derived.column(token)).where(derived.column(token).in_subquery(database.select(Invoice.number)))), list[int])
     assert_type(await transaction.fetch_all(compound.order_by(compound.column(token).asc())), list[Result])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int, int | None]])
-    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, scalar_value())), list[tuple[int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, scalar_value())), list[tuple[int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, scalar_value())), list[tuple[int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value())), list[tuple[int, int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value())), list[tuple[int, int, int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value())), list[tuple[int, int, int, int, int, int, int, int | None]])

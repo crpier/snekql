@@ -73,7 +73,7 @@ def compiled_type_is_exported_by_backend_namespaces() -> None:
         __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
-    compiled: sqlite.CompiledQuery = select(Account).all().compile()
+    compiled: sqlite.CompiledQuery = select(Account).compile()
 
     assert_eq(type(compiled), sqlite.CompiledQuery)
     assert_eq(sqlite.CompiledQuery, mariadb.CompiledQuery)
@@ -109,7 +109,7 @@ def compiled_fields_are_frozen(field_name: str) -> None:
         __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
-    compiled = select(Account).all().compile()
+    compiled = select(Account).compile()
 
     with assert_raises(FrozenInstanceError):
         setattr(compiled, field_name, "replacement")
@@ -242,7 +242,7 @@ def compile_cannot_retarget_a_model_to_another_backend() -> None:
 
     with assert_raises(sqlite.QueryConstructionError):
         # Deliberately cross Backend Families to exercise the runtime guard.
-        mariadb.select(Account).all().compile()  # ty: ignore[no-matching-overload]
+        mariadb.select(Account).compile()  # ty: ignore[no-matching-overload]
 
 
 @test(mark="medium")
@@ -254,7 +254,7 @@ async def transaction_rejects_compiled_inspection_output() -> None:
             __row_type__: ClassVar[ReadType[Account[Row]]]
             email: Account.Col[str] = Text(primary_key=True)
 
-        compiled = select(Account).all().compile()
+        compiled = select(Account).compile()
 
         async with database.transaction() as transaction:
             with assert_raises(QueryCompilationError):
@@ -273,7 +273,7 @@ def compile_is_available_through_select_annotation() -> None:
         __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
-    assert_eq(inspect(select(Account.email).all()).params, ())
+    assert_eq(inspect(select(Account.email)).params, ())
 
 
 @test(mark="fast")

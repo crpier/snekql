@@ -129,7 +129,7 @@ async def fetched_json_enforces_field_constraints() -> None:
     database = await load_fixture(stored_invalid_batch())
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
-            await transaction.fetch_one(sqlite.select(NonemptyBatch).all())
+            await transaction.fetch_one(sqlite.select(NonemptyBatch))
 
 
 @test(mark="medium")
@@ -139,7 +139,7 @@ async def fetched_json_can_explicitly_skip_validation() -> None:
     database = await load_fixture(stored_invalid_batch())
     async with database.transaction() as transaction:
         payload = await transaction.fetch_one(
-            sqlite.select(NonemptyBatch.items).all(), validate=False
+            sqlite.select(NonemptyBatch.items), validate=False
         )
 
     assert_eq(payload, [])

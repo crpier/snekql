@@ -163,8 +163,7 @@ async def projection_join_fetches_tuples_of_scalars() -> None:
             rows = await tx.fetch_all(
                 select(JoinUser.email, JoinOrder.note)
                 .join(JoinOrder, on=JoinOrder.user_id.references(JoinUser.id))
-                .order_by(JoinOrder.note.asc())
-                .all(),
+                .order_by(JoinOrder.note.asc()),
             )
     finally:
         await database.close()
@@ -215,7 +214,7 @@ async def required_nullable_foreign_key_round_trips_null() -> None:
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(RequiredSecret(id="loose", pipeline_id=None)))
-            rows = await tx.fetch_all(select(RequiredSecret).all())
+            rows = await tx.fetch_all(select(RequiredSecret))
     finally:
         await database.close()
 
@@ -239,7 +238,7 @@ async def nullable_optional_foreign_key_round_trips_null() -> None:
             await tx.execute(insert(Secret(id="bound", pipeline_id="pipe-1")))
 
             rows = await tx.fetch_all(
-                select(Secret).order_by(Secret.id.asc()).all(),
+                select(Secret).order_by(Secret.id.asc()),
             )
     finally:
         await database.close()

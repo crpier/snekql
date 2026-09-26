@@ -39,7 +39,7 @@ def completed_named_definition_compiles_as_a_cte() -> None:
         .cte(ActiveRole, name="active")
     )
 
-    compiled = sqlite.select(active).all().compile()
+    compiled = sqlite.select(active).compile()
 
     assert_eq(
         compiled.sql,
@@ -106,13 +106,12 @@ def definition_cannot_shadow_its_physical_source() -> None:
     """WITH name resolution must not turn a table read into accidental recursion."""
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id.label("id"))
         .cte(ActiveRole, name="person")
     )
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(active).all().compile()
+        sqlite.select(active).compile()
 
 
 @test(mark="fast")
@@ -167,7 +166,6 @@ def plain_binding_does_not_make_none_a_column_token() -> None:
     """Only issued, bound label objects can identify typed output columns."""
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id)
         .cte(ActiveRole, name="active")
     )
@@ -182,7 +180,6 @@ def definition_and_consumer_ordering_keep_their_own_limits() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .order_by(Person.id.asc())
         .limit(3)
         .project(Identifier, id=identifier)
@@ -191,7 +188,6 @@ def definition_and_consumer_ordering_keep_their_own_limits() -> None:
 
     compiled = (
         sqlite.select(active)
-        .all()
         .order_by(active.column(identifier).desc())
         .limit(1)
         .compile()
@@ -233,7 +229,6 @@ def matching_spelling_does_not_grant_token_membership() -> None:
     """A freshly issued token cannot identify another token's bound output."""
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id.label("id"))
         .cte(ActiveRole, name="active")
     )
@@ -248,20 +243,18 @@ def dependent_definitions_cannot_reuse_a_casefolded_name() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="Active")
     )
     downstream_id = active.column(identifier).label("id")
     downstream = (
         sqlite.select(active)
-        .all()
         .project(Identifier, id=downstream_id)
         .cte(FilteredRole, name="active")
     )
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(downstream).all().compile()
+        sqlite.select(downstream).compile()
 
 
 @test(mark="fast")
@@ -269,7 +262,6 @@ def cte_mutation_target_fails_with_a_query_construction_error() -> None:
     """Dynamic callers cannot treat a query-only relation as writable schema."""
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id)
         .cte(ActiveRole, name="active")
     )
@@ -305,14 +297,13 @@ def cte_alias_roles_must_be_distinct_in_visible_scopes() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     peer = sqlite.alias(active, ActiveRole, name="peer")
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(active).where(sqlite.exists(sqlite.select(peer).all())).compile()
+        sqlite.select(active).where(sqlite.exists(sqlite.select(peer))).compile()
 
 
 @test(mark="fast")
@@ -321,13 +312,11 @@ def cte_alias_cannot_shadow_a_different_reachable_definition() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     other = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(FilteredRole, name="other")
     )
@@ -335,8 +324,7 @@ def cte_alias_cannot_shadow_a_different_reachable_definition() -> None:
 
     with assert_raises(sqlite.QueryCompilationError):
         sqlite.select(Person).where(
-            sqlite.exists(sqlite.select(other).all())
-            & sqlite.exists(sqlite.select(peer).all())
+            sqlite.exists(sqlite.select(other)) & sqlite.exists(sqlite.select(peer))
         ).compile()
 
 
@@ -364,7 +352,6 @@ def cte_alias_rejects_a_foreign_backend_before_compilation() -> None:
     """Dynamic calls cannot retag the definition by choosing another factory."""
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id)
         .cte(ActiveRole, name="active")
     )
@@ -383,13 +370,12 @@ def cte_consumer_cannot_claim_locks_on_underlying_rows() -> None:
 
     active = (
         mariadb.select(Native)
-        .all()
         .project(Identifier, id=Native.id)
         .cte(ActiveRole, name="active")
     )
 
     with assert_raises(mariadb.QueryCompilationError):
-        mariadb.select(active).all().for_update().compile()
+        mariadb.select(active).for_update().compile()
 
 
 @test(mark="fast")
@@ -400,7 +386,7 @@ def cte_definition_cannot_hide_a_locking_select() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    query = mariadb.select(Native).all().project(Identifier, id=Native.id).for_update()
+    query = mariadb.select(Native).project(Identifier, id=Native.id).for_update()
 
     with assert_raises(mariadb.QueryConstructionError):
         query.cte(ActiveRole, name="active")
@@ -412,7 +398,6 @@ def distinct_definitions_cannot_reuse_an_indistinguishable_visible_role() -> Non
     identifier = Person.id.label("id")
     first = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="first")
     )
@@ -426,7 +411,7 @@ def distinct_definitions_cannot_reuse_an_indistinguishable_visible_role() -> Non
     with assert_raises(sqlite.QueryCompilationError):
         sqlite.select(first).join(
             second, on=first.column(identifier).eq_col(second.column(identifier))
-        ).all().compile()
+        ).compile()
 
 
 @test(mark="fast")
@@ -435,14 +420,13 @@ def cte_count_rejects_an_ungrouped_visible_output() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     column = active.column(identifier)
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(column, column.count()).all().compile()
+        sqlite.select(column, column.count()).compile()
 
 
 @test(mark="fast")
@@ -451,7 +435,6 @@ def grouped_cte_alias_does_not_cover_a_different_role() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
@@ -460,7 +443,6 @@ def grouped_cte_alias_does_not_cover_a_different_role() -> None:
     query = (
         sqlite.select(column, column.count())
         .join(peer, on=column.eq_col(peer.column(identifier)))
-        .all()
         .group_by(peer.column(identifier))
     )
 
@@ -476,7 +458,6 @@ def mixed_physical_and_cte_grouping_keys_compile() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
@@ -484,7 +465,6 @@ def mixed_physical_and_cte_grouping_keys_compile() -> None:
     query = (
         sqlite.select(Person.id, column, column.count())
         .join(active, on=Person.id.eq_col(column))
-        .all()
         .group_by(Person.id, column)
     )
 
@@ -497,14 +477,13 @@ def cte_grouping_rejects_aggregate_keys() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     count = active.column(identifier).count()
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(count).all().group_by(count)  # ty: ignore[invalid-argument-type]
+        sqlite.select(count).group_by(count)  # ty: ignore[invalid-argument-type]
 
 
 @test(mark="fast")
@@ -521,7 +500,6 @@ def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
     time = Event.happened_at.label("happened_at")
     events = (
         sqlite.select(Event)
-        .all()
         .project(EventResult, happened_at=time)
         .cte(ActiveRole, name="events")
     )
@@ -563,7 +541,6 @@ def cte_numeric_aggregates_reject_nonnumeric_outputs() -> None:
     key = Input.key.label("key")
     data = (
         sqlite.select(Input)
-        .all()
         .project(Result, name=name, enabled=enabled, key=key)
         .cte(ActiveRole, name="data")
     )
@@ -583,12 +560,11 @@ def cte_arithmetic_inputs_obey_grouping_coverage() -> None:
     value = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="active")
     )
     column = active.column(value)
-    query = sqlite.select(column.add(1), column.count()).all()
+    query = sqlite.select(column.add(1), column.count())
 
     with assert_raises(sqlite.QueryCompilationError):
         query.compile()
@@ -610,9 +586,7 @@ def cte_arithmetic_rejects_logical_uuid_storage() -> None:
         key: UUID
 
     key = Input.key.label("key")
-    data = (
-        sqlite.select(Input).all().project(Result, key=key).cte(ActiveRole, name="data")
-    )
+    data = sqlite.select(Input).project(Result, key=key).cte(ActiveRole, name="data")
 
     with assert_raises(sqlite.QueryConstructionError):
         data.column(key).add(1)  # ty: ignore[no-matching-overload]
@@ -633,7 +607,6 @@ def cte_arithmetic_rejects_unresolved_sum_wire_representation() -> None:
 
     totals = (
         mariadb.select(Native)
-        .all()
         .project(OptionalIdentifier, id=total)
         .cte(ActiveRole, name="totals")
     )
@@ -652,13 +625,12 @@ def cte_rebinding_rejects_an_incompatible_logical_result_domain() -> None:
     value = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="active")
     )
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(active).all().project(WrongResult, id=active.column(value))
+        sqlite.select(active).project(WrongResult, id=active.column(value))
 
 
 @test(mark="fast")
@@ -673,13 +645,12 @@ def cte_rebinding_retains_definition_local_nullability() -> None:
     missing = (
         sqlite.select(Person)
         .left_join(peer, on=Person.id.eq_col(peer.column(Person.id)))
-        .all()
         .project(OptionalIdentifier, id=value)
         .cte(ActiveRole, name="missing")
     )
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(missing).all().project(Identifier, id=missing.column(value))
+        sqlite.select(missing).project(Identifier, id=missing.column(value))
 
 
 @test(mark="fast")
@@ -692,13 +663,10 @@ def cte_domain_follows_the_expression_not_its_result_annotation() -> None:
     value = Person.id.add(1).label("id")
     calculated = (
         sqlite.select(Person)
-        .all()
         .project(FloatResult, id=value)
         .cte(ActiveRole, name="calculated")
     )
-    rebound = (
-        sqlite.select(calculated).all().project(Identifier, id=calculated.column(value))
-    )
+    rebound = sqlite.select(calculated).project(Identifier, id=calculated.column(value))
 
     assert_eq('"calculated"."id" AS "id"' in rebound.compile().sql, True)
 
@@ -713,13 +681,12 @@ def cte_scalar_domain_remains_nullable_when_rebound() -> None:
     value = sqlite.scalar(sqlite.select(Person.id).where(Person.id.eq(0))).label("id")
     data = (
         sqlite.select(Person)
-        .all()
         .project(OptionalIdentifier, id=value)
         .cte(ActiveRole, name="data")
     )
 
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.select(data).all().project(Identifier, id=data.column(value))
+        sqlite.select(data).project(Identifier, id=data.column(value))
 
 
 @test(mark="fast")
@@ -728,11 +695,10 @@ def projected_left_cte_output_requires_a_nullable_result_field() -> None:
     value = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="active")
     )
-    joined = sqlite.select(Person).left_join(active, on=Person.id.eq(0)).all()
+    joined = sqlite.select(Person).left_join(active, on=Person.id.eq(0))
 
     with assert_raises(sqlite.QueryConstructionError):
         joined.project(Identifier, id=active.column(value))
@@ -749,13 +715,12 @@ def write_subquery_cte_cannot_shadow_mutation_target() -> None:
     identifier = Candidate.id.label("id")
     definition = (
         sqlite.select(Candidate)
-        .all()
         .project(Identifier, id=identifier)
         .cte(FilteredRole, name="person")
     )
     active = sqlite.alias(definition, ActiveRole, name="active")
     query = sqlite.delete(Person).where(
-        Person.id.in_subquery(sqlite.select(active.column(identifier)).all())
+        Person.id.in_subquery(sqlite.select(active.column(identifier)))
     )
 
     with assert_raises(sqlite.QueryCompilationError):

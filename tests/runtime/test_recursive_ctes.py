@@ -98,10 +98,8 @@ async def sqlite_recursive_traversal(
             .project(Visit, id=Category.id, depth=previous.column(depth).add(1))
         )
     )
-    query = (
-        sqlite.select(walk)
-        .all()
-        .order_by(walk.column(depth).asc(), walk.column(identifier).asc())
+    query = sqlite.select(walk).order_by(
+        walk.column(depth).asc(), walk.column(identifier).asc()
     )
 
     async with database.transaction() as transaction:
@@ -140,10 +138,8 @@ async def mariadb_recursive_traversal(
             .project(Visit, id=NativeCategory.id, depth=previous.column(depth).add(1))
         )
     )
-    query = (
-        mariadb.select(walk)
-        .all()
-        .order_by(walk.column(depth).asc(), walk.column(identifier).asc())
+    query = mariadb.select(walk).order_by(
+        walk.column(depth).asc(), walk.column(identifier).asc()
     )
 
     async with database.transaction() as transaction:
@@ -157,10 +153,8 @@ async def mariadb_recursive_traversal(
 async def prepared_recursion_cannot_be_executed() -> None:
     """A dynamic caller cannot fetch an unfinished recursive builder."""
     database = await load_fixture(provide_categories())
-    anchor = (
-        sqlite.select(Category)
-        .all()
-        .project(Visit, id=Category.id, depth=sqlite.literal(0))
+    anchor = sqlite.select(Category).project(
+        Visit, id=Category.id, depth=sqlite.literal(0)
     )
     prepared = sqlite.recursive_cte(anchor, WalkRole, name="walk")
 
@@ -194,7 +188,7 @@ async def sqlite_recursive_self_only_member() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(walk).all().order_by(walk.column(depth).asc())
+            sqlite.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_type(rows, list[Visit])
@@ -226,7 +220,7 @@ async def mariadb_recursive_self_only_member() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(walk).all().order_by(walk.column(depth).asc())
+            mariadb.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_type(rows, list[Visit])
@@ -246,10 +240,8 @@ async def sqlite_recursive_outputs_preserve_logical_codecs() -> None:
     key = LocalDocument.id.label("key")
     depth = sqlite.literal(0).label("depth")
     values = LocalDocument.payload.label("values")
-    anchor = (
-        sqlite.select(LocalDocument)
-        .all()
-        .project(DocumentVisit, values=values, key=key, depth=depth)
+    anchor = sqlite.select(LocalDocument).project(
+        DocumentVisit, values=values, key=key, depth=depth
     )
     walk = sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
         lambda previous: (
@@ -292,10 +284,8 @@ async def mariadb_recursive_outputs_preserve_logical_codecs() -> None:
     key = MariaDocument.id.label("key")
     depth = mariadb.literal(0).label("depth")
     values = MariaDocument.payload.label("values")
-    anchor = (
-        mariadb.select(MariaDocument)
-        .all()
-        .project(DocumentVisit, values=values, key=key, depth=depth)
+    anchor = mariadb.select(MariaDocument).project(
+        DocumentVisit, values=values, key=key, depth=depth
     )
     walk = mariadb.recursive_cte(anchor, WalkRole, name="walk").step(
         lambda previous: (
@@ -481,7 +471,7 @@ async def sqlite_recursive_final_contract_is_strict(
 
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
-            await transaction.fetch_all(sqlite.select(walk).all(), validate=validate)
+            await transaction.fetch_all(sqlite.select(walk), validate=validate)
 
 
 @test(
@@ -524,7 +514,7 @@ async def mariadb_recursive_final_contract_is_strict(
 
     async with database.transaction() as transaction:
         with assert_raises(mariadb.ModelValidationError):
-            await transaction.fetch_all(mariadb.select(walk).all(), validate=validate)
+            await transaction.fetch_all(mariadb.select(walk), validate=validate)
 
 
 @test(mark="medium")
@@ -557,7 +547,6 @@ async def sqlite_recursive_presence_distinguishes_null_member() -> None:
     query = (
         sqlite.select(Category)
         .left_join(walk, on=Category.id.eq(1) & walk.column(identifier).is_null())
-        .all()
         .order_by(Category.id.asc())
     )
 
@@ -597,7 +586,6 @@ async def mariadb_recursive_presence_distinguishes_null_member() -> None:
     query = (
         mariadb.select(NativeCategory)
         .left_join(walk, on=NativeCategory.id.eq(1) & walk.column(identifier).is_null())
-        .all()
         .order_by(NativeCategory.id.asc())
     )
 
@@ -654,7 +642,7 @@ async def sqlite_recursive_literal_retains_signed_width(
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(walk).all().order_by(walk.column(depth).asc())
+            sqlite.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_eq([row.depth for row in rows], expected)
@@ -692,7 +680,7 @@ async def mariadb_recursive_literal_retains_signed_width(
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(walk).all().order_by(walk.column(depth).asc())
+            mariadb.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_eq([row.depth for row in rows], expected)
@@ -727,7 +715,7 @@ async def sqlite_named_callback_executes() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(walk).all().order_by(walk.column(depth).asc())
+            sqlite.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_type(rows, list[Visit])
@@ -763,7 +751,7 @@ async def mariadb_named_callback_executes() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(walk).all().order_by(walk.column(depth).asc())
+            mariadb.select(walk).order_by(walk.column(depth).asc())
         )
 
     assert_type(rows, list[Visit])

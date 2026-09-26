@@ -272,7 +272,7 @@ async def mariadb_select_materializes_the_declared_row() -> None:
                 mariadb.insert(Product(price=Decimal("12.50"), payload={"answer": 42}))
             )
         async with database.transaction() as transaction:
-            product = await transaction.fetch_one(mariadb.select(Product).all())
+            product = await transaction.fetch_one(mariadb.select(Product))
 
     assert_type(product, Product[mariadb.Row])
     assert_is(type(product), Product)

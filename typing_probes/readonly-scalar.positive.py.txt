@@ -16,8 +16,8 @@ async def control(
     number: database.ColumnRef[Account, int],
     optional: database.ColumnRef[Account, int | None],
 ) -> None:
-    query = database.select(number).all()
-    nullable = database.select(optional).all()
+    query = database.select(number)
+    nullable = database.select(optional)
     assert_type(await transaction.fetch_all(query), list[int])
     assert_type(await transaction.fetch_all(nullable), list[int | None])
     assert_type(Account.number.eq_col(database.scalar(query)), database.Predicate[Account])

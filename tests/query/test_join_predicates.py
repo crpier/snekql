@@ -39,7 +39,6 @@ def on_cannot_reference_a_later_join() -> None:
         sqlite.select(User)
         .join(Order, on=Order.user_id.eq_col(Item.order_id))  # ty: ignore[no-matching-overload]
         .join(Item, on=Item.order_id.eq_col(Order.id))
-        .all()
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -63,9 +62,7 @@ def on_rejects_aggregate_filters() -> None:
 @test(mark="fast")
 def on_can_filter_only_the_joined_table() -> None:
     """Explicit predicates need not claim an FK relationship between tables."""
-    compiled = (
-        sqlite.select(User).join(Order, on=Order.note.eq("visible")).all().compile()
-    )
+    compiled = sqlite.select(User).join(Order, on=Order.note.eq("visible")).compile()
 
     assert_true('INNER JOIN "order" ON "order"."note" = ?' in compiled.sql)
     assert_eq(compiled.params, ("visible",))
@@ -83,7 +80,6 @@ def on_subquery_can_correlate_to_the_joined_table() -> None:
                 sqlite.select(Item.order_id).where(Item.order_id.eq_col(Order.id))
             ),
         )
-        .all()
         .compile()
     )
 
@@ -102,7 +98,6 @@ def on_subquery_cannot_correlate_to_a_later_join() -> None:
             ),
         )
         .join(Item, on=Item.order_id.eq_col(Order.id))
-        .all()
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -166,7 +161,6 @@ def on_values_use_the_column_codec() -> None:
     compiled = (
         sqlite.select(User)
         .join(Token, on=Token.token.eq(UUID("12345678-1234-5678-1234-567812345678")))
-        .all()
         .compile()
     )
 
@@ -184,7 +178,6 @@ def nested_on_can_compare_to_an_enclosing_query() -> None:
                 # Runtime permits enclosing ON references; static join scopes
                 # do not model that correlation.
                 .join(Item, on=Item.order_id.eq_col(User.id))  # ty: ignore[no-matching-overload]
-                .all()
             )
         )
         .compile()

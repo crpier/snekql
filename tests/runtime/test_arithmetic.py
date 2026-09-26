@@ -62,7 +62,7 @@ async def integer_projection_materializes_computed_value() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(Inventory.quantity.sub(2).mul(3).add(1)).all()
+            sqlite.select(Inventory.quantity.sub(2).mul(3).add(1))
         )
 
     assert_type(rows, list[int])
@@ -87,7 +87,7 @@ async def sqlite_competing_decrements_cannot_oversell() -> None:
 
     affected = await asyncio.gather(*(buy_one() for _ in range(6)))
     async with database.transaction() as transaction:
-        remaining = await transaction.fetch_one(sqlite.select(Inventory.quantity).all())
+        remaining = await transaction.fetch_one(sqlite.select(Inventory.quantity))
 
     assert_eq((sum(affected), remaining), (3, 0))
 
@@ -112,7 +112,7 @@ async def sqlite_optimistic_update_has_one_winner() -> None:
     affected = await asyncio.gather(*(claim_version() for _ in range(6)))
     async with database.transaction() as transaction:
         stored = await transaction.fetch_one(
-            sqlite.select(Inventory.quantity, Inventory.version).all()
+            sqlite.select(Inventory.quantity, Inventory.version)
         )
 
     assert_eq((sum(affected), stored), (1, (2, 2)))
@@ -136,9 +136,7 @@ async def mariadb_competing_decrements_cannot_oversell() -> None:
 
     affected = await asyncio.gather(*(buy_one() for _ in range(6)))
     async with database.transaction() as transaction:
-        remaining = await transaction.fetch_one(
-            mariadb.select(MariaInventory.quantity).all()
-        )
+        remaining = await transaction.fetch_one(mariadb.select(MariaInventory.quantity))
 
     assert_eq((sum(affected), remaining), (3, 0))
 
@@ -163,7 +161,7 @@ async def mariadb_optimistic_update_has_one_winner() -> None:
     affected = await asyncio.gather(*(claim_version() for _ in range(6)))
     async with database.transaction() as transaction:
         stored = await transaction.fetch_one(
-            mariadb.select(MariaInventory.quantity, MariaInventory.version).all()
+            mariadb.select(MariaInventory.quantity, MariaInventory.version)
         )
 
     assert_eq((sum(affected), stored), (1, (2, 2)))
@@ -177,7 +175,7 @@ async def sqlite_integer_overflow_is_not_decoded_as_integer() -> None:
     async with database.transaction() as transaction:
         with assert_raises(sqlite.ModelValidationError):
             await transaction.fetch_all(
-                sqlite.select(Inventory.quantity.add(2**63 - 1)).all()
+                sqlite.select(Inventory.quantity.add(2**63 - 1))
             )
 
 
@@ -189,7 +187,7 @@ async def mariadb_integer_overflow_remains_an_execution_error() -> None:
     async with database.transaction() as transaction:
         with assert_raises(mariadb.ExecutionError):
             await transaction.fetch_all(
-                mariadb.select(MariaInventory.quantity.add(2**63 - 1)).all()
+                mariadb.select(MariaInventory.quantity.add(2**63 - 1))
             )
 
 
@@ -241,15 +239,11 @@ async def provide_sqlite_numeric_values() -> AsyncGenerator[sqlite.Database]:
 async def sqlite_arithmetic_propagates_null_from_either_operand() -> None:
     """A nullable operand changes the result contract on either side of arithmetic."""
     database = await load_fixture(provide_sqlite_numeric_values())
-    query = (
-        sqlite.select(
-            NumericValues.integer.add(NumericValues.optional_integer),
-            NumericValues.optional_integer.sub(NumericValues.integer),
-            NumericValues.real.mul(2.0).add(NumericValues.optional_real),
-        )
-        .all()
-        .order_by(NumericValues.id.asc())
-    )
+    query = sqlite.select(
+        NumericValues.integer.add(NumericValues.optional_integer),
+        NumericValues.optional_integer.sub(NumericValues.integer),
+        NumericValues.real.mul(2.0).add(NumericValues.optional_real),
+    ).order_by(NumericValues.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -272,9 +266,7 @@ async def sqlite_nullable_assignment_accepts_non_null_expression() -> None:
             .all()
         )
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(
-            sqlite.select(NumericValues.optional_real).all()
-        )
+        rows = await transaction.fetch_all(sqlite.select(NumericValues.optional_real))
 
     assert_type(rows, list[float | None])
     assert_eq(rows, [5.0, 5.0])
@@ -297,9 +289,7 @@ async def sqlite_nullable_assignment_preserves_sql_null() -> None:
         )
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(NumericValues.optional_real)
-            .all()
-            .order_by(NumericValues.id.asc())
+            sqlite.select(NumericValues.optional_real).order_by(NumericValues.id.asc())
         )
 
     assert_eq(rows, [None, 3.0])
@@ -340,15 +330,11 @@ async def provide_mariadb_numeric_values() -> AsyncGenerator[mariadb.Database]:
 async def mariadb_arithmetic_propagates_null_from_either_operand() -> None:
     """A nullable operand changes the result contract on either side of arithmetic."""
     database = await load_fixture(provide_mariadb_numeric_values())
-    query = (
-        mariadb.select(
-            MariaNumericValues.integer.add(MariaNumericValues.optional_integer),
-            MariaNumericValues.optional_integer.sub(MariaNumericValues.integer),
-            MariaNumericValues.real.mul(2.0).add(MariaNumericValues.optional_real),
-        )
-        .all()
-        .order_by(MariaNumericValues.id.asc())
-    )
+    query = mariadb.select(
+        MariaNumericValues.integer.add(MariaNumericValues.optional_integer),
+        MariaNumericValues.optional_integer.sub(MariaNumericValues.integer),
+        MariaNumericValues.real.mul(2.0).add(MariaNumericValues.optional_real),
+    ).order_by(MariaNumericValues.id.asc())
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -374,7 +360,7 @@ async def mariadb_nullable_assignment_accepts_non_null_expression() -> None:
         )
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(MariaNumericValues.optional_real).all()
+            mariadb.select(MariaNumericValues.optional_real)
         )
 
     assert_type(rows, list[float | None])
@@ -398,9 +384,9 @@ async def mariadb_nullable_assignment_preserves_sql_null() -> None:
         )
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            mariadb.select(MariaNumericValues.optional_real)
-            .all()
-            .order_by(MariaNumericValues.id.asc())
+            mariadb.select(MariaNumericValues.optional_real).order_by(
+                MariaNumericValues.id.asc()
+            )
         )
 
     assert_eq(rows, [None, 3.0])
@@ -424,7 +410,7 @@ async def sqlite_concurrent_increments_do_not_lose_updates() -> None:
 
     await asyncio.gather(*(increment() for _ in range(6)))
     async with database.transaction() as transaction:
-        version = await transaction.fetch_one(sqlite.select(Inventory.version).all())
+        version = await transaction.fetch_one(sqlite.select(Inventory.version))
 
     assert_eq(version, 7)
 
@@ -447,8 +433,6 @@ async def mariadb_concurrent_increments_do_not_lose_updates() -> None:
 
     await asyncio.gather(*(increment() for _ in range(6)))
     async with database.transaction() as transaction:
-        version = await transaction.fetch_one(
-            mariadb.select(MariaInventory.version).all()
-        )
+        version = await transaction.fetch_one(mariadb.select(MariaInventory.version))
 
     assert_eq(version, 7)

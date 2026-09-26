@@ -25,7 +25,7 @@ def cte_definition_cannot_capture_its_consumers_row() -> None:
         .project(Identifier, id=Order.id)
         .cte(ActiveRole, name="correlated")
     )
-    query = sqlite.select(User).where(sqlite.exists(sqlite.select(definition).all()))
+    query = sqlite.select(User).where(sqlite.exists(sqlite.select(definition)))
 
     with assert_raises(sqlite.QueryCompilationError):
         query.compile()
@@ -42,12 +42,11 @@ def cte_definition_retains_its_own_nested_correlation() -> None:
     )
     definition = (
         sqlite.select(User)
-        .all()
         .project(OptionalIdentifier, id=first_order)
         .cte(ActiveRole, name="first_orders")
     )
 
-    compiled = sqlite.select(definition).all().compile()
+    compiled = sqlite.select(definition).compile()
 
     assert_eq('"order"."user_id" = "user"."id"' in compiled.sql, True)
     assert_eq(compiled.params, (1,))
@@ -59,19 +58,17 @@ def nested_definition_cannot_shadow_a_reachable_with_name() -> None:
     identifier = Person.id.label("id")
     first = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="shared")
     )
     second = (
         sqlite.select(first)
-        .all()
         .project(Identifier, id=first.column(identifier))
         .cte(FilteredRole, name="SHARED")
     )
 
     with assert_raises(sqlite.QueryCompilationError):
-        sqlite.select(second).all().compile()
+        sqlite.select(second).compile()
 
 
 @test(mark="fast")
@@ -79,7 +76,6 @@ def corrupted_cte_dependency_cycle_is_rejected_before_rendering() -> None:
     """Guard corrupted metadata even though public immutable builders form a DAG."""
     definition = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=Person.id)
         .cte(ActiveRole, name="cyclic")
     )
@@ -90,6 +86,6 @@ def corrupted_cte_dependency_cycle_is_rejected_before_rendering() -> None:
     )
 
     with assert_raises(sqlite.QueryCompilationError) as failure:
-        sqlite.select(definition).all().compile()
+        sqlite.select(definition).compile()
 
     assert_eq(str(failure.exception), "CTE dependency cycle")

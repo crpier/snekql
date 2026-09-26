@@ -56,7 +56,7 @@ async def fetch_all_materializes_model_rows() -> None:
             await tx.execute(
                 insert(User(email="b@example.com", status="disabled")),
             )
-            rows = await tx.fetch_all(select(User).all())
+            rows = await tx.fetch_all(select(User))
     finally:
         await database.close()
 
@@ -131,7 +131,7 @@ async def fetch_all_returns_tuples_for_multi_column_selects() -> None:
                 insert(User(email="b@example.com", status="disabled")),
             )
             rows = await tx.fetch_all(
-                select(User.status, User.email).all().order_by(User.id.asc()),
+                select(User.status, User.email).order_by(User.id.asc()),
             )
     finally:
         await database.close()
@@ -182,7 +182,7 @@ async def fetch_all_yields_to_the_event_loop_for_large_result_sets() -> None:
                 await tx.execute(insert(User(email=f"user{index}@example.com")))
             async with anyio.create_task_group() as task_group:
                 task_group.start_soon(ticker)
-                rows = await tx.fetch_all(select(User).all())
+                rows = await tx.fetch_all(select(User))
                 task_group.cancel_scope.cancel()
     finally:
         await database.close()
@@ -232,7 +232,7 @@ def select_rejects_projecting_a_table_that_is_not_joined() -> None:
         message: AuditLog.Col[str] = Text(nullable=False)
 
     select_fn = cast("Callable[..., Any]", select)
-    query = select_fn(User.email, AuditLog.message).all()
+    query = select_fn(User.email, AuditLog.message)
 
     with assert_raises(QueryCompilationError):
         _ = SQLITE_CODEC.compile_select_sql(query)
@@ -300,11 +300,11 @@ async def fetch_one_raises_when_more_than_one_row_matches() -> None:
             await tx.execute(insert(_Person(email="b@example.com")))
 
             with assert_raises(MultipleResultsError):
-                _ = await tx.fetch_one(select(_Person.email).all())
+                _ = await tx.fetch_one(select(_Person.email))
 
             # "first of N" is opt-in through an explicit limit.
             first = await tx.fetch_one(
-                select(_Person.email).all().order_by(_Person.id.asc()).limit(1),
+                select(_Person.email).order_by(_Person.id.asc()).limit(1),
             )
     finally:
         await database.close()
@@ -368,7 +368,7 @@ async def fetch_one_or_none_raises_when_more_than_one_row_matches() -> None:
             await tx.execute(insert(_Person(email="b@example.com")))
 
             with assert_raises(MultipleResultsError):
-                _ = await tx.fetch_one_or_none(select(_Person).all())
+                _ = await tx.fetch_one_or_none(select(_Person))
     finally:
         await database.close()
 
@@ -382,7 +382,7 @@ async def fetch_one_or_none_rejects_single_value_selects() -> None:
         async with database.transaction() as tx:
             with assert_raises(QueryConstructionError):
                 _ = await tx.fetch_one_or_none(
-                    cast("Any", select(_Person.nickname).all()),
+                    cast("Any", select(_Person.nickname)),
                 )
     finally:
         await database.close()
@@ -426,7 +426,7 @@ async def fetch_all_validates_decoded_database_values() -> None:
         try:
             async with database.transaction() as tx:
                 with assert_raises(ModelValidationError):
-                    _ = await tx.fetch_all(select(FeatureFlag).all())
+                    _ = await tx.fetch_all(select(FeatureFlag))
         finally:
             await database.close()
 
@@ -442,7 +442,7 @@ def sqlite_select_materialization_asserts_database_row_shape() -> None:
 
         email: User.Col[str] = Text(nullable=False)
 
-    query = select(User.email).all()
+    query = select(User.email)
 
     with assert_raises(AssertionError):
         _ = SQLITE_CODEC.materialize_select_row(query, ())

@@ -109,7 +109,7 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
             await tx.execute(sqlite.insert(Child(parent=expected)))
 
         async with database.transaction() as tx:
-            rows = await tx.fetch_all(sqlite.select(Child.parent).all())
+            rows = await tx.fetch_all(sqlite.select(Child.parent))
 
         with assert_raises(ExecutionError) as caught:
             async with database.transaction() as tx:

@@ -2,13 +2,18 @@
 
 ## [Unreleased]
 
+### Breaking
+
+- Remove SELECT `.all()`. Delete that call from existing reads; SELECT is already
+  executable. UPDATE/DELETE `.all()` still acknowledges full-table writes, and
+  `fetch_all()` still returns all result rows. Addresses #432.
+
 ### Changed
 
 - SELECT no longer requires `.all()` or `.where(...)` before execution, including
   nested queries, named projections, CTEs, UNION operands, and locking reads.
-  SELECT `.all()` is a compatibility no-op and permits later filtering. UPDATE
-  and DELETE retain explicit row-scope guards. Fetch cardinality is unchanged:
-  `.limit(1)` chooses at most one row, while `fetch_one` checks the final SQL result.
+  UPDATE and DELETE retain explicit row-scope guards. Fetch cardinality is
+  unchanged: `.limit(1)` chooses at most one row, while `fetch_one` checks the final SQL result.
 
 - Upgrade the supported type checker from ty 0.0.77 to 0.0.84. All 84 paired
   consumer controls still pass; retain exact negative diagnostics and the

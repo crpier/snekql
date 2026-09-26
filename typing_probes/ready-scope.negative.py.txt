@@ -1,3 +1,3 @@
 
 
-database.ready(database.select(Account.account_id, Post.post_id).all())  # expect-error
+database.ready(database.select(Account.account_id, Post.post_id))  # expect-error

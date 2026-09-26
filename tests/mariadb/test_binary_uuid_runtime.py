@@ -41,9 +41,7 @@ async def uuid_blob_stores_sixteen_bytes() -> None:
             )
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                mariadb.select(Account.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(mariadb.select(Account.account_id), validate=False)
 
     assert_eq(raw, bytes.fromhex("00112233445546778899aabbccddeeff"))
 
@@ -96,9 +94,7 @@ async def uuid_update_writes_binary_values() -> None:
             )
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                mariadb.select(Account.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(mariadb.select(Account.account_id), validate=False)
 
     assert_eq(raw, bytes.fromhex("00112233445546778899aabbccddeeff"))
 
@@ -177,9 +173,7 @@ async def custom_uuid_bytes_serializer_keeps_control_of_wire_form() -> None:
             await setup.execute(mariadb.insert(Custom(account_id=account_id)))
 
         async with database.transaction() as tx:
-            raw = await tx.fetch_one(
-                mariadb.select(Custom.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(mariadb.select(Custom.account_id), validate=False)
             logical = await tx.fetch_one(
                 mariadb.select(Custom.account_id).where(
                     Custom.account_id.eq(account_id)
@@ -215,7 +209,7 @@ async def text_uuid_encoding_is_unchanged() -> None:
 
         async with database.transaction() as tx:
             raw = await tx.fetch_one(
-                mariadb.select(TextAccount.account_id).all(), validate=False
+                mariadb.select(TextAccount.account_id), validate=False
             )
 
     assert_eq(raw, "00112233-4455-4677-8899-aabbccddeeff")
@@ -250,13 +244,11 @@ async def legacy_ascii_uuids_remain_readable_but_need_equality_migration() -> No
 
         account_id = UUID("00112233-4455-4677-8899-aabbccddeeff")
         async with database.transaction() as tx:
-            logical = await tx.fetch_one(mariadb.select(Account.account_id).all())
+            logical = await tx.fetch_one(mariadb.select(Account.account_id))
             matched = await tx.fetch_all(
                 mariadb.select(Account.id).where(Account.account_id.eq(account_id))
             )
-            raw = await tx.fetch_one(
-                mariadb.select(Account.account_id).all(), validate=False
-            )
+            raw = await tx.fetch_one(mariadb.select(Account.account_id), validate=False)
 
     assert_eq(logical, account_id)
     assert_eq(matched, [])

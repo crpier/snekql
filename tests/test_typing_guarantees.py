@@ -11,6 +11,7 @@ from snektest import Param, assert_eq, assert_true, test
     [
         Param((name, rule), name=name)
         for name, rule in (
+            ("select-all", "unresolved-attribute"),
             ("readonly-scalar", "no-matching-overload"),
             ("scalar-outer-scope", "no-matching-overload"),
             ("exists-outer-scope", "invalid-argument-type"),

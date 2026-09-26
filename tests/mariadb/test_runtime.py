@@ -193,7 +193,7 @@ async def mariadb_runtime_fetches_scalar_rows() -> None:
 
     async with database.transaction() as tx:
         await tx.execute(insert(User(email="alice@example.com")))
-        scalar_rows = await tx.fetch_all(select(User.email).all())
+        scalar_rows = await tx.fetch_all(select(User.email))
 
     assert_eq(scalar_rows, ["alice@example.com"])
 
@@ -221,7 +221,7 @@ async def mariadb_runtime_fetches_tuple_rows() -> None:
 
     async with database.transaction() as tx:
         await tx.execute(insert(User(email="alice@example.com", status="active")))
-        tuple_rows = await tx.fetch_all(select(User.email, User.status).all())
+        tuple_rows = await tx.fetch_all(select(User.email, User.status))
 
     assert_eq(tuple_rows, [("alice@example.com", "active")])
 
@@ -245,9 +245,7 @@ async def mariadb_runtime_updates_matching_rows() -> None:
         )
 
     async with database.transaction() as tx:
-        statuses = await tx.fetch_all(
-            select(_UpdateUser.email, _UpdateUser.status).all()
-        )
+        statuses = await tx.fetch_all(select(_UpdateUser.email, _UpdateUser.status))
 
     assert_eq(affected, 1)
     assert_eq(no_match, 0)
@@ -286,7 +284,7 @@ async def mariadb_runtime_streams_rows_in_chunks() -> None:
 
     async with (
         database.transaction() as tx,
-        tx.fetch_chunks(select(User.email).all(), size=2) as stream,
+        tx.fetch_chunks(select(User.email), size=2) as stream,
     ):
         batches = [batch async for batch in stream]
 
@@ -322,12 +320,12 @@ async def mariadb_runtime_closes_stream_cursor_on_early_break() -> None:
             await tx.execute(insert(User(email=f"user{index}@example.com")))
 
     async with database.transaction() as tx:
-        async with tx.fetch_chunks(select(User.email).all(), size=2) as stream:
+        async with tx.fetch_chunks(select(User.email), size=2) as stream:
             async for _ in stream:
                 break
         # Cursor is closed on stream exit, so the connection serves a follow-up
         # query in the same transaction without a "commands out of sync" error.
-        remaining = await tx.fetch_all(select(User.email).all())
+        remaining = await tx.fetch_all(select(User.email))
 
     assert_eq(len(remaining), 5)
 
@@ -361,12 +359,12 @@ async def mariadb_runtime_closes_stream_cursor_on_consumer_exception() -> None:
 
     async with database.transaction() as tx:
         with assert_raises(_ConsumerError):
-            async with tx.fetch_chunks(select(User.email).all(), size=2) as stream:
+            async with tx.fetch_chunks(select(User.email), size=2) as stream:
                 async for _ in stream:
                     raise _ConsumerError
         # The stream's __aexit__ closes the SSCursor even on error, so the same
         # transaction can run a follow-up query without "commands out of sync".
-        remaining = await tx.fetch_all(select(User.email).all())
+        remaining = await tx.fetch_all(select(User.email))
 
     assert_eq(len(remaining), 5)
 
@@ -397,7 +395,7 @@ async def mariadb_runtime_deletes_filtered_rows() -> None:
         await tx.execute(insert(User(email="bob@example.com", status="inactive")))
 
         deleted = await tx.execute(delete(User).where(User.status.eq("inactive")))
-        remaining_emails = await tx.fetch_all(select(User.email).all())
+        remaining_emails = await tx.fetch_all(select(User.email))
 
     assert_eq(deleted, 1)
     assert_eq(remaining_emails, ["alice@example.com"])
@@ -428,7 +426,7 @@ async def mariadb_runtime_deletes_all_rows() -> None:
         await tx.execute(insert(User(email="bob@example.com")))
 
         deleted = await tx.execute(delete(User).all())
-        remaining_users = await tx.fetch_all(select(User).all())
+        remaining_users = await tx.fetch_all(select(User))
 
     assert_eq(deleted, 2)
     assert_eq(remaining_users, [])
@@ -490,12 +488,12 @@ async def mariadb_runtime_normalizes_aggregate_result_types() -> None:
     database = await load_fixture(database_session([Sale]))
 
     async with database.transaction() as tx:
-        empty_sum = await tx.fetch_one(select(Sale.amount.sum()).all())
+        empty_sum = await tx.fetch_one(select(Sale.amount.sum()))
         await tx.execute(insert(Sale(amount=3)))
         await tx.execute(insert(Sale(amount=4)))
-        total = await tx.fetch_one(select(Sale.amount.sum()).all())
-        mean = await tx.fetch_one(select(Sale.amount.avg()).all())
-        rows = await tx.fetch_one(select(Sale.count_all()).all())
+        total = await tx.fetch_one(select(Sale.amount.sum()))
+        mean = await tx.fetch_one(select(Sale.amount.avg()))
+        rows = await tx.fetch_one(select(Sale.count_all()))
 
     assert_eq(empty_sum, None)
     assert_eq(total, 7)
@@ -537,8 +535,7 @@ async def mariadb_runtime_groups_and_normalizes_per_group() -> None:
         rows = await tx.fetch_all(
             select(Sale.region, Sale.amount.sum())
             .group_by(Sale.region)
-            .order_by(Sale.region.asc())
-            .all(),
+            .order_by(Sale.region.asc()),
         )
 
     assert_eq(rows, [("east", 7), ("west", 5)])
@@ -578,8 +575,7 @@ async def mariadb_runtime_filters_groups_with_having() -> None:
             select(Sale.region, Sale.amount.sum())
             .group_by(Sale.region)
             .having(Sale.amount.sum().gt(5))
-            .order_by(Sale.region.asc())
-            .all(),
+            .order_by(Sale.region.asc()),
         )
 
     assert_eq(rows, [("east", 7)])
@@ -601,7 +597,7 @@ async def mariadb_json_path_hostile_input_remains_a_bound_value() -> None:
     async with database.transaction() as tx:
         await tx.execute(insert(Document(id=1, payload={"age": 41})))
         values = await tx.fetch_all(
-            select(Document.payload.json_extract_int('$."age\' OR 1=1 --"')).all()
+            select(Document.payload.json_extract_int('$."age\' OR 1=1 --"'))
         )
 
     assert_eq(values, [None])
@@ -637,7 +633,7 @@ async def mariadb_required_nullable_foreign_key_round_trips_null() -> None:
 
     async with database.transaction() as tx:
         await tx.execute(insert(Child(id="loose", parent_id=None)))
-        rows = await tx.fetch_all(select(Child).all())
+        rows = await tx.fetch_all(select(Child))
 
     assert_eq([(row.id, row.parent_id) for row in rows], [("loose", None)])
 
@@ -711,9 +707,7 @@ async def mariadb_runtime_filters_with_correlated_subqueries() -> None:
                         Purchase.customer_id.eq_col(Customer.id),
                     ),
                 ),
-            )
-            .all()
-            .order_by(Customer.id.asc()),
+            ).order_by(Customer.id.asc()),
         )
 
     assert_eq(in_rows, [1])

@@ -61,9 +61,7 @@ async def sqlite_column_comparisons_preserve_values(
             "lt": Reading.amount.lt_col(operand),
             "lte": Reading.amount.lte_col(operand),
         }
-        query = (
-            sqlite.select(Reading.amount).join(Threshold, on=predicates[operator]).all()
-        )
+        query = sqlite.select(Reading.amount).join(Threshold, on=predicates[operator])
         async with database.transaction() as transaction:
             amounts = await transaction.fetch_all(query.order_by(Reading.amount.asc()))
 
@@ -190,11 +188,7 @@ async def mariadb_column_comparisons_preserve_values(
             "lt": Reading.amount.lt_col(operand),
             "lte": Reading.amount.lte_col(operand),
         }
-        query = (
-            mariadb.select(Reading.amount)
-            .join(Threshold, on=predicates[operator])
-            .all()
-        )
+        query = mariadb.select(Reading.amount).join(Threshold, on=predicates[operator])
         async with database.transaction() as transaction:
             amounts = await transaction.fetch_all(query.order_by(Reading.amount.asc()))
 

@@ -42,7 +42,7 @@ async def migration_preserves_percent_literal(case: tuple[str, str]) -> None:
             }
         )
         async with database.transaction() as transaction:
-            stored = await transaction.fetch_one(mariadb.select(Message.text).all())
+            stored = await transaction.fetch_one(mariadb.select(Message.text))
 
     assert_eq(stored, case[1])
 
@@ -77,9 +77,7 @@ async def migration_executes_percent_expression(body: str) -> None:
             }
         )
         async with database.transaction() as transaction:
-            stored = await transaction.fetch_one(
-                mariadb.select(Measurement.value).all()
-            )
+            stored = await transaction.fetch_one(mariadb.select(Measurement.value))
 
     assert_eq(stored, 3)
 

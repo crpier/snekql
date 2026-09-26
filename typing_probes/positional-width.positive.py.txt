@@ -17,7 +17,7 @@ async def eight_slots(transaction: database.Transaction) -> None:
     query = database.select(
         Entry.id, Entry.label, Entry.id, Entry.label,
         Entry.id, Entry.label, Entry.id, Entry.label,
-    ).all()
+    )
     assert_type(
         await transaction.fetch_all(query),
         list[tuple[int, str, int, str, int, str, int, str]],

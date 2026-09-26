@@ -212,7 +212,7 @@ async def builder_duplicate_recovers_after_rollback(backend: BackendFamily) -> N
 
     async with case.database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            case.namespace.select(entry.value).all().order_by(entry.value.asc())
+            case.namespace.select(entry.value).order_by(entry.value.asc())
         )
     assert_eq(rows, [1, 3])
 

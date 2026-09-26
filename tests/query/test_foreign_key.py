@@ -73,7 +73,7 @@ def references_builds_join_condition() -> None:
     assert isinstance(condition, JoinOn)
     assert_in(
         'INNER JOIN "order" ON "order"."user_id" = "user"."id"',
-        repr(sqlite.select(User).join(Order, on=condition).all()),
+        repr(sqlite.select(User).join(Order, on=condition)),
     )
 
 

@@ -58,9 +58,7 @@ async def utc_datetime_text_queries_compare_by_instant() -> None:
                 .order_by(TimedEvent.id.asc()),
             )
             ordered_ids = await tx.fetch_all(
-                select(TimedEvent.id)
-                .all()
-                .order_by(
+                select(TimedEvent.id).order_by(
                     TimedEvent.happened_at.asc(),
                     TimedEvent.id.asc(),
                 ),

@@ -11,7 +11,7 @@ from tests.runtime.test_recursive_ctes import NativeCategory
 if TYPE_CHECKING:
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    anchor = sqlite.select(Category).project(Visit, id=identifier, depth=depth)
     walk = sqlite.recursive_cte(
         anchor,
         WalkRole,
@@ -26,19 +26,17 @@ if TYPE_CHECKING:
     )
 
     async def consume(transaction: sqlite.Transaction) -> None:
-        assert_type(await transaction.fetch_all(sqlite.select(walk).all()), list[Visit])
+        assert_type(await transaction.fetch_all(sqlite.select(walk)), list[Visit])
         assert_type(
-            await transaction.fetch_one_or_none(sqlite.select(walk).all()), Visit | None
+            await transaction.fetch_one_or_none(sqlite.select(walk)), Visit | None
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(walk.column(depth)).all()),
+            await transaction.fetch_all(sqlite.select(walk.column(depth))),
             list[int],
         )
 
-    native = (
-        mariadb.select(NativeCategory)
-        .all()
-        .project(Visit, id=NativeCategory.id, depth=mariadb.literal(0))
+    native = mariadb.select(NativeCategory).project(
+        Visit, id=NativeCategory.id, depth=mariadb.literal(0)
     )
     sqlite.recursive_cte(
         anchor,
@@ -108,10 +106,8 @@ if TYPE_CHECKING:
 
     native_identifier = NativeCategory.id.label("id")
     native_depth = mariadb.literal(0).label("depth")
-    native_anchor = (
-        mariadb.select(NativeCategory)
-        .all()
-        .project(Visit, id=native_identifier, depth=native_depth)
+    native_anchor = mariadb.select(NativeCategory).project(
+        Visit, id=native_identifier, depth=native_depth
     )
     native_prepared = mariadb.recursive_cte(native_anchor, WalkRole, name="self_only")
     native_self_only = native_prepared.step(
@@ -167,42 +163,38 @@ if TYPE_CHECKING:
 
     async def consume_self_only(transaction: sqlite.Transaction) -> None:
         """A self-only member preserves the anchor's result and scalar types."""
+        assert_type(await transaction.fetch_all(sqlite.select(self_only)), list[Visit])
         assert_type(
-            await transaction.fetch_all(sqlite.select(self_only).all()), list[Visit]
-        )
-        assert_type(
-            await transaction.fetch_all(
-                sqlite.select(self_only.column(identifier)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(self_only.column(identifier))),
             list[int],
         )
         assert_type(
-            await transaction.fetch_all(sqlite.select(self_only.column(depth)).all()),
+            await transaction.fetch_all(sqlite.select(self_only.column(depth))),
             list[int],
         )
         await transaction.fetch_all(prepared)  # ty: ignore[no-matching-overload]
-        await transaction.fetch_all(mariadb.select(native_self_only).all())  # ty: ignore[no-matching-overload]
+        await transaction.fetch_all(mariadb.select(native_self_only))  # ty: ignore[no-matching-overload]
 
     async def consume_native_self_only(transaction: mariadb.Transaction) -> None:
         """MariaDB self-only members retain their family and anchor domain."""
         assert_type(
-            await transaction.fetch_all(mariadb.select(native_self_only).all()),
+            await transaction.fetch_all(mariadb.select(native_self_only)),
             list[Visit],
         )
         assert_type(
             await transaction.fetch_all(
-                mariadb.select(native_self_only.column(native_identifier)).all()
+                mariadb.select(native_self_only.column(native_identifier))
             ),
             list[int],
         )
         assert_type(
             await transaction.fetch_all(
-                mariadb.select(native_self_only.column(native_depth)).all()
+                mariadb.select(native_self_only.column(native_depth))
             ),
             list[int],
         )
         await transaction.fetch_all(native_prepared)  # ty: ignore[no-matching-overload]
-        await transaction.fetch_all(sqlite.select(self_only).all())  # ty: ignore[no-matching-overload]
+        await transaction.fetch_all(sqlite.select(self_only))  # ty: ignore[no-matching-overload]
 
     class OtherVisit(BaseModel):
         depth: int
@@ -214,9 +206,7 @@ if TYPE_CHECKING:
     other = anchor.cte(OtherRole, name="other")
     prepared.step(
         lambda previous: (  # ty: ignore[invalid-argument-type]
-            sqlite.select(previous)
-            .all()
-            .project(
+            sqlite.select(previous).project(
                 OtherVisit, id=previous.column(identifier), depth=previous.column(depth)
             )
         )
@@ -233,9 +223,7 @@ if TYPE_CHECKING:
     native_other = native_anchor.cte(OtherRole, name="other")
     native_prepared.step(
         lambda previous: (  # ty: ignore[invalid-argument-type]
-            mariadb.select(previous)
-            .all()
-            .project(
+            mariadb.select(previous).project(
                 OtherVisit,
                 id=previous.column(native_identifier),
                 depth=previous.column(native_depth),
@@ -255,10 +243,8 @@ if TYPE_CHECKING:
     )
 
     optional_identifier = Category.parent_id.label("id")
-    optional_anchor = (
-        sqlite.select(Category)
-        .all()
-        .project(OptionalVisit, id=optional_identifier, depth=depth)
+    optional_anchor = sqlite.select(Category).project(
+        OptionalVisit, id=optional_identifier, depth=depth
     )
     optional_walk = sqlite.recursive_cte(
         optional_anchor, WalkRole, name="optional_walk"
@@ -274,10 +260,8 @@ if TYPE_CHECKING:
         )
     )
     native_optional_identifier = NativeCategory.parent_id.label("id")
-    native_optional_anchor = (
-        mariadb.select(NativeCategory)
-        .all()
-        .project(OptionalVisit, id=native_optional_identifier, depth=native_depth)
+    native_optional_anchor = mariadb.select(NativeCategory).project(
+        OptionalVisit, id=native_optional_identifier, depth=native_depth
     )
     native_optional_walk = mariadb.recursive_cte(
         native_optional_anchor, WalkRole, name="optional_walk"
@@ -297,14 +281,12 @@ if TYPE_CHECKING:
         """Staging does not erase nullable physical anchor outputs."""
         assert_type(
             await transaction.fetch_all(
-                sqlite.select(optional_walk.column(optional_identifier)).all()
+                sqlite.select(optional_walk.column(optional_identifier))
             ),
             list[int | None],
         )
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(optional_walk.column(depth)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(optional_walk.column(depth))),
             list[int],
         )
 
@@ -312,15 +294,13 @@ if TYPE_CHECKING:
         """Native nullable anchors keep nonnullable literal outputs separate."""
         assert_type(
             await transaction.fetch_all(
-                mariadb.select(
-                    native_optional_walk.column(native_optional_identifier)
-                ).all()
+                mariadb.select(native_optional_walk.column(native_optional_identifier))
             ),
             list[int | None],
         )
         assert_type(
             await transaction.fetch_all(
-                mariadb.select(native_optional_walk.column(native_depth)).all()
+                mariadb.select(native_optional_walk.column(native_depth))
             ),
             list[int],
         )

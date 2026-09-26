@@ -59,7 +59,6 @@ async def cte_arithmetic_filter_matches_python(
         adjusted = Sample.value.coalesce(7).mul(3).sub(1).label("value")
         computed = (
             sqlite.select(Sample)
-            .all()
             .project(Adjusted, id=identifier, value=adjusted)
             .cte(ComputedRole, name="computed")
         )

@@ -555,7 +555,7 @@ async def mariadb_value_families_round_trip_through_runtime() -> None:
                     )
                 )
             )
-            event = await tx.fetch_one(select(Event).all())
+            event = await tx.fetch_one(select(Event))
     finally:
         await database.close()
 

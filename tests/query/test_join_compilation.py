@@ -48,7 +48,7 @@ def inner_join_renders_qualified_columns_and_on_clause() -> None:
     """An inner join qualifies every column and emits one ON condition."""
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User).join(Order, on=Order.user_id.references(User.id)).all(),
+        select(User).join(Order, on=Order.user_id.references(User.id)),
     )
 
     expected = " ".join(
@@ -68,7 +68,7 @@ def left_join_emits_left_join_keyword() -> None:
     """A left join renders the LEFT JOIN keyword."""
 
     sql, _params = SQLITE_CODEC.compile_select_sql(
-        select(User).left_join(Order, on=Order.user_id.references(User.id)).all(),
+        select(User).left_join(Order, on=Order.user_id.references(User.id)),
     )
 
     on_clause = 'LEFT JOIN "order" ON "order"."user_id" = "user"."id"'
@@ -109,9 +109,9 @@ def projection_join_selects_only_the_projected_columns() -> None:
     """
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.email, Order.note)
-        .join(Order, on=Order.user_id.references(User.id))
-        .all(),
+        select(User.email, Order.note).join(
+            Order, on=Order.user_id.references(User.id)
+        ),
     )
 
     expected = " ".join(

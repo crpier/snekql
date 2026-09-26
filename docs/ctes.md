@@ -57,8 +57,7 @@ PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run python -m examples.typed_ctes
 ```
 
 Use the matching backend's models, factories and transaction. Definitions and
-columns retain backend identity. A named SELECT can become a CTE directly;
-`.all()` or `.where(...)` is not required.
+columns retain backend identity. A named SELECT can become a CTE directly, with or without a filter.
 
 ## Tokens and result contracts
 

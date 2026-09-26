@@ -214,7 +214,7 @@ async def excluded_rows_can_duplicate(active: bool | None) -> None:  # noqa: FBT
             await transaction.execute(sqlite.insert(Entry(label="same", active=active)))
             await transaction.execute(sqlite.insert(Entry(label="same", active=active)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Entry.label).all())
+            rows = await transaction.fetch_all(sqlite.select(Entry.label))
 
     assert_eq(rows, ["same", "same", "same"])
 

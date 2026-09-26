@@ -460,11 +460,11 @@ async def query_use_resolves_pending_models(projection: str) -> None:
         )
 
     if projection == "model":
-        sqlite.select(Account).all().compile()
+        sqlite.select(Account).compile()
     elif projection == "key":
-        sqlite.select(Account.account_id).all().compile()
+        sqlite.select(Account.account_id).compile()
     else:
-        sqlite.select(Account.manager_id).all().compile()
+        sqlite.select(Account.manager_id).compile()
 
     assert_eq(calls, ["target"])
 

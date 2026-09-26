@@ -36,13 +36,12 @@ async def cte_whole_row_materializes_its_named_contract() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
 
     async with database.transaction() as transaction:
-        row = await transaction.fetch_one(sqlite.select(active).all())
+        row = await transaction.fetch_one(sqlite.select(active))
 
     assert_type(row, Identifier)
     assert_eq(row, Identifier(id=1))
@@ -63,13 +62,12 @@ async def cte_whole_row_validates_only_the_final_result() -> None:
 
     active = (
         sqlite.select(Person)
-        .all()
         .project(Adjusted, id=Person.id.label("id"))
         .cte(ActiveRole, name="active")
     )
 
     async with database.transaction() as transaction:
-        row = await transaction.fetch_one(sqlite.select(active).all())
+        row = await transaction.fetch_one(sqlite.select(active))
 
     assert_type(row, Adjusted)
     assert_eq(row.id, 11)
@@ -82,7 +80,6 @@ async def cte_column_comparison_preserves_uuid_encoding() -> None:
     key = LocalDocument.id.label("key")
     documents = (
         sqlite.select(LocalDocument)
-        .all()
         .project(DocumentResult, key=key, values=LocalDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -102,15 +99,12 @@ async def cte_column_selection_has_the_source_value_type() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
 
     async with database.transaction() as transaction:
-        values = await transaction.fetch_all(
-            sqlite.select(active.column(identifier)).all()
-        )
+        values = await transaction.fetch_all(sqlite.select(active.column(identifier)))
 
     assert_type(values, list[int])
     assert_eq(values, [1])
@@ -123,7 +117,6 @@ async def mariadb_cte_preserves_native_uuid_and_json_codecs() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -143,14 +136,13 @@ async def cte_scalar_preserves_disabled_column_validation() -> None:
     key = LocalDocument.id.label("key")
     documents = (
         sqlite.select(LocalDocument)
-        .all()
         .project(DocumentResult, key=key, values=LocalDocument.payload)
         .cte(ActiveRole, name="documents")
     )
 
     async with database.transaction() as transaction:
         wire_value = await transaction.fetch_one(
-            sqlite.select(documents.column(key)).all(), validate=False
+            sqlite.select(documents.column(key)), validate=False
         )
 
     assert_eq(wire_value, str(UUID(int=1)))
@@ -178,15 +170,12 @@ async def left_join_definition_retains_nullable_output_columns() -> None:
             on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(-1),
         )
         .project(Pair, id=identifier, other=other)
-        .all()
         .cte(ActiveRole, name="pairs")
     )
 
     async with database.transaction() as transaction:
-        row = await transaction.fetch_one(sqlite.select(definition).all())
-        values = await transaction.fetch_all(
-            sqlite.select(definition.column(other)).all()
-        )
+        row = await transaction.fetch_one(sqlite.select(definition))
+        values = await transaction.fetch_all(sqlite.select(definition.column(other)))
 
     assert_type(row, Pair)
     assert_type(values, list[int | None])
@@ -214,15 +203,12 @@ async def mariadb_joined_definition_preserves_nullable_computation() -> None:
             on=MariaInventory.id.eq_col(peer.column(MariaInventory.id))
             & peer.column(MariaInventory.id).eq(-1),
         )
-        .all()
         .project(OptionalValue, value=value)
         .cte(ActiveRole, name="quantities")
     )
 
     async with database.transaction() as transaction:
-        values = await transaction.fetch_all(
-            mariadb.select(definition.column(value)).all()
-        )
+        values = await transaction.fetch_all(mariadb.select(definition.column(value)))
 
     assert_type(values, list[int | None])
     assert_eq(values, [None])
@@ -244,15 +230,12 @@ async def nullable_owner_count_remains_nonnullable_through_a_definition() -> Non
             peer,
             on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(-1),
         )
-        .all()
         .project(Identifier, id=count)
         .cte(ActiveRole, name="counts")
     )
 
     async with database.transaction() as transaction:
-        value = await transaction.fetch_one(
-            sqlite.select(definition.column(count)).all()
-        )
+        value = await transaction.fetch_one(sqlite.select(definition.column(count)))
 
     assert_type(value, int)
     assert_eq(value, 0)
@@ -265,7 +248,6 @@ async def cte_alias_preserves_sqlite_logical_codecs() -> None:
     key = LocalDocument.id.label("key")
     documents = (
         sqlite.select(LocalDocument)
-        .all()
         .project(DocumentResult, key=key, values=LocalDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -287,7 +269,6 @@ async def cte_alias_preserves_mariadb_logical_codecs() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -309,14 +290,11 @@ async def inner_join_consumes_a_cte_as_a_named_row() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
-    query = (
-        sqlite.select(Person)
-        .join(active, on=Person.id.eq_col(active.column(identifier)))
-        .all()
+    query = sqlite.select(Person).join(
+        active, on=Person.id.eq_col(active.column(identifier))
     )
 
     async with database.transaction() as transaction:
@@ -335,15 +313,12 @@ async def inner_join_reuses_one_definition_for_two_named_rows() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     peer = sqlite.alias(active, FilteredRole, name="peer")
-    query = (
-        sqlite.select(active)
-        .join(peer, on=active.column(identifier).eq_col(peer.column(identifier)))
-        .all()
+    query = sqlite.select(active).join(
+        peer, on=active.column(identifier).eq_col(peer.column(identifier))
     )
 
     async with database.transaction() as transaction:
@@ -361,15 +336,12 @@ async def native_inner_join_materializes_a_cte_alias() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
     peer = mariadb.alias(documents, FilteredRole, name="peer")
-    query = (
-        mariadb.select(MariaDocument)
-        .join(peer, on=MariaDocument.id.eq_col(peer.column(key)))
-        .all()
+    query = mariadb.select(MariaDocument).join(
+        peer, on=MariaDocument.id.eq_col(peer.column(key))
     )
 
     async with database.transaction() as transaction:
@@ -394,11 +366,10 @@ async def left_join_distinguishes_a_matched_all_null_cte_row() -> None:
     )
     nullable = (
         sqlite.select(Person)
-        .all()
         .project(OptionalIdentifier, id=identifier)
         .cte(ActiveRole, name="nullable_rows")
     )
-    query = sqlite.select(Person).left_join(nullable, on=Person.id.gt(0)).all()
+    query = sqlite.select(Person).left_join(nullable, on=Person.id.gt(0))
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
@@ -421,20 +392,15 @@ async def native_left_alias_distinguishes_null_output_from_missing_row() -> None
     ).label("id")
     nullable = (
         mariadb.select(MariaDocument)
-        .all()
         .project(OptionalKey, id=key)
         .cte(ActiveRole, name="nullable_rows")
     )
     peer = mariadb.alias(nullable, FilteredRole, name="peer")
-    matched = (
-        mariadb.select(MariaDocument)
-        .left_join(peer, on=MariaDocument.id.eq(UUID(int=1)))
-        .all()
+    matched = mariadb.select(MariaDocument).left_join(
+        peer, on=MariaDocument.id.eq(UUID(int=1))
     )
-    missing = (
-        mariadb.select(MariaDocument)
-        .left_join(peer, on=MariaDocument.id.eq(UUID(int=2)))
-        .all()
+    missing = mariadb.select(MariaDocument).left_join(
+        peer, on=MariaDocument.id.eq(UUID(int=2))
     )
 
     async with database.transaction() as transaction:
@@ -453,14 +419,13 @@ async def cte_output_count_counts_nonnull_values() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
 
     async with database.transaction() as transaction:
         count = await transaction.fetch_one(
-            sqlite.select(active.column(identifier).count()).all()
+            sqlite.select(active.column(identifier).count())
         )
 
     assert_type(count, int)
@@ -474,7 +439,6 @@ async def native_cte_alias_count_supports_having_and_empty_inputs() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -483,7 +447,7 @@ async def native_cte_alias_count_supports_having_and_empty_inputs() -> None:
 
     async with database.transaction() as transaction:
         present = await transaction.fetch_one(
-            mariadb.select(count).all().having(count.gt(0)).order_by(count.desc())
+            mariadb.select(count).having(count.gt(0)).order_by(count.desc())
         )
         empty = await transaction.fetch_one(
             mariadb.select(count).where(peer.column(key).eq(UUID(int=0)))
@@ -508,14 +472,13 @@ async def cte_output_count_ignores_matched_null_values() -> None:
     )
     nullable = (
         sqlite.select(Person)
-        .all()
         .project(OptionalIdentifier, id=identifier)
         .cte(ActiveRole, name="nullable_rows")
     )
 
     async with database.transaction() as transaction:
         count = await transaction.fetch_one(
-            sqlite.select(nullable.column(identifier).count()).all()
+            sqlite.select(nullable.column(identifier).count())
         )
 
     assert_type(count, int)
@@ -529,20 +492,18 @@ async def cte_count_can_be_labeled_into_a_downstream_definition() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     count = active.column(identifier).count().label("id")
     counted = (
         sqlite.select(active)
-        .all()
         .project(Identifier, id=count)
         .cte(FilteredRole, name="counted")
     )
 
     async with database.transaction() as transaction:
-        result = await transaction.fetch_one(sqlite.select(counted.column(count)).all())
+        result = await transaction.fetch_one(sqlite.select(counted.column(count)))
 
     assert_type(result, int)
     assert_eq(result, 1)
@@ -555,14 +516,12 @@ async def cte_output_groups_and_filters_its_derived_values() -> None:
     identifier = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=identifier)
         .cte(ActiveRole, name="active")
     )
     column = active.column(identifier)
     query = (
         sqlite.select(column, column.count())
-        .all()
         .group_by(active.column(identifier))
         .having(column.gt(0))
     )
@@ -586,7 +545,6 @@ async def native_cte_alias_grouping_preserves_uuid_named_results() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -595,7 +553,6 @@ async def native_cte_alias_grouping_preserves_uuid_named_results() -> None:
     count = column.count()
     query = (
         mariadb.select(peer)
-        .all()
         .project(GroupResult, key=column, count=count)
         .group_by(peer.column(key))
         .having(count.gt(0))
@@ -615,15 +572,12 @@ async def cte_minimum_and_maximum_preserve_uuid_values() -> None:
     key = LocalDocument.id.label("key")
     documents = (
         sqlite.select(LocalDocument)
-        .all()
         .project(DocumentResult, key=key, values=LocalDocument.payload)
         .cte(ActiveRole, name="documents")
     )
     column = documents.column(key)
-    query = (
-        sqlite.select(column.min(), column.max())
-        .all()
-        .having(column.min().eq(UUID(int=1)))
+    query = sqlite.select(column.min(), column.max()).having(
+        column.min().eq(UUID(int=1))
     )
 
     async with database.transaction() as transaction:
@@ -640,7 +594,6 @@ async def native_cte_alias_extrema_keep_codecs_and_empty_nulls() -> None:
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -649,9 +602,9 @@ async def native_cte_alias_extrema_keep_codecs_and_empty_nulls() -> None:
 
     async with database.transaction() as transaction:
         result = await transaction.fetch_one(
-            mariadb.select(column.min(), column.max())
-            .all()
-            .having(column.max().eq(UUID(int=1)))
+            mariadb.select(column.min(), column.max()).having(
+                column.max().eq(UUID(int=1))
+            )
         )
         empty = await transaction.fetch_one(
             mariadb.select(column.min(), column.max()).where(column.eq(UUID(int=0)))
@@ -670,7 +623,6 @@ async def cte_extrema_respect_disabled_source_validation() -> None:
     key = LocalDocument.id.label("key")
     documents = (
         sqlite.select(LocalDocument)
-        .all()
         .project(DocumentResult, key=key, values=LocalDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -678,7 +630,7 @@ async def cte_extrema_respect_disabled_source_validation() -> None:
 
     async with database.transaction() as transaction:
         values = await transaction.fetch_one(
-            sqlite.select(column.min(), column.max()).all(), validate=False
+            sqlite.select(column.min(), column.max()), validate=False
         )
 
     assert_eq(values, (str(UUID(int=1)), str(UUID(int=1))))
@@ -691,7 +643,6 @@ async def native_cte_sum_and_average_preserve_numeric_results() -> None:
     quantity = MariaInventory.quantity.label("id")
     stock = (
         mariadb.select(MariaInventory)
-        .all()
         .project(Identifier, id=quantity)
         .cte(ActiveRole, name="stock")
     )
@@ -699,7 +650,7 @@ async def native_cte_sum_and_average_preserve_numeric_results() -> None:
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(
-            mariadb.select(column.sum(), column.avg()).all().having(column.sum().gt(2))
+            mariadb.select(column.sum(), column.avg()).having(column.sum().gt(2))
         )
 
     assert_type(row, tuple[int | None, float | None])
@@ -715,7 +666,6 @@ async def cte_numeric_aggregates_follow_computed_and_count_outputs() -> None:
     value = Person.id.add(2).label("id")
     calculated = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="calculated")
     )
@@ -724,20 +674,17 @@ async def cte_numeric_aggregates_follow_computed_and_count_outputs() -> None:
     counted_value = column.count().label("id")
     counted = (
         sqlite.select(peer)
-        .all()
         .project(Identifier, id=counted_value)
         .cte(ActiveRole, name="counted")
     )
 
     async with database.transaction() as transaction:
-        values = await transaction.fetch_one(
-            sqlite.select(column.sum(), column.avg()).all()
-        )
+        values = await transaction.fetch_one(sqlite.select(column.sum(), column.avg()))
         empty = await transaction.fetch_one(
             sqlite.select(column.sum(), column.avg()).where(column.eq(0))
         )
         total = await transaction.fetch_one(
-            sqlite.select(counted.column(counted_value).sum()).all()
+            sqlite.select(counted.column(counted_value).sum())
         )
 
     assert_type(values, tuple[int | None, float | None])
@@ -754,13 +701,12 @@ async def cte_outputs_compose_readonly_arithmetic() -> None:
     value = Person.id.add(2).label("id")
     calculated = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="calculated")
     )
     peer = sqlite.alias(calculated, FilteredRole, name="peer")
     column = peer.column(value)
-    query = sqlite.select(column.add(4).mul(2).sub(column)).all()
+    query = sqlite.select(column.add(4).mul(2).sub(column))
 
     async with database.transaction() as transaction:
         result = await transaction.fetch_one(query)
@@ -777,7 +723,6 @@ async def native_cte_arithmetic_uses_its_alias_columns() -> None:
     value = MariaInventory.quantity.label("id")
     stock = (
         mariadb.select(MariaInventory)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="stock")
     )
@@ -785,9 +730,7 @@ async def native_cte_arithmetic_uses_its_alias_columns() -> None:
     column = peer.column(value)
 
     async with database.transaction() as transaction:
-        result = await transaction.fetch_one(
-            mariadb.select(column.add(2).mul(column)).all()
-        )
+        result = await transaction.fetch_one(mariadb.select(column.add(2).mul(column)))
 
     assert_type(result, int)
     assert_eq(result, 15)
@@ -809,7 +752,6 @@ async def cte_arithmetic_preserves_definition_left_nullability() -> None:
             peer,
             on=Person.id.eq_col(peer.column(Person.id)) & peer.column(Person.id).eq(0),
         )
-        .all()
         .project(NullableIdentifier, id=value)
         .cte(ActiveRole, name="missing")
     )
@@ -817,7 +759,7 @@ async def cte_arithmetic_preserves_definition_left_nullability() -> None:
 
     async with database.transaction() as transaction:
         result = await transaction.fetch_one(
-            sqlite.select(column.add(2), column.coalesce(0).add(2)).all()
+            sqlite.select(column.add(2), column.coalesce(0).add(2))
         )
 
     assert_type(result, tuple[int | None, int])
@@ -835,14 +777,12 @@ async def projected_left_cte_output_decodes_absence_as_null() -> None:
     value = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="active")
     )
     query = (
         sqlite.select(Person)
         .left_join(active, on=Person.id.eq(0))
-        .all()
         .project(OptionalIdentifier, id=active.column(value))
     )
 
@@ -863,7 +803,6 @@ async def native_projected_left_cte_preserves_optional_and_streamed_rows() -> No
     key = MariaDocument.id.label("key")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, key=key, values=MariaDocument.payload)
         .cte(ActiveRole, name="documents")
     )
@@ -897,14 +836,12 @@ async def projected_left_cte_coalesce_keeps_its_nonnull_fallback() -> None:
     value = Person.id.label("id")
     active = (
         sqlite.select(Person)
-        .all()
         .project(Identifier, id=value)
         .cte(ActiveRole, name="active")
     )
     query = (
         sqlite.select(Person)
         .left_join(active, on=Person.id.eq(0))
-        .all()
         .project(Identifier, id=active.column(value).coalesce(2))
     )
 
@@ -922,7 +859,6 @@ async def native_cte_layout_preserves_binding_order_and_alias_codecs() -> None:
     values = MariaDocument.payload.label("values")
     documents = (
         mariadb.select(MariaDocument)
-        .all()
         .project(DocumentResult, values=values, key=key)
         .cte(ActiveRole, name="documents")
     )
@@ -933,7 +869,7 @@ async def native_cte_layout_preserves_binding_order_and_alias_codecs() -> None:
             mariadb.select(peer).where(peer.column(key).eq(UUID(int=1)))
         )
         columns = await transaction.fetch_one(
-            mariadb.select(peer.column(key), peer.column(values)).all()
+            mariadb.select(peer.column(key), peer.column(values))
         )
 
     assert_type(row, DocumentResult)
@@ -954,7 +890,7 @@ async def delete_can_filter_through_a_cte() -> None:
         .cte(ActiveRole, name="active")
     )
     query = sqlite.delete(Person).where(
-        Person.id.in_subquery(sqlite.select(active.column(identifier)).all())
+        Person.id.in_subquery(sqlite.select(active.column(identifier)))
     )
 
     async with database.transaction() as transaction:
@@ -978,16 +914,14 @@ async def update_can_compare_a_cte_scalar() -> None:
         sqlite.update(Person)
         .set(Person.id.to(2))
         .where(
-            Person.id.eq_col(
-                sqlite.scalar(sqlite.select(active.column(identifier)).all())
-            )
+            Person.id.eq_col(sqlite.scalar(sqlite.select(active.column(identifier))))
         )
     )
 
     async with database.transaction() as transaction:
         await transaction.execute(query)
     async with database.transaction() as transaction:
-        identifiers = await transaction.fetch_all(sqlite.select(Person.id).all())
+        identifiers = await transaction.fetch_all(sqlite.select(Person.id))
 
     assert_eq(identifiers, [2])
 
@@ -1004,7 +938,7 @@ async def mariadb_delete_can_filter_through_a_cte() -> None:
         .cte(ActiveRole, name="active")
     )
     query = mariadb.delete(MariaInventory).where(
-        MariaInventory.id.in_subquery(mariadb.select(active.column(identifier)).all())
+        MariaInventory.id.in_subquery(mariadb.select(active.column(identifier)))
     )
 
     async with database.transaction() as transaction:
@@ -1040,8 +974,6 @@ async def mariadb_update_can_filter_through_cte_exists() -> None:
     async with database.transaction() as transaction:
         await transaction.execute(query)
     async with database.transaction() as transaction:
-        quantity = await transaction.fetch_one(
-            mariadb.select(MariaInventory.quantity).all()
-        )
+        quantity = await transaction.fetch_one(mariadb.select(MariaInventory.quantity))
 
     assert_eq(quantity, 7)

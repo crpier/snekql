@@ -63,7 +63,7 @@ async def fetch_chunks_yields_model_batches_of_requested_size() -> None:
         async with database.transaction() as tx:
             for index in range(5):
                 await tx.execute(insert(_StreamUser(email=f"user{index}@example.com")))
-            async with tx.fetch_chunks(select(_StreamUser).all(), size=2) as stream:
+            async with tx.fetch_chunks(select(_StreamUser), size=2) as stream:
                 batches: list[list[_StreamUser[Row]]] = [
                     batch async for batch in stream
                 ]
@@ -87,9 +87,7 @@ async def fetch_chunks_streams_scalar_values_for_single_column_selects() -> None
         async with database.transaction() as tx:
             for index in range(3):
                 await tx.execute(insert(_StreamUser(email=f"user{index}@example.com")))
-            async with tx.fetch_chunks(
-                select(_StreamUser.email).all(), size=2
-            ) as stream:
+            async with tx.fetch_chunks(select(_StreamUser.email), size=2) as stream:
                 batches: list[list[str]] = [batch async for batch in stream]
     finally:
         await database.close()
@@ -109,7 +107,7 @@ async def fetch_chunks_over_empty_result_yields_no_batches() -> None:
     try:
         async with (
             database.transaction() as tx,
-            tx.fetch_chunks(select(_StreamUser).all(), size=10) as stream,
+            tx.fetch_chunks(select(_StreamUser), size=10) as stream,
         ):
             batches = [batch async for batch in stream]
     finally:
@@ -126,7 +124,7 @@ async def fetch_chunks_rejects_non_positive_size() -> None:
     try:
         async with database.transaction() as tx:
             with assert_raises(QueryConstructionError):
-                _ = tx.fetch_chunks(select(_StreamUser).all(), size=0)
+                _ = tx.fetch_chunks(select(_StreamUser), size=0)
     finally:
         await database.close()
 
@@ -356,7 +354,7 @@ async def fetch_chunks_closes_cursor_on_full_consumption() -> None:
 
     async with (
         transaction as tx,
-        tx.fetch_chunks(select(_StreamUser.id).all(), size=2) as stream,
+        tx.fetch_chunks(select(_StreamUser.id), size=2) as stream,
     ):
         collected = [value async for batch in stream for value in batch]
 
@@ -374,7 +372,7 @@ async def fetch_chunks_closes_cursor_on_early_break() -> None:
 
     async with (
         transaction as tx,
-        tx.fetch_chunks(select(_StreamUser.id).all(), size=2) as stream,
+        tx.fetch_chunks(select(_StreamUser.id), size=2) as stream,
     ):
         async for _ in stream:
             break
@@ -393,7 +391,7 @@ async def fetch_chunks_closes_cursor_on_iteration_error() -> None:
     with assert_raises(ExecutionError):
         async with (
             transaction as tx,
-            tx.fetch_chunks(select(_StreamUser.id).all(), size=2) as stream,
+            tx.fetch_chunks(select(_StreamUser.id), size=2) as stream,
         ):
             async for _ in stream:
                 pass
@@ -416,7 +414,7 @@ async def fetch_chunks_closes_cursor_on_consumer_exception() -> None:
     with assert_raises(_ConsumerError):
         async with (
             transaction as tx,
-            tx.fetch_chunks(select(_StreamUser.id).all(), size=2) as stream,
+            tx.fetch_chunks(select(_StreamUser.id), size=2) as stream,
         ):
             async for _ in stream:
                 raise _ConsumerError

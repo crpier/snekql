@@ -27,7 +27,7 @@ class Summary(BaseModel):
 
 
 def named_query() -> database.ClosedRead[Summary]:
-    return database.ready(database.select(Entry).all().project(
+    return database.ready(database.select(Entry).project(
         Summary,
         a=Entry.id, b=Entry.id, c=Entry.id,
         d=Entry.id, e=Entry.id, f=Entry.id,
@@ -36,7 +36,7 @@ def named_query() -> database.ClosedRead[Summary]:
 
 
 async def named_rows(transaction: database.Transaction) -> None:
-    inferred = database.select(Entry).all().project(
+    inferred = database.select(Entry).project(
         Summary,
         a=Entry.id, b=Entry.id, c=Entry.id,
         d=Entry.id, e=Entry.id, f=Entry.id,

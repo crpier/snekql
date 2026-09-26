@@ -24,7 +24,7 @@ async def control(transaction: database.Transaction) -> None:
     nested = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
     present = database.select(Account).where(database.exists(nested))
     absent = database.select(Account).where(database.not_exists(nested))
-    value = database.select(Account.number, database.scalar(nested)).all()
+    value = database.select(Account.number, database.scalar(nested))
     assert_type(await transaction.fetch_all(present), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(absent), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(value), list[tuple[int, int | None]])
@@ -35,6 +35,6 @@ class Result(BaseModel):
     value: int | None
 
 async def named_control(transaction: database.Transaction) -> None:
-    value = database.scalar(database.select(Invoice.number).all()).label("value")
-    query = database.select(Account).all().project(Result, value=value)
+    value = database.scalar(database.select(Invoice.number)).label("value")
+    query = database.select(Account).project(Result, value=value)
     assert_type(await transaction.fetch_all(query), list[Result])

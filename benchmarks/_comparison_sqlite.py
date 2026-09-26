@@ -214,7 +214,6 @@ async def _open_snekql(
                     email=BenchUser.email,
                     payload=BenchUser.payload,
                 )
-                .all()
                 .order_by(BenchUser.id.asc())
             )
             async with (

@@ -48,7 +48,7 @@ database's equality rules, including NULL and collation semantics. Neither
 operation uses Python model equality or promises an order without final ordering.
 
 Both operands must have the same backend and the exact same result-model class.
-Neither operand requires `.all()` or `.where(...)`. Subclasses are different result contracts. Scalar, tuple,
+Operands may be unfiltered. Subclasses are different result contracts. Scalar, tuple,
 table-model and write operands are not supported. Use `.project(...)` to make
 an explicit named operand, including when reading an existing CTE.
 

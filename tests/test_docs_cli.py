@@ -182,7 +182,7 @@ assert_type(User(email="ada@example.com"), User[sqlite.Pending])
 
 async def check_result(transaction: sqlite.Transaction) -> None:
     assert_type(
-        await transaction.fetch_all(sqlite.select(User).all()),
+        await transaction.fetch_all(sqlite.select(User)),
         list[User[sqlite.Row]],
     )
 """

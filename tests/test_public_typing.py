@@ -187,7 +187,7 @@ if TYPE_CHECKING:
     def _sqlite_projection_from_column[OwnerT: sqlite.Model[Any], ValueT](
         column: sqlite.ColumnRef[OwnerT, ValueT],
     ) -> sqlite.ReadQuery[OwnerT, ValueT]:
-        return sqlite.select(column).all()
+        return sqlite.select(column)
 
     def _sqlite_pair_projection_from_columns[
         OwnerT: sqlite.Model[Any],
@@ -197,7 +197,7 @@ if TYPE_CHECKING:
         first: sqlite.ColumnRef[OwnerT, FirstT],
         second: sqlite.ColumnRef[OwnerT, SecondT],
     ) -> sqlite.ReadQuery[OwnerT, tuple[FirstT, SecondT]]:
-        return sqlite.select(first, second).all()
+        return sqlite.select(first, second)
 
     def _column_ref_cannot_build_assignments[OwnerT, ValueT](
         column: sqlite.ColumnRef[OwnerT, ValueT],
@@ -214,7 +214,7 @@ if TYPE_CHECKING:
     def _mariadb_projection_from_column[OwnerT: mariadb.Model[Any], ValueT](
         column: mariadb.ColumnRef[OwnerT, ValueT],
     ) -> mariadb.ReadQuery[OwnerT, ValueT]:
-        return mariadb.select(column).all()
+        return mariadb.select(column)
 
     class ValidForeignKeyDeclarations[S = Pending](Model[S]):
         """Valid required-nullable and defaulted foreign-key declarations."""
@@ -321,7 +321,7 @@ if TYPE_CHECKING:
     _ = MariadbUser(email="alice@example.com")  # ty: ignore[missing-argument]
     public_email: ColumnRef[User[Pending], str] = User.email
     unfiltered_select: sqlite.ReadQuery[User, User[Row]] = select(User)
-    public_select: ClosedRead[User[Row]] = ready(select(User).all())
+    public_select: ClosedRead[User[Row]] = ready(select(User))
     public_insert: Write[None] = insert(User(email="alice@example.com"))
     _unscoped_delete: Write[int] = delete(User)  # ty: ignore[invalid-assignment]
     _assignmentless_update: Write[int] = update(  # ty: ignore[invalid-assignment]
@@ -481,7 +481,7 @@ if TYPE_CHECKING:
         select(User), SelectModelQuery[Literal["sqlite"], User[Pending], User[Row]]
     )
     _ = assert_type(
-        select(User.email).where(User.email.eq("alice@example.com")).all(),
+        select(User.email).where(User.email.eq("alice@example.com")),
         SelectValueQuery[
             Literal["sqlite"],
             User[Pending],
@@ -566,7 +566,7 @@ if TYPE_CHECKING:
     _ = assert_type(Order.id.min(), Aggregate[Order[Pending], int | None, int])
     _ = assert_type(Order.id.avg(), Aggregate[Order[Pending], float | None, float])
     _ = assert_type(
-        select(User.id.count()).all(),
+        select(User.id.count()),
         SelectValueQuery[
             Literal["sqlite"],
             User[Pending],
@@ -577,7 +577,7 @@ if TYPE_CHECKING:
         ],
     )
     _ = assert_type(
-        select(Order.id.sum()).all(),
+        select(Order.id.sum()),
         SelectValueQuery[
             Literal["sqlite"],
             Order[Pending],
@@ -590,7 +590,7 @@ if TYPE_CHECKING:
     # Grouped projection: a column and an aggregate land in a tuple select; the
     # aggregate carries its result type and an aggregate can drive order_by.
     _ = assert_type(
-        select(User.status, User.id.count()).group_by(User.status).all(),
+        select(User.status, User.id.count()).group_by(User.status),
         SelectTupleQuery[
             Literal["sqlite"],
             User[Pending],
@@ -601,10 +601,7 @@ if TYPE_CHECKING:
         ],
     )
     _ = assert_type(
-        select(User.id.count())
-        .group_by(User.status)
-        .having(User.id.count().gt(0))
-        .all(),
+        select(User.id.count()).group_by(User.status).having(User.id.count().gt(0)),
         SelectValueQuery[
             Literal["sqlite"],
             User[Pending],
@@ -618,8 +615,7 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User.status, Order.id.sum())
         .join(Order, on=Order.user_id.references(User.id))
-        .group_by(User.status)
-        .all(),
+        .group_by(User.status),
         SelectTupleQuery[
             Literal["sqlite"],
             User[Pending] | Order[Pending],
@@ -637,8 +633,7 @@ if TYPE_CHECKING:
     _ = assert_type(
         select(User.status, User.id.count())
         .group_by(User.status)
-        .having(User.id.count().gt(5))
-        .all(),
+        .having(User.id.count().gt(5)),
         SelectTupleQuery[
             Literal["sqlite"],
             User[Pending],
@@ -652,8 +647,7 @@ if TYPE_CHECKING:
         select(User.status, Order.id.sum())
         .join(Order, on=Order.user_id.references(User.id))
         .group_by(User.status)
-        .having(Order.id.sum().gt(5))
-        .all(),
+        .having(Order.id.sum().gt(5)),
         SelectTupleQuery[
             Literal["sqlite"],
             User[Pending] | Order[Pending],
@@ -694,11 +688,11 @@ if TYPE_CHECKING:
         Predicate[Order[Pending]],
     )
     _ = assert_type(
-        Order.reviewer_id.in_subquery(select(Order.reviewer_id).all()),
+        Order.reviewer_id.in_subquery(select(Order.reviewer_id)),
         Predicate[Order[Pending]],
     )
     _ = assert_type(
-        User.nickname.eq_col(scalar(select(User.nickname).all())),
+        User.nickname.eq_col(scalar(select(User.nickname))),
         Predicate[User[Pending]],
     )
     _ = User.nickname.eq(None)  # ty: ignore[invalid-argument-type]
@@ -753,8 +747,8 @@ if TYPE_CHECKING:
         User.id.in_subquery(select(Order.user_id).where(Order.user_id.gt(0))),
         Predicate[User[Pending]],
     )
-    _ = assert_type(exists(select(Order.id).all()), Predicate[Never])
-    _ = assert_type(not_exists(select(Order.id).all()), Predicate[Never])
+    _ = assert_type(exists(select(Order.id)), Predicate[Never])
+    _ = assert_type(not_exists(select(Order.id)), Predicate[Never])
     _ = exists(select(Order.id))
     _ = not_exists(select(Order.id))
     _ = scalar(select(Order.id))
@@ -766,23 +760,23 @@ if TYPE_CHECKING:
         Scalar[Never, int | None, int],
     )
     _ = select(
-        scalar(select(Order.id).all()),  # ty: ignore[invalid-argument-type]
+        scalar(select(Order.id)),  # ty: ignore[invalid-argument-type]
         User.id,
         Region.code,
     )
     _ = select(  # ty: ignore[no-matching-overload]
-        scalar(select(Order.id).all())
+        scalar(select(Order.id))
     )
     _ = assert_type(
-        User.id.gt_col(scalar(select(Order.user_id).all())),
+        User.id.gt_col(scalar(select(Order.user_id))),
         Predicate[User[Pending]],
     )
     _ = assert_type(
-        User.id.gt_col(scalar(select(Order.id.avg()).all())),
+        User.id.gt_col(scalar(select(Order.id.avg()))),
         Predicate[User[Pending]],
     )
     _ = User.id.gt_col(  # ty: ignore[no-matching-overload]
-        scalar(select(Order.note).all())
+        scalar(select(Order.note))
     )
     # A multi-column IN subquery is rejected: in_subquery wants a single column.
     _ = User.id.in_subquery(
@@ -1288,7 +1282,7 @@ if TYPE_CHECKING:
 
     async def check_long_text_results(transaction: mariadb.Transaction) -> None:
         assert_type(
-            await transaction.fetch_all(mariadb.select(LongTextValues.value).all()),
+            await transaction.fetch_all(mariadb.select(LongTextValues.value)),
             list[str],
         )
 
@@ -1427,7 +1421,7 @@ if TYPE_CHECKING:
         """Runtime fetch overloads preserve selected result shapes."""
 
         _ = assert_type(
-            await transaction.fetch_all(select(User).all()),
+            await transaction.fetch_all(select(User)),
             list[User[Row]],
         )
         _ = await transaction.fetch_all(select(User))
@@ -1444,16 +1438,16 @@ if TYPE_CHECKING:
         _ = await transaction.fetch_one(select(User))
         _ = await transaction.fetch_one_or_none(select(User))
         _ = assert_type(
-            await transaction.fetch_all(select(User.email).all()),
+            await transaction.fetch_all(select(User.email)),
             list[str],
         )
         _ = assert_type(
-            await transaction.fetch_all(select(User.email, User.status).all()),
+            await transaction.fetch_all(select(User.email, User.status)),
             list[tuple[str, str]],
         )
         _ = assert_type(
             await transaction.fetch_all(
-                select(User.balance).all(),
+                select(User.balance),
                 validate=False,
             ),
             list[object],
@@ -1461,20 +1455,20 @@ if TYPE_CHECKING:
         # fetch_chunks preserves the same per-row shapes, wrapped in a
         # ChunkStream of row batches.
         _ = assert_type(
-            transaction.fetch_chunks(select(User).all(), size=100),
+            transaction.fetch_chunks(select(User), size=100),
             ChunkStream[User[Row]],
         )
         _ = assert_type(
-            transaction.fetch_chunks(select(User.email).all(), size=100),
+            transaction.fetch_chunks(select(User.email), size=100),
             ChunkStream[str],
         )
         _ = assert_type(
-            transaction.fetch_chunks(select(User.email, User.status).all(), size=100),
+            transaction.fetch_chunks(select(User.email, User.status), size=100),
             ChunkStream[tuple[str, str]],
         )
         _ = assert_type(
             transaction.fetch_chunks(
-                select(User.balance).all(),
+                select(User.balance),
                 size=100,
                 validate=False,
             ),
@@ -1483,16 +1477,16 @@ if TYPE_CHECKING:
         # fetch_one is exactly-one: a returned value is never absent, so the
         # single-value result keeps the column read type without ``| None``.
         _ = assert_type(
-            await transaction.fetch_one(select(User.email).all()),
+            await transaction.fetch_one(select(User.email)),
             str,
         )
         _ = assert_type(
-            await transaction.fetch_one(select(User).all()),
+            await transaction.fetch_one(select(User)),
             User[Row],
         )
         _ = assert_type(
             await transaction.fetch_one(
-                select(User.balance).all(),
+                select(User.balance),
                 validate=False,
             ),
             object,
@@ -1500,16 +1494,16 @@ if TYPE_CHECKING:
         # fetch_one_or_none is zero-or-one for model/tuple/join selects, where
         # ``None`` can only mean a missing row.
         _ = assert_type(
-            await transaction.fetch_one_or_none(select(User).all()),
+            await transaction.fetch_one_or_none(select(User)),
             User[Row] | None,
         )
         _ = assert_type(
-            await transaction.fetch_one_or_none(select(User.email, User.status).all()),
+            await transaction.fetch_one_or_none(select(User.email, User.status)),
             tuple[str, str] | None,
         )
         _ = assert_type(
             await transaction.fetch_one_or_none(
-                select(User.email, User.status).all(),
+                select(User.email, User.status),
                 validate=False,
             ),
             object,
@@ -1517,12 +1511,10 @@ if TYPE_CHECKING:
         # Projection join: the result tuple comes from the projected columns.
         _ = assert_type(
             await transaction.fetch_all(
-                select(User.email, Order.note)
-                .join(
+                select(User.email, Order.note).join(
                     Order,
                     on=Order.user_id.references(User.id),
-                )
-                .all(),
+                ),
             ),
             list[tuple[str, str]],
         )
@@ -1566,24 +1558,20 @@ if TYPE_CHECKING:
         """Predicate ON keeps model, optional-model, and projection result types."""
         condition = Order.user_id.eq_col(User.id) & Order.note.ne("hidden")
         assert_type(
-            await transaction.fetch_all(select(User).join(Order, on=condition).all()),
+            await transaction.fetch_all(select(User).join(Order, on=condition)),
             list[tuple[User[Row], Order[Row]]],
         )
         assert_type(
-            await transaction.fetch_all(
-                select(User).left_join(Order, on=condition).all()
-            ),
+            await transaction.fetch_all(select(User).left_join(Order, on=condition)),
             list[tuple[User[Row], Order[Row] | None]],
         )
         assert_type(
-            await transaction.fetch_all(
-                select(User.email).join(Order, on=condition).all()
-            ),
+            await transaction.fetch_all(select(User.email).join(Order, on=condition)),
             list[str],
         )
         assert_type(
             await transaction.fetch_all(
-                select(User.email, Order.note).join(Order, on=condition).all()
+                select(User.email, Order.note).join(Order, on=condition)
             ),
             list[tuple[str, str]],
         )
@@ -1614,7 +1602,7 @@ if TYPE_CHECKING:
         assert_type(sqlite_database.pool_stats(), sqlite.PoolStats)
         assert_type(mariadb_database.pool_stats(), mariadb.PoolStats)
         assert_type(sqlite_database.pool_stats().occupied, int)
-        assert_type(sqlite.select(User.email).all().compile().fingerprint, str)
+        assert_type(sqlite.select(User.email).compile().fingerprint, str)
 
 
 if TYPE_CHECKING:
@@ -1622,7 +1610,5 @@ if TYPE_CHECKING:
     def check_query_inspection_types() -> None:
         """Inspection works before readiness without granting execution permission."""
         assert_type(sqlite.select(User).inspect(), str)
-        assert_type(
-            sqlite.select(User).all().inspect(parameter_visibility="values"), str
-        )
+        assert_type(sqlite.select(User).inspect(parameter_visibility="values"), str)
         sqlite.select(User).inspect(parameter_visibility="invalid")  # ty: ignore[invalid-argument-type]

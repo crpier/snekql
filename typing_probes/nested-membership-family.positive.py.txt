@@ -24,7 +24,7 @@ async def control(transaction: database.Transaction) -> None:
     nested = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
     present = database.select(Account).where(database.exists(nested))
     absent = database.select(Account).where(database.not_exists(nested))
-    value = database.select(Account.number, database.scalar(nested)).all()
+    value = database.select(Account.number, database.scalar(nested))
     assert_type(await transaction.fetch_all(present), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(absent), list[Account[database.Row]])
     assert_type(await transaction.fetch_all(value), list[tuple[int, int | None]])

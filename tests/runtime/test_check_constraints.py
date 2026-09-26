@@ -120,7 +120,7 @@ async def sqlite_null_satisfies_check() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Account(balance=None)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Account.balance).all())
+            rows = await transaction.fetch_all(sqlite.select(Account.balance))
 
     assert_eq(rows, [None])
 
@@ -151,7 +151,7 @@ async def sqlite_text_literal_is_not_sql() -> None:
                 sqlite.insert(Account(balance="quote'\\nul\0; DROP TABLE account; --é"))
             )
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Account.balance).all())
+            rows = await transaction.fetch_all(sqlite.select(Account.balance))
 
     assert_eq(rows, ["quote'\\nul\0; DROP TABLE account; --é"])
 
@@ -175,7 +175,7 @@ async def sqlite_boolean_literal_uses_storage_codec() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Account(balance=True)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(sqlite.select(Account.balance).all())
+            rows = await transaction.fetch_all(sqlite.select(Account.balance))
 
     assert_eq(rows, [True])
 
@@ -224,7 +224,7 @@ async def mariadb_null_satisfies_check() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Account(balance=None)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Account.balance).all())
+            rows = await transaction.fetch_all(mariadb.select(Account.balance))
 
     assert_eq(rows, [None])
 
@@ -256,7 +256,7 @@ async def mariadb_text_literal_is_not_sql() -> None:
                 )
             )
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Account.balance).all())
+            rows = await transaction.fetch_all(mariadb.select(Account.balance))
 
     assert_eq(rows, ["quote'\\nul\0; DROP TABLE account; --é"])
 
@@ -279,7 +279,7 @@ async def mariadb_boolean_literal_uses_storage_codec() -> None:
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Account(balance=True)))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(Account.balance).all())
+            rows = await transaction.fetch_all(mariadb.select(Account.balance))
 
     assert_eq(rows, [True])
 
@@ -568,9 +568,7 @@ def invalid_checks_fail_before_io(case: str) -> None:
                     "real": cls.amount.gte(0),
                     "too-large": cls.balance.gte(2**80),
                     "like": cls.label.like("a%"),
-                    "subquery": cls.balance.in_subquery(
-                        sqlite.select(Other.value).all()
-                    ),
+                    "subquery": cls.balance.in_subquery(sqlite.select(Other.value)),
                     "mismatched-columns": cls.balance.eq_col(cls.label),  # ty: ignore[no-matching-overload]
                 }
                 checks = [

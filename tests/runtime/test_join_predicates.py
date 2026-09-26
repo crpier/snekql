@@ -77,7 +77,6 @@ async def sqlite_compound_on_matches_without_foreign_keys() -> None:
                 & LocalChild.label.ne("hidden")
             ),
         )
-        .all()
         .order_by(LocalChild.id.asc())
     )
 
@@ -102,7 +101,6 @@ async def sqlite_left_on_filter_preserves_unmatched_parents() -> None:
                 & LocalChild.label.ne("hidden")
             ),
         )
-        .all()
         .order_by(LocalParent.id.asc())
     )
 
@@ -191,7 +189,6 @@ async def mariadb_compound_on_matches_without_foreign_keys() -> None:
                 & MariaChild.label.ne("hidden")
             ),
         )
-        .all()
         .order_by(MariaChild.id.asc())
     )
 
@@ -216,7 +213,6 @@ async def mariadb_left_on_filter_preserves_unmatched_parents() -> None:
                 & MariaChild.label.ne("hidden")
             ),
         )
-        .all()
         .order_by(MariaParent.id.asc())
     )
 
@@ -250,7 +246,6 @@ async def sqlite_on_supports_non_equality_boolean_predicates() -> None:
                 | ~LocalChild.label.eq("hidden")
             ),
         )
-        .all()
         .order_by(LocalChild.id.asc())
     )
 

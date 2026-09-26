@@ -66,7 +66,7 @@ def json_extract_int_renders_as_a_projection() -> None:
     """A JSON path operator projects in the select list via the projection seam."""
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
-        select(_Profiled.profile.json_extract_int("$.age")).all(),
+        select(_Profiled.profile.json_extract_int("$.age")),
     )
 
     assert_eq(
@@ -98,7 +98,7 @@ def json_extract_int_binds_hostile_paths_as_values() -> None:
 def json_extract_int_decodes_a_projected_value() -> None:
     """Materialization decodes the projected scalar through the leaf decode seam."""
 
-    query = select(_Profiled.profile.json_extract_int("$.age")).all()
+    query = select(_Profiled.profile.json_extract_int("$.age"))
     decoded = MARIADB_CODEC.materialize_select_row(query, ("41",))
 
     assert_eq(decoded, 41)
@@ -110,7 +110,7 @@ def json_extract_int_decodes_a_missing_path_to_none() -> None:
     decodes it to ``None`` rather than raising on ``int(None)``.
     """
 
-    query = select(_Profiled.profile.json_extract_int("$.age")).all()
+    query = select(_Profiled.profile.json_extract_int("$.age"))
     decoded = MARIADB_CODEC.materialize_select_row(query, (None,))
 
     assert_eq(decoded, None)
@@ -122,7 +122,7 @@ def json_extract_int_rejects_a_non_integer_value() -> None:
     as a clear error rather than a bare ``ValueError``.
     """
 
-    query = select(_Profiled.profile.json_extract_int("$.age")).all()
+    query = select(_Profiled.profile.json_extract_int("$.age"))
     # The spec-enumerated non-integer JSON scalars: a string, a float, and a
     # JSON null literal (distinct from SQL NULL, which decodes to ``None``).
     for raw in (b'"hello"', b"12.5", b"null"):
@@ -137,7 +137,7 @@ def json_extract_int_decodes_in_a_heterogeneous_projection() -> None:
     query = select(
         _Profiled.name,
         _Profiled.profile.json_extract_int("$.age"),
-    ).all()
+    )
     decoded = MARIADB_CODEC.materialize_select_row(query, ("ada", b"41"))
 
     assert_eq(decoded, ("ada", 41))

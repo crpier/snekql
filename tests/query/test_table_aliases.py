@@ -19,7 +19,6 @@ def self_join_qualifies_roles_independently() -> None:
     compiled = (
         sqlite.select(User.email, manager.column(User.email))
         .join(manager, on=User.id.eq_col(manager.column(User.id)))
-        .all()
         .compile()
     )
 
@@ -50,7 +49,6 @@ def colliding_alias_names_are_rejected(name: str) -> None:
         sqlite.select(User)
         .join(manager, on=User.id.eq_col(manager.column(User.id)))
         .join(reviewer, on=User.id.eq_col(reviewer.column(User.id)))
-        .all()
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -62,10 +60,8 @@ def one_role_cannot_name_two_visible_aliases() -> None:
     """Distinct SQL names do not make the same static role distinguishable."""
     manager = sqlite.alias(User, ManagerRole, name="manager")
     duplicate = sqlite.alias(User, ManagerRole, name="other_manager")
-    query = (
-        sqlite.select(manager)
-        .join(duplicate, on=manager.column(User.id).eq_col(duplicate.column(User.id)))
-        .all()
+    query = sqlite.select(manager).join(
+        duplicate, on=manager.column(User.id).eq_col(duplicate.column(User.id))
     )
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -103,11 +99,11 @@ def nested_alias_cannot_shadow_an_outer_name() -> None:
 def alias_does_not_rebind_the_original_column() -> None:
     """Creating a role leaves ordinary query compilation and descriptor identity alone."""
     original = User.email
-    before = sqlite.select(User.email).all().compile()
+    before = sqlite.select(User.email).compile()
     manager = sqlite.alias(User, ManagerRole, name="manager")
-    sqlite.select(manager.column(User.email)).all().compile()
+    sqlite.select(manager.column(User.email)).compile()
 
-    assert_eq(sqlite.select(User.email).all().compile(), before)
+    assert_eq(sqlite.select(User.email).compile(), before)
     assert_eq(User.email is original, True)
 
 
@@ -149,12 +145,10 @@ if TYPE_CHECKING:
         """Role identity remains nominal through joins, projections, and helpers."""
         manager = sqlite.alias(User, ManagerRole, name="manager")
         reviewer = sqlite.alias(User, ReviewerRole, name="reviewer")
-        query = sqlite.select(manager).all()
+        query = sqlite.select(manager)
         assert_type(await transaction.fetch_all(query), list[User[sqlite.Row]])
         assert_type(
-            await transaction.fetch_all(
-                sqlite.select(manager.column(User.email)).all()
-            ),
+            await transaction.fetch_all(sqlite.select(manager.column(User.email))),
             list[str],
         )
         query.where(reviewer.column(User.email).eq("x"))  # ty: ignore[invalid-argument-type]

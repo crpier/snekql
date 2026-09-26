@@ -37,7 +37,7 @@ async def provide_native_literal_source() -> AsyncGenerator[mariadb.Database]:
 async def sqlite_literal_materializes_as_integer(value: int) -> None:
     """The full accepted native range remains int through result validation."""
     database = await load_fixture(provide_literal_source())
-    query = sqlite.select(Source).all().project(Depth, depth=sqlite.literal(value))
+    query = sqlite.select(Source).project(Depth, depth=sqlite.literal(value))
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(query)
@@ -52,9 +52,7 @@ async def sqlite_literal_materializes_as_integer(value: int) -> None:
 async def mariadb_literal_materializes_as_integer(value: int) -> None:
     """The width-preserving SQL lowering must return int, not Decimal."""
     database = await load_fixture(provide_native_literal_source())
-    query = (
-        mariadb.select(NativeSource).all().project(Depth, depth=mariadb.literal(value))
-    )
+    query = mariadb.select(NativeSource).project(Depth, depth=mariadb.literal(value))
 
     async with database.transaction() as transaction:
         row = await transaction.fetch_one(query)
@@ -80,7 +78,6 @@ async def mariadb_literal_establishes_recursive_anchor_width(
     start, increment = case
     anchor = (
         mariadb.select(NativeSource)
-        .all()
         .project(Depth, depth=mariadb.literal(start))
         .compile()
     )
@@ -106,13 +103,12 @@ async def owner_free_literal_is_not_null_extended_by_a_join() -> None:
     seed = (
         sqlite.select(Source)
         .left_join(peer, on=peer.column(Source.id).eq(2))
-        .all()
         .project(Depth, depth=token)
         .cte(SeedRole, name="seed")
     )
 
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(sqlite.select(seed.column(token)).all())
+        rows = await transaction.fetch_all(sqlite.select(seed.column(token)))
 
     assert_type(rows, list[int])
     assert_eq(rows, [0])
@@ -123,7 +119,7 @@ async def literal_cte_composes_with_an_incremented_output() -> None:
     """UNION compatibility sees the same native integer decoder on both sides."""
     database = await load_fixture(provide_literal_source())
     token = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Source).all().project(Depth, depth=token)
+    anchor = sqlite.select(Source).project(Depth, depth=token)
     seed = anchor.cte(SeedRole, name="seed")
     step = (
         sqlite.select(seed)

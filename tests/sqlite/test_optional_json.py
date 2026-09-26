@@ -33,7 +33,7 @@ async def optional_json_round_trips_decoded_payload() -> None:
             await setup.execute(sqlite.insert(Document(id=1, payload=[1, 2])))
 
         async with database.transaction() as tx:
-            payload = await tx.fetch_one(sqlite.select(Document.payload).all())
+            payload = await tx.fetch_one(sqlite.select(Document.payload))
 
     assert_eq(payload, [1, 2])
 
@@ -59,10 +59,8 @@ async def optional_json_construction_and_assignment_round_trip() -> None:
             await setup.execute(sqlite.insert(InnerOptional(id=1, payload=None)))
 
         async with database.transaction() as tx:
-            assert_eq(await tx.fetch_one(sqlite.select(Document.payload).all()), None)
-            assert_eq(
-                await tx.fetch_one(sqlite.select(InnerOptional.payload).all()), None
-            )
+            assert_eq(await tx.fetch_one(sqlite.select(Document.payload)), None)
+            assert_eq(await tx.fetch_one(sqlite.select(InnerOptional.payload)), None)
             assert_eq(
                 await tx.fetch_one(
                     sqlite.select(Document.id.count()).where(Document.payload.is_null())
@@ -87,10 +85,8 @@ async def optional_json_construction_and_assignment_round_trip() -> None:
             )
 
         async with database.transaction() as tx:
-            assert_eq(await tx.fetch_one(sqlite.select(Document.payload).all()), [3, 4])
-            assert_eq(
-                await tx.fetch_one(sqlite.select(InnerOptional.payload).all()), [3, 4]
-            )
+            assert_eq(await tx.fetch_one(sqlite.select(Document.payload)), [3, 4])
+            assert_eq(await tx.fetch_one(sqlite.select(InnerOptional.payload)), [3, 4])
 
 
 @test(mark="fast")
@@ -149,9 +145,7 @@ async def optional_json_preserves_custom_serialization() -> None:
         async with database.transaction() as setup:
             await setup.execute(sqlite.insert(Serialized(payload=[3, 1])))
         async with database.transaction() as tx:
-            assert_eq(
-                await tx.fetch_one(sqlite.select(Serialized.payload).all()), [1, 3]
-            )
+            assert_eq(await tx.fetch_one(sqlite.select(Serialized.payload)), [1, 3])
 
 
 @test(mark="fast")
@@ -223,15 +217,13 @@ async def sql_null_and_json_null_remain_distinct_on_the_wire() -> None:
 
         async with database.transaction() as tx:
             values = await tx.fetch_all(
-                sqlite.select(Document.payload).all().order_by(Document.id.asc())
+                sqlite.select(Document.payload).order_by(Document.id.asc())
             )
             sql_null_ids = await tx.fetch_all(
                 sqlite.select(Document.id).where(Document.payload.is_null())
             )
             wire = await tx.fetch_all(
-                sqlite.select(WireDocument.payload)
-                .all()
-                .order_by(WireDocument.id.asc())
+                sqlite.select(WireDocument.payload).order_by(WireDocument.id.asc())
             )
 
     assert_eq(values, [None, None])
@@ -262,10 +254,8 @@ async def fetched_optional_json_keeps_payload_constraints() -> None:
 
         async with database.transaction() as tx:
             with assert_raises(ModelValidationError):
-                await tx.fetch_one(sqlite.select(Checked.payload).all())
-            raw = await tx.fetch_one(
-                sqlite.select(Checked.payload).all(), validate=False
-            )
+                await tx.fetch_one(sqlite.select(Checked.payload))
+            raw = await tx.fetch_one(sqlite.select(Checked.payload), validate=False)
 
     assert_eq(raw, [])
 

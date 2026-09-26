@@ -235,9 +235,9 @@ async def fetch_validates_logical_types_and_can_skip_validation() -> None:
             await tx.execute(raw("INSERT INTO runtime_receipt (amount) VALUES (-5)"))
 
             with assert_raises(ModelValidationError):
-                _ = await tx.fetch_all(select(RuntimeReceipt).all())
+                _ = await tx.fetch_all(select(RuntimeReceipt))
 
-            rows = await tx.fetch_all(select(RuntimeReceipt).all(), validate=False)
+            rows = await tx.fetch_all(select(RuntimeReceipt), validate=False)
     finally:
         await database.close()
 
@@ -257,7 +257,7 @@ async def insert_rejects_a_fetched_model() -> None:
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(RuntimeUser(email="alice@example.com")))
-            fetched_user = await tx.fetch_one(select(RuntimeUser).all())
+            fetched_user = await tx.fetch_one(select(RuntimeUser))
 
             with assert_raises(QueryConstructionError):
                 _ = insert(fetched_user)  # ty: ignore[invalid-argument-type]

@@ -32,7 +32,7 @@ async def mariadb_duration_integer_storage_round_trips() -> None:
     try:
         async with database.transaction() as tx:
             await tx.execute(insert(TimedSpan(id=1, elapsed=timedelta(seconds=9))))
-            fetched = await tx.fetch_one(select(TimedSpan.elapsed).all())
+            fetched = await tx.fetch_one(select(TimedSpan.elapsed))
     finally:
         await database.close()
 
@@ -64,7 +64,7 @@ async def mariadb_duration_integer_storage_orders_by_magnitude() -> None:
             await tx.execute(insert(TimedSpan(id=4, elapsed=timedelta(hours=1))))
             await tx.execute(insert(TimedSpan(id=5, elapsed=timedelta(seconds=-5))))
             ordered_ids = await tx.fetch_all(
-                select(TimedSpan.id).all().order_by(TimedSpan.elapsed.asc())
+                select(TimedSpan.id).order_by(TimedSpan.elapsed.asc())
             )
     finally:
         await database.close()

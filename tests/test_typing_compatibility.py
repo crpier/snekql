@@ -251,7 +251,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 114)
+    assert_eq(len(report["cases"]), 116)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
@@ -305,6 +305,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "not-exists-family",
             "scalar-family",
             "readiness",
+            "select-all",
             "backend-identity",
             "named-result",
             "joins",
@@ -360,6 +361,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "not-exists-family",
             "scalar-family",
             "readiness",
+            "select-all",
             "backend-identity",
             "positional-width",
             "named-result",

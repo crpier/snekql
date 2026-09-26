@@ -114,7 +114,7 @@ class _StubCompiler:
 def builders_return_dedicated_node_families() -> None:
     """Each predicate builder returns its typed node, still a ``Predicate``."""
 
-    subquery = select(Order.user_id).all()
+    subquery = select(Order.user_id)
     cases: tuple[tuple[Predicate[Any], type[Predicate[Any]]], ...] = (
         (User.id.eq(1), ComparisonPredicate),
         (User.id.ne(1), ComparisonPredicate),
@@ -300,7 +300,7 @@ def subquery_nodes_compile_through_the_subquery_seam() -> None:
     """Membership and existence nodes wrap the compiled subquery SQL."""
 
     compiler = _StubCompiler()
-    subquery = select(Order.user_id).all()
+    subquery = select(Order.user_id)
 
     sql, params = User.id.in_subquery(subquery).__compile_predicate_sql__(compiler)
     assert_eq(sql, "operand IN (SELECT sub)")

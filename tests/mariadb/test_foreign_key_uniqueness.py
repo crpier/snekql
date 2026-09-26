@@ -112,7 +112,7 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
             await tx.execute(mariadb.insert(Child(parent=expected)))
 
         async with database.transaction() as tx:
-            rows = await tx.fetch_all(mariadb.select(Child.parent).all())
+            rows = await tx.fetch_all(mariadb.select(Child.parent))
 
         with assert_raises(ExecutionError) as caught:
             async with database.transaction() as tx:

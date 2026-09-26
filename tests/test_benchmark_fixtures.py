@@ -35,7 +35,7 @@ async def sqlite_fixture_yields_migrated_seeded_database() -> None:
             sqlite_benchmark_database(Path(directory), _API, pool_size=2, rows=7) as db,
             db.transaction() as tx,
         ):
-            rows = await tx.fetch_all(sqlite_select(_models_sqlite.BenchUser).all())
+            rows = await tx.fetch_all(sqlite_select(_models_sqlite.BenchUser))
 
         assert_eq(len(rows), 7)
 
@@ -62,12 +62,10 @@ async def sqlite_fixture_instances_are_independent() -> None:
             handle(Path(directory), _API, pool_size=1, rows=5) as second,
         ):
             async with first.transaction() as tx:
-                first_rows = await tx.fetch_all(
-                    sqlite_select(_models_sqlite.BenchUser).all()
-                )
+                first_rows = await tx.fetch_all(sqlite_select(_models_sqlite.BenchUser))
             async with second.transaction() as tx:
                 second_rows = await tx.fetch_all(
-                    sqlite_select(_models_sqlite.BenchUser).all()
+                    sqlite_select(_models_sqlite.BenchUser)
                 )
 
         assert_eq(len(first_rows), 3)

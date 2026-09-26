@@ -42,7 +42,7 @@ Query errors:
 - `QueryCompilationError`: a built query cannot compile to valid backend SQL.
   Typed Query Runtime calls reject guaranteed-incomplete queries statically, but
   the error remains the runtime backstop for `Any`, casts, untyped callers, and
-  forged state—for example, a select without `.where(...)` or `.all()`.
+  forged state—for example, a delete without `.where(...)` or `.all()`.
 
 Runtime errors:
 
@@ -284,7 +284,7 @@ you get an error, not a silent no-op.
 ```python
 async with db.transaction() as tx:
     await tx.execute(insert(user))
-    rows = await tx.fetch_all(select(User).all())
+    rows = await tx.fetch_all(select(User))
 # committed here; `tx` is now closed and must not be touched again
 ```
 
@@ -402,8 +402,8 @@ NOWAIT errors remain terminal under the current failure policy. Start a new
 Transaction for a subsequent attempt rather than continuing after that error.
 
 Locking modifiers preserve backend identity, result contracts, parameter order,
-and readiness. They do not replace `where()` or `all()`. Model, scalar, tuple,
-named, and single-table alias projections are supported. Reapplying the modifier
+and execution eligibility. SELECT needs no separate scope acknowledgment.
+Model, scalar, tuple, named, and single-table alias projections are supported. Reapplying the modifier
 replaces its wait choice without mutating the original query.
 
 SQLite rejects locking clauses during compilation. There is no emulation using

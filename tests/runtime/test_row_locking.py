@@ -49,9 +49,9 @@ async def read_only_rejection_keeps_transaction_usable() -> None:
 
     async with database.transaction(read_only=True) as transaction:
         with assert_raises(mariadb.TransactionStateError):
-            await transaction.fetch_all(mariadb.select(Job).all().for_update())
+            await transaction.fetch_all(mariadb.select(Job).for_update())
         rows = await transaction.fetch_all(
-            mariadb.select(Job.id).all().order_by(Job.id.asc())
+            mariadb.select(Job.id).order_by(Job.id.asc())
         )
     assert_eq(rows, [1, 2])
 
@@ -85,7 +85,7 @@ async def every_execution_path_checks_read_only_before_io(operation: str) -> Non
                 async with transaction.fetch_chunks(query, size=1):
                     pass
         rows = await transaction.fetch_all(
-            mariadb.select(Job.id).all().order_by(Job.id.asc())
+            mariadb.select(Job.id).order_by(Job.id.asc())
         )
     assert_eq(rows, [1, 2])
 
@@ -114,10 +114,10 @@ async def skip_locked_returns_none_when_every_row_is_held() -> None:
     database = await load_fixture(provide_queue())
 
     async with database.transaction() as holder:
-        await holder.fetch_all(mariadb.select(Job).all().for_update())
+        await holder.fetch_all(mariadb.select(Job).for_update())
         async with database.transaction(timeout=0.5) as claimant:
             row = await claimant.fetch_one_or_none(
-                mariadb.select(Job).all().limit(1).for_update(wait="skip_locked")
+                mariadb.select(Job).limit(1).for_update(wait="skip_locked")
             )
     assert_eq(row, None)
 
@@ -223,7 +223,7 @@ async def lock_wait_deadline_discards_connection() -> None:
             with assert_raises(mariadb.DatabaseOperationTimeoutError):
                 await contender.fetch_one(query)
             with assert_raises(mariadb.DatabaseRuntimeError):
-                await contender.fetch_all(mariadb.select(Job).all())
+                await contender.fetch_all(mariadb.select(Job))
     async with database.transaction() as next_transaction:
         row = await next_transaction.fetch_one(query)
     assert_eq(row.id, 1)
@@ -297,7 +297,7 @@ async def unsupported_sqlite_lock_does_not_poison_transaction() -> None:
 
     async with case.database.transaction() as transaction:
         with assert_raises(sqlite.QueryCompilationError):
-            await transaction.fetch_all(sqlite.select(SQLiteEntry).all().for_update())
+            await transaction.fetch_all(sqlite.select(SQLiteEntry).for_update())
         await transaction.execute(sqlite.insert(SQLiteEntry(value=1)))
 
 

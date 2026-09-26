@@ -100,7 +100,7 @@ def _filter_by_value[OwnerT, ValueT](
 def _project_column[OwnerT: sqlite.Model[Any], ValueT](
     column: sqlite.ColumnRef[OwnerT, ValueT],
 ) -> sqlite.ReadQuery[OwnerT, ValueT]:
-    return sqlite.select(column).all()
+    return sqlite.select(column)
 
 
 @test(

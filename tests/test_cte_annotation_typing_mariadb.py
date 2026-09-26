@@ -27,9 +27,7 @@ class OtherVisit(BaseModel):
 if TYPE_CHECKING:
     identifier = NativeCategory.id.label("id")
     depth = mariadb.literal(0).label("depth")
-    anchor = (
-        mariadb.select(NativeCategory).all().project(Visit, id=identifier, depth=depth)
-    )
+    anchor = mariadb.select(NativeCategory).project(Visit, id=identifier, depth=depth)
 
     def advance(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
@@ -54,11 +52,9 @@ if TYPE_CHECKING:
     combined = anchor.union_all(branch())
 
     async def consume(transaction: mariadb.Transaction) -> None:
+        assert_type(await transaction.fetch_all(mariadb.select(walk)), list[Visit])
         assert_type(
-            await transaction.fetch_all(mariadb.select(walk).all()), list[Visit]
-        )
-        assert_type(
-            await transaction.fetch_all(mariadb.select(walk.column(identifier)).all()),
+            await transaction.fetch_all(mariadb.select(walk.column(identifier))),
             list[int],
         )
         assert_type(await transaction.fetch_all(combined), list[Visit])
@@ -76,7 +72,7 @@ if TYPE_CHECKING:
     def unnamed(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
-        return mariadb.select(previous).all()  # ty: ignore[invalid-return-type]
+        return mariadb.select(previous)  # ty: ignore[invalid-return-type]
 
     def wrong_comparison(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
@@ -93,47 +89,31 @@ if TYPE_CHECKING:
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
         mariadb.select(previous).where(NativeCategory.id.eq(1))  # ty: ignore[invalid-argument-type]
-        return (
-            mariadb.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return mariadb.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def wrong_family(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
-        return (
-            mariadb.select(previous)  # ty: ignore[invalid-return-type]
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return mariadb.select(previous).project(  # ty: ignore[invalid-return-type]
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def different_role(
         previous: mariadb.Cte[NativeCategory, Visit, PeerRole],
     ) -> mariadb.NamedOperand[Visit]:
-        return (
-            mariadb.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return mariadb.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     def different_result(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
     ) -> mariadb.NamedOperand[OtherVisit]:
-        return (
-            mariadb.select(previous)
-            .all()
-            .project(
-                OtherVisit,
-                id=previous.column(identifier),
-                depth=previous.column(depth),
-            )
+        return mariadb.select(previous).project(
+            OtherVisit,
+            id=previous.column(identifier),
+            depth=previous.column(depth),
         )
 
     prepared = mariadb.recursive_cte(anchor, WalkRole, name="walk")
@@ -145,7 +125,6 @@ if TYPE_CHECKING:
     optional_anchor = (
         mariadb.select(NativeCategory)
         .left_join(NativeDetail, on=NativeCategory.id.eq_col(NativeDetail.id))
-        .all()
         .project(OptionalVisit, id=optional_id, depth=depth)
     )
 
@@ -175,17 +154,15 @@ if TYPE_CHECKING:
         ],
     ) -> None:
         assert_type(
-            await transaction.fetch_all(
-                mariadb.select(previous.column(optional_id)).all()
-            ),
+            await transaction.fetch_all(mariadb.select(previous.column(optional_id))),
             list[int | None],
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(previous.column(depth)).all()),
+            await transaction.fetch_all(mariadb.select(previous.column(depth))),
             list[int],
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(optional_walk).all()),
+            await transaction.fetch_all(mariadb.select(optional_walk)),
             list[OptionalVisit],
         )
 
@@ -209,12 +186,8 @@ if TYPE_CHECKING:
     def different_source(
         previous: mariadb.Cte[NativeDetail, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
-        return (
-            mariadb.select(previous)
-            .all()
-            .project(
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+        return mariadb.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
 
     prepared.step(different_source)  # ty: ignore[invalid-argument-type]
@@ -239,9 +212,9 @@ if TYPE_CHECKING:
 
     async def consume_helper(transaction: mariadb.Transaction) -> None:
         assert_type(
-            await transaction.fetch_all(mariadb.select(generic_walk).all()), list[Visit]
+            await transaction.fetch_all(mariadb.select(generic_walk)), list[Visit]
         )
         assert_type(
-            await transaction.fetch_all(mariadb.select(alias_helper()).all()),
+            await transaction.fetch_all(mariadb.select(alias_helper())),
             list[Visit],
         )

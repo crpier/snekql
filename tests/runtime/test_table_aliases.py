@@ -34,7 +34,6 @@ async def sqlite_repeated_left_joins_materialize_original_models() -> None:
             on=LocalParent.id.eq_col(reviewer.column(LocalParent.id))
             & reviewer.column(LocalParent.id).gt(1),
         )
-        .all()
         .order_by(LocalParent.id.asc())
     )
 
@@ -83,7 +82,6 @@ async def mariadb_repeated_left_joins_materialize_original_models() -> None:
             on=MariaParent.id.eq_col(reviewer.column(MariaParent.id))
             & reviewer.column(MariaParent.id).gt(1),
         )
-        .all()
         .order_by(MariaParent.id.asc())
     )
 
@@ -122,7 +120,7 @@ async def alias_as_from_source_returns_original_fetched_models() -> None:
 
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(manager).all().order_by(manager.column(LocalParent.id).asc())
+            sqlite.select(manager).order_by(manager.column(LocalParent.id).asc())
         )
 
     assert_type(rows, list[LocalParent[sqlite.Row]])
@@ -138,7 +136,7 @@ async def alias_projection_keeps_scalar_types() -> None:
 
     async with database.transaction() as transaction:
         count = await transaction.fetch_one(
-            sqlite.select(manager.column(LocalParent.id).count()).all()
+            sqlite.select(manager.column(LocalParent.id).count())
         )
 
     assert_type(count, int)

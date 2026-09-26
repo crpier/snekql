@@ -41,19 +41,19 @@ if TYPE_CHECKING:
         )
 
     sqlite_model_select: sqlite.ClosedRead[SqliteUser[sqlite.Row]] = sqlite.ready(
-        sqlite.select(SqliteUser).all()
+        sqlite.select(SqliteUser)
     )
     sqlite_value_select: sqlite.ClosedRead[int] = sqlite.ready(
-        sqlite.select(SqliteUser.id).all()
+        sqlite.select(SqliteUser.id)
     )
     sqlite_returning: sqlite.Write[SqliteUser[sqlite.Row]] = sqlite.insert(
         SqliteUser(id=1)
     ).returning()
     mariadb_model_select: mariadb.ClosedRead[MariadbUser[mariadb.Row]] = mariadb.ready(
-        mariadb.select(MariadbUser).all()
+        mariadb.select(MariadbUser)
     )
     mariadb_value_select: mariadb.ClosedRead[int] = mariadb.ready(
-        mariadb.select(MariadbUser.id).all()
+        mariadb.select(MariadbUser.id)
     )
     mariadb_returning: mariadb.Write[MariadbUser[mariadb.Row]] = mariadb.insert(
         MariadbUser(id=1)
@@ -97,10 +97,10 @@ if TYPE_CHECKING:
         mariadb_transaction: mariadb.Transaction,
     ) -> None:
         await sqlite_transaction.fetch_all(  # ty: ignore[no-matching-overload]
-            mariadb.select(MariadbUser).all(),
+            mariadb.select(MariadbUser),
         )
         await mariadb_transaction.fetch_all(  # ty: ignore[no-matching-overload]
-            sqlite.select(SqliteUser).all(),
+            sqlite.select(SqliteUser),
         )
         await sqlite_transaction.execute(  # ty: ignore[no-matching-overload]
             mariadb.insert(MariadbUser(id=1)),

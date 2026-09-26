@@ -377,7 +377,7 @@ async def sqlite_memory_database_serializes_concurrent_work_on_one_connection() 
             await anyio.lowlevel.checkpoint()
 
         async with database.transaction() as tx:
-            emails = await tx.fetch_all(select(_AsyncUser.email).all())
+            emails = await tx.fetch_all(select(_AsyncUser.email))
     finally:
         await database.close()
 

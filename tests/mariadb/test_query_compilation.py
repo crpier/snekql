@@ -24,7 +24,7 @@ def mariadb_select_compilation_quotes_identifiers_with_backticks() -> None:
         where: KeywordModel.Col[str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
-        select(KeywordModel.where).all(),
+        select(KeywordModel.where),
     )
 
     assert_eq(select_sql, "SELECT `where` FROM `select`")
@@ -81,7 +81,7 @@ def mariadb_select_compilation_renders_result_windowing() -> None:
         email: User.Col[str] = mariadb.Text(nullable=False)
 
     select_sql, select_params = MARIADB_CODEC.compile_select_sql(
-        select(User.email).all().order_by(User.email.desc()).limit(2).offset(1),
+        select(User.email).order_by(User.email.desc()).limit(2).offset(1),
     )
 
     assert_eq(

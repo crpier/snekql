@@ -52,7 +52,7 @@ async def optional_alias_round_trip(value: int | None) -> None:
             )
         async with database.transaction() as transaction:
             row = await transaction.fetch_one(
-                mariadb.select(Entry.value, Entry.generic).all()
+                mariadb.select(Entry.value, Entry.generic)
             )
 
     assert_eq(row, (value, value))
@@ -77,7 +77,7 @@ async def alias_serializer_is_preserved() -> None:
             await transaction.execute(mariadb.insert(Entry(value=3)))
         async with database.transaction() as transaction:
             wire = await transaction.fetch_one(
-                mariadb.select(Entry.value).all(), validate=False
+                mariadb.select(Entry.value), validate=False
             )
 
     assert_eq(wire, 6)

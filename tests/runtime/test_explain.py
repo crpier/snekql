@@ -103,7 +103,7 @@ async def analyze_select_returns_observed_statistics() -> None:
     database = await load_fixture(provide_mariadb_accounts())
 
     async with database.transaction() as transaction:
-        plan = await transaction.explain_analyze(mariadb.select(MariaAccount).all())
+        plan = await transaction.explain_analyze(mariadb.select(MariaAccount))
 
     assert_true("r_rows" in plan.columns)
     assert_true("r_filtered" in plan.columns)
@@ -177,7 +177,7 @@ async def sqlite_explain_does_not_apply_writes(kind: str) -> None:
         await transaction.explain(queries[kind])
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(
-            sqlite.select(Account.account_id, Account.email).all()
+            sqlite.select(Account.account_id, Account.email)
         )
 
     assert_eq(rows, [(7, "secret")])
@@ -195,7 +195,7 @@ async def mariadb_explain_does_not_apply_writes(kind: str) -> None:
     async with database.transaction() as transaction:
         await transaction.explain(queries[kind])
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email).all())
+        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, ["secret"])
 
@@ -214,7 +214,7 @@ async def analyze_write_commits_on_normal_transaction_exit(kind: str) -> None:
     async with database.transaction() as transaction:
         await transaction.explain_analyze(queries[kind])
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email).all())
+        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, ["changed"] if kind == "update" else [])
 
@@ -230,7 +230,7 @@ async def analyze_write_respects_transaction_rollback() -> None:
             msg = "abort transaction"
             raise mariadb.QueryConstructionError(msg)
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email).all())
+        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, ["secret"])
 
@@ -243,7 +243,7 @@ async def sqlite_analyze_is_rejected_before_query_io() -> None:
         database.transaction() as transaction,
     ):
         with assert_raises(sqlite.QueryCompilationError):
-            await transaction.explain_analyze(sqlite.select(Account).all())
+            await transaction.explain_analyze(sqlite.select(Account))
 
 
 @test(mark="medium")
@@ -254,7 +254,7 @@ async def explain_rejects_backend_mismatch_before_query_io() -> None:
         database.transaction() as transaction,
     ):
         with assert_raises(sqlite.DatabaseRuntimeError) as raised:
-            await transaction.explain(mariadb.select(MariaAccount).all())  # ty: ignore[invalid-argument-type]
+            await transaction.explain(mariadb.select(MariaAccount))  # ty: ignore[invalid-argument-type]
 
     assert_eq(type(raised.exception), sqlite.DatabaseRuntimeError)
     assert_true("backend mismatch" in str(raised.exception))
@@ -288,7 +288,7 @@ async def explain_requires_an_active_transaction() -> None:
     async with await sqlite.Database.initialize(database=":memory:") as database:
         transaction = database.transaction()
         with assert_raises(sqlite.TransactionNotStartedError):
-            await transaction.explain(sqlite.select(Account).all())
+            await transaction.explain(sqlite.select(Account))
 
 
 @test(
@@ -373,9 +373,9 @@ async def analyzed_write_timeout_discards_the_blocked_connection() -> None:
                         .all()
                     )
                 with assert_raises(mariadb.DatabaseRuntimeError):
-                    await waiter.explain(mariadb.select(MariaAccount).all())
+                    await waiter.explain(mariadb.select(MariaAccount))
         async with database.transaction() as transaction:
-            rows = await transaction.fetch_all(mariadb.select(MariaAccount.email).all())
+            rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, ["locked"])
 
@@ -384,7 +384,7 @@ async def analyzed_write_timeout_discards_the_blocked_connection() -> None:
 async def explain_accepts_only_built_queries(kind: str) -> None:
     """Arbitrary SQL and inspection snapshots cannot bypass statement policy."""
     queries = {
-        "compiled": sqlite.select(Account).all().compile(),
+        "compiled": sqlite.select(Account).compile(),
         "raw": sqlite.raw("DELETE FROM account"),
     }
     async with (
@@ -409,6 +409,6 @@ async def analyzed_write_keeps_values_bound() -> None:
     async with database.transaction() as transaction:
         await transaction.explain_analyze(query)
     async with database.transaction() as transaction:
-        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email).all())
+        rows = await transaction.fetch_all(mariadb.select(MariaAccount.email))
 
     assert_eq(rows, [email])

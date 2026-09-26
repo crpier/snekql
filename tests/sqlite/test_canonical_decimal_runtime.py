@@ -64,6 +64,6 @@ async def canonical_decimal_round_trip_preserves_high_precision() -> None:
             async with database.transaction() as transaction:
                 await transaction.execute(insert(Price(id=1, amount=exact)))
             async with database.transaction() as transaction:
-                stored = await transaction.fetch_one(select(Price.amount).all())
+                stored = await transaction.fetch_one(select(Price.amount))
 
     assert_eq(stored, exact)

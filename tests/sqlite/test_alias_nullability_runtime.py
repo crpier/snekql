@@ -48,9 +48,7 @@ async def optional_alias_round_trip(value: int | None) -> None:
                 )
             )
         async with database.transaction() as transaction:
-            row = await transaction.fetch_one(
-                sqlite.select(Entry.value, Entry.generic).all()
-            )
+            row = await transaction.fetch_one(sqlite.select(Entry.value, Entry.generic))
 
     assert_eq(row, (value, value))
 
@@ -72,7 +70,7 @@ async def alias_serializer_is_preserved() -> None:
             await transaction.execute(sqlite.insert(Entry(value=3)))
         async with database.transaction() as transaction:
             wire = await transaction.fetch_one(
-                sqlite.select(Entry.value).all(), validate=False
+                sqlite.select(Entry.value), validate=False
             )
 
     assert_eq(wire, 6)

@@ -79,7 +79,7 @@ def mixed_projection_compiles_to_group_key_and_aggregate() -> None:
     """A bare column and an aggregate project together under GROUP BY."""
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(User.country, User.id.count()).group_by(User.country).all(),
+        select(User.country, User.id.count()).group_by(User.country),
     )
 
     assert_eq(sql, 'SELECT "country", COUNT("id") FROM "user" GROUP BY "country"')
@@ -93,8 +93,7 @@ def group_by_qualifies_columns_under_a_join() -> None:
     sql, _ = SQLITE_CODEC.compile_select_sql(
         select(User.country, Order.amount.sum())
         .join(Order, on=Order.user_id.references(User.id))
-        .group_by(User.country)
-        .all(),
+        .group_by(User.country),
     )
 
     expected = " ".join(
@@ -114,8 +113,7 @@ def aggregate_renders_in_order_by_position() -> None:
     sql, _ = SQLITE_CODEC.compile_select_sql(
         select(User.country, User.id.count())
         .group_by(User.country)
-        .order_by(User.id.count().desc())
-        .all(),
+        .order_by(User.id.count().desc()),
     )
 
     expected = " ".join(
@@ -133,7 +131,7 @@ def group_by_is_backend_portable() -> None:
 
     assert_eq(
         MARIADB_CODEC.compile_select_sql(
-            select(User.country, User.id.count()).group_by(User.country).all(),
+            select(User.country, User.id.count()).group_by(User.country),
         )[0],
         "SELECT `country`, COUNT(`id`) FROM `user` GROUP BY `country`",
     )
@@ -150,7 +148,7 @@ def ungrouped_bare_column_with_aggregate_is_a_compilation_error() -> None:
 
     with assert_raises(QueryCompilationError):
         _ = SQLITE_CODEC.compile_select_sql(
-            select(User.country, User.id.count()).all(),
+            select(User.country, User.id.count()),
         )
 
 
@@ -175,8 +173,7 @@ async def grouped_count_returns_a_count_per_group() -> None:
             rows = await tx.fetch_all(
                 select(User.country, User.id.count())
                 .group_by(User.country)
-                .order_by(User.country.asc())
-                .all(),
+                .order_by(User.country.asc()),
             )
     finally:
         await database.close()
@@ -200,8 +197,7 @@ async def grouped_sum_normalizes_per_group() -> None:
                 select(User.country, Order.amount.sum())
                 .join(Order, on=Order.user_id.references(User.id))
                 .group_by(User.country)
-                .order_by(User.country.asc())
-                .all(),
+                .order_by(User.country.asc()),
             )
     finally:
         await database.close()

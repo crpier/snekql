@@ -54,9 +54,7 @@ async def returning_reset_keeps_backend_restrictions(case: tuple[str, str]) -> N
                 await tx.execute(query)
 
         async with database.transaction() as tx:
-            rows = await tx.fetch_all(
-                mariadb.select(Item.id, Item.score, Item.label).all()
-            )
+            rows = await tx.fetch_all(mariadb.select(Item.id, Item.score, Item.label))
 
     assert_in(f"does not support {case[0].upper()} RETURNING", str(caught.exception))
     assert_eq(rows, [(1, 10, "one")])

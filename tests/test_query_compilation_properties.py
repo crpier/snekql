@@ -130,8 +130,8 @@ def _select_queries(draw: st.DrawFn) -> Any:
     projection = draw(st.lists(st.sampled_from(_ALL_COLUMNS), min_size=1, max_size=5))
     query = cast("Any", select(*projection))
     predicates = draw(st.lists(_PREDICATES, max_size=4))
-    # A SELECT needs either an explicit all() or at least one predicate.
-    query = query.where(*predicates) if predicates else query.all()
+    if predicates:
+        query = query.where(*predicates)
     if draw(st.booleans()):
         query = query.distinct()
     order_columns = draw(st.lists(st.sampled_from(_ALL_COLUMNS), max_size=3))
@@ -193,7 +193,7 @@ def limit_and_offset_bind_their_values_in_order(limit: int, offset: int) -> None
     """LIMIT and OFFSET bind their integers as trailing parameters, in order."""
 
     sql, params = SQLITE_CODEC.compile_select_sql(
-        select(Widget.id).all().limit(limit).offset(offset),
+        select(Widget.id).limit(limit).offset(offset),
     )
     assert_eq(params, (limit, offset))
     assert_eq(sql.count(_PLACEHOLDER), 2)

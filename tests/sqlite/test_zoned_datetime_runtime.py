@@ -52,7 +52,7 @@ async def zoned_datetime_round_trips_through_sqlite_text() -> None:
     try:
         async with database.transaction() as transaction:
             await transaction.execute(insert(ZonedEvent(id=1, happened_at=source)))
-            fetched = await transaction.fetch_one(select(ZonedEvent).all())
+            fetched = await transaction.fetch_one(select(ZonedEvent))
     finally:
         await database.close()
 
@@ -79,7 +79,7 @@ async def zoned_datetime_fixed_offset_round_trips_through_sqlite_text() -> None:
     try:
         async with database.transaction() as transaction:
             await transaction.execute(insert(ZonedEvent(id=1, happened_at=source)))
-            fetched = await transaction.fetch_one(select(ZonedEvent).all())
+            fetched = await transaction.fetch_one(select(ZonedEvent))
     finally:
         await database.close()
 

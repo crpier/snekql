@@ -64,7 +64,7 @@ being added. It cannot reference a later join. Compilation also checks those
 references. Some valid enclosing-table correlations inside nested JOIN ON need
 a typing escape; see [typing limits](typing-compatibility.md#remaining-limits).
 
-Joins remain executable without `.all()` or `.where(...)`. A projected inner join
+Joins are executable without a filter. A projected inner join
 keeps the selected columns' result types. Projected left joins are not supported;
 use whole-model joins or a supported [named projection](results.md).
 

@@ -106,9 +106,9 @@ class Profile[State = sqlite.Pending](sqlite.Model[State]):
     score: sqlite.Col[int] = sqlite.Integer()
 
 
-select(Profile.nickname.coalesce("anonymous").lower()).all()  # str
-select(Profile.nickname.char_length()).all()  # int | None for nullable nickname
-select(Profile.nickname.char_length().coalesce(0).add(1)).all()  # int
+select(Profile.nickname.coalesce("anonymous").lower())  # str
+select(Profile.nickname.char_length())  # int | None for nullable nickname
+select(Profile.nickname.char_length().coalesce(0).add(1))  # int
 
 update(Profile).set(
     Profile.nickname.to_expr(Profile.nickname.coalesce("anonymous").lower()),
@@ -140,12 +140,12 @@ For example, label a score as gold or standard:
 ```python
 from snekql.sqlite import case, select
 
-select(case(Profile.score.gte(100), then="gold", otherwise="standard")).all()
+select(case(Profile.score.gte(100), then="gold", otherwise="standard"))
 select(
     case(Profile.score.gte(100), then=Profile.nickname, otherwise=None)
     .coalesce("anonymous")
     .lower()
-).all()
+)
 ```
 
 TRUE selects `then`; FALSE or SQL UNKNOWN selects `otherwise`. Branches accept

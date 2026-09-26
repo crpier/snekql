@@ -25,7 +25,6 @@ async def grouped_scalar_keeps_outer_key_correlation() -> None:
     )
     query = (
         sqlite.select(LocalParent.tenant, first_child, LocalParent.count_all())
-        .all()
         .group_by(LocalParent.id, LocalParent.tenant)
         .order_by(LocalParent.id.asc())
     )
@@ -48,7 +47,6 @@ async def native_grouped_scalar_keeps_outer_key_correlation() -> None:
     )
     query = (
         mariadb.select(MariaParent.tenant, first_child, MariaParent.count_all())
-        .all()
         .group_by(MariaParent.id, MariaParent.tenant)
         .order_by(MariaParent.id.asc())
     )

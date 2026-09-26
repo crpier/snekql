@@ -564,10 +564,6 @@ class NamedSelectQuery[
         """Filter aggregates or grouping keys without changing row readiness."""
         return self._replace_state(_select_having(self.state, (predicate, *predicates)))
 
-    def all(self) -> Self:
-        """Compatibility no-op; preserve filters and allow further composition."""
-        return self
-
     def where(
         self,
         predicate: Predicate[OwnerT, FamilyT],
@@ -702,10 +698,6 @@ class SelectModelQuery[
         Example: `select(User).project(Summary, id=User.id, name=User.name)`.
         """
         return NamedSelectQuery(_project_state(self.state, result_type, fields))
-
-    def all(self) -> Self:
-        """Compatibility no-op; preserve filters and allow further composition."""
-        return self
 
     @overload
     def where(
@@ -843,10 +835,6 @@ class JoinModelQuery[
         """
         return NamedSelectQuery(_project_state(self.state, result_type, fields))
 
-    def all(self) -> Self:
-        """Compatibility no-op; preserve filters and allow further composition."""
-        return self
-
     @overload
     def where(
         self,
@@ -980,10 +968,6 @@ class SelectValueQuery[
     type error. `ScopeT` is pinned invariant by `_pin_scope` so the constraint
     does not collapse.
     """
-
-    def all(self) -> Self:
-        """Compatibility no-op; preserve filters and allow further composition."""
-        return self
 
     def __subquery_value_type__(self) -> T:
         """Typing-only witness of this select's single projected value type.
@@ -1188,10 +1172,6 @@ class SelectTupleQuery[
     tuple of projected read types, unchanged by joins -- a join only declares
     how tables connect, never the result shape.
     """
-
-    def all(self) -> Self:
-        """Compatibility no-op; preserve filters and allow further composition."""
-        return self
 
     @overload
     def where[RefOwnerT: Table[Any]](

@@ -88,8 +88,8 @@ def bare_select_repr_renders_sql() -> None:
 
     rendered = repr(select(User))
 
-    assert_eq(rendered, repr(select(User).all()))
-    assert_eq(str(select(User)), str(select(User).all()))
+    assert_eq(rendered, repr(select(User)))
+    assert_eq(str(select(User)), str(select(User)))
     assert_eq("SELECT" in rendered, True)
 
 

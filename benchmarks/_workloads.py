@@ -105,7 +105,7 @@ def large_select(
     select = api.select
 
     async def op(_worker: int) -> None:
-        query = select(model).all().limit(limit)
+        query = select(model).limit(limit)
         async with db.transaction() as tx:
             _ = await tx.fetch_all(query)
 

@@ -30,7 +30,7 @@ def select_columns_render_as_bare_quoted_names() -> None:
         sku: Widget.Col[str] = Text(nullable=False)
 
     select_sql, select_params = SQLITE_CODEC.compile_select_sql(
-        select(Widget.label, Widget.sku).all(),
+        select(Widget.label, Widget.sku),
     )
 
     assert_eq(select_sql, 'SELECT "label", "sku" FROM "widget"')

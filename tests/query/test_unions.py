@@ -59,15 +59,11 @@ class OptionalRow(BaseModel):
 @test(mark="fast")
 def nullable_left_contract_accepts_nonnullable_right() -> None:
     """A compatible required source fits the left token's optional contract."""
-    left = (
-        sqlite.select(NullableEvent)
-        .all()
-        .project(OptionalRow, event_id=NullableEvent.event_id.label("event_id"))
+    left = sqlite.select(NullableEvent).project(
+        OptionalRow, event_id=NullableEvent.event_id.label("event_id")
     )
-    right = (
-        sqlite.select(Event)
-        .all()
-        .project(OptionalRow, event_id=Event.event_id.label("event_id"))
+    right = sqlite.select(Event).project(
+        OptionalRow, event_id=Event.event_id.label("event_id")
     )
 
     compiled = left.union_all(right).compile()
@@ -101,16 +97,16 @@ class OtherRow(Row):
 def unsupported_operand_is_rejected_before_compilation(kind: str) -> None:
     """Runtime guards protect dynamic callers as well as statically typed code."""
     token = Event.event_id.label("event_id")
-    left = sqlite.select(Event).all().project(Row, event_id=token)
+    left = sqlite.select(Event).project(Row, event_id=token)
     candidates: dict[str, object] = {
         "ordered": left.order_by(Event.event_id.asc()),
         "limited": left.limit(1),
         "offset": left.offset(1),
         "locking": left.for_update(),
-        "other_result": sqlite.select(Event).all().project(OtherRow, event_id=token),
-        "other_backend": mariadb.select(MariaEvent)
-        .all()
-        .project(Row, event_id=MariaEvent.event_id.label("event_id")),
+        "other_result": sqlite.select(Event).project(OtherRow, event_id=token),
+        "other_backend": mariadb.select(MariaEvent).project(
+            Row, event_id=MariaEvent.event_id.label("event_id")
+        ),
     }
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -120,15 +116,11 @@ def unsupported_operand_is_rejected_before_compilation(kind: str) -> None:
 @test(mark="fast")
 def nullable_right_does_not_widen_a_required_left_token() -> None:
     """A nullable Pydantic annotation cannot hide unsafe token nullability."""
-    left = (
-        sqlite.select(Event)
-        .all()
-        .project(OptionalRow, event_id=Event.event_id.label("event_id"))
+    left = sqlite.select(Event).project(
+        OptionalRow, event_id=Event.event_id.label("event_id")
     )
-    right = (
-        sqlite.select(NullableEvent)
-        .all()
-        .project(OptionalRow, event_id=NullableEvent.event_id.label("event_id"))
+    right = sqlite.select(NullableEvent).project(
+        OptionalRow, event_id=NullableEvent.event_id.label("event_id")
     )
 
     with assert_raises(sqlite.QueryConstructionError) as caught:
@@ -150,23 +142,15 @@ class Pair(BaseModel):
 @test(mark="fast")
 def operand_fields_are_aligned_by_name() -> None:
     """Different insertion orders cannot exchange named result values."""
-    left = (
-        sqlite.select(Event)
-        .all()
-        .project(
-            Pair,
-            second=Event.event_id.add(10).label("second"),
-            first=Event.event_id.add(1).label("first"),
-        )
+    left = sqlite.select(Event).project(
+        Pair,
+        second=Event.event_id.add(10).label("second"),
+        first=Event.event_id.add(1).label("first"),
     )
-    right = (
-        sqlite.select(Event)
-        .all()
-        .project(
-            Pair,
-            first=Event.event_id.add(2).label("first"),
-            second=Event.event_id.add(20).label("second"),
-        )
+    right = sqlite.select(Event).project(
+        Pair,
+        first=Event.event_id.add(2).label("first"),
+        second=Event.event_id.add(20).label("second"),
     )
 
     compiled = left.union_all(right).compile()
@@ -205,7 +189,7 @@ class CombinedRole:
 def combined_result_becomes_a_filterable_cte() -> None:
     """The definition hides both operand scopes behind one output contract."""
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
 
     combined = operand.union(operand).cte(CombinedRole, name="events")
     compiled = sqlite.select(combined).where(combined.column(token).gt(4)).compile()
@@ -221,7 +205,7 @@ def combined_result_becomes_a_filterable_cte() -> None:
 def compound_ordering_rejects_aggregate_reinterpretation() -> None:
     """Final ordering must not turn a combined rowset into an aggregate SELECT."""
     token = Event.event_id.label("event_id")
-    operand = sqlite.select(Event).all().project(Row, event_id=token)
+    operand = sqlite.select(Event).project(Row, event_id=token)
     combined = operand.union_all(operand)
 
     with assert_raises(sqlite.QueryConstructionError):
