@@ -157,7 +157,7 @@ jobs:
         with:
           version: "0.9.26"
           enable-cache: true
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         if: matrix.python-source == 'system-library'
         id: system-python
         with:
