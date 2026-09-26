@@ -452,8 +452,8 @@ def sqlite_select_materialization_asserts_database_row_shape() -> None:
 
 
 @test(mark="fast")
-def select_compilation_requires_explicit_all_or_where() -> None:
-    """Select queries must choose filtered or unfiltered operation to compile."""
+def select_compilation_needs_no_acknowledgment() -> None:
+    """A bare SELECT already has a source and can compile."""
 
     class User[S = Pending](Model[S]):
         """Table model used by select compilation checks."""
@@ -462,8 +462,7 @@ def select_compilation_requires_explicit_all_or_where() -> None:
 
         email: User.Col[str] = Text(nullable=False)
 
-    with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_select_sql(select(User))
+    assert_eq(select(User).compile().sql, 'SELECT "email" FROM "user"')
 
 
 @test(mark="fast")

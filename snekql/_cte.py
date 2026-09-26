@@ -369,9 +369,6 @@ def build_cte(
     state: SelectState, role: type[object], *, name: str
 ) -> _Cte[Any, Any, Any, Any, Any]:
     """Freeze a completed named definition without executing its SQL."""
-    if not state.explicit_all and not state.predicates:
-        msg = "CTE definitions require all() or where()"
-        raise QueryConstructionError(msg)
     if state.lock_wait is not None:
         msg = "CTE definitions cannot contain a locking SELECT"
         raise QueryConstructionError(msg)

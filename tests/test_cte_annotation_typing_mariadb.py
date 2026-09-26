@@ -66,12 +66,12 @@ if TYPE_CHECKING:
 
     branch().where(NativeCategory.id.eq(1))  # ty: ignore[unresolved-attribute]
 
-    def incomplete(
+    def unfiltered(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],
     ) -> mariadb.NamedOperand[Visit]:
         return mariadb.select(previous).project(
             Visit, id=previous.column(identifier), depth=previous.column(depth)
-        )  # ty: ignore[invalid-return-type]
+        )
 
     def unnamed(
         previous: mariadb.Cte[NativeCategory, Visit, WalkRole],

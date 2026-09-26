@@ -1,3 +1,0 @@
-
-
-database.ready(database.select(Account))  # expect-error

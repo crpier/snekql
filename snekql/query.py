@@ -282,8 +282,8 @@ class _BaseSelectQuery(_SqlInspectionMixin):
     """Immutable select-state plumbing shared by every select query.
 
     Holds the state object and the transitions that never change a query's
-    generic shape (`distinct`, `limit`, `offset`, `for_update`). Subclasses add readiness-
-    changing and typed transitions whose return types depend on their parameters.
+    generic shape (`distinct`, `limit`, `offset`, `for_update`). Subclasses add
+    scope and projection transitions whose return types depend on their parameters.
     """
 
     state: SelectState
@@ -301,8 +301,8 @@ class _BaseSelectQuery(_SqlInspectionMixin):
         """Lock selected rows until the outer transaction ends.
 
         MariaDB supports blocking, NOWAIT, and SKIP LOCKED behavior. SQLite and
-        unsupported query shapes fail compilation. This does not establish row
-        scope: use `where()` or `all()` as for an ordinary SELECT.
+        unsupported query shapes fail compilation. Without a filter or limit,
+        the query can lock every selected row.
 
         >>> query = select(User).where(User.id.eq(1)).for_update(wait="nowait")
         """
@@ -335,8 +335,8 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
     Used by model selects (`SelectModelQuery`, `JoinModelQuery`): the owner
     union types `order_by` directly, rejecting out-of-scope orderings at the
     call site. Projection selects defer that check to fetch instead (see the
-    dual-union scope check), so they do not share this surface. Readiness-
-    changing `where` transitions remain on the concrete builders because their
+    dual-union scope check), so they do not share this surface. Scope-changing
+    `where` transitions remain on the concrete builders because their
     result cannot satisfy a `Self`-preserving base method contract.
     """
 
@@ -564,13 +564,9 @@ class NamedSelectQuery[
         """Filter aggregates or grouping keys without changing row readiness."""
         return self._replace_state(_select_having(self.state, (predicate, *predicates)))
 
-    def all(
-        self,
-    ) -> NamedSelectQuery[
-        FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
-    ]:
-        """Select every row and mark the query executable."""
-        return NamedSelectQuery(_select_all(self.state))
+    def all(self) -> Self:
+        """Compatibility no-op; preserve filters and allow further composition."""
+        return self
 
     def where(
         self,
@@ -691,7 +687,7 @@ class SelectModelQuery[
     FamilyT,
     SelectOwnerT: Table[Any],
     ReadModelT: Table[Any] | BaseModel,
-    ReadinessT = _IncompleteQuery,
+    ReadinessT = _ExecutableQuery,
 ](
     _FluentSelectQuery[SelectOwnerT],
     _OptionalQueryShape[FamilyT, SelectOwnerT, SelectOwnerT, ReadModelT, ReadinessT],
@@ -707,16 +703,9 @@ class SelectModelQuery[
         """
         return NamedSelectQuery(_project_state(self.state, result_type, fields))
 
-    def all(
-        self,
-    ) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]:
-        """Select every row and mark the query executable."""
-
-        state = _select_all(self.state)
-        return cast(
-            "SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]",
-            self if state is self.state else SelectModelQuery(state),
-        )
+    def all(self) -> Self:
+        """Compatibility no-op; preserve filters and allow further composition."""
+        return self
 
     @overload
     def where(
@@ -738,7 +727,7 @@ class SelectModelQuery[
         self,
         *predicates: Predicate[SelectOwnerT, FamilyT],
     ) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]:
-        """Filter rows and mark the query executable."""
+        """Filter rows without changing their selected shape."""
 
         return cast(
             "SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]",
@@ -854,18 +843,9 @@ class JoinModelQuery[
         """
         return NamedSelectQuery(_project_state(self.state, result_type, fields))
 
-    def all(
-        self,
-    ) -> JoinModelQuery[
-        FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
-    ]:
-        """Select every joined row and mark the query executable."""
-
-        state = _select_all(self.state)
-        return cast(
-            "JoinModelQuery[FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs]",
-            self if state is self.state else JoinModelQuery(state),
-        )
+    def all(self) -> Self:
+        """Compatibility no-op; preserve filters and allow further composition."""
+        return self
 
     @overload
     def where(
@@ -893,7 +873,7 @@ class JoinModelQuery[
     ) -> JoinModelQuery[
         FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
     ]:
-        """Filter joined rows and mark the query executable."""
+        """Filter joined rows without changing their selected shape."""
 
         return JoinModelQuery(_select_where(self.state, predicates))
 
@@ -984,7 +964,7 @@ class SelectValueQuery[
     RefT: Table[Any],
     T,
     CompareT = T,
-    ReadinessT = _IncompleteQuery,
+    ReadinessT = _ExecutableQuery,
 ](
     _BaseSelectQuery,
     _QueryShape[FamilyT, ScopeT, RefT, T, ReadinessT],
@@ -1001,16 +981,9 @@ class SelectValueQuery[
     does not collapse.
     """
 
-    def all(
-        self,
-    ) -> SelectValueQuery[FamilyT, ScopeT, RefT, T, CompareT, _ExecutableQuery]:
-        """Select every projected row and mark the query executable."""
-
-        state = _select_all(self.state)
-        return cast(
-            "SelectValueQuery[FamilyT, ScopeT, RefT, T, CompareT, _ExecutableQuery]",
-            self if state is self.state else SelectValueQuery(state),
-        )
+    def all(self) -> Self:
+        """Compatibility no-op; preserve filters and allow further composition."""
+        return self
 
     def __subquery_value_type__(self) -> T:
         """Typing-only witness of this select's single projected value type.
@@ -1048,7 +1021,7 @@ class SelectValueQuery[
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, _ExecutableQuery
     ]:
-        """Filter rows and mark the query executable."""
+        """Filter rows without changing their selected shape."""
 
         return cast(
             "SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, _ExecutableQuery]",
@@ -1216,16 +1189,9 @@ class SelectTupleQuery[
     how tables connect, never the result shape.
     """
 
-    def all(
-        self,
-    ) -> SelectTupleQuery[FamilyT, ScopeT, RefT, _ExecutableQuery, *Ts]:
-        """Select every projected row and mark the query executable."""
-
-        state = _select_all(self.state)
-        return cast(
-            "SelectTupleQuery[FamilyT, ScopeT, RefT, _ExecutableQuery, *Ts]",
-            self if state is self.state else SelectTupleQuery(state),
-        )
+    def all(self) -> Self:
+        """Compatibility no-op; preserve filters and allow further composition."""
+        return self
 
     @overload
     def where[RefOwnerT: Table[Any]](
@@ -1247,7 +1213,7 @@ class SelectTupleQuery[
         self,
         *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, _ExecutableQuery, *Ts]:
-        """Filter rows and mark the query executable."""
+        """Filter rows without changing their selected shape."""
 
         return cast(
             "SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, _ExecutableQuery, *Ts]",
@@ -2305,15 +2271,6 @@ def _empty_select_state() -> SelectState:
     return SelectState(model=Table[Any], fields=())
 
 
-def _select_all(state: SelectState) -> SelectState:
-    if state.predicates:
-        msg = "all() cannot be combined with where()"
-        raise QueryConstructionError(msg)
-    if state.explicit_all:
-        return state
-    return replace(state, explicit_all=True)
-
-
 def _select_distinct(state: SelectState) -> SelectState:
     if state.distinct:
         return state
@@ -2334,9 +2291,6 @@ def _select_where(
 ) -> SelectState:
     if not predicates:
         msg = "where() requires at least one predicate"
-        raise QueryConstructionError(msg)
-    if state.explicit_all:
-        msg = "where() cannot be combined with all()"
         raise QueryConstructionError(msg)
     scope = ScopeResolver(own_models=state.result_models())
     checked_predicates = _require_factory_predicates(predicates)
@@ -2626,7 +2580,7 @@ def select[
     | Scalar[Owner2T, T2, Any]
     | DialectSelectable[Owner2T, T2, Any],
     /,
-) -> SelectTupleQuery[Any, Owner1T, Owner1T | Owner2T, _IncompleteQuery, T1, T2]: ...
+) -> SelectTupleQuery[Any, Owner1T, Owner1T | Owner2T, _ExecutableQuery, T1, T2]: ...
 
 
 @overload
@@ -2654,7 +2608,7 @@ def select[
     | DialectSelectable[Owner3T, T3, Any],
     /,
 ) -> SelectTupleQuery[
-    Any, Owner1T, Owner1T | Owner2T | Owner3T, _IncompleteQuery, T1, T2, T3
+    Any, Owner1T, Owner1T | Owner2T | Owner3T, _ExecutableQuery, T1, T2, T3
 ]: ...
 
 
@@ -2693,7 +2647,7 @@ def select[
     Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -2743,7 +2697,7 @@ def select[
     Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -2801,7 +2755,7 @@ def select[
     Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -2867,7 +2821,7 @@ def select[
     Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -2941,7 +2895,7 @@ def select[
     Any,
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T | Owner8T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -3018,7 +2972,7 @@ def build_select(*args: object) -> object:
     state = SelectState(model=model, fields=fields)
     if len(fields) == 1:
         return SelectValueQuery[Any, Any, Any, Any](state)
-    return SelectTupleQuery[Any, Any, Any, _IncompleteQuery, *tuple[Any, ...]](state)
+    return SelectTupleQuery[Any, Any, Any, _ExecutableQuery, *tuple[Any, ...]](state)
 
 
 def exists[FamilyT](

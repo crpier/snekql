@@ -83,13 +83,14 @@ def composed_query_repr_reflects_final_state() -> None:
 
 
 @test(mark="fast")
-def incomplete_select_repr_degrades_without_raising() -> None:
-    """A select missing ``all()``/``where()`` reprs as incomplete, never raises."""
+def bare_select_repr_renders_sql() -> None:
+    """A bare SELECT renders through the normal redacted inspection path."""
 
     rendered = repr(select(User))
 
-    assert_eq(rendered, "<SelectModelQuery inspection unavailable>")
-    assert_eq(str(select(User)), "<SelectModelQuery inspection unavailable>")
+    assert_eq(rendered, repr(select(User).all()))
+    assert_eq(str(select(User)), str(select(User).all()))
+    assert_eq("SELECT" in rendered, True)
 
 
 @test(mark="fast")

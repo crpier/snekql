@@ -48,18 +48,18 @@ if TYPE_CHECKING:
     sqlite.recursive_cte(
         anchor,
         WalkRole,
-        name="incomplete",
+        name="unfiltered",
     ).step(
-        lambda _previous: sqlite.select(Category).project(  # ty: ignore[invalid-argument-type]
+        lambda _previous: sqlite.select(Category).project(
             Visit, id=Category.id, depth=sqlite.literal(0)
         )
     )
     sqlite.recursive_cte(
         anchor,
         WalkRole,
-        name="incomplete_self_member",
+        name="unfiltered_self_member",
     ).step(
-        lambda previous: sqlite.select(previous).project(  # ty: ignore[invalid-argument-type]
+        lambda previous: sqlite.select(previous).project(
             Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
     )
@@ -101,9 +101,9 @@ if TYPE_CHECKING:
         )
     )
     sqlite.recursive_cte(
-        sqlite.select(Category).project(Visit, id=identifier, depth=depth),  # ty: ignore[invalid-argument-type]
+        sqlite.select(Category).project(Visit, id=identifier, depth=depth),
         WalkRole,
-        name="incomplete_anchor",
+        name="unfiltered_anchor",
     )
 
     native_identifier = NativeCategory.id.label("id")
@@ -127,7 +127,7 @@ if TYPE_CHECKING:
     )
     mariadb.select(native_prepared)  # ty: ignore[no-matching-overload]
     native_prepared.step(
-        lambda previous: mariadb.select(previous).project(  # ty: ignore[invalid-argument-type]
+        lambda previous: mariadb.select(previous).project(
             Visit,
             id=previous.column(native_identifier),
             depth=previous.column(native_depth),
@@ -160,9 +160,9 @@ if TYPE_CHECKING:
     mariadb.recursive_cte(
         mariadb.select(NativeCategory).project(
             Visit, id=native_identifier, depth=native_depth
-        ),  # ty: ignore[invalid-argument-type]
+        ),
         WalkRole,
-        name="incomplete_anchor",
+        name="unfiltered_anchor",
     )
 
     async def consume_self_only(transaction: sqlite.Transaction) -> None:

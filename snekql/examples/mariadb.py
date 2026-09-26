@@ -43,5 +43,5 @@ async def run(config: mariadb.Config) -> None:
         await database.verify([User])
         async with database.transaction() as transaction:
             await transaction.execute(insert(User(email="alice@example.com")))
-            user = await transaction.fetch_one(select(User).all())
+            user = await transaction.fetch_one(select(User))
             print(user.email)

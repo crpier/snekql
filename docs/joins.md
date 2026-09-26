@@ -32,23 +32,15 @@ class Order[State = sqlite.Pending](sqlite.Model[State]):
 ## Keep matching rows, or keep every left row
 
 ```python
-matched = (
-    sqlite.select(User)
-    .join(
-        Order,
-        on=Order.user_id.eq_col(User.id),
-    )
-    .all()
+matched = sqlite.select(User).join(
+    Order,
+    on=Order.user_id.eq_col(User.id),
 )
 # fetch_all: list[tuple[User[sqlite.Row], Order[sqlite.Row]]]
 
-with_or_without_orders = (
-    sqlite.select(User)
-    .left_join(
-        Order,
-        on=Order.user_id.eq_col(User.id) & Order.status.ne("cancelled"),
-    )
-    .all()
+with_or_without_orders = sqlite.select(User).left_join(
+    Order,
+    on=Order.user_id.eq_col(User.id) & Order.status.ne("cancelled"),
 )
 # fetch_all: list[tuple[User[sqlite.Row], Order[sqlite.Row] | None]]
 ```
@@ -72,7 +64,7 @@ being added. It cannot reference a later join. Compilation also checks those
 references. Some valid enclosing-table correlations inside nested JOIN ON need
 a typing escape; see [typing limits](typing-compatibility.md#remaining-limits).
 
-You still need `.all()` or `.where(...)` before execution. A projected inner join
+Joins remain executable without `.all()` or `.where(...)`. A projected inner join
 keeps the selected columns' result types. Projected left joins are not supported;
 use whole-model joins or a supported [named projection](results.md).
 
@@ -86,13 +78,9 @@ class ManagerRole:
 
 
 manager = sqlite.alias(User, ManagerRole, name="manager")
-query = (
-    sqlite.select(User)
-    .left_join(
-        manager,
-        on=User.manager_id.eq_col(manager.column(User.id)),
-    )
-    .all()
+query = sqlite.select(User).left_join(
+    manager,
+    on=User.manager_id.eq_col(manager.column(User.id)),
 )
 # fetch_all: list[tuple[User[sqlite.Row], User[sqlite.Row] | None]]
 ```
@@ -153,7 +141,7 @@ order_totals = sqlite.select(
     sqlite.scalar(
         sqlite.select(Order.amount.sum()).where(Order.user_id.eq_col(User.id)),
     ),
-).all()
+)
 ```
 
 `scalar` requires a single-column query. Its SQL must produce a suitable scalar

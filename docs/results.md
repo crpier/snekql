@@ -24,13 +24,11 @@ class UserSummary(BaseModel):
 
 def summaries() -> ClosedRead[UserSummary]:
     return ready(
-        select(User)
-        .project(
+        select(User).project(
             UserSummary,
             id=User.id,
             email=User.email,
         )
-        .all()
     )
 
 

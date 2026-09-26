@@ -190,7 +190,6 @@ def compile_bulk_insert_preserves_row_order() -> None:
 
 @test(
     [
-        Param("select", name="select"),
         Param("delete", name="delete"),
         Param("update-unassigned", name="update-unassigned"),
         Param("update-unscoped", name="update-unscoped"),
@@ -206,7 +205,6 @@ def compile_rejects_incomplete_queries(kind: str) -> None:
         email: Account.Col[str] = Text(primary_key=True)
 
     queries = {
-        "select": select(Account),
         "delete": delete(Account),
         "update-unassigned": update(Account).all(),
         "update-unscoped": update(Account).set(Account.email.to("new")),

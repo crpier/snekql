@@ -70,7 +70,7 @@ def predicates_reject_ambiguous_or_invalid_intent() -> None:
 
 
 @test(mark="fast")
-def select_builders_are_immutable_and_require_filter_intent() -> None:
+def select_builders_preserve_immutable_composition() -> None:
     """Select chain methods return new queries except repeated all() no-ops."""
 
     class User[S = Pending](Model[S]):
@@ -97,14 +97,11 @@ def select_builders_are_immutable_and_require_filter_intent() -> None:
     with assert_raises(QueryConstructionError):
         _ = base_query.order_by()  # ty: ignore[no-matching-overload]
 
-    with assert_raises(QueryConstructionError):
-        _ = all_query.where(User.status.eq("active"))
-
-    with assert_raises(QueryConstructionError):
-        _ = filtered_query.all()
-
-    with assert_raises(QueryCompilationError):
-        _ = SQLITE_CODEC.compile_select_sql(base_query)
+    assert_eq(
+        all_query.where(User.status.eq("active")).compile(), filtered_query.compile()
+    )
+    assert_eq(filtered_query.all().compile(), filtered_query.compile())
+    assert_eq(base_query.compile().params, ())
 
     with assert_raises(QueryCompilationError):
         _ = SQLITE_CODEC.compile_write_sql(all_query)

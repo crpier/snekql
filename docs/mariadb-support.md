@@ -38,7 +38,7 @@ not just a successful connection or a changed version constant.
 
 | Area | Required behavior and retained limits | Coverage |
 | --- | --- | --- |
-| Reads | Parameterized queries, explicit row scope, joins, subqueries, aggregates, LIMIT/OFFSET | Query compilation and runtime suites |
+| Reads | Parameterized queries, optional filters, joins, subqueries, aggregates, LIMIT/OFFSET | Query compilation and runtime suites |
 | Reporting recipes | Typed nonrecursive CTEs; validated raw SQL for recursive CTEs, windows and set operations | CTE runtime suite and executable reporting recipes |
 | Writes | INSERT RETURNING, multi-row writes, ON DUPLICATE KEY UPDATE with VALUES references | Insert/conflict/bulk runtime suites |
 | Locking | FOR UPDATE, NOWAIT, SKIP LOCKED; no query replay after uncertain I/O | Row-locking, deadline and commit-outcome suites |

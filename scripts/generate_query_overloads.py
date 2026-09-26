@@ -91,7 +91,7 @@ def _select_overloads() -> str:
             "](\n"
             f"{fields}"
             "    /,\n"
-            f") -> SelectTupleQuery[Any, Owner1T, {owners}, _IncompleteQuery, {values}]: ...\n\n\n"
+            f") -> SelectTupleQuery[Any, Owner1T, {owners}, _ExecutableQuery, {values}]: ...\n\n\n"
         )
     return "".join(blocks)
 
@@ -150,7 +150,7 @@ def _backend_select_overloads(backend: str) -> str:
             "](\n"
             f"{fields}"
             "    /,\n"
-            f") -> SelectTupleQuery[{family}, Owner1T, {owners}, _IncompleteQuery, {values}]: ...\n\n\n"
+            f") -> SelectTupleQuery[{family}, Owner1T, {owners}, _ExecutableQuery, {values}]: ...\n\n\n"
         )
     return "".join(blocks)
 

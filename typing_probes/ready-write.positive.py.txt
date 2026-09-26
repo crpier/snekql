@@ -42,12 +42,12 @@ def pending_write[Owner: database.Model[database.Pending], Result: database.Mode
 
 
 async def controls(transaction: database.Transaction) -> None:
-    query = database.select(Account).all()
+    query = database.select(Account)
     closed = database.ready(query)
     assert_type(closed, database.ClosedOptional[Account[database.Row]])
     stored: database.ClosedRead[Account[database.Row]] = closed
     optional: database.ClosedOptional[Account[database.Row]] = closed
-    scalar = database.ready(database.select(Account.nickname).all())
+    scalar = database.ready(database.select(Account.nickname))
     assert_type(scalar, database.ClosedRead[str | None])
     assert_type(await read_all(transaction, query), list[Account[database.Row]])
     assert_type(await read_optional(transaction, query), Account[database.Row] | None)

@@ -84,7 +84,7 @@ def ready_does_not_require_a_database() -> None:
 @test(
     [
         Param(kind, name=kind)
-        for kind in ("unfinished", "missing-source", "write", "foreign", "pretender")
+        for kind in ("missing-source", "write", "foreign", "pretender")
     ],
     mark="fast",
 )
@@ -104,7 +104,6 @@ def ready_rejects_invalid_queries_after_erasure(kind: str) -> None:
         email: mariadb.Col[str] = mariadb.Text()
 
     queries: dict[str, Any] = {
-        "unfinished": sqlite.select(Account),
         "missing-source": sqlite.select(Account.email, Post.title).all(),
         "write": sqlite.insert(Account(email="Ada")),
         "foreign": mariadb.select(Foreign).all(),

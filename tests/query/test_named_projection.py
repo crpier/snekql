@@ -115,7 +115,7 @@ if TYPE_CHECKING:
         query = sqlite.select(Person).project(
             PersonSummary, id=Person.id, name=Person.name
         )
-        await transaction.fetch_all(query)  # ty: ignore[no-matching-overload]
+        await transaction.fetch_all(query)
         assert_type(
             await transaction.fetch_all(person_summary_query()), list[PersonSummary]
         )

@@ -76,6 +76,10 @@ asyncio.run(main())
   `__row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]` in its body.
 - Construction is Pending-only. SELECT/RETURNING and validated `complete` snapshots
   produce Row values; completeness does not prove persistence.
+- SELECT is executable immediately. Add filters and limits as needed; SELECT
+  `.all()` is a compatibility no-op. UPDATE and DELETE still need `.where(...)`
+  or explicit `.all()`, and UPDATE needs assignments. `fetch_one` asserts exactly
+  one SQL result; `.limit(1)` deliberately hides additional matches.
 - Use `insert(user)` for one Pending value and `insert_many(User, rows)` for a batch.
 - Preserve `ReadQuery[Scope, Result]` in generic read helpers. For result-only
   helpers, finish composition and return `ready(query)` as `ClosedRead[Result]`.

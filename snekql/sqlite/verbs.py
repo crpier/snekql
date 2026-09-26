@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from snekql._aliases import TableAlias, _AliasOwner, build_alias
 from snekql._cte import _Cte, _CteOwner, build_cte_alias
 from snekql._dialect_expr import DialectSelectable
-from snekql._query_readiness import _ExecutableQuery, _IncompleteQuery
+from snekql._query_readiness import _ExecutableQuery
 from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Aggregate, ColumnRef, Predicate, Scalar, _Scalar
@@ -130,7 +130,7 @@ def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Resul
 def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Result]:
     """Check a finished read before returning it through a short helper annotation.
 
-    `return ready(select(User).all())` fits `ClosedRead[User[Row]]`.
+    `return ready(select(User))` fits `ClosedRead[User[Row]]`.
     This compiles SQL without database I/O and returns the same query. Finish
     fluent composition before closing; ordinary execution does not need ready.
     """
@@ -211,7 +211,7 @@ def select[
     | DialectSelectable[Owner2T, T2, Any],
     /,
 ) -> SelectTupleQuery[
-    Literal["sqlite"], Owner1T, Owner1T | Owner2T, _IncompleteQuery, T1, T2
+    Literal["sqlite"], Owner1T, Owner1T | Owner2T, _ExecutableQuery, T1, T2
 ]: ...
 
 
@@ -249,7 +249,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -299,7 +299,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -359,7 +359,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -429,7 +429,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -509,7 +509,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
@@ -599,7 +599,7 @@ def select[
     Literal["sqlite"],
     Owner1T,
     Owner1T | Owner2T | Owner3T | Owner4T | Owner5T | Owner6T | Owner7T | Owner8T,
-    _IncompleteQuery,
+    _ExecutableQuery,
     T1,
     T2,
     T3,
