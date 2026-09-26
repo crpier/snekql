@@ -284,12 +284,13 @@ async def _fetch_column_shapes(
 ) -> tuple[ColumnShape, ...]:
     rows = await _fetch_rows(
         connection,
-        f"PRAGMA table_info({quote_identifier(table_name)})",
+        f"PRAGMA table_xinfo({quote_identifier(table_name)})",
     )
     shapes: list[ColumnShape] = []
     for row in rows:
-        # PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk.
-        _cid, name, data_type, notnull, default, pk = row
+        # table_info omits generated columns, hiding their presence and metadata.
+        # Expressions remain unchecked, but every column participates in drift.
+        _cid, name, data_type, notnull, default, pk, _hidden = row
         is_primary_key = int(pk) != 0
         shapes.append(
             ColumnShape(

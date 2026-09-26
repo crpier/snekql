@@ -62,6 +62,10 @@ cover those properties, not every behavior of the live schema.
 - declared CHECK names and recognized expression structure;
 - table storage-option tokens (SQLite `STRICT`, MariaDB `ENGINE=InnoDB`).
 
+SQLite generated columns participate in column presence and metadata checks,
+including extra-column drift. Their generation expressions remain unchecked;
+a matching report does not prove that a column accepts explicit writes.
+
 `verify` does not certify:
 
 - arbitrary server-default expressions or equivalence through SQL coercion;

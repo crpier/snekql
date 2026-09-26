@@ -66,6 +66,8 @@ compared to one another implicitly.
 Use `ZonedDatetime` for a resolved instant whose exact IANA zone key or fixed
 offset matters. Store it in `Text()` on either backend. Equality, membership, and
 unique indexes work; chronological ordering, ranges, MIN, and MAX are rejected.
+Anonymous `ZoneInfo` objects without a persistent key are rejected. The instant
+must fit Python's UTC datetime range, even when the local datetime is valid.
 A resolved zoned value is not a recurring schedule.
 
 Read [dates and datetimes](temporal-contracts.md) for construction rules, canonical
