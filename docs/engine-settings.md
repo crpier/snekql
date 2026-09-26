@@ -1,18 +1,16 @@
-# Engine settings snekql applies and verifies
+# Database settings and TLS
 
-snekql's correctness guarantees depend on a small set of database engine
-settings being in effect. Rather than assuming a well-configured server, snekql
-**applies** each required setting and then **reads it back** to confirm it took
-effect. A setting that cannot be applied or verified raises
-`DatabaseRuntimeError` at initialization or later connection acquisition instead
-of degrading silently.
+snekql sets and checks the database options its queries depend on. It does this
+for every new connection, not just the first one. If a required setting cannot
+be applied or confirmed, connection setup raises `DatabaseRuntimeError`.
 
-Per-connection settings are applied to *every* connection the pool opens, not
-just the first, because the engines apply them per connection.
+Start with [connection setup](transactions.md) for basic configuration. This page
+explains the less obvious choices, including SQLite durability and production
+MariaDB TLS.
 
 ## SQLite (per connection)
 
-Applied and verified in `open_sqlite_connection`:
+Applied or checked on each SQLite connection:
 
 | Setting | Value | Why |
 | --- | --- | --- |
@@ -232,3 +230,5 @@ that already violate referential integrity from before enforcement was enabled
 are not retroactively rejected at connection time, but a later write that
 touches them can fail. Audit and clean up dangling references before adopting a
 snekql version that enforces foreign keys.
+
+[All guides](README.md)

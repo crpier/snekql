@@ -1,9 +1,12 @@
 # Recovering an interrupted migration
 
-A pending history row is not proof that its SQL never ran. This matters most on
-MariaDB: DDL commits implicitly, including preceding DML in the transaction.
-The schema or data can change even when snekql never records the migration.
-A lost commit response can also leave both the body and history committed.
+Do not immediately rerun a failed migration. Its SQL may already have changed
+the database, even if migration history still says it is pending.
+
+This matters especially on MariaDB, where schema statements can commit implicitly,
+including earlier data changes in the transaction. A lost commit response can
+also mean both the SQL and its history entry succeeded without the client knowing.
+Inspect what happened before choosing a recovery action.
 
 The tested [MariaDB recovery example](../examples/migration_recovery.py) handles
 one narrow case: adding a nullable column with a previously reviewed,
@@ -85,3 +88,5 @@ SQLite migration bodies and their history rows are atomic, but cancellation
 around commit can still arrive after success. Inspect history before deciding
 whether a cancelled unit applied. External side effects in user-defined SQL
 functions are not made transactional by either backend.
+
+[All guides](README.md)

@@ -1,10 +1,13 @@
 # Deploying a service and adopting an existing database
 
-Start with the [API reference](api-reference.md) and
-[backend capability matrix](backend-capabilities.md). These recipes use SQLite
-so they run without a server. They are source-checkout examples, not new
-`snekql` framework integrations or installed package entry points. Copy the
-modules into your application and update their `examples.*` imports.
+Keep one Database open for your application, open transactions for individual
+requests or jobs, and run migrations from a separate deployment step. These
+recipes show that setup for a web service, a worker, and tests.
+
+They use SQLite so you can try them without a server. The modules live in the
+source checkout, not the installed package; copy them into your application and
+update their `examples.*` imports. Start with [transactions](transactions.md) if
+the basic lifetime rules are new to you.
 
 The HTTP recipe is validated with FastAPI 0.141.1, Starlette 1.6.0 and httpx 0.28.1
 on Python 3.14. Tests exercise the real ASGI app and lifespan without a network
@@ -177,3 +180,5 @@ cross-database or cross-broker atomicity. With SQLite, avoid holding one layer's
 write transaction while awaiting another layer's writer. With either backend,
 review total pool capacity, isolation, retries, deadlines and migration ownership
 before enabling both paths in production.
+
+[All guides](README.md)

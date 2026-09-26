@@ -1,8 +1,12 @@
 # Failure coverage and environment evidence
 
-This inventory starts from the existing tests. It distinguishes a real database
-fault from a simulated lost reply or synthetic cursor. Passing a test does not
-prove behavior under every network, filesystem, or process failure.
+Use this page to check what a reliability claim is based on. Each row points to
+an actual test and says whether it uses a real database failure or a simulated
+response. Passing those tests does not cover every network, filesystem, or
+process failure.
+
+For application code, start with [handling errors](error-handling.md). For local
+validation commands, see [contributing](contributing.md).
 
 ## Existing deterministic coverage
 
@@ -203,3 +207,5 @@ bounded evidence for that workload; it is not a proof of universal leak freedom.
 Process cleanup under cancellation and kill escalation remains covered by the
 separate deterministic process-helper tests in the inventory. Performance
 benchmarks and noise-aware comparisons are separate work, not correctness gates.
+
+[All guides](README.md)

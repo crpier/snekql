@@ -1,26 +1,12 @@
-# Recursive CTE construction
+# Walk a hierarchy with a recursive query
 
-SQLite and MariaDB support bounded recursive definitions with staged callback
-typing and public annotations for named helpers. Contracts and limits follow.
+Use a recursive CTE for data such as category trees or parent/child chains. Start
+with an initial query, then describe how to find the next rows from the previous
+ones. The database runs that recursion; Python does not fetch one level at a time.
 
-Both namespaces provide `recursive_cte(anchor, Role, name=...).step(callback)`.
-The first call binds the completed named anchor and role. Its immutable builder
-is neither a query nor a query source. `.step(callback)` then constructs and
-validates the recursive definition, returning the completed CTE.
-
-The two calls let the type checker fix the self relation's type before checking
-the callback. This replaces the draft `recursive_cte(..., step=callback)` form,
-which could infer `Unknown` for self-only lambdas. The old keyword is no longer
-accepted. The staged form checks self-only member readiness, column comparisons,
-source scope, result class and backend identity with ty.
-
-The anchor's labels define the output contract. Each `.step()` call invokes its
-callback once, not once per database row. The callback receives a fresh self
-relation whose columns are addressed with the anchor's label tokens. It must
-return a completed named SELECT with the same result class and compatible
-outputs. Construction validates the anchor, name and member before publishing
-any usable CTE. Reusing the prepared builder creates an independent definition;
-failed construction cannot publish or leave behind a usable self relation.
+Both SQLite and MariaDB use `recursive_cte(anchor, Role, name=...).step(callback)`.
+The example starts at category 1 and follows its children to depth 3. Read
+[ordinary CTEs](ctes.md) first if labels and role markers are new to you.
 
 ```python
 from typing import ClassVar
@@ -78,6 +64,22 @@ UNION composition. Anchor parameters precede member parameters.
 The self relation is not the returned relation. A query retaining the callback's
 self reference cannot compile independently, including after failed construction.
 Nested references cannot reuse the direct member's permission to reference self.
+
+## How the step works
+
+The anchor supplies the initial rows and names their output fields. The callback
+builds the query that produces the next rows, using those same output labels.
+It runs once while constructing the query, **not** once per database row.
+
+The first call to `recursive_cte` only prepares the builder. Call `.step(...)`
+to get the completed CTE you can select from. Keeping these calls separate lets
+ty infer the callback's input before checking its body. The old `step=` keyword
+is not supported.
+
+The step must return a completed named SELECT with the same result class and
+compatible outputs. Construction checks names, sources, backend, and output
+compatibility before returning a usable CTE. Reusing the prepared builder makes
+an independent definition.
 
 ## Initial limits
 
@@ -169,3 +171,5 @@ of alias- or CTE-derived anchors are private types; keep callbacks inline when
 those owners cannot be expressed using public model annotations. Do not import
 private owner types to annotate a helper. This does not restrict inferred query
 composition or aliases of a completed, annotated relation.
+
+[All guides](README.md)

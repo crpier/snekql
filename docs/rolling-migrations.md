@@ -1,4 +1,9 @@
-# Expand, backfill, and contract
+# Change a schema across application versions
+
+When old and new application versions run at the same time, do not immediately
+remove the schema the old code needs. Add the new shape first, copy the data,
+then remove the old shape after the old code is gone. These steps are often
+called expand, backfill, and contract.
 
 The [rolling migration example](../examples/rolling_migration.py) renames
 `rollout_customer.name` to `display_name` without changing its meaning. It uses
@@ -133,3 +138,5 @@ not a separate model-generated bootstrap path. Before contract, rolling back
 application code may be possible while the old storage is intact. After
 contract, recovery needs an explicit forward fix or a reviewed restore, not an
 automatically generated down migration.
+
+[All guides](README.md)

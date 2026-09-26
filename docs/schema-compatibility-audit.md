@@ -1,5 +1,10 @@
 # Existing-schema compatibility audit
 
+Historical audit: the initial tables below describe the starting point before
+later declaration features were added. Do not use them as today's support table.
+See [backend support](backend-capabilities.md), [declarations](typing.md), and
+[schema verification](schema-drift.md) for current behavior.
+
 This records the starting point for #291, before adding declaration interfaces.
 It distinguishes declarations that already exist from facts the verifier can
 actually certify. Migrations remain hand-authored; none of these declarations
@@ -307,3 +312,5 @@ query or automatic-migration extension is included.
 All planned declaration extensions for #291 are implemented. Delivery and epic
 closure are tracked in #291 and #287; this audit records the supported scope and
 its remaining limits.
+
+[All guides](README.md)

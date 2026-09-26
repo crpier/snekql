@@ -1,5 +1,11 @@
 # Optional JSON fields
 
+Pass a Python value such as `[1, 2]`, not the string `"[1, 2]"`. Use `None` when
+the field should be SQL NULL. This page explains the annotation choices and the
+important difference between SQL NULL and a JSON `null` value.
+
+For the basic storage choices, see [JSON storage](storage.md#json-values).
+
 Both `Col[Json[T] | None]` and `Col[Json[T | None]]` accept decoded Python
 payloads and `None`. Use SQLite `Text()`, MariaDB `Text()`, or MariaDB native
 `Json()` storage. Construction, assignment and validated reads use the logical
@@ -33,3 +39,5 @@ lost during marker stripping. Audit historical rows and validators if existing
 code depended on dropped constraints or serializers. `validate=False` still
 parses JSON without logical validation; it does not accept malformed JSON wire
 text. No data or schema migration runs automatically.
+
+[All guides](README.md)

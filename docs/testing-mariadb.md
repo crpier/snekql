@@ -1,6 +1,12 @@
-# Temporary MariaDB Test Server
+# Run MariaDB in tests
 
-`snekql.testing.mariadb` provides local throwaway MariaDB process management for integration tests. It is test-support infrastructure, not production or development database provisioning.
+Use `temporary_mariadb_server()` when a test needs a real local MariaDB server.
+The context manager starts it, gives you connection settings, and stops it on
+exit. You still need MariaDB's command-line tools installed.
+
+This is for tests and short-lived local checks, not provisioning an application
+or production database. See [service fixtures](service-recipes.md#database-fixtures-and-transaction-testing)
+for testing application code with its migrations.
 
 ## Python API
 
@@ -177,3 +183,5 @@ suite using native tools. See the [release/capability matrix](mariadb-support.md
 for the selected series and support limits.
 See [the fault and environment matrix](failure-matrix.md) for existing coverage,
 fault-injection limits, SQLite targets, and separate bounded resource-soak commands.
+
+[All guides](README.md)

@@ -1,9 +1,13 @@
 # Raw SQL
 
-Use the backend-owned `raw` factory for trusted SQL that the Query Builder does
-not express. It uses the current Transaction connection and native connector
-parameters. It does not parse SQL, translate placeholders, encode parameters, or
-apply table-column codecs to returned values.
+Already have the SQL you want? Pass it to `raw` and run it on the same transaction
+as your builder queries. This is also the route for features the builder does
+not support, such as window functions.
+
+Keep the SQL text trusted and bind user values as parameters. `raw` passes native
+driver parameters through: it does not rewrite placeholders, encode values using
+model columns, or decode results using those columns. Choose an explicit result
+model when you want [validated results](#result-contracts).
 
 ```python
 import asyncio
@@ -259,3 +263,5 @@ message visibility.
 This covers package-controlled diagnostics. It does not hide frame locals or
 source text from debuggers and traceback formatters, prevent deliberate private
 inspection, or control external driver instrumentation and user code.
+
+[All guides](README.md)

@@ -1,7 +1,12 @@
 # MariaDB release support
 
-Python 3.14+ and aiomysql remain required. This matrix does not add MySQL support
-or change the explicit Database/Transaction API.
+Use a maintained MariaDB release and install the `aiomysql` extra. snekql requires
+Python 3.14+ and MariaDB 10.11 or newer, but accepting a server version is not the
+same as testing every release and platform.
+
+The table below distinguishes supported targets from extra regression jobs.
+MySQL is not a supported backend. For connection code, see
+[MariaDB setup](transactions.md#connect-to-mariadb).
 
 ## Release policy
 
@@ -148,3 +153,5 @@ development lock, verifies the isolated import, prints driver versions, and runs
 snektest migration-checksum and binary round-trip tests against a temporary
 server. CI runs this check in Validate and every maintained MariaDB version job.
 The default artifact command remains usable without native MariaDB binaries.
+
+[All guides](README.md)

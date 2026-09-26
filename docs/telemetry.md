@@ -1,4 +1,10 @@
-# Runtime telemetry
+# See how the database work is behaving
+
+Use pool statistics to see connection demand, and an observer to record query,
+transaction, and stream timings. Add the optional OpenTelemetry adapter if your
+application already collects metrics and traces.
+
+## Add an observer
 
 Pass a synchronous observer to `Database.initialize`. Both backend namespaces
 export `Observer`, `TelemetryEvent`, and `PoolStats`. The same types are available
@@ -287,3 +293,15 @@ statistics, not physical connection counts.
 Query repr/str also redact bindings by default. Explicit local value inspection
 uses `query.inspect(parameter_visibility="values")`; it does not change observer
 events or the runtime logging policy. See README query inspection.
+
+## Application logging
+
+snekql uses Python's standard `logging` module. Configure the `snekql` logger or
+its children, such as `snekql.runtime`, through your application's logging setup.
+It installs a `NullHandler` and does not choose handlers or a formatter for you.
+
+Query formatting redacts bound values by default. That does not make arbitrary
+model representations, traceback locals, or custom serializers safe to log.
+See [SQL inspection and redaction](inspecting-queries.md#debug-text).
+
+[All guides](README.md)
