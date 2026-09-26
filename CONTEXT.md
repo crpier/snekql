@@ -21,7 +21,7 @@ The conversion of built query state into parameterized backend Dialect SQL — t
 _Avoid_: query generation, SQL rendering, codegen
 
 **Query Readiness**:
-The static fact that a query has the minimum explicit intent needed for execution: a select or delete has row scope, while an update has both row scope and an assignment. Query Compilation still validates those facts for dynamic callers.
+The static fact that a query has the minimum explicit intent needed for execution: a select is ready from its declaration, a delete needs explicit row scope, and an update needs both row scope and an assignment. Readiness does not prove result cardinality or SQL validity.
 _Avoid_: query validity, compiled query
 
 **Materialization**:

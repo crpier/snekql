@@ -89,7 +89,6 @@ class OtherRow(Row):
 
 @test(
     [
-        Param("incomplete", name="incomplete"),
         Param("ordered", name="ordered"),
         Param("limited", name="limited"),
         Param("offset", name="offset"),
@@ -104,7 +103,6 @@ def unsupported_operand_is_rejected_before_compilation(kind: str) -> None:
     token = Event.event_id.label("event_id")
     left = sqlite.select(Event).all().project(Row, event_id=token)
     candidates: dict[str, object] = {
-        "incomplete": sqlite.select(Event).project(Row, event_id=token),
         "ordered": left.order_by(Event.event_id.asc()),
         "limited": left.limit(1),
         "offset": left.offset(1),

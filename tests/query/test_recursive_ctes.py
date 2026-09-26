@@ -256,22 +256,19 @@ def completed_definition_does_not_publish_its_callback_self() -> None:
 
 
 @test(mark="fast")
-def incomplete_self_member_is_rejected_before_compilation() -> None:
-    """Dynamic callbacks cannot bypass the explicit all()/where() requirement."""
+def unfiltered_self_member_compiles_without_acknowledgment() -> None:
+    """Recursive definitions need no filtered/unfiltered marker on either member."""
     identifier = Category.id.label("id")
     depth = sqlite.literal(0).label("depth")
-    anchor = sqlite.select(Category).all().project(Visit, id=identifier, depth=depth)
+    anchor = sqlite.select(Category).project(Visit, id=identifier, depth=depth)
 
-    with assert_raises(QueryConstructionError):
-        sqlite.recursive_cte(
-            anchor,
-            WalkRole,
-            name="walk",
-        ).step(
-            lambda previous: sqlite.select(previous).project(  # ty: ignore[invalid-argument-type]
-                Visit, id=previous.column(identifier), depth=previous.column(depth)
-            )
+    walk = sqlite.recursive_cte(anchor, WalkRole, name="walk").step(
+        lambda previous: sqlite.select(previous).project(
+            Visit, id=previous.column(identifier), depth=previous.column(depth)
         )
+    )
+
+    assert_eq(sqlite.select(walk).compile().sql.startswith("WITH RECURSIVE"), True)
 
 
 @test(mark="fast")

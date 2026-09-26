@@ -58,8 +58,8 @@ if TYPE_CHECKING:
     combined.union(native)  # ty: ignore[invalid-argument-type]
     other_result = sqlite.select(Event).all().project(OtherRow, event_id=token)
     query.union(other_result)  # ty: ignore[invalid-argument-type]
-    query.union(sqlite.select(Event).project(Row, event_id=token))  # ty: ignore[invalid-argument-type]
-    sqlite.select(Event).project(Row, event_id=token).union(query)  # ty: ignore[invalid-argument-type]
+    query.union(sqlite.select(Event).project(Row, event_id=token))
+    sqlite.select(Event).project(Row, event_id=token).union(query)
     query.union(sqlite.select(Event.event_id).all())  # ty: ignore[invalid-argument-type]
     query.union(sqlite.select(Event.event_id, Event.event_id).all())  # ty: ignore[invalid-argument-type]
     combined.order_by(Event.event_id.asc())  # ty: ignore[invalid-argument-type]

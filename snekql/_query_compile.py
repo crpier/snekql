@@ -703,9 +703,6 @@ def _compile_select_state(
     outer: ScopeResolver | None = None,
     presence_name: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
-    if not state.explicit_all and not state.predicates:
-        msg = "select requires all() or where() before execution"
-        raise QueryCompilationError(msg)
     own_models = state.result_models()
     # A subquery layers the enclosing query's scope as outer, so correlated
     # references resolve against it; the resolver's qualification then makes

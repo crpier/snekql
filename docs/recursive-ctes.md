@@ -50,10 +50,8 @@ walk = sqlite.recursive_cte(
         .project(Visit, id=Category.id, depth=previous.column(depth).add(1))
     )
 )
-query = (
-    sqlite.select(walk)
-    .all()
-    .order_by(walk.column(depth).asc(), walk.column(identifier).asc())
+query = sqlite.select(walk).order_by(
+    walk.column(depth).asc(), walk.column(identifier).asc()
 )
 ```
 

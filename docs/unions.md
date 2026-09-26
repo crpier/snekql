@@ -47,8 +47,8 @@ page = combined.order_by(combined.column(event_id).asc()).limit(50).offset(100)
 database's equality rules, including NULL and collation semantics. Neither
 operation uses Python model equality or promises an order without final ordering.
 
-Both operands must have explicit row scope, the same backend and the exact same
-result-model class. Subclasses are different result contracts. Scalar, tuple,
+Both operands must have the same backend and the exact same result-model class.
+Neither operand requires `.all()` or `.where(...)`. Subclasses are different result contracts. Scalar, tuple,
 table-model and write operands are not supported. Use `.project(...)` to make
 an explicit named operand, including when reading an existing CTE.
 
@@ -78,8 +78,8 @@ class OptionalIdentity(BaseModel):
 
 
 maybe_id = MaybeEvent.id.label("id")
-optional = sqlite.select(MaybeEvent).all().project(OptionalIdentity, id=maybe_id)
-required = sqlite.select(Event).all().project(OptionalIdentity, id=Event.id.label("id"))
+optional = sqlite.select(MaybeEvent).project(OptionalIdentity, id=maybe_id)
+required = sqlite.select(Event).project(OptionalIdentity, id=Event.id.label("id"))
 accepted = optional.union_all(required)
 # accepted.column(maybe_id) retains int | None.
 # required.union_all(optional) raises QueryConstructionError.
@@ -158,10 +158,8 @@ class RecentEvents:
 recent = (
     current.order_by(Event.id.desc()).limit(20).cte(RecentEvents, name="recent_events")
 )
-bounded = (
-    sqlite.select(recent)
-    .all()
-    .project(EventIdentity, id=recent.column(event_id).label("id"))
+bounded = sqlite.select(recent).project(
+    EventIdentity, id=recent.column(event_id).label("id")
 )
 with_archive = bounded.union_all(archived)
 ```

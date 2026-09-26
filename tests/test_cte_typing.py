@@ -81,7 +81,7 @@ if TYPE_CHECKING:
     sqlite.select(local).where(Local.id.gt(0))  # ty: ignore[invalid-argument-type]
     local.column("id")  # ty: ignore[no-matching-overload]
     local.column(local_id).to(1)  # ty: ignore[unresolved-attribute]
-    sqlite.select(Local).project(Result, id=local_id).cte(LocalRole, name="incomplete")  # ty: ignore[invalid-argument-type]
+    sqlite.select(Local).project(Result, id=local_id).cte(LocalRole, name="unfiltered")
     sqlite.update(local)  # ty: ignore[invalid-argument-type]
     mariadb.delete(native)  # ty: ignore[invalid-argument-type]
     sqlite.scaffold([local])  # ty: ignore[invalid-argument-type]

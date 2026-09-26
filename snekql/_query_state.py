@@ -66,7 +66,6 @@ class SelectState:
     fields: tuple[Selectable, ...]
     named_projection: NamedProjection | None = None
     returns_model: bool = False
-    explicit_all: bool = False
     distinct: bool = False
     lock_wait: LockWait | None = None
     predicates: tuple[_PredicateNode[Any], ...] = ()

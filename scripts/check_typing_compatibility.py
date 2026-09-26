@@ -27,7 +27,7 @@ _CASES = (
     "insert-empty",
     "insert-tuple",
     "read-scope",
-    "ready-incomplete",
+    "ready-write",
     "ready-scope",
     "closed-assignment",
     "closed-optional",

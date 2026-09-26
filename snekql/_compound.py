@@ -168,9 +168,7 @@ def build_compound(
         msg = "UNION requires completed named SELECT operands"
         raise QueryConstructionError(msg)
     for operand in (left, other):
-        if operand.named_projection is None or (
-            not operand.explicit_all and not operand.predicates
-        ):
+        if operand.named_projection is None:
             msg = "UNION requires completed named SELECT operands"
             raise QueryConstructionError(msg)
         if (
@@ -213,6 +211,5 @@ def build_compound(
             for index in range(len(left.fields))
         ),
         named_projection=left.named_projection,
-        explicit_all=True,
         compound=CompoundSpec(left=left, right=other, operator=operator),
     )

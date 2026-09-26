@@ -132,10 +132,10 @@ retain that namespace's backend family under static typing:
 from snekql import mariadb, sqlite
 
 sqlite_query: sqlite.ClosedRead[SqliteUser[sqlite.Row]] = sqlite.ready(
-    sqlite.select(SqliteUser).all()
+    sqlite.select(SqliteUser)
 )
 mariadb_query: mariadb.ClosedRead[MariadbUser[mariadb.Row]] = mariadb.ready(
-    mariadb.select(MariadbUser).all()
+    mariadb.select(MariadbUser)
 )
 
 await sqlite_tx.fetch_all(mariadb_query)  # type error
@@ -154,15 +154,17 @@ foreign keys, Scaffold, Database verification, and Execution Plans.
 
 ## Executable query states
 
-The Query Builder tracks Query Readiness as private static state. `select(...)`
-and `delete(...)` start incomplete; `.all()` or `.where(...)` supplies row scope
-and makes them executable. `update(...)` needs both one or more assignments and
-row scope, in either order:
+SELECT queries are executable immediately. Filters, ordering, limits, joins,
+projections, grouping, and HAVING refine the query without an acknowledgment.
+SELECT `.all()` remains a compatibility no-op, including before or after filters.
+
+Query Readiness still protects mutations: `delete(...)` needs `.all()` or
+`.where(...)`; `update(...)` needs both assignments and row scope, in either order.
 
 ```python
-select(User)  # incomplete
-select(User).all()  # executable
-select(User).where(User.id.eq(1))  # executable
+select(User)  # executable
+select(User).limit(1)  # executable; zero or one SQL result rows
+select(User).where(User.id.eq(1))  # executable; not proof of one row
 
 delete(User)  # incomplete
 delete(User).where(User.id.eq(1))  # executable
@@ -173,17 +175,17 @@ update(User).set(User.status.to("inactive")).all()  # executable
 update(User).where(User.id.eq(1)).set(User.status.to("inactive"))  # executable
 ```
 
-Joins and `returning(...)` preserve readiness; they do not establish row scope or
-an assignment. Ordering, grouping, limits, offsets, and distinctness likewise
-preserve it. Nested selects passed to `scalar`, `exists`, `not_exists`,
-`in_subquery`, or `not_in_subquery` must already be executable.
+`returning(...)` does not complete a write. Ty rejects incomplete mutations at
+Transaction execution. Read helpers retain `Scope` and `Result`, or close scope
+with `ready` after composition. Scope, backend, grouping, and other SQL checks
+remain necessary; executable does not mean valid under every composition.
 
-`Transaction` accepts executable reads and `Write[Result]` carriers, so ty rejects
-guaranteed-incomplete queries before Query Compilation. The readiness coordinate
-stays private. Read helpers retain `Scope` as well as `Result`, or explicitly close
-the scope with `ready` after finishing composition. Keep Query Compilation error handling because runtime validation
-still protects dynamic values introduced through `Any`, casts, untyped callers,
-or state forgery.
+Fetch methods choose the consumption contract. `fetch_one` requires exactly one
+result after SQL pagination; it never inserts a limit. `fetch_all` returns a list
+even for `limit(1)`. Named queries, CTEs, UNION operands, and nested SELECTs need no
+extra scope acknowledgment. Locking reads follow the same rule, so an unfiltered
+MariaDB `for_update()` can lock every selected row. Transaction and dialect
+restrictions still apply.
 
 ## Read helper boundaries
 
@@ -212,7 +214,7 @@ For a result-only helper, finish composition first:
 
 ```python
 def users() -> sqlite.ClosedRead[User[sqlite.Row]]:
-    return sqlite.ready(sqlite.select(User).all().order_by(User.id.asc()))
+    return sqlite.ready(sqlite.select(User).order_by(User.id.asc()))
 
 
 def user_by_email(email: str) -> sqlite.ClosedOptional[User[sqlite.Row]]:
@@ -220,7 +222,7 @@ def user_by_email(email: str) -> sqlite.ClosedOptional[User[sqlite.Row]]:
 ```
 
 `ready` compiles and checks backend ownership without executing SQL. It returns
-the same object and does not repair incomplete queries or missing joins, prove
+the same object. It does not repair missing joins or invalid composition, prove
 that tables exist, or cache compilation for later execution. Closed annotations
 permit execution and inspection, not further joins or filtering. A normal scoped
 query cannot be directly assigned to `ClosedRead`; use `ready` at that boundary.
@@ -322,13 +324,13 @@ must always be non-optional.
 The selected shape controls the runtime return type:
 
 ```python
-await tx.fetch_all(select(User).all())
+await tx.fetch_all(select(User))
 # list[User[Row]]
 
-await tx.fetch_all(select(User.email).all())
+await tx.fetch_all(select(User.email))
 # list[str]
 
-await tx.fetch_all(select(User.email, User.status).all())
+await tx.fetch_all(select(User.email, User.status))
 # list[tuple[str, str]]
 ```
 
@@ -339,10 +341,10 @@ error rather than a `None` return, a single-value result keeps the column read
 type — and a returned `None` there can only mean SQL `NULL`:
 
 ```python
-await tx.fetch_one(select(User.email).all())
+await tx.fetch_one(select(User.email))
 # str            (raises NoResultError / MultipleResultsError on 0 / >1 rows)
 
-await tx.fetch_one(select(User).all())
+await tx.fetch_one(select(User))
 # User[Row]
 ```
 
@@ -352,10 +354,10 @@ It is offered only for model, tuple, and join selects, where `None` can only
 mean a missing row:
 
 ```python
-await tx.fetch_one_or_none(select(User).all())
-# User[Row]  (raises when no row matches)
+await tx.fetch_one_or_none(select(User))
+# User[Row] | None
 
-await tx.fetch_one_or_none(select(User.email, User.status).all())
+await tx.fetch_one_or_none(select(User.email, User.status))
 # tuple[str, str] | None
 ```
 
@@ -372,15 +374,15 @@ batched: it returns a `ChunkStream[RowT]` whose iteration yields
 shape exactly as `fetch_all` does:
 
 ```python
-async with tx.fetch_chunks(select(User).all(), size=500) as stream:
+async with tx.fetch_chunks(select(User), size=500) as stream:
     async for batch in stream:  # batch: list[User[Row]]
         ...
 
-async with tx.fetch_chunks(select(User.email).all(), size=500) as stream:
+async with tx.fetch_chunks(select(User.email), size=500) as stream:
     async for batch in stream:  # batch: list[str]
         ...
 
-async with tx.fetch_chunks(select(User.email, User.status).all(), size=500) as stream:
+async with tx.fetch_chunks(select(User.email, User.status), size=500) as stream:
     async for batch in stream:  # batch: list[tuple[str, str]]
         ...
 ```
@@ -484,7 +486,7 @@ without requiring `FKCol` declarations:
 select(User).join(
     Order,
     on=Order.user_id.eq_col(User.id) & Order.note.ne("hidden"),
-).all()
+)
 ```
 
 Predicates retain their owner types. ON accepts predicate owners from the FROM
@@ -1377,13 +1379,13 @@ def user_filter[T](
 def user_projection[T](
     column: ColumnRef[User[Pending], T],
 ) -> ReadQuery[User[Pending], T]:
-    return select(column).all()
+    return select(column)
 ```
 
 Read helper annotations and `Write` are aliases rather than runtime classes, so
-do not construct them or use them with `isinstance`. Incomplete fluent builders
-do not satisfy these aliases; finish their required row scope and assignments
-before storing them at an application seam. An annotated query remains
+do not construct them or use them with `isinstance`. Incomplete writes do not
+satisfy `Write`; finish their row scope and assignments before storing them at
+an application seam. An annotated query remains
 executable through `Transaction`:
 
 ```python
@@ -1512,10 +1514,10 @@ plain Pydantic `BaseModel` subclass `Result`. The same operation is available
 after model joins. This replaces positional projection overloads with one
 result-type parameter, so nine or more fields retain the full named result type.
 
-Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for read helpers. The projection
-preserves the current readiness state: `.project(...)`, grouping, and HAVING do
-not replace the required `.all()` or `.where(...)`. Query backend identity also
-survives the result contract, which itself is reusable across backends.
+Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for read
+helpers. Named projections, grouping, and HAVING need no `.all()` or `.where(...)`
+acknowledgment. Query backend identity survives the result contract, which itself
+is reusable across backends.
 
 `.returning_as(Result, **bindings)` preserves write cardinality and readiness:
 

@@ -261,14 +261,14 @@ async def explain_rejects_backend_mismatch_before_query_io() -> None:
 
 
 @test(mark="medium")
-async def explain_rejects_incomplete_query_before_io() -> None:
-    """EXPLAIN preserves the Query Builder's explicit row-scope requirement."""
+async def explain_rejects_incomplete_write_before_io() -> None:
+    """EXPLAIN preserves the write-side explicit row-scope requirement."""
     async with (
         await sqlite.Database.initialize(database=":memory:") as database,
         database.transaction() as transaction,
     ):
         with assert_raises(sqlite.QueryCompilationError):
-            await transaction.explain(sqlite.select(Account))  # ty: ignore[invalid-argument-type]
+            await transaction.explain(sqlite.delete(Account))  # ty: ignore[invalid-argument-type]
 
 
 @test(mark="medium")

@@ -1,18 +1,56 @@
-"""Completed selects retain their executable result contract."""
+"""SELECT is executable immediately; fetch methods choose consumption contracts."""
 
-from typing import ClassVar
-
-from typing import assert_type
-
+from typing import ClassVar, assert_type
+from pydantic import BaseModel
 from snekql import __BACKEND__ as database
 
 
 class Entry[S = database.Pending](database.Model[S]):
     __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
+    nickname: database.Col[str | None] = database.Text(default=None)
 
 
-async def scoped(transaction: database.Transaction) -> list[Entry[database.Row]]:
-    query: database.ClosedRead[Entry[database.Row]] = database.ready(database.select(Entry).all())
-    assert_type(await transaction.fetch_all(query), list[Entry[database.Row]])
-    return await transaction.fetch_all(query)
+class Summary(BaseModel):
+    id: int
+
+
+class SummaryRole:
+    pass
+
+
+class PeerRole:
+    pass
+
+
+async def controls(transaction: database.Transaction) -> None:
+    query = database.select(Entry)
+    scoped: database.ReadQuery[Entry, Entry[database.Row]] = query
+    closed = database.ready(query)
+    assert_type(closed, database.ClosedOptional[Entry[database.Row]])
+    assert_type(await transaction.fetch_all(scoped), list[Entry[database.Row]])
+    assert_type(await transaction.fetch_one(query), Entry[database.Row])
+    assert_type(await transaction.fetch_one_or_none(query), Entry[database.Row] | None)
+    assert_type(await transaction.fetch_one(database.select(Entry.id).limit(1)), int)
+    assert_type(await transaction.fetch_one(database.select(Entry.nickname)), str | None)
+    assert_type(await transaction.fetch_one(database.select(Entry.count_all())), int)
+    assert_type(await transaction.fetch_all(database.select(Entry.id, Entry.nickname)), list[tuple[int, str | None]])
+    assert_type(await transaction.fetch_all(query.all().where(Entry.id.eq(1)).all()), list[Entry[database.Row]])
+    async with transaction.fetch_chunks(query, size=2) as stream:
+        assert_type(stream, database.ChunkStream[Entry[database.Row]])
+    token = Entry.id.label("id")
+    named = query.project(Summary, id=token)
+    relation = named.cte(SummaryRole, name="summary")
+    assert_type(await transaction.fetch_all(named), list[Summary])
+    assert_type(await transaction.fetch_all(database.select(relation)), list[Summary])
+    assert_type(await transaction.fetch_all(named.union_all(named)), list[Summary])
+    alias = database.alias(Entry, PeerRole, name="peer")
+    joined = query.left_join(alias, on=Entry.id.eq_col(alias.column(Entry.id)))
+    assert_type(await transaction.fetch_all(joined), list[tuple[Entry[database.Row], Entry[database.Row] | None]])
+    inner = database.select(Entry.id)
+    assert_type(await transaction.fetch_all(query.where(database.exists(inner))), list[Entry[database.Row]])
+    assert_type(await transaction.fetch_all(query.where(Entry.id.in_subquery(inner))), list[Entry[database.Row]])
+    projected = database.select(Entry.id, database.scalar(inner.limit(1)))
+    assert_type(await transaction.fetch_all(projected), list[tuple[int, int | None]])
+    assert_type(await transaction.execute(database.delete(Entry).all()), int)
+    assert_type(await transaction.execute(database.update(Entry).set(Entry.id.to(1)).where(Entry.id.eq(2))), int)

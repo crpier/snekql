@@ -81,7 +81,7 @@ fetch bounded batches:
 
 ```python
 async with db.transaction() as tx:
-    async with tx.fetch_chunks(sqlite.select(User).all(), size=500) as stream:
+    async with tx.fetch_chunks(sqlite.select(User), size=500) as stream:
         async for batch in stream:
             for user in batch:
                 print(user.email)

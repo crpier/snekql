@@ -62,12 +62,12 @@ if TYPE_CHECKING:
 
     branch().where(Category.id.eq(1))  # ty: ignore[unresolved-attribute]
 
-    def incomplete(
+    def unfiltered(
         previous: sqlite.Cte[Category, Visit, WalkRole],
     ) -> sqlite.NamedOperand[Visit]:
         return sqlite.select(previous).project(
             Visit, id=previous.column(identifier), depth=previous.column(depth)
-        )  # ty: ignore[invalid-return-type]
+        )
 
     def unnamed(
         previous: sqlite.Cte[Category, Visit, WalkRole],

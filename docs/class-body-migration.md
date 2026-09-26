@@ -103,7 +103,7 @@ close it explicitly:
 
 ```python
 def users() -> sqlite.ClosedRead[User[sqlite.Row]]:
-    return sqlite.ready(sqlite.select(User).all().order_by(User.id.asc()))
+    return sqlite.ready(sqlite.select(User).order_by(User.id.asc()))
 ```
 
 `ready` checks the backend and compiles without database I/O. It returns the same

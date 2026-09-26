@@ -62,7 +62,7 @@ class MariaDBAccount[S = mariadb.Pending](mariadb.Model[S]):
             "insert",
             "update",
             "delete",
-            "incomplete_select",
+            "bare_select",
             "incomplete_update",
             "incomplete_delete",
         )
@@ -78,7 +78,7 @@ def query_shapes_hide_secrets(backend: str, kind: str) -> None:
         "insert": namespace.insert(model(token="private-token")),
         "update": namespace.update(model).set(model.token.to("private-token")).all(),
         "delete": namespace.delete(model).where(model.token.eq("private-token")),
-        "incomplete_select": namespace.select(model),
+        "bare_select": namespace.select(model),
         "incomplete_update": namespace.update(model).set(
             model.token.to("private-token")
         ),
@@ -187,6 +187,6 @@ def query_formatting_never_inlines_encoded_values() -> None:
 @test(mark="fast")
 def explicit_inspection_keeps_compilation_errors() -> None:
     """Safe placeholder text is not a substitute for deliberate compilation checks."""
-    query = sqlite.select(SQLiteAccount)
+    query = sqlite.delete(SQLiteAccount)
     with assert_raises(sqlite.QueryCompilationError):
         query.inspect(parameter_visibility="values")

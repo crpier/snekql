@@ -284,7 +284,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "bulk-backend",
             "bulk-source",
             "read-scope",
-            "ready-incomplete",
+            "ready-write",
             "ready-scope",
             "closed-assignment",
             "closed-optional",
@@ -337,7 +337,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "bulk-backend",
             "bulk-source",
             "read-scope",
-            "ready-incomplete",
+            "ready-write",
             "ready-scope",
             "closed-assignment",
             "closed-optional",
@@ -508,7 +508,7 @@ async def explicit_batch_contract_requires_clean_control(name: str) -> None:
         Param(name, name=name)
         for name in (
             "read-scope",
-            "ready-incomplete",
+            "ready-write",
             "ready-scope",
             "closed-assignment",
             "closed-optional",
@@ -531,7 +531,7 @@ async def read_helper_contract_requires_clean_control(name: str) -> None:
     assert_eq(len(report["cases"]), 2)
     expected_rule = {
         "read-scope": "invalid-argument-type",
-        "ready-incomplete": "no-matching-overload",
+        "ready-write": "no-matching-overload",
         "ready-scope": "no-matching-overload",
         "closed-assignment": "invalid-assignment",
         "closed-optional": "no-matching-overload",

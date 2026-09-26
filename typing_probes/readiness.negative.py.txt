@@ -1,4 +1,4 @@
 
 
 async def unscoped(transaction: database.Transaction) -> None:
-    await transaction.fetch_all(database.select(Entry))  # expect-error
+    await transaction.execute(database.delete(Entry))  # expect-error

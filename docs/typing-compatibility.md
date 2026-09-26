@@ -40,7 +40,8 @@ The paired callers exercise both namespaces through their public APIs:
 - Explicit batch destination, row state, backend and source checks; rejection of
   sequences by single-row `insert`.
 - Scoped read helpers, optional-row eligibility, closed reads through `ready`,
-  read readiness/backend checks and generic Pending INSERT RETURNING results.
+  immediate SELECT execution, write readiness, backend checks, and generic Pending
+  INSERT RETURNING results.
 - Both-owner comparisons, nullable operands, scalar subqueries and alias roles.
 - Shallow frozen fields in Pending and Row states, without prohibiting SQL
   assignments or nested JSON mutation.
@@ -125,10 +126,14 @@ specific expected diagnostics, including abstract expression constructors.
 
 Current reports:
 
-- [ty](../typing_probes/results/2026-09-26-expression-families/ty.json)
-- [Pyright](../typing_probes/results/2026-09-26-expression-families/pyright.json)
-- [mypy](../typing_probes/results/2026-09-26-expression-families/mypy.json)
+- [ty](../typing_probes/results/2026-09-26-select-readiness/ty.json)
+- [Pyright](../typing_probes/results/2026-09-26-select-readiness/pyright.json)
+- [mypy](../typing_probes/results/2026-09-26-select-readiness/mypy.json)
 
+The reports under `typing_probes/results/2026-09-26-expression-families/` retain
+the previous read-acknowledgment contract. The current `readiness` pair accepts
+bare reads and rejects unscoped DELETE; `ready-write` replaces the obsolete
+`ready-incomplete` pair and rejects writes at the read-helper boundary.
 The reports under `typing_probes/results/2026-09-26-typing-sweep/` retain the
 102-pair assessment before nested expression family propagation.
 The reports under `typing_probes/results/2026-09-26-ty/` retain the checker-upgrade

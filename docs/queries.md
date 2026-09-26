@@ -13,9 +13,9 @@ MariaDB namespace for MariaDB models and transactions.
 ```python
 from snekql import sqlite
 
-users = sqlite.select(User).all()
-emails = sqlite.select(User.email).all()
-contacts = sqlite.select(User.id, User.email).all()
+users = sqlite.select(User)
+emails = sqlite.select(User.email)
+contacts = sqlite.select(User.id, User.email)
 ```
 
 Passed to `tx.fetch_all`, these produce:
@@ -40,8 +40,12 @@ query = (
 )
 ```
 
-Choose `.where(...)` for filtered rows or `.all()` to include every row.
-SELECT, UPDATE, and DELETE cannot execute until you make that choice. UPDATE
+A SELECT is executable as soon as you build it. Add `.where(...)` to filter
+rows, or use the unfiltered query directly. Ordering and limits need no separate
+acknowledgment. SELECT `.all()` remains a compatibility no-op; it neither removes
+filters nor prevents later filtering.
+
+UPDATE and DELETE still require `.where(...)` or an explicit `.all()`. UPDATE
 also needs `.set(...)`.
 
 Use column methods rather than Python comparison operators:
@@ -73,7 +77,7 @@ keep the returned object when you add a filter or another clause.
 Run these inside `async with db.transaction() as tx:`:
 
 ```python
-users = await tx.fetch_all(sqlite.select(User).all())
+users = await tx.fetch_all(sqlite.select(User))
 user = await tx.fetch_one(sqlite.select(User).where(User.id.eq(7)))
 maybe_user = await tx.fetch_one_or_none(
     sqlite.select(User).where(User.id.eq(7)),
@@ -84,6 +88,12 @@ maybe_user = await tx.fetch_one_or_none(
 - `fetch_one` requires exactly one row. It raises `NoResultError` for zero and
   `MultipleResultsError` for more than one.
 - `fetch_one_or_none` allows zero or one whole row. More than one is still an error.
+
+Cardinality applies to the result after SQL filtering, limits, and offsets.
+`fetch_one(query)` detects multiple results; `fetch_one(query.limit(1))` deliberately
+chooses at most one and cannot detect duplicates. A limit does not create a row.
+Use an explicit ordering with a tie-breaker when choosing the first row matters.
+`fetch_all(query.limit(1))` still returns a list.
 
 A nullable scalar can itself be `None`, so it cannot unambiguously mean “no
 row.” Use a model, tuple, or [named result](results.md) when you need to distinguish

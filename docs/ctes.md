@@ -57,8 +57,8 @@ PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run python -m examples.typed_ctes
 ```
 
 Use the matching backend's models, factories and transaction. Definitions and
-columns retain backend identity. An incomplete SELECT requires `.all()` or
-`.where(...)` before `.cte()`.
+columns retain backend identity. A named SELECT can become a CTE directly;
+`.all()` or `.where(...)` is not required.
 
 ## Tokens and result contracts
 
@@ -85,10 +85,8 @@ class PeerUsers:
 
 
 peer = sqlite.alias(active, PeerUsers, name="peer_users")
-paired = (
-    sqlite.select(active)
-    .join(peer, on=active.column(user_id).eq_col(peer.column(user_id)))
-    .all()
+paired = sqlite.select(active).join(
+    peer, on=active.column(user_id).eq_col(peer.column(user_id))
 )
 # Whole joined rows are tuple[UserSummary, UserSummary].
 ```

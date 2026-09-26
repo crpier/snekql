@@ -147,10 +147,10 @@ def locking_named_alias_projection_retains_labels() -> None:
 
 
 @test(mark="fast")
-def locking_requires_explicit_row_scope() -> None:
-    """Lock intent cannot substitute for all() or where()."""
-    with assert_raises(mariadb.QueryCompilationError):
-        mariadb.select(Job).for_update().compile()
+def locking_select_needs_no_row_scope_acknowledgment() -> None:
+    """An unfiltered locking read deliberately covers every selected row."""
+    compiled = mariadb.select(Job).for_update().compile()
+    assert_eq(compiled.sql, "SELECT `id`, `status` FROM `job` FOR UPDATE")
 
 
 @test(mark="fast")
@@ -196,5 +196,5 @@ if TYPE_CHECKING:
             .for_update()
         )
         assert_type(await transaction.fetch_one_or_none(named), JobSummary | None)
-        await transaction.fetch_all(mariadb.select(Job).for_update())  # ty: ignore[no-matching-overload]
+        await transaction.fetch_all(mariadb.select(Job).for_update())
         await other.fetch_all(job_claim_query())  # ty: ignore[no-matching-overload]

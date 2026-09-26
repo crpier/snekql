@@ -320,9 +320,7 @@ if TYPE_CHECKING:
     _ = User()  # ty: ignore[missing-argument]
     _ = MariadbUser(email="alice@example.com")  # ty: ignore[missing-argument]
     public_email: ColumnRef[User[Pending], str] = User.email
-    _incomplete_select: sqlite.ReadQuery[User, User[Row]] = select(  # ty: ignore[invalid-assignment]
-        User
-    )
+    unfiltered_select: sqlite.ReadQuery[User, User[Row]] = select(User)
     public_select: ClosedRead[User[Row]] = ready(select(User).all())
     public_insert: Write[None] = insert(User(email="alice@example.com"))
     _unscoped_delete: Write[int] = delete(User)  # ty: ignore[invalid-assignment]
@@ -448,7 +446,7 @@ if TYPE_CHECKING:
             Literal["mariadb"],
             MariadbUser[Pending],
             MariadbUser[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             str,
             int | None,
         ],
@@ -505,7 +503,7 @@ if TYPE_CHECKING:
             Literal["sqlite"],
             User[Pending],
             User[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             str,
             str,
         ],
@@ -525,7 +523,7 @@ if TYPE_CHECKING:
             Literal["sqlite"],
             User[Pending],
             User[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             int,
             str,
             str,
@@ -757,12 +755,10 @@ if TYPE_CHECKING:
     )
     _ = assert_type(exists(select(Order.id).all()), Predicate[Never])
     _ = assert_type(not_exists(select(Order.id).all()), Predicate[Never])
-    _ = exists(select(Order.id))  # ty: ignore[invalid-argument-type]
-    _ = not_exists(select(Order.id))  # ty: ignore[invalid-argument-type]
-    _ = scalar(select(Order.id))  # ty: ignore[invalid-argument-type]
-    _ = Order.reviewer_id.in_subquery(
-        select(Order.reviewer_id)  # ty: ignore[invalid-argument-type]
-    )
+    _ = exists(select(Order.id))
+    _ = not_exists(select(Order.id))
+    _ = scalar(select(Order.id))
+    _ = Order.reviewer_id.in_subquery(select(Order.reviewer_id))
     # A scalar subquery evaluates to NULL on an empty match, so its projected
     # value type is always optional even over a NOT NULL inner column (#203 F10).
     _ = assert_type(
@@ -811,7 +807,7 @@ if TYPE_CHECKING:
             Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             User[Row],
             Order[Row],
         ],
@@ -838,7 +834,7 @@ if TYPE_CHECKING:
             Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             User[Row],
             Order[Row] | None,
         ],
@@ -880,7 +876,7 @@ if TYPE_CHECKING:
             Literal["sqlite"],
             User[Pending] | Order[Pending],
             User[Pending] | Order[Pending],
-            _IncompleteQuery,
+            _ExecutableQuery,
             str,
             str,
         ],
@@ -1434,25 +1430,19 @@ if TYPE_CHECKING:
             await transaction.fetch_all(select(User).all()),
             list[User[Row]],
         )
-        _ = await transaction.fetch_all(  # ty: ignore[no-matching-overload]
-            select(User)
-        )
-        _ = await transaction.fetch_all(  # ty: ignore[no-matching-overload]
+        _ = await transaction.fetch_all(select(User))
+        _ = await transaction.fetch_all(
             select(User).join(
                 Order,
                 on=Order.user_id.references(User.id),
             )
         )
-        _ = transaction.fetch_chunks(  # ty: ignore[no-matching-overload]
+        _ = transaction.fetch_chunks(
             select(User),
             size=100,
         )
-        _ = await transaction.fetch_one(  # ty: ignore[no-matching-overload]
-            select(User)
-        )
-        _ = await transaction.fetch_one_or_none(  # ty: ignore[no-matching-overload]
-            select(User)
-        )
+        _ = await transaction.fetch_one(select(User))
+        _ = await transaction.fetch_one_or_none(select(User))
         _ = assert_type(
             await transaction.fetch_all(select(User.email).all()),
             list[str],
@@ -1598,7 +1588,7 @@ if TYPE_CHECKING:
             list[tuple[str, str]],
         )
         # ON does not establish row scope or weaken backend isolation.
-        await transaction.fetch_all(select(User).join(Order, on=condition))  # ty: ignore[no-matching-overload]
+        await transaction.fetch_all(select(User).join(Order, on=condition))
         select(User).join(MariadbUser, on=User.id.eq(1))  # ty: ignore[no-matching-overload]
         select(User).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
         select(User.email).join(Order, on=Region.code.eq("EU"))  # ty: ignore[no-matching-overload]
