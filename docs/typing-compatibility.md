@@ -1,6 +1,6 @@
 # Type-checker compatibility
 
-Use **ty 0.0.77** to check snekql applications. Pyright and mypy currently reject
+Use **ty 0.0.84** to check snekql applications. Pyright and mypy currently reject
 some valid examples or lose their result types, so they are not supported for
 the class-body model interface. An error-free editor display from another
 checker does not replace a ty run.
@@ -10,14 +10,14 @@ For application annotations, see the [typing reference](typing.md).
 
 ## Tested versions and scope
 
-Assessment updated 2026-09-25 on CPython 3.14.2, Linux x86-64. The current suite
+Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
 has 42 cases on each backend, producing 84 positive/negative pairs. Reports
 record dependency versions, commands, revision and dirty status, and SHA-256
 hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 
 | Tool | Version | Result |
 | --- | --- | --- |
-| ty | 0.0.77 | Supported; 84/84 pairs, plus native repository typing validation |
+| ty | 0.0.84 | Supported; 84/84 pairs, plus native repository typing validation |
 | Pyright CLI | 1.1.414 | Not supported for this interface; 14/84 pairs |
 | mypy | 2.3.1 | Not supported for this interface; 4/84 pairs |
 | Pylance | Not assessed | No editor conformance claim |
@@ -103,13 +103,21 @@ Node.js. Both receive explicit strict configurations. Ty uses the repository's
 all-errors policy with the existing missing-override-decorator exception.
 Ambient `TY_CONFIG_FILE` cannot override the assessment configuration.
 
+The 0.0.84 upgrade retains the all-errors policy. Source-local suppressions cover
+incorrect narrowing through `finally` and task-shared state, defensive runtime
+checks, and mismatches in dependency annotations. These do not establish stronger
+static guarantees for those internal paths. Intentional invalid callers retain
+specific expected diagnostics, including abstract expression constructors.
+
 Current reports:
 
-- [ty](../typing_probes/results/2026-09-25-class-body/ty.json)
-- [Pyright](../typing_probes/results/2026-09-25-class-body/pyright.json)
-- [mypy](../typing_probes/results/2026-09-25-class-body/mypy.json)
+- [ty](../typing_probes/results/2026-09-26-ty/ty.json)
+- [Pyright](../typing_probes/results/2026-09-26-ty/pyright.json)
+- [mypy](../typing_probes/results/2026-09-26-ty/mypy.json)
 
-The reports under `typing_probes/results/2026-09-20/` describe the old interface,
+The reports under `typing_probes/results/2026-09-25-class-body/` retain the
+previous ty 0.0.77 assessment. The reports under `typing_probes/results/2026-09-20/`
+describe the old interface,
 not current compatibility. Temporary paths in report commands identify removed
 caller files; rerun the CLI to render fresh callers with comparable source hashes.
 

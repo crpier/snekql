@@ -182,8 +182,8 @@ class ReadType[Result]:
         self, instance: object, owner: type[object]
     ) -> Callable[[], type[Result]]:
         def row_type() -> type[Result]:
-            # Declaration validation proves Result is this exact Row specialization.
-            return cast("type[Result]", _PendingOnlyAlias(owner, Row))
+            # The validated GenericAlias represents Result without being a type instance.
+            return cast("type[Result]", _PendingOnlyAlias(owner, Row))  # ty: ignore[disjoint-cast]
 
         return row_type
 

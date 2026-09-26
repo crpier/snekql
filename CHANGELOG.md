@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade the supported type checker from ty 0.0.77 to 0.0.84. All 84 paired
+  consumer controls still pass; retain exact negative diagnostics and the
+  all-errors policy. Update development pins and current adoption guidance.
+
 ### Fixed
 
 - Preserve pool progress when cancellation lands between a waiter's wake-up and

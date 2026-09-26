@@ -16,6 +16,12 @@ class _UnsupportedTimezone(tzinfo):
     def utcoffset(self, _value: datetime | None) -> timedelta:
         return timedelta(hours=2)
 
+    def dst(self, _dt: datetime | None) -> None:
+        return None
+
+    def tzname(self, _dt: datetime | None) -> None:
+        return None
+
 
 @test(mark="fast")
 def zoned_datetime_preserves_an_iana_timezone() -> None:

@@ -1705,7 +1705,7 @@ class Database[FamilyT: BackendFamily]:
     """
 
     def __init__(self, _initialized: Never, /) -> None:
-        self.runtime = cast("RuntimeBackend", None)
+        self.runtime: RuntimeBackend
         msg = "use Database.initialize(...) to create a Database"
         raise DatabaseRuntimeError(msg)
 

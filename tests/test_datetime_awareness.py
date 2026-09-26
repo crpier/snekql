@@ -14,6 +14,12 @@ class UnknownOffset(tzinfo):
     def utcoffset(self, _dt: datetime | None) -> None:
         return None
 
+    def dst(self, _dt: datetime | None) -> None:
+        return None
+
+    def tzname(self, _dt: datetime | None) -> None:
+        return None
+
 
 @test()
 def utc_datetime_rejects_unknown_offset() -> None:

@@ -46,7 +46,8 @@ class OpenTelemetryObserver:
             not isinstance(fingerprints, frozenset)
             or len(fingerprints) > _MAX_FINGERPRINTS
             or any(
-                not isinstance(item, str) or fullmatch(r"v1:[0-9a-f]{64}", item) is None
+                # Reject malformed fingerprints from dynamically typed callers too.
+                not isinstance(item, str) or fullmatch(r"v1:[0-9a-f]{64}", item) is None  # ty: ignore[redundant-condition-strict]
                 for item in fingerprints
             )
         ):

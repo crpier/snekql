@@ -98,13 +98,13 @@ def aggregate_function_text_cannot_be_forged() -> None:
     """The aggregate annotation cannot construct a node from hostile SQL text."""
 
     with assert_raises(TypeError):
-        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument]
+        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument, call-non-callable]
             func='COUNT(*) FROM "account"; DROP TABLE "account"; --',  # ty: ignore[unknown-argument]
             owner=Account,  # ty: ignore[unknown-argument]
         )
 
     with assert_raises(TypeError):
-        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument]
+        _ = Aggregate[Account[Pending], int](  # ty: ignore[missing-argument, call-non-callable]
             func=HostileAggregateFunction(),  # ty: ignore[unknown-argument]
             owner=Account,  # ty: ignore[unknown-argument]
         )

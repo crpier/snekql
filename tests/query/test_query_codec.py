@@ -7,7 +7,7 @@ attribute instead of four pass-through methods.
 
 from __future__ import annotations
 
-from typing import ClassVar, cast
+from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
@@ -16,7 +16,6 @@ from snekql._query_codec import DialectQueryCodec
 from snekql._query_dialect import query_dialect_for_backend
 from snekql.errors import QueryCompilationError
 from snekql.sqlite import Pending, Row
-from snekql.storage import StorageBackend
 
 
 @test(mark="fast")
@@ -150,7 +149,7 @@ def codec_for_unregistered_backend_raises_compilation_error() -> None:
     """Resolving a codec for a family with no registered dialect fails."""
 
     with assert_raises(QueryCompilationError):
-        _ = DialectQueryCodec.for_backend(cast("StorageBackend", "postgres"))
+        _ = DialectQueryCodec.for_backend("postgres")  # ty: ignore[invalid-argument-type] - exercise dynamic backend rejection
 
 
 @test(mark="fast")

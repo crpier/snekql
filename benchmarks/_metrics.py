@@ -83,7 +83,8 @@ class HeartbeatMonitor:
         """Loop until ``stop`` is called, recording wake lateness each tick."""
 
         self._running = True
-        while self._running:
+        # stop() changes this flag from another task while run() sleeps.
+        while self._running:  # ty: ignore[redundant-condition-strict]
             start = anyio.current_time()
             await anyio.sleep(self.interval)
             elapsed = anyio.current_time() - start

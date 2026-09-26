@@ -854,7 +854,7 @@ def integer_columns_reject_float_in_strict_mode() -> None:
         value: Counter.Col[int] = Integer(nullable=False)
 
     with assert_raises(ModelValidationError):
-        _ = Counter(value=cast("int", 1.0))
+        _ = Counter(value=1.0)  # ty: ignore[invalid-argument-type] - exercise runtime validation
 
 
 @test(mark="fast")
@@ -909,7 +909,7 @@ def json_columns_validate_annotated_shape() -> None:
     assert_eq(settings.options, {"retries": 3})
 
     with assert_raises(ModelValidationError):
-        _ = Settings(options=cast("dict[str, int]", {"retries": "many"}))
+        _ = Settings(options={"retries": "many"})  # ty: ignore[invalid-argument-type] - exercise runtime validation
 
 
 @test(mark="fast")

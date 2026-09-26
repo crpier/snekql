@@ -369,7 +369,7 @@ async def report_identifies_environment_and_rendered_sources() -> None:
     assert_true(report["recorded_at"].endswith("+00:00"))
     assert_eq(report["environment"]["python"], sys.version)
     assert_true(bool(report["environment"]["platform"]))
-    assert_eq(report["environment"]["packages"]["ty"], "0.0.77")
+    assert_eq(report["environment"]["packages"]["ty"], "0.0.84")
     assert_eq(len(report["environment"]["source_commit"]), 40)
     assert_true(isinstance(report["environment"]["source_dirty"], bool))
     case = report["cases"][0]
