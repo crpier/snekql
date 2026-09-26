@@ -7,7 +7,7 @@ from contextlib import AbstractAsyncContextManager
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, assert_type
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Never, assert_type
 from zoneinfo import ZoneInfo
 
 from snekql import mariadb, sqlite
@@ -767,7 +767,7 @@ if TYPE_CHECKING:
     # value type is always optional even over a NOT NULL inner column (#203 F10).
     _ = assert_type(
         scalar(select(Order.user_id).where(Order.user_id.eq_col(User.id))),
-        Scalar[Any, int | None, int],
+        Scalar[Never, int | None, int],
     )
     _ = select(
         scalar(select(Order.id).all()),  # ty: ignore[invalid-argument-type]

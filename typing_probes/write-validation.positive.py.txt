@@ -1,0 +1,19 @@
+"""Row counts and validated scalar RETURNING values remain distinct contracts."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int] = database.Text()
+
+
+async def control(transaction: database.Transaction, flag: bool) -> None:
+    statement = database.insert(Account(number=7)).returning(Account.number)
+    assert_type(await transaction.execute(statement), int)
+    assert_type(await transaction.execute(statement, validate=False), object)
+    assert_type(await transaction.execute(statement, validate=flag), object)
+    assert_type(await transaction.execute(database.insert(Account(number=7)), validate=False), None)
+    assert_type(await transaction.execute(database.update(Account).set(Account.number.to(8)).all(), validate=flag), int)
+    assert_type(await transaction.execute(database.delete(Account).all(), validate=False), int)

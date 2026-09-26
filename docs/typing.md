@@ -1347,7 +1347,8 @@ non-constructible annotations.
 
 Use `ColumnRef[OwnerT, T]` when a helper accepts a read-only model column. It
 supports equality comparisons and projection while intentionally omitting
-mutation operations:
+mutation operations. A scalar built from such a projection retains its comparison
+value domain; using the helper does not permit comparisons against unrelated types:
 
 ```python
 def user_filter[T](

@@ -1,0 +1,3 @@
+
+
+database.exists(foreign.select(Foreign.number).all())  # expect-error

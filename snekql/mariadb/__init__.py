@@ -88,9 +88,6 @@ from snekql._common import (
     UtcDatetime,
     ZonedDatetime,
     ZonedDatetimeError,
-    exists,
-    not_exists,
-    scalar,
 )
 from snekql._common import (
     Write as _RuntimeWrite,
@@ -126,9 +123,12 @@ from snekql.mariadb.verbs import (
     ReadQuery,
     alias,
     delete,
+    exists,
     insert,
     insert_many,
+    not_exists,
     ready,
+    scalar,
     select,
     update,
 )

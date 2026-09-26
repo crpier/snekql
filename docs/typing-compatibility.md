@@ -11,15 +11,15 @@ For application annotations, see the [typing reference](typing.md).
 ## Tested versions and scope
 
 Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
-has 42 cases on each backend, producing 84 positive/negative pairs. Reports
+has 51 cases on each backend, producing 102 positive/negative pairs. Reports
 record dependency versions, commands, revision and dirty status, and SHA-256
 hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 
 | Tool | Version | Result |
 | --- | --- | --- |
-| ty | 0.0.84 | Supported; 84/84 pairs, plus native repository typing validation |
-| Pyright CLI | 1.1.414 | Not supported for this interface; 14/84 pairs |
-| mypy | 2.3.1 | Not supported for this interface; 4/84 pairs |
+| ty | 0.0.84 | Supported; 102/102 pairs, plus native repository typing validation |
+| Pyright CLI | 1.1.414 | Not supported for this interface; 18/102 pairs |
+| mypy | 2.3.1 | Not supported for this interface; 4/102 pairs |
 | Pylance | Not assessed | No editor conformance claim |
 
 All tools target Python 3.14 and use the project interpreter's dependencies.
@@ -27,8 +27,8 @@ These results do not certify older Python, other checker versions, every API
 combination, or a complete secondary-checker analysis of library internals.
 
 A static rejection counts only with a clean independent positive control and
-an error at the marked invalid operation. The new migration cases also assert
-one expected challenge-line diagnostic with its expected rule. `Any`/`Unknown`
+an error at the marked invalid operation. Migration and typing-sweep cases also
+assert one expected challenge-line diagnostic with its expected rule. `Any`/`Unknown`
 results, malformed controls, unrelated errors, checker crashes, and runtime
 rejection do not establish a static guarantee.
 
@@ -46,11 +46,14 @@ The paired callers exercise both namespaces through their public APIs:
   assignments or nested JSON mutation.
 - Bare model sources versus instances and structural lookalikes, with native
   aliases, CTEs, joins and mutation RETURNING in the positive controls.
+- Read-only scalar comparison domains, exact scalar results through `ready`,
+  nullable computed comparison inputs, validation-aware RETURNING results, and
+  backend-pinned nested-query factories.
 - Positional width, named results, nullable model joins, raw query contracts,
   and defaulted typed foreign keys.
 
 The templates and native typing tests contain exact `assert_type` controls.
-The 84 observations are paired backend cases, not 84 independent API guarantees.
+The 102 observations are paired backend cases, not 102 independent API guarantees.
 
 ## Remaining limits
 
@@ -62,14 +65,21 @@ Both-owner comparison typing can reject valid enclosing-table correlation in a
 nested JOIN ON. Native runtime behavior is preserved, but that caller currently
 needs a typing escape. General correlation typing is not redesigned.
 
+Nested-query factories reject foreign-family input queries. Scalar and predicate
+values do not yet carry a separate family witness, and IN subqueries do not
+statically check family identity. Passing a foreign expression built by its own
+namespace still requires Query Compilation to reject it. Correlated references
+also retain runtime scope checks.
+
 Witness consistency, `complete` keyword schemas, some FK domains, named binding
 labels and domains, and SQL validity still require runtime checks. `is_complete`
 narrows the true branch only; it does not prove persistence. Freezing is shallow.
 See the [migration guide](class-body-migration.md) for application examples.
 
-Pyright passes the lifecycle, positional-width, raw-contract, defaulted-FK and
-three frozen-field pairs. It fails required model constructor, helper, batch,
-comparison and source controls, often rejecting nominal evidence or losing
+Pyright passes lifecycle, positional-width, raw-contract, defaulted-FK, three
+frozen-field pairs, scalar helper closure, and nullable computed expressions.
+It fails required model constructor, helper, batch, comparison and source
+controls, often rejecting nominal evidence or losing
 results to Unknown. Mypy passes only the lifecycle and raw-contract pairs.
 Extra errors on invalid callers with failing controls do not establish support.
 No weakened annotations or checker-specific escapes were added to certify them.
@@ -92,7 +102,7 @@ reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
 
 Use `--backend sqlite|mariadb` and `--case <name>` to select narrower checks.
-Defaults cover all 42 cases on both backends. The CLI checks types; it does not
+Defaults cover all 51 cases on both backends. The CLI checks types; it does not
 execute callers or connect to a database. Templates live in
 [`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
 not include intentional errors.
@@ -111,14 +121,15 @@ specific expected diagnostics, including abstract expression constructors.
 
 Current reports:
 
-- [ty](../typing_probes/results/2026-09-26-ty/ty.json)
-- [Pyright](../typing_probes/results/2026-09-26-ty/pyright.json)
-- [mypy](../typing_probes/results/2026-09-26-ty/mypy.json)
+- [ty](../typing_probes/results/2026-09-26-typing-sweep/ty.json)
+- [Pyright](../typing_probes/results/2026-09-26-typing-sweep/pyright.json)
+- [mypy](../typing_probes/results/2026-09-26-typing-sweep/mypy.json)
 
-The reports under `typing_probes/results/2026-09-25-class-body/` retain the
-previous ty 0.0.77 assessment. The reports under `typing_probes/results/2026-09-20/`
-describe the old interface,
-not current compatibility. Temporary paths in report commands identify removed
+The reports under `typing_probes/results/2026-09-26-ty/` retain the checker-upgrade
+baseline of 84 pairs. The reports under
+`typing_probes/results/2026-09-25-class-body/` retain the previous ty 0.0.77
+assessment. The reports under `typing_probes/results/2026-09-20/` describe the old
+interface, not current compatibility. Temporary paths in report commands identify removed
 caller files; rerun the CLI to render fresh callers with comparable source hashes.
 
 ## Editor guidance

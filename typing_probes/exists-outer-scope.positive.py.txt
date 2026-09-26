@@ -1,0 +1,20 @@
+"""Existence predicates retain ownership of their surrounding boolean expression."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int] = database.Integer()
+
+
+class Invoice[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Invoice[database.Row]]]
+    number: database.Col[int] = database.Integer()
+
+
+async def control(transaction: database.Transaction) -> None:
+    nested = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
+    query = database.select(Account).where(Account.number.eq(1) & database.exists(nested))
+    assert_type(await transaction.fetch_all(query), list[Account[database.Row]])
