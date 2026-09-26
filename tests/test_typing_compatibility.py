@@ -251,7 +251,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 84)
+    assert_eq(len(report["cases"]), 102)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
@@ -291,6 +291,13 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "ready-backend",
             "pending-input",
             "read-constructor",
+            "readonly-scalar",
+            "exists-outer-scope",
+            "write-validation",
+            "returning-domain",
+            "exists-family",
+            "not-exists-family",
+            "scalar-family",
             "readiness",
             "backend-identity",
             "named-result",
@@ -331,6 +338,15 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
             "ready-backend",
             "pending-input",
             "read-constructor",
+            "readonly-scalar",
+            "scalar-outer-scope",
+            "exists-outer-scope",
+            "nullable-expression",
+            "write-validation",
+            "returning-domain",
+            "exists-family",
+            "not-exists-family",
+            "scalar-family",
             "readiness",
             "backend-identity",
             "positional-width",
@@ -369,7 +385,7 @@ async def report_identifies_environment_and_rendered_sources() -> None:
     assert_true(report["recorded_at"].endswith("+00:00"))
     assert_eq(report["environment"]["python"], sys.version)
     assert_true(bool(report["environment"]["platform"]))
-    assert_eq(report["environment"]["packages"]["ty"], "0.0.77")
+    assert_eq(report["environment"]["packages"]["ty"], "0.0.84")
     assert_eq(len(report["environment"]["source_commit"]), 40)
     assert_true(isinstance(report["environment"]["source_dirty"], bool))
     case = report["cases"][0]

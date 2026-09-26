@@ -850,6 +850,7 @@ async def verify_sqlite_migrations(
             pending=tuple(migration.name for migration in migrations[len(history) :]),
         )
     finally:
-        if transaction_started:
+        # BEGIN can fail before the flag is set; finally still runs in that case.
+        if transaction_started:  # ty: ignore[redundant-condition-strict]
             await _rollback_if_open(connection)
             connection_state.reusable = not connection.in_transaction

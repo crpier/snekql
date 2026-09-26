@@ -1,0 +1,21 @@
+"""Computed nullable values preserve NULL results without accepting NULL comparisons."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int | None] = database.Integer(default=None)
+    text: database.Col[str | None] = database.Text(default=None)
+
+
+async def control(transaction: database.Transaction) -> None:
+    amount = Account.number.add(1)
+    assert_type(amount.eq(2), database.Predicate[Account])
+    assert_type(amount.is_null(), database.Predicate[Account])
+    assert_type(await transaction.fetch_all(database.select(amount).all()), list[int | None])
+    assert_type(await transaction.fetch_all(database.select(Account.text.lower()).all()), list[str | None])
+    branch = database.case(Account.number.is_null(), then=1, otherwise=None)
+    assert_type(branch.eq(1), database.Predicate[Account])
+    assert_type(await transaction.fetch_all(database.select(branch).all()), list[int | None])

@@ -97,7 +97,8 @@ def _snapshot_parameters(
         except Exception:
             msg = "could not snapshot raw parameters"
             raise QueryConstructionError(msg) from None
-        if any(not isinstance(key, str) for key in snapshot):
+        # Dynamic callers can supply keys outside the annotated string contract.
+        if any(not isinstance(key, str) for key in snapshot):  # ty: ignore[redundant-condition-strict]
             msg = "raw parameter mapping keys must be strings"
             raise QueryConstructionError(msg)
     elif isinstance(params, Sequence) and not isinstance(
@@ -217,7 +218,8 @@ class RawPlan:
         if self.columns is None:
             msg = "raw fetch requires result columns"
             raise RawResultShapeError(msg)
-        if any(not isinstance(column, str) for column in self.columns):
+        # Driver metadata still needs validation despite its declared column type.
+        if any(not isinstance(column, str) for column in self.columns):  # ty: ignore[redundant-condition-strict]
             msg = "raw result has invalid column metadata"
             raise RawResultShapeError(msg)
         if self.row_mode == "mapping" and len(set(self.columns)) != len(self.columns):

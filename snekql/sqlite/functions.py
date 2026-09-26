@@ -31,7 +31,7 @@ def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
     | ExpressionMethods[OwnerT, int]
     | ExpressionMethods[OwnerT, int | None]
     | None,
-) -> ValueExpression[OwnerT, int | None]: ...
+) -> ValueExpression[OwnerT, int | None, int]: ...
 
 
 @overload
@@ -55,7 +55,7 @@ def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
     | ExpressionMethods[OwnerT, float]
     | ExpressionMethods[OwnerT, float | None]
     | None,
-) -> ValueExpression[OwnerT, float | None]: ...
+) -> ValueExpression[OwnerT, float | None, float]: ...
 
 
 @overload
@@ -79,7 +79,7 @@ def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
     | ExpressionMethods[OwnerT, str]
     | ExpressionMethods[OwnerT, str | None]
     | None,
-) -> ValueExpression[OwnerT, str | None]: ...
+) -> ValueExpression[OwnerT, str | None, str]: ...
 
 
 def case(

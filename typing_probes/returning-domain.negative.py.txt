@@ -1,0 +1,8 @@
+
+
+OtherId = NewType("OtherId", int)
+
+
+async def invalid(transaction: database.Transaction) -> None:
+    statement = database.insert(Account(identifier=AccountId(1), enabled=True))
+    identifier: OtherId = await transaction.execute(statement.returning(Account.identifier))  # expect-error

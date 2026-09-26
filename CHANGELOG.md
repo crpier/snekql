@@ -2,7 +2,23 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade the supported type checker from ty 0.0.77 to 0.0.84. All 84 paired
+  consumer controls still pass; retain exact negative diagnostics and the
+  all-errors policy. Update development pins and current adoption guidance.
+
 ### Fixed
+
+- Preserve scalar comparison domains through read-only `ColumnRef` helpers, and
+  exact scalar-projection results through `ready()`.
+- Keep nullable computed result types separate from non-null comparison inputs.
+  Use `is_null()` rather than `.eq(None)` on arithmetic, CASE, and text expressions.
+- Distinguish row counts from scalar RETURNING values in execution typing.
+  Unvalidated RETURNING yields `object`; validated boolean and nominal integer
+  results retain their exact domains.
+- Pin `exists`, `not_exists`, and `scalar` factory inputs to their backend namespace.
+  Cross-family nested operands still require compilation checks.
 
 - Preserve pool progress when cancellation lands between a waiter's wake-up and
   admission. Native asyncio cancellation also retains its cancellation exception

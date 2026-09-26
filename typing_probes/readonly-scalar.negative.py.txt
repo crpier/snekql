@@ -1,0 +1,4 @@
+
+
+def invalid(number: database.ColumnRef[Account, int]) -> None:
+    Account.text.eq_col(database.scalar(database.select(number).all()))  # expect-error

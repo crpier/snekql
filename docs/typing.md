@@ -4,7 +4,7 @@ Use this page when you need an exact result type, a query-helper annotation, or
 an advanced column declaration. For your first model or query, the shorter
 [model guide](models.md) and [query guide](queries.md) are easier starting points.
 
-**ty 0.0.77 is the supported checker.** Pyright and mypy do not support the full
+**ty 0.0.84 is the supported checker.** Pyright and mypy do not support the full
 class-body interface. See [checker support](typing-compatibility.md) for results
 and editor setup. Static guarantees on this page refer to ty unless stated otherwise.
 
@@ -1347,7 +1347,8 @@ non-constructible annotations.
 
 Use `ColumnRef[OwnerT, T]` when a helper accepts a read-only model column. It
 supports equality comparisons and projection while intentionally omitting
-mutation operations:
+mutation operations. A scalar built from such a projection retains its comparison
+value domain; using the helper does not permit comparisons against unrelated types:
 
 ```python
 def user_filter[T](

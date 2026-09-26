@@ -112,7 +112,8 @@ async def _open_raw(
                     "SELECT id, email, payload FROM bench_user ORDER BY id"
                 ) as cursor,
             ):
-                while batch := await cursor.fetchmany(batch_size):
+                # aiosqlite delegates to sqlite3.fetchmany(), which returns a list.
+                while batch := await cursor.fetchmany(batch_size):  # ty: ignore[truthiness-test-of-iterable]
                     observation.consume(
                         Record.model_validate(
                             {"id": row[0], "email": row[1], "payload": row[2]}

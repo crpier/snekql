@@ -129,7 +129,7 @@ rows raises `MultipleResultsError`. Use `fetch_all` for a list or
 Install the supported checker and check your script:
 
 ```sh
-uv add --dev ty==0.0.77
+uv add --dev ty==0.0.84
 uv run ty check app.py
 ```
 

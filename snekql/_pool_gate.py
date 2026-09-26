@@ -136,7 +136,8 @@ class FairAdmissionGate:
             # A notified waiter must acquire the condition again on its next
             # loop iteration. Cancellation there is outside condition.wait(),
             # but still owns a queued ticket that must never block successors.
-            if ticket is not None:
+            # Cancellation reaches finally with the ticket still queued.
+            if ticket is not None:  # ty: ignore[redundant-condition-strict]
                 with anyio.CancelScope(shield=True):
                     async with self.condition:
                         self._discard_waiter(ticket)

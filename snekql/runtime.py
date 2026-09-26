@@ -38,6 +38,7 @@ from snekql._query_plan import (
     select_query_backend,
     validate_select_consumption,
 )
+from snekql._query_readiness import _ExecutableQuery, _ExecutableUpdate
 from snekql._raw import NativeParameters, RawPlan, RawStatement, lower_raw
 from snekql._runtime_selection import (
     RuntimeConfig,
@@ -73,10 +74,12 @@ from snekql.query import (
     AnySelectQuery,
     InsertManyQuery,
     InsertQuery,
+    _DeleteQuery,
     _ExecutableOptionalSelect,
     _ExecutableSelect,
     _ExecutableWrite,
     _SchemaModelClass,
+    _UpdateQuery,
 )
 from snekql.storage import SchemaPolicy
 from snekql.telemetry import Observer, PoolStats
@@ -1226,7 +1229,8 @@ class Transaction[FamilyT: BackendFamily]:
     @overload
     async def execute(
         self,
-        query: _ExecutableWrite[FamilyT, int],
+        query: _UpdateQuery[FamilyT, Any, Any, int, _ExecutableUpdate]
+        | _DeleteQuery[FamilyT, Any, Any, int, _ExecutableQuery],
         *,
         validate: bool = True,
     ) -> int: ...
@@ -1705,7 +1709,7 @@ class Database[FamilyT: BackendFamily]:
     """
 
     def __init__(self, _initialized: Never, /) -> None:
-        self.runtime = cast("RuntimeBackend", None)
+        self.runtime: RuntimeBackend
         msg = "use Database.initialize(...) to create a Database"
         raise DatabaseRuntimeError(msg)
 

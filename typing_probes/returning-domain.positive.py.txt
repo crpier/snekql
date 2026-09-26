@@ -1,0 +1,18 @@
+"""Validated scalar RETURNING preserves bool and nominal integer result domains."""
+
+from typing import ClassVar, NewType, assert_type
+from snekql import __BACKEND__ as database
+
+AccountId = NewType("AccountId", int)
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    identifier: database.Col[AccountId] = database.Integer()
+    enabled: database.Col[bool] = database.Integer()
+
+
+async def control(transaction: database.Transaction) -> None:
+    statement = database.insert(Account(identifier=AccountId(1), enabled=True))
+    assert_type(await transaction.execute(statement.returning(Account.enabled)), bool)
+    assert_type(await transaction.execute(statement.returning(Account.identifier)), AccountId)
