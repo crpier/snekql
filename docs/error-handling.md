@@ -1,8 +1,12 @@
 # Error handling guide
 
-Every intentional package-originated exception is a `SnekqlError` subclass.
-Application boundaries can catch `SnekqlError` for all expected snekql failures
-and let unrelated programming errors continue to surface normally.
+Expected errors raised by snekql inherit from `SnekqlError`. Catch that at an
+application boundary, or a more specific exception when you know how to handle
+it. Do not catch every Python exception just to label it a database failure.
+
+If a write failed, start with [commit outcomes](#commit-outcomes) before retrying.
+For ordinary use, read [transactions](transactions.md) first. This page covers
+what can go wrong and which recovery actions are safe.
 
 ```python
 from snekql.sqlite import SnekqlError
@@ -680,3 +684,5 @@ stored value alone. Audit affected data against a trusted source and reconcile i
 through explicit application migrations. Check equality queries and unique keys
 when repairing previously rounded values. Normal in-range canonical wire forms
 remain unchanged; no blanket data conversion is required.
+
+[All guides](README.md)

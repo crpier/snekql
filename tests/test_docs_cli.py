@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from collections.abc import AsyncGenerator
+from textwrap import indent
 
 from anyio import Path, TemporaryDirectory, run_process
 from snektest import Param, assert_eq, assert_in, fixture, load_fixture, test
@@ -19,8 +20,11 @@ async def provide_quick_start(source_name: str) -> AsyncGenerator[str]:
         )
         assert_eq(guide.returncode, 0, msg=guide.stderr.decode())
         markdown = guide.stdout.decode()
+    elif source_name == "getting-started":
+        markdown = await Path("docs/getting-started.md").read_text()
     else:
         markdown = await Path("README.md").read_text()
+        markdown = markdown.split("## Try it\n", 1)[1]
     yield markdown.split("```python\n", 1)[1].split("```", 1)[0]
 
 
@@ -133,7 +137,11 @@ def docs_cli_rejects_unknown_positional_command() -> None:
 
 
 @test(
-    [Param("agent-docs", name="agent-docs"), Param("README", name="README")],
+    [
+        Param("agent-docs", name="agent-docs"),
+        Param("README", name="README"),
+        Param("getting-started", name="getting-started"),
+    ],
     mark="fast",
 )
 async def documented_quick_start_runs(source_name: str) -> None:
@@ -142,7 +150,7 @@ async def documented_quick_start_runs(source_name: str) -> None:
 
     async with TemporaryDirectory(prefix="snekql-docs-") as directory:
         completed = await run_process(
-            [sys.executable, "-c", source + "\nimport asyncio\nasyncio.run(main())\n"],
+            [sys.executable, "-c", source],
             cwd=directory,
             check=False,
         )
@@ -152,7 +160,11 @@ async def documented_quick_start_runs(source_name: str) -> None:
 
 
 @test(
-    [Param("agent-docs", name="agent-docs"), Param("README", name="README")],
+    [
+        Param("agent-docs", name="agent-docs"),
+        Param("README", name="README"),
+        Param("getting-started", name="getting-started"),
+    ],
     mark="slow",
 )
 async def documented_quick_start_has_exact_row_type(source_name: str) -> None:
@@ -174,6 +186,31 @@ async def check_result(transaction: sqlite.Transaction) -> None:
         list[User[sqlite.Row]],
     )
 """
+        )
+        checked = await run_process(
+            [sys.executable, "-m", "ty", "check", str(caller)], check=False
+        )
+
+    assert_eq(
+        checked.returncode, 0, msg=checked.stdout.decode() + checked.stderr.decode()
+    )
+
+
+@test(mark="slow")
+async def readme_preview_has_exact_row_type() -> None:
+    """The short opening example keeps the result type promised beside it."""
+    quick_start = await load_fixture(provide_quick_start("README"))
+    markdown = await Path("README.md").read_text()
+    preview = markdown.split("```python\n", 1)[1].split("```", 1)[0]
+
+    async with TemporaryDirectory(prefix="snekql-preview-typing-") as directory:
+        caller = Path(directory) / "preview.py"
+        await caller.write_text(
+            quick_start
+            + "\nfrom typing import assert_type\n"
+            + "\nasync def preview(db: sqlite.Database) -> None:\n"
+            + indent(preview, "    ")
+            + "\n    assert_type(users, list[User[sqlite.Row]])\n"
         )
         checked = await run_process(
             [sys.executable, "-m", "ty", "check", str(caller)], check=False

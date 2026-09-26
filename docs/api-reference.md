@@ -1,13 +1,13 @@
 # API reference
 
-Import from `snekql.sqlite` or `snekql.mariadb`. `from snekql import sqlite` and
-`from snekql import mariadb` select those same namespaces. Do not import a symbol
-from its internal definition module just because an editor suggests it.
+Know the operation you need? Look it up here, or jump to the
+[complete export list](#namespace-export-index). For a walkthrough, start with
+[queries](queries.md) or [transactions](transactions.md).
 
-This page is searchable Markdown. Search for an operation or use the complete
-[namespace index](#namespace-export-index). The linked guides cover declaration
-options, examples and restrictions; the [backend matrix](backend-capabilities.md)
-distinguishes library support from server SQL capabilities.
+Import from `snekql.sqlite` or `snekql.mariadb`. Those are the supported application
+imports, even when an editor suggests the internal file that defines a name.
+The [backend table](backend-capabilities.md) lists differences between SQLite and
+MariaDB support.
 
 ## Database and transaction lifecycle
 
@@ -16,7 +16,7 @@ distinguishes library support from server SQL capabilities.
 | `Config(...)` | Backend-owned connection, pool, timeout and durability settings | [Connection lifecycle](connection-lifecycle.md), [engine settings](engine-settings.md) |
 | `await Database.initialize(config, observer=...)` | Connect and establish policy; never create schema | [Service recipes](service-recipes.md) |
 | `async with database` / `await database.close()` | Own and close the pool, including failure cleanup | [Connection lifecycle](connection-lifecycle.md) |
-| `database.transaction(timeout=..., mode=..., read_only=..., isolation=...)` | A single-use async context manager; commit on success, roll back on failure | [Transactions](../README.md#runtime) |
+| `database.transaction(timeout=..., mode=..., read_only=..., isolation=...)` | A single-use async context manager; commit on success, roll back on failure | [Transactions](transactions.md) |
 | `transaction.begin_nested()` | Explicit nested, task-owned, LIFO scope, not another pool checkout | [Connection lifecycle](connection-lifecycle.md) |
 | `transaction.commit_outcome` | Evidence about the managed outer commit; uncertainty is not permission to replay | [Errors and retry](error-handling.md) |
 | `database.pool_stats()` | Frozen local snapshot; no query or connection checkout | [Telemetry](telemetry.md) |
@@ -43,7 +43,7 @@ application code inside a transaction.
 [Typing](typing.md) defines scalar, tuple, Row Model and named Pydantic result
 shapes. [Raw SQL](raw-sql.md) defines construction-time validation and raw consumer
 restrictions. Do not pass `validate=False` at raw consumption sites; validation
-belongs to `raw(...)`. See [plan inspection](../README.md#explaining-query-plans)
+belongs to `raw(...)`. See [plan inspection](inspecting-queries.md#explaining-query-plans)
 before using EXPLAIN/ANALYZE in production.
 
 ## Query construction and expression annotations
@@ -267,3 +267,5 @@ against both namespaces' `__all__` lists.
 | `scalar` | yes | yes |
 | `select` | yes | yes |
 | `update` | yes | yes |
+
+[All guides](README.md)

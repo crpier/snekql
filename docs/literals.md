@@ -1,7 +1,11 @@
 # Native integer literals
 
-Both backend namespaces provide `literal(integer)` for an owner-free, native
-signed-64 SQL value. It can seed depth in [typed recursive CTEs](recursive-ctes.md).
+Use `sqlite.literal(0)` or `mariadb.literal(0)` when a named query result needs an
+integer constant rather than a table column. One use is starting a
+[recursive query](recursive-ctes.md) at depth zero.
+
+The value is bound as a SQL parameter and must fit a signed 64-bit integer. It
+does not belong to a table, so it does not add another table to the query.
 
 ```python
 from typing import ClassVar
@@ -69,3 +73,5 @@ Native tests check recursive 32-bit boundary crossings and signed-64 edge values
 See [recursive CTE acceptance](recursive-ctes.md#acceptance-coverage) for builder
 coverage. Growing text paths, implicit cycle detection and general termination
 analysis remain unsupported.
+
+[All guides](README.md)

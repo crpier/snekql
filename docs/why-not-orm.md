@@ -1,12 +1,16 @@
 # Why snekql is not an ORM
 
-snekql intentionally gives applications an explicit query layer rather than an
-object persistence layer.
+If you want to write queries without having a session track your Python objects,
+snekql may fit. A model describes columns and values. It does not decide when to
+load related rows or save changes.
+
+This keeps database work visible in your code, but leaves more decisions to you:
+you write the joins, updates, migrations, and transaction boundaries.
 
 ## The boundary
 
-A snekql table model is a row contract and query-building surface. It is not an
-entity tracked by a session.
+Creating a model value does not connect it to a database. You explicitly insert
+it through a transaction:
 
 ```python
 user = User(email="alice@example.com")
@@ -60,7 +64,7 @@ accepts one Pending value, never a sequence.
 
 ## What snekql avoids
 
-snekql v1 does not include:
+snekql does not include:
 
 - identity maps;
 - lazy relationship loading;
@@ -92,15 +96,11 @@ await tx.execute(
 If neither intent is chosen, compilation/execution fails before SQLite sees the
 query.
 
-## Agent guidance
+## When to choose something else
 
-When editing or extending snekql, preserve these terms:
+Use an ORM if tracked objects and relationship loading are central to how you
+want to write the application. Use raw SQL directly if you do not want model
+and query declarations. snekql is for the middle case: explicit database work
+with Python validation and checked result types.
 
-- Use **Table Model**, not entity or ORM model.
-- Use **Transaction**, not session.
-- Use **Query Runtime**, not persistence layer.
-- Use **Pending Model** for application-constructed instances.
-- Use **Row Model** for complete values from database results or validated
-  `complete` snapshots. Completeness does not prove persistence.
-
-See `CONTEXT.md` for the project language glossary.
+[Try it](getting-started.md) · [All guides](README.md)

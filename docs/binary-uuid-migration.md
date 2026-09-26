@@ -1,4 +1,8 @@
-# Binary UUID storage compatibility
+# Migrate older UUID Blob data
+
+Read this before upgrading a MariaDB database that stored UUIDs in Blob columns
+with an older snekql version. Being able to read the old rows does not mean the
+new equality filters will find them. Back up and inspect the data before changing it.
 
 `Col[uuid.UUID] = Blob()` stores the UUID's 16 bytes in UUID byte order, matching
 `UUID.bytes`. Equality and `IN` parameters use the same representation. This
@@ -45,3 +49,5 @@ This example handles one already audited row. It is not a general foreign-key or
 unique-key migration plan. Text UUID columns and MariaDB native `Uuid()` storage
 are unchanged and should not be converted by this procedure. Custom serializers
 may deliberately use another byte order or representation; audit those separately.
+
+[All guides](README.md)

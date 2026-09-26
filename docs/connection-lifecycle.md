@@ -1,30 +1,12 @@
-# Connection lifecycle
+# Keep connections healthy and shut them down
 
-## Driver audit
+An idle connection can be replaced. A transaction that has already started
+cannot be moved to another connection or replayed automatically. Keep that
+difference in mind when configuring health checks or recovering from an outage.
 
-This policy was checked against aiomysql 0.3.2 and aiosqlite 0.22.1.
-
-- aiomysql scans idle sockets for EOF, reader errors, and its extra EOF marker.
-  It does not actively ping them. Its `pool_recycle` uses time since cursor
-  creation, not physical connection lifetime or time since pool return.
-- aiomysql's default `ping()` can reconnect the same connection object. That
-  would invalidate snekql's record of verified session settings. Active health
-  probes therefore use `reconnect=False` and discard a failed connection.
-- aiomysql's native connection initializer catches `Exception`, not native
-  cancellation. snekql owns the connection object before awaiting its handshake
-  and closes it on any failed or interrupted initialization. The pool exists
-  before network I/O, so the acquisition deadline covers authentication too.
-- aiomysql does not wake `wait_closed()` when releasing an already closed socket.
-  snekql first waits for its admitted operations to return, including discarded
-  connections and interrupted opens, then finishes driver shutdown.
-- aiosqlite queues work on a connection's worker thread. Cancelling a caller is
-  not proof that queued work stopped. SQLite keeps unsafe cleanup owned and does
-  not treat a connection returned during shutdown as physically closed.
-
-The private aiomysql pool adaptation is shared by ordinary and required-TLS
-connections. The driver dependency remains constrained to `>=0.3.2,<0.4`.
-Recheck socket ownership, stale-reader detection, TLS, and shutdown when widening
-that range. The adaptation does not patch global driver behavior.
+For basic setup, start with [connections and transactions](transactions.md).
+This page covers replacement, credential changes, and shutdown. Driver-specific
+reasons are collected at the end.
 
 ## Replacement and recovery
 
@@ -114,3 +96,32 @@ a waiter or exiting the process is not evidence that resources were closed.
 A successful close is idempotent and future work raises `DatabaseClosedError`.
 See [shutdown error behavior](error-handling.md#close-lifecycle-and-retry-semantics) for the
 backend-specific timeout contract.
+
+## Driver audit
+
+
+This policy was checked against aiomysql 0.3.2 and aiosqlite 0.22.1.
+
+- aiomysql scans idle sockets for EOF, reader errors, and its extra EOF marker.
+  It does not actively ping them. Its `pool_recycle` uses time since cursor
+  creation, not physical connection lifetime or time since pool return.
+- aiomysql's default `ping()` can reconnect the same connection object. That
+  would invalidate snekql's record of verified session settings. Active health
+  probes therefore use `reconnect=False` and discard a failed connection.
+- aiomysql's native connection initializer catches `Exception`, not native
+  cancellation. snekql owns the connection object before awaiting its handshake
+  and closes it on any failed or interrupted initialization. The pool exists
+  before network I/O, so the acquisition deadline covers authentication too.
+- aiomysql does not wake `wait_closed()` when releasing an already closed socket.
+  snekql first waits for its admitted operations to return, including discarded
+  connections and interrupted opens, then finishes driver shutdown.
+- aiosqlite queues work on a connection's worker thread. Cancelling a caller is
+  not proof that queued work stopped. SQLite keeps unsafe cleanup owned and does
+  not treat a connection returned during shutdown as physically closed.
+
+The private aiomysql pool adaptation is shared by ordinary and required-TLS
+connections. The driver dependency remains constrained to `>=0.3.2,<0.4`.
+Recheck socket ownership, stale-reader detection, TLS, and shutdown when widening
+that range. The adaptation does not patch global driver behavior.
+
+[All guides](README.md)

@@ -1,10 +1,13 @@
 # Reviewed baselines for existing databases
 
-A reviewed baseline starts an application's first snekql Migration Declaration.
-It does not record a fictitious execution of earlier migrations. Fresh databases
-and existing databases execute the same initial SQL body through `migrate()`.
-The existing database keeps its reviewed schema and business data; fresh replay
-creates the intended schema.
+Already have tables and data, but no snekql migration history? A baseline is an
+initial migration designed to work with that reviewed existing database and with
+an empty database. Both actually run the SQL; it does not pretend earlier
+migrations ran.
+
+The existing database keeps its data. An empty database gets the intended schema.
+This requires reviewing what is already there, not just adding `IF NOT EXISTS`
+until errors disappear.
 
 The tested [baseline example](../examples/migration_baseline.py) implements this
 workflow for a dedicated, one-table account database on SQLite and MariaDB.
@@ -140,3 +143,5 @@ when it is not. Keep writers stopped until reconciliation and post-checks finish
 
 See [migration recovery](migration-recovery.md) for the reconciliation decision
 table and a tested MariaDB pure-DDL recovery example.
+
+[All guides](README.md)

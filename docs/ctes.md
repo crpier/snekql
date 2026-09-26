@@ -1,7 +1,12 @@
-# Typed labels and nonrecursive CTEs
+# Name a query with a CTE
 
-SQLite and MariaDB support completed named SELECT definitions through `.cte()`.
-A CTE is a query source, not a table declaration or a stored database object.
+A common table expression, or CTE, gives a query a name inside a larger SQL
+statement. Use one when you want to filter, join, or reuse a result without
+turning it into a real table.
+
+Both backends support `.cte()` on completed [named projections](results.md).
+The example first selects active users, then filters that result by ID. It builds
+one query; it does not fetch the intermediate rows into Python.
 
 ## Define and consume
 
@@ -135,3 +140,5 @@ supported.
 recursive builders remain separate follow-ups. Use the [raw reporting
 recipes](reporting.md) for those operations. The
 [composition design](query-composition-design.md) records their reviewed scope.
+
+[All guides](README.md)

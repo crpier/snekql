@@ -1,11 +1,27 @@
-# Typing guide
+# Types and declaration reference
 
-snekql's public API is designed so model declaration, query construction, and
-runtime result shapes are visible to static type checkers. ty remains the primary
-checker. See the [versioned compatibility assessment](typing-compatibility.md)
-for measured Pyright/mypy limitations and editor guidance. Only ty is supported
-for the class-body interface.
-Unless stated otherwise, static guarantees below refer to the ty contract.
+Use this page when you need an exact result type, a query-helper annotation, or
+an advanced column declaration. For your first model or query, the shorter
+[model guide](models.md) and [query guide](queries.md) are easier starting points.
+
+**ty 0.0.77 is the supported checker.** Pyright and mypy do not support the full
+class-body interface. See [checker support](typing-compatibility.md) for results
+and editor setup. Static guarantees on this page refer to ty unless stated otherwise.
+
+## Find the part you need
+
+- Values: [model states](#model-states), [columns](#col-and-gencol),
+  [query results](#query-result-shapes)
+- Helpers: [read query annotations](#read-helper-boundaries),
+  [query sources](#query-sources), [named composition](#named-composition-helpers)
+- Relationships: [joins](#joins), [aliases](#typed-table-aliases),
+  [foreign keys](#optional-foreign-key-ddl)
+- Schema: [constraints](#table-level-foreign-key-constraints),
+  [indexes](#sqlite-partial-indexes), [defaults](#literal-server-defaults),
+  [text capacity](#mariadb-text-capacity)
+- Expressions: [arithmetic](#arithmetic-expression-types),
+  [text and COALESCE](#coalesce-and-text-function-types), [CASE](#case-result-types),
+  [named results](#named-result-contracts)
 
 ## Model states
 
@@ -1523,3 +1539,5 @@ completed readiness required by UNION and recursive member composition. It does
 not expose fluent editing or direct Transaction execution after scope erasure.
 Use `ReadQuery[Scope, Result]`, or `ClosedRead[Result]` after `ready`, for
 execution helpers instead.
+
+[All guides](README.md)

@@ -1,10 +1,11 @@
 # Reporting with raw SQL
 
-CTEs, recursive queries, ranking windows, and UNION already work through the
-[raw SQL interface](raw-sql.md). [Typed nonrecursive CTEs](ctes.md) and
-[named UNION/UNION ALL](unions.md) also have query-builder methods. Recursive
-queries and ranking windows remain follow-ups in the
-[reviewed design](query-composition-design.md).
+These examples use SQL for reports such as ranked groups, category trees, and
+combined results. They run through [raw SQL](raw-sql.md) and validate the returned
+rows with Pydantic.
+
+Prefer the builder? It also supports [CTEs](ctes.md), [UNION](unions.md), and
+[recursive queries](recursive-ctes.md). Ranking windows still need raw SQL.
 
 The tested SQL and strict Pydantic result contracts live in
 [`examples/reporting.py`](../examples/reporting.py). They include inline data,
@@ -157,3 +158,5 @@ A raw statement has no builder readiness or capability analysis. Server syntax,
 version support, resource limits, and recursion settings remain execution-time
 concerns. These recipes do not change transaction behavior or the raw interface's
 existing diagnostics, cleanup, and validation guarantees.
+
+[All guides](README.md)

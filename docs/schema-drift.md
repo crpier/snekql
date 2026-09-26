@@ -1,22 +1,21 @@
 # Schema verification and drift
 
-`db.verify(models, *, policy=...)` checks the live schema against your Table
-Models and returns an immutable `SchemaVerificationResult` containing the
-ordered checked tables, table-scoped `SchemaDriftIssue` values, and structured
-`SchemaVerificationFact` values. It is the
-check that ties hand-written migrations back to current model metadata.
-`db.verify_migrations(migrations)` separately proves that ordered,
-checksummed Migration History is at this code version's exact head by default.
-Its opt-in [rolling-deployment policy](migrations.md#rolling-deployments) permits
-an explicitly approved later prefix, without relaxing schema verification.
-Neither method creates application tables. [Migrations](migrations.md) remain the sole
-schema-creation authority.
+Does the live table match what your code expects? `db.verify([User])` compares
+your model with the parts of the schema snekql understands. It reports matches,
+differences, and things it cannot check. It does not change the database or prove
+that every constraint and every stored value is correct.
 
-Run both checks after `migrate`:
+`verify_migrations` answers a different question: does the recorded migration
+history match this application's chain? By default it requires an exact match.
+[Rolling deployments](migrations.md#rolling-deployments) can explicitly approve a
+later prefix, but that does not relax schema verification.
+
+Neither check creates tables. Use [migrations](migrations.md) for schema changes.
+
+Using the Database, `MIGRATIONS`, and `User` from [getting started](getting-started.md),
+run both checks after `migrate`:
 
 ```python
-MIGRATIONS = {"001_create_user": 'CREATE TABLE "user" (...) STRICT'}
-db = await Database.initialize(database=Path("app.db"))
 await db.migrate(MIGRATIONS)
 await db.verify_migrations(MIGRATIONS)
 await db.verify([User])
@@ -386,3 +385,5 @@ That alone does not fail strict verification. `indexes.predicates` continues to
 record the general scope limit, not a claim that every predicate is unverified.
 Matching structure does not certify optimizer use, existing data, index-level
 collation overrides, or arbitrary SQL-expression equivalence.
+
+[All guides](README.md)

@@ -1,5 +1,10 @@
 # Query composition design
 
+Design record, not a tutorial. For current code examples, use [CTEs](ctes.md),
+[UNION](unions.md), [recursive queries](recursive-ctes.md), and
+[raw reporting queries](reporting.md). The sections below retain design rationale
+and future work.
+
 Status: interface reviewed and approved. Typed labels and nonrecursive CTEs are
 implemented, as are named UNION/UNION ALL. Staged recursive construction is
 implemented with native acceptance coverage and documented limits. Windows remain
@@ -258,3 +263,5 @@ results, positive/negative ty cases, snektest, Ruff, and generated-interface
 checks. Keep recipe tests as interim coverage. Do not implement all four in one
 PR. Start with #370. Set operations and ranking depend on that output-reference
 contract; recursion also depends on compatible UNION ALL composition from #372.
+
+[All guides](README.md)

@@ -18,50 +18,54 @@ snekql is an async typed query builder and runtime for SQLite and MariaDB.
 
 ## Quick start
 
-Python 3.14+ defers annotations by default; no future import is needed.
+Install `snekql[aiosqlite]`, save the example as `app.py`, and run it with Python
+3.14+. It uses an in-memory database, so it is safe to run again. Python 3.14+
+defers annotations by default; no future import is needed.
 
 ```python
-from pathlib import Path
+import asyncio
 from typing import ClassVar
 
 from snekql import sqlite
-from snekql.sqlite import Database, Pending, insert, select
 
 
-class User[S = Pending](sqlite.Model[S]):
+class User[State = sqlite.Pending](sqlite.Model[State]):
     __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
         default=sqlite.PENDING_GENERATION,
     )
-    email: sqlite.Col[str] = sqlite.Text(unique=True)
+    email: sqlite.Col[str] = sqlite.Text()
 
 
 MIGRATIONS = {
-    "0001_create_user": (
-        'CREATE TABLE "user" ('
-        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
-        '"email" TEXT NOT NULL'
-        ") STRICT"
-    ),
-    "0002_user_email_unique": (
-        'CREATE UNIQUE INDEX "ux_user_email" ON "user" ("email")'
-    ),
+    "001_create_user": '''
+        CREATE TABLE "user" (
+            "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+            "email" TEXT NOT NULL
+        ) STRICT
+    ''',
 }
 
 
 async def main() -> None:
-    async with await Database.initialize(sqlite.Config(database=Path("app.db"))) as db:
+    async with await sqlite.Database.initialize(
+        sqlite.Config(database=":memory:"),
+    ) as db:
         await db.migrate(MIGRATIONS)
         await db.verify_migrations(MIGRATIONS)
-        await db.verify([User], policy="strict")
+        await db.verify([User])
+
         async with db.transaction() as tx:
-            await tx.execute(insert(User(email="alice@example.com")))
+            await tx.execute(sqlite.insert(User(email="alice@example.com")))
             user = await tx.fetch_one(
-                select(User).where(User.email.eq("alice@example.com")),
+                sqlite.select(User).where(User.email.eq("alice@example.com")),
             )
             print(user.email)
+
+
+asyncio.run(main())
 ```
 
 ## Core rules

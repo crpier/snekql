@@ -1,9 +1,12 @@
 # Compatibility and the 1.0 release contract
 
-This policy defines the intended contract starting with **1.0.0**. It does not
-announce a 1.0 release. While the package is on 0.x, minor releases may still
-break compatibility; their changelogs must name the break and explain migration.
-Pin the minor line during 0.x adoption.
+snekql is still on **0.x**. A minor release can change existing code, so pin the
+minor version and read the [changelog](../CHANGELOG.md) before upgrading. Breaking
+changes must include migration instructions.
+
+The guarantees below are the plan for **1.0 and later**, not a claim that 1.0 has
+shipped. They explain which changes will require a major release, how deprecations
+will work, and what must pass before release.
 
 ## Public APIs
 
@@ -163,3 +166,5 @@ maintainer authorization. Publishing a GitHub release triggers the existing
 workflow; it is not a harmless announcement step. Do not also run `uv publish`
 for the same version. Any authorized manual publishing alternative must document
 its artifact identity and provenance gap before use. Never reuse a release tag.
+
+[All guides](README.md)

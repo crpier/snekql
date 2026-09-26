@@ -1,9 +1,12 @@
 # Backend capability matrix
 
-This matrix describes snekql's implemented interface, not every feature offered
-by either SQL engine. Python 3.14+ remains required. Use the runtime requirements
-and enforced settings in [engine settings](engine-settings.md), plus the exact
-native versions recorded by [environment validation](failure-matrix.md).
+Choose a backend based on what your application needs, not just matching method
+names. Both support the same basic workflow, but result counts, locks, storage,
+and RETURNING differ.
+
+This table describes what **snekql supports**, not everything each database can
+do. Both require Python 3.14+. See [database settings](engine-settings.md) for
+connection requirements and [tested environments](failure-matrix.md) for evidence.
 
 | Capability | SQLite | MariaDB |
 | --- | --- | --- |
@@ -51,3 +54,5 @@ runnable advanced-SQL recipes, and [connection lifecycle](connection-lifecycle.m
 for cleanup and deadline limits. MySQL and PostgreSQL are not supported backends.
 There is no automatic migration generation, ORM session, identity map or lazy
 relationship loading.
+
+[All guides](README.md)

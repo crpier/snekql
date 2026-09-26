@@ -1,12 +1,16 @@
 # Migrate to class-body models
 
-Version 0.8.0 is a breaking change. There are no compatibility aliases for the old model
-arity, `Fetched`, result-only `Select`, sequence `insert`, or unchecked
-`.construct(...)`.
+Upgrading to 0.8.0? Update your model declarations, batch inserts, and query helper
+annotations. The examples below show each change. Existing database storage does
+not change just because you adopt the new model syntax.
+
+The old two-argument `Model`, `Fetched`, result-only `Select`, sequence `insert`,
+and unchecked `.construct(...)` are removed, not deprecated aliases. For a new
+project, skip the upgrade details and start with [models](models.md).
 
 ## Declare the Row result inside the model
 
-Move the old second `Model` argument into a class-body witness and rename
+Move the old second `Model` argument into a class-body result annotation and rename
 `Fetched` to `Row`:
 
 ```python
@@ -140,3 +144,5 @@ in a generic insert helper. All these names are annotations, not constructors.
 Only ty is supported for this interface. Pyright and mypy fail required positive
 controls; extra errors on invalid examples do not establish support. See
 [the checker assessment](typing-compatibility.md) for versions and reproduction.
+
+[All guides](README.md)

@@ -1,8 +1,11 @@
 # Named UNION and UNION ALL
 
-SQLite and MariaDB support `.union()` and `.union_all()` on completed named
-projections. They execute one SQL statement and return the same named result
-model as their operands.
+Use UNION when rows from two queries should form one result. `union_all` keeps
+duplicates; `union` removes them using the database's equality rules.
+
+Both backends support these methods on completed [named projections](results.md).
+The inputs must use the same result-model class and compatible fields. The
+combined query runs as one SQL statement.
 
 ## Combine named results
 
@@ -172,3 +175,5 @@ INTERSECT, EXCEPT and window builders remain separate work. Use [raw reporting](
 optimizer materialization or evaluation-count guarantee.
 
 For native recursion, see [typed recursive CTEs](recursive-ctes.md).
+
+[All guides](README.md)

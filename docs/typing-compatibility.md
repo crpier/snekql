@@ -1,8 +1,12 @@
 # Type-checker compatibility
 
-Only **ty 0.0.77** is supported for the class-body model interface. Pyright and
-mypy fail required positive controls. This supersedes the earlier limited
-Pyright consumer support assessment for the two-coordinate model API.
+Use **ty 0.0.77** to check snekql applications. Pyright and mypy currently reject
+some valid examples or lose their result types, so they are not supported for
+the class-body model interface. An error-free editor display from another
+checker does not replace a ty run.
+
+Below are the tested versions, known gaps, and commands to reproduce the results.
+For application annotations, see the [typing reference](typing.md).
 
 ## Tested versions and scope
 
@@ -76,14 +80,13 @@ From the locked development environment:
 
 ```sh
 uv sync --locked --all-extras
-uv run ty check --exclude scratchpad
+uv run ty check
 uv run python scripts/check_typing_compatibility.py > ty-report.json
 uv run python scripts/check_typing_compatibility.py --checker pyright > pyright-report.json
 uv run python scripts/check_typing_compatibility.py --checker mypy > mypy-report.json
 ```
 
-Historical scratchpad experiments target old interfaces and are not the native
-typing gate. The Pyright and mypy assessment commands currently exit 1. Exit 0
+The Pyright and mypy assessment commands currently exit 1. Exit 0
 means all selected pairs conform. Exit 2 means the assessment could not run
 reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
@@ -117,3 +120,5 @@ installed. Keep ty as the project gate and use its editor integration for matchi
 diagnostics. Pylance, PyCharm and other engines have no conformance guarantee from
 this assessment. When an editor disagrees, reproduce with the pinned checker and
 correct interpreter rather than silencing a ty failure for an unassessed editor.
+
+[All guides](README.md)

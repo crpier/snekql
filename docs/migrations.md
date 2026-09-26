@@ -1,9 +1,17 @@
 # Migrations
 
-snekql applies named, hand-authored SQL changes and records them in Migration
-History. Migrations are the sole schema-creation authority: a fresh database is
-built by replaying the complete chain. snekql does not generate upgrades or diff
-Table Models against a live database.
+A migration is a named SQL change you keep in source control. snekql runs changes
+in order and records their names and checksums, so later deployments can apply
+only what is new.
+
+You write and review the SQL. snekql does not turn model changes into ALTER TABLE
+statements, and opening a Database does not create tables. An empty database is
+built by running the complete migration chain.
+
+Start with the [runnable tutorial](getting-started.md) for one table. For an
+application, separate [deployment from service startup](service-recipes.md).
+Existing databases need a [baseline](migration-baselines.md), and interrupted
+migrations need [recovery review](migration-recovery.md), not a blind retry.
 
 ## Lifecycle
 
@@ -514,3 +522,5 @@ verify-schema path. Print them with `snekql --example basic` and
 `snekql --example mariadb`. The repository suite executes both declarations and
 checks that fresh replay and prefix-then-upgrade produce the same final catalog
 shape on each backend.
+
+[All guides](README.md)

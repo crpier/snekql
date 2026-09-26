@@ -1,6 +1,9 @@
 # Class-body interface proposal
 
-Interface approved; implementation tracked in #414. Implementation is in progress. The work would ship in one breaking-change PR, without compatibility aliases. The published research archive remains unchanged.
+This is the design record behind the class-body interface shipped in 0.8.0.
+It is not the getting-started guide. Use [models](models.md) for new code or the
+[0.8 migration guide](class-body-migration.md) when upgrading. Progress notes
+below describe the work at the time they were written.
 
 The chosen names are `__row_type__` and `Row`. `ReadType` remains the annotation helper. `ready`, `complete`, and `is_complete` keep their proposed names.
 
@@ -214,3 +217,5 @@ Implement #414 in one PR, reviewing model changes, query typing changes, and doc
 Use test-first changes. Before completion, run the migrated native tests, SQLite and MariaDB integration tests, typing checks, generator checks, lint, and formatting.
 
 Native tests and the caller templates under `typing_probes/` carry the supported contract. Historical research is separate evidence, not a substitute for validating the production implementation.
+
+[All guides](README.md)
