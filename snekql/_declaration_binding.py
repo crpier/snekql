@@ -41,7 +41,8 @@ class _OnceBinding[T]:
                     self._state = "resolved"
                 finally:
                     # Preserve cancellation/interrupt propagation while preventing retry.
-                    if self._state == "resolving":
+                    # BaseException can bypass both the Exception handler and else.
+                    if self._state == "resolving":  # ty: ignore[redundant-condition-strict]
                         self._state = "failed"
                         self._failure = ModelDeclarationError(
                             f"declaration binding interrupted: {self._label}",

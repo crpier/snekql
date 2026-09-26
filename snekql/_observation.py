@@ -83,7 +83,8 @@ class Telemetry:
             )
             raise
         finally:
-            if outcome == "success" and succeeded is not None and not succeeded():
+            # finally also runs after the exception path changes outcome.
+            if outcome == "success" and succeeded is not None and not succeeded():  # ty: ignore[redundant-condition-strict]
                 outcome = "error"
             event = TelemetryEvent(
                 backend=self.backend,
@@ -98,7 +99,8 @@ class Telemetry:
             try:
                 self._emit(observer, event)
             except BaseException:
-                if not pending:
+                # A failure thrown through yield must survive observer cleanup.
+                if not pending:  # ty: ignore[redundant-condition-strict]
                     raise
 
     def _emit(self, observer: Observer, event: TelemetryEvent) -> None:
@@ -110,7 +112,8 @@ class Telemetry:
                 if iscoroutine(returned):
                     returned.close()
                 self.failures += 1
-            elif returned is not None:
+            # Dynamic observers can violate the annotated None return contract.
+            elif returned is not None:  # ty: ignore[redundant-condition-strict]
                 self.failures += 1
         except Exception:
             self.failures += 1

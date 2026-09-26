@@ -109,7 +109,9 @@ async def create_pool(*, require_tls: bool, **kwargs: Any) -> Pool:
     its partial-pool cleanup region. Further connections use the same guard.
     """
 
-    return _OwnedPool(
+    # aiomysql inherits AbstractServer without implementing its unused server API.
+    # It is concrete at runtime; our adapter uses only the driver pool methods.
+    return _OwnedPool(  # ty: ignore[call-non-callable]
         require_tls=require_tls,
         echo=False,
         pool_recycle=-1,

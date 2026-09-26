@@ -80,7 +80,7 @@ type ReferentialAction = Literal["CASCADE", "RESTRICT", "SET NULL", "NO ACTION"]
 
 # ``pydantic.Json`` is typed as a special form but is a real class at runtime;
 # bind the runtime class for ``isinstance`` marker detection.
-_JSON_MARKER_TYPE: type = cast("type", _PydanticJson)
+_JSON_MARKER_TYPE: type = cast("type", _PydanticJson)  # ty: ignore[disjoint-cast]
 
 # Inclusive bounds of a signed 64-bit integer. SQLite INTEGER and MariaDB BIGINT
 # both top out here; values outside the range cannot be persisted, so the codec

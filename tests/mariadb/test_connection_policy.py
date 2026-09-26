@@ -242,7 +242,8 @@ async def provide_restarted_database() -> AsyncGenerator[mariadb.Database]:
             ):
                 yield database
         finally:
-            if database is not None:
+            # Startup can fail before assigning database; finally still runs.
+            if database is not None:  # ty: ignore[redundant-condition-strict]
                 await database.close()
 
 

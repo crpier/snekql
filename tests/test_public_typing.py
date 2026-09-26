@@ -549,17 +549,17 @@ if TYPE_CHECKING:
     )
     # Expression names are annotation-only; supported factories produce their
     # values, while direct construction is rejected by the public interface.
-    _ = Aggregate[User[Pending], int]()  # ty: ignore[missing-argument]
-    _ = Scalar[User[Pending], int]()  # ty: ignore[missing-argument]
-    _ = JoinOn[Order[Pending], User[Pending]]()  # ty: ignore[missing-argument]
-    _ = OrderBy[User[Pending]]()  # ty: ignore[missing-argument]
-    _ = Predicate[User[Pending]]()  # ty: ignore[missing-argument]
-    _ = sqlite.Assignment[User[Pending]]()  # ty: ignore[missing-argument]
+    _ = Aggregate[User[Pending], int]()  # ty: ignore[missing-argument, call-non-callable]
+    _ = Scalar[User[Pending], int]()  # ty: ignore[missing-argument, call-non-callable]
+    _ = JoinOn[Order[Pending], User[Pending]]()  # ty: ignore[missing-argument, call-non-callable]
+    _ = OrderBy[User[Pending]]()  # ty: ignore[missing-argument, call-non-callable]
+    _ = Predicate[User[Pending]]()  # ty: ignore[missing-argument, call-non-callable]
+    _ = sqlite.Assignment[User[Pending]]()  # ty: ignore[missing-argument, call-non-callable]
 
     # Aggregates: column methods carry owner + result type; the star form lives
     # on the model. count is int; sum/min/max are nullable; avg is float | None.
     _ = assert_type(User.id.count(), Aggregate[User[Pending], int])
-    _ = Aggregate[User[Pending], int](  # ty: ignore[missing-argument]
+    _ = Aggregate[User[Pending], int](  # ty: ignore[missing-argument, call-non-callable]
         func="UNSAFE",  # ty: ignore[unknown-argument]
         owner=User,  # ty: ignore[unknown-argument]
     )
@@ -845,11 +845,11 @@ if TYPE_CHECKING:
     )
     _ = select(User).join(  # ty: ignore[no-matching-overload]
         Order,
-        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument]
+        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument, call-non-callable]
     )
     _ = select(User.email).join(  # ty: ignore[no-matching-overload]
         Order,
-        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument]
+        on=JoinOn[Region[Pending], User[Pending]](),  # ty: ignore[missing-argument, call-non-callable]
     )
     # Rejection: right table, wrong-type key (int FK vs str column).
     _ = select(User).join(

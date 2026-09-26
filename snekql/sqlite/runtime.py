@@ -69,8 +69,9 @@ class SQLiteCursorAdapter:
     @property
     def columns(self) -> tuple[str, ...] | None:
         description = self.cursor.description
+        # aiosqlite omits None from its annotation, but non-row statements return it.
         return (
-            None if description is None else tuple(column[0] for column in description)
+            None if description is None else tuple(column[0] for column in description)  # ty: ignore[redundant-condition-strict]
         )
 
     @property

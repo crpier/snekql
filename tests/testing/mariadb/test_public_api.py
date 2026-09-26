@@ -220,7 +220,8 @@ async def temporary_mariadb_server_starts_with_default_unix_socket() -> None:
 
         assert_true(data_directory.exists())
     finally:
-        if data_directory is not None:
+        # Server startup or run_sql can fail before the path is captured.
+        if data_directory is not None:  # ty: ignore[redundant-condition-strict]
             await asyncio.to_thread(shutil.rmtree, data_directory, ignore_errors=True)
 
 
