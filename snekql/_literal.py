@@ -22,6 +22,10 @@ class _IntegerLiteral[FamilyT: BackendFamily]:
     backend: FamilyT
     value: int
 
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only family evidence for named projection inputs."""
+        return self.backend
+
     def __owner_model__(self) -> Never:
         msg = "a literal cannot supply FROM; use select(Model).project(...)"
         raise QueryConstructionError(msg)
@@ -50,9 +54,9 @@ class _IntegerLiteral[FamilyT: BackendFamily]:
     def __output_domain__(self) -> OutputDomain:
         return OutputDomain(int, nullable=False)
 
-    def label(self, name: str) -> _OutputLabel[Never, int, int]:
+    def label(self, name: str) -> _OutputLabel[Never, int, int, FamilyT]:
         """Name a constant without introducing LEFT-join null extension."""
-        return _OutputLabel[Never, int, int](name=name, operand=self)
+        return _OutputLabel[Never, int, int, FamilyT](name=name, operand=self)
 
 
 def build_integer_literal[FamilyT: BackendFamily](

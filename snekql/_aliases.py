@@ -52,9 +52,16 @@ class TableAlias[FamilyT, OwnerT, ReadT, RoleT]:
 
     def column[T, CompareT](
         self,
-        column: Attr[Any, Any, OwnerT, Any, T, Any, CompareT],
+        column: Attr[Any, Any, OwnerT, Any, T, Any, CompareT, FamilyT],
     ) -> Attr[
-        Never, Never, _AliasOwner[FamilyT, OwnerT, RoleT], Never, T, Never, CompareT
+        Never,
+        Never,
+        _AliasOwner[FamilyT, OwnerT, RoleT],
+        Never,
+        T,
+        Never,
+        CompareT,
+        FamilyT,
     ]:
         """Bind an original model column to this query role, retaining its codec."""
         originals = require_model_columns(self._relation.source_model)
@@ -67,7 +74,7 @@ class TableAlias[FamilyT, OwnerT, ReadT, RoleT]:
         # Metadata lookup erases column generics; identity above proves this is
         # the role-bound copy of exactly the descriptor supplied by the caller.
         return cast(
-            "Attr[Never, Never, _AliasOwner[FamilyT, OwnerT, RoleT], Never, T, Never, CompareT]",
+            "Attr[Never, Never, _AliasOwner[FamilyT, OwnerT, RoleT], Never, T, Never, CompareT, FamilyT]",
             require_model_columns(self._relation)[column.name or ""],
         )
 

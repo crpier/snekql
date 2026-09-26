@@ -360,7 +360,7 @@ def column_declarations_produce_query_attributes() -> None:
 def backend_namespaces_diverge_on_dialect_specific_names() -> None:
     """The two namespaces share neutral symbols but own distinct dialect ones."""
 
-    # Backend-bound builders differ; backend-neutral carriers stay shared.
+    # Backend-bound annotations retain shared runtime expression classes.
     assert sqlite.select is not mariadb.select
     assert_is(sqlite.ColumnRef, mariadb.ColumnRef)
     assert_is(sqlite.Predicate, mariadb.Predicate)

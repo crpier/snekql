@@ -11,15 +11,15 @@ For application annotations, see the [typing reference](typing.md).
 ## Tested versions and scope
 
 Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
-has 51 cases on each backend, producing 102 positive/negative pairs. Reports
+has 57 cases on each backend, producing 114 positive/negative pairs. Reports
 record dependency versions, commands, revision and dirty status, and SHA-256
 hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 
 | Tool | Version | Result |
 | --- | --- | --- |
-| ty | 0.0.84 | Supported; 102/102 pairs, plus native repository typing validation |
-| Pyright CLI | 1.1.414 | Not supported for this interface; 18/102 pairs |
-| mypy | 2.3.1 | Not supported for this interface; 4/102 pairs |
+| ty | 0.0.84 | Supported; 114/114 pairs, plus native repository typing validation |
+| Pyright CLI | 1.1.414 | Not supported for this interface; 18/114 pairs |
+| mypy | 2.3.1 | Not supported for this interface; 4/114 pairs |
 | Pylance | Not assessed | No editor conformance claim |
 
 All tools target Python 3.14 and use the project interpreter's dependencies.
@@ -49,11 +49,15 @@ The paired callers exercise both namespaces through their public APIs:
 - Read-only scalar comparison domains, exact scalar results through `ready`,
   nullable computed comparison inputs, validation-aware RETURNING results, and
   backend-pinned nested-query factories.
+- Backend identity through scalar comparisons, EXISTS, IN membership, named
+  projections, FK columns, and expression helper annotations. An additional 80
+  native checker tests cover operator composition, aliases, CTEs, compound output
+  tokens, generated columns, and positional projection widths.
 - Positional width, named results, nullable model joins, raw query contracts,
   and defaulted typed foreign keys.
 
 The templates and native typing tests contain exact `assert_type` controls.
-The 102 observations are paired backend cases, not 102 independent API guarantees.
+The 114 observations are paired backend cases, not 114 independent API guarantees.
 
 ## Remaining limits
 
@@ -65,11 +69,11 @@ Both-owner comparison typing can reject valid enclosing-table correlation in a
 nested JOIN ON. Native runtime behavior is preserved, but that caller currently
 needs a typing escape. General correlation typing is not redesigned.
 
-Nested-query factories reject foreign-family input queries. Scalar and predicate
-values do not yet carry a separate family witness, and IN subqueries do not
-statically check family identity. Passing a foreign expression built by its own
-namespace still requires Query Compilation to reject it. Correlated references
-also retain runtime scope checks.
+Nested expressions now retain a private family witness after construction and
+through public helpers. Ordinary typed callers cannot use a MariaDB scalar,
+EXISTS predicate, or IN query in SQLite, or the reverse. Erased types and dynamic
+callers still require compilation checks. Correlated references also retain
+runtime scope checks; family compatibility alone does not prove SQL scope.
 
 Witness consistency, `complete` keyword schemas, some FK domains, named binding
 labels and domains, and SQL validity still require runtime checks. `is_complete`
@@ -102,7 +106,7 @@ reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
 
 Use `--backend sqlite|mariadb` and `--case <name>` to select narrower checks.
-Defaults cover all 51 cases on both backends. The CLI checks types; it does not
+Defaults cover all 57 cases on both backends. The CLI checks types; it does not
 execute callers or connect to a database. Templates live in
 [`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
 not include intentional errors.
@@ -121,10 +125,12 @@ specific expected diagnostics, including abstract expression constructors.
 
 Current reports:
 
-- [ty](../typing_probes/results/2026-09-26-typing-sweep/ty.json)
-- [Pyright](../typing_probes/results/2026-09-26-typing-sweep/pyright.json)
-- [mypy](../typing_probes/results/2026-09-26-typing-sweep/mypy.json)
+- [ty](../typing_probes/results/2026-09-26-expression-families/ty.json)
+- [Pyright](../typing_probes/results/2026-09-26-expression-families/pyright.json)
+- [mypy](../typing_probes/results/2026-09-26-expression-families/mypy.json)
 
+The reports under `typing_probes/results/2026-09-26-typing-sweep/` retain the
+102-pair assessment before nested expression family propagation.
 The reports under `typing_probes/results/2026-09-26-ty/` retain the checker-upgrade
 baseline of 84 pairs. The reports under
 `typing_probes/results/2026-09-25-class-body/` retain the previous ty 0.0.77

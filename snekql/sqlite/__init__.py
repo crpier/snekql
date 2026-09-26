@@ -8,17 +8,15 @@ SQLite's write verbs, ``Model`` base, and column constructors. There is no flat
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 from snekql._common import (
     PENDING_GENERATION,
-    Aggregate,
     Assignment,
     Canonical,
     CanonicalDecimal,
     CheckConstraint,
     ChunkStream,
-    ColumnRef,
     CommitOutcome,
     CompiledQuery,
     DatabaseClosedError,
@@ -61,7 +59,6 @@ from snekql._common import (
     PendingGeneration,
     PoolStats,
     PoolTimeoutError,
-    Predicate,
     QueryCompilationError,
     QueryConstructionError,
     QueryError,
@@ -69,7 +66,6 @@ from snekql._common import (
     RawResultValidationError,
     ResultCardinalityError,
     Row,
-    Scalar,
     SchemaDriftIssue,
     SchemaError,
     SchemaPolicy,
@@ -91,6 +87,10 @@ from snekql._common import (
 from snekql._common import (
     Write as _RuntimeWrite,
 )
+from snekql.expressions import Aggregate as _AggregateType
+from snekql.expressions import ColumnRef as _ColumnRef
+from snekql.expressions import Predicate as _Predicate
+from snekql.expressions import Scalar as _ScalarType
 from snekql.model import ReadType, is_complete
 from snekql.query import _Write
 from snekql.runtime import Database as _Database
@@ -131,10 +131,21 @@ from snekql.storage import (
 )
 
 if TYPE_CHECKING:
+    _OwnerT = TypeVar("_OwnerT")
+    _ValueT = TypeVar("_ValueT")
+    _CompareT = TypeVar("_CompareT", default=_ValueT)
+    Scalar = _ScalarType[_OwnerT, _ValueT, _CompareT, Literal["sqlite"]]
+    Predicate = _Predicate[_OwnerT, Literal["sqlite"]]
+    Aggregate = _AggregateType[_OwnerT, _ValueT, _CompareT, Literal["sqlite"]]
+    ColumnRef = _ColumnRef[_OwnerT, _ValueT, Literal["sqlite"]]
     Database = _Database[Literal["sqlite"]]
     Transaction = _Transaction[Literal["sqlite"]]
     type Write[ResultT] = _Write[Literal["sqlite"], ResultT]
 else:
+    Scalar = _ScalarType
+    Predicate = _Predicate
+    Aggregate = _AggregateType
+    ColumnRef = _ColumnRef
     Database = _Database
     Transaction = _Transaction
     Write = _RuntimeWrite

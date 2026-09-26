@@ -1,0 +1,3 @@
+
+
+database.select(Account).where(foreign.exists(foreign.select(Foreign).all()))  # expect-error

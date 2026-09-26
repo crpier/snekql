@@ -1,0 +1,3 @@
+
+
+database.select(Account).all().project(Result, value=foreign.scalar(foreign.select(Foreign.number).all()).label("value"))  # expect-error

@@ -118,7 +118,7 @@ def _backend_select_overloads(backend: str) -> str:
     column_ref_overload = (
         "@overload\n"
         f"def select[OwnerT: {owner_bound}, ValueT](\n"
-        "    field: ColumnRef[OwnerT, ValueT],\n"
+        f"    field: ColumnRef[OwnerT, ValueT, {family}],\n"
         "    /,\n"
         f") -> SelectValueQuery[{family}, OwnerT, OwnerT, ValueT, ValueT]: ...\n\n\n"
     )
@@ -131,9 +131,13 @@ def _backend_select_overloads(backend: str) -> str:
         )
         fields = "".join(
             f"    field{index}: Attr[Any, Any, Owner{index}T, Any, T{index}]\n"
-            f"    | ColumnRef[Owner{index}T, T{index}]\n"
+            f"    | ColumnRef[Owner{index}T, T{index}, {family}]\n"
             f"    | Aggregate[Owner{index}T, T{index}, Any]\n"
-            + ("" if index == 1 else f"    | Scalar[Owner{index}T, T{index}, Any]\n")
+            + (
+                ""
+                if index == 1
+                else f"    | Scalar[Owner{index}T, T{index}, Any, {family}]\n"
+            )
             + f"    | DialectSelectable[Owner{index}T, T{index}, Any],\n"
             for index in range(1, width + 1)
         )

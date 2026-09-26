@@ -8,7 +8,7 @@ result rows; this module owns only the typed construction surface.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import (
     Any,
@@ -95,6 +95,7 @@ from snekql.expressions import (
     Predicate,
     Scalar,
     _Assignment,
+    _ExpressionFamily,
     _JoinOn,
     _OrderBy,
     _PredicateNode,
@@ -360,6 +361,10 @@ class _FluentSelectQuery[FluentOwnerT: Table[Any]](_BaseSelectQuery):
 class _QueryShape[FamilyT, ScopeT, RefT, RowT, ReadinessT](_SqlInspectionMixin):
     """Private nominal carrier for select scope, row shape, and readiness."""
 
+    def __expression_family_type__(self) -> FamilyT:
+        """Typing-only evidence for a query used as a nested expression."""
+        raise NotImplementedError
+
     def _pin_scope(self, scope: ScopeT) -> ScopeT:
         """Keep scope invariant so references cannot widen beyond joined tables."""
 
@@ -410,7 +415,7 @@ def _check_read_query(query: object, *, backend: BackendFamily) -> None:
 
 
 def _named_contract(
-    result_type: type[BaseModel], fields: dict[str, object]
+    result_type: type[BaseModel], fields: Mapping[str, object]
 ) -> NamedProjection:
     """Require a complete, unambiguous, table-independent named row contract."""
     if (
@@ -431,7 +436,7 @@ def _named_contract(
 
 
 def _project_state(
-    state: SelectState, result_type: type[BaseModel], fields: dict[str, object]
+    state: SelectState, result_type: type[BaseModel], fields: Mapping[str, object]
 ) -> SelectState:
     """Resolve named bindings without changing row scope or query readiness."""
     projection = _named_contract(result_type, fields)
@@ -476,7 +481,7 @@ def _project_state(
 
 
 def _named_returning_state[StateT: InsertState | UpdateState | DeleteState](
-    state: StateT, result_type: type[BaseModel], fields: dict[str, object]
+    state: StateT, result_type: type[BaseModel], fields: Mapping[str, object]
 ) -> StateT:
     """Use the existing RETURNING column policy with a named result contract."""
     projection = _named_contract(result_type, fields)
@@ -551,7 +556,10 @@ class NamedSelectQuery[
         return self._replace_state(_select_group_by(self.state, (column, *columns)))
 
     def having(
-        self, predicate: Predicate[OwnerT], /, *predicates: Predicate[OwnerT]
+        self,
+        predicate: Predicate[OwnerT, FamilyT],
+        /,
+        *predicates: Predicate[OwnerT, FamilyT],
     ) -> Self:
         """Filter aggregates or grouping keys without changing row readiness."""
         return self._replace_state(_select_having(self.state, (predicate, *predicates)))
@@ -565,7 +573,10 @@ class NamedSelectQuery[
         return NamedSelectQuery(_select_all(self.state))
 
     def where(
-        self, predicate: Predicate[OwnerT], /, *predicates: Predicate[OwnerT]
+        self,
+        predicate: Predicate[OwnerT, FamilyT],
+        /,
+        *predicates: Predicate[OwnerT, FamilyT],
     ) -> NamedSelectQuery[
         FamilyT, OwnerT, ResultT, _ExecutableQuery, NonNullableOwnerT
     ]:
@@ -618,18 +629,24 @@ class CompoundSelectQuery[
 
     @overload
     def column[T, CompareT](
-        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT]: ...
+        self, token: _SensitiveLabelContract[NonNullableOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[
+        _CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT, FamilyT
+    ]: ...
 
     @overload
     def column[TokenOwnerT, T, CompareT](
-        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T | None, CompareT]: ...
+        self, token: _SensitiveLabelContract[TokenOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[
+        _CteOwner[FamilyT, OwnerT, _CompoundRole], T | None, CompareT, FamilyT
+    ]: ...
 
     @overload
     def column[TokenOwnerT, T, CompareT](
-        self, token: _LabelContract[TokenOwnerT, T, CompareT]
-    ) -> _CteOutput[_CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT]: ...
+        self, token: _LabelContract[TokenOwnerT, T, CompareT, FamilyT]
+    ) -> _CteOutput[
+        _CteOwner[FamilyT, OwnerT, _CompoundRole], T, CompareT, FamilyT
+    ]: ...
 
     def column(self, token: object) -> _CteOutput[Any, Any, Any]:
         """Read a left-hand output token rebound to the whole combined result."""
@@ -682,7 +699,7 @@ class SelectModelQuery[
     """Immutable select query that returns fetched table model instances."""
 
     def project[ResultT: BaseModel](
-        self, result_type: type[ResultT], /, **fields: object
+        self, result_type: type[ResultT], /, **fields: _ExpressionFamily[FamilyT]
     ) -> NamedSelectQuery[FamilyT, SelectOwnerT, ResultT, ReadinessT]:
         """Select named values validated against an application result contract.
 
@@ -704,22 +721,22 @@ class SelectModelQuery[
     @overload
     def where(
         self,
-        predicate: Predicate[SelectOwnerT],
+        predicate: Predicate[SelectOwnerT, FamilyT],
         /,
     ) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]: ...
 
     @overload
     def where(
         self,
-        predicate: Predicate[SelectOwnerT],
-        second: Predicate[SelectOwnerT],
+        predicate: Predicate[SelectOwnerT, FamilyT],
+        second: Predicate[SelectOwnerT, FamilyT],
         /,
-        *predicates: Predicate[SelectOwnerT],
+        *predicates: Predicate[SelectOwnerT, FamilyT],
     ) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]: ...
 
     def where(
         self,
-        *predicates: Predicate[SelectOwnerT],
+        *predicates: Predicate[SelectOwnerT, FamilyT],
     ) -> SelectModelQuery[FamilyT, SelectOwnerT, ReadModelT, _ExecutableQuery]:
         """Filter rows and mark the query executable."""
 
@@ -732,7 +749,8 @@ class SelectModelQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
+        on: JoinOn[NewOwnerT, SelectOwnerT]
+        | Predicate[NewOwnerT | SelectOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
@@ -771,7 +789,8 @@ class SelectModelQuery[
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, SelectOwnerT] | Predicate[NewOwnerT | SelectOwnerT],
+        on: JoinOn[NewOwnerT, SelectOwnerT]
+        | Predicate[NewOwnerT | SelectOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT,
         SelectOwnerT | NewOwnerT,
@@ -827,7 +846,7 @@ class JoinModelQuery[
     """
 
     def project[ResultT: BaseModel](
-        self, result_type: type[ResultT], /, **fields: object
+        self, result_type: type[ResultT], /, **fields: _ExpressionFamily[FamilyT]
     ) -> NamedSelectQuery[FamilyT, JoinOwnerT, ResultT, ReadinessT, NonNullableOwnerT]:
         """Select named values validated against an application result contract.
 
@@ -851,7 +870,7 @@ class JoinModelQuery[
     @overload
     def where(
         self,
-        predicate: Predicate[JoinOwnerT],
+        predicate: Predicate[JoinOwnerT, FamilyT],
         /,
     ) -> JoinModelQuery[
         FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
@@ -860,17 +879,17 @@ class JoinModelQuery[
     @overload
     def where(
         self,
-        predicate: Predicate[JoinOwnerT],
-        second: Predicate[JoinOwnerT],
+        predicate: Predicate[JoinOwnerT, FamilyT],
+        second: Predicate[JoinOwnerT, FamilyT],
         /,
-        *predicates: Predicate[JoinOwnerT],
+        *predicates: Predicate[JoinOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
     ]: ...
 
     def where(
         self,
-        *predicates: Predicate[JoinOwnerT],
+        *predicates: Predicate[JoinOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT, JoinOwnerT, NonNullableOwnerT, _ExecutableQuery, *ResultTs
     ]:
@@ -882,7 +901,7 @@ class JoinModelQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT,
         JoinOwnerT | NewOwnerT,
@@ -923,7 +942,7 @@ class JoinModelQuery[
     def left_join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT],
+        on: JoinOn[NewOwnerT, JoinOwnerT] | Predicate[NewOwnerT | JoinOwnerT, FamilyT],
     ) -> JoinModelQuery[
         FamilyT,
         JoinOwnerT | NewOwnerT,
@@ -1006,7 +1025,7 @@ class SelectValueQuery[
     @overload
     def where[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
         /,
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, _ExecutableQuery
@@ -1015,17 +1034,17 @@ class SelectValueQuery[
     @overload
     def where[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
-        second: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
+        second: Predicate[RefOwnerT, FamilyT],
         /,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, _ExecutableQuery
     ]: ...
 
     def where[RefOwnerT: Table[Any]](
         self,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, _ExecutableQuery
     ]:
@@ -1107,7 +1126,7 @@ class SelectValueQuery[
     @overload
     def having[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
         /,
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT
@@ -1116,17 +1135,17 @@ class SelectValueQuery[
     @overload
     def having[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
-        second: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
+        second: Predicate[RefOwnerT, FamilyT],
         /,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT
     ]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectValueQuery[FamilyT, ScopeT, RefT | RefOwnerT, T, CompareT, ReadinessT]:
         """Filter groups by aggregate or grouped column, widening the union."""
 
@@ -1141,7 +1160,7 @@ class SelectValueQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
+        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT, FamilyT],
     ) -> SelectValueQuery[
         FamilyT, ScopeT | NewOwnerT, RefT, T, CompareT, ReadinessT
     ]: ...
@@ -1211,22 +1230,22 @@ class SelectTupleQuery[
     @overload
     def where[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
         /,
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, _ExecutableQuery, *Ts]: ...
 
     @overload
     def where[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
-        second: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
+        second: Predicate[RefOwnerT, FamilyT],
         /,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, _ExecutableQuery, *Ts]: ...
 
     def where[RefOwnerT: Table[Any]](
         self,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, _ExecutableQuery, *Ts]:
         """Filter rows and mark the query executable."""
 
@@ -1298,22 +1317,22 @@ class SelectTupleQuery[
     @overload
     def having[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
         /,
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]: ...
 
     @overload
     def having[RefOwnerT: Table[Any]](
         self,
-        predicate: Predicate[RefOwnerT],
-        second: Predicate[RefOwnerT],
+        predicate: Predicate[RefOwnerT, FamilyT],
+        second: Predicate[RefOwnerT, FamilyT],
         /,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]: ...
 
     def having[RefOwnerT: Table[Any]](
         self,
-        *predicates: Predicate[RefOwnerT],
+        *predicates: Predicate[RefOwnerT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT, RefT | RefOwnerT, ReadinessT, *Ts]:
         """Filter groups by aggregate or grouped column, widening the union."""
 
@@ -1328,7 +1347,7 @@ class SelectTupleQuery[
     def join[NewOwnerT: Table[Any], NewReadT: Table[Any] | BaseModel](
         self,
         model: _SelectableModelClass[FamilyT, NewOwnerT, NewReadT],
-        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT],
+        on: JoinOn[NewOwnerT, ScopeT] | Predicate[NewOwnerT | ScopeT, FamilyT],
     ) -> SelectTupleQuery[FamilyT, ScopeT | NewOwnerT, RefT, ReadinessT, *Ts]: ...
 
     @overload
@@ -1995,36 +2014,36 @@ class _UpdateQuery[
     @overload
     def where(
         self: _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _EmptyUpdate],
-        predicate: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
         /,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ScopedUpdate]: ...
 
     @overload
     def where(
         self: _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _AssignedUpdate],
-        predicate: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
         /,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableUpdate]: ...
 
     @overload
     def where(
         self: _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ScopedUpdate],
-        predicate: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
         /,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ScopedUpdate]: ...
 
     @overload
     def where(
         self: _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableUpdate],
-        predicate: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
         /,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _UpdateQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableUpdate]: ...
 
-    def where(self, *predicates: Predicate[ModelT]) -> object:
+    def where(self, *predicates: Predicate[ModelT, FamilyT]) -> object:
         return type(self)(_update_where(self.state, predicates))
 
 
@@ -2211,22 +2230,22 @@ class _DeleteQuery[
     @overload
     def where(
         self,
-        predicate: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
         /,
     ) -> _DeleteQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableQuery]: ...
 
     @overload
     def where(
         self,
-        predicate: Predicate[ModelT],
-        second: Predicate[ModelT],
+        predicate: Predicate[ModelT, FamilyT],
+        second: Predicate[ModelT, FamilyT],
         /,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _DeleteQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableQuery]: ...
 
     def where(
         self,
-        *predicates: Predicate[ModelT],
+        *predicates: Predicate[ModelT, FamilyT],
     ) -> _DeleteQuery[FamilyT, ModelT, ReadT, ResultT, _ExecutableQuery]:
         """Delete matching rows and mark the query executable."""
 
@@ -2302,7 +2321,7 @@ def _select_distinct(state: SelectState) -> SelectState:
 
 
 def _require_factory_predicates(
-    predicates: tuple[Predicate[Any], ...],
+    predicates: tuple[Predicate[Any, Any], ...],
 ) -> tuple[_PredicateNode[Any], ...]:
     """Keep caller-defined predicate implementations out of query state."""
 
@@ -2311,7 +2330,7 @@ def _require_factory_predicates(
 
 def _select_where(
     state: SelectState,
-    predicates: tuple[Predicate[Any], ...],
+    predicates: tuple[Predicate[Any, Any], ...],
 ) -> SelectState:
     if not predicates:
         msg = "where() requires at least one predicate"
@@ -2361,7 +2380,7 @@ def _select_group_by(
 
 def _select_having(
     state: SelectState,
-    predicates: tuple[Predicate[Any], ...],
+    predicates: tuple[Predicate[Any, Any], ...],
 ) -> SelectState:
     if not predicates:
         msg = "having() requires at least one predicate"
@@ -2511,7 +2530,7 @@ def _update_set(
 
 def _update_where(
     state: UpdateState,
-    predicates: tuple[Predicate[Any], ...],
+    predicates: tuple[Predicate[Any, Any], ...],
 ) -> UpdateState:
     if not predicates:
         msg = "where() requires at least one predicate"
@@ -2537,7 +2556,7 @@ def _delete_all(state: DeleteState) -> DeleteState:
 
 def _delete_where(
     state: DeleteState,
-    predicates: tuple[Predicate[Any], ...],
+    predicates: tuple[Predicate[Any, Any], ...],
 ) -> DeleteState:
     if not predicates:
         msg = "where() requires at least one predicate"
@@ -3002,7 +3021,9 @@ def build_select(*args: object) -> object:
     return SelectTupleQuery[Any, Any, Any, _IncompleteQuery, *tuple[Any, ...]](state)
 
 
-def exists(subquery: _ExecutableSelect[Any, Any, Any, Any], /) -> Predicate[Any]:
+def exists[FamilyT](
+    subquery: _ExecutableSelect[FamilyT, Any, Any, Any], /
+) -> Predicate[Never, FamilyT]:
     """Build an ``EXISTS (subquery)`` predicate.
 
     The subquery's projection is irrelevant to ``EXISTS`` (only whether it yields
@@ -3012,19 +3033,21 @@ def exists(subquery: _ExecutableSelect[Any, Any, Any, Any], /) -> Predicate[Any]
     """
 
     _ = require_subquery_state(subquery)
-    return ExistencePredicate(subquery=subquery, negated=False)
+    return ExistencePredicate[Never, FamilyT](subquery=subquery, negated=False)
 
 
-def not_exists(subquery: _ExecutableSelect[Any, Any, Any, Any], /) -> Predicate[Any]:
+def not_exists[FamilyT](
+    subquery: _ExecutableSelect[FamilyT, Any, Any, Any], /
+) -> Predicate[Never, FamilyT]:
     """Build a ``NOT EXISTS (subquery)`` predicate (see :func:`exists`)."""
 
     _ = require_subquery_state(subquery)
-    return ExistencePredicate(subquery=subquery, negated=True)
+    return ExistencePredicate[Never, FamilyT](subquery=subquery, negated=True)
 
 
-def scalar[T, CompareT](
-    subquery: SelectValueQuery[Any, Any, Any, T, CompareT, _ExecutableQuery], /
-) -> Scalar[Never, T | None, CompareT]:
+def scalar[FamilyT, T, CompareT](
+    subquery: SelectValueQuery[FamilyT, Any, Any, T, CompareT, _ExecutableQuery], /
+) -> Scalar[Never, T | None, CompareT, FamilyT]:
     """Wrap a single-column select as a scalar subquery usable as a value.
 
     The result is a selectable (projectable alongside columns) and a comparison
@@ -3041,7 +3064,7 @@ def scalar[T, CompareT](
     """
 
     _ = require_single_column_subquery(subquery)
-    return _Scalar[Never, T | None, CompareT](subquery=subquery)
+    return _Scalar[Never, T | None, CompareT, FamilyT](subquery=subquery)
 
 
 def insert[FamilyT, OwnerT: Table[Any], ReadT: Table[Any]](

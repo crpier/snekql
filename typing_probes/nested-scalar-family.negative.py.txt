@@ -1,0 +1,3 @@
+
+
+Account.number.eq_col(foreign.scalar(foreign.select(Foreign.number).all()))  # expect-error

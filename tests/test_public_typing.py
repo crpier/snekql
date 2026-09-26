@@ -427,7 +427,7 @@ if TYPE_CHECKING:
     # `select` overloads without the core naming the leaf expression.
     _ = assert_type(
         MariadbUser.profile.json_extract_int("$.age").gt(18),
-        Predicate[MariadbUser[Pending]],
+        mariadb.Predicate[MariadbUser[Pending]],
     )
     # A missing JSON path yields SQL NULL, so the projection is `int | None`.
     _ = assert_type(
@@ -755,8 +755,8 @@ if TYPE_CHECKING:
         User.id.in_subquery(select(Order.user_id).where(Order.user_id.gt(0))),
         Predicate[User[Pending]],
     )
-    _ = assert_type(exists(select(Order.id).all()), Predicate[Any])
-    _ = assert_type(not_exists(select(Order.id).all()), Predicate[Any])
+    _ = assert_type(exists(select(Order.id).all()), Predicate[Never])
+    _ = assert_type(not_exists(select(Order.id).all()), Predicate[Never])
     _ = exists(select(Order.id))  # ty: ignore[invalid-argument-type]
     _ = not_exists(select(Order.id))  # ty: ignore[invalid-argument-type]
     _ = scalar(select(Order.id))  # ty: ignore[invalid-argument-type]

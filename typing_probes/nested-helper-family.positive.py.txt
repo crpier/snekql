@@ -1,0 +1,93 @@
+"""Public helper annotations retain family, owner, and result evidence."""
+
+from typing import ClassVar, Never, assert_type
+from pydantic import BaseModel
+from snekql import __BACKEND__ as database
+from snekql import __OTHER_BACKEND__ as foreign
+
+
+class Account[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    number: database.Col[int] = database.Integer()
+
+
+class Invoice[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Invoice[database.Row]]]
+    number: database.Col[int] = database.Integer()
+    account: database.FKCol[Account, int] = database.Integer()
+    generated: database.GenCol[int] = database.Integer(auto_increment=True, primary_key=True)
+
+
+class Foreign[S = foreign.Pending](foreign.Model[S]):
+    __row_type__: ClassVar[foreign.ReadType[Foreign[foreign.Row]]]
+    number: foreign.Col[int] = foreign.Integer()
+
+
+class Result(BaseModel):
+    number: int
+
+
+class Role:
+    pass
+
+
+def scalar_value() -> database.Scalar[Never, int | None, int]:
+    return database.scalar(database.select(Invoice.number).all())
+
+
+def existence() -> database.Predicate[Never]:
+    return database.exists(database.select(Invoice).all())
+
+
+def negate[Owner](predicate: database.Predicate[Owner]) -> database.Predicate[Owner]:
+    return ~predicate
+
+
+def column[Owner, Value](value: database.ColumnRef[Owner, Value]) -> database.ColumnRef[Owner, Value]:
+    return value
+
+
+def total() -> database.Aggregate[Account, int]:
+    return Account.count_all()
+
+
+token = Account.number.label("number")
+named = database.select(Account).all().project(Result, number=token)
+derived = named.cte(Role, name="derived")
+compound = named.union_all(named)
+aliased = database.alias(Account, Role, name="aliased")
+local = database.select(Invoice.number).where(Invoice.number.eq_col(Account.number))
+remote = foreign.select(Foreign.number).all()
+
+
+async def control(transaction: database.Transaction) -> None:
+    assert_type(scalar_value(), database.Scalar[Never, int | None, int])
+    assert_type(existence(), database.Predicate[Never])
+    assert_type(negate(existence()), database.Predicate[Never])
+    assert_type(Account.number.eq(1) & existence(), database.Predicate[Account])
+    assert_type(existence() | Account.number.eq(1), database.Predicate[Account])
+    assert_type(column(Account.number).eq(1), database.Predicate[Account])
+    assert_type(Invoice.account.eq(1), database.Predicate[Invoice])
+    assert_type(Invoice.generated.eq(1), database.Predicate[Invoice])
+    assert_type(total().gt(0), database.Predicate[Account])
+    assert_type(Account.number.add(1).eq(2), database.Predicate[Account])
+    value = database.scalar(local)
+    assert_type(Account.number.eq_col(value), database.Predicate[Account])
+    assert_type(Account.number.ne_col(value), database.Predicate[Account])
+    assert_type(Account.number.gt_col(value), database.Predicate[Account])
+    assert_type(Account.number.gte_col(value), database.Predicate[Account])
+    assert_type(Account.number.lt_col(value), database.Predicate[Account])
+    assert_type(Account.number.lte_col(value), database.Predicate[Account])
+    assert_type(Account.number.in_subquery(local), database.Predicate[Account])
+    assert_type(Account.number.not_in_subquery(local), database.Predicate[Account])
+    assert_type(await transaction.fetch_all(database.select(Account).where(negate(database.not_exists(local)))), list[Account[database.Row]])
+    assert_type(await transaction.fetch_all(database.select(column(Account.number), scalar_value()).all()), list[tuple[int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(aliased.column(Account.number)).where(aliased.column(Account.number).in_subquery(database.select(Invoice.number).all()))), list[int])
+    assert_type(await transaction.fetch_all(database.select(derived.column(token)).where(derived.column(token).in_subquery(database.select(Invoice.number).all()))), list[int])
+    assert_type(await transaction.fetch_all(compound.order_by(compound.column(token).asc())), list[Result])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int, int | None]])
+    assert_type(await transaction.fetch_all(database.select(Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, Account.number, scalar_value()).all()), list[tuple[int, int, int, int, int, int, int, int | None]])

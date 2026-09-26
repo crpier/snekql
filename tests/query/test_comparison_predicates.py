@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ClassVar, cast
+from typing import ClassVar, Literal, cast
 
 from snektest import assert_eq, assert_raises, test
 
@@ -180,12 +180,12 @@ async def comparison_predicates_filter_rows_end_to_end() -> None:
 def comparison_compilation_rejects_none_carried_into_predicate() -> None:
     """A None value reaching compilation is rejected with a null-predicate hint."""
 
-    raw_gt: Predicate[Reading] = ComparisonPredicate[Reading](
+    raw_gt: Predicate[Reading] = ComparisonPredicate[Reading, Literal["sqlite"]](
         operand=Reading.value,
         operator="gt",
         value=None,
     )
-    raw_between: Predicate[Reading] = BetweenPredicate[Reading](
+    raw_between: Predicate[Reading] = BetweenPredicate[Reading, Literal["sqlite"]](
         operand=Reading.value,
         low=1,
         high=None,

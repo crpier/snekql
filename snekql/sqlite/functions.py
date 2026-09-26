@@ -12,79 +12,79 @@ from snekql.sqlite.model import Model
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
-    then: int | ExpressionMethods[OwnerT, int],
-    otherwise: int | ExpressionMethods[OwnerT, int],
-) -> ValueExpression[OwnerT, int]: ...
+    then: int | ExpressionMethods[OwnerT, int, Literal["sqlite"]],
+    otherwise: int | ExpressionMethods[OwnerT, int, Literal["sqlite"]],
+) -> ValueExpression[OwnerT, int, int, Literal["sqlite"]]: ...
 
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
     then: int
-    | ExpressionMethods[OwnerT, int]
-    | ExpressionMethods[OwnerT, int | None]
+    | ExpressionMethods[OwnerT, int, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, int | None, Literal["sqlite"]]
     | None,
     otherwise: int
-    | ExpressionMethods[OwnerT, int]
-    | ExpressionMethods[OwnerT, int | None]
+    | ExpressionMethods[OwnerT, int, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, int | None, Literal["sqlite"]]
     | None,
-) -> ValueExpression[OwnerT, int | None, int]: ...
+) -> ValueExpression[OwnerT, int | None, int, Literal["sqlite"]]: ...
 
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
-    then: float | ExpressionMethods[OwnerT, float],
-    otherwise: float | ExpressionMethods[OwnerT, float],
-) -> ValueExpression[OwnerT, float]: ...
+    then: float | ExpressionMethods[OwnerT, float, Literal["sqlite"]],
+    otherwise: float | ExpressionMethods[OwnerT, float, Literal["sqlite"]],
+) -> ValueExpression[OwnerT, float, float, Literal["sqlite"]]: ...
 
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
     then: float
-    | ExpressionMethods[OwnerT, float]
-    | ExpressionMethods[OwnerT, float | None]
+    | ExpressionMethods[OwnerT, float, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, float | None, Literal["sqlite"]]
     | None,
     otherwise: float
-    | ExpressionMethods[OwnerT, float]
-    | ExpressionMethods[OwnerT, float | None]
+    | ExpressionMethods[OwnerT, float, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, float | None, Literal["sqlite"]]
     | None,
-) -> ValueExpression[OwnerT, float | None, float]: ...
+) -> ValueExpression[OwnerT, float | None, float, Literal["sqlite"]]: ...
 
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
-    then: str | ExpressionMethods[OwnerT, str],
-    otherwise: str | ExpressionMethods[OwnerT, str],
-) -> ValueExpression[OwnerT, str]: ...
+    then: str | ExpressionMethods[OwnerT, str, Literal["sqlite"]],
+    otherwise: str | ExpressionMethods[OwnerT, str, Literal["sqlite"]],
+) -> ValueExpression[OwnerT, str, str, Literal["sqlite"]]: ...
 
 
 @overload
 def case[OwnerT: Model[Any] | _AliasOwner[Literal["sqlite"], Any, Any]](
-    condition: Predicate[OwnerT],
+    condition: Predicate[OwnerT, Literal["sqlite"]],
     *,
     then: str
-    | ExpressionMethods[OwnerT, str]
-    | ExpressionMethods[OwnerT, str | None]
+    | ExpressionMethods[OwnerT, str, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, str | None, Literal["sqlite"]]
     | None,
     otherwise: str
-    | ExpressionMethods[OwnerT, str]
-    | ExpressionMethods[OwnerT, str | None]
+    | ExpressionMethods[OwnerT, str, Literal["sqlite"]]
+    | ExpressionMethods[OwnerT, str | None, Literal["sqlite"]]
     | None,
-) -> ValueExpression[OwnerT, str | None, str]: ...
+) -> ValueExpression[OwnerT, str | None, str, Literal["sqlite"]]: ...
 
 
 def case(
-    condition: Predicate[Any], *, then: object, otherwise: object
-) -> ValueExpression[Any, Any]:
+    condition: Predicate[Any, Literal["sqlite"]], *, then: object, otherwise: object
+) -> ValueExpression[Any, Any, Any, Literal["sqlite"]]:
     """Choose a compatible branch in SQL; UNKNOWN conditions use `otherwise`.
 
     Example: `case(User.score.gte(100), then="gold", otherwise="standard")`.
