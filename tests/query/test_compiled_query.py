@@ -15,6 +15,7 @@ from snekql.sqlite import (
     ReadType,
     Row,
     Text,
+    UtcDatetime,
     delete,
     insert,
     insert_many,
@@ -125,13 +126,13 @@ def compile_insert_returns_encoded_bindings() -> None:
         occurred_at: Event.Col[sqlite.UtcDatetime] = Text()
 
     compiled = insert(
-        Event(event_id=3, occurred_at=datetime(2026, 1, 2, tzinfo=UTC))
+        Event(event_id=3, occurred_at=UtcDatetime(datetime(2026, 1, 2, tzinfo=UTC)))
     ).compile()
 
     assert_eq(
         compiled.sql, 'INSERT INTO "event" ("event_id", "occurred_at") VALUES (?, ?)'
     )
-    assert_eq(compiled.params, (3, "2026-01-02T00:00:00.000Z"))
+    assert_eq(compiled.params, (3, "2026-01-02T00:00:00.000000Z"))
 
 
 @test(mark="fast")

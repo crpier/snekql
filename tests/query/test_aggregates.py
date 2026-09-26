@@ -210,8 +210,8 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
         )
         when: Event.Col[UtcDatetime] = Text(nullable=False)
 
-    earlier = datetime(2020, 1, 1, tzinfo=UTC)
-    later = datetime(2021, 6, 15, tzinfo=UTC)
+    earlier = UtcDatetime(datetime(2020, 1, 1, tzinfo=UTC))
+    later = UtcDatetime(datetime(2021, 6, 15, tzinfo=UTC))
     database = await initialized_database(database=":memory:", models=[Event])
     try:
         async with database.transaction() as tx:
@@ -222,8 +222,8 @@ async def min_and_max_decode_datetime_to_logical_type() -> None:
     finally:
         await database.close()
 
-    assert isinstance(lowest, datetime)
-    assert isinstance(highest, datetime)
+    assert isinstance(lowest, UtcDatetime)
+    assert isinstance(highest, UtcDatetime)
     assert_eq(lowest, earlier)
     assert_eq(highest, later)
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator, Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar, cast
 
@@ -29,6 +28,7 @@ from snekql.mariadb import (
     SchemaError,
     SchemaPolicy,
     SchemaVerificationError,
+    UtcDatetime,
 )
 from snekql.model import Table
 from tests.helpers import (
@@ -390,12 +390,12 @@ async def mariadb_datetime_precision_drift_is_reported() -> None:
     server = await load_fixture(provide_mariadb_server())
 
     class Event[S = Pending](mariadb.Model[S]):
-        """Model expecting DATETIME(3)."""
+        """Model expecting DATETIME(6)."""
 
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_datetime_precision"
-        happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
+        happened_at: Event.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
     _ = await server.run_sql(
         "CREATE TABLE issue253_datetime_precision "
@@ -408,7 +408,7 @@ async def mariadb_datetime_precision_drift_is_reported() -> None:
     finally:
         await database.close()
 
-    assert_true("datetime precision expected 3, found 0" in str(raised.exception))
+    assert_true("datetime precision expected 6, found 0" in str(raised.exception))
 
 
 @test(mark="medium")
@@ -423,13 +423,13 @@ async def mariadb_supported_server_default_drift_is_reported() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_server_default"
-        created_at: Event.GenCol[datetime] = mariadb.DateTime(
+        created_at: Event.GenCol[UtcDatetime] = mariadb.DateTime(
             default=mariadb.CurrentTimestamp
         )
 
     _ = await server.run_sql(
         "CREATE TABLE issue253_server_default "
-        "(created_at DATETIME(3) NOT NULL DEFAULT '2000-01-01 00:00:00.000') "
+        "(created_at DATETIME(6) NOT NULL DEFAULT '2000-01-01 00:00:00.000') "
         "ENGINE=InnoDB"
     )
     database = await Database.initialize(server.config())
@@ -445,7 +445,7 @@ async def mariadb_supported_server_default_drift_is_reported() -> None:
 
 @test(mark="medium")
 async def mariadb_supported_server_default_is_normalized() -> None:
-    """MariaDB's catalog-normalized `NOW(3)` satisfies `CurrentTimestamp`."""
+    """MariaDB's catalog-normalized `NOW(6)` satisfies `CurrentTimestamp`."""
 
     server = await load_fixture(provide_mariadb_server())
 
@@ -455,13 +455,13 @@ async def mariadb_supported_server_default_is_normalized() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         __tablename__ = "issue253_normalized_default"
-        created_at: Event.GenCol[datetime] = mariadb.DateTime(
+        created_at: Event.GenCol[UtcDatetime] = mariadb.DateTime(
             default=mariadb.CurrentTimestamp
         )
 
     _ = await server.run_sql(
         "CREATE TABLE issue253_normalized_default "
-        "(created_at DATETIME(3) NOT NULL DEFAULT NOW(3)) ENGINE=InnoDB"
+        "(created_at DATETIME(6) NOT NULL DEFAULT NOW(6)) ENGINE=InnoDB"
     )
     database = await Database.initialize(server.config())
     try:

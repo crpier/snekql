@@ -22,13 +22,9 @@ class SnekqlError(Exception):
 class SnekqlWarning(Warning):
     """Base class for package-originated warnings.
 
-    >>> issubclass(LexicalDatetimeWarning, SnekqlWarning)
+    >>> issubclass(LexicalDecimalWarning, SnekqlWarning)
     True
     """
-
-
-class LexicalDatetimeWarning(SnekqlWarning):
-    """Warns that a SQLite Text datetime column compares lexically."""
 
 
 class LexicalDecimalWarning(SnekqlWarning):
@@ -39,7 +35,11 @@ class LexicalDurationWarning(SnekqlWarning):
     """Warns that a Text duration column compares lexically."""
 
 
-class ZonedDatetimeError(SnekqlError):
+class DatetimeError(SnekqlError, ValueError):
+    """Raised when a datetime value violates its temporal meaning or wire form."""
+
+
+class ZonedDatetimeError(DatetimeError):
     """Raised when a timezone cannot be preserved by `ZonedDatetime`.
 
     >>> issubclass(ZonedDatetimeError, SnekqlError)

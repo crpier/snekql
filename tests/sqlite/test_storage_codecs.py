@@ -19,9 +19,10 @@ from snekql.sqlite import (
     Blob,
     CanonicalDecimal,
     CurrentTimestamp,
+    DatetimeError,
     Duration,
     Integer,
-    LexicalDatetimeWarning,
+    LocalDatetime,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -32,6 +33,7 @@ from snekql.sqlite import (
     Row,
     Text,
     UtcDatetime,
+    insert,
 )
 
 
@@ -50,7 +52,7 @@ def storage_classes_expose_sqlite_metadata() -> None:
     (the annotation) decides the Python value, not the constructor."""
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class StorageExample[S = Pending](Model[S]):
             """Table model pairing each storage class with a logical type."""
@@ -65,7 +67,7 @@ def storage_classes_expose_sqlite_metadata() -> None:
                 nullable=False
             )
             boolean_value: StorageExample.Col[bool] = Integer(nullable=False)
-            datetime_value: StorageExample.Col[datetime] = Text(nullable=False)
+            datetime_value: StorageExample.Col[UtcDatetime] = Text(nullable=False)
 
     columns = StorageExample.__snekql_columns__
 
@@ -322,7 +324,7 @@ def json_marker_round_trips_rich_annotated_types() -> None:
     assert_eq(fetched_model.payload, Inner(x=1))
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class WhenEvent[S = Pending](Model[S]):
             """Json column annotated with a datetime."""
@@ -369,82 +371,46 @@ def json_decode_without_validation_returns_raw_decoded_value() -> None:
 
 
 @test()
-def datetime_round_trips_through_iso_text_without_canonicalization() -> None:
-    """A ``Col[datetime]`` over ``Text()`` delegates to pydantic: the value is
-    serialized in its own offset (no forced UTC) at microsecond precision, and
-    naive datetimes are allowed -- timezone policy is the user's logical type."""
+def utc_datetime_handles_sub_minute_offsets_without_losing_the_instant() -> None:
+    """Normalization uses the full historical offset before canonical serialization."""
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+    class Event[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Event[Row]]]
+        at: Event.Col[UtcDatetime] = Text()
 
-        class AuditLog[S = Pending](Model[S]):
-            """Table model with a timestamp stored as ISO text."""
-
-            __row_type__: ClassVar[ReadType[AuditLog[Row]]]
-
-            created_at: AuditLog.Col[datetime] = Text(nullable=False)
-
-    source_timezone = timezone(timedelta(hours=5, minutes=30))
-    source = datetime(2026, 5, 31, 12, 0, 1, 987654, tzinfo=source_timezone)
-    audit_log = AuditLog(created_at=source)
-    _, encoded_audit_log = encode_model_row(audit_log, backend="sqlite")
-
-    # The Pending Model holds the raw validated datetime; encoding preserves the
-    # offset and microseconds rather than canonicalizing to UTC milliseconds.
-    assert_eq(audit_log.created_at, source)
-    assert_eq(encoded_audit_log, {"created_at": "2026-05-31T12:00:01.987654+05:30"})
-
-    fetched = cast(
-        "AuditLog[Row]",
-        decode_model_row(
-            AuditLog,
-            {"created_at": "2026-05-31T12:00:01.987654+05:30"},
-            backend="sqlite",
-        ),
+    instant = UtcDatetime(
+        datetime(
+            2026,
+            5,
+            31,
+            12,
+            0,
+            1,
+            tzinfo=timezone(timedelta(hours=3, minutes=6, seconds=52)),
+        )
     )
-    assert_eq(fetched.created_at, source)
 
-    # No AwareDatetime injection: a naive datetime is accepted and round-trips
-    # naive (the user opts into awareness via the logical type).
-    naive = datetime(2026, 5, 31, 12, 0, 1)  # noqa: DTZ001
-    naive_log = AuditLog(created_at=naive)
-    _, encoded_naive = encode_model_row(naive_log, backend="sqlite")
-    assert_eq(encoded_naive, {"created_at": "2026-05-31T12:00:01"})
+    assert_eq(
+        insert(Event(at=instant)).compile().params, ("2026-05-31T08:53:09.000000Z",)
+    )
 
 
 @test()
-def datetime_with_a_sub_minute_offset_is_rejected() -> None:
-    """ISO-text serialization truncates UTC offsets to whole minutes, silently
-    shifting the instant for historical sub-minute zones (e.g. an LMT offset of
-    ``+03:06:52``). The codec refuses such datetimes with a domain error rather
-    than corrupt them; whole-minute offsets and naive datetimes are unaffected."""
+def civil_datetime_text_does_not_invent_a_timezone() -> None:
+    """An explicitly local value serializes civil fields at full precision."""
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+    class Event[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Event[Row]]]
+        at: Event.Col[LocalDatetime] = Text()
 
-        class AuditLog[S = Pending](Model[S]):
-            """Table model with a timestamp stored as ISO text."""
+    civil = LocalDatetime(datetime(2026, 5, 31, 12, 0, 1, 987654))  # noqa: DTZ001
 
-            __row_type__: ClassVar[ReadType[AuditLog[Row]]]
-
-            created_at: AuditLog.Col[datetime] = Text(nullable=False)
-
-    sub_minute = timezone(timedelta(hours=3, minutes=6, seconds=52))
-    corrupting = datetime(2026, 5, 31, 12, 0, 1, tzinfo=sub_minute)
-    with assert_raises(ModelValidationError):
-        _ = encode_model_row(AuditLog(created_at=corrupting), backend="sqlite")
-
-    # A whole-minute offset carrying the same wall time still round-trips.
-    whole_minute = datetime(
-        2026, 5, 31, 12, 0, 1, tzinfo=timezone(timedelta(hours=3, minutes=6))
-    )
-    _, encoded = encode_model_row(AuditLog(created_at=whole_minute), backend="sqlite")
-    assert_eq(encoded, {"created_at": "2026-05-31T12:00:01+03:06"})
+    assert_eq(insert(Event(at=civil)).compile().params, ("2026-05-31T12:00:01.987654",))
 
 
 @test()
 def utc_datetime_normalizes_and_serializes_order_preserving_text() -> None:
-    """UtcDatetime stores canonical UTC millisecond text over SQLite Text."""
+    """UtcDatetime stores canonical UTC microsecond text over SQLite Text."""
 
     class Event[S = Pending](Model[S]):
         """Table model with canonical database timestamp storage."""
@@ -463,28 +429,33 @@ def utc_datetime_normalizes_and_serializes_order_preserving_text() -> None:
         987654,
         tzinfo=timezone(timedelta(hours=5, minutes=30)),
     )
-    event = Event(happened_at=source)
+    event = Event(happened_at=UtcDatetime(source))
     _, encoded_event = encode_model_row(event, backend="sqlite")
 
-    assert_eq(event.happened_at, datetime(2026, 7, 1, 12, 0, 0, 987000, tzinfo=UTC))
-    assert_eq(encoded_event, {"happened_at": "2026-07-01T12:00:00.987Z"})
+    assert_eq(
+        event.happened_at,
+        UtcDatetime(datetime(2026, 7, 1, 12, 0, 0, 987654, tzinfo=UTC)),
+    )
+    assert_eq(encoded_event, {"happened_at": "2026-07-01T12:00:00.987654Z"})
 
-    whole_second = Event(happened_at=datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC))
+    whole_second = Event(
+        happened_at=UtcDatetime(datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC))
+    )
     _, encoded_whole_second = encode_model_row(whole_second, backend="sqlite")
-    assert_eq(encoded_whole_second, {"happened_at": "2026-07-01T12:00:00.000Z"})
+    assert_eq(encoded_whole_second, {"happened_at": "2026-07-01T12:00:00.000000Z"})
 
     fetched = cast(
         "Event[Row]",
         decode_model_row(
             Event,
-            {"happened_at": "2026-07-01T12:00:00.987Z"},
+            {"happened_at": "2026-07-01T12:00:00.987654Z"},
             backend="sqlite",
         ),
     )
     assert_eq(fetched.happened_at, event.happened_at)
 
-    with assert_raises(ModelValidationError):
-        _ = Event(happened_at=datetime(2026, 7, 1, 12, 0, 0))  # noqa: DTZ001
+    with assert_raises(DatetimeError):
+        _ = UtcDatetime(datetime(2026, 7, 1, 12, 0, 0))  # noqa: DTZ001
 
 
 @test()
@@ -563,7 +534,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
     assert_true(pending.created_at is PENDING_GENERATION)
 
     # An explicit value is still accepted.
-    fixed = datetime(2020, 1, 1, tzinfo=UTC)
+    fixed = UtcDatetime(datetime(2020, 1, 1, tzinfo=UTC))
     explicit = CreatedEvent(name="second", created_at=fixed)
     assert_eq(explicit.created_at, fixed)
 

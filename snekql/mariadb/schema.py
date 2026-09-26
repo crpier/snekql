@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import replace
+from re import fullmatch, split, sub
 from typing import TYPE_CHECKING, Any, cast
 
 from snekql._check_catalog import CheckShape, parse_check
@@ -30,7 +31,7 @@ from snekql._schema_verification import SchemaVerificationFact, SchemaVerificati
 from snekql._server_defaults import LiteralDefaultShape, render_literal_default
 from snekql.defaults import LiteralDefault
 from snekql.errors import SchemaError
-from snekql.mariadb._dialect_sql import CURRENT_TIMESTAMP_SQL
+from snekql.mariadb._dialect_sql import current_timestamp_sql
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.mariadb.model import Model
 from snekql.model import Table
@@ -68,7 +69,8 @@ def _compile_column_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
     column_types = {
         "Blob": "BLOB",
         "Boolean": "BOOLEAN",
-        "DateTime": "DATETIME(3)",
+        "Date": "DATE",
+        "DateTime": f"DATETIME({column.datetime_precision})",
         "Integer": "BIGINT",
         "Json": "JSON",
         "LongText": f"LONGTEXT CHARACTER SET utf8mb4 COLLATE {_column_collation(column)}",
@@ -89,6 +91,7 @@ def _column_data_type(column: Attr[Any, Any, Any, Any, Any]) -> str:
     data_types = {
         "Blob": "blob",
         "Boolean": "tinyint",
+        "Date": "date",
         "DateTime": "datetime",
         "Decimal": "decimal",
         "Integer": "bigint",
@@ -156,6 +159,22 @@ def _requires_not_null(column: Attr[Any, Any, Any, Any, Any]) -> bool:
     return column.nullable is False or column.primary_key
 
 
+def _normalize_server_default(default: object | None) -> str | None:
+    """Recognize supported clocks without erasing precision or quoted literals."""
+    if default is None:
+        return None
+    expression = str(default)
+    normalized = "".join(
+        fragment if index % 2 else sub(r"\s+", "", fragment).lower()
+        for index, fragment in enumerate(split(r"('(?:''|[^'])*')", expression))
+    )
+    if match := fullmatch(r"current_timestamp\(([0-6]?)\)", normalized):
+        return f"CurrentTimestamp({match[1] or '0'})"
+    if normalized == "concat(replace(current_timestamp(6),' ','T'),'Z')":
+        return "CurrentTimestampText(6)"
+    return expression
+
+
 def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
     column = planned_column.column
     return ColumnShape(
@@ -170,14 +189,14 @@ def _expected_column_shape(planned_column: PlannedColumn) -> ColumnShape:
         primary_key=column.primary_key,
         auto_increment=column.auto_increment,
         server_default=(
-            "CurrentTimestamp"
+            _normalize_server_default(current_timestamp_sql(column))
             if column.server_default is CurrentTimestamp
             else LiteralDefaultShape("mariadb", column.server_default.value)
             if isinstance(column.server_default, LiteralDefault)
             else None
         ),
         collation=_column_collation(column),
-        datetime_precision=3 if column.storage_type_name == "DateTime" else None,
+        datetime_precision=column.datetime_precision,
         unsigned=_column_unsigned(column),
     )
 
@@ -205,7 +224,7 @@ def _compile_column_definition(planned_column: PlannedColumn) -> str:
     if column.primary_key and not planned_column.composite_pk:
         parts.append("PRIMARY KEY")
     if column.server_default is CurrentTimestamp:
-        parts.append(f"DEFAULT {CURRENT_TIMESTAMP_SQL}")
+        parts.append(f"DEFAULT {current_timestamp_sql(column)}")
     elif isinstance(column.server_default, LiteralDefault):
         parts.append(
             f"DEFAULT {render_literal_default(column.server_default, 'mariadb')}"
@@ -330,13 +349,7 @@ async def _fetch_existing_column_shapes(
                 nullable=nullable == "YES",
                 primary_key=column_key == "PRI",
                 auto_increment="auto_increment" in str(extra),
-                server_default=(
-                    "CurrentTimestamp"
-                    if str(default).lower() == "current_timestamp(3)"
-                    else str(default)
-                    if default is not None
-                    else None
-                ),
+                server_default=_normalize_server_default(default),
                 collation=(
                     str(collation)
                     if str(data_type) in {"varchar", "longtext"} and collation

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
-from pydantic import AwareDatetime, BaseModel, Json, PositiveInt
+from pydantic import BaseModel, Json, PositiveInt
 from snektest import (
     Param,
     assert_eq,
@@ -33,7 +33,6 @@ from snekql.sqlite import (
     FrozenModelError,
     Index,
     Integer,
-    LexicalDatetimeWarning,
     LexicalDecimalWarning,
     LexicalDurationWarning,
     Model,
@@ -200,28 +199,22 @@ def text_decimal_columns_warn_without_canonical_wire_form() -> None:
 
 
 @test(mark="fast")
-def sqlite_datetime_text_columns_warn_without_order_preserving_wire_form() -> None:
-    """SQLite Text datetime columns warn unless their logical type self-certifies."""
-
-    with warnings.catch_warnings(record=True) as caught_warnings:
-        warnings.simplefilter("always", LexicalDatetimeWarning)
+def sqlite_datetime_text_requires_a_canonical_contract() -> None:
+    """Bare and merely aware datetime annotations cannot promise SQL ordering."""
+    with assert_raises(ModelDeclarationError):
 
         class UnsafeAudit[S = Pending](Model[S]):
-            """Model with datetime text that compares lexically."""
-
             __row_type__: ClassVar[ReadType[UnsafeAudit[Row]]]
+            occurred_at: UnsafeAudit.Col[datetime] = Text()
 
-            occurred_at: UnsafeAudit.Col[datetime] = Text(nullable=False)
-            displayed_at: UnsafeAudit.Col[AwareDatetime] = Text(nullable=False)
-            stored_at: UnsafeAudit.Col[UtcDatetime] = Text(nullable=False)
-            safe_at: UnsafeAudit.Col[SafeOrderPreservingDatetime] = Text(nullable=False)
+        _ = UnsafeAudit.__snekql_columns__
 
-    assert_eq(len(caught_warnings), 2)
-    assert_true(
-        all(item.category is LexicalDatetimeWarning for item in caught_warnings)
-    )
-    assert_true("occurred_at" in str(caught_warnings[0].message))
-    assert_true("displayed_at" in str(caught_warnings[1].message))
+    class SafeAudit[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[SafeAudit[Row]]]
+        stored_at: SafeAudit.Col[UtcDatetime] = Text()
+        safe_at: SafeAudit.Col[SafeOrderPreservingDatetime] = Text()
+
+    assert_eq(len(SafeAudit.__snekql_columns__), 2)
 
 
 @test(mark="fast")
@@ -279,21 +272,16 @@ def duration_over_text_warns_because_integer_wire_form_sorts_lexically() -> None
 
 
 @test(mark="fast")
-def lexical_datetime_warning_is_suppressible_by_category() -> None:
-    """The datetime storage warning uses a category callers can silence."""
-
-    with warnings.catch_warnings(record=True) as caught_warnings:
-        warnings.simplefilter("error", LexicalDatetimeWarning)
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+def bare_datetime_is_rejected_even_when_warnings_are_suppressed() -> None:
+    """A declaration error cannot be turned into an unsafe column by warning policy."""
+    with warnings.catch_warnings(), assert_raises(ModelDeclarationError):
+        warnings.simplefilter("ignore")
 
         class SuppressedAudit[S = Pending](Model[S]):
-            """Model whose unsafe datetime warning is deliberately suppressed."""
-
             __row_type__: ClassVar[ReadType[SuppressedAudit[Row]]]
+            occurred_at: SuppressedAudit.Col[datetime] = Text()
 
-            occurred_at: SuppressedAudit.Col[datetime] = Text(nullable=False)
-
-    assert_eq(caught_warnings, [])
+        _ = SuppressedAudit.__snekql_columns__
 
 
 @test(mark="fast")
@@ -301,7 +289,7 @@ def mariadb_native_datetime_columns_do_not_warn_about_lexical_text() -> None:
     """MariaDB native DateTime storage is not SQLite Text storage."""
 
     with warnings.catch_warnings(record=True) as caught_warnings:
-        warnings.simplefilter("always", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class NativeAudit[S = mariadb.Pending](
             mariadb.Model[S],
@@ -310,7 +298,7 @@ def mariadb_native_datetime_columns_do_not_warn_about_lexical_text() -> None:
 
             __row_type__: ClassVar[mariadb.ReadType[NativeAudit[mariadb.Row]]]
 
-            occurred_at: NativeAudit.Col[datetime] = mariadb.DateTime(nullable=False)
+            occurred_at: NativeAudit.Col[UtcDatetime] = mariadb.DateTime(nullable=False)
 
     assert_eq(caught_warnings, [])
 
@@ -918,7 +906,7 @@ def storage_classes_pair_with_their_logical_types() -> None:
     constructor records only the SQLite storage class."""
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class Sample[S = Pending](Model[S]):
             """Table model pairing storage classes with their logical types."""
@@ -930,7 +918,7 @@ def storage_classes_pair_with_their_logical_types() -> None:
             label: Sample.Col[str] = Text(nullable=False)
             payload: Sample.Col[bytes] = Blob(nullable=False)
             enabled: Sample.Col[bool] = Integer(nullable=False)
-            created_at: Sample.Col[datetime] = Text(nullable=False)
+            created_at: Sample.Col[UtcDatetime] = Text(nullable=False)
             optional_count: Sample.Col[int | None] = Integer(nullable=True)
             constrained: Sample.Col[Annotated[int, "meta"]] = Integer(nullable=False)
 
@@ -988,7 +976,7 @@ def json_marker_columns_accept_any_payload_type() -> None:
     for any payload type, resolved through the column's logical adapter."""
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class Document[S = Pending](Model[S]):
             """Json marker columns accept any payload annotation."""

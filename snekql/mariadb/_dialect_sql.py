@@ -11,9 +11,15 @@ from snekql.errors import ModelValidationError, QueryCompilationError
 from snekql.mariadb.identifiers import quote_identifier
 from snekql.storage import Attr
 
+
 # Server-side timestamp with millisecond precision, shared by the CurrentTimestamp
 # DDL default and update-time server expressions so both reference one fragment.
-CURRENT_TIMESTAMP_SQL = "CURRENT_TIMESTAMP(3)"
+def current_timestamp_sql(column: Attr[Any, Any, Any, Any, Any]) -> str:
+    """Render the database clock in the destination's canonical representation."""
+    column.require_current_timestamp()
+    if column.storage_type_name == "DateTime":
+        return f"CURRENT_TIMESTAMP({column.datetime_precision})"
+    return "CONCAT(REPLACE(CURRENT_TIMESTAMP(6), ' ', 'T'), 'Z')"
 
 
 def _conflict_do_nothing_sql(targets: tuple[str, ...]) -> str:
@@ -27,6 +33,11 @@ def _conflict_update_sql(_targets: tuple[str, ...], assignments: str) -> str:
 
 def _empty_insert_sql(quoted_table: str) -> str:
     return f"INSERT INTO {quoted_table} () VALUES ()"  # noqa: S608
+
+
+def _encode_write_value(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:
+    """Writes must fit the destination; comparison bounds need not fit its precision."""
+    return column.encode(value, backend="mariadb", write=True)
 
 
 def _encode_column_value(
@@ -90,11 +101,12 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     char_length_function="CHAR_LENGTH",
     conflict_do_nothing_sql=_conflict_do_nothing_sql,
     conflict_update_sql=_conflict_update_sql,
-    current_timestamp_sql=CURRENT_TIMESTAMP_SQL,
+    current_timestamp_sql=current_timestamp_sql,
     empty_insert_sql=_empty_insert_sql,
     explain_sql=_explain_sql,
     for_update_sql=_for_update_sql,
     encode_column_value=_encode_column_value,
+    encode_write_value=_encode_write_value,
     encode_sum_value=_encode_sum_value,
     inserted_value_sql=_inserted_value_sql,
     # MariaDB uses the maximum unsigned LIMIT to select all remaining rows.

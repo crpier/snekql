@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
-from datetime import datetime
 from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_is_none, fixture, load_fixture, test
@@ -15,6 +14,7 @@ from snekql.mariadb import (
     Database,
     Pending,
     Row,
+    UtcDatetime,
     insert,
     insert_many,
     select,
@@ -37,7 +37,7 @@ class _BulkUser[S = Pending](mariadb.Model[S]):
     )
     email: _BulkUser.Col[str] = mariadb.Text(nullable=False)
     status: _BulkUser.Col[str] = mariadb.Text(nullable=False, default="active")
-    created_at: _BulkUser.GenCol[datetime] = mariadb.DateTime(
+    created_at: _BulkUser.GenCol[UtcDatetime] = mariadb.DateTime(
         default=CurrentTimestamp,
     )
 
@@ -92,7 +92,7 @@ async def mariadb_single_returning_yields_generated_values() -> None:
     assert_eq(created.email, "a@example.com")
     assert_eq(created.status, "active")
     assert created.id >= 1
-    assert isinstance(created.created_at, datetime)
+    assert isinstance(created.created_at, UtcDatetime)
 
 
 @test(mark="medium")

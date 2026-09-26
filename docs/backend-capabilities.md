@@ -17,7 +17,7 @@ connection requirements and [tested environments](failure-matrix.md) for evidenc
 | INNER/LEFT joins and aliases | Explicit relationship/owner checks | Explicit relationship/owner checks |
 | Generated values | `GenCol`, auto-increment and supported defaults | `GenCol`, auto-increment and supported defaults |
 | Core storage constructors | `Integer`, `Real`, `Text`, `Blob` | Same names, with backend-specific storage semantics |
-| Native JSON/decimal/UUID/datetime declarations | Not exported; supported logical types use codecs over SQLite storage | `Json`, `Decimal`, `Uuid`, `DateTime`; also `Boolean`, `LongText` |
+| Native JSON/decimal/UUID/date/datetime declarations | Not exported; supported logical types use codecs over SQLite storage | `Json`, `Decimal`, `Uuid`, `Date`, `DateTime`; also `Boolean`, `LongText` |
 | INSERT RETURNING, positional/named | Supported, including supported bulk forms | Supported, including supported bulk forms |
 | UPDATE/DELETE RETURNING | Supported | Rejected by the library, even where server syntax exists |
 | Conflict handling | Explicit conflict target; `DoNothing` or `DoUpdate` | Server chooses the matching unique conflict; no exact SQLite target equivalence |

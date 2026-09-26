@@ -1,12 +1,12 @@
 """Schema verification exposes compared facts without certifying unchecked schema."""
 
 from dataclasses import FrozenInstanceError
-from datetime import datetime
 from typing import ClassVar
 
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
+from snekql.sqlite import UtcDatetime
 from tests.helpers import provide_mariadb_server
 
 
@@ -507,13 +507,13 @@ async def mariadb_facts_include_native_metadata() -> None:
         __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         amount: mariadb.Col[int] = mariadb.Integer()
-        at: mariadb.Col[datetime] = mariadb.DateTime()
+        at: mariadb.Col[UtcDatetime] = mariadb.DateTime()
         name: mariadb.Col[str] = mariadb.Text(length=80, collation="utf8mb4_unicode_ci")
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
             {
-                "001": "CREATE TABLE fact_entry (amount BIGINT UNSIGNED NOT NULL, at DATETIME(6) NOT NULL, name VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL) ENGINE=InnoDB"
+                "001": "CREATE TABLE fact_entry (amount BIGINT UNSIGNED NOT NULL, at DATETIME(3) NOT NULL, name VARCHAR(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL) ENGINE=InnoDB"
             }
         )
         result = await database.verify([Entry], policy="warn")

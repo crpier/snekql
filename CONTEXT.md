@@ -149,11 +149,11 @@ A column value from the pending row whose insert encountered an Insert Conflict,
 _Avoid_: excluded value (backend-specific), incoming value
 
 **Column Type**:
-The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `DateTime()`, `Json()`, `Uuid()`, or `Decimal(precision, scale)`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
+The backend storage primitive a column is declared with — the constructor, such as `Text()`, `Integer()`, `Real()`, `Blob()`, or a MariaDB native type like `Date()`, `DateTime()`, `Json()`, `Uuid()`, or `Decimal(precision, scale)`. It decides where the value is physically stored and the column's DDL; it does not decide what Python value the column holds. SQLite exposes only its four storage classes as Column Types; MariaDB additionally exposes its native types. The constructor never restates the value type — that is the Logical Type's job.
 _Avoid_: logical type, Python type, value type, storage class
 
 **Logical Type**:
-The Python type a column's values are, taken solely from the field annotation (`Col[datetime]`, `Col[uuid.UUID]`, `Col[pydantic.Json[T]]`). It is the single source of truth for the column's value and all validation, which is delegated to Pydantic. A column pairs exactly one Column Type with one Logical Type, read as a sentence: `created_at: Col[datetime] = Text()` is "a datetime, stored as text."
+The Python type a column's values are, taken solely from the field annotation (`Col[UtcDatetime]`, `Col[uuid.UUID]`, `Col[pydantic.Json[T]]`). It determines the value's meaning; Pydantic validates model inputs against that type and its construction invariants. A column pairs exactly one Column Type with one Logical Type, read as a sentence: `created_at: Col[UtcDatetime] = Text()` is "a UTC instant, stored as text."
 _Avoid_: column type, storage class, storage type, wire type
 
 **Codec**:
@@ -169,11 +169,15 @@ A Canonical Wire Form whose lexical order additionally equals the logical order 
 _Avoid_: sortable string, lexicographic format, collation
 
 **UtcDatetime**:
-A snekql-exported curated Logical Type for an absolute point in time: aware-only, accepting any offset but normalized to millisecond-precision UTC at validation, so the value held, stored, and fetched back are identical. Serialized in an Order-Preserving Wire Form; use it when timezone identity has no domain meaning.
+An immutable Logical Type constructed from an aware datetime and normalized immediately to UTC, preserving microseconds and exposing `.datetime`. Canonical text has six fractional digits; native DATETIME storage keeps the same instant meaning.
 _Avoid_: Instant, AwareDatetime, timestamp, wall-clock datetime
 
+**LocalDatetime**:
+An immutable Logical Type constructed from civil fields with `tzinfo is None` and `fold == 0`, preserving microseconds and exposing `.datetime`. Its comparison domain is distinct from UtcDatetime; no host timezone or implicit instant is involved.
+_Avoid_: instant, naive instant, timestamp
+
 **ZonedDatetime**:
-A snekql-exported curated Logical Type for a civil datetime identified by both its absolute instant and exact IANA timezone identity or fixed UTC offset. Equality requires both the instant and timezone identity to match.
+A snekql-exported curated Logical Type for a resolved occurrence identified by both its absolute instant and exact IANA timezone identity or fixed UTC offset. Equality requires both the instant and timezone identity to match.
 _Avoid_: timezone-aware datetime, local datetime, timestamp
 
 **CanonicalDecimal**:

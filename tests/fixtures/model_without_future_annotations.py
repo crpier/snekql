@@ -6,10 +6,17 @@ materialized `__annotations__` dict. Generated-column detection must still
 work, so this module deliberately omits the future import.
 """
 
-from datetime import datetime
 from typing import ClassVar
 
-from snekql.sqlite import CurrentTimestamp, Model, Pending, ReadType, Row, Text
+from snekql.sqlite import (
+    CurrentTimestamp,
+    Model,
+    Pending,
+    ReadType,
+    Row,
+    Text,
+    UtcDatetime,
+)
 
 
 class Memory[S = Pending](Model[S]):
@@ -17,4 +24,4 @@ class Memory[S = Pending](Model[S]):
 
     __row_type__: ClassVar[ReadType[Memory[Row]]]
 
-    created_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)
+    created_at: Memory.GenCol[UtcDatetime] = Text(default=CurrentTimestamp)

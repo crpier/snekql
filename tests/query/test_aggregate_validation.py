@@ -10,6 +10,7 @@ from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.errors import ModelValidationError
+from snekql.sqlite import UtcDatetime
 from tests.helpers import initialized_database
 
 
@@ -132,7 +133,7 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
 
         timestamp: Event.Col[sqlite.UtcDatetime] = sqlite.Text(nullable=False)
 
-    when = datetime(2026, 1, 1, tzinfo=UTC)
+    when = UtcDatetime(datetime(2026, 1, 1, tzinfo=UTC))
     async with await initialized_database(
         database=":memory:", models=[Event]
     ) as database:
@@ -145,4 +146,4 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
             )
 
     assert_eq(row, (when, when))
-    assert_eq(tuple(type(value) for value in row), (datetime, datetime))
+    assert_eq(tuple(type(value) for value in row), (UtcDatetime, UtcDatetime))

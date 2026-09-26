@@ -268,7 +268,7 @@ def _normalize_server_default(default: object | None) -> str | None:
         return None
     expression = str(default)
     if fullmatch(
-        r"(?i:strftime)\s*\(\s*'%Y-%m-%dT%H:%M:%fZ'\s*,\s*'(?i:now)'\s*\)",
+        r"(?i:strftime)\s*\(\s*'%Y-%m-%dT%H:%M:%f'\s*,\s*'(?i:now)'\s*\)\s*\|\|\s*'000Z'",
         expression,
     ):
         return "CurrentTimestamp"

@@ -1406,7 +1406,7 @@ catch-all, or a more specific subclass for targeted handling (see
 `snekql/errors.py`, but catch the names re-exported from the backend namespace.
 
 **Warning contract.** Advisory warnings are part of the same public surface: the
-`SnekqlWarning` hierarchy (currently `LexicalDatetimeWarning`) is re-exported
+`SnekqlWarning` hierarchy (`LexicalDecimalWarning` and `LexicalDurationWarning`) is re-exported
 from each namespace so applications can filter by category. See
 [error-handling.md](error-handling.md#warnings).
 

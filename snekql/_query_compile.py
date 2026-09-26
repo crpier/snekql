@@ -18,6 +18,7 @@ from snekql._cte import _CteOutput, _CteRelation
 from snekql._cte_graph import collect_cte_definitions
 from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
 from snekql._named_projection import NamedProjection
+from snekql._output_domain import output_domain
 from snekql._query_dialect import QueryDialect, query_dialect_for_backend
 from snekql._query_scope import (
     ScopeResolver,
@@ -59,7 +60,15 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import PENDING_GENERATION, Attr, CurrentTimestamp
+from snekql.storage import (
+    PENDING_GENERATION,
+    Attr,
+    CurrentTimestamp,
+    LocalDatetime,
+    UtcDatetime,
+    ZonedDatetime,
+    _annotation_core_types,
+)
 
 
 def _render_column_ref(
@@ -211,6 +220,26 @@ class _PredicateCompileContext:
 
         return _predicate_value_encoder(require_selectable(operand), self.dialect)
 
+    def ensure_comparable(
+        self, left: object, right: object, *, subquery: bool = False
+    ) -> None:
+        """Known temporal meanings cannot be compared just because wires look alike."""
+        if isinstance(right, _Scalar):
+            right = require_single_column_subquery(right.subquery).fields[0]
+        elif subquery:
+            right = require_single_column_subquery(right).fields[0]
+        left_types = _annotation_core_types(output_domain(left).logical)
+        right_types = _annotation_core_types(output_domain(right).logical)
+        temporal = (UtcDatetime, LocalDatetime, ZonedDatetime)
+        if (
+            any(item in temporal for item in (*left_types, *right_types))
+            and left_types != right_types
+            and Any not in left_types
+            and Any not in right_types
+        ):
+            msg = "comparison operands have incompatible temporal meanings"
+            raise QueryCompilationError(msg)
+
     def render_comparison_operand(
         self, other: object
     ) -> tuple[str, tuple[object, ...]]:
@@ -345,7 +374,7 @@ def _encode_insert_row(
         value = getattr(row, name)
         if value is PENDING_GENERATION:
             continue
-        row_values[name] = dialect.encode_column_value(column, value)
+        row_values[name] = dialect.encode_write_value(column, value)
     return row_values
 
 
@@ -410,10 +439,10 @@ def _compile_insert_conflict_sql(
         if assignment.value is InsertedValue:
             assigned_value = dialect.inserted_value_sql(column_name)
         elif assignment.value is CurrentTimestamp:
-            assigned_value = dialect.current_timestamp_sql
+            assigned_value = dialect.current_timestamp_sql(column)
         else:
             assigned_value = dialect.placeholder
-            params = (*params, dialect.encode_column_value(column, assignment.value))
+            params = (*params, dialect.encode_write_value(column, assignment.value))
         set_sql_parts.append(f"{column_name} = {assigned_value}")
     return (
         dialect.conflict_update_sql(quoted_targets, ", ".join(set_sql_parts)),
@@ -515,10 +544,12 @@ def _compile_update_sql(
             params = (*params, *expression_params)
             continue
         if assignment.value is CurrentTimestamp:
-            set_sql_parts.append(f"{column_name} = {dialect.current_timestamp_sql}")
+            set_sql_parts.append(
+                f"{column_name} = {dialect.current_timestamp_sql(column)}"
+            )
             continue
         set_sql_parts.append(f"{column_name} = {dialect.placeholder}")
-        params = (*params, dialect.encode_column_value(column, assignment.value))
+        params = (*params, dialect.encode_write_value(column, assignment.value))
     sql_parts = [
         "UPDATE " + dialect.quote_identifier(table_name) + " SET ",  # noqa: S608
         ", ".join(set_sql_parts),

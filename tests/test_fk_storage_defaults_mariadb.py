@@ -84,14 +84,16 @@ class BooleanDefaults[S = mariadb.Pending](mariadb.Model[S]):
 class DateTimeDefaults[S = mariadb.Pending](mariadb.Model[S]):
     __row_type__: ClassVar[mariadb.ReadType[DateTimeDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
-    null: mariadb.FKCol[Target, datetime | None] = mariadb.DateTime(default=None)
-    literal: mariadb.FKCol[Target, datetime] = mariadb.DateTime(
-        default=datetime(2026, 1, 1, tzinfo=UTC)
+    null: mariadb.FKCol[Target, mariadb.UtcDatetime | None] = mariadb.DateTime(
+        default=None
     )
-    factory: mariadb.FKCol[Target, datetime] = mariadb.DateTime(
-        default_factory=lambda: datetime(2026, 1, 1, tzinfo=UTC)
+    literal: mariadb.FKCol[Target, mariadb.UtcDatetime] = mariadb.DateTime(
+        default=mariadb.UtcDatetime(datetime(2026, 1, 1, tzinfo=UTC))
     )
-    null_factory: mariadb.FKCol[Target, datetime | None] = mariadb.DateTime(
+    factory: mariadb.FKCol[Target, mariadb.UtcDatetime] = mariadb.DateTime(
+        default_factory=lambda: mariadb.UtcDatetime(datetime(2026, 1, 1, tzinfo=UTC))
+    )
+    null_factory: mariadb.FKCol[Target, mariadb.UtcDatetime | None] = mariadb.DateTime(
         default_factory=lambda: None
     )
 
@@ -149,10 +151,10 @@ if TYPE_CHECKING:
     assert_type(BooleanDefaults().literal, bool)
     assert_type(BooleanDefaults().factory, bool)
     assert_type(BooleanDefaults().null_factory, bool | None)
-    assert_type(DateTimeDefaults().null, datetime | None)
-    assert_type(DateTimeDefaults().literal, datetime)
-    assert_type(DateTimeDefaults().factory, datetime)
-    assert_type(DateTimeDefaults().null_factory, datetime | None)
+    assert_type(DateTimeDefaults().null, mariadb.UtcDatetime | None)
+    assert_type(DateTimeDefaults().literal, mariadb.UtcDatetime)
+    assert_type(DateTimeDefaults().factory, mariadb.UtcDatetime)
+    assert_type(DateTimeDefaults().null_factory, mariadb.UtcDatetime | None)
     assert_type(UuidDefaults().null, UUID | None)
     assert_type(UuidDefaults().literal, UUID)
     assert_type(UuidDefaults().factory, UUID)

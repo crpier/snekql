@@ -12,7 +12,6 @@ from snektest import assert_eq, assert_raises, test
 from snekql._model_materialization import decode_model_row, encode_model_row
 from snekql.sqlite import (
     Integer,
-    LexicalDatetimeWarning,
     Model,
     ModelDeclarationError,
     ModelValidationError,
@@ -21,6 +20,7 @@ from snekql.sqlite import (
     ReadType,
     Row,
     Text,
+    UtcDatetime,
 )
 
 
@@ -29,7 +29,7 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     """SQLite Pending/Row Model conversion is handled by the materializer."""
 
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", LexicalDatetimeWarning)
+        warnings.simplefilter("always")
 
         class Event[S = Pending](Model[S]):
             """SQLite model used by materialization seam tests."""
@@ -37,10 +37,10 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
             __row_type__: ClassVar[ReadType[Event[Row]]]
 
             enabled: Event.Col[bool] = Integer(nullable=False)
-            happened_at: Event.Col[datetime] = Text(nullable=False)
+            happened_at: Event.Col[UtcDatetime] = Text(nullable=False)
             payload: Event.Col[Json[dict[str, object]]] = Text(nullable=False)
 
-    timestamp = datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+    timestamp = UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC))
     pending_event = Event(
         enabled=True,
         happened_at=timestamp,
@@ -71,7 +71,8 @@ def sqlite_model_materialization_uses_one_backend_codec_path() -> None:
     )
     assert_eq(fetched_event.enabled, False)
     assert_eq(
-        fetched_event.happened_at, datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)
+        fetched_event.happened_at,
+        UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 678901, tzinfo=UTC)),
     )
     assert_eq(fetched_event.payload, {"ok": True})
 

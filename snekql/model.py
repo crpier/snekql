@@ -28,7 +28,6 @@ from snekql.constraints import ForeignKeyConstraint
 from snekql.defaults import LiteralDefault
 from snekql.errors import (
     FrozenModelError,
-    LexicalDatetimeWarning,
     LexicalDecimalWarning,
     LexicalDurationWarning,
     ModelDeclarationError,
@@ -55,7 +54,6 @@ from snekql.storage import (
     _UnboundOwner,
     column_admits_none,
     column_lacks_canonical_decimal,
-    column_lacks_order_preserving_datetime,
     column_lacks_order_preserving_duration,
 )
 
@@ -257,7 +255,7 @@ class ModelMeta(type):
             _finalize_model_columns(columns)
             return model_class
         if not is_model_base:
-            ModelMeta._warn_lexical_text_columns(
+            ModelMeta._validate_column_contracts(
                 columns, model_metadata.__snekql_backend__
             )
         _finalize_model_columns(columns)
@@ -334,7 +332,7 @@ class ModelMeta(type):
 
         def finish() -> None:
             ModelMeta._validate_foreign_key_backends(model_class, columns)
-            ModelMeta._warn_lexical_text_columns(
+            ModelMeta._validate_column_contracts(
                 columns, model_metadata.__snekql_backend__
             )
             model_metadata.__snekql_indexes__ = ModelMeta._bind_indexes(
@@ -372,22 +370,14 @@ class ModelMeta(type):
         model_metadata.__snekql_binding__ = binding
 
     @staticmethod
-    def _warn_lexical_text_columns(
+    def _validate_column_contracts(
         columns: dict[str, Attr[Any, Any, Any, Any, Any]],
         backend: BackendFamily,
     ) -> None:
-        """Warn when Text storage has lexical SQL semantics for typed values."""
+        """Validate temporal meanings and warn about remaining lexical value hazards."""
 
         for name, column in columns.items():
-            if column_lacks_order_preserving_datetime(column, backend):
-                warnings.warn(
-                    (
-                        f"SQLite Text datetime column {name!r} compares lexically; "
-                        "use UtcDatetime for an order-preserving wire form"
-                    ),
-                    LexicalDatetimeWarning,
-                    stacklevel=4,
-                )
+            column.validate_temporal_declaration(backend)
             if column_lacks_canonical_decimal(column):
                 warnings.warn(
                     (
@@ -657,6 +647,7 @@ class ModelMeta(type):
                 "storage_type_name",
                 "text_length",
                 "text_collation",
+                "datetime_precision",
                 "decimal_precision",
                 "decimal_scale",
             ):

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import ClassVar
 
 from snekql import sqlite
@@ -36,7 +35,9 @@ class User[S = Pending](sqlite.Model[S]):
     )
     email: sqlite.Col[str] = sqlite.Text()
     status: sqlite.Col[str] = sqlite.Text(default="active")
-    created_at: sqlite.GenCol[datetime] = sqlite.Text(default=sqlite.CurrentTimestamp)
+    created_at: sqlite.GenCol[sqlite.UtcDatetime] = sqlite.Text(
+        default=sqlite.CurrentTimestamp
+    )
 
 
 MIGRATIONS = {
@@ -48,7 +49,24 @@ MIGRATIONS = {
         '"created_at" TEXT NOT NULL DEFAULT '
         "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))"
         ") STRICT"
-    )
+    ),
+    "0003_create_user_temporal": (
+        'CREATE TABLE "user_temporal" ('
+        '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '"email" TEXT NOT NULL, '
+        '"status" TEXT NOT NULL, '
+        '"created_at" TEXT NOT NULL DEFAULT '
+        "(strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z')) STRICT"
+    ),
+    "0004_copy_user_temporal": (
+        "INSERT INTO user_temporal (id, email, status, created_at) "
+        "SELECT id, email, status, CASE "
+        "WHEN length(created_at) = 24 AND "
+        "strftime('%Y-%m-%dT%H:%M:%fZ', created_at) = created_at "
+        "THEN substr(created_at, 1, 23) || '000Z' ELSE NULL END FROM user"
+    ),
+    "0005_drop_old_user": 'DROP TABLE "user"',
+    "0006_rename_user_temporal": 'ALTER TABLE "user_temporal" RENAME TO "user"',
 }
 
 
