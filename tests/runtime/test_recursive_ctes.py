@@ -1,7 +1,7 @@
 """Bounded recursive traversal through native database transactions."""
 
 from collections.abc import AsyncGenerator
-from typing import Literal, assert_type
+from typing import ClassVar, Literal, assert_type
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,9 +18,8 @@ from tests.runtime.test_named_codecs import (
 )
 
 
-class NativeCategory[S = mariadb.Pending](
-    mariadb.Model[S, "NativeCategory[mariadb.Fetched]"]
-):
+class NativeCategory[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[NativeCategory[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
     parent_id: mariadb.Col[int | None] = mariadb.Integer()
 
@@ -32,13 +31,14 @@ async def provide_categories() -> AsyncGenerator[sqlite.Database]:
         await database.migrate({"001_categories": sqlite.scaffold([Category])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                sqlite.insert(
+                sqlite.insert_many(
+                    Category,
                     [
                         Category(id=1, parent_id=3),
                         Category(id=2, parent_id=1),
                         Category(id=3, parent_id=2),
                         Category(id=4, parent_id=1),
-                    ]
+                    ],
                 )
             )
         yield database
@@ -52,13 +52,14 @@ async def provide_native_categories() -> AsyncGenerator[mariadb.Database]:
         await database.migrate({"001_categories": mariadb.scaffold([NativeCategory])})
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert(
+                mariadb.insert_many(
+                    NativeCategory,
                     [
                         NativeCategory(id=1, parent_id=3),
                         NativeCategory(id=2, parent_id=1),
                         NativeCategory(id=3, parent_id=2),
                         NativeCategory(id=4, parent_id=1),
-                    ]
+                    ],
                 )
             )
         yield database

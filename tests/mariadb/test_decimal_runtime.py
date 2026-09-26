@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 from decimal import Decimal, Inexact, Rounded, localcontext
+from typing import ClassVar
 
 from snektest import assert_eq, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import Fetched, Pending, insert, select
+from snekql.mariadb import Pending, Row, insert, select
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class OrderedPrice[S = Pending](mariadb.Model[S, "OrderedPrice[Fetched]"]):
+class OrderedPrice[S = Pending](mariadb.Model[S]):
     """Price table with native numeric decimal storage."""
+
+    __row_type__: ClassVar[mariadb.ReadType[OrderedPrice[Row]]]
 
     __tablename__ = "native_decimal_order_price"
 
@@ -20,8 +23,10 @@ class OrderedPrice[S = Pending](mariadb.Model[S, "OrderedPrice[Fetched]"]):
     amount: OrderedPrice.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
 
 
-class SummedPrice[S = Pending](mariadb.Model[S, "SummedPrice[Fetched]"]):
+class SummedPrice[S = Pending](mariadb.Model[S]):
     """Price table for native decimal aggregation."""
+
+    __row_type__: ClassVar[mariadb.ReadType[SummedPrice[Row]]]
 
     __tablename__ = "native_decimal_sum_price"
 
@@ -78,8 +83,10 @@ async def mariadb_decimal_round_trip_preserves_maximum_precision() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class PrecisePrice[S = Pending](mariadb.Model[S, "PrecisePrice[Fetched]"]):
+    class PrecisePrice[S = Pending](mariadb.Model[S]):
         """A native decimal at the backend's maximum declared precision."""
+
+        __row_type__: ClassVar[mariadb.ReadType[PrecisePrice[Row]]]
 
         amount: PrecisePrice.Col[Decimal] = mariadb.Decimal(65, 30)
 

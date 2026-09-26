@@ -17,7 +17,14 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.model import _MODEL_BASE_MARKER, Fetched, Pending, Table
+from snekql.model import (
+    _MODEL_BASE_MARKER,
+    Pending,
+    Row,
+    Table,
+    _complete_model,
+    _RowDeclaration,
+)
 from snekql.model import Model as BaseModel
 from snekql.model import ModelMeta as BaseModelMeta
 from snekql.storage import (
@@ -29,12 +36,11 @@ from snekql.storage import (
 )
 
 StateT = TypeVar("StateT")
-ReadModelT = TypeVar("ReadModelT", bound=Table[Any])
 
 
 type JsonCol[T] = JsonAttr[
     Table[Pending],
-    Table[Fetched],
+    Table[Row],
     _UnboundOwner,
     T,
     T,
@@ -55,18 +61,21 @@ type JsonCol[T] = JsonAttr[
         ForeignKey,
     ),
     kw_only_default=True,
+    frozen_default=True,
 )
 class ModelMeta(BaseModelMeta):
     """Typing hook for MariaDB-specific column declaration functions."""
 
 
-class Model[StateT, ReadModelT: Table[Any]](
-    BaseModel[StateT, ReadModelT],
+class Model[StateT](
+    BaseModel[StateT],
     metaclass=ModelMeta,
 ):
     """MariaDB table model base for backend-specific declarations.
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
+    >>> from snekql.mariadb import ReadType
+    >>> class User[S = Pending](Model[S]):
+    ...     __row_type__: ClassVar[ReadType[User[Row]]]
     ...     email: Col[str] = Text()
     """
 
@@ -76,23 +85,23 @@ class Model[StateT, ReadModelT: Table[Any]](
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+    type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
     type GenCol[T] = Attr[
         Table[Pending],
-        Table[Fetched],
+        Table[Row],
         _UnboundOwner,
         T | PendingGeneration,
         T,
     ]
-    type FKCol[Target: Model[Any, Any], T] = FKAttr[
+    type FKCol[Target: Model[Any], T] = FKAttr[
         Table[Pending],
-        Table[Fetched],
+        Table[Row],
         _UnboundOwner,
         T,
         T,
         Target,
     ]
-    type JsonCol[T] = JsonAttr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+    type JsonCol[T] = JsonAttr[Table[Pending], Table[Row], _UnboundOwner, T, T]
 
     @classmethod
     def __backend_family_type__(cls) -> Literal["mariadb"]:
@@ -101,17 +110,30 @@ class Model[StateT, ReadModelT: Table[Any]](
         return "mariadb"
 
 
-type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
 type GenCol[T] = Attr[
-    Table[Pending], Table[Fetched], _UnboundOwner, T | PendingGeneration, T
+    Table[Pending], Table[Row], _UnboundOwner, T | PendingGeneration, T
 ]
-type FKCol[Target: Model[Any, Any], T] = FKAttr[
+type FKCol[Target: Model[Any], T] = FKAttr[
     Table[Pending],
-    Table[Fetched],
+    Table[Row],
     _UnboundOwner,
     T,
     T,
     Target,
 ]
 
-__all__ = ["Col", "FKCol", "GenCol", "JsonCol", "Model", "ModelMeta"]
+
+def complete[Result: Table[Row]](
+    model: _RowDeclaration[Literal["mariadb"], Result], /, **values: object
+) -> Result:
+    """Create a validated Row snapshot without database I/O.
+
+    `complete(User, user_id=7, email="Ada")` requires every declared field.
+    Keywords are runtime-validated. The result cannot be inserted and does not
+    prove that a database row exists.
+    """
+    return _complete_model(model, values, backend="mariadb")
+
+
+__all__ = ["Col", "FKCol", "GenCol", "JsonCol", "Model", "ModelMeta", "complete"]

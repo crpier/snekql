@@ -1,0 +1,5 @@
+# Declare the Row type inside a lifecycle-generic model
+
+Use one `Model[State]` declaration with `__row_type__: ClassVar[ReadType[User[Row]]]` in its body. Class-body annotations can refer to the class being defined without putting a quoted forward reference in an eagerly evaluated base expression. The explicit result declaration preserves exact query result types while removing the second Model parameter. Separate input and result classes were considered, but keeping one storage declaration requires less machinery in the native query builder and runtime.
+
+Ordinary constructors produce Pending values. Database results and `complete(Model, **values)` produce Row values. Row replaces Fetched because a complete snapshot need not have come from a database. `complete` checks field names and logical values at runtime; it does not prove persistence. A constructor guard remains necessary when callable annotations erase static state checks. Remove unchecked `.construct` and the old declaration syntax rather than carry a compatibility layer.

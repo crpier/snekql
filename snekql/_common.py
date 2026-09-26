@@ -78,13 +78,12 @@ from snekql.expressions import (
 from snekql.indexes import Index
 from snekql.model import (
     Col,
-    Fetched,
     FKCol,
     GenCol,
     Pending,
+    Row,
 )
 from snekql.query import (
-    Select,
     Write,
     exists,
     not_exists,
@@ -138,7 +137,6 @@ __all__ = [
     "ExplainResult",
     "FKCol",
     "FailureCategory",
-    "Fetched",
     "ForeignKeyConstraint",
     "FrozenModelError",
     "GenCol",
@@ -175,6 +173,7 @@ __all__ = [
     "RawResultShapeError",
     "RawResultValidationError",
     "ResultCardinalityError",
+    "Row",
     "Scalar",
     "SchemaDriftIssue",
     "SchemaError",
@@ -182,7 +181,6 @@ __all__ = [
     "SchemaVerificationError",
     "SchemaVerificationFact",
     "SchemaVerificationResult",
-    "Select",
     "SnekqlError",
     "SnekqlWarning",
     "TelemetryEvent",

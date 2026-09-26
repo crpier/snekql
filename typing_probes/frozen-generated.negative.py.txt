@@ -1,0 +1,4 @@
+
+
+def invalid(account: Account[database.Row]) -> None:
+    account.account_id = 7  # expect-error

@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, test
 
 from snekql import sqlite
 from tests.helpers import initialized_database
 
 
-class Item[S = sqlite.Pending](sqlite.Model[S, "Item[sqlite.Fetched]"]):
+class Item[S = sqlite.Pending](sqlite.Model[S]):
     """Every field must be restored by whole-model RETURNING."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Item[sqlite.Row]]]
 
     id: Item.Col[int] = sqlite.Integer(primary_key=True)
     score: Item.Col[int] = sqlite.Integer(nullable=False)
@@ -21,7 +25,7 @@ class Item[S = sqlite.Pending](sqlite.Model[S, "Item[sqlite.Fetched]"]):
     mark="medium",
 )
 async def update_returning_resets_projection(shape: str) -> None:
-    """The final no-argument call yields an updated Fetched model, not an id."""
+    """The final no-argument call yields an updated Row model, not an id."""
 
     async with await initialized_database(
         database=":memory:", models=[Item]
@@ -40,7 +44,7 @@ async def update_returning_resets_projection(shape: str) -> None:
             rows = await tx.execute(query)
 
     assert_eq(len(rows), 1)
-    assert_eq(repr(rows[0]), "Item[Fetched](id=1, score=20, label='one')")
+    assert_eq(repr(rows[0]), "Item[Row](id=1, score=20, label='one')")
     assert_eq((rows[0].id, rows[0].score, rows[0].label), (1, 20, "one"))
 
 
@@ -49,7 +53,7 @@ async def update_returning_resets_projection(shape: str) -> None:
     mark="medium",
 )
 async def delete_returning_resets_projection(shape: str) -> None:
-    """The final no-argument call yields a deleted Fetched model, not an id."""
+    """The final no-argument call yields a deleted Row model, not an id."""
 
     async with await initialized_database(
         database=":memory:", models=[Item]
@@ -68,7 +72,7 @@ async def delete_returning_resets_projection(shape: str) -> None:
             rows = await tx.execute(query)
 
     assert_eq(len(rows), 1)
-    assert_eq(repr(rows[0]), "Item[Fetched](id=1, score=10, label='one')")
+    assert_eq(repr(rows[0]), "Item[Row](id=1, score=10, label='one')")
     assert_eq((rows[0].id, rows[0].score, rows[0].label), (1, 10, "one"))
 
 

@@ -1,0 +1,3 @@
+
+
+database.ReadQuery[Account, Account[database.Row]]()  # expect-error

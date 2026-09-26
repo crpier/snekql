@@ -2,7 +2,8 @@
 
 Status: interface reviewed and approved. Typed labels and nonrecursive CTEs are
 implemented, as are named UNION/UNION ALL. Staged recursive construction is
-implemented with acceptance work remaining. Windows remain a follow-up.
+implemented with native acceptance coverage and documented limits. Windows remain
+a follow-up.
 Tracking issue: #280. SQLite and MariaDB only.
 
 ## Existing support
@@ -33,7 +34,7 @@ active = (
 )
 
 query = select(active).where(active.column(user_id).gt(10))
-# Select[UserSummary]
+# fetch_all returns list[UserSummary]
 ```
 
 A label token derives its logical value type, comparison domain, backend, and
@@ -95,7 +96,7 @@ Implemented syntax. See [named UNION usage and limits](unions.md):
 combined = current.union_all(archived)
 unique = current.union(archived)
 page = combined.order_by(combined.column(event_id).asc()).limit(50).offset(100)
-# Select[EventIdentity]
+# fetch_all returns list[EventIdentity]
 ```
 
 Initial operands must be completed named SELECTs of the same backend and exact
@@ -172,7 +173,7 @@ interface rather than inheriting surprising default RANGE peer behavior.
 
 ## Recursive CTEs
 
-Staged shape, implemented with [remaining acceptance limits](recursive-ctes.md):
+Staged shape, implemented with [acceptance coverage and limits](recursive-ctes.md):
 
 ```text
 walk = recursive_cte(
@@ -206,7 +207,7 @@ A category anchor needs a typed native integer literal for depth zero. An
 owner-free, backend-owned `literal(0)` expression is available as the integer
 prerequisite. It establishes a signed-64 SQL domain without arbitrary SQL text
 or a caller-asserted type. NULL literals are rejected. See
-[native integer literals](literals.md). Broader recursive acceptance remains open.
+[native integer literals](literals.md). See [native recursive acceptance coverage](recursive-ctes.md#acceptance-coverage).
 
 Initial restrictions:
 

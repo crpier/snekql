@@ -1,6 +1,7 @@
 """Typed output tokens bind SQL expressions to named projection fields."""
 
 from dataclasses import FrozenInstanceError
+from typing import ClassVar
 
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_ne, assert_raises, test
@@ -8,8 +9,10 @@ from snektest import Param, assert_eq, assert_ne, assert_raises, test
 from snekql import mariadb, sqlite
 
 
-class Person[S = sqlite.Pending](sqlite.Model[S, "Person[sqlite.Fetched]"]):
+class Person[S = sqlite.Pending](sqlite.Model[S]):
     """A source whose field name differs from its output label."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Person[sqlite.Row]]]
 
     person_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -60,7 +63,8 @@ def equivalent_labels_remain_distinct_tokens() -> None:
 def labeled_binding_cannot_escape_its_query_scope() -> None:
     """Unwrapping a token still applies the ordinary projection ownership guard."""
 
-    class Outside[S = sqlite.Pending](sqlite.Model[S, "Outside[sqlite.Fetched]"]):
+    class Outside[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Outside[sqlite.Row]]]
         person_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -73,7 +77,8 @@ def labeled_binding_cannot_escape_its_query_scope() -> None:
 def labeled_binding_preserves_logical_type_validation() -> None:
     """A label cannot hide an incompatible source value behind a result name."""
 
-    class TextSource[S = sqlite.Pending](sqlite.Model[S, "TextSource[sqlite.Fetched]"]):
+    class TextSource[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[TextSource[sqlite.Row]]]
         value: sqlite.Col[str] = sqlite.Text()
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -86,7 +91,8 @@ def labeled_binding_preserves_logical_type_validation() -> None:
 def labeled_projection_uses_the_mariadb_dialect() -> None:
     """The shared token carries source metadata without embedding a dialect."""
 
-    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         person_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
     compiled = (
@@ -161,7 +167,8 @@ def scalar_label_preserves_subquery_parameter_order() -> None:
 def json_label_preserves_native_path_binding() -> None:
     """A dialect expression keeps its compiler and parameter instead of SQL text."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         payload: mariadb.JsonCol[list[int]] = mariadb.Json()
 
     identifier = Document.payload.json_extract_int("$[0]").label("id")

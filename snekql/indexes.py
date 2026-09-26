@@ -63,8 +63,10 @@ class Index[OwnerT]:
     callable foreign keys. False and NULL exclude rows.
     MariaDB rejects partial predicates.
 
+    >>> from typing import ClassVar
     >>> from snekql import mariadb
-    >>> class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    >>> class Document[S = mariadb.Pending](mariadb.Model[S]):
+    ...     __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
     ...     body: mariadb.Col[str] = mariadb.LongText()
     ...     __indexes__ = [mariadb.Index(body, prefix_lengths=(128,))]
     """

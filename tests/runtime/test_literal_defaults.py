@@ -14,7 +14,8 @@ from tests.helpers import provide_mariadb_server
 def literal_default_leaves_pending_value_omitted() -> None:
     """The marker supplies a database default, not a Python constructor value."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(0))
 
     assert_eq(Entry().attempts, sqlite.PENDING_GENERATION)
@@ -24,7 +25,8 @@ def literal_default_leaves_pending_value_omitted() -> None:
 def literal_default_scaffolds_integer() -> None:
     """A literal marker emits SQL DEFAULT without query parameters."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(0))
 
     assert_in('"attempts" INTEGER NOT NULL DEFAULT 0', sqlite.scaffold([Entry]))
@@ -34,7 +36,8 @@ def literal_default_scaffolds_integer() -> None:
 async def sqlite_supplies_omitted_text() -> None:
     """Escaped SQL-looking text is data when the database fills an omitted value."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.GenCol[str] = sqlite.Text(
             default=sqlite.LiteralDefault("quote'\\nul\0; --é")
         )
@@ -56,7 +59,8 @@ async def mariadb_supplies_omitted_text() -> None:
     """Native string defaults do not depend on connection backslash escaping."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str] = mariadb.Text(
             default=mariadb.LiteralDefault("quote'\\nul\0; --é")
         )
@@ -75,7 +79,8 @@ async def mariadb_supplies_omitted_text() -> None:
 async def sqlite_verifies_declared_literal() -> None:
     """Cosmetic parentheses do not hide a matching hand-created integer default."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(7))
 
     async with await sqlite.Database.initialize(
@@ -104,7 +109,8 @@ async def sqlite_verifies_declared_literal() -> None:
 async def sqlite_classifies_default_catalog(case: str) -> None:
     """Known differences drift; an unknown expression is not certified."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(7))
 
     clauses = {
@@ -142,7 +148,8 @@ async def sqlite_classifies_default_catalog(case: str) -> None:
 async def sqlite_verifies_nullable_null_default() -> None:
     """SQL NULL remains distinct from no declared default on SQLite."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.GenCol[str | None] = sqlite.Text(
             nullable=True, default=sqlite.LiteralDefault(None)
         )
@@ -164,7 +171,8 @@ async def mariadb_verifies_literal_text() -> None:
     """Scaffolded quoted text survives native catalog normalization."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str] = mariadb.Text(
             default=mariadb.LiteralDefault("quote'\\nul\0; --é")
         )
@@ -184,7 +192,8 @@ async def mariadb_discloses_null_default_ambiguity() -> None:
     """Effective SQL NULL can match without claiming an explicit DEFAULT clause."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str | None] = mariadb.Text(
             nullable=True, default=mariadb.LiteralDefault(None)
         )
@@ -215,7 +224,8 @@ def literal_default_validates_logical_constraints() -> None:
     """A server-filled value must satisfy the same logical contract as a row."""
     with assert_raises(sqlite.ModelDeclarationError):
 
-        class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+        class Entry[S = sqlite.Pending](sqlite.Model[S]):
+            __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
             attempts: sqlite.GenCol[PositiveInt] = sqlite.Integer(
                 default=sqlite.LiteralDefault(0)
             )
@@ -257,13 +267,13 @@ def invalid_default_is_rejected_before_io(case: str) -> None:
     with assert_raises(sqlite.ModelDeclarationError):
         if case == "not-generated":
 
-            class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+            class Entry[S = sqlite.Pending](sqlite.Model[S]):
+                __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
                 attempts: sqlite.Col[int] = sqlite.Integer(**options)
         else:
 
-            class GeneratedEntry[S = sqlite.Pending](
-                sqlite.Model[S, "GeneratedEntry[sqlite.Fetched]"]
-            ):
+            class GeneratedEntry[S = sqlite.Pending](sqlite.Model[S]):
+                __row_type__: ClassVar[sqlite.ReadType[GeneratedEntry[sqlite.Row]]]
                 attempts: sqlite.GenCol[int] = sqlite.Integer(**options)
 
 
@@ -272,7 +282,8 @@ def mariadb_default_fits_declared_text_length() -> None:
     """A constant that cannot fit VARCHAR fails at declaration, not migration."""
     with assert_raises(mariadb.ModelDeclarationError):
 
-        class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+        class Entry[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
             label: mariadb.GenCol[str] = mariadb.Text(
                 length=3, default=mariadb.LiteralDefault("long")
             )
@@ -283,7 +294,8 @@ async def mariadb_long_text_default_is_generated() -> None:
     """Ordinary long text accepts a server literal without the VARCHAR ceiling."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str] = mariadb.LongText(
             default=mariadb.LiteralDefault("a" * 300)
         )
@@ -305,7 +317,8 @@ async def mariadb_long_text_default_is_generated() -> None:
 async def sqlite_explicit_values_override_server_default(case: str) -> None:
     """Only PendingGeneration omits the column; explicit NULL is still a value."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.GenCol[str | None] = sqlite.Text(
             nullable=True, default=sqlite.LiteralDefault("pending")
         )
@@ -331,7 +344,8 @@ async def sqlite_explicit_values_override_server_default(case: str) -> None:
 async def sqlite_boolean_default_materializes() -> None:
     """A server Boolean constant decodes into the declared Python logical type."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         enabled: sqlite.GenCol[bool] = sqlite.Integer(
             default=sqlite.LiteralDefault(True)
         )
@@ -356,7 +370,8 @@ async def mariadb_explicit_values_override_server_default(case: str) -> None:
     """Only PendingGeneration omits the column; explicit NULL is still a value."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str | None] = mariadb.Text(
             nullable=True, default=mariadb.LiteralDefault("pending")
         )
@@ -381,7 +396,8 @@ async def mariadb_boolean_default_materializes() -> None:
     """A server Boolean constant decodes into the declared Python logical type."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         enabled: mariadb.GenCol[bool] = mariadb.Boolean(
             default=mariadb.LiteralDefault(True)
         )
@@ -400,10 +416,12 @@ async def mariadb_boolean_default_materializes() -> None:
 def table_foreign_key_can_have_literal_default() -> None:
     """A generated column may participate in a table-level foreign key."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         key: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         parent_key: sqlite.GenCol[int] = sqlite.Integer(
             default=sqlite.LiteralDefault(7)
         )
@@ -440,7 +458,8 @@ async def mariadb_classifies_default_catalog(case: str) -> None:
     """Hand-created MariaDB defaults produce matched, drift, or unchecked facts."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         attempts: mariadb.GenCol[int | None] = mariadb.Integer(
             default=mariadb.LiteralDefault(7)
         )
@@ -478,7 +497,8 @@ async def mariadb_classifies_default_catalog(case: str) -> None:
 async def sqlite_null_default_materializes() -> None:
     """An omitted nullable value is supplied as SQL NULL."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.GenCol[str | None] = sqlite.Text(
             default=sqlite.LiteralDefault(None)
         )
@@ -499,7 +519,8 @@ async def sqlite_null_default_materializes() -> None:
 def plain_default_does_not_emit_sql_default() -> None:
     """Existing Python defaults remain constructor values, not server defaults."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.Col[int] = sqlite.Integer(default=7)
 
     assert_eq("DEFAULT" in sqlite.scaffold([Entry]), False)
@@ -526,7 +547,8 @@ async def sqlite_distinguishes_null_from_text(
     """A quoted constant is never mistaken for a keyword or missing default."""
     value, sql, status = case
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         label: sqlite.GenCol[str | None] = sqlite.Text(
             default=sqlite.LiteralDefault(value)
         )
@@ -558,7 +580,8 @@ def marker_is_immutable() -> None:
 async def strict_policy_rejects_changed_literal() -> None:
     """Recognized literal drift fails strict verification."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(7))
 
     async with await sqlite.Database.initialize(
@@ -576,7 +599,8 @@ async def mariadb_nonnullable_absence_is_not_null_default() -> None:
     """A missing NOT NULL default does not supply an effective NULL value."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         label: mariadb.GenCol[str | None] = mariadb.Text(
             default=mariadb.LiteralDefault(None)
         )

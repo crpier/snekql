@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     token = Event.event_id.label("event_id")
     query = sqlite.select(Event).all().project(Row, event_id=token)
     combined = query.union_all(query)
-    stored: sqlite.Select[Row] = combined
+    stored: sqlite.ClosedRead[Row] = sqlite.ready(combined)
     cte = combined.cte(CombinedRole, name="combined")
     nullable_token = NullableEvent.event_id.label("event_id")
     nullable = (
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     native_token = MariaEvent.event_id.label("event_id")
     native = mariadb.select(MariaEvent).all().project(Row, event_id=native_token)
     native_combined = native.union_all(native)
-    native_stored: mariadb.Select[Row] = native_combined
+    native_stored: mariadb.ClosedRead[Row] = mariadb.ready(native_combined)
 
     async def consume_local(transaction: sqlite.Transaction) -> None:
         """Rows, optional fetches, streams and output references keep their types."""

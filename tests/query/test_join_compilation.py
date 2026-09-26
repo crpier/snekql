@@ -7,15 +7,19 @@ A joined select renders table-qualified column names, a `FROM` anchor, and one
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql import sqlite
-from snekql.sqlite import PENDING_GENERATION, Fetched, Pending, select
+from snekql.sqlite import PENDING_GENERATION, Pending, Row, select
 from tests.helpers import SQLITE_CODEC
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Referenced table."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -25,8 +29,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Table with a foreign key to ``User``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,

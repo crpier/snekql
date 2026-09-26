@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 import anyio
 import anyio.lowlevel
@@ -19,22 +20,26 @@ from snekql.sqlite import (
     DatabaseClosingError,
     DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
-    Fetched,
     Integer,
     Model,
     ModelValidationError,
     Pending,
     PoolTimeoutError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     insert,
+    raw,
     select,
 )
 from tests.helpers import initialized_database
 
 
-class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
+class RuntimeUser[S = Pending](Model[S]):
     """Table model used by transaction runtime tests."""
+
+    __row_type__: ClassVar[ReadType[RuntimeUser[Row]]]
 
     id: RuntimeUser.GenCol[int] = Integer(
         primary_key=True,
@@ -44,8 +49,10 @@ class RuntimeUser[S = Pending](Model[S, "RuntimeUser[Fetched]"]):
     email: RuntimeUser.Col[str] = Text(nullable=False)
 
 
-class RuntimeReceipt[S = Pending](Model[S, "RuntimeReceipt[Fetched]"]):
+class RuntimeReceipt[S = Pending](Model[S]):
     """Table model with a constrained column for read-side validation tests."""
+
+    __row_type__: ClassVar[ReadType[RuntimeReceipt[Row]]]
 
     id: RuntimeReceipt.GenCol[int] = Integer(
         primary_key=True,
@@ -224,9 +231,8 @@ async def fetch_validates_logical_types_and_can_skip_validation() -> None:
     )
     try:
         async with database.transaction() as tx:
-            # construct bypasses the write-side check, so an out-of-range value
-            # reaches storage and only the read side can reject it.
-            await tx.execute(insert(RuntimeReceipt.construct(amount=-5)))
+            # Raw SQL seeds invalid storage to exercise read-side validation.
+            await tx.execute(raw("INSERT INTO runtime_receipt (amount) VALUES (-5)"))
 
             with assert_raises(ModelValidationError):
                 _ = await tx.fetch_all(select(RuntimeReceipt).all())
@@ -254,6 +260,6 @@ async def insert_rejects_a_fetched_model() -> None:
             fetched_user = await tx.fetch_one(select(RuntimeUser).all())
 
             with assert_raises(QueryConstructionError):
-                _ = insert(fetched_user)  # ty: ignore[no-matching-overload]
+                _ = insert(fetched_user)  # ty: ignore[invalid-argument-type]
     finally:
         await database.close()

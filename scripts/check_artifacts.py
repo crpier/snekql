@@ -83,12 +83,14 @@ asyncio.run(main())
         )
         typing_smoke = directory / "typing_smoke.py"
         typing_smoke.write_text(
-            """from snekql import sqlite
+            """from typing import ClassVar
+from snekql import sqlite
 
-class User[S = sqlite.Pending](sqlite.Model[S, "User[sqlite.Fetched]"]):
+class User[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: User.Col[int] = sqlite.Integer(primary_key=True)
 
-query: sqlite.Select[User[sqlite.Fetched]] = sqlite.select(User).all()
+query: sqlite.ClosedRead[User[sqlite.Row]] = sqlite.ready(sqlite.select(User).all())
 """
         )
         _run(str(python), "-I", str(runtime_smoke), cwd=directory)

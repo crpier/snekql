@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from anyio import fail_after, to_thread
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
@@ -20,17 +20,19 @@ from snekql.runtime import Database
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class _SQLiteEntry[S = sqlite.Pending](sqlite.Model[S, "_SQLiteEntry[sqlite.Fetched]"]):
+class _SQLiteEntry[S = sqlite.Pending](sqlite.Model[S]):
     """SQLite rows used to observe transaction-local writes."""
+
+    __row_type__: ClassVar[sqlite.ReadType[_SQLiteEntry[sqlite.Row]]]
 
     id: _SQLiteEntry.Col[int] = sqlite.Integer(primary_key=True)
     label: _SQLiteEntry.Col[str] = sqlite.Text()
 
 
-class _MariaDBEntry[S = mariadb.Pending](
-    mariadb.Model[S, "_MariaDBEntry[mariadb.Fetched]"]
-):
+class _MariaDBEntry[S = mariadb.Pending](mariadb.Model[S]):
     """MariaDB rows used to observe transaction-local writes."""
+
+    __row_type__: ClassVar[mariadb.ReadType[_MariaDBEntry[mariadb.Row]]]
 
     id: _MariaDBEntry.Col[int] = mariadb.Integer(primary_key=True)
     label: _MariaDBEntry.Col[str] = mariadb.Text()
@@ -67,8 +69,12 @@ async def _provide_execution_case(
         ) as database:
             async with database.transaction() as transaction:
                 await transaction.execute(
-                    mariadb.insert(
-                        [_MariaDBEntry(id=index, label="seed") for index in range(1, 4)]
+                    mariadb.insert_many(
+                        _MariaDBEntry,
+                        [
+                            _MariaDBEntry(id=index, label="seed")
+                            for index in range(1, 4)
+                        ],
                     )
                 )
             yield _ExecutionCase(
@@ -93,8 +99,9 @@ async def _provide_execution_case(
         ) as database:
             async with database.transaction() as transaction:
                 await transaction.execute(
-                    sqlite.insert(
-                        [_SQLiteEntry(id=index, label="seed") for index in range(1, 4)]
+                    sqlite.insert_many(
+                        _SQLiteEntry,
+                        [_SQLiteEntry(id=index, label="seed") for index in range(1, 4)],
                     )
                 )
             yield _ExecutionCase(

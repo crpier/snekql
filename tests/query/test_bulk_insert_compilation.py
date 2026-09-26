@@ -2,24 +2,30 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     insert,
+    insert_many,
 )
 from tests.helpers import SQLITE_CODEC
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Table model with a generated primary key and explicit columns."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: User.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -28,8 +34,10 @@ class User[S = Pending](Model[S, "User[Fetched]"]):
     status: User.Col[str] = Text(nullable=False, default="active")
 
 
-class Account[S = Pending](Model[S, "Account[Fetched]"]):
+class Account[S = Pending](Model[S]):
     """Unrelated table model, used to test cross-model returning rejection."""
+
+    __row_type__: ClassVar[ReadType[Account[Row]]]
 
     id: Account.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -70,11 +78,12 @@ def bulk_returning_columns_lists_only_named_columns_once() -> None:
     """A bulk returning projection appends one RETURNING clause for the batch."""
 
     sql, _ = SQLITE_CODEC.compile_write_sql(
-        insert(
+        insert_many(
+            User,
             [
                 User(email="a@example.com"),
                 User(email="b@example.com"),
-            ]
+            ],
         ).returning(User.id)
     )
 
@@ -100,11 +109,12 @@ def bulk_insert_compiles_one_multi_row_values_statement() -> None:
     """A bulk insert flattens homogeneous rows into one VALUES list."""
 
     sql, params = SQLITE_CODEC.compile_write_sql(
-        insert(
+        insert_many(
+            User,
             [
                 User(email="a@example.com", status="active"),
                 User(email="b@example.com", status="invited"),
-            ]
+            ],
         )
     )
 
@@ -120,11 +130,12 @@ def bulk_insert_rejects_rows_from_different_models() -> None:
     """A batch cannot defer mixed-model rejection until Query Compilation."""
 
     with assert_raises(QueryConstructionError):
-        _ = insert(
+        _ = insert_many(
+            User,  # ty: ignore[invalid-argument-type]
             [
                 User(email="a@example.com"),
                 Account(name="not a user"),
-            ]
+            ],
         )
 
 
@@ -137,7 +148,7 @@ def insert_rejects_uninitialized_model_instances() -> None:
     with assert_raises(QueryConstructionError):
         _ = insert(uninitialized_user)
     with assert_raises(QueryConstructionError):
-        _ = insert([User(email="a@example.com"), uninitialized_user])
+        _ = insert_many(User, [User(email="a@example.com"), uninitialized_user])
 
 
 @test(mark="fast")
@@ -145,11 +156,12 @@ def bulk_insert_returning_appends_columns_once() -> None:
     """Bulk returning appends a single RETURNING clause for the whole statement."""
 
     sql, params = SQLITE_CODEC.compile_write_sql(
-        insert(
+        insert_many(
+            User,
             [
                 User(email="a@example.com", status="active"),
                 User(email="b@example.com", status="active"),
-            ]
+            ],
         ).returning()
     )
 
@@ -166,11 +178,12 @@ def bulk_insert_returning_appends_columns_once() -> None:
 def bulk_insert_rejects_heterogeneous_column_sets() -> None:
     """Rows that set different columns cannot share one VALUES statement."""
 
-    query = insert(
+    query = insert_many(
+        User,
         [
             User(id=1, email="a@example.com", status="active"),
             User(email="b@example.com", status="active"),
-        ]
+        ],
     )
 
     with assert_raises(QueryCompilationError):

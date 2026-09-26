@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb
@@ -21,7 +23,8 @@ async def nullable_scaffold_verifies(policy: SchemaPolicy) -> None:
     """Ordinary optional Integer and Text scaffolds satisfy strict verification."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         amount: Entry.Col[int | None] = mariadb.Integer(default=None)
         text: Entry.Col[str | None] = mariadb.Text(default=None)
 
@@ -47,7 +50,8 @@ async def text_defaults_remain_distinct(literal: str) -> None:
     """Only unquoted SQL NULL is equivalent to the nullable scaffold default."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         value: Entry.Col[str | None] = mariadb.Text(default=None)
 
     async with await mariadb.Database.initialize(server.config()) as database:
@@ -83,7 +87,8 @@ async def integer_literal_default_is_drift() -> None:
     """A non-NULL integer default must not be normalized away."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         value: Entry.Col[int | None] = mariadb.Integer(default=None)
 
     async with await mariadb.Database.initialize(server.config()) as database:

@@ -1,6 +1,6 @@
 """Named result contracts through public query compilation."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from pydantic import BaseModel, RootModel
 from snektest import assert_eq, assert_raises, test
@@ -8,8 +8,10 @@ from snektest import assert_eq, assert_raises, test
 from snekql import mariadb, sqlite
 
 
-class Person[S = sqlite.Pending](sqlite.Model[S, "Person[sqlite.Fetched]"]):
+class Person[S = sqlite.Pending](sqlite.Model[S]):
     """A table independent from its named result contract."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Person[sqlite.Row]]]
 
     id: Person.Col[int] = sqlite.Integer(primary_key=True)
     name: Person.Col[str] = sqlite.Text()
@@ -101,9 +103,9 @@ def named_projection_rejects_duplicate_sql_labels() -> None:
 
 if TYPE_CHECKING:
 
-    def person_summary_query() -> sqlite.Select[PersonSummary]:
+    def person_summary_query() -> sqlite.ClosedRead[PersonSummary]:
         """Completed named queries retain the existing result-oriented annotation."""
-        return (
+        return sqlite.ready(
             sqlite.select(Person)
             .project(PersonSummary, id=Person.id, name=Person.name)
             .all()
@@ -162,9 +164,8 @@ def named_projection_accepts_result_type_aliases() -> None:
 def named_scalar_projection_rejects_another_backend() -> None:
     """Keyword bindings must not erase a scalar subquery's backend identity."""
 
-    class ForeignPerson[S = mariadb.Pending](
-        mariadb.Model[S, "ForeignPerson[mariadb.Fetched]"]
-    ):
+    class ForeignPerson[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[ForeignPerson[mariadb.Row]]]
         id: ForeignPerson.Col[int] = mariadb.Integer(primary_key=True)
 
     class MaybeId(BaseModel):

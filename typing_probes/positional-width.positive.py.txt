@@ -1,11 +1,14 @@
 """The largest positional projection preserves every result slot."""
 
+from typing import ClassVar
+
 from typing import assert_type
 
 from snekql import __BACKEND__ as database
 
 
-class Entry[S = database.Pending](database.Model[S, "Entry[database.Fetched]"]):
+class Entry[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
     label: database.Col[str] = database.Text()
 

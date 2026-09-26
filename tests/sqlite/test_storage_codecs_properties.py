@@ -14,7 +14,7 @@ import math
 import uuid
 import warnings
 from datetime import UTC, datetime, timedelta, timezone
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -28,13 +28,14 @@ from snektest import (
 
 from snekql.sqlite import (
     Blob,
-    Fetched,
     Integer,
     LexicalDatetimeWarning,
     Model,
     ModelValidationError,
     Pending,
+    ReadType,
     Real,
+    Row,
     Text,
 )
 
@@ -47,8 +48,10 @@ _INT64_MAX = 2**63 - 1
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", LexicalDatetimeWarning)
 
-    class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
+    class Scalars[S = Pending](Model[S]):
         """One column per SQLite storage class / logical type under test."""
+
+        __row_type__: ClassVar[ReadType[Scalars[Row]]]
 
         number: Scalars.Col[int] = Integer(nullable=False)
         rating: Scalars.Col[float] = Real(nullable=False)
@@ -216,8 +219,10 @@ def datetime_with_sub_minute_offset_is_rejected(value: datetime) -> None:
 def uuid_round_trips_as_text(value: uuid.UUID) -> None:
     """A UUID logical type round-trips through its string form on the wire."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
         """Model binding a UUID logical type over TEXT."""
+
+        __row_type__: ClassVar[ReadType[Account[Row]]]
 
         account_id: Account.Col[uuid.UUID] = Text(nullable=False)
 

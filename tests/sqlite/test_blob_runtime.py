@@ -2,21 +2,27 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_true, test
 
-from snekql.sqlite import Blob, Fetched, Integer, Model, Pending, insert, select
+from snekql.sqlite import Blob, Integer, Model, Pending, ReadType, Row, insert, select
 from tests.helpers import initialized_database
 
 
-class BinaryRecord[S = Pending](Model[S, "BinaryRecord[Fetched]"]):
+class BinaryRecord[S = Pending](Model[S]):
     """Binary record table with blob payload storage."""
+
+    __row_type__: ClassVar[ReadType[BinaryRecord[Row]]]
 
     id: BinaryRecord.Col[int] = Integer(primary_key=True)
     payload: BinaryRecord.Col[bytes] = Blob(nullable=False)
 
 
-class OptionalBinaryRecord[S = Pending](Model[S, "OptionalBinaryRecord[Fetched]"]):
+class OptionalBinaryRecord[S = Pending](Model[S]):
     """Binary record table with a nullable blob payload."""
+
+    __row_type__: ClassVar[ReadType[OptionalBinaryRecord[Row]]]
 
     id: OptionalBinaryRecord.Col[int] = Integer(primary_key=True)
     payload: OptionalBinaryRecord.Col[bytes | None] = Blob(nullable=True, default=None)

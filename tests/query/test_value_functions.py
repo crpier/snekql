@@ -1,6 +1,6 @@
 """Typed SQL value functions through query compilation."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from pydantic import Json
 from snektest import assert_eq, assert_raises, test
@@ -8,8 +8,10 @@ from snektest import assert_eq, assert_raises, test
 from snekql import sqlite
 
 
-class Profile[S = sqlite.Pending](sqlite.Model[S, "Profile[sqlite.Fetched]"]):
+class Profile[S = sqlite.Pending](sqlite.Model[S]):
     """Optional display data with a native text representation."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Profile[sqlite.Row]]]
 
     id: Profile.Col[int] = sqlite.Integer(primary_key=True)
     nickname: Profile.Col[str | None] = sqlite.Text(nullable=True)
@@ -39,7 +41,8 @@ def text_functions_compose_with_arithmetic() -> None:
 def text_functions_reject_json_encoded_strings() -> None:
     """A JSON string's wire representation is not native text content."""
 
-    class Document[S = sqlite.Pending](sqlite.Model[S, "Document[sqlite.Fetched]"]):
+    class Document[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Document[sqlite.Row]]]
         payload: Document.Col[Json[str]] = sqlite.Text()
 
     with assert_raises(sqlite.QueryConstructionError):

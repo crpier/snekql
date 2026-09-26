@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import Ge
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
@@ -13,8 +13,10 @@ from snekql.errors import ModelValidationError
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Reading[S = mariadb.Pending](mariadb.Model[S, "Reading[mariadb.Fetched]"]):
-    """Logical constraints can be violated by explicitly unchecked inputs."""
+class Reading[S = mariadb.Pending](mariadb.Model[S]):
+    """Raw SQL can store values that violate logical constraints."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Reading[mariadb.Row]]]
 
     score: Reading.Col[Annotated[int, Ge(0)]] = mariadb.Integer(nullable=False)
 
@@ -37,7 +39,7 @@ async def extrema_respect_validation_policy(case: tuple[str, str, str]) -> None:
         server.config(), models=[Reading]
     ) as database:
         async with database.transaction() as setup:
-            await setup.execute(mariadb.insert(Reading.construct(score=-1)))
+            await setup.execute(mariadb.raw("INSERT INTO reading (score) VALUES (-1)"))
 
         extremum = Reading.score.min() if case[0] == "min" else Reading.score.max()
         query = mariadb.select(extremum).all()
@@ -133,8 +135,10 @@ async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Event[S = mariadb.Pending](mariadb.Model[S, "Event[mariadb.Fetched]"]):
+    class Event[S = mariadb.Pending](mariadb.Model[S]):
         """An order-preserving logical timestamp over text storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[mariadb.Row]]]
 
         timestamp: Event.Col[mariadb.UtcDatetime] = mariadb.Text(nullable=False)
 

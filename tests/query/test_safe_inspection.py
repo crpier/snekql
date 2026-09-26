@@ -2,7 +2,7 @@
 
 from io import StringIO
 from logging import INFO, Logger, StreamHandler
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar
 
 from pydantic import PlainSerializer
 from snektest import Param, assert_eq, assert_raises, test
@@ -14,7 +14,8 @@ from snekql import mariadb, sqlite
 def default_formatting_hides_bindings() -> None:
     """Default query formatting keeps placeholders without rendering bound secrets."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         token: sqlite.Col[str] = sqlite.Text()
 
     query = sqlite.select(Account).where(Account.token.eq("private-token"))
@@ -29,7 +30,8 @@ def default_formatting_hides_bindings() -> None:
 def explicit_inspection_is_local() -> None:
     """Value inspection includes diagnostics without changing subsequent formatting."""
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         token: sqlite.Col[str] = sqlite.Text()
 
     query = sqlite.select(Account).where(Account.token.eq("private-token"))
@@ -41,15 +43,13 @@ def explicit_inspection_is_local() -> None:
     assert "private-token" not in repr(query)
 
 
-class SQLiteAccount[S = sqlite.Pending](
-    sqlite.Model[S, "SQLiteAccount[sqlite.Fetched]"]
-):
+class SQLiteAccount[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[SQLiteAccount[sqlite.Row]]]
     token: sqlite.Col[str] = sqlite.Text()
 
 
-class MariaDBAccount[S = mariadb.Pending](
-    mariadb.Model[S, "MariaDBAccount[mariadb.Fetched]"]
-):
+class MariaDBAccount[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[MariaDBAccount[mariadb.Row]]]
     token: mariadb.Col[str] = mariadb.Text()
 
 
@@ -97,7 +97,8 @@ def compilation_failure_does_not_render_exception() -> None:
     def refuse(value: str) -> str:
         raise sqlite.ModelValidationError(value)
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         token: sqlite.Col[Annotated[str, PlainSerializer(refuse)]] = sqlite.Text()
 
     query = sqlite.select(Account).where(Account.token.eq("private-token"))
@@ -173,7 +174,8 @@ def query_formatting_never_inlines_encoded_values() -> None:
     def encode(value: str) -> Any:
         return Secret(value)
 
-    class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+    class Account[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
         token: sqlite.Col[Annotated[str, PlainSerializer(encode)]] = sqlite.Text()
 
     query = sqlite.select(Account).where(Account.token.eq("private-token"))

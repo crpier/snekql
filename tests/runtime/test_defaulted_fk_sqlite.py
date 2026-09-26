@@ -35,7 +35,7 @@ async def omitted_nullable_reference_round_trips() -> None:
             sqlite.select(Account).where(Account.account_id.eq(1))
         )
 
-    assert_type(row, Account[sqlite.Fetched])
+    assert_type(row, Account[sqlite.Row])
     assert_eq(row.manager_id, None)
 
 

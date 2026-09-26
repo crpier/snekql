@@ -1,0 +1,3 @@
+
+
+pending_write(database.complete(Account, account_id=1, nickname=None))  # expect-error

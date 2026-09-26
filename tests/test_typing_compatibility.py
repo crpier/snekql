@@ -122,8 +122,8 @@ async def missing_probe_is_infrastructure_failure() -> None:
 
 
 @test([Param(name, name=name) for name in ("ty", "pyright", "mypy")], mark="fast")
-async def readiness_probe_requires_explicit_row_scope(checker: str) -> None:
-    """A completed query passes while the same unscoped select is diagnosed."""
+async def readiness_report_retains_checker_limits(checker: str) -> None:
+    """Only a clean positive control can establish row-scope rejection."""
     completed = await run_process(
         [
             sys.executable,
@@ -138,10 +138,14 @@ async def readiness_probe_requires_explicit_row_scope(checker: str) -> None:
         check=False,
     )
 
-    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    assert_eq(
+        completed.returncode, 0 if checker == "ty" else 1, msg=completed.stderr.decode()
+    )
     report = loads(completed.stdout)
-    assert_eq(report["cases"][0]["name"], "readiness")
-    assert_eq(report["cases"][0]["conforms"], True)
+    case = report["cases"][0]
+    assert_eq(case["name"], "readiness")
+    assert_eq(case["conforms"], checker == "ty")
+    assert_eq(bool(case["positive_errors"]), checker != "ty")
 
 
 @test(mark="fast")
@@ -243,25 +247,105 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
 
     assert_eq(
         completed.returncode,
-        1 if checker == "mypy" else 0,
+        0 if checker == "ty" else 1,
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 16)
+    assert_eq(len(report["cases"]), 84)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]
         if not case["conforms"]
+    }
+    unsupported = {
+        "ty": (),
+        "pyright": (
+            "row-constructor",
+            "insert-sequence",
+            "insert-empty",
+            "insert-tuple",
+            "source-select",
+            "source-row",
+            "source-pretender",
+            "source-join",
+            "source-left-join",
+            "source-update",
+            "source-delete",
+            "source-alias",
+            "compare-eq",
+            "compare-ne",
+            "compare-gt",
+            "compare-gte",
+            "compare-lt",
+            "compare-lte",
+            "compare-alias",
+            "bulk-destination",
+            "bulk-row-state",
+            "bulk-backend",
+            "bulk-source",
+            "read-scope",
+            "ready-incomplete",
+            "ready-scope",
+            "closed-assignment",
+            "closed-optional",
+            "ready-backend",
+            "pending-input",
+            "read-constructor",
+            "readiness",
+            "backend-identity",
+            "named-result",
+            "joins",
+        ),
+        "mypy": (
+            "frozen-row",
+            "frozen-pending",
+            "frozen-generated",
+            "row-constructor",
+            "insert-sequence",
+            "insert-empty",
+            "insert-tuple",
+            "source-select",
+            "source-row",
+            "source-pretender",
+            "source-join",
+            "source-left-join",
+            "source-update",
+            "source-delete",
+            "source-alias",
+            "compare-eq",
+            "compare-ne",
+            "compare-gt",
+            "compare-gte",
+            "compare-lt",
+            "compare-lte",
+            "compare-alias",
+            "bulk-destination",
+            "bulk-row-state",
+            "bulk-backend",
+            "bulk-source",
+            "read-scope",
+            "ready-incomplete",
+            "ready-scope",
+            "closed-assignment",
+            "closed-optional",
+            "ready-backend",
+            "pending-input",
+            "read-constructor",
+            "readiness",
+            "backend-identity",
+            "positional-width",
+            "named-result",
+            "joins",
+            "fk-defaults",
+        ),
     }
     assert_eq(
         failed,
         {
             (backend, name)
             for backend in ("sqlite", "mariadb")
-            for name in ("positional-width", "joins", "fk-defaults")
-        }
-        if checker == "mypy"
-        else set(),
+            for name in unsupported[checker]
+        },
     )
 
 
@@ -329,3 +413,221 @@ async def defaulted_fk_probe_preserves_target(checker: str) -> None:
 
     assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
     assert_true(loads(completed.stdout)["conforms"])
+
+
+@test(
+    [Param("sqlite", name="sqlite"), Param("mariadb", name="mariadb")],
+    mark="slow",
+)
+async def row_constructor_requires_valid_pending_control(backend: str) -> None:
+    """Only the direct Row call fails beside clean exact-type Pending controls."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--checker",
+            "ty",
+            "--case",
+            "row-constructor",
+            "--backend",
+            backend,
+        ],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    case = report["cases"][0]
+    assert_eq(case["positive_errors"], [])
+    assert_eq(len(case["negative_errors"]), 1)
+    assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
+    assert_eq(case["negative_errors"][0]["rule"], "invalid-argument-type")
+    assert_true(case["conforms"])
+
+
+@test(
+    [
+        Param(name, name=name)
+        for name in (
+            "bulk-destination",
+            "bulk-row-state",
+            "bulk-backend",
+            "bulk-source",
+        )
+    ],
+    mark="fast",
+)
+async def explicit_batch_contract_requires_clean_control(name: str) -> None:
+    """Each rejection has independent exact-type nonempty and empty controls."""
+    completed = await run_process(
+        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 2)
+    for case in report["cases"]:
+        assert_eq(case["positive_errors"], [])
+        assert_eq(len(case["negative_errors"]), 1)
+        assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
+        assert_eq(case["negative_errors"][0]["rule"], "invalid-argument-type")
+        assert_true(case["conforms"])
+
+
+@test(
+    [
+        Param(name, name=name)
+        for name in (
+            "read-scope",
+            "ready-incomplete",
+            "ready-scope",
+            "closed-assignment",
+            "closed-optional",
+            "ready-backend",
+            "pending-input",
+            "read-constructor",
+        )
+    ],
+    mark="slow",
+)
+async def read_helper_contract_requires_clean_control(name: str) -> None:
+    """Rejected helper usage must have clean exact-type controls on both backends."""
+    completed = await run_process(
+        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 2)
+    expected_rule = {
+        "read-scope": "invalid-argument-type",
+        "ready-incomplete": "no-matching-overload",
+        "ready-scope": "no-matching-overload",
+        "closed-assignment": "invalid-assignment",
+        "closed-optional": "no-matching-overload",
+        "ready-backend": "no-matching-overload",
+        "pending-input": "invalid-argument-type",
+        "read-constructor": "call-non-callable",
+    }[name]
+    for case in report["cases"]:
+        assert_eq(case["positive_errors"], [])
+        assert_eq(len(case["negative_errors"]), 1)
+        assert_eq(case["negative_errors"][0]["line"], case["expected_line"])
+        assert_eq(case["negative_errors"][0]["rule"], expected_rule)
+        assert_true(case["conforms"])
+
+
+@test(
+    [
+        Param((name, rule), name=name)
+        for name, rule in (
+            ("compare-eq", "invalid-argument-type"),
+            ("compare-ne", "invalid-argument-type"),
+            ("compare-gt", "invalid-argument-type"),
+            ("compare-gte", "invalid-argument-type"),
+            ("compare-lt", "invalid-argument-type"),
+            ("compare-lte", "invalid-argument-type"),
+            ("compare-alias", "no-matching-overload"),
+            ("frozen-row", "invalid-assignment"),
+            ("frozen-pending", "invalid-assignment"),
+            ("frozen-generated", "invalid-assignment"),
+        )
+    ],
+    mark="slow",
+)
+async def comparison_or_freezing_requires_clean_control(case: tuple[str, str]) -> None:
+    """Check one invalid operation beside exact-type valid callers on each backend."""
+    name, rule = case
+    completed = await run_process(
+        [sys.executable, "scripts/check_typing_compatibility.py", "--case", name],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 2)
+    for observation in report["cases"]:
+        assert_eq(observation["positive_errors"], [])
+        assert_eq(len(observation["negative_errors"]), 1)
+        assert_eq(
+            observation["negative_errors"][0]["line"], observation["expected_line"]
+        )
+        assert_eq(observation["negative_errors"][0]["rule"], rule)
+        assert_true(observation["conforms"])
+
+
+@test(
+    [
+        Param(verb, name=verb)
+        for verb in (
+            "select",
+            "row",
+            "pretender",
+            "join",
+            "left-join",
+            "update",
+            "delete",
+            "alias",
+        )
+    ],
+    mark="slow",
+)
+async def query_source_contract_requires_clean_control(verb: str) -> None:
+    """Nominal guards reject values without losing native query role result types."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--case",
+            f"source-{verb}",
+        ],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 2)
+    for observation in report["cases"]:
+        assert_eq(observation["positive_errors"], [])
+        assert_eq(len(observation["negative_errors"]), 1)
+        assert_eq(
+            observation["negative_errors"][0]["line"], observation["expected_line"]
+        )
+        assert_eq(
+            observation["negative_errors"][0]["rule"],
+            "invalid-argument-type"
+            if verb in {"update", "delete"}
+            else "no-matching-overload",
+        )
+        assert_true(observation["conforms"])
+
+
+@test(
+    [Param(kind, name=kind) for kind in ("sequence", "empty", "tuple")],
+    mark="slow",
+)
+async def single_insert_contract_requires_clean_control(kind: str) -> None:
+    """Sequence rejection accompanies exact single/batch RETURNING controls."""
+    completed = await run_process(
+        [
+            sys.executable,
+            "scripts/check_typing_compatibility.py",
+            "--case",
+            f"insert-{kind}",
+        ],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    report = loads(completed.stdout)
+    assert_eq(len(report["cases"]), 2)
+    for observation in report["cases"]:
+        assert_eq(observation["positive_errors"], [])
+        assert_eq(len(observation["negative_errors"]), 1)
+        assert_eq(
+            observation["negative_errors"][0]["line"], observation["expected_line"]
+        )
+        assert_eq(observation["negative_errors"][0]["rule"], "invalid-argument-type")
+        assert_true(observation["conforms"])

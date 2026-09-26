@@ -24,24 +24,27 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
+from typing import ClassVar
 
 from snekql.sqlite import (
     PENDING_GENERATION,
     Col,
     CurrentTimestamp,
     Database,
-    Fetched,
+    Row,
     GenCol,
     Integer,
     Model,
     Pending,
+    ReadType,
     Text,
     insert,
     select,
 )
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
+    __row_type__: ClassVar[ReadType[User[Row]]]
     id: GenCol[int] = Integer(
         primary_key=True,
         auto_increment=True,

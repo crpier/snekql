@@ -6,11 +6,15 @@ A CTE is a query source, not a table declaration or a stored database object.
 ## Define and consume
 
 ```python
+from typing import ClassVar
+
 from pydantic import BaseModel
+
 from snekql import sqlite
 
 
-class User[S = sqlite.Pending](sqlite.Model[S, "User[sqlite.Fetched]"]):
+class User[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     name: sqlite.Col[str] = sqlite.Text()
     active: sqlite.Col[bool] = sqlite.Integer()

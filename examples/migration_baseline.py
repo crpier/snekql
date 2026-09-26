@@ -6,6 +6,8 @@ are not generic schema-equivalence checkers or application startup hooks.
 Fresh databases use ordinary `migrate()` with the same literal declaration.
 """
 
+from typing import ClassVar
+
 from snekql import mariadb, sqlite
 
 SQLITE_MIGRATIONS = {
@@ -37,18 +39,16 @@ _MARIADB_REVIEWED_CREATE = """CREATE TABLE `baseline_account` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"""
 
 
-class SQLiteAccount[S = sqlite.Pending](
-    sqlite.Model[S, "SQLiteAccount[sqlite.Fetched]"]
-):
+class SQLiteAccount[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[SQLiteAccount[sqlite.Row]]]
     __tablename__ = "baseline_account"
 
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     balance: sqlite.Col[int] = sqlite.Integer()
 
 
-class MariaDBAccount[S = mariadb.Pending](
-    mariadb.Model[S, "MariaDBAccount[mariadb.Fetched]"]
-):
+class MariaDBAccount[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[MariaDBAccount[mariadb.Row]]]
     __tablename__ = "baseline_account"
 
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)

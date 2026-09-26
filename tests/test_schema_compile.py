@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql._schema_compile import (
@@ -15,17 +17,20 @@ from snekql._schema_plan import PlannedColumn, PlannedModel, build_schema_plan
 from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     ForeignKey,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
 )
 
 
-class _Author[S = Pending](Model[S, "_Author[Fetched]"]):
+class _Author[S = Pending](Model[S]):
     """Referenced table anchoring the foreign-key constraint."""
+
+    __row_type__: ClassVar[ReadType[_Author[Row]]]
 
     __tablename__ = "author"
 
@@ -35,8 +40,10 @@ class _Author[S = Pending](Model[S, "_Author[Fetched]"]):
     email: _Author.Col[str] = Text(nullable=False, unique=True)
 
 
-class _Book[S = Pending](Model[S, "_Book[Fetched]"]):
+class _Book[S = Pending](Model[S]):
     """Table with a unique column index and an enforced foreign key."""
+
+    __row_type__: ClassVar[ReadType[_Book[Row]]]
 
     __tablename__ = "book"
 
@@ -111,8 +118,10 @@ def foreign_key_constraint_is_rendered_with_quoting() -> None:
     assert_eq(constraint, 'FOREIGN KEY ("author_id") REFERENCES "author" ("id")')
 
 
-class _Loan[S = Pending](Model[S, "_Loan[Fetched]"]):
+class _Loan[S = Pending](Model[S]):
     """Table whose author reference cascades on delete and restricts on update."""
+
+    __row_type__: ClassVar[ReadType[_Loan[Row]]]
 
     __tablename__ = "loan"
 

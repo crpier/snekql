@@ -1,129 +1,119 @@
 # Type-checker compatibility
 
-**ty 0.0.77 remains the primary checker.** It checks the repository, examples and
-intentional-negative typing contracts. This assessment does not reverse that
-choice or weaken library annotations to accommodate another checker.
+Only **ty 0.0.77** is supported for the class-body model interface. Pyright and
+mypy fail required positive controls. This supersedes the earlier limited
+Pyright consumer support assessment for the two-coordinate model API.
 
 ## Tested versions and scope
 
-Assessment expanded 2026-09-24 for defaulted typed foreign keys, CPython 3.14.2,
-Linux x86-64. The original seven-contract baseline used revision
-`08ccf6b08754e1bbbeb9cf2297effe473f0f6888`.
-All tools target Python 3.14 and resolve dependencies through the same project
-interpreter. The reports record dependency versions, OS, exact arguments and
-SHA-256 hashes of the rendered positive/negative source files.
+Assessment updated 2026-09-25 on CPython 3.14.2, Linux x86-64. The current suite
+has 42 cases on each backend, producing 84 positive/negative pairs. Reports
+record dependency versions, commands, revision and dirty status, and SHA-256
+hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 
-| Tool | Version | Decision |
+| Tool | Version | Result |
 | --- | --- | --- |
-| ty | 0.0.77 | Primary supported checker; full repository validation plus 16/16 consumer pairs |
-| Pyright CLI | 1.1.414 | Supported for the consumer profile below, in strict mode; 16/16 pairs |
-| mypy | 2.3.1 | Not supported for the complete query typing contract; 10/16 pairs |
-| Pylance | Not assessed | Editor integration and bundled engine version are not certified by the Pyright CLI result |
+| ty | 0.0.77 | Supported; 84/84 pairs, plus native repository typing validation |
+| Pyright CLI | 1.1.414 | Not supported for this interface; 14/84 pairs |
+| mypy | 2.3.1 | Not supported for this interface; 4/84 pairs |
+| Pylance | Not assessed | No editor conformance claim |
 
-Python 3.14+ remains intentional. These observations do not certify older Python,
-other checker versions, another OS, every API combination or a complete Pyright
-check of the library's internal implementation. Consumers should upgrade tools
-through the same probes rather than assume every newer release is equivalent.
+All tools target Python 3.14 and use the project interpreter's dependencies.
+These results do not certify older Python, other checker versions, every API
+combination, or a complete secondary-checker analysis of library internals.
 
-The consumer profile uses only supported `snekql.sqlite` and `snekql.mariadb`
-namespace APIs. It checks inference, public helper annotations and intentional
-invalid operations. A passing negative requires a clean matching positive
-control and at least one error at the marked invalid operation. Unrelated errors
-and errors in a broken positive control cannot earn a passing result.
+A static rejection counts only with a clean independent positive control and
+an error at the marked invalid operation. The new migration cases also assert
+one expected challenge-line diagnostic with its expected rule. `Any`/`Unknown`
+results, malformed controls, unrelated errors, checker crashes, and runtime
+rejection do not establish a static guarantee.
 
-| Contract, checked on both backends | ty | Pyright | mypy |
-| --- | --- | --- | --- |
-| Pending/fetched states and generated IDs | Pass | Pass | Pass |
-| Executable select readiness | Pass | Pass | Pass |
-| Backend identity at Transaction execution | Pass | Pass | Pass |
-| Eight inferred positional slots; ninth rejected | Pass | Pass | Fails valid control |
-| Nine-field named result inference and helper boundary | Pass | Pass | Pass |
-| Left-join optional right model | Pass | Pass | Fails valid control |
-| Raw construction owns validation and result shape | Pass | Pass | Pass |
-| Nullable FK defaults, callable targets, factory defaults and target-checked references | Pass | Pass | Fails valid control |
+## Contracts covered
 
-These are eight focused contracts, not an exhaustive claim about every method.
-Runtime checks still own dynamic inputs, declaration consistency, named binding
-labels, SQL scope and value validation. A checker cannot prove those properties
-for arbitrary Python programs.
+The paired callers exercise both namespaces through their public APIs:
 
-### mypy limitations
+- Pending/Row generated-field types and Pending-only constructors.
+- Explicit batch destination, row state, backend and source checks; rejection of
+  sequences by single-row `insert`.
+- Scoped read helpers, optional-row eligibility, closed reads through `ready`,
+  read readiness/backend checks and generic Pending INSERT RETURNING results.
+- Both-owner comparisons, nullable operands, scalar subqueries and alias roles.
+- Shallow frozen fields in Pending and Row states, without prohibiting SQL
+  assignments or nested JSON mutation.
+- Bare model sources versus instances and structural lookalikes, with native
+  aliases, CTEs, joins and mutation RETURNING in the positive controls.
+- Positional width, named results, nullable model joins, raw query contracts,
+  and defaulted typed foreign keys.
 
-On valid eight-column projections, mypy 2.3.1 infers `Never` for some owner/value
-parameters, requests an annotation for the query, and loses the fetched tuple
-slots to `Any`. On valid left joins it reports descriptor-owner and overload
-mismatches and loses the inferred result to `list[Any]`. The defaulted FK
-control also rejects a valid `.references(...)` call because of descriptor-owner
-and nullable key-type mismatches.
+The templates and native typing tests contain exact `assert_type` controls.
+The 84 observations are paired backend cases, not 84 independent API guarantees.
 
-The negative examples also contain those positive-control errors, so their
-additional rejection does not establish compatibility. The reports retain all
-diagnostics. No casts, `Any` substitutions, weakened overloads or checker-specific
-ignores were added to make these cases appear supported. Passing the other five
-contracts is useful evidence, not a general mypy support promise.
+## Remaining limits
 
-## Reproduce the assessment
+Ty still accepts all 24 audited explicit Pending/Row-specialized source calls
+across six builders and both backends. Runtime builders reject them. Deliberate
+Any/callable erasure can also hide evidence. These are not static guarantees.
 
-From a source checkout with the locked development environment:
+Both-owner comparison typing can reject valid enclosing-table correlation in a
+nested JOIN ON. Native runtime behavior is preserved, but that caller currently
+needs a typing escape. General correlation typing is not redesigned.
+
+Witness consistency, `complete` keyword schemas, some FK domains, named binding
+labels and domains, and SQL validity still require runtime checks. `is_complete`
+narrows the true branch only; it does not prove persistence. Freezing is shallow.
+See the [migration guide](class-body-migration.md) for application examples.
+
+Pyright passes the lifecycle, positional-width, raw-contract, defaulted-FK and
+three frozen-field pairs. It fails required model constructor, helper, batch,
+comparison and source controls, often rejecting nominal evidence or losing
+results to Unknown. Mypy passes only the lifecycle and raw-contract pairs.
+Extra errors on invalid callers with failing controls do not establish support.
+No weakened annotations or checker-specific escapes were added to certify them.
+
+## Reproduce
+
+From the locked development environment:
 
 ```sh
 uv sync --locked --all-extras
+uv run ty check --exclude scratchpad
 uv run python scripts/check_typing_compatibility.py > ty-report.json
 uv run python scripts/check_typing_compatibility.py --checker pyright > pyright-report.json
 uv run python scripts/check_typing_compatibility.py --checker mypy > mypy-report.json
 ```
 
-The mypy command currently exits **1** because the report records incompatibility.
-Exit 0 means every selected pair conforms. Exit 2 means the assessment could not
-run reliably, such as missing tools/input files, malformed diagnostics or a
-90-second deadline. Never treat exit 2 as a successful compatibility observation.
+Historical scratchpad experiments target old interfaces and are not the native
+typing gate. The Pyright and mypy assessment commands currently exit 1. Exit 0
+means all selected pairs conform. Exit 2 means the assessment could not run
+reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
+Never count exit 2 as a successful rejection.
 
-`--backend sqlite|mariadb` and `--case <name>` select a narrower assessment;
-defaults cover all eight cases on both backends. The CLI does not execute the
-consumer programs or connect to a database. Templates live under
-[`typing_probes/`](../typing_probes/), with `.py.txt` suffixes so ordinary project
-checks do not accidentally treat intentional-invalid examples as library errors.
+Use `--backend sqlite|mariadb` and `--case <name>` to select narrower checks.
+Defaults cover all 42 cases on both backends. The CLI checks types; it does not
+execute callers or connect to a database. Templates live in
+[`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
+not include intentional errors.
 
-Secondary tools run through version-pinned `uv tool run` environments, not new
-runtime dependencies. They need uv and either network access or populated tool
-caches. Pyright also needs Node.js, directly or through its wrapper's provisioning.
-The recorded local assessment used Node.js 25.2.1. Each secondary checker receives
-an explicit strict configuration; ty uses the repository's all-errors policy
-with the existing missing-override-decorator exception. Ambient `TY_CONFIG_FILE`
-cannot replace the declared assessment configuration.
+Secondary tools run in version-pinned `uv tool run` environments, not runtime
+dependencies. They need cached tools or network access; Pyright also needs
+Node.js. Both receive explicit strict configurations. Ty uses the repository's
+all-errors policy with the existing missing-override-decorator exception.
+Ambient `TY_CONFIG_FILE` cannot override the assessment configuration.
 
-Raw dated reports:
+Current reports:
 
-- [ty](../typing_probes/results/2026-09-20/ty.json)
-- [Pyright](../typing_probes/results/2026-09-20/pyright.json)
-- [mypy](../typing_probes/results/2026-09-20/mypy.json)
+- [ty](../typing_probes/results/2026-09-25-class-body/ty.json)
+- [Pyright](../typing_probes/results/2026-09-25-class-body/pyright.json)
+- [mypy](../typing_probes/results/2026-09-25-class-body/mypy.json)
 
-Temporary paths in the recorded underlying arguments identify that execution's
-inputs; they are removed after the run. Reproduce through the CLI, which renders
-new copies from the checked-in templates. Source hashes identify those contents.
-A dirty checkout is reported as dirty; it is not presented as a clean revision.
+The reports under `typing_probes/results/2026-09-20/` describe the old interface,
+not current compatibility. Temporary paths in report commands identify removed
+caller files; rerun the CLI to render fresh callers with comparable source hashes.
 
 ## Editor guidance
 
-Select the application's Python 3.14+ environment, including its installed
-snekql and Pydantic dependencies. Keep `uv run ty check` as the project gate.
-Use ty's editor integration when you want diagnostics aligned with that gate.
-
-For a Pyright CLI consumer project, start with an explicit configuration:
-
-```json
-{
-  "pythonVersion": "3.14",
-  "typeCheckingMode": "strict",
-  "venvPath": ".",
-  "venv": ".venv",
-  "include": ["src"]
-}
-```
-
-Adjust paths to the application. Pin the assessed CLI version. This does not
-configure or pin Pylance's bundled engine. Pylance completion may still be useful,
-but its editor diagnostics need separate evaluation. When an editor disagrees,
-first reproduce with the pinned CLI and correct interpreter; do not silence a ty
-failure merely to satisfy an unassessed editor. Pylance, PyCharm and other editor
-engines have no additional conformance guarantee from this assessment.
+Select the application's Python 3.14+ environment with snekql and Pydantic
+installed. Keep ty as the project gate and use its editor integration for matching
+diagnostics. Pylance, PyCharm and other engines have no conformance guarantee from
+this assessment. When an editor disagrees, reproduce with the pinned checker and
+correct interpreter rather than silencing a ty failure for an unassessed editor.

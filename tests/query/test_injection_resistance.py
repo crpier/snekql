@@ -29,18 +29,19 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import Self
+from typing import ClassVar, Self
 
 from snektest import assert_eq, assert_raises, assert_true, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
     Aggregate,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -67,8 +68,10 @@ _INJECTION_VALUES = (
 )
 
 
-class Account[S = Pending](Model[S, "Account[Fetched]"]):
+class Account[S = Pending](Model[S]):
     """Model whose text columns receive the injection payloads as data."""
+
+    __row_type__: ClassVar[ReadType[Account[Row]]]
 
     id: Account.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION

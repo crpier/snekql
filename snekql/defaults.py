@@ -12,9 +12,13 @@ class LiteralDefault[T]:
     Pass the marker as `default`, rather than using a Python constructor default:
 
     ```python
+    from typing import ClassVar
+
     from snekql import sqlite
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         attempts: sqlite.GenCol[int] = sqlite.Integer(default=sqlite.LiteralDefault(0))
     ```
     """

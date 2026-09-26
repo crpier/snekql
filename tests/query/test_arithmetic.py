@@ -1,14 +1,16 @@
 """Native numeric expressions through public query compilation."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 
 
-class Inventory[S = sqlite.Pending](sqlite.Model[S, "Inventory[sqlite.Fetched]"]):
+class Inventory[S = sqlite.Pending](sqlite.Model[S]):
     """Stock and optimistic version counters."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Inventory[sqlite.Row]]]
 
     id: Inventory.Col[int] = sqlite.Integer(primary_key=True)
     quantity: Inventory.Col[int] = sqlite.Integer()
@@ -116,8 +118,10 @@ def nested_assignment_dependency_is_rejected() -> None:
 
 if TYPE_CHECKING:
 
-    class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+    class Other[S = sqlite.Pending](sqlite.Model[S]):
         """An unrelated scope for negative typing cases."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
 
         id: Other.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -132,7 +136,8 @@ if TYPE_CHECKING:
 def arithmetic_rejects_text_encoded_numbers() -> None:
     """A numeric Logical Type does not authorize SQL arithmetic on its text codec."""
 
-    class TextNumber[S = sqlite.Pending](sqlite.Model[S, "TextNumber[sqlite.Fetched]"]):
+    class TextNumber[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[TextNumber[sqlite.Row]]]
         value: TextNumber.Col[int] = sqlite.Text(primary_key=True)
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -152,10 +157,10 @@ def arithmetic_preserves_alias_scope() -> None:
     assert_eq(compiled.sql, 'SELECT ("quantity" + ?) FROM "inventory" AS "stock"')
 
 
-class NumericValues[S = sqlite.Pending](
-    sqlite.Model[S, "NumericValues[sqlite.Fetched]"]
-):
+class NumericValues[S = sqlite.Pending](sqlite.Model[S]):
     """Native numeric domains with independently nullable columns."""
+
+    __row_type__: ClassVar[sqlite.ReadType[NumericValues[sqlite.Row]]]
 
     id: NumericValues.Col[int] = sqlite.Integer(primary_key=True)
     integer: NumericValues.Col[int] = sqlite.Integer()

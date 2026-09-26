@@ -35,7 +35,7 @@ def _materialize_join_row(
     backend: StorageBackend,
     validate: bool,
 ) -> tuple[object, ...]:
-    """Split one joined row into a Fetched model per table, in join order.
+    """Split one joined row into a Row model per table, in join order.
 
     A left-joined table whose columns are all NULL produced no matching row, so
     its tuple slot is materialized as None rather than a model.
@@ -95,8 +95,8 @@ def materialize_select_row_for_backend(
     """Materialize one database row into the select query's result shape.
 
     Shared by every backend: a join select decodes the row into a tuple of
-    Fetched models (one per joined table), a model select decodes the whole row
-    into a Fetched Model, a single-column select returns one decoded scalar, and
+    Row models (one per joined table), a model select decodes the whole row
+    into a Row Model, a single-column select returns one decoded scalar, and
     a multi-column select returns a tuple of decoded scalars in order.
     """
 

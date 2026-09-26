@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from decimal import Decimal
-from typing import assert_type
+from typing import ClassVar, assert_type
 from uuid import UUID
 
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
@@ -39,7 +39,7 @@ async def omitted_reference_round_trips() -> None:
             mariadb.select(Account).where(Account.account_id.eq(1))
         )
 
-    assert_type(account, Account[mariadb.Fetched])
+    assert_type(account, Account[mariadb.Row])
     assert_eq(account.manager_id, None)
     assert_eq(account.defaulted, 1)
 
@@ -111,10 +111,10 @@ async def provide_decimal_accounts() -> AsyncGenerator[mariadb.Database]:
         yield database
 
 
-class DecimalAccount[S = mariadb.Pending](
-    mariadb.Model[S, "DecimalAccount[mariadb.Fetched]"]
-):
+class DecimalAccount[S = mariadb.Pending](mariadb.Model[S]):
     """A self relationship whose storage requires explicit native dimensions."""
+
+    __row_type__: ClassVar[mariadb.ReadType[DecimalAccount[mariadb.Row]]]
 
     account_id: mariadb.Col[Decimal] = mariadb.Decimal(
         precision=12, scale=2, primary_key=True
@@ -139,10 +139,10 @@ async def decimal_reference_derives_native_dimensions() -> None:
     assert_eq(account.manager_id, Decimal("1.20"))
 
 
-class UuidAccount[S = mariadb.Pending](
-    mariadb.Model[S, "UuidAccount[mariadb.Fetched]"]
-):
+class UuidAccount[S = mariadb.Pending](mariadb.Model[S]):
     """A logical UUID key with backend-specific physical storage."""
+
+    __row_type__: ClassVar[mariadb.ReadType[UuidAccount[mariadb.Row]]]
 
     account_id: mariadb.Col[UUID] = mariadb.Uuid(primary_key=True)
     manager_id: mariadb.FKCol[UuidAccount, UUID | None] = mariadb.ForeignKey(

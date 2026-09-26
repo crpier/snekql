@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import MinLen
 from pydantic import AfterValidator, BeforeValidator, Json, PlainSerializer
@@ -13,8 +13,10 @@ from snekql.errors import ModelDeclarationError, ModelValidationError
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+class Document[S = mariadb.Pending](mariadb.Model[S]):
     """A JSON marker wrapped in a nullable field annotation."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
 
     id: Document.Col[int] = mariadb.Integer(primary_key=True)
     payload: Document.Col[Json[list[int]] | None] = mariadb.Json()
@@ -38,10 +40,10 @@ async def optional_json_round_trips_decoded_payload() -> None:
     assert_eq(payload, [1, 2])
 
 
-class InnerOptional[S = mariadb.Pending](
-    mariadb.Model[S, "InnerOptional[mariadb.Fetched]"]
-):
+class InnerOptional[S = mariadb.Pending](mariadb.Model[S]):
     """The optional union may also be inside the field's Json marker."""
+
+    __row_type__: ClassVar[mariadb.ReadType[InnerOptional[mariadb.Row]]]
 
     id: InnerOptional.Col[int] = mariadb.Integer(primary_key=True)
     payload: InnerOptional.Col[Json[list[int] | None]] = mariadb.Json()
@@ -115,10 +117,10 @@ def optional_json_retains_constraints_and_validator_order() -> None:
         calls.append("after")
         return value
 
-    class Constrained[S = mariadb.Pending](
-        mariadb.Model[S, "Constrained[mariadb.Fetched]"]
-    ):
+    class Constrained[S = mariadb.Pending](mariadb.Model[S]):
         """A constrained payload inside an optional JSON field wrapper."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Constrained[mariadb.Row]]]
 
         payload: Constrained.Col[
             Annotated[
@@ -144,10 +146,10 @@ async def optional_json_preserves_custom_serialization() -> None:
     def ordered(value: list[int]) -> list[int]:
         return sorted(value)
 
-    class Serialized[S = mariadb.Pending](
-        mariadb.Model[S, "Serialized[mariadb.Fetched]"]
-    ):
+    class Serialized[S = mariadb.Pending](mariadb.Model[S]):
         """A JSON list with a canonical order on the wire."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Serialized[mariadb.Row]]]
 
         payload: Serialized.Col[
             Json[Annotated[list[int], PlainSerializer(ordered)]] | None
@@ -168,8 +170,10 @@ async def optional_json_preserves_custom_serialization() -> None:
 def nested_payload_json_markers_are_not_stripped() -> None:
     """Only the field wire marker changes; nested Json items still parse strings."""
 
-    class Nested[S = mariadb.Pending](mariadb.Model[S, "Nested[mariadb.Fetched]"]):
+    class Nested[S = mariadb.Pending](mariadb.Model[S]):
         """Nested JSON strings remain a payload-level Pydantic feature."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Nested[mariadb.Row]]]
 
         payload: Nested.Col[Json[list[Json[int]]] | None] = mariadb.Json()
 
@@ -184,8 +188,10 @@ def mixed_field_marker_unions_are_rejected() -> None:
 
     with assert_raises(ModelDeclarationError):
 
-        class Mixed[S = mariadb.Pending](mariadb.Model[S, "Mixed[mariadb.Fetched]"]):
+        class Mixed[S = mariadb.Pending](mariadb.Model[S]):
             """An ambiguous JSON-or-plain field declaration."""
+
+            __row_type__: ClassVar[mariadb.ReadType[Mixed[mariadb.Row]]]
 
             payload: Mixed.Col[Json[list[int]] | str] = mariadb.Json(nullable=False)
 
@@ -196,8 +202,10 @@ def mixed_field_marker_unions_are_rejected() -> None:
 def explicit_json_payload_unions_remain_supported() -> None:
     """One marker around the entire union unambiguously selects JSON storage."""
 
-    class Explicit[S = mariadb.Pending](mariadb.Model[S, "Explicit[mariadb.Fetched]"]):
+    class Explicit[S = mariadb.Pending](mariadb.Model[S]):
         """Every alternative belongs to one JSON payload domain."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Explicit[mariadb.Row]]]
 
         payload: Explicit.Col[Json[list[int] | str]] = mariadb.Json(nullable=False)
 
@@ -211,10 +219,10 @@ async def sql_null_and_json_null_remain_distinct_on_the_wire() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class WireDocument[S = mariadb.Pending](
-        mariadb.Model[S, "WireDocument[mariadb.Fetched]"]
-    ):
+    class WireDocument[S = mariadb.Pending](mariadb.Model[S]):
         """A text view seeds externally supplied JSON null without a JSON codec."""
+
+        __row_type__: ClassVar[mariadb.ReadType[WireDocument[mariadb.Row]]]
 
         __tablename__ = "document"
         id: WireDocument.Col[int] = mariadb.Integer(primary_key=True)
@@ -247,12 +255,14 @@ async def sql_null_and_json_null_remain_distinct_on_the_wire() -> None:
 
 @test(mark="medium")
 async def fetched_optional_json_keeps_payload_constraints() -> None:
-    """Fetched validation honors retained metadata; unchecked decoding still works."""
+    """Row validation honors retained metadata; unchecked decoding still works."""
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Checked[S = mariadb.Pending](mariadb.Model[S, "Checked[mariadb.Fetched]"]):
+    class Checked[S = mariadb.Pending](mariadb.Model[S]):
         """A constrained optional JSON payload."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Checked[mariadb.Row]]]
 
         payload: Checked.Col[Json[Annotated[list[int], MinLen(1)]] | None] = (
             mariadb.Json()
@@ -262,7 +272,9 @@ async def fetched_optional_json_keeps_payload_constraints() -> None:
         server.config(), models=[Checked]
     ) as database:
         async with database.transaction() as setup:
-            await setup.execute(mariadb.insert(Checked.construct(payload=[])))
+            await setup.execute(
+                mariadb.raw("INSERT INTO checked (payload) VALUES ('[]')")
+            )
 
         async with database.transaction() as tx:
             with assert_raises(ModelValidationError):

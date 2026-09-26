@@ -1,0 +1,3 @@
+
+
+database.select(Lookalike)  # expect-error

@@ -1,0 +1,3 @@
+
+
+database.insert([Account(name="Ada")])  # expect-error

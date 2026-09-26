@@ -1,24 +1,28 @@
 """Each backend keeps its executable query identity."""
 
+from typing import ClassVar
+
 from typing import assert_type
 
 from snekql import __BACKEND__ as database
 from snekql import __OTHER_BACKEND__ as foreign
 
 
-class Local[S = database.Pending](database.Model[S, "Local[database.Fetched]"]):
+class Local[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Local[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
 
 
-class Foreign[S = foreign.Pending](foreign.Model[S, "Foreign[foreign.Fetched]"]):
+class Foreign[S = foreign.Pending](foreign.Model[S]):
+    __row_type__: ClassVar[foreign.ReadType[Foreign[foreign.Row]]]
     id: foreign.Col[int] = foreign.Integer(primary_key=True)
 
 
 async def local_rows(transaction: database.Transaction) -> None:
-    query: database.Select[Local[database.Fetched]] = database.select(Local).all()
-    assert_type(await transaction.fetch_all(query), list[Local[database.Fetched]])
+    query: database.ClosedRead[Local[database.Row]] = database.ready(database.select(Local).all())
+    assert_type(await transaction.fetch_all(query), list[Local[database.Row]])
 
 
 async def foreign_rows(transaction: foreign.Transaction) -> None:
-    query: foreign.Select[Foreign[foreign.Fetched]] = foreign.select(Foreign).all()
-    assert_type(await transaction.fetch_all(query), list[Foreign[foreign.Fetched]])
+    query: foreign.ClosedRead[Foreign[foreign.Row]] = foreign.ready(foreign.select(Foreign).all())
+    assert_type(await transaction.fetch_all(query), list[Foreign[foreign.Row]])

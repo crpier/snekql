@@ -1,6 +1,7 @@
 """Query-only named SELECT definitions through public compilation."""
 
 from datetime import UTC, datetime
+from typing import ClassVar
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -9,8 +10,10 @@ from snektest import assert_eq, assert_raises, test
 from snekql import mariadb, sqlite
 
 
-class Person[S = sqlite.Pending](sqlite.Model[S, "Person[sqlite.Fetched]"]):
+class Person[S = sqlite.Pending](sqlite.Model[S]):
     """Physical input to a named SQL definition."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Person[sqlite.Row]]]
 
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
@@ -374,7 +377,8 @@ def cte_alias_rejects_a_foreign_backend_before_compilation() -> None:
 def cte_consumer_cannot_claim_locks_on_underlying_rows() -> None:
     """A derived relation does not establish the physical-table locking contract."""
 
-    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
     active = (
@@ -392,7 +396,8 @@ def cte_consumer_cannot_claim_locks_on_underlying_rows() -> None:
 def cte_definition_cannot_hide_a_locking_select() -> None:
     """Freezing a SELECT must not move its row-lock intent into a derived scope."""
 
-    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
     query = mariadb.select(Native).all().project(Identifier, id=Native.id).for_update()
@@ -506,7 +511,8 @@ def cte_grouping_rejects_aggregate_keys() -> None:
 def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
     """Timezone-preserving text is not silently treated as chronological SQL order."""
 
-    class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+    class Event[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Event[sqlite.Row]]]
         happened_at: sqlite.Col[sqlite.ZonedDatetime] = sqlite.Text(nullable=False)
 
     class EventResult(BaseModel):
@@ -541,7 +547,8 @@ def cte_extrema_and_ordering_preserve_source_restrictions() -> None:
 def cte_numeric_aggregates_reject_nonnumeric_outputs() -> None:
     """Numeric wire coercion cannot change a declared logical output domain."""
 
-    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+    class Input[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Input[sqlite.Row]]]
         name: sqlite.Col[str] = sqlite.Text()
         enabled: sqlite.Col[bool] = sqlite.Integer()
         key: sqlite.Col[UUID] = sqlite.Text()
@@ -595,7 +602,8 @@ def cte_arithmetic_inputs_obey_grouping_coverage() -> None:
 def cte_arithmetic_rejects_logical_uuid_storage() -> None:
     """A UUID stored as text must not become a native numeric expression."""
 
-    class Input[S = sqlite.Pending](sqlite.Model[S, "Input[sqlite.Fetched]"]):
+    class Input[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Input[sqlite.Row]]]
         key: sqlite.Col[UUID] = sqlite.Text()
 
     class Result(BaseModel):
@@ -614,7 +622,8 @@ def cte_arithmetic_rejects_logical_uuid_storage() -> None:
 def cte_arithmetic_rejects_unresolved_sum_wire_representation() -> None:
     """A normalized logical integer does not prove native integer SQL storage."""
 
-    class Native[S = mariadb.Pending](mariadb.Model[S, "Native[mariadb.Fetched]"]):
+    class Native[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Native[mariadb.Row]]]
         id: mariadb.Col[int] = mariadb.Integer()
 
     total = Native.id.sum().label("id")

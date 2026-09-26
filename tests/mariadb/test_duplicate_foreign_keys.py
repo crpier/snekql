@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
@@ -9,14 +11,18 @@ from snekql.errors import SchemaVerificationError
 from tests.helpers import provide_mariadb_server
 
 
-class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+class Parent[S = mariadb.Pending](mariadb.Model[S]):
     """The declared target."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
 
     id: Parent.Col[int] = mariadb.Integer(primary_key=True)
 
 
-class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+class Child[S = mariadb.Pending](mariadb.Model[S]):
     """A model declares one scalar relationship."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
 
     parent_id: Child.FKCol[Parent, int] = mariadb.ForeignKey(
         Parent.id, primary_key=True

@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, ClassVar, assert_type
 from snekql import mariadb
 
 
-class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+class Account[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
     account_id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True, auto_increment=True, default=mariadb.PENDING_GENERATION
     )
@@ -21,11 +22,13 @@ if TYPE_CHECKING:
     Account.manager_id.references(Account.account_id)
 
 
-class Other[S = mariadb.Pending](mariadb.Model[S, "Other[mariadb.Fetched]"]):
+class Other[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Other[mariadb.Row]]]
     account_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 
-class Defaults[S = mariadb.Pending](mariadb.Model[S, "Defaults[mariadb.Fetched]"]):
+class Defaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Defaults[mariadb.Row]]]
     account_id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     literal: mariadb.FKCol[Account, int] = mariadb.Integer(default=1)
     factory: mariadb.FKCol[Account, int] = mariadb.Integer(default_factory=lambda: 1)
@@ -34,7 +37,8 @@ class Defaults[S = mariadb.Pending](mariadb.Model[S, "Defaults[mariadb.Fetched]"
     )
 
 
-class Required[S = mariadb.Pending](mariadb.Model[S, "Required[mariadb.Fetched]"]):
+class Required[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Required[mariadb.Row]]]
     account_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
     reference: mariadb.FKCol[Account, int | None] = mariadb.Integer()
 
@@ -50,13 +54,12 @@ if TYPE_CHECKING:
     Account.manager_id.references(Other.account_id)  # ty: ignore[no-matching-overload]
     Account.account_id.references(Account.account_id)  # ty: ignore[unresolved-attribute]
 
-    class WrongDefault[S = mariadb.Pending](
-        mariadb.Model[S, "WrongDefault[mariadb.Fetched]"]
-    ):
+    class WrongDefault[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[WrongDefault[mariadb.Row]]]
         account_id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         reference: mariadb.FKCol[Account, int] = mariadb.Integer(default="wrong")  # ty: ignore[invalid-assignment]
 
-    def fetched(row: Defaults[mariadb.Fetched]) -> None:
+    def fetched(row: Defaults[mariadb.Row]) -> None:
         assert_type(row.literal, int)
         assert_type(row.null_factory, int | None)
 
@@ -64,21 +67,18 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     Account.manager_id.references(Account.name)  # ty: ignore[no-matching-overload]
 
-    class WrongFactory[S = mariadb.Pending](
-        mariadb.Model[S, "WrongFactory[mariadb.Fetched]"]
-    ):
+    class WrongFactory[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[WrongFactory[mariadb.Row]]]
         reference: mariadb.FKCol[Account, int] = mariadb.Integer(
             default_factory=lambda: "wrong"
         )  # ty: ignore[invalid-assignment]
 
-    class NonNullableDefault[S = mariadb.Pending](
-        mariadb.Model[S, "NonNullableDefault[mariadb.Fetched]"]
-    ):
+    class NonNullableDefault[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[NonNullableDefault[mariadb.Row]]]
         reference: mariadb.FKCol[Account, int] = mariadb.Integer(default=None)  # ty: ignore[invalid-assignment]
 
-    class DirectSelf[S = mariadb.Pending](
-        mariadb.Model[S, "DirectSelf[mariadb.Fetched]"]
-    ):
+    class DirectSelf[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[DirectSelf[mariadb.Row]]]
         account_id: mariadb.GenCol[int] = mariadb.Integer(
             primary_key=True, auto_increment=True, default=mariadb.PENDING_GENERATION
         )

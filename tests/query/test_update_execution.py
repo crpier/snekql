@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import cast
+from typing import ClassVar, cast
 
 from pydantic import NonNegativeInt
 from snektest import assert_eq, assert_raises, test
@@ -12,12 +12,13 @@ from snektest import assert_eq, assert_raises, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     CurrentTimestamp,
-    Fetched,
     Integer,
     Model,
     ModelValidationError,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     UtcDatetime,
     insert,
@@ -31,8 +32,10 @@ from tests.helpers import SQLITE_CODEC, initialized_database
 def update_compilation_accepts_multiple_quoted_assignments() -> None:
     """Update compiles multiple assignments in caller-provided order."""
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table model with identifiers requiring SQLite quoting."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         __tablename__ = "select"
         status: Order.Col[str] = Text(nullable=False)
@@ -58,8 +61,10 @@ def update_compilation_accepts_multiple_quoted_assignments() -> None:
 def column_assignment_rejects_invalid_logical_value() -> None:
     """Column.to() validates literals against the column's Logical Type."""
 
-    class Transcript[S = Pending](Model[S, "Transcript[Fetched]"]):
+    class Transcript[S = Pending](Model[S]):
         """Table model with a constrained update value."""
+
+        __row_type__: ClassVar[ReadType[Transcript[Row]]]
 
         failed_attempts: Transcript.Col[NonNegativeInt] = Integer(nullable=False)
 
@@ -71,8 +76,10 @@ def column_assignment_rejects_invalid_logical_value() -> None:
 def update_returning_appends_model_columns_in_declaration_order() -> None:
     """SQLite update returning() lists every column after RETURNING."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model updated through RETURNING."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -97,8 +104,10 @@ def update_returning_appends_model_columns_in_declaration_order() -> None:
 def update_set_current_timestamp_renders_server_expression() -> None:
     """A CurrentTimestamp assignment renders inline server SQL with no param."""
 
-    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+    class Doc[S = Pending](Model[S]):
         """Table model with a column refreshed to the server clock on update."""
+
+        __row_type__: ClassVar[ReadType[Doc[Row]]]
 
         title: Doc.Col[str] = Text(nullable=False)
         edited_at: Doc.Col[str] = Text(nullable=False)
@@ -124,13 +133,17 @@ def update_set_current_timestamp_renders_server_expression() -> None:
 def update_assignments_must_belong_to_target_model() -> None:
     """Update set() rejects assignments built from another table model."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Target table model for ownership checks."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         email: User.Col[str] = Text(nullable=False)
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Unrelated table model for ownership checks."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         message: AuditLog.Col[str] = Text(nullable=False)
 
@@ -149,8 +162,10 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
     primary key compile into ``SET`` like any other column.
     """
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with a primary key and a generated column."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         account_id: User.GenCol[int] = Integer(
             primary_key=True, default=PENDING_GENERATION
@@ -168,10 +183,12 @@ def update_accepts_generated_and_primary_key_assignments() -> None:
 
 @test(mark="medium")
 async def update_returning_yields_updated_models() -> None:
-    """SQLite update returning() yields one Fetched model per updated row."""
+    """SQLite update returning() yields one Row model per updated row."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model updated through RETURNING execution."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -200,8 +217,10 @@ async def update_returning_yields_updated_models() -> None:
 async def update_execute_returns_affected_row_count() -> None:
     """tx.execute(update(...)) returns the count of rows the statement changed."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model updated through the async runtime."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -242,8 +261,10 @@ async def update_execute_returns_affected_row_count() -> None:
 async def update_to_current_timestamp_refreshes_value_from_server_clock() -> None:
     """set(col.to(CurrentTimestamp)) refreshes the column from the database clock."""
 
-    class Doc[S = Pending](Model[S, "Doc[Fetched]"]):
+    class Doc[S = Pending](Model[S]):
         """Table model whose edited_at refreshes to the server clock on update."""
+
+        __row_type__: ClassVar[ReadType[Doc[Row]]]
 
         id: Doc.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         title: Doc.Col[str] = Text(nullable=False)
@@ -277,8 +298,10 @@ async def update_writes_a_server_default_generated_timestamp() -> None:
     refresh on update -- assignments the old immutability guard rejected.
     """
 
-    class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
+    class Memory[S = Pending](Model[S]):
         """Table model whose updated_at is server-filled yet update-writable."""
+
+        __row_type__: ClassVar[ReadType[Memory[Row]]]
 
         id: Memory.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         content: Memory.Col[str] = Text(nullable=False)

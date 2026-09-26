@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import ROUND_UP, Decimal, Inexact, Rounded, localcontext
+from typing import ClassVar
 
 from snektest import Param, assert_eq, assert_raises, test
 
@@ -13,8 +14,10 @@ from snekql import mariadb, sqlite
 def canonical_decimal_preserves_all_digits() -> None:
     """Model validation preserves decimals longer than the default context precision."""
 
-    class Price[S = sqlite.Pending](sqlite.Model[S, "Price[sqlite.Fetched]"]):
+    class Price[S = sqlite.Pending](sqlite.Model[S]):
         """A canonical decimal stored as text."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Price[sqlite.Row]]]
 
         amount: Price.Col[sqlite.CanonicalDecimal] = sqlite.Text()
 
@@ -29,8 +32,10 @@ def canonical_decimal_preserves_all_digits() -> None:
 def native_decimal_rejects_nonzero_digits_beyond_scale() -> None:
     """A fractional digit cannot disappear into the ambient rounding precision."""
 
-    class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+    class Price[S = mariadb.Pending](mariadb.Model[S]):
         """A native decimal that accepts at most two fractional digits."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
 
         amount: Price.Col[Decimal] = mariadb.Decimal(5, 2)
 
@@ -57,8 +62,10 @@ def native_decimal_rejects_nonzero_digits_beyond_scale() -> None:
 def canonical_decimal_wire_form_ignores_context(case: tuple[str, str]) -> None:
     """Canonical text is exact even when rounding or exponent arithmetic would trap."""
 
-    class Price[S = sqlite.Pending](sqlite.Model[S, "Price[sqlite.Fetched]"]):
+    class Price[S = sqlite.Pending](sqlite.Model[S]):
         """A canonical decimal stored as text."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Price[sqlite.Row]]]
 
         amount: Price.Col[sqlite.CanonicalDecimal] = sqlite.Text()
 
@@ -82,8 +89,10 @@ def canonical_decimal_wire_form_ignores_context(case: tuple[str, str]) -> None:
 def native_decimal_accepts_exact_values_under_rounding_traps(text: str) -> None:
     """Storage bounds depend on significant digits, not the decimal context."""
 
-    class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+    class Price[S = mariadb.Pending](mariadb.Model[S]):
         """A fixed precision and scale numeric value."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
 
         amount: Price.Col[Decimal] = mariadb.Decimal(5, 2)
 
@@ -109,8 +118,10 @@ def native_decimal_accepts_exact_values_under_rounding_traps(text: str) -> None:
 def native_decimal_rejects_exact_out_of_bounds_values(text: str) -> None:
     """Out-of-range values raise the model error without decimal arithmetic errors."""
 
-    class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+    class Price[S = mariadb.Pending](mariadb.Model[S]):
         """A fixed precision and scale numeric value."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
 
         amount: Price.Col[Decimal] = mariadb.Decimal(5, 2)
 

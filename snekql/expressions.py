@@ -23,15 +23,17 @@ from snekql.errors import QueryCompilationError, QueryConstructionError
 type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
 
 
-class _ColumnRef[T_co](Protocol):
-    """Structural view of a column descriptor's read value type.
+class _OwnedColumnRef[Owner, Value](Protocol):
+    """Read-only witnesses preserve both owners without requiring literal methods.
 
-    Implemented by ``Attr`` (via a typing-only witness). Declared here so the
-    column-vs-column comparison surface can be typed without importing the
-    storage layer, which would form an import cycle.
+    A nullable right operand must remain compatible with a nonnullable left
+    operand. Requiring the full ColumnRef protocol would make its value invariant
+    through eq(value), rejecting that comparison.
     """
 
-    def __column_value_type__(self) -> T_co: ...
+    def __column_owner_type__(self) -> Owner: ...
+
+    def __column_value_type__(self) -> Value: ...
 
 
 @runtime_checkable
@@ -667,53 +669,101 @@ class Comparable[OwnerT, ValueT, ColumnValueT = ValueT]:
     # correlated subquery uses to relate its inner row to the outer row; a
     # scalar-subquery operand compares against the subquery's single value. A
     # column operand's value type must match this column's; a scalar operand is
-    # accepted regardless of value type, since aggregate scalars are commonly
-    # nullable (``AVG`` -> ``float | None``). Whether the operand's table is in
-    # scope is checked when the query compiles (an out-of-scope reference is a
-    # compilation error unless it correlates to an enclosing query).
+    # checked against its comparison domain, allowing nullable aggregate results.
+    # Column comparisons retain both owners. Nested scalar scope is checked by
+    # compilation. Keep the scalar overload first: scalars also implement column
+    # witnesses, but their inner tables must not become outer predicate owners.
+
+    @overload
+    def eq_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def eq_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
 
     def eq_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="eq", other=other)
 
+    @overload
+    def ne_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def ne_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
+
     def ne_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         return ColumnComparisonPredicate(operand=self, operator="ne", other=other)
 
+    @overload
+    def gt_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def gt_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
+
     def gt_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gt", other=other)
 
+    @overload
+    def gte_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def gte_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
+
     def gte_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="gte", other=other)
 
+    @overload
+    def lt_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def lt_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
+
     def lt_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lt", other=other)
 
+    @overload
+    def lte_col(self, other: Scalar[Any, Any, ValueT]) -> Predicate[OwnerT]: ...
+
+    @overload
+    def lte_col[OtherOwner](
+        self, other: _OwnedColumnRef[OtherOwner, ColumnValueT | None]
+    ) -> Predicate[OwnerT | OtherOwner]: ...
+
     def lte_col(
         self,
-        other: _ColumnRef[ColumnValueT] | Scalar[Any, Any, ValueT],
-    ) -> Predicate[OwnerT]:
+        other: _OwnedColumnRef[Any, ColumnValueT | None] | Scalar[Any, Any, ValueT],
+    ) -> Predicate[Any]:
         self._require_factory_scalar(other)
         self._require_ordering()
         return ColumnComparisonPredicate(operand=self, operator="lte", other=other)

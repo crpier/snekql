@@ -7,11 +7,14 @@ work, so this module deliberately omits the future import.
 """
 
 from datetime import datetime
+from typing import ClassVar
 
-from snekql.sqlite import CurrentTimestamp, Fetched, Model, Pending, Text
+from snekql.sqlite import CurrentTimestamp, Model, Pending, ReadType, Row, Text
 
 
-class Memory[S = Pending](Model[S, "Memory[Fetched]"]):
+class Memory[S = Pending](Model[S]):
     """Model whose server-default column requires GenCol detection."""
+
+    __row_type__: ClassVar[ReadType[Memory[Row]]]
 
     created_at: Memory.GenCol[datetime] = Text(default=CurrentTimestamp)

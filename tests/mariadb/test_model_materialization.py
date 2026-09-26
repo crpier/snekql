@@ -3,22 +3,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import cast
+from typing import ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 
 from snekql import mariadb
 from snekql._model_materialization import decode_model_row, encode_model_row
-from snekql.mariadb import Fetched, Pending, select
+from snekql.mariadb import Pending, Row, select
 from tests.helpers import MARIADB_CODEC
 
 
 @test(mark="fast")
 def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
-    """MariaDB Pending/Fetched Model conversion is handled by the materializer."""
+    """MariaDB Pending/Row Model conversion is handled by the materializer."""
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """MariaDB model used by materialization seam tests."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)
@@ -31,7 +33,7 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
     )
     model_class, encoded_row = encode_model_row(pending_event, backend="mariadb")
     fetched_event = cast(
-        "Event[Fetched]",
+        "Event[Row]",
         decode_model_row(
             Event,
             {
@@ -63,8 +65,10 @@ def mariadb_model_materialization_uses_one_backend_codec_path() -> None:
 def mariadb_model_materialization_asserts_database_row_shape() -> None:
     """MariaDB model materialization treats row-shape mismatch as invariant failure."""
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """MariaDB model used by row-shape checks."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
 
@@ -79,8 +83,10 @@ def mariadb_model_materialization_asserts_database_row_shape() -> None:
 def mariadb_select_materialization_asserts_database_row_shape() -> None:
     """MariaDB select materialization treats row-shape mismatch as invariant failure."""
 
-    class User[S = Pending](mariadb.Model[S, "User[Fetched]"]):
+    class User[S = Pending](mariadb.Model[S]):
         """MariaDB model used by row-shape materialization checks."""
+
+        __row_type__: ClassVar[mariadb.ReadType[User[Row]]]
 
         email: User.Col[str] = mariadb.Text(nullable=False)
 
@@ -102,8 +108,10 @@ def mariadb_min_max_decode_to_logical_type() -> None:
     its logical type rather than the raw driver wire value.
     """
 
-    class Event[S = Pending](mariadb.Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](mariadb.Model[S]):
         """MariaDB model exercising MIN/MAX logical decoding."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Event[Row]]]
 
         enabled: Event.Col[bool] = mariadb.Boolean(nullable=False)
         happened_at: Event.Col[datetime] = mariadb.DateTime(nullable=False)

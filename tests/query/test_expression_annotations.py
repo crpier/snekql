@@ -1,7 +1,7 @@
 """Public expression annotation interfaces and supported construction paths."""
 
 from types import ModuleType
-from typing import Any
+from typing import Any, ClassVar
 
 from snektest import Param, assert_in, assert_isinstance, assert_raises, test
 
@@ -9,15 +9,17 @@ from snekql import mariadb, sqlite
 
 
 class _ExpressionUser[S = sqlite.Pending](
-    sqlite.Model[S, "_ExpressionUser[sqlite.Fetched]"],
+    sqlite.Model[S],
 ):
+    __row_type__: ClassVar[sqlite.ReadType[_ExpressionUser[sqlite.Row]]]
     email: _ExpressionUser.Col[str] = sqlite.Text(nullable=False)
     id: _ExpressionUser.Col[int] = sqlite.Integer(nullable=False)
 
 
 class _ExpressionOrder[S = sqlite.Pending](
-    sqlite.Model[S, "_ExpressionOrder[sqlite.Fetched]"],
+    sqlite.Model[S],
 ):
+    __row_type__: ClassVar[sqlite.ReadType[_ExpressionOrder[sqlite.Row]]]
     user_id: _ExpressionOrder.Col[int] = sqlite.Integer(nullable=False)
 
 
@@ -95,9 +97,9 @@ def _filter_by_value[OwnerT, ValueT](
     return column.eq(value)
 
 
-def _project_column[OwnerT: sqlite.Model[Any, Any], ValueT](
+def _project_column[OwnerT: sqlite.Model[Any], ValueT](
     column: sqlite.ColumnRef[OwnerT, ValueT],
-) -> sqlite.Select[ValueT]:
+) -> sqlite.ReadQuery[OwnerT, ValueT]:
     return sqlite.select(column).all()
 
 

@@ -295,7 +295,8 @@ async def _open_snekql(
                 await transaction.execute(mariadb.delete(BenchWrite).all())
 
         async def bulk(start: int, size: int) -> list[Record]:
-            query = mariadb.insert(
+            query = mariadb.insert_many(
+                BenchWrite,
                 [
                     BenchWrite(
                         id=identity,
@@ -303,7 +304,7 @@ async def _open_snekql(
                         payload="x" * 32,
                     )
                     for identity in range(start, start + size)
-                ]
+                ],
             )
             async with database.transaction() as transaction:
                 await transaction.execute(query)

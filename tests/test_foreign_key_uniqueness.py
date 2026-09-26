@@ -21,8 +21,10 @@ from snekql.errors import ExecutionError, SchemaError
 def scaffold_rejects_composite_primary_key_component(case: tuple[str, str]) -> None:
     """A two-column primary key does not make either column independently unique."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
         """Uniqueness belongs to the pair."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
 
         a: Parent.Col[int] = sqlite.Integer(primary_key=True)
         b: Parent.Col[int] = sqlite.Integer(primary_key=True)
@@ -34,8 +36,10 @@ def scaffold_rejects_composite_primary_key_component(case: tuple[str, str]) -> N
             else []
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
         """An invalid scalar reference to one member of the pair."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
 
         parent: Child.FKCol[Parent, int] = sqlite.ForeignKey(
             Parent.a if case[0] == "a" else Parent.b
@@ -57,8 +61,10 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
 ) -> None:
     """Every accepted uniqueness form produces an enforceable scalar relationship."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
         """A target with a genuinely independent key for the selected column."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
 
         a: Parent.Col[int] = sqlite.Integer(
             primary_key=kind not in {"nonpk_index", "column_unique"},
@@ -76,8 +82,10 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
             else []
         )
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
         """One scalar foreign key, not a composite-FK declaration."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
 
         parent: Child.FKCol[Parent, int] = sqlite.ForeignKey(
             Parent.b if kind == "index_b" else Parent.a,

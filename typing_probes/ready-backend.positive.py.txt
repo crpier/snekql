@@ -1,0 +1,59 @@
+"""Read helpers retain source, state, optionality, and exact results."""
+
+from typing import ClassVar, assert_type
+from snekql import __BACKEND__ as database
+from snekql import __OTHER_BACKEND__ as foreign
+
+
+class Account[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    account_id: database.Col[int] = database.Integer(primary_key=True)
+    nickname: database.Col[str | None] = database.Text(default=None)
+
+
+class Post[State = database.Pending](database.Model[State]):
+    __row_type__: ClassVar[database.ReadType[Post[database.Row]]]
+    post_id: database.Col[int] = database.Integer(primary_key=True)
+
+
+class Foreign[State = foreign.Pending](foreign.Model[State]):
+    __row_type__: ClassVar[foreign.ReadType[Foreign[foreign.Row]]]
+    account_id: foreign.Col[int] = foreign.Integer(primary_key=True)
+
+
+async def read_all[Scope, Result](
+    transaction: database.Transaction,
+    query: database.ReadQuery[Scope, Result],
+) -> list[Result]:
+    return await transaction.fetch_all(query)
+
+
+async def read_optional[Scope, Result](
+    transaction: database.Transaction,
+    query: database.OptionalRead[Scope, Result],
+) -> Result | None:
+    return await transaction.fetch_one_or_none(query)
+
+
+def pending_write[Owner: database.Model[database.Pending], Result: database.Model[database.Row]](
+    pending: database.PendingInput[Owner, Result],
+) -> database.Write[Result]:
+    return database.insert(pending).returning()
+
+
+async def controls(transaction: database.Transaction) -> None:
+    query = database.select(Account).all()
+    closed = database.ready(query)
+    assert_type(closed, database.ClosedOptional[Account[database.Row]])
+    stored: database.ClosedRead[Account[database.Row]] = closed
+    optional: database.ClosedOptional[Account[database.Row]] = closed
+    scalar = database.ready(database.select(Account.nickname).all())
+    assert_type(scalar, database.ClosedRead[str | None])
+    assert_type(await read_all(transaction, query), list[Account[database.Row]])
+    assert_type(await read_optional(transaction, query), Account[database.Row] | None)
+    assert_type(await transaction.fetch_all(stored), list[Account[database.Row]])
+    assert_type(await transaction.fetch_one_or_none(optional), Account[database.Row] | None)
+    assert_type(await transaction.fetch_all(scalar), list[str | None])
+    assert_type(await transaction.execute(pending_write(Account(account_id=1))), Account[database.Row])
+    async with transaction.fetch_chunks(closed, size=2) as stream:
+        assert_type(stream, database.ChunkStream[Account[database.Row]])

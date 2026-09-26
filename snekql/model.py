@@ -5,12 +5,15 @@ from __future__ import annotations
 import annotationlib
 import inspect
 import warnings
-from types import EllipsisType
+from collections.abc import Callable
+from types import EllipsisType, GenericAlias
 from typing import (
     Any,
     ClassVar,
     Literal,
+    Protocol,
     Self,
+    TypeGuard,
     TypeVar,
     cast,
     dataclass_transform,
@@ -61,7 +64,6 @@ type BackendFamily = StorageBackend
 _MODEL_BASE_MARKER = object()
 
 StateT = TypeVar("StateT")
-ReadModelT = TypeVar("ReadModelT", bound="Table[Any]")
 T = TypeVar("T")
 
 
@@ -74,15 +76,16 @@ class Pending:
     """
 
 
-class Fetched:
-    """Marker state for table models materialized by the Query Runtime.
+class Row:
+    """Marker state for complete table-model values.
 
     A generated column may be `T | PendingGeneration` on `Pending` instances but
-    `T` on `Fetched` instances.
+    `T` on `Row` instances. Rows come from database results or validated
+    snapshots; the state does not prove database persistence.
 
-    >>> state: type[Fetched] = Fetched
+    >>> state: type[Row] = Row
     >>> state.__name__
-    'Fetched'
+    'Row'
     """
 
 
@@ -126,11 +129,11 @@ class Table[StateT]:
 
 # Public column aliases carry query scope as an explicit model argument. Their
 # descriptor instance owners are lifecycle-wide Table types: the descriptor is
-# only reachable through its declaring model, while Pending versus Fetched
+# only reachable through its declaring model, while Pending versus Row
 # selects the write or read value overload.
 type Col[T] = Attr[
     Table[Pending],
-    Table[Fetched],
+    Table[Row],
     _UnboundOwner,
     T,
     T,
@@ -138,7 +141,7 @@ type Col[T] = Attr[
 
 type GenCol[T] = Attr[
     Table[Pending],
-    Table[Fetched],
+    Table[Row],
     _UnboundOwner,
     T | PendingGeneration,
     T,
@@ -148,7 +151,7 @@ type GenCol[T] = Attr[
 # target column.
 type FKCol[Target, T] = FKAttr[
     Table[Pending],
-    Table[Fetched],
+    Table[Row],
     _UnboundOwner,
     T,
     T,
@@ -156,9 +159,39 @@ type FKCol[Target, T] = FKAttr[
 ]
 
 
+class _PendingOnlyAlias(GenericAlias):
+    """Keep Row specialization usable as an annotation, never a constructor."""
+
+    def __call__(self, **values: object) -> object:
+        if self.__args__ != (Pending,):
+            msg = "construct Pending values; use complete for Row snapshots"
+            raise ModelValidationError(msg)
+        # Framework-created aliases always target model classes.
+        return cast("Callable[..., object]", self.__origin__)(**values)
+
+
+class ReadType[Result]:
+    """Declare the type returned when an operation produces a whole model.
+
+    Declare `__row_type__: ClassVar[ReadType[User[Row]]]` inside User.
+    The declaration is checked when the class is created; no value is assigned
+    by application code.
+    """
+
+    def __get__(
+        self, instance: object, owner: type[object]
+    ) -> Callable[[], type[Result]]:
+        def row_type() -> type[Result]:
+            # Declaration validation proves Result is this exact Row specialization.
+            return cast("type[Result]", _PendingOnlyAlias(owner, Row))
+
+        return row_type
+
+
 @dataclass_transform(
     field_specifiers=(Integer, Real, Text, Blob, ForeignKey),
     kw_only_default=True,
+    frozen_default=True,
 )
 class ModelMeta(type):
     """Typing/runtime hook for direct public column descriptors.
@@ -202,6 +235,8 @@ class ModelMeta(type):
         model_metadata.__snekql_localns__ = ModelMeta._capture_declaring_localns(
             is_model_base=is_model_base,
         )
+        if not is_model_base:
+            ModelMeta._bind_row_type(model_class)
         columns = ModelMeta._bind_columns(model_class)
         model_metadata.__snekql_columns__ = columns
         deferred = any(
@@ -247,6 +282,27 @@ class ModelMeta(type):
             )
         )
         return model_class
+
+    @staticmethod
+    def _bind_row_type(model_class: type[object]) -> None:
+        """Require the class-body declaration to name this model's Row state."""
+        try:
+            annotation = _resolve_model_hint(model_class, "__row_type__")
+        except (NameError, TypeError) as error:
+            msg = "declare __row_type__: ClassVar[ReadType[ThisModel[Row]]]"
+            raise ModelDeclarationError(msg) from error
+        if get_origin(annotation) is not ClassVar:
+            msg = "declare __row_type__: ClassVar[ReadType[ThisModel[Row]]]"
+            raise ModelDeclarationError(msg)
+        declaration = get_args(annotation)[0]
+        if get_origin(declaration) is not ReadType:
+            msg = "__row_type__ requires a ReadType annotation"
+            raise ModelDeclarationError(msg)
+        result = get_args(declaration)[0]
+        if get_origin(result) is not model_class or get_args(result) != (Row,):
+            msg = "__row_type__ must name this model's Row specialization"
+            raise ModelDeclarationError(msg)
+        type.__setattr__(model_class, "__row_type__", ReadType())
 
     @staticmethod
     def _prepare_column_contracts(
@@ -853,10 +909,31 @@ class ModelMeta(type):
         return all(character.isalnum() or character == "_" for character in value)
 
 
-class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta):
+class _RowValue[Result: Table[Row]](Protocol):
+    """A model's declared result type is available on classes and instances."""
+
+    @classmethod
+    def __row_type__(cls) -> type[Result]: ...
+
+
+class _RowDeclaration[Family, Result: Table[Row]](_RowValue[Result], Protocol):
+    """Keep complete-value construction tied to a backend-owned declaration."""
+
+    @property
+    def __class__(self) -> type[ModelMeta]: ...
+
+    @property
+    def __mro__(self) -> tuple[type[object], ...]: ...
+
+    @classmethod
+    def __backend_family_type__(cls) -> Family: ...
+
+
+class Model[StateT](Table[StateT], metaclass=ModelMeta):
     """Base class for declaring table models.
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
+    >>> class User[S = Pending](Model[S]):
+    ...     __row_type__: ClassVar[ReadType[User[Row]]]
     ...     email: Col[str] = Text()
     """
 
@@ -867,38 +944,25 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
 
-    type Col[T] = Attr[Table[Pending], Table[Fetched], _UnboundOwner, T, T]
+    type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
     type GenCol[T] = Attr[
-        Table[Pending], Table[Fetched], _UnboundOwner, T | PendingGeneration, T
+        Table[Pending], Table[Row], _UnboundOwner, T | PendingGeneration, T
     ]
     type FKCol[Target, T] = FKAttr[
-        Table[Pending], Table[Fetched], _UnboundOwner, T, T, Target
+        Table[Pending], Table[Row], _UnboundOwner, T, T, Target
     ]
 
+    def __new__[Concrete: Model[Pending]](  # noqa: PYI019 - the Pending bound excludes Row constructors
+        cls: type[Concrete], **_values: object
+    ) -> Concrete:
+        return object.__new__(cls)
+
     def __init__(self, **values: object) -> None:
-        self._snekql_populate(values, validate=True)
-
-    @classmethod
-    def construct(cls, **values: object) -> Self:
-        """Build a Pending Model without running logical type validation.
-
-        The escape hatch for values already known to satisfy their declared
-        types -- materialized rows re-constructed by hand, trusted bulk loads --
-        where the per-column pydantic check is redundant. Defaults, the
-        missing/unknown structural checks, and freezing still apply; only the
-        logical type validation is skipped. Construction itself has no clean slot
-        for such a flag, so the unvalidated path is a classmethod.
-        """
-
-        instance = cls.__new__(cls)
-        instance._snekql_populate(values, validate=False)  # noqa: SLF001
-        return instance
+        self._snekql_populate(values)
 
     def _snekql_populate(
         self,
         values: dict[str, object],
-        *,
-        validate: bool,
     ) -> None:
         require_model_columns(self.__class__)
         remaining_values = dict(values)
@@ -924,9 +988,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
             if isinstance(value, EllipsisType):
                 msg = f"missing required value for {name!r}"
                 raise ModelValidationError(msg)
-            setattr(
-                self, name, column.validate_model_value(value) if validate else value
-            )
+            setattr(self, name, column.validate_model_value(value))
         if remaining_values:
             names = ", ".join(sorted(remaining_values))
             msg = f"unknown model values: {names}"
@@ -953,7 +1015,7 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
     def __eq__(self, other: object) -> bool:
         if self.__class__ is not other.__class__:
             return False
-        other_model = cast("Model[Any, Any]", other)
+        other_model = cast("Model[Any]", other)
         for name in self.__class__.__snekql_columns__:
             if getattr(self, name) != getattr(other_model, name):
                 return False
@@ -978,8 +1040,53 @@ class Model[StateT, ReadModelT: "Table[Any]"](Table[StateT], metaclass=ModelMeta
         return cls.__snekql_backend__
 
     @classmethod
-    def __read_type__(cls) -> type[ReadModelT]:
-        return cast("type[ReadModelT]", cls)
+    def __class_getitem__(cls, state: object) -> GenericAlias:
+        if isinstance(state, tuple) and len(state) == 1:
+            state = state[0]
+        if state is Pending or state is Row:
+            return _PendingOnlyAlias(cls, state)
+        if isinstance(state, TypeVar) or state is Any:
+            return GenericAlias(cls, state)
+        msg = "use Pending or Row as the model state"
+        raise ModelDeclarationError(msg)
+
+
+def _complete_model[Family, Result: Table[Row]](
+    model: _RowDeclaration[Family, Result],
+    values: dict[str, object],
+    *,
+    backend: BackendFamily,
+) -> Result:
+    """Validate logical fields without decoding them or promising database persistence."""
+    if not isinstance(model, type) or not issubclass(model, Model):
+        msg = "complete requires a model declaration, not a specialization or instance"
+        raise ModelValidationError(msg)
+    if require_model_backend(model) != backend:
+        msg = f"complete requires a {backend} model declaration"
+        raise ModelValidationError(msg)
+    columns = require_model_columns(model)
+    if set(columns) != set(values):
+        missing = sorted(set(columns) - set(values))
+        unknown = sorted(set(values) - set(columns))
+        msg = f"complete requires every model field; missing: {missing}; unknown: {unknown}"
+        raise ModelValidationError(msg)
+    if any(value is PENDING_GENERATION for value in values.values()):
+        msg = "complete cannot contain unavailable generated values"
+        raise ModelValidationError(msg)
+    validated = {
+        name: column.validate_model_value(values[name])
+        for name, column in columns.items()
+    }
+    if any(value is PENDING_GENERATION for value in validated.values()):
+        msg = "validation produced an unavailable generated value"
+        raise ModelValidationError(msg)
+    instance = object.__new__(model)
+    storage = vars(instance)
+    storage.update(validated)
+    storage["_snekql_frozen"] = True
+    storage["_snekql_state"] = "Row"
+    # The class-body declaration names this exact Row type; every field validated.
+    return cast("Result", instance)
 
 
 def require_model_columns(
@@ -1015,3 +1122,13 @@ def require_model_backend(model: type[Table[Any]]) -> BackendFamily:
         msg = "schema setup requires snekql table models"
         raise ModelDeclarationError(msg)
     return cast("BackendFamily", backend)
+
+
+def is_complete[Result: Table[Row]](value: _RowValue[Result]) -> TypeGuard[Result]:
+    """Check Row state and narrow to the model's declared Row type.
+
+    `if is_complete(user):` makes generated fields available as their logical
+    types. Pending values remain false even when all fields were supplied.
+    This does not contact the database or change the value.
+    """
+    return isinstance(value, Model) and bool(vars(value).get("_snekql_state") == "Row")

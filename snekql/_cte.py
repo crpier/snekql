@@ -300,7 +300,7 @@ class _Cte[
         return owner
 
     @classmethod
-    def __read_type__(cls) -> type[ResultT]:
+    def __row_type__(cls) -> type[ResultT]:
         raise NotImplementedError
 
     @overload

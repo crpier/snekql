@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import ClassVar
 
 from snektest import assert_eq, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import Duration, Fetched, Pending, insert, select
+from snekql.mariadb import Duration, Pending, Row, insert, select
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
@@ -17,8 +18,10 @@ async def mariadb_duration_integer_storage_round_trips() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class TimedSpan[S = Pending](mariadb.Model[S, "TimedSpan[Fetched]"]):
+    class TimedSpan[S = Pending](mariadb.Model[S]):
         """Timed span table with integer duration storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[TimedSpan[Row]]]
 
         __tablename__ = "duration_integer_roundtrip"
 
@@ -42,8 +45,10 @@ async def mariadb_duration_integer_storage_orders_by_magnitude() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class TimedSpan[S = Pending](mariadb.Model[S, "TimedSpan[Fetched]"]):
+    class TimedSpan[S = Pending](mariadb.Model[S]):
         """Timed span table with integer duration storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[TimedSpan[Row]]]
 
         __tablename__ = "duration_integer_order"
 
@@ -73,8 +78,10 @@ async def mariadb_duration_integer_storage_ranges_by_magnitude() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class TimedSpan[S = Pending](mariadb.Model[S, "TimedSpan[Fetched]"]):
+    class TimedSpan[S = Pending](mariadb.Model[S]):
         """Timed span table with integer duration storage."""
+
+        __row_type__: ClassVar[mariadb.ReadType[TimedSpan[Row]]]
 
         __tablename__ = "duration_integer_range"
 

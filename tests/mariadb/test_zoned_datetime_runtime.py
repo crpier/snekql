@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 from snektest import assert_eq, load_fixture, test
 
 from snekql import mariadb
-from snekql.mariadb import Fetched, Pending, ZonedDatetime, insert, select
+from snekql.mariadb import Pending, Row, ZonedDatetime, insert, insert_many, select
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
@@ -18,8 +19,10 @@ async def zoned_datetime_round_trips_through_mariadb_text() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class ZonedEvent[S = Pending](mariadb.Model[S, "ZonedEvent[Fetched]"]):
+    class ZonedEvent[S = Pending](mariadb.Model[S]):
         """Event whose datetime retains its civil timezone."""
+
+        __row_type__: ClassVar[mariadb.ReadType[ZonedEvent[Row]]]
 
         id: ZonedEvent.Col[int] = mariadb.Integer(primary_key=True)
         happened_at: ZonedEvent.Col[ZonedDatetime] = mariadb.Text(nullable=False)
@@ -54,8 +57,10 @@ async def zoned_datetime_equality_requires_the_same_instant_and_timezone() -> No
 
     server = await load_fixture(provide_mariadb_server())
 
-    class ZonedEvent[S = Pending](mariadb.Model[S, "ZonedEvent[Fetched]"]):
+    class ZonedEvent[S = Pending](mariadb.Model[S]):
         """Event whose datetime retains its civil timezone."""
+
+        __row_type__: ClassVar[mariadb.ReadType[ZonedEvent[Row]]]
 
         id: ZonedEvent.Col[int] = mariadb.Integer(primary_key=True)
         happened_at: ZonedEvent.Col[ZonedDatetime] = mariadb.Text(nullable=False)
@@ -70,11 +75,12 @@ async def zoned_datetime_equality_requires_the_same_instant_and_timezone() -> No
     try:
         async with database.transaction() as transaction:
             await transaction.execute(
-                insert(
+                insert_many(
+                    ZonedEvent,
                     [
                         ZonedEvent(id=1, happened_at=new_york),
                         ZonedEvent(id=2, happened_at=los_angeles),
-                    ]
+                    ],
                 )
             )
             matching_ids = await transaction.fetch_all(

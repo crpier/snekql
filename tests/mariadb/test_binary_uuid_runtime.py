@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 from uuid import UUID
 
 from pydantic import UUID4, BeforeValidator, PlainSerializer
@@ -13,8 +13,10 @@ from snekql.errors import ModelValidationError
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+class Account[S = mariadb.Pending](mariadb.Model[S]):
     """A UUID stored in a binary column rather than text."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
 
     id: Account.Col[int] = mariadb.Integer(primary_key=True)
     account_id: Account.Col[UUID] = mariadb.Blob(nullable=False)
@@ -107,10 +109,10 @@ async def constrained_uuid_versions_still_validate_on_fetch() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Versioned[S = mariadb.Pending](
-        mariadb.Model[S, "Versioned[mariadb.Fetched]"]
-    ):
+    class Versioned[S = mariadb.Pending](mariadb.Model[S]):
         """A UUID field constrained to version four."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Versioned[mariadb.Row]]]
 
         id: Versioned.Col[int] = mariadb.Integer(primary_key=True)
         account_id: Versioned.Col[UUID4] = mariadb.Blob(nullable=False)
@@ -122,7 +124,10 @@ async def constrained_uuid_versions_still_validate_on_fetch() -> None:
         async with database.transaction() as setup:
             await setup.execute(mariadb.insert(Versioned(id=1, account_id=account_id)))
             await setup.execute(
-                mariadb.insert(Versioned.construct(id=2, account_id=UUID(int=0)))
+                mariadb.raw(
+                    "INSERT INTO versioned (id, account_id) VALUES (2, %s)",
+                    params=(UUID(int=0).bytes,),
+                )
             )
 
         async with database.transaction() as tx:
@@ -153,8 +158,10 @@ async def custom_uuid_bytes_serializer_keeps_control_of_wire_form() -> None:
 
         return value.bytes_le
 
-    class Custom[S = mariadb.Pending](mariadb.Model[S, "Custom[mariadb.Fetched]"]):
+    class Custom[S = mariadb.Pending](mariadb.Model[S]):
         """An explicitly serialized UUID uses its chosen bytes."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Custom[mariadb.Row]]]
 
         account_id: Custom.Col[
             Annotated[
@@ -189,10 +196,10 @@ async def text_uuid_encoding_is_unchanged() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class TextAccount[S = mariadb.Pending](
-        mariadb.Model[S, "TextAccount[mariadb.Fetched]"]
-    ):
+    class TextAccount[S = mariadb.Pending](mariadb.Model[S]):
         """Text storage remains an independent wire choice."""
+
+        __row_type__: ClassVar[mariadb.ReadType[TextAccount[mariadb.Row]]]
 
         account_id: TextAccount.Col[UUID] = mariadb.Text(nullable=False)
 
@@ -214,10 +221,10 @@ async def text_uuid_encoding_is_unchanged() -> None:
     assert_eq(raw, "00112233-4455-4677-8899-aabbccddeeff")
 
 
-class LegacyAccount[S = mariadb.Pending](
-    mariadb.Model[S, "LegacyAccount[mariadb.Fetched]"]
-):
+class LegacyAccount[S = mariadb.Pending](mariadb.Model[S]):
     """A byte-oriented view used to seed historical ASCII UUID storage."""
+
+    __row_type__: ClassVar[mariadb.ReadType[LegacyAccount[mariadb.Row]]]
 
     __tablename__ = "account"
     id: LegacyAccount.Col[int] = mariadb.Integer(primary_key=True)

@@ -10,12 +10,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime
+from typing import ClassVar
 
 from snekql import sqlite
 from snekql.sqlite import (
     Database,
-    Fetched,
     Pending,
+    Row,
     delete,
     insert,
     select,
@@ -23,8 +24,10 @@ from snekql.sqlite import (
 )
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Example table model used by the basic application."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,

@@ -8,22 +8,24 @@ relate it to a table already in the FROM/JOIN graph.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_raises, test
 
 from snekql import mariadb, sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Pending,
     QueryConstructionError,
+    Row,
     select,
 )
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Referenced root table."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -33,8 +35,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     email: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Table with a foreign key to ``User``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -45,14 +49,18 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     note: Order.Col[str] = sqlite.Text(nullable=False)
 
 
-class MariaUser[S = mariadb.Pending](mariadb.Model[S, "MariaUser[mariadb.Fetched]"]):
+class MariaUser[S = mariadb.Pending](mariadb.Model[S]):
     """MariaDB model used to exercise the runtime family backstop."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaUser[mariadb.Row]]]
 
     id: MariaUser.GenCol[int] = mariadb.Integer(primary_key=True)
 
 
-class Item[S = Pending](sqlite.Model[S, "Item[Fetched]"]):
+class Item[S = Pending](sqlite.Model[S]):
     """Table with a foreign key to ``Order``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Item[Row]]]
 
     id: Item.GenCol[int] = sqlite.Integer(
         primary_key=True,

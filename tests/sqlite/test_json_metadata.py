@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import MinLen
 from pydantic import AfterValidator, BeforeValidator, Json, PlainSerializer
@@ -12,10 +12,10 @@ from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 from snekql import sqlite
 
 
-class NonemptyBatch[S = sqlite.Pending](
-    sqlite.Model[S, "NonemptyBatch[sqlite.Fetched]"]
-):
+class NonemptyBatch[S = sqlite.Pending](sqlite.Model[S]):
     """The logical contract intentionally violated by a stored historical row."""
+
+    __row_type__: ClassVar[sqlite.ReadType[NonemptyBatch[sqlite.Row]]]
 
     __tablename__ = "metadata_batch"
     items: NonemptyBatch.Col[Annotated[Json[list[int]], MinLen(1)]] = sqlite.Text()
@@ -39,8 +39,10 @@ async def stored_invalid_batch() -> AsyncGenerator[sqlite.Database]:
 def json_field_preserves_length_constraint() -> None:
     """Pending construction enforces constraints alongside the JSON marker."""
 
-    class Batch[S = sqlite.Pending](sqlite.Model[S, "Batch[sqlite.Fetched]"]):
+    class Batch[S = sqlite.Pending](sqlite.Model[S]):
         """A nonempty JSON list."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Batch[sqlite.Row]]]
 
         items: Batch.Col[Annotated[Json[list[int]], MinLen(1)]] = sqlite.Text()
 
@@ -64,8 +66,10 @@ def json_field_preserves_validator_order() -> None:
     def append_four(values: list[int]) -> list[int]:
         return [*values, 4]
 
-    class Batch[S = sqlite.Pending](sqlite.Model[S, "Batch[sqlite.Fetched]"]):
+    class Batch[S = sqlite.Pending](sqlite.Model[S]):
         """JSON with ordered input/output validation."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Batch[sqlite.Row]]]
 
         items: Batch.Col[
             Annotated[
@@ -87,8 +91,10 @@ def json_field_preserves_custom_serializer() -> None:
     def reverse_values(values: list[int]) -> list[int]:
         return list(reversed(values))
 
-    class Batch[S = sqlite.Pending](sqlite.Model[S, "Batch[sqlite.Fetched]"]):
+    class Batch[S = sqlite.Pending](sqlite.Model[S]):
         """JSON with an explicit wire serializer."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Batch[sqlite.Row]]]
 
         items: Batch.Col[
             Annotated[
@@ -106,8 +112,10 @@ def json_field_preserves_custom_serializer() -> None:
 def json_field_keeps_nested_payload_markers() -> None:
     """Inner JSON strings still follow their own Pydantic payload annotations."""
 
-    class Batch[S = sqlite.Pending](sqlite.Model[S, "Batch[sqlite.Fetched]"]):
+    class Batch[S = sqlite.Pending](sqlite.Model[S]):
         """An outer JSON array containing encoded JSON arrays."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Batch[sqlite.Row]]]
 
         items: Batch.Col[Json[list[Json[list[int]]]]] = sqlite.Text()
 

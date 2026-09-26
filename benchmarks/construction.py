@@ -19,13 +19,15 @@ import time
 import tracemalloc
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import ClassVar
 
 from snekql import sqlite
 from snekql.sqlite import (
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -33,8 +35,10 @@ from snekql.sqlite import (
 )
 
 
-class BenchUser[S = Pending](Model[S, "BenchUser[Fetched]"]):
+class BenchUser[S = Pending](Model[S]):
     """Narrow model exercising the common construction transitions."""
+
+    __row_type__: ClassVar[ReadType[BenchUser[Row]]]
 
     __tablename__ = "bench_user"
 

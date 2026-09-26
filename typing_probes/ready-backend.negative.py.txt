@@ -1,0 +1,3 @@
+
+
+database.ready(foreign.select(Foreign).all())  # expect-error

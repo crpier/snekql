@@ -4,23 +4,26 @@ from __future__ import annotations
 
 import warnings
 from datetime import timedelta
+from typing import ClassVar
 
 from snektest import assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
 from snekql.mariadb import (
     ExecutionError,
-    Fetched,
     LexicalDurationWarning,
     Pending,
+    Row,
     insert,
     select,
 )
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class IntegerDurationRow[S = Pending](mariadb.Model[S, "IntegerDurationRow[Fetched]"]):
+class IntegerDurationRow[S = Pending](mariadb.Model[S]):
     """Table declaring a timedelta over an Integer storage class."""
+
+    __row_type__: ClassVar[mariadb.ReadType[IntegerDurationRow[Row]]]
 
     __tablename__ = "timedelta_integer_duration"
 
@@ -31,16 +34,20 @@ class IntegerDurationRow[S = Pending](mariadb.Model[S, "IntegerDurationRow[Fetch
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", LexicalDurationWarning)
 
-    class RoundTripRow[S = Pending](mariadb.Model[S, "RoundTripRow[Fetched]"]):
+    class RoundTripRow[S = Pending](mariadb.Model[S]):
         """Text-stored timedelta table for round-trip checks."""
+
+        __row_type__: ClassVar[mariadb.ReadType[RoundTripRow[Row]]]
 
         __tablename__ = "timedelta_text_roundtrip"
 
         id: RoundTripRow.Col[int] = mariadb.Integer(primary_key=True)
         elapsed: RoundTripRow.Col[timedelta] = mariadb.Text(nullable=False)
 
-    class OrderedRow[S = Pending](mariadb.Model[S, "OrderedRow[Fetched]"]):
+    class OrderedRow[S = Pending](mariadb.Model[S]):
         """Text-stored timedelta table for ordering checks."""
+
+        __row_type__: ClassVar[mariadb.ReadType[OrderedRow[Row]]]
 
         __tablename__ = "timedelta_text_order"
 

@@ -1,6 +1,6 @@
 """Locking clauses preserve query shape and fail closed on unsupported forms."""
 
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_raises, test
@@ -8,8 +8,10 @@ from snektest import Param, assert_eq, assert_raises, test
 from snekql import mariadb, sqlite
 
 
-class Job[S = mariadb.Pending](mariadb.Model[S, "Job[mariadb.Fetched]"]):
+class Job[S = mariadb.Pending](mariadb.Model[S]):
     """A queue entry with explicit claim state."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Job[mariadb.Row]]]
 
     id: Job.Col[int] = mariadb.Integer(primary_key=True)
     status: Job.Col[str] = mariadb.Text()
@@ -39,7 +41,8 @@ def locking_select_compiles_after_pagination() -> None:
 def sqlite_rejects_locking_clauses() -> None:
     """SQLite never silently drops unsupported row-locking intent."""
 
-    class LocalJob[S = sqlite.Pending](sqlite.Model[S, "LocalJob[sqlite.Fetched]"]):
+    class LocalJob[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[LocalJob[sqlite.Row]]]
         id: LocalJob.Col[int] = sqlite.Integer(primary_key=True)
 
     with assert_raises(sqlite.QueryCompilationError):
@@ -161,9 +164,9 @@ def locking_wait_argument_is_strict() -> None:
 
 if TYPE_CHECKING:
 
-    def job_claim_query() -> mariadb.Select[Job[mariadb.Fetched]]:
+    def job_claim_query() -> mariadb.ClosedRead[Job[mariadb.Row]]:
         """Helpers retain named result types and executable readiness."""
-        return (
+        return mariadb.ready(
             mariadb.select(Job)
             .where(Job.status.eq("pending"))
             .for_update(wait="skip_locked")
@@ -174,7 +177,7 @@ if TYPE_CHECKING:
     ) -> None:
         """Lock modifiers preserve row shape, backend identity, and completeness."""
         assert_type(
-            await transaction.fetch_all(job_claim_query()), list[Job[mariadb.Fetched]]
+            await transaction.fetch_all(job_claim_query()), list[Job[mariadb.Row]]
         )
         assert_type(
             await transaction.fetch_all(mariadb.select(Job.id).all().for_update()),

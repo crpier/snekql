@@ -14,15 +14,17 @@ aligned on both SQLite and MariaDB.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    Row,
     exists,
     insert,
     not_exists,
@@ -32,8 +34,10 @@ from snekql.sqlite import (
 from tests.helpers import MARIADB_CODEC, SQLITE_CODEC, initialized_database
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Outer table for subquery tests."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -43,8 +47,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     country: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Inner table with a foreign key back to ``User``."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,

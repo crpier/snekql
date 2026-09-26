@@ -38,18 +38,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 
 from snekql import sqlite
 from snekql.sqlite import (
     Database,
-    Fetched,
     Pending,
     insert,
     select,
 )
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
         auto_increment=True,
@@ -103,16 +104,18 @@ async def main() -> None:
 
 Table models are declared through a backend namespace such as `sqlite` or
 `mariadb`. Application-created instances are `Pending`; database reads return
-`Fetched` instances.
+`Row` instances.
 
 ```python
 from datetime import datetime
+from typing import ClassVar
 
 from snekql import sqlite
-from snekql.sqlite import Fetched, Pending
+from snekql.sqlite import Pending
 
 
-class AuditLog[S = Pending](sqlite.Model[S, "AuditLog[Fetched]"]):
+class AuditLog[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[AuditLog[sqlite.Row]]]
     __tablename__ = "audit_log"
 
     id: sqlite.GenCol[int] = sqlite.Integer(
@@ -134,20 +137,28 @@ Rules to remember:
 - `GenCol[T]` is server/generated; pending values may be `PENDING_GENERATION`, fetched
   values are `T`.
 - If `__tablename__` is omitted, class names become snake_case table names.
-- Models are immutable after construction/materialization.
-- Column descriptor metadata is finalized with the model declaration and is
-  immutable afterward.
-- Fetched models are produced by database reads only.
+- Field replacement is forbidden in Pending and Row states, in ty and at runtime.
+  Freezing is shallow: a decoded JSON dict or list can still be mutated.
+- Declared column options are immutable. Models with callable foreign keys bind
+  their targets on first metadata use; ordinary declarations bind eagerly.
+- Row values come from database results or validated `complete` snapshots.
 - Instance methods that assume a state should annotate `self`, e.g.
-  `self: User[Pending]` or `self: User[Fetched]`.
+  `self: User[Pending]` or `self: User[Row]`.
 
 ### State-specific instance methods
 
 Model classes are generic in state. If a method uses pending-only or
-fetched-only assumptions, write that state on `self`:
+Row-only assumptions, write that state on `self`:
 
 ```python
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+from typing import ClassVar
+
+from snekql import sqlite
+from snekql.sqlite import Pending, Row
+
+
+class User[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True, default=sqlite.PENDING_GENERATION
     )
@@ -156,28 +167,38 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     def insert_payload(self: User[Pending]) -> dict[str, str]:
         return {"email": self.email}
 
-    def cache_key(self: User[Fetched]) -> str:
+    def cache_key(self: User[Row]) -> str:
         return f"user:{self.id}"
 ```
 
-A bare `User` means `User[Pending]`; spell `User[Fetched]` for methods that
-require a materialized row.
+A bare `User` means `User[Pending]`; spell `User[Row]` for methods that
+require complete values.
 
-### Ruff/Pyflakes unused-import note
+### Complete snapshots
 
-`Fetched` appears in model declarations as part of a string forward reference,
-for example `sqlite.Model[S, "User[Fetched]"]`. Type checkers resolve that name,
-but Ruff's Pyflakes `F401` check does not count names inside string literals as
-import usage. If a project imports `Fetched` only for those model self-types,
-allow that import in Ruff:
+`__row_type__` names this same declaration in Row state. It controls whole-model
+SELECT, RETURNING, and `complete`; scalar, tuple, and named projections keep their
+own result types. Use `ClassVar[sqlite.ReadType[User[sqlite.Row]]]` in the class
+body. Do not put the self reference in the base expression, which Python evaluates
+before the class exists.
 
-```toml
-[tool.ruff.lint.pyflakes]
-allowed-unused-imports = [
-  "snekql.sqlite.Fetched",
-  "snekql.mariadb.Fetched",
-]
+Ordinary construction creates Pending values. `User[Row](...)` is rejected.
+For a complete logical snapshot without database I/O, use:
+
+```python
+row = sqlite.complete(User, id=7, email="ada@example.com")  # User[Row]
+assert sqlite.is_complete(row)
 ```
+
+This uses the two-field User above. Supply every declared field, including
+fields with defaults. Extra fields and unavailable generation markers are
+rejected. Values undergo logical validation, not database storage decoding.
+Completeness does not prove persistence. Neither `complete` nor insertion changes
+an existing Pending value into Row state, and Row values cannot be inserted.
+`is_complete` tests recorded state and narrows only its true branch.
+
+See [the breaking-change migration guide](docs/class-body-migration.md) when
+upgrading existing declarations and query helpers.
 
 ## Column types and logical types
 
@@ -324,11 +345,14 @@ bump the timestamp.
 Use the backend namespace `Index(...)` in `__indexes__` for table-level indexes:
 
 ```python
+from typing import ClassVar
+
 from snekql import sqlite
-from snekql.sqlite import Fetched, Pending
+from snekql.sqlite import Pending
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
     email: sqlite.Col[str] = sqlite.Text(unique=True)
     status: sqlite.Col[str] = sqlite.Text()
     tenant_id: sqlite.Col[int] = sqlite.Integer()
@@ -350,13 +374,14 @@ rejected as a duplicate.
 Queries are immutable. Chaining returns new query objects.
 
 ```python
-from snekql.sqlite import delete, insert, select, update
+from snekql.sqlite import delete, insert, insert_many, select, update
 
 select(User).all()
 select(User.email).where(User.status.eq("active"))
 select(User.email, User.status).where(User.email.like("%@example.com"))
 
 insert(User(email="alice@example.com"))
+insert_many(User, [User(email="ada@example.com"), User(email="grace@example.com")])
 
 update(User).set(User.status.to("disabled")).where(
     User.email.eq("alice@example.com"),
@@ -557,28 +582,28 @@ model and declares no storage, primary key, or schema.
 
 ```python
 from pydantic import BaseModel
-from snekql.sqlite import Select, select
+from snekql.sqlite import ClosedRead, Transaction, ready, select
 
 
 class UserSummary(BaseModel):
     id: int
-    name: str
+    email: str
 
 
-def summaries() -> Select[UserSummary]:
-    return (
+def summaries() -> ClosedRead[UserSummary]:
+    return ready(
         select(User)
         .project(
             UserSummary,
             id=User.id,
-            name=User.name,
+            email=User.email,
         )
         .all()
     )
 
 
-async with database.transaction() as transaction:
-    rows = await transaction.fetch_all(summaries())  # list[UserSummary]
+async def load_summaries(transaction: Transaction) -> list[UserSummary]:
+    return await transaction.fetch_all(summaries())
 ```
 
 Keyword names identify result fields; values are query columns, aggregates,
@@ -674,7 +699,7 @@ select(User).left_join(
         & Order.status.ne("cancelled")
     ),
 ).all()
-# Select[tuple[User[Fetched], Order[Fetched] | None]]
+# fetch_all returns list[tuple[User[Row], Order[Row] | None]]
 ```
 
 ON supports column comparisons, literal filters, `&`, `|`, `~`, and subqueries.
@@ -714,13 +739,13 @@ query = (
     )
     .all()
 )
-# Select[tuple[User[Fetched], User[Fetched] | None]]
+# fetch_all returns list[tuple[User[Row], User[Row] | None]]
 ```
 
 `manager.column(User.email)` retains the column's value type and codec while
 referencing `manager` in SQL. Pass an original column of the aliased model;
 columns from another model or alias are rejected. `select(manager)` returns
-original `User[Fetched]` instances. Alias columns also support projections,
+original `User[Row]` instances. Alias columns also support projections,
 ordering, comparisons, and aggregates.
 
 Give every repeated role a distinct marker class and SQL name. Aliases can be
@@ -793,7 +818,7 @@ Compiled output is inspection-only. Pass the original query to a Transaction,
 not `CompiledQuery`. Compilation neither executes SQL nor includes private
 execution plans, row decoders, or result-cardinality policy. It does not verify
 that tables exist on a server. Incomplete queries raise `QueryCompilationError`.
-Empty bulk inserts also raise because they have no model or SQL to compile,
+Empty bulk inserts also raise because they have no SQL to compile,
 even though executing an empty bulk insert is a no-op.
 
 `repr(compiled)` and `str(compiled)` redact bound values as `<redacted:N>`.
@@ -976,11 +1001,14 @@ MariaDB models should use the MariaDB namespace so backend-specific columns and
 runtime checks agree:
 
 ```python
+from typing import ClassVar
+
 from snekql import mariadb
-from snekql.mariadb import Database, Fetched, Pending, insert, select
+from snekql.mariadb import Database, Pending, insert, select
 
 
-class Account[S = Pending](mariadb.Model[S, "Account[Fetched]"]):
+class Account[S = Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
     id: mariadb.GenCol[int] = mariadb.Integer(
         primary_key=True,
         auto_increment=True,
@@ -1087,7 +1115,7 @@ Runtime methods:
 
   ```python
   async with tx.fetch_chunks(select(User).all(), size=500) as stream:
-      async for batch in stream:  # batch: list[User[Fetched]]
+      async for batch in stream:  # batch: list[User[Row]]
           for user in batch:
               ...
   ```
@@ -1105,7 +1133,7 @@ Runtime methods:
 - `execute(insert(...))` returns `None`, including conflict-handled inserts
   without `.returning(...)`; `execute(update/delete)` returns the affected-row
   count. SQLite counts matched rows; MariaDB counts only rows an `UPDATE`
-  actually changed. On SQLite UPDATE/DELETE, `.returning()` returns Fetched
+  actually changed. On SQLite UPDATE/DELETE, `.returning()` returns Row
   models, one explicit returning column yields scalars, and multiple columns
   yield tuples. Each `.returning(...)` call replaces the previous projection;
   a final `.returning()` restores whole-model results. The MariaDB adapter
@@ -1236,8 +1264,11 @@ The supported import surface is `snekql.sqlite`, `snekql.mariadb`, and
 (`snekql._*`) and backend submodules (`snekql.sqlite.config`,
 `snekql.sqlite.verbs`, …) are implementation detail and not supported import
 paths — their public symbols are re-exported through the namespace top level.
-Use `Select[Row]` and `Write[Result]` to annotate executable queries without
-depending on their state-specific implementation classes. Query Readiness is
+Use `ReadQuery[Scope, Result]` and `Write[Result]` for executable query helpers.
+Preserve `Scope` in generic read helpers. To return a read with a result-only
+annotation, finish composing it and return `ready(query)` as `ClosedRead[Result]`.
+Use `OptionalRead` or `ClosedOptional` when a helper needs `fetch_one_or_none`.
+These annotations avoid dependencies on state-specific builder classes. Query Readiness is
 tracked privately: selects and deletes need `.all()` or `.where(...)`; updates
 need both `.set(...)` and row scope. `ty` rejects guaranteed-incomplete queries
 at stored-query and Transaction seams, while Query Compilation keeps equivalent
@@ -1247,14 +1278,13 @@ obtain their values from model/column methods and Query Builder factories,
 never constructors. Use
 `ColumnRef[Owner, T]` for a read-only column parameter that a helper compares or
 projects; assignment methods intentionally remain on model columns. Queries are
-built only through the `select`/`insert`/`update`/`delete` factory verbs. The
-catchable error contract
-is the `SnekqlError` hierarchy re-exported from each namespace. See
+built through `select`, `insert`, `insert_many`, `update`, and `delete`. The
+catchable error contract is the `SnekqlError` hierarchy re-exported from each namespace. See
 [docs/typing.md](docs/typing.md#stability-contract) for the full contract.
 
 Agent navigation map:
 
-- `snekql/model.py`: model metaclass, table metadata, pending/fetched
+- `snekql/model.py`: model metaclass, table metadata, Pending/Row
   materialization.
 - `snekql/storage.py`: column descriptors, SQLite storage metadata, value
   codecs.

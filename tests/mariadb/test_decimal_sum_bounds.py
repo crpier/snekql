@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal, Inexact, Rounded, localcontext
+from typing import ClassVar
 
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
@@ -11,8 +12,10 @@ from snekql.errors import ModelValidationError
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+class Price[S = mariadb.Pending](mariadb.Model[S]):
     """A narrow input column whose total can exceed its precision."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
 
     amount: Price.Col[Decimal] = mariadb.Decimal(5, 2, nullable=False)
 

@@ -3,7 +3,7 @@
 from collections.abc import AsyncGenerator
 from dataclasses import FrozenInstanceError
 from traceback import format_exception
-from typing import Literal
+from typing import ClassVar, Literal
 
 from anyio import fail_after
 from snektest import (
@@ -20,8 +20,10 @@ from snekql import mariadb, sqlite
 from tests.helpers import capture_snekql_logs, provide_mariadb_server
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
     """Rows used to distinguish query plans from query results."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
 
     account_id: Account.Col[int] = sqlite.Integer(primary_key=True)
     email: Account.Col[str] = sqlite.Text()
@@ -55,10 +57,10 @@ async def sqlite_explain_returns_native_plan_rows() -> None:
     assert_true(any("SEARCH account" in str(row[3]) for row in plan.rows))
 
 
-class MariaAccount[S = mariadb.Pending](
-    mariadb.Model[S, "MariaAccount[mariadb.Fetched]"]
-):
+class MariaAccount[S = mariadb.Pending](mariadb.Model[S]):
     """MariaDB rows used for plan inspection and explicit write execution."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaAccount[mariadb.Row]]]
 
     account_id: MariaAccount.Col[int] = mariadb.Integer(primary_key=True)
     email: MariaAccount.Col[str] = mariadb.Text()
@@ -271,13 +273,13 @@ async def explain_rejects_incomplete_query_before_io() -> None:
 
 @test(mark="medium")
 async def explain_rejects_empty_bulk_insert() -> None:
-    """A no-op batch has no SQL or model to explain."""
+    """A no-op batch retains its model but has no SQL to explain."""
     async with (
         await sqlite.Database.initialize(database=":memory:") as database,
         database.transaction() as transaction,
     ):
         with assert_raises(sqlite.QueryCompilationError):
-            await transaction.explain(sqlite.insert([]))
+            await transaction.explain(sqlite.insert_many(Account, []))
 
 
 @test(mark="medium")

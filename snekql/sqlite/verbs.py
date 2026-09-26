@@ -10,7 +10,7 @@ so the ``snekql.sqlite`` namespace surfaces SQLite-specific guidance.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal, cast, overload
+from typing import Any, Literal, Never, cast, overload
 
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ from snekql._query_readiness import _IncompleteQuery
 from snekql._query_state import selectable_owner_model
 from snekql.errors import QueryConstructionError
 from snekql.expressions import Aggregate, ColumnRef, Scalar, _Scalar
-from snekql.model import Table, require_model_backend
+from snekql.model import Pending, Row, Table, require_model_backend
 from snekql.query import (
     DeleteQuery,
     InsertableModel,
@@ -31,8 +31,13 @@ from snekql.query import (
     SelectTupleQuery,
     SelectValueQuery,
     UpdateQuery,
+    _check_read_query,
+    _DeclarationSource,
+    _ExecutableOptionalSelect,
+    _ExecutableSelect,
     _SelectableModelClass,
     build_insert,
+    build_insert_many,
     build_select,
 )
 from snekql.query import (
@@ -43,6 +48,23 @@ from snekql.query import (
 )
 from snekql.sqlite.model import Model
 from snekql.storage import Attr
+
+type ReadQuery[Scope, Result] = _ExecutableSelect[
+    Literal["sqlite"], Scope, Scope, Result
+]
+"""An executable read retaining the tables its expressions reference."""
+type OptionalRead[Scope, Result] = _ExecutableOptionalSelect[
+    Literal["sqlite"], Scope, Scope, Result
+]
+"""A read whose missing row is distinct from every possible row value."""
+type ClosedRead[Result] = ReadQuery[Never, Result]
+"""An execution/inspection view checked by ready, without fluent composition."""
+type ClosedOptional[Result] = OptionalRead[Never, Result]
+"""A checked read that still permits fetch_one_or_none."""
+type PendingInput[Owner: Model[Pending], Result: Table[Row]] = InsertableModel[
+    Literal["sqlite"], Owner, Result
+]
+"""Pending insertion input retaining its exact model owner and Row result."""
 
 
 def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
@@ -56,6 +78,9 @@ def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
     if isinstance(model, _Cte):
         msg = "CTEs cannot be mutation targets"
         raise QueryConstructionError(msg)
+    if not isinstance(model, type) or not issubclass(model, Table):
+        msg = "query source requires a table model or native query role"
+        raise QueryConstructionError(msg)
     received = require_model_backend(model)
     if received != "sqlite":
         msg = (
@@ -63,6 +88,29 @@ def _require_sqlite_model(model: type[Table[Any]] | None) -> None:
             f"received {received} model {model.__name__}"
         )
         raise QueryConstructionError(msg)
+
+
+@overload
+def ready[Scope, Result](
+    query: OptionalRead[Scope, Result], /
+) -> ClosedOptional[Result]: ...
+
+
+@overload
+def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Result]: ...
+
+
+def ready[Scope, Result](query: ReadQuery[Scope, Result], /) -> ClosedRead[Result]:
+    """Check a finished read before returning it through a short helper annotation.
+
+    `return ready(select(User).all())` fits `ClosedRead[User[Row]]`.
+    This compiles SQL without database I/O and returns the same query. Finish
+    fluent composition before closing; ordinary execution does not need ready.
+    """
+    _check_read_query(query, backend="sqlite")
+    # Native compilation checked the references; Never records their closure.
+    # This annotation exposes execution and inspection, not more composition.
+    return cast("ClosedRead[Result]", query)
 
 
 @overload
@@ -77,7 +125,7 @@ def select[SourceT: Table[Any], ResultT: BaseModel, RoleT, NonNullableOwnerT](
 # BEGIN GENERATED BACKEND SELECT OVERLOADS
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     ReadT: Table[Any],
@@ -89,7 +137,7 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     ValueT,
@@ -104,7 +152,7 @@ def select[
 
 @overload
 def select[
-    OwnerT: Model[Any, Any]
+    OwnerT: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     ValueT,
@@ -116,11 +164,11 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
@@ -142,15 +190,15 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
@@ -183,19 +231,19 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
@@ -234,23 +282,23 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
@@ -295,27 +343,27 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
@@ -366,31 +414,31 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any]
+    Owner7T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T7,
@@ -447,35 +495,35 @@ def select[
 
 @overload
 def select[
-    Owner1T: Model[Any, Any]
+    Owner1T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T1,
-    Owner2T: Model[Any, Any]
+    Owner2T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T2,
-    Owner3T: Model[Any, Any]
+    Owner3T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T3,
-    Owner4T: Model[Any, Any]
+    Owner4T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T4,
-    Owner5T: Model[Any, Any]
+    Owner5T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T5,
-    Owner6T: Model[Any, Any]
+    Owner6T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T6,
-    Owner7T: Model[Any, Any]
+    Owner7T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T7,
-    Owner8T: Model[Any, Any]
+    Owner8T: Model[Any]
     | _AliasOwner[Literal["sqlite"], Any, Any]
     | _CteOwner[Literal["sqlite"], Any, Any],
     T8,
@@ -551,34 +599,41 @@ def select(*args: object) -> object:
     return query
 
 
-@overload
-def insert[OwnerT: Model[Any, Any], ReadT: Table[Any]](
-    row: InsertableModel[Literal["sqlite"], OwnerT, ReadT],
-    /,
-) -> InsertQuery[Literal["sqlite"], OwnerT, ReadT]: ...
-@overload
-def insert[OwnerT: Model[Any, Any], ReadT: Table[Any]](
-    rows: Sequence[InsertableModel[Literal["sqlite"], OwnerT, ReadT]],
-    /,
-) -> InsertManyQuery[Literal["sqlite"], OwnerT, ReadT]: ...
-def insert(row_or_rows: object, /) -> object:
-    """Build a SQLite insert from a single pending model or a sequence of them.
+def insert[OwnerT: Model[Any], ReadT: Table[Any]](
+    row: InsertableModel[Literal["sqlite"], OwnerT, ReadT], /
+) -> InsertQuery[Literal["sqlite"], OwnerT, ReadT]:
+    """Insert one SQLite Pending value; use insert_many(Model, rows) for batches.
 
-    A single model compiles to one ``INSERT ... VALUES (...)``; a sequence
-    compiles to one multi-row ``INSERT`` and is a no-op when empty. Executed
-    plain, the insert returns ``None``. Call ``.returning()`` to get the Fetched
-    model(s) SQLite produced -- generated ``INTEGER PRIMARY KEY`` rowids and
-    server defaults -- read back through ``RETURNING``. Call ``.on_conflict``
-    with ``DoUpdate`` or ``DoNothing`` for SQLite's atomic conflict handling.
+    `insert(user)` executes to `None`. `insert(user).returning()` returns the
+    Row produced by the database, including generated values. Conflict handling
+    remains available through `on_conflict` with `DoUpdate` or `DoNothing`.
+    RETURNING includes generated INTEGER PRIMARY KEY rowids and server defaults.
+    Conflict actions use SQLite ON CONFLICT handling.
     """
-
-    query = build_insert(row_or_rows)
-    _require_sqlite_model(cast("Any", query).state.model())
+    query = build_insert(row)
+    _require_sqlite_model(query.state.model())
     return query
 
 
-def update[ModelT: Model[Any, Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[Literal["sqlite"], ModelT, ReadT], /
+def insert_many[OwnerT: Model[Pending], ReadT: Table[Row]](
+    model: _DeclarationSource[Literal["sqlite"], OwnerT, ReadT],
+    rows: Sequence[OwnerT],
+    /,
+) -> InsertManyQuery[Literal["sqlite"], OwnerT, ReadT]:
+    """Insert Pending values into one declared model, including an empty batch.
+
+    `insert_many(User, users).returning()` returns a list of `User[Row]`.
+    An empty batch executes as a no-op. Conflict handling, generated values,
+    and RETURNING use the same builder as single-row `insert(user)`.
+    """
+    query = build_insert_many(model, rows)
+    # The builder has checked that this is a bare model declaration.
+    _require_sqlite_model(cast("type[Table[Any]]", model))
+    return query
+
+
+def update[ModelT: Model[Any], ReadT: Table[Any]](
+    model: _DeclarationSource[Literal["sqlite"], ModelT, ReadT], /
 ) -> UpdateQuery[Literal["sqlite"], ModelT, ReadT]:
     """Build a SQLite ``UPDATE`` for a table model.
 
@@ -592,8 +647,8 @@ def update[ModelT: Model[Any, Any], ReadT: Table[Any]](
     return build_update(model)
 
 
-def delete[ModelT: Model[Any, Any], ReadT: Table[Any]](
-    model: _SelectableModelClass[Literal["sqlite"], ModelT, ReadT], /
+def delete[ModelT: Model[Any], ReadT: Table[Any]](
+    model: _DeclarationSource[Literal["sqlite"], ModelT, ReadT], /
 ) -> DeleteQuery[Literal["sqlite"], ModelT, ReadT]:
     """Build a SQLite ``DELETE`` for a table model.
 
@@ -622,8 +677,8 @@ def alias[
 
 
 @overload
-def alias[OwnerT: Model[Any, Any], ReadT: Table[Any], RoleT](
-    model: _SelectableModelClass[Literal["sqlite"], OwnerT, ReadT],
+def alias[OwnerT: Model[Any], ReadT: Table[Any], RoleT](
+    model: _DeclarationSource[Literal["sqlite"], OwnerT, ReadT],
     role: type[RoleT],
     *,
     name: str,

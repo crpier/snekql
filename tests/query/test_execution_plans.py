@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
-from typing import Any, assert_type
+from typing import Any, ClassVar, assert_type
 from uuid import UUID, uuid4
 
 from snektest import assert_eq, assert_isinstance, assert_raises, test
@@ -17,10 +17,11 @@ from snekql.errors import ResultCardinalityError
 from snekql.query import _OptionalQueryShape, _QueryShape, _WriteShape
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
     select,
@@ -28,8 +29,10 @@ from snekql.sqlite import (
 from tests.helpers import initialized_database
 
 
-class Token[S = Pending](Model[S, "Token[Fetched]"]):
+class Token[S = Pending](Model[S]):
     """Model whose logical UUID differs from its SQLite wire value."""
+
+    __row_type__: ClassVar[ReadType[Token[Row]]]
 
     id: Token.GenCol[int] = Integer(
         primary_key=True,
@@ -176,8 +179,10 @@ async def runtime_executes_unlisted_select_and_write_shapes_through_plans() -> N
 async def ignored_insert_returning_raises_package_cardinality_error() -> None:
     """A trigger-suppressed insert exercises the former models[0] failure."""
 
-    class Message[S = Pending](Model[S, "Message[Fetched]"]):
+    class Message[S = Pending](Model[S]):
         """Rows whose blocked body is ignored by a trigger."""
+
+        __row_type__: ClassVar[ReadType[Message[Row]]]
 
         id: Message.GenCol[int] = Integer(
             primary_key=True,
@@ -251,7 +256,7 @@ async def optional_fetch_executes_select_state_without_builder_dispatch() -> Non
     ) as database:
         async with database.transaction() as transaction:
             await transaction.execute(insert(Token(value=source)))
-        query = _UnlistedOptionalSelect[Token[Fetched]](select(Token).all().state)
+        query = _UnlistedOptionalSelect[Token[Row]](select(Token).all().state)
 
         async with database.transaction() as transaction:
             fetched = await transaction.fetch_one_or_none(query)

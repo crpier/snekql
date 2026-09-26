@@ -21,7 +21,7 @@ def cte_definition_cannot_capture_its_consumers_row() -> None:
     """A consumer's FROM source is not an enclosing scope for a WITH body."""
     definition = (
         sqlite.select(Order)
-        .where(Order.user_id.eq_col(User.id))
+        .where(Order.user_id.eq_col(User.id))  # ty: ignore[invalid-argument-type]
         .project(Identifier, id=Order.id)
         .cte(ActiveRole, name="correlated")
     )

@@ -6,25 +6,30 @@ from datetime import datetime
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 from snektest import assert_eq, assert_is_none, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
     CurrentTimestamp,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     UtcDatetime,
     insert,
+    insert_many,
 )
 from tests.helpers import initialized_database
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Table model with an auto-increment key and a server-default timestamp."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: User.GenCol[int] = Integer(
         primary_key=True, auto_increment=True, default=PENDING_GENERATION
@@ -53,12 +58,13 @@ async def bulk_insert_persists_every_row_in_one_statement() -> None:
         try:
             async with database.transaction() as tx:
                 result = await tx.execute(
-                    insert(
+                    insert_many(
+                        User,
                         [
                             User(email="a@example.com"),
                             User(email="b@example.com"),
                             User(email="c@example.com"),
-                        ]
+                        ],
                     )
                 )
         finally:
@@ -79,7 +85,7 @@ async def empty_bulk_insert_is_a_no_op() -> None:
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []
-                result = await tx.execute(insert(no_rows))
+                result = await tx.execute(insert_many(User, no_rows))
         finally:
             await database.close()
         count = _count_rows(database_path)
@@ -155,11 +161,12 @@ async def bulk_returning_one_column_yields_scalar_list() -> None:
         try:
             async with database.transaction() as tx:
                 ids = await tx.execute(
-                    insert(
+                    insert_many(
+                        User,
                         [
                             User(email="a@example.com"),
                             User(email="b@example.com"),
-                        ]
+                        ],
                     ).returning(User.id)
                 )
         finally:
@@ -178,11 +185,12 @@ async def bulk_returning_several_columns_yields_tuple_list() -> None:
         try:
             async with database.transaction() as tx:
                 rows = await tx.execute(
-                    insert(
+                    insert_many(
+                        User,
                         [
                             User(email="a@example.com"),
                             User(email="b@example.com"),
-                        ]
+                        ],
                     ).returning(User.id, User.email)
                 )
         finally:
@@ -201,7 +209,7 @@ async def empty_bulk_returning_columns_yields_empty_list() -> None:
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []
-                rows = await tx.execute(insert(no_rows).returning(User.id))
+                rows = await tx.execute(insert_many(User, no_rows).returning(User.id))
         finally:
             await database.close()
 
@@ -210,7 +218,7 @@ async def empty_bulk_returning_columns_yields_empty_list() -> None:
 
 @test(mark="medium")
 async def bulk_returning_yields_one_fetched_model_per_row() -> None:
-    """A bulk returning insert recovers a Fetched model for every row in order."""
+    """A bulk returning insert recovers a Row model for every row in order."""
 
     with TemporaryDirectory() as directory:
         database_path = Path(directory) / "app.db"
@@ -218,11 +226,12 @@ async def bulk_returning_yields_one_fetched_model_per_row() -> None:
         try:
             async with database.transaction() as tx:
                 created = await tx.execute(
-                    insert(
+                    insert_many(
+                        User,
                         [
                             User(email="a@example.com"),
                             User(email="b@example.com"),
-                        ]
+                        ],
                     ).returning()
                 )
         finally:
@@ -243,7 +252,7 @@ async def empty_bulk_returning_yields_empty_list() -> None:
         try:
             async with database.transaction() as tx:
                 no_rows: list[User[Pending]] = []
-                created = await tx.execute(insert(no_rows).returning())
+                created = await tx.execute(insert_many(User, no_rows).returning())
         finally:
             await database.close()
 

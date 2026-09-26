@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import PlainSerializer
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
@@ -21,7 +21,8 @@ async def sum_bound_exceeds_bigint(sign: int, kind: str) -> None:
     """Two valid inputs can be compared to their exact widened total."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Quantity[S = mariadb.Pending](mariadb.Model[S, "Quantity[mariadb.Fetched]"]):
+    class Quantity[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Quantity[mariadb.Row]]]
         amount: Quantity.Col[int] = mariadb.Integer(nullable=False)
 
     async with await initialized_database(
@@ -54,7 +55,8 @@ async def sum_bound_retains_integer_serializer() -> None:
     """Serialization still applies when its exact result exceeds BIGINT."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Quantity[S = mariadb.Pending](mariadb.Model[S, "Quantity[mariadb.Fetched]"]):
+    class Quantity[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Quantity[mariadb.Row]]]
         amount: Quantity.Col[Annotated[int, PlainSerializer(_double)]] = (
             mariadb.Integer(nullable=False)
         )
@@ -85,7 +87,8 @@ async def oversized_bigint_write_rejected(sign: int, kind: str) -> None:
     """Widened HAVING encoding does not weaken the individual row limit."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Quantity[S = mariadb.Pending](mariadb.Model[S, "Quantity[mariadb.Fetched]"]):
+    class Quantity[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Quantity[mariadb.Row]]]
         amount: Quantity.Col[int] = mariadb.Integer(nullable=False)
 
     async with (
@@ -105,7 +108,8 @@ async def oversized_bigint_write_rejected(sign: int, kind: str) -> None:
 def sqlite_sum_bound_keeps_driver_limit() -> None:
     """SQLite does not gain arbitrary precision integer SUM parameters."""
 
-    class Quantity[S = sqlite.Pending](sqlite.Model[S, "Quantity[sqlite.Fetched]"]):
+    class Quantity[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Quantity[sqlite.Row]]]
         amount: Quantity.Col[int] = sqlite.Integer(nullable=False)
 
     query = (
@@ -121,7 +125,8 @@ def sqlite_sum_bound_keeps_driver_limit() -> None:
 def ordinary_integer_comparisons_keep_bigint_limit() -> None:
     """Scalar and extrema comparisons keep the input column codec."""
 
-    class Quantity[S = mariadb.Pending](mariadb.Model[S, "Quantity[mariadb.Fetched]"]):
+    class Quantity[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Quantity[mariadb.Row]]]
         amount: Quantity.Col[int] = mariadb.Integer(nullable=False)
 
     with assert_raises(ModelValidationError):

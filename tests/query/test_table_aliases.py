@@ -76,7 +76,7 @@ def one_role_cannot_name_two_visible_aliases() -> None:
 def unjoined_alias_on_the_right_is_rejected() -> None:
     """An alias cannot borrow the scope membership of its original table."""
     manager = sqlite.alias(User, ManagerRole, name="manager")
-    query = sqlite.select(User).where(User.id.eq_col(manager.column(User.id)))
+    query = sqlite.select(User).where(User.id.eq_col(manager.column(User.id)))  # ty: ignore[invalid-argument-type]
 
     with assert_raises(sqlite.QueryCompilationError):
         query.compile()
@@ -150,7 +150,7 @@ if TYPE_CHECKING:
         manager = sqlite.alias(User, ManagerRole, name="manager")
         reviewer = sqlite.alias(User, ReviewerRole, name="reviewer")
         query = sqlite.select(manager).all()
-        assert_type(await transaction.fetch_all(query), list[User[sqlite.Fetched]])
+        assert_type(await transaction.fetch_all(query), list[User[sqlite.Row]])
         assert_type(
             await transaction.fetch_all(
                 sqlite.select(manager.column(User.email)).all()
@@ -187,4 +187,4 @@ def alias_rejects_mixed_backend_models() -> None:
 def alias_requires_a_declared_table() -> None:
     """A backend's model base is not a physical table source."""
     with assert_raises(sqlite.QueryConstructionError):
-        sqlite.alias(sqlite.Model, ManagerRole, name="manager")
+        sqlite.alias(sqlite.Model, ManagerRole, name="manager")  # ty: ignore[no-matching-overload]

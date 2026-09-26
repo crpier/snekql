@@ -7,11 +7,15 @@ model as their operands.
 ## Combine named results
 
 ```python
+from typing import ClassVar
+
 from pydantic import BaseModel
+
 from snekql import sqlite
 
 
-class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+class Event[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Event[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     archived: sqlite.Col[bool] = sqlite.Integer()
 
@@ -58,7 +62,11 @@ before database I/O, even if the Pydantic result annotation permits `None`.
 A nullable left output can accept a compatible required right output.
 
 ```python
-class MaybeEvent[S = sqlite.Pending](sqlite.Model[S, "MaybeEvent[sqlite.Fetched]"]):
+from typing import ClassVar
+
+
+class MaybeEvent[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[MaybeEvent[sqlite.Row]]]
     id: sqlite.Col[int | None] = sqlite.Integer()
 
 
@@ -160,6 +168,7 @@ text order. Combined CTEs preserve the private row-presence output needed to
 distinguish unmatched LEFT joins from matched all-NULL rows. That presence
 output does not participate in duplicate removal.
 
-INTERSECT, EXCEPT, recursive CTE construction and window builders remain separate
-work. Use [raw reporting](reporting.md) for those SQL operations. There is no
+INTERSECT, EXCEPT and window builders remain separate work. Use [raw reporting](reporting.md) for those SQL operations. There is no
 optimizer materialization or evaluation-count guarantee.
+
+For native recursion, see [typed recursive CTEs](recursive-ctes.md).

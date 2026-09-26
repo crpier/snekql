@@ -37,7 +37,7 @@ async def omitted_nullable_reference_round_trips() -> None:
             mariadb.select(Account).where(Account.account_id.eq(1))
         )
 
-    assert_type(row, Account[mariadb.Fetched])
+    assert_type(row, Account[mariadb.Row])
     assert_eq(row.manager_id, None)
 
 

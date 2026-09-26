@@ -3,25 +3,28 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 
 from snekql import sqlite
 from snekql.sqlite import (
-    Fetched,
+    ClosedRead,
     Pending,
     PendingGeneration,
     Predicate,
-    Select,
+    Row,
     Transaction,
     Write,
     insert,
+    ready,
     select,
     update,
 )
 
 
-class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
+class Account[S = Pending](sqlite.Model[S]):
     """Example model focused on static result-shape inference."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Account[Row]]]
 
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -39,8 +42,8 @@ class Account[S = Pending](sqlite.Model[S, "Account[Fetched]"]):
 
         return {"email": self.email, "status": self.status}
 
-    def cache_key(self: Account[Fetched]) -> str:
-        """Fetched-state helper that can rely on generated ids."""
+    def cache_key(self: Account[Row]) -> str:
+        """Row-state helper that can rely on generated ids."""
 
         return f"account:{self.id}"
 
@@ -52,16 +55,18 @@ if TYPE_CHECKING:
     _ = assert_type(pending_account.created_at, datetime | PendingGeneration)
     _ = assert_type(pending_account.insert_payload(), dict[str, str])
 
-    def check_fetched_account(fetched_account: Account[Fetched]) -> None:
-        """Fetched generated columns are narrowed to concrete values."""
+    def check_fetched_account(fetched_account: Account[Row]) -> None:
+        """Row generated columns are narrowed to concrete values."""
 
         _ = assert_type(fetched_account.id, int)
         _ = assert_type(fetched_account.created_at, datetime)
         _ = assert_type(fetched_account.cache_key(), str)
 
-    model_query: Select[Account[Fetched]] = select(Account).all()
-    value_query: Select[str] = select(Account.email).all()
-    tuple_query: Select[tuple[str, str]] = select(Account.email, Account.status).all()
+    model_query: ClosedRead[Account[Row]] = ready(select(Account).all())
+    value_query: ClosedRead[str] = ready(select(Account.email).all())
+    tuple_query: ClosedRead[tuple[str, str]] = ready(
+        select(Account.email, Account.status).all()
+    )
     _ = assert_type(Account.email.eq("alice@example.com"), Predicate[Account[Pending]])
     insert_query: Write[None] = insert(pending_account)
     update_query: Write[int] = update(Account).set(Account.status.to("disabled")).all()
@@ -71,7 +76,7 @@ if TYPE_CHECKING:
 
         _ = assert_type(
             await transaction.fetch_all(select(Account).all()),
-            list[Account[Fetched]],
+            list[Account[Row]],
         )
         _ = assert_type(
             await transaction.fetch_all(select(Account.email).all()),
@@ -87,5 +92,5 @@ if TYPE_CHECKING:
         )
         _ = assert_type(
             await transaction.fetch_one_or_none(select(Account).all()),
-            Account[Fetched] | None,
+            Account[Row] | None,
         )

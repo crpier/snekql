@@ -5,16 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 from sqlite3 import connect
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 from snektest import assert_eq, assert_in, assert_is_none, assert_raises, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     insert,
 )
@@ -34,8 +36,10 @@ def _fetch_rows(database_path: Path, sql: str) -> list[tuple[object, ...]]:
 def insert_compilation_omits_pending_generation_and_quotes_identifiers() -> None:
     """Compiled insert SQL targets the table and omits PENDING_GENERATION fields."""
 
-    class Order[S = Pending](Model[S, "Order[Fetched]"]):
+    class Order[S = Pending](Model[S]):
         """Table model with identifiers that must be quoted."""
+
+        __row_type__: ClassVar[ReadType[Order[Row]]]
 
         __tablename__ = "select"
         id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
@@ -51,8 +55,10 @@ def insert_compilation_omits_pending_generation_and_quotes_identifiers() -> None
 def insert_compilation_uses_default_values_when_all_fields_are_pending() -> None:
     """An all-generated model compiles to SQLite DEFAULT VALUES."""
 
-    class AuditLog[S = Pending](Model[S, "AuditLog[Fetched]"]):
+    class AuditLog[S = Pending](Model[S]):
         """Table model with no explicit insertable values."""
+
+        __row_type__: ClassVar[ReadType[AuditLog[Row]]]
 
         id: AuditLog.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
 
@@ -66,8 +72,10 @@ def insert_compilation_uses_default_values_when_all_fields_are_pending() -> None
 async def insert_execution_includes_defaults_and_returns_none() -> None:
     """Executing an insert persists Python defaults and default-factory values."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model with explicit, default, and generated fields."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)
@@ -96,8 +104,10 @@ async def insert_execution_includes_defaults_and_returns_none() -> None:
 async def execution_errors_preserve_insert_sql_and_params() -> None:
     """SQLite insert failures are wrapped with SQL and parameter context."""
 
-    class User[S = Pending](Model[S, "User[Fetched]"]):
+    class User[S = Pending](Model[S]):
         """Table model used to trigger a duplicate primary key failure."""
+
+        __row_type__: ClassVar[ReadType[User[Row]]]
 
         id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
         email: User.Col[str] = Text(nullable=False)

@@ -2,6 +2,7 @@
 
 import warnings
 from decimal import Decimal
+from typing import ClassVar
 
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
@@ -13,7 +14,8 @@ from tests.helpers import provide_mariadb_server
 def scaffold_emits_native_long_text() -> None:
     """LongText is ordinary string storage, not the JSON alias or VARCHAR."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         body: mariadb.Col[str] = mariadb.LongText()
 
     assert_in(
@@ -27,7 +29,8 @@ async def matching_long_text_verifies() -> None:
     """Verification includes native type and text collation for LONGTEXT."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         __tablename__ = "long_document"
         body: mariadb.Col[str] = mariadb.LongText()
 
@@ -44,7 +47,8 @@ async def matching_long_text_verifies() -> None:
 def long_text_cannot_be_a_physical_fk_target() -> None:
     """A long-text target cannot acquire a foreign key through derived storage."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         body: mariadb.Col[str] = mariadb.LongText()
 
     with assert_raises(mariadb.ModelDeclarationError):
@@ -55,7 +59,8 @@ def long_text_cannot_be_a_physical_fk_target() -> None:
 def long_text_cannot_enter_a_compound_index() -> None:
     """Table-level Index cannot bypass the constructor's storage restriction."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         body: mariadb.Col[str] = mariadb.LongText()
         tag: mariadb.Col[str] = mariadb.Text()
 
@@ -68,7 +73,8 @@ async def long_text_supports_pattern_matching_and_large_values() -> None:
     """Ordinary text predicates and materialization work beyond VARCHAR/TEXT capacity."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         __tablename__ = "long_document"
         body: mariadb.Col[str] = mariadb.LongText()
 
@@ -101,7 +107,8 @@ async def differing_native_storage_is_drift(declaration: tuple[str, str]) -> Non
     """Other string storage classes and collations do not silently match LONGTEXT."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         __tablename__ = "long_document"
         body: mariadb.Col[str] = mariadb.LongText()
 
@@ -127,7 +134,8 @@ async def json_alias_scope_does_not_hide_long_text_collation(collation: str) -> 
     """JSON's deliberately unchecked backing collation cannot mask a neighboring text column."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         __tablename__ = "long_document"
         body: mariadb.Col[str] = mariadb.LongText()
         payload: mariadb.Col[dict[str, int]] = mariadb.Json()
@@ -165,7 +173,8 @@ def no_capacity_or_key_options_are_exposed() -> None:
 def standalone_indexes_are_rejected(kind: str) -> None:
     """Neither full-column regular nor unique indexes are supported for LongText."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         body: mariadb.Col[str] = mariadb.LongText()
 
     with assert_raises(mariadb.ModelDeclarationError):
@@ -177,7 +186,8 @@ async def nullable_long_text_keeps_python_default_semantics() -> None:
     """Missing Python values become NULL while explicit long strings remain unchanged."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         __tablename__ = "long_document"
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         body: mariadb.Col[str | None] = mariadb.LongText(default=None)
@@ -202,7 +212,8 @@ async def nullable_long_text_keeps_python_default_semantics() -> None:
 def long_text_factory_defaults_are_not_sql_defaults() -> None:
     """LongText retains Text's Python construction defaults without truncation."""
 
-    class Document[S = mariadb.Pending](mariadb.Model[S, "Document[mariadb.Fetched]"]):
+    class Document[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Document[mariadb.Row]]]
         body: mariadb.Col[str] = mariadb.LongText(
             default_factory=lambda: "large" * 1000
         )
@@ -222,7 +233,8 @@ def long_text_keeps_lexical_decimal_warnings() -> None:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", mariadb.LexicalDecimalWarning)
 
-        class Price[S = mariadb.Pending](mariadb.Model[S, "Price[mariadb.Fetched]"]):
+        class Price[S = mariadb.Pending](mariadb.Model[S]):
+            __row_type__: ClassVar[mariadb.ReadType[Price[mariadb.Row]]]
             amount: mariadb.Col[Decimal] = mariadb.LongText()
 
     assert_eq(len(caught), 1)

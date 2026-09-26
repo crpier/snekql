@@ -1,6 +1,6 @@
 """Backend-owned annotations for reusable named query helpers."""
 
-from typing import get_type_hints
+from typing import ClassVar, get_type_hints
 
 from snektest import Param, assert_eq, assert_raises, test
 
@@ -41,9 +41,8 @@ def named_recursive_callback_preserves_its_contract() -> None:
     )
 
 
-class NativeCategory[S = mariadb.Pending](
-    mariadb.Model[S, "NativeCategory[mariadb.Fetched]"]
-):
+class NativeCategory[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[NativeCategory[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 

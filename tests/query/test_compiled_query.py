@@ -2,19 +2,22 @@
 
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
 from snekql.sqlite import (
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
+    ReadType,
+    Row,
     Text,
     delete,
     insert,
+    insert_many,
     select,
     update,
 )
@@ -24,7 +27,8 @@ from snekql.sqlite import (
 def compile_select_preserves_parameter_order() -> None:
     """Compilation keeps values out of SQL without requiring a Database."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         account_id: Account.Col[int] = Integer(primary_key=True)
         email: Account.Col[str] = Text()
 
@@ -46,7 +50,8 @@ def compile_select_preserves_parameter_order() -> None:
 def compiled_text_redacts_bound_values() -> None:
     """The structured result is safe to format without printing bindings."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     compiled = select(Account).where(Account.email.eq("private@example.com")).compile()
@@ -64,7 +69,8 @@ def compiled_text_redacts_bound_values() -> None:
 def compiled_type_is_exported_by_backend_namespaces() -> None:
     """Integrations can annotate compiled output without private imports."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     compiled: sqlite.CompiledQuery = select(Account).all().compile()
@@ -77,7 +83,8 @@ def compiled_type_is_exported_by_backend_namespaces() -> None:
 def compile_mariadb_uses_native_placeholders() -> None:
     """MariaDB compilation uses its own Dialect without a server."""
 
-    class Account[S = mariadb.Pending](mariadb.Model[S, "Account[mariadb.Fetched]"]):
+    class Account[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Account[mariadb.Row]]]
         email: Account.Col[str] = mariadb.Text(primary_key=True)
 
     compiled = mariadb.select(Account.email).where(Account.email.eq("secret")).compile()
@@ -98,7 +105,8 @@ def compile_mariadb_uses_native_placeholders() -> None:
 def compiled_fields_are_frozen(field_name: str) -> None:
     """Public fields cannot be rebound after compilation."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     compiled = select(Account).all().compile()
@@ -111,7 +119,8 @@ def compiled_fields_are_frozen(field_name: str) -> None:
 def compile_insert_returns_encoded_bindings() -> None:
     """Insert parameters contain the Dialect wire form, not Python input."""
 
-    class Event[S = Pending](Model[S, "Event[Fetched]"]):
+    class Event[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Event[Row]]]
         event_id: Event.Col[int] = Integer(primary_key=True)
         occurred_at: Event.Col[sqlite.UtcDatetime] = Text()
 
@@ -129,7 +138,8 @@ def compile_insert_returns_encoded_bindings() -> None:
 def compile_update_returning_preserves_assignment_order() -> None:
     """Returning writes compile SQL only, without result materialization policy."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         account_id: Account.Col[int] = Integer(primary_key=True)
         email: Account.Col[str] = Text()
 
@@ -152,7 +162,8 @@ def compile_update_returning_preserves_assignment_order() -> None:
 def compile_delete_preserves_row_scope() -> None:
     """Delete compilation retains the explicit predicate."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     compiled = delete(Account).where(Account.email.eq("old")).compile()
@@ -165,10 +176,13 @@ def compile_delete_preserves_row_scope() -> None:
 def compile_bulk_insert_preserves_row_order() -> None:
     """Bulk compilation exposes one statement with bindings in row order."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
-    compiled = insert([Account(email="first"), Account(email="second")]).compile()
+    compiled = insert_many(
+        Account, [Account(email="first"), Account(email="second")]
+    ).compile()
 
     assert_eq(compiled.sql, 'INSERT INTO "account" ("email") VALUES (?), (?)')
     assert_eq(compiled.params, ("first", "second"))
@@ -187,7 +201,8 @@ def compile_bulk_insert_preserves_row_order() -> None:
 def compile_rejects_incomplete_queries(kind: str) -> None:
     """Compilation raises instead of returning the debug incomplete string."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     queries = {
@@ -195,7 +210,7 @@ def compile_rejects_incomplete_queries(kind: str) -> None:
         "delete": delete(Account),
         "update-unassigned": update(Account).all(),
         "update-unscoped": update(Account).set(Account.email.to("new")),
-        "empty-insert": insert([]),
+        "empty-insert": insert_many(Account, []),
     }
 
     with assert_raises(QueryCompilationError):
@@ -206,7 +221,8 @@ def compile_rejects_incomplete_queries(kind: str) -> None:
 def compiled_output_is_a_snapshot_of_query_state() -> None:
     """Later builder transitions cannot change an existing compiled result."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     query = select(Account).where(Account.email.eq("old"))
@@ -222,7 +238,8 @@ def compiled_output_is_a_snapshot_of_query_state() -> None:
 def compile_cannot_retarget_a_model_to_another_backend() -> None:
     """Dynamic callers cannot compile a SQLite model through MariaDB verbs."""
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     with assert_raises(sqlite.QueryConstructionError):
@@ -235,7 +252,8 @@ async def transaction_rejects_compiled_inspection_output() -> None:
     """Compiled output is not a raw statement or an executable Query Builder."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
 
-        class Account[S = Pending](Model[S, "Account[Fetched]"]):
+        class Account[S = Pending](Model[S]):
+            __row_type__: ClassVar[ReadType[Account[Row]]]
             email: Account.Col[str] = Text(primary_key=True)
 
         compiled = select(Account).all().compile()
@@ -248,12 +266,13 @@ async def transaction_rejects_compiled_inspection_output() -> None:
 
 @test(mark="fast")
 def compile_is_available_through_select_annotation() -> None:
-    """Helpers accepting Select can compile without naming concrete builders."""
+    """Helpers accepting ReadQuery can compile without naming concrete builders."""
 
-    def inspect(query: sqlite.Select[str]) -> sqlite.CompiledQuery:
+    def inspect[Scope](query: sqlite.ReadQuery[Scope, str]) -> sqlite.CompiledQuery:
         return query.compile()
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     assert_eq(inspect(select(Account.email).all()).params, ())
@@ -266,7 +285,8 @@ def compile_is_available_through_write_annotation() -> None:
     def inspect(query: sqlite.Write[int]) -> sqlite.CompiledQuery:
         return query.compile()
 
-    class Account[S = Pending](Model[S, "Account[Fetched]"]):
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
         email: Account.Col[str] = Text(primary_key=True)
 
     assert_eq(inspect(delete(Account).all()).sql, 'DELETE FROM "account"')

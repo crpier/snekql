@@ -1,6 +1,6 @@
 """Decoder compatibility must be established before combining named rows."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar
 from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, Json
@@ -11,14 +11,18 @@ from tests.query.test_unions import Event, OptionalRow, Row
 from tests.runtime.test_named_codecs import FirstValue, MariaDocument
 
 
-class TextUuid[S = sqlite.Pending](sqlite.Model[S, "TextUuid[sqlite.Fetched]"]):
+class TextUuid[S = sqlite.Pending](sqlite.Model[S]):
     """UUID values stored in textual wire form."""
+
+    __row_type__: ClassVar[sqlite.ReadType[TextUuid[sqlite.Row]]]
 
     identifier: sqlite.Col[UUID] = sqlite.Text()
 
 
-class BlobUuid[S = sqlite.Pending](sqlite.Model[S, "BlobUuid[sqlite.Fetched]"]):
+class BlobUuid[S = sqlite.Pending](sqlite.Model[S]):
     """Same logical UUID, incompatible binary wire form."""
+
+    __row_type__: ClassVar[sqlite.ReadType[BlobUuid[sqlite.Row]]]
 
     identifier: sqlite.Col[UUID] = sqlite.Blob()
 
@@ -55,11 +59,13 @@ def double(value: int) -> int:
     return value * 2
 
 
-class Adjusted[S = sqlite.Pending](sqlite.Model[S, "Adjusted[sqlite.Fetched]"]):
+class Adjusted[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Adjusted[sqlite.Row]]]
     event_id: sqlite.Col[Annotated[int, AfterValidator(increment)]] = sqlite.Integer()
 
 
-class Doubled[S = sqlite.Pending](sqlite.Model[S, "Doubled[sqlite.Fetched]"]):
+class Doubled[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Doubled[sqlite.Row]]]
     event_id: sqlite.Col[Annotated[int, AfterValidator(double)]] = sqlite.Integer()
 
 
@@ -73,11 +79,13 @@ def union_rejects_different_source_validation_policies() -> None:
         left.union_all(right)
 
 
-class JsonNumber[S = sqlite.Pending](sqlite.Model[S, "JsonNumber[sqlite.Fetched]"]):
+class JsonNumber[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[JsonNumber[sqlite.Row]]]
     event_id: sqlite.Col[Json[int]] = sqlite.Text()
 
 
-class TextNumber[S = sqlite.Pending](sqlite.Model[S, "TextNumber[sqlite.Fetched]"]):
+class TextNumber[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[TextNumber[sqlite.Row]]]
     event_id: sqlite.Col[int] = sqlite.Text()
 
 
@@ -163,7 +171,8 @@ def shared_cte_dependency_is_emitted_once_for_both_operands() -> None:
 type UnknownValue = Any
 
 
-class UnknownEvent[S = sqlite.Pending](sqlite.Model[S, "UnknownEvent[sqlite.Fetched]"]):
+class UnknownEvent[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[UnknownEvent[sqlite.Row]]]
     event_id: sqlite.Col[UnknownValue] = sqlite.Integer()
 
 

@@ -1,5 +1,6 @@
 """General ON predicates through public Query Builder compilation."""
 
+from typing import ClassVar
 from uuid import UUID
 
 from snektest import Param, assert_eq, assert_raises, assert_true, test
@@ -36,7 +37,7 @@ def on_cannot_reference_a_later_join() -> None:
     """The final FROM graph cannot legitimize a forward reference in ON."""
     query = (
         sqlite.select(User)
-        .join(Order, on=Order.user_id.eq_col(Item.order_id))
+        .join(Order, on=Order.user_id.eq_col(Item.order_id))  # ty: ignore[no-matching-overload]
         .join(Item, on=Item.order_id.eq_col(Order.id))
         .all()
     )
@@ -158,7 +159,8 @@ def multiple_on_clauses_bind_in_join_order() -> None:
 def on_values_use_the_column_codec() -> None:
     """A logical UUID is encoded for SQLite TEXT rather than bound as an object."""
 
-    class Token[S = sqlite.Pending](sqlite.Model[S, "Token[sqlite.Fetched]"]):
+    class Token[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Token[sqlite.Row]]]
         token: Token.Col[UUID] = sqlite.Text(primary_key=True)
 
     compiled = (
@@ -179,7 +181,9 @@ def nested_on_can_compare_to_an_enclosing_query() -> None:
         .where(
             sqlite.exists(
                 sqlite.select(Order.id)
-                .join(Item, on=Item.order_id.eq_col(User.id))
+                # Runtime permits enclosing ON references; static join scopes
+                # do not model that correlation.
+                .join(Item, on=Item.order_id.eq_col(User.id))  # ty: ignore[no-matching-overload]
                 .all()
             )
         )

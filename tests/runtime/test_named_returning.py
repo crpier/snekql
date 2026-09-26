@@ -32,8 +32,8 @@ async def named_insert_returns_one_contract_instance() -> None:
 async def sqlite_named_bulk_insert_keeps_cardinality() -> None:
     """Named bulk results preserve the write's list cardinality."""
     database = await load_fixture(provide_people())
-    query = sqlite.insert(
-        [Person(id=2, name="Grace"), Person(id=3, name="Lin")]
+    query = sqlite.insert_many(
+        Person, [Person(id=2, name="Grace"), Person(id=3, name="Lin")]
     ).returning_as(PersonSummary, id=Person.id, name=Person.name)
 
     async with database.transaction() as transaction:
@@ -49,7 +49,7 @@ async def sqlite_named_bulk_insert_keeps_cardinality() -> None:
 async def sqlite_named_empty_bulk_insert_keeps_cardinality() -> None:
     """Named bulk results preserve the write's list cardinality."""
     database = await load_fixture(provide_people())
-    query = sqlite.insert([]).returning_as(
+    query = sqlite.insert_many(Person, []).returning_as(
         PersonSummary, id=Person.id, name=Person.name
     )
 
@@ -64,8 +64,8 @@ async def sqlite_named_empty_bulk_insert_keeps_cardinality() -> None:
 async def mariadb_named_bulk_insert_keeps_cardinality() -> None:
     """Named bulk results preserve the write's list cardinality."""
     database = await load_fixture(provide_maria_people())
-    query = mariadb.insert(
-        [MariaPerson(id=2, name="Grace"), MariaPerson(id=3, name="Lin")]
+    query = mariadb.insert_many(
+        MariaPerson, [MariaPerson(id=2, name="Grace"), MariaPerson(id=3, name="Lin")]
     ).returning_as(PersonSummary, id=MariaPerson.id, name=MariaPerson.name)
 
     async with database.transaction() as transaction:
@@ -81,7 +81,7 @@ async def mariadb_named_bulk_insert_keeps_cardinality() -> None:
 async def mariadb_named_empty_bulk_insert_keeps_cardinality() -> None:
     """Named bulk results preserve the write's list cardinality."""
     database = await load_fixture(provide_maria_people())
-    query = mariadb.insert([]).returning_as(
+    query = mariadb.insert_many(MariaPerson, []).returning_as(
         PersonSummary, id=MariaPerson.id, name=MariaPerson.name
     )
 

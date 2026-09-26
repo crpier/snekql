@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_raises, test
 from snektest.assertions import assert_true
@@ -24,12 +24,13 @@ from snekql.runtime import (
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
-    Fetched,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    ReadType,
+    Row,
     SchemaPolicy,
     SchemaVerificationResult,
     Text,
@@ -40,8 +41,10 @@ from snekql.validation import NonNegativeFloat
 from tests.helpers import SQLITE_CODEC, initialized_database
 
 
-class _StreamUser[S = Pending](Model[S, "_StreamUser[Fetched]"]):
+class _StreamUser[S = Pending](Model[S]):
     """Table model selected through the streaming runtime."""
+
+    __row_type__: ClassVar[ReadType[_StreamUser[Row]]]
 
     id: _StreamUser.GenCol[int] = Integer(
         primary_key=True,
@@ -61,7 +64,7 @@ async def fetch_chunks_yields_model_batches_of_requested_size() -> None:
             for index in range(5):
                 await tx.execute(insert(_StreamUser(email=f"user{index}@example.com")))
             async with tx.fetch_chunks(select(_StreamUser).all(), size=2) as stream:
-                batches: list[list[_StreamUser[Fetched]]] = [
+                batches: list[list[_StreamUser[Row]]] = [
                     batch async for batch in stream
                 ]
     finally:

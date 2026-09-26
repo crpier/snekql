@@ -1,12 +1,15 @@
 """Owner-free native literals through named projection compilation."""
 
+from typing import ClassVar
+
 from pydantic import BaseModel
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
 
 
-class Source[S = sqlite.Pending](sqlite.Model[S, "Source[sqlite.Fetched]"]):
+class Source[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Source[sqlite.Row]]]
     id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
@@ -29,9 +32,8 @@ def integer_literal_is_bound_without_claiming_a_table_owner() -> None:
     assert_eq(compiled.params, (0,))
 
 
-class NativeSource[S = mariadb.Pending](
-    mariadb.Model[S, "NativeSource[mariadb.Fetched]"]
-):
+class NativeSource[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[NativeSource[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
 
 from snekql import mariadb
@@ -25,8 +27,10 @@ async def migration_preserves_percent_literal(case: tuple[str, str]) -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Message[S = mariadb.Pending](mariadb.Model[S, "Message[mariadb.Fetched]"]):
+    class Message[S = mariadb.Pending](mariadb.Model[S]):
         """Migration-produced text read through the public query runtime."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Message[mariadb.Row]]]
 
         text: Message.Col[str] = mariadb.Text()
 
@@ -58,10 +62,10 @@ async def migration_executes_percent_expression(body: str) -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Measurement[S = mariadb.Pending](
-        mariadb.Model[S, "Measurement[mariadb.Fetched]"]
-    ):
+    class Measurement[S = mariadb.Pending](mariadb.Model[S]):
         """An integer result produced by migration SQL."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Measurement[mariadb.Row]]]
 
         value: Measurement.Col[int] = mariadb.Integer()
 

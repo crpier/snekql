@@ -10,7 +10,7 @@ at one call site with the caller's clause name and error class.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from snektest import assert_eq, assert_raises, test
 
@@ -18,10 +18,10 @@ from snekql import sqlite
 from snekql._query_scope import ScopeResolver
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Pending,
     QueryCompilationError,
     QueryConstructionError,
+    Row,
 )
 
 if TYPE_CHECKING:
@@ -29,8 +29,10 @@ if TYPE_CHECKING:
     from snekql.model import Table
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Anchor table providing in-scope columns and aggregates."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: User.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -40,8 +42,10 @@ class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
     country: User.Col[str] = sqlite.Text(nullable=False)
 
 
-class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
+class Order[S = Pending](sqlite.Model[S]):
     """Joinable table so a scope can hold more than one own model."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = sqlite.Integer(
         primary_key=True,
@@ -52,8 +56,10 @@ class Order[S = Pending](sqlite.Model[S, "Order[Fetched]"]):
     amount: Order.Col[int] = sqlite.Integer(nullable=False)
 
 
-class Unrelated[S = Pending](sqlite.Model[S, "Unrelated[Fetched]"]):
+class Unrelated[S = Pending](sqlite.Model[S]):
     """Table never brought into scope; its columns must be rejected."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Unrelated[Row]]]
 
     id: Unrelated.GenCol[int] = sqlite.Integer(
         primary_key=True,

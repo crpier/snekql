@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from snektest import assert_eq, assert_is_none, fixture, load_fixture, test
 
@@ -13,17 +13,20 @@ from snekql.mariadb import (
     PENDING_GENERATION,
     CurrentTimestamp,
     Database,
-    Fetched,
     Pending,
+    Row,
     insert,
+    insert_many,
     select,
 )
 from snekql.model import Table
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class _BulkUser[S = Pending](mariadb.Model[S, "_BulkUser[Fetched]"]):
+class _BulkUser[S = Pending](mariadb.Model[S]):
     """Table model for MariaDB bulk-insert coverage."""
+
+    __row_type__: ClassVar[mariadb.ReadType[_BulkUser[Row]]]
 
     __tablename__ = "issue117_bulk_user"
 
@@ -61,12 +64,13 @@ async def mariadb_bulk_insert_persists_every_row() -> None:
     async with database.transaction() as tx:
         before = await tx.fetch_one(select(_BulkUser.id.count()).all())
         result = await tx.execute(
-            insert(
+            insert_many(
+                _BulkUser,
                 [
                     _BulkUser(email="a@example.com"),
                     _BulkUser(email="b@example.com"),
                     _BulkUser(email="c@example.com"),
-                ]
+                ],
             )
         )
         stored = await tx.execute(insert(_BulkUser(email="d@example.com")))
@@ -93,16 +97,17 @@ async def mariadb_single_returning_yields_generated_values() -> None:
 
 @test(mark="medium")
 async def mariadb_bulk_returning_yields_one_model_per_row() -> None:
-    """A MariaDB bulk returning insert recovers a Fetched model for every row."""
+    """A MariaDB bulk returning insert recovers a Row model for every row."""
 
     database = await load_fixture(database_session([_BulkUser]))
     async with database.transaction() as tx:
         created = await tx.execute(
-            insert(
+            insert_many(
+                _BulkUser,
                 [
                     _BulkUser(email="a@example.com"),
                     _BulkUser(email="b@example.com"),
-                ]
+                ],
             ).returning()
         )
 
@@ -140,19 +145,21 @@ async def mariadb_bulk_returning_columns_yields_projection_per_row() -> None:
     database = await load_fixture(database_session([_BulkUser]))
     async with database.transaction() as tx:
         ids = await tx.execute(
-            insert(
+            insert_many(
+                _BulkUser,
                 [
                     _BulkUser(email="a@example.com"),
                     _BulkUser(email="b@example.com"),
-                ]
+                ],
             ).returning(_BulkUser.id)
         )
         rows = await tx.execute(
-            insert(
+            insert_many(
+                _BulkUser,
                 [
                     _BulkUser(email="c@example.com"),
                     _BulkUser(email="d@example.com"),
-                ]
+                ],
             ).returning(_BulkUser.id, _BulkUser.email)
         )
 
@@ -172,8 +179,8 @@ async def mariadb_empty_bulk_insert_is_a_no_op() -> None:
     async with database.transaction() as tx:
         no_rows: list[_BulkUser[Pending]] = []
         before = await tx.fetch_one(select(_BulkUser.id.count()).all())
-        result = await tx.execute(insert(no_rows))
-        returning = await tx.execute(insert(no_rows).returning())
+        result = await tx.execute(insert_many(_BulkUser, no_rows))
+        returning = await tx.execute(insert_many(_BulkUser, no_rows).returning())
         after = await tx.fetch_one(select(_BulkUser.id.count()).all())
 
     assert_is_none(result)

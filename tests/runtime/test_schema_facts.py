@@ -14,7 +14,8 @@ from tests.helpers import provide_mariadb_server
 async def matching_column_exposes_a_matched_fact() -> None:
     """Verification reports the specific column property it compared."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
@@ -40,7 +41,8 @@ async def matching_column_exposes_a_matched_fact() -> None:
 async def column_properties_report_independent_statuses() -> None:
     """Drift in one property does not hide matching evidence for another."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text(collation="NOCASE")
 
@@ -75,7 +77,8 @@ async def column_properties_report_independent_statuses() -> None:
 async def index_properties_report_independent_statuses() -> None:
     """Column ordering and uniqueness are individual index facts."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
         __indexes__: ClassVar = [sqlite.Index(value, name="fact_index", unique=True)]
@@ -109,7 +112,8 @@ async def index_properties_report_independent_statuses() -> None:
 async def table_presence_reports_drift_without_child_matches() -> None:
     """An absent table cannot provide evidence about its column properties."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         value: sqlite.Col[str] = sqlite.Text()
 
     async with await sqlite.Database.initialize(
@@ -127,7 +131,8 @@ async def table_presence_reports_drift_without_child_matches() -> None:
 async def storage_options_are_compared_facts() -> None:
     """Non-STRICT storage remains drift and exposes its normalized evidence."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
@@ -158,11 +163,13 @@ async def storage_options_are_compared_facts() -> None:
 async def scalar_foreign_key_relationships_have_facts(action: str) -> None:
     """A relationship's target and actions contribute to its comparison status."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         __tablename__ = "fact_parent"
         id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         __tablename__ = "fact_child"
         parent_id: sqlite.FKCol[Parent, int] = sqlite.ForeignKey(
             Parent.id, on_delete="RESTRICT"
@@ -201,7 +208,8 @@ async def scalar_foreign_key_relationships_have_facts(action: str) -> None:
 async def unchecked_limits_do_not_claim_catalog_presence(check: str) -> None:
     """Strict success records uninspected CHECK scope with or without a live constraint."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
@@ -235,7 +243,8 @@ async def mariadb_json_backing_collation_is_unchecked() -> None:
     """Suppressed JSON catalog details must not appear as successful comparisons."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         payload: mariadb.Col[dict[str, int]] = mariadb.Json()
 
@@ -270,7 +279,8 @@ async def mariadb_index_facts_do_not_certify_uninspected_partial_flags() -> None
     """Missing backend metadata is not a successful partial-index comparison."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         value: mariadb.Col[str] = mariadb.Text()
         __indexes__: ClassVar = [mariadb.Index(value, name="fact_index")]
@@ -299,11 +309,13 @@ async def mariadb_index_facts_do_not_certify_uninspected_partial_flags() -> None
 async def strict_errors_preserve_the_same_facts_as_warn_results() -> None:
     """Policy changes reporting, not the facts collected for every requested table."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
-    class Missing[S = sqlite.Pending](sqlite.Model[S, "Missing[sqlite.Fetched]"]):
+    class Missing[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Missing[sqlite.Row]]]
         value: sqlite.Col[int] = sqlite.Integer()
 
     async with await sqlite.Database.initialize(
@@ -324,7 +336,8 @@ async def strict_errors_preserve_the_same_facts_as_warn_results() -> None:
 async def missing_columns_have_no_matched_property_facts() -> None:
     """Presence drift does not manufacture successful checks for absent columns."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
@@ -353,7 +366,8 @@ async def missing_columns_have_no_matched_property_facts() -> None:
 async def missing_indexes_have_no_matched_property_facts() -> None:
     """An absent declared index and an extra live index each get presence drift only."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
         __indexes__: ClassVar = [sqlite.Index(value, name="expected_index")]
@@ -385,7 +399,8 @@ async def missing_indexes_have_no_matched_property_facts() -> None:
 async def primary_key_membership_does_not_certify_order() -> None:
     """Reordered composite keys retain matched membership but explicit unchecked structure."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(primary_key=True)
@@ -418,12 +433,14 @@ async def primary_key_membership_does_not_certify_order() -> None:
 async def scalar_relationship_matches_do_not_certify_composite_grouping() -> None:
     """A live composite FK can match flattened facts without proving scalar equivalence."""
 
-    class Parent[S = sqlite.Pending](sqlite.Model[S, "Parent[sqlite.Fetched]"]):
+    class Parent[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Parent[sqlite.Row]]]
         __tablename__ = "fact_parent"
         first: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         second: sqlite.Col[int] = sqlite.Integer(unique=True)
 
-    class Child[S = sqlite.Pending](sqlite.Model[S, "Child[sqlite.Fetched]"]):
+    class Child[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Child[sqlite.Row]]]
         __tablename__ = "fact_child"
         first: sqlite.FKCol[Parent, int] = sqlite.ForeignKey(Parent.first)
         second: sqlite.FKCol[Parent, int] = sqlite.ForeignKey(Parent.second)
@@ -459,7 +476,8 @@ async def maria_json_type_drift_is_not_overwritten_by_a_limitation() -> None:
     """Existing drift stays drift even when incompatible storage exposes a JSON-scope detail."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         payload: mariadb.Col[dict[str, int]] = mariadb.Json()
 
@@ -485,7 +503,8 @@ async def mariadb_facts_include_native_metadata() -> None:
     """Native precision, signedness, and collation are individually reported when inspected."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         amount: mariadb.Col[int] = mariadb.Integer()
         at: mariadb.Col[datetime] = mariadb.DateTime()
@@ -529,7 +548,8 @@ async def empty_verification_does_not_claim_any_facts() -> None:
 async def returned_facts_are_frozen_values() -> None:
     """The structured report and its entries remain immutable after verification."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         value: sqlite.Col[str] = sqlite.Text()
 
     async with await sqlite.Database.initialize(
@@ -547,7 +567,8 @@ async def returned_facts_are_frozen_values() -> None:
 async def empty_foreign_key_comparison_reports_only_scalar_absence() -> None:
     """An empty scalar relationship comparison is evidence, not composite certification."""
 
-    class Entry[S = sqlite.Pending](sqlite.Model[S, "Entry[sqlite.Fetched]"]):
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
         __tablename__ = "fact_entry"
         value: sqlite.Col[str] = sqlite.Text()
 
@@ -574,7 +595,8 @@ async def mariadb_strict_errors_preserve_the_same_facts_as_warn_results() -> Non
     """Native inspection reports the same complete evidence under either policy."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Entry[S = mariadb.Pending](mariadb.Model[S, "Entry[mariadb.Fetched]"]):
+    class Entry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Entry[mariadb.Row]]]
         __tablename__ = "fact_entry"
         value: mariadb.Col[str] = mariadb.Text()
 
@@ -596,11 +618,13 @@ async def ignored_supporting_indexes_are_a_reported_limit() -> None:
     """A supporting index's uncertain origin remains unchecked, not certified absent."""
     server = await load_fixture(provide_mariadb_server())
 
-    class Parent[S = mariadb.Pending](mariadb.Model[S, "Parent[mariadb.Fetched]"]):
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
         __tablename__ = "fact_parent"
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
-    class Child[S = mariadb.Pending](mariadb.Model[S, "Child[mariadb.Fetched]"]):
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
         __tablename__ = "fact_child"
         parent_id: mariadb.FKCol[Parent, int] = mariadb.ForeignKey(Parent.id)
 

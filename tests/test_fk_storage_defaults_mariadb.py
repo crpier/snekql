@@ -2,19 +2,19 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, assert_type
+from typing import TYPE_CHECKING, ClassVar, assert_type
 from uuid import UUID
 
 from snekql import mariadb
 
 
-class Target[S = mariadb.Pending](mariadb.Model[S, "Target[mariadb.Fetched]"]):
+class Target[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[Target[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
 
 
-class IntegerDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "IntegerDefaults[mariadb.Fetched]"]
-):
+class IntegerDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[IntegerDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, int | None] = mariadb.Integer(default=None)
     literal: mariadb.FKCol[Target, int] = mariadb.Integer(default=1)
@@ -24,9 +24,8 @@ class IntegerDefaults[S = mariadb.Pending](
     )
 
 
-class RealDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "RealDefaults[mariadb.Fetched]"]
-):
+class RealDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[RealDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, float | None] = mariadb.Real(default=None)
     literal: mariadb.FKCol[Target, float] = mariadb.Real(default=1.5)
@@ -36,9 +35,8 @@ class RealDefaults[S = mariadb.Pending](
     )
 
 
-class TextDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "TextDefaults[mariadb.Fetched]"]
-):
+class TextDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[TextDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, str | None] = mariadb.Text(default=None)
     literal: mariadb.FKCol[Target, str] = mariadb.Text(default="key")
@@ -48,9 +46,8 @@ class TextDefaults[S = mariadb.Pending](
     )
 
 
-class BlobDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "BlobDefaults[mariadb.Fetched]"]
-):
+class BlobDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[BlobDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, bytes | None] = mariadb.Blob(default=None)
     literal: mariadb.FKCol[Target, bytes] = mariadb.Blob(default=b"key")
@@ -60,9 +57,8 @@ class BlobDefaults[S = mariadb.Pending](
     )
 
 
-class LongTextDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "LongTextDefaults[mariadb.Fetched]"]
-):
+class LongTextDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[LongTextDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, str | None] = mariadb.LongText(default=None)
     literal: mariadb.FKCol[Target, str] = mariadb.LongText(default="key")
@@ -74,9 +70,8 @@ class LongTextDefaults[S = mariadb.Pending](
     )
 
 
-class BooleanDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "BooleanDefaults[mariadb.Fetched]"]
-):
+class BooleanDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[BooleanDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, bool | None] = mariadb.Boolean(default=None)
     literal: mariadb.FKCol[Target, bool] = mariadb.Boolean(default=True)
@@ -86,9 +81,8 @@ class BooleanDefaults[S = mariadb.Pending](
     )
 
 
-class DateTimeDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "DateTimeDefaults[mariadb.Fetched]"]
-):
+class DateTimeDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[DateTimeDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, datetime | None] = mariadb.DateTime(default=None)
     literal: mariadb.FKCol[Target, datetime] = mariadb.DateTime(
@@ -102,9 +96,8 @@ class DateTimeDefaults[S = mariadb.Pending](
     )
 
 
-class UuidDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "UuidDefaults[mariadb.Fetched]"]
-):
+class UuidDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[UuidDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, UUID | None] = mariadb.Uuid(default=None)
     literal: mariadb.FKCol[Target, UUID] = mariadb.Uuid(default=UUID(int=1))
@@ -116,9 +109,8 @@ class UuidDefaults[S = mariadb.Pending](
     )
 
 
-class DecimalDefaults[S = mariadb.Pending](
-    mariadb.Model[S, "DecimalDefaults[mariadb.Fetched]"]
-):
+class DecimalDefaults[S = mariadb.Pending](mariadb.Model[S]):
+    __row_type__: ClassVar[mariadb.ReadType[DecimalDefaults[mariadb.Row]]]
     id: mariadb.Col[int] = mariadb.Integer(primary_key=True, default=1)
     null: mariadb.FKCol[Target, Decimal | None] = mariadb.Decimal(20, 2, default=None)
     literal: mariadb.FKCol[Target, Decimal] = mariadb.Decimal(

@@ -1,7 +1,7 @@
 """Named projection results through transaction fetches."""
 
 from collections.abc import AsyncGenerator
-from typing import Annotated, Literal, Self, assert_type
+from typing import Annotated, ClassVar, Literal, Self, assert_type
 
 from annotated_types import MaxLen
 from pydantic import BaseModel, model_validator
@@ -123,10 +123,10 @@ async def named_result_constraints_survive_disabled_column_validation() -> None:
             await transaction.fetch_all(query, validate=False)
 
 
-class MariaPerson[S = mariadb.Pending](
-    mariadb.Model[S, "MariaPerson[mariadb.Fetched]"]
-):
+class MariaPerson[S = mariadb.Pending](mariadb.Model[S]):
     """The same logical input schema on MariaDB."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaPerson[mariadb.Row]]]
 
     id: MariaPerson.Col[int] = mariadb.Integer(primary_key=True)
     name: MariaPerson.Col[str] = mariadb.Text()

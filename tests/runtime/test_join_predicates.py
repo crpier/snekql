@@ -1,7 +1,7 @@
 """General join predicates executed against SQLite and MariaDB."""
 
 from collections.abc import AsyncGenerator
-from typing import assert_type
+from typing import ClassVar, assert_type
 
 from snektest import assert_eq, fixture, load_fixture, test
 
@@ -9,15 +9,19 @@ from snekql import mariadb, sqlite
 from tests.helpers import provide_mariadb_server
 
 
-class LocalParent[S = sqlite.Pending](sqlite.Model[S, "LocalParent[sqlite.Fetched]"]):
+class LocalParent[S = sqlite.Pending](sqlite.Model[S]):
     """A tenant-owned row without a declared foreign-key relationship."""
+
+    __row_type__: ClassVar[sqlite.ReadType[LocalParent[sqlite.Row]]]
 
     id: LocalParent.Col[int] = sqlite.Integer(primary_key=True)
     tenant: LocalParent.Col[int] = sqlite.Integer()
 
 
-class LocalChild[S = sqlite.Pending](sqlite.Model[S, "LocalChild[sqlite.Fetched]"]):
+class LocalChild[S = sqlite.Pending](sqlite.Model[S]):
     """A child matched by compound ON, not FK metadata."""
+
+    __row_type__: ClassVar[sqlite.ReadType[LocalChild[sqlite.Row]]]
 
     id: LocalChild.Col[int] = sqlite.Integer(primary_key=True)
     parent_id: LocalChild.Col[int] = sqlite.Integer()
@@ -37,21 +41,23 @@ async def provide_sqlite_join_rows() -> AsyncGenerator[sqlite.Database]:
         )
         async with database.transaction() as transaction:
             await transaction.execute(
-                sqlite.insert(
+                sqlite.insert_many(
+                    LocalParent,
                     [
                         LocalParent(id=1, tenant=1),
                         LocalParent(id=2, tenant=2),
                         LocalParent(id=3, tenant=3),
-                    ]
+                    ],
                 )
             )
             await transaction.execute(
-                sqlite.insert(
+                sqlite.insert_many(
+                    LocalChild,
                     [
                         LocalChild(id=10, parent_id=1, tenant=1, label="visible"),
                         LocalChild(id=11, parent_id=1, tenant=2, label="visible"),
                         LocalChild(id=12, parent_id=2, tenant=2, label="hidden"),
-                    ]
+                    ],
                 )
             )
         yield database
@@ -105,7 +111,7 @@ async def sqlite_left_on_filter_preserves_unmatched_parents() -> None:
 
     assert_type(
         rows,
-        list[tuple[LocalParent[sqlite.Fetched], LocalChild[sqlite.Fetched] | None]],
+        list[tuple[LocalParent[sqlite.Row], LocalChild[sqlite.Row] | None]],
     )
     assert_eq(
         [
@@ -116,17 +122,19 @@ async def sqlite_left_on_filter_preserves_unmatched_parents() -> None:
     )
 
 
-class MariaParent[S = mariadb.Pending](
-    mariadb.Model[S, "MariaParent[mariadb.Fetched]"]
-):
+class MariaParent[S = mariadb.Pending](mariadb.Model[S]):
     """A tenant-owned row without a declared foreign-key relationship."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaParent[mariadb.Row]]]
 
     id: MariaParent.Col[int] = mariadb.Integer(primary_key=True)
     tenant: MariaParent.Col[int] = mariadb.Integer()
 
 
-class MariaChild[S = mariadb.Pending](mariadb.Model[S, "MariaChild[mariadb.Fetched]"]):
+class MariaChild[S = mariadb.Pending](mariadb.Model[S]):
     """A child matched by compound ON, not FK metadata."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariaChild[mariadb.Row]]]
 
     id: MariaChild.Col[int] = mariadb.Integer(primary_key=True)
     parent_id: MariaChild.Col[int] = mariadb.Integer()
@@ -147,21 +155,23 @@ async def provide_mariadb_join_rows() -> AsyncGenerator[mariadb.Database]:
         )
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert(
+                mariadb.insert_many(
+                    MariaParent,
                     [
                         MariaParent(id=1, tenant=1),
                         MariaParent(id=2, tenant=2),
                         MariaParent(id=3, tenant=3),
-                    ]
+                    ],
                 )
             )
             await transaction.execute(
-                mariadb.insert(
+                mariadb.insert_many(
+                    MariaChild,
                     [
                         MariaChild(id=10, parent_id=1, tenant=1, label="visible"),
                         MariaChild(id=11, parent_id=1, tenant=2, label="visible"),
                         MariaChild(id=12, parent_id=2, tenant=2, label="hidden"),
-                    ]
+                    ],
                 )
             )
         yield database
@@ -215,7 +225,7 @@ async def mariadb_left_on_filter_preserves_unmatched_parents() -> None:
 
     assert_type(
         rows,
-        list[tuple[MariaParent[mariadb.Fetched], MariaChild[mariadb.Fetched] | None]],
+        list[tuple[MariaParent[mariadb.Row], MariaChild[mariadb.Row] | None]],
     )
     assert_eq(
         [

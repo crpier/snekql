@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import anyio
 import anyio.lowlevel
@@ -30,10 +30,11 @@ from snekql.sqlite import (
     DatabaseClosingError,
     DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     SchemaPolicy,
     SchemaVerificationResult,
     Text,
@@ -45,8 +46,10 @@ from snekql.validation import NonNegativeFloat
 from tests.helpers import SQLITE_CODEC, initialized_database
 
 
-class _AsyncUser[S = Pending](Model[S, "_AsyncUser[Fetched]"]):
+class _AsyncUser[S = Pending](Model[S]):
     """Table model used by async lifecycle tests."""
+
+    __row_type__: ClassVar[ReadType[_AsyncUser[Row]]]
 
     id: _AsyncUser.GenCol[int] = Integer(
         primary_key=True,

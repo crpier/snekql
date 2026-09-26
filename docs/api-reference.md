@@ -40,7 +40,7 @@ application code inside a transaction.
 | `await explain(query)` | Backend-specific plan inspection; see supported statement kinds |
 | `await explain_analyze(query)` | Executes the supported query; can have effects, unlike ordinary plan inspection |
 
-[Typing](typing.md) defines scalar, tuple, Fetched Model and named Pydantic result
+[Typing](typing.md) defines scalar, tuple, Row Model and named Pydantic result
 shapes. [Raw SQL](raw-sql.md) defines construction-time validation and raw consumer
 restrictions. Do not pass `validate=False` at raw consumption sites; validation
 belongs to `raw(...)`. See [plan inspection](../README.md#explaining-query-plans)
@@ -62,7 +62,7 @@ before using EXPLAIN/ANALYZE in production.
 | `cte.column(label)`, `cte.alias(Role, name=...)` | Token-based output lookup and distinct CTE occurrences |
 | `.order_by(...)`, `.limit(...)`, `.offset(...)` | Explicit ordering and pagination; no implicit stable row order |
 | `.for_update(wait=...)` | MariaDB locking policy; unsupported SQLite locking fails explicitly |
-| `insert(model_or_rows)` | Pending-row writes; omitted generated values use database generation |
+| `insert(row)` | Write one Pending value; omitted generated values use database generation |
 | `update(Model).set(...)` | Explicit assignments; row scope remains required |
 | `delete(Model)` | Explicit `.all()` or `.where(...)` intent is required |
 | `.on_conflict(...)`, `DoNothing`, `DoUpdate` | Backend-specific conflict behavior, not portable merge semantics |
@@ -70,7 +70,9 @@ before using EXPLAIN/ANALYZE in production.
 | `literal(integer)` | Backend-owned signed-64 integer constant for named projections; no FROM owner |
 | `recursive_cte(anchor, Role, name=...).step(callback)` | Staged recursive builder; see [recursive contracts and limits](recursive-ctes.md) before use |
 | `scalar(...)`, `exists(...)`, `not_exists(...)`, `case(...)` | Typed SQL composition, not a trigger for hidden database IO |
-| `Select`, `Write` | Public helper annotations for executable result contracts |
+| `ReadQuery[Scope, Result]`, `OptionalRead[Scope, Result]` | Read helper annotations retaining table information and optional-fetch eligibility |
+| `ready(query)`, `ClosedRead[Result]`, `ClosedOptional[Result]` | Compile a finished read for a shorter execution/inspection annotation; no database I/O |
+| `PendingInput[Owner, Result]`, `Write[Result]` | Pending input and executable write helper annotations |
 | `Cte[Source, Result, Role, NonNullableSource=Source]` | Nonconstructible named relation annotation; backend pinned by namespace |
 | `NamedOperand[Result]` | Nonconstructible completed named operand annotation for UNION and recursive members |
 | `ColumnRef`, `Scalar`, `Predicate`, `Assignment`, `OrderBy`, `Aggregate`, `JoinOn` | Expression annotations, not general-purpose constructors |
@@ -89,7 +91,11 @@ CTEs and named set operators from future builder syntax.
 
 | Declaration or operation | Meaning |
 | --- | --- |
-| `Model`, `Pending`, `Fetched` | Immutable declaration facts and explicit write/read states; no identity map or lazy loading |
+| `Model`, `Pending`, `Row` | Immutable declaration facts and explicit write/read states; no identity map or lazy loading |
+| `__row_type__: ClassVar[ReadType[User[Row]]]` | Declare the whole-model result type inside `User` |
+| `insert_many(Model, rows)` | Insert a homogeneous Pending batch with a declared destination; empty batches do no SQL |
+| `complete(Model, **values)` | Validate every field and create a Row snapshot without database I/O; keywords are runtime-checked |
+| `is_complete(value)` | Check Row state and narrow its type; does not inspect database persistence |
 | `Col[T]`, `GenCol[T]`, `PENDING_GENERATION` | Logical type and generated-value availability; storage comes from the column constructor |
 | `ForeignKey`, `ForeignKeyConstraint`, `FKCol` | Explicit columns, callable targets with Python defaults, and composite constraints; see [binding timing](typing.md#callable-self-reference-targets). These are not loaded relationships |
 | `Integer`, `Real`, `Text`, `Blob` | SQLite storage classes and corresponding MariaDB namespace constructors |
@@ -145,6 +151,8 @@ against both namespaces' `__all__` lists.
 | `CanonicalDecimal` | yes | yes |
 | `CheckConstraint` | yes | yes |
 | `ChunkStream` | yes | yes |
+| `ClosedOptional` | yes | yes |
+| `ClosedRead` | yes | yes |
 | `Col` | yes | yes |
 | `ColumnRef` | yes | yes |
 | `CommitOutcome` | yes | yes |
@@ -168,7 +176,6 @@ against both namespaces' `__all__` lists.
 | `ExplainResult` | yes | yes |
 | `FKCol` | yes | yes |
 | `FailureCategory` | yes | yes |
-| `Fetched` | yes | yes |
 | `ForeignKey` | yes | yes |
 | `ForeignKeyConstraint` | yes | yes |
 | `FrozenModelError` | yes | yes |
@@ -199,10 +206,12 @@ against both namespaces' `__all__` lists.
 | `NamedOperand` | yes | yes |
 | `NoResultError` | yes | yes |
 | `Observer` | yes | yes |
+| `OptionalRead` | yes | yes |
 | `OrderBy` | yes | yes |
 | `OrderPreserving` | yes | yes |
 | `PENDING_GENERATION` | yes | yes |
 | `Pending` | yes | yes |
+| `PendingInput` | yes | yes |
 | `PendingGeneration` | yes | yes |
 | `PoolStats` | yes | yes |
 | `PoolTimeoutError` | yes | yes |
@@ -214,7 +223,10 @@ against both namespaces' `__all__` lists.
 | `RawResultValidationError` | yes | yes |
 | `RawStatement` | yes | yes |
 | `Real` | yes | yes |
+| `ReadQuery` | yes | yes |
+| `ReadType` | yes | yes |
 | `ResultCardinalityError` | yes | yes |
+| `Row` | yes | yes |
 | `Scalar` | yes | yes |
 | `SchemaDriftIssue` | yes | yes |
 | `SchemaError` | yes | yes |
@@ -222,7 +234,6 @@ against both namespaces' `__all__` lists.
 | `SchemaVerificationError` | yes | yes |
 | `SchemaVerificationFact` | yes | yes |
 | `SchemaVerificationResult` | yes | yes |
-| `Select` | yes | yes |
 | `SnekqlError` | yes | yes |
 | `SnekqlWarning` | yes | yes |
 | `TLSConfig` | no | yes |
@@ -241,14 +252,18 @@ against both namespaces' `__all__` lists.
 | `ZonedDatetimeError` | yes | yes |
 | `alias` | yes | yes |
 | `case` | yes | yes |
+| `complete` | yes | yes |
 | `delete` | yes | yes |
 | `exists` | yes | yes |
 | `insert` | yes | yes |
+| `insert_many` | yes | yes |
+| `is_complete` | yes | yes |
 | `literal` | yes | yes |
 | `not_exists` | yes | yes |
 | `raw` | yes | yes |
 | `recursive_cte` | yes | yes |
 | `scaffold` | yes | yes |
+| `ready` | yes | yes |
 | `scalar` | yes | yes |
 | `select` | yes | yes |
 | `update` | yes | yes |

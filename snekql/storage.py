@@ -591,8 +591,11 @@ def Integer(  # noqa: N802, PLR0913
     ``Integer()`` column may hold an ``int`` or any pydantic type that encodes to
     an integer (a ``bool`` as ``0``/``1``, a custom epoch ``datetime``).
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    >>> from typing import ClassVar
+    >>> from snekql import sqlite
+    >>> class User[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
+    ...     id: sqlite.GenCol[int] = sqlite.Integer(primary_key=True, default=sqlite.PENDING_GENERATION)
     """
     return FKAttr[Any, Any, Any, Any, Any, Any](
         auto_increment=auto_increment,
@@ -694,8 +697,11 @@ def Real(  # noqa: N802, PLR0913
 ) -> Any:
     """SQLite REAL storage primitive for float-like model values.
 
-    >>> class Reading[S = Pending](Model[S, "Reading[Fetched]"]):
-    ...     value: Col[float] = Real()
+    >>> from typing import ClassVar
+    >>> from snekql import sqlite
+    >>> class Reading[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[Reading[sqlite.Row]]]
+    ...     value: sqlite.Col[float] = sqlite.Real()
     """
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
@@ -809,8 +815,11 @@ def Text(  # noqa: N802, PLR0913
     ``pydantic.Json[T]`` payload (serialized JSON text).
     `collation` selects BINARY, NOCASE, or RTRIM without normalizing Python values.
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     email: Col[str] = Text()
+    >>> from typing import ClassVar
+    >>> from snekql import sqlite
+    >>> class User[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
+    ...     email: sqlite.Col[str] = sqlite.Text()
     """
     if type(collation) is not str or collation not in ("BINARY", "NOCASE", "RTRIM"):
         msg = "SQLite Text collation must be BINARY, NOCASE, or RTRIM"
@@ -915,8 +924,11 @@ def Blob(  # noqa: N802, PLR0913
 ) -> Any:
     """SQLite BLOB storage primitive for bytes-encoded model values.
 
-    >>> class File[S = Pending](Model[S, "File[Fetched]"]):
-    ...     content: Col[bytes] = Blob()
+    >>> from typing import ClassVar
+    >>> from snekql import sqlite
+    >>> class File[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[File[sqlite.Row]]]
+    ...     content: sqlite.Col[bytes] = sqlite.Blob()
     """
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,
@@ -939,7 +951,7 @@ class CurrentTimestamp:
     Pairs with any column whose logical type decodes the backend's timestamp text;
     on SQLite that is a ``GenCol[datetime]`` stored as ``Text()``.
 
-    >>> Text(default=CurrentTimestamp)
+    >>> _ = Text(default=CurrentTimestamp)
 
     Also accepted by ``column.to(CurrentTimestamp)`` in an update assignment to
     refresh a column to the server clock on update (rendered inline, no bound
@@ -1049,8 +1061,14 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
     (multi-column) primary key, the natural shape for a pure join table whose
     identity *is* the referenced column pair.
 
-    >>> class Order[S = Pending](Model[S, "Order[Fetched]"]):
-    ...     owner_email: FKCol[User, str] = ForeignKey(User.email)
+    >>> from typing import ClassVar
+    >>> from snekql import sqlite
+    >>> class User[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[User[sqlite.Row]]]
+    ...     email: sqlite.Col[str] = sqlite.Text(unique=True)
+    >>> class Order[S = sqlite.Pending](sqlite.Model[S]):
+    ...     __row_type__: ClassVar[sqlite.ReadType[Order[sqlite.Row]]]
+    ...     owner_email: sqlite.FKCol[User, str] = sqlite.ForeignKey(User.email)
     """
     if not isinstance(references, Attr):
         if not callable(references):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import ClassVar
 
 from aiosqlite import Connection
 from snektest import assert_eq, assert_raises, test
@@ -11,11 +12,12 @@ from snektest import assert_eq, assert_raises, test
 from snekql.sqlite import (
     PENDING_GENERATION,
     ExecutionError,
-    Fetched,
     ForeignKey,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     insert,
 )
 from snekql.sqlite.pool import close_sqlite_connection, open_sqlite_connection
@@ -77,8 +79,10 @@ async def file_connection_uses_normal_synchronous() -> None:
 async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
     """Emitted FK constraints are enforced now that foreign_keys is ON."""
 
-    class Parent[S = Pending](Model[S, "Parent[Fetched]"]):
+    class Parent[S = Pending](Model[S]):
         """Referenced table."""
+
+        __row_type__: ClassVar[ReadType[Parent[Row]]]
 
         id: Parent.GenCol[int] = Integer(
             primary_key=True,
@@ -86,8 +90,10 @@ async def inserting_a_row_that_violates_a_foreign_key_is_rejected() -> None:
             default=PENDING_GENERATION,
         )
 
-    class Child[S = Pending](Model[S, "Child[Fetched]"]):
+    class Child[S = Pending](Model[S]):
         """Table whose parent_id is an enforced foreign key."""
+
+        __row_type__: ClassVar[ReadType[Child[Row]]]
 
         id: Child.GenCol[int] = Integer(
             primary_key=True,

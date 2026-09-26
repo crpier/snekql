@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_in, assert_raises, load_fixture, test
 
@@ -12,32 +12,37 @@ from snekql.query import select as untyped_select
 from snekql.sqlite import (
     Database,
     DatabaseRuntimeError,
-    Fetched,
     Model,
     Pending,
     QueryConstructionError,
+    ReadType,
+    Row,
     Text,
     select,
 )
 from tests.helpers import TemporaryMariaDBServer, provide_mariadb_server
 
 
-class SqliteIdentityUser[S = Pending](sqlite.Model[S, "SqliteIdentityUser[Fetched]"]):
+class SqliteIdentityUser[S = Pending](sqlite.Model[S]):
     """SQLite table model for backend identity checks."""
+
+    __row_type__: ClassVar[sqlite.ReadType[SqliteIdentityUser[Row]]]
 
     email: SqliteIdentityUser.Col[str] = sqlite.Text(nullable=False)
 
 
-class LegacyIdentityUser[S = Pending](Model[S, "LegacyIdentityUser[Fetched]"]):
+class LegacyIdentityUser[S = Pending](Model[S]):
     """Legacy top-level model remains a SQLite declaration."""
+
+    __row_type__: ClassVar[ReadType[LegacyIdentityUser[Row]]]
 
     email: LegacyIdentityUser.Col[str] = Text(nullable=False)
 
 
-class MariadbIdentityUser[S = Pending](
-    mariadb.Model[S, "MariadbIdentityUser[Fetched]"]
-):
+class MariadbIdentityUser[S = Pending](mariadb.Model[S]):
     """MariaDB table model for backend identity checks."""
+
+    __row_type__: ClassVar[mariadb.ReadType[MariadbIdentityUser[Row]]]
 
     email: MariadbIdentityUser.Col[str] = mariadb.Text(nullable=False)
 

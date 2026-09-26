@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from typing import ClassVar
 
 from snektest import assert_eq, fixture, load_fixture, test
 
@@ -10,8 +11,10 @@ from snekql import mariadb
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class User[S = mariadb.Pending](mariadb.Model[S, "User[mariadb.Fetched]"]):
+class User[S = mariadb.Pending](mariadb.Model[S]):
     """Table model with a unique email conflict target."""
+
+    __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
 
     __tablename__ = "issue239_upsert_user"
 
@@ -101,11 +104,12 @@ async def bulk_conflict_update_returns_each_upserted_row() -> None:
 
     async with database.transaction() as tx:
         stored = await tx.execute(
-            mariadb.insert(
+            mariadb.insert_many(
+                User,
                 [
                     User(email="a@example.com", name="Alice", status="updated"),
                     User(email="b@example.com", name="Bob", status="inserted"),
-                ]
+                ],
             )
             .on_conflict(
                 User.email,

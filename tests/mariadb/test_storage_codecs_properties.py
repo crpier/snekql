@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -28,13 +28,14 @@ from snekql.mariadb import (
     Blob,
     Boolean,
     DateTime,
-    Fetched,
     Integer,
     Json,
     Model,
     ModelValidationError,
     Pending,
+    ReadType,
     Real,
+    Row,
     Text,
     Uuid,
 )
@@ -47,8 +48,10 @@ _TEXT_MAX = 255  # VARCHAR(255)
 _BLOB_MAX = 65535  # BLOB, 64 KiB - 1
 
 
-class Scalars[S = Pending](Model[S, "Scalars[Fetched]"]):
+class Scalars[S = Pending](Model[S]):
     """One column per MariaDB value family under test."""
+
+    __row_type__: ClassVar[ReadType[Scalars[Row]]]
 
     number: Scalars.Col[int] = Integer(nullable=False)
     rating: Scalars.Col[float] = Real(nullable=False)

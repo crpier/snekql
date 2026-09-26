@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, load_fixture, test
 
 from snekql import mariadb
 from tests.helpers import initialized_database, provide_mariadb_server
 
 
-class Sale[S = mariadb.Pending](mariadb.Model[S, "Sale[mariadb.Fetched]"]):
+class Sale[S = mariadb.Pending](mariadb.Model[S]):
     """A grouped key and a separate ungrouped amount."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Sale[mariadb.Row]]]
 
     category: Sale.Col[int] = mariadb.Integer(nullable=False)
     amount: Sale.Col[int] = mariadb.Integer(nullable=False)
@@ -44,8 +48,10 @@ async def having_scalar_subquery_keeps_its_own_column_scope() -> None:
 
     server = await load_fixture(provide_mariadb_server())
 
-    class Detail[S = mariadb.Pending](mariadb.Model[S, "Detail[mariadb.Fetched]"]):
+    class Detail[S = mariadb.Pending](mariadb.Model[S]):
         """A correlated inner source with its own non-grouped columns."""
+
+        __row_type__: ClassVar[mariadb.ReadType[Detail[mariadb.Row]]]
 
         category: Detail.Col[int] = mariadb.Integer(nullable=False)
         amount: Detail.Col[int] = mariadb.Integer(nullable=False)

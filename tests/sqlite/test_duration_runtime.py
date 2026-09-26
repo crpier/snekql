@@ -3,15 +3,27 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import ClassVar
 
 from snektest import assert_eq, test
 
-from snekql.sqlite import Duration, Fetched, Integer, Model, Pending, insert, select
+from snekql.sqlite import (
+    Duration,
+    Integer,
+    Model,
+    Pending,
+    ReadType,
+    Row,
+    insert,
+    select,
+)
 from tests.helpers import initialized_database
 
 
-class TimedSpan[S = Pending](Model[S, "TimedSpan[Fetched]"]):
+class TimedSpan[S = Pending](Model[S]):
     """Timed span table with integer duration storage."""
+
+    __row_type__: ClassVar[ReadType[TimedSpan[Row]]]
 
     id: TimedSpan.Col[int] = Integer(primary_key=True)
     elapsed: TimedSpan.Col[Duration] = Integer(nullable=False)

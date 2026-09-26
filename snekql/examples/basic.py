@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+from typing import ClassVar
 
 from snekql import sqlite
-from snekql.sqlite import Database, Fetched, Pending, insert, select
+from snekql.sqlite import Database, Pending, Row, insert, select
 
 
-class User[S = Pending](sqlite.Model[S, "User[Fetched]"]):
+class User[S = Pending](sqlite.Model[S]):
     """Example table model used by the basic application."""
+
+    __row_type__: ClassVar[sqlite.ReadType[User[Row]]]
 
     id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True,

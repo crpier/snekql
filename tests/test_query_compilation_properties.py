@@ -21,7 +21,7 @@ couple of focused properties pin the per-clause parameter accounting.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from hypothesis import settings
 from hypothesis import strategies as st
@@ -29,11 +29,12 @@ from snektest import assert_eq, assert_true, test_hypothesis
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
     Real,
+    Row,
     Text,
     delete,
     select,
@@ -54,8 +55,10 @@ _INT64_MIN = -(2**63)
 _INT64_MAX = 2**63 - 1
 
 
-class Widget[S = Pending](Model[S, "Widget[Fetched]"]):
+class Widget[S = Pending](Model[S]):
     """A small multi-type model the generated queries are composed against."""
+
+    __row_type__: ClassVar[ReadType[Widget[Row]]]
 
     id: Widget.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     name: Widget.Col[str] = Text(nullable=False)

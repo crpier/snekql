@@ -9,7 +9,7 @@ tests pin each node's shape and parameter order without involving a dialect.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from snektest import assert_eq, assert_isinstance, assert_raises, test
 
@@ -28,12 +28,13 @@ from snekql.expressions import (
 )
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     ForeignKey,
     Integer,
     Model,
     Pending,
     QueryCompilationError,
+    ReadType,
+    Row,
     Text,
     exists,
     not_exists,
@@ -41,15 +42,19 @@ from snekql.sqlite import (
 )
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Base table used by the node-construction checks."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: User.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     email: User.Col[str] = Text(nullable=False)
 
 
-class Order[S = Pending](Model[S, "Order[Fetched]"]):
+class Order[S = Pending](Model[S]):
     """Second table for column comparisons and subquery predicates."""
+
+    __row_type__: ClassVar[ReadType[Order[Row]]]
 
     id: Order.GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
     user_id: Order.FKCol[User, int] = ForeignKey(User.id)

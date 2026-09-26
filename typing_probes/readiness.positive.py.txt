@@ -1,15 +1,18 @@
 """Completed selects retain their executable result contract."""
 
+from typing import ClassVar
+
 from typing import assert_type
 
 from snekql import __BACKEND__ as database
 
 
-class Entry[S = database.Pending](database.Model[S, "Entry[database.Fetched]"]):
+class Entry[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Entry[database.Row]]]
     id: database.Col[int] = database.Integer(primary_key=True)
 
 
-async def scoped(transaction: database.Transaction) -> list[Entry[database.Fetched]]:
-    query: database.Select[Entry[database.Fetched]] = database.select(Entry).all()
-    assert_type(await transaction.fetch_all(query), list[Entry[database.Fetched]])
+async def scoped(transaction: database.Transaction) -> list[Entry[database.Row]]:
+    query: database.ClosedRead[Entry[database.Row]] = database.ready(database.select(Entry).all())
+    assert_type(await transaction.fetch_all(query), list[Entry[database.Row]])
     return await transaction.fetch_all(query)

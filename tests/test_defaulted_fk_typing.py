@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, ClassVar, assert_type
 from snekql import sqlite
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
     account_id: sqlite.GenCol[int] = sqlite.Integer(
         primary_key=True, auto_increment=True, default=sqlite.PENDING_GENERATION
     )
@@ -21,11 +22,13 @@ if TYPE_CHECKING:
     Account.manager_id.references(Account.account_id)
 
 
-class Other[S = sqlite.Pending](sqlite.Model[S, "Other[sqlite.Fetched]"]):
+class Other[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Other[sqlite.Row]]]
     account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
 
 
-class Defaults[S = sqlite.Pending](sqlite.Model[S, "Defaults[sqlite.Fetched]"]):
+class Defaults[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Defaults[sqlite.Row]]]
     account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True, default=1)
     literal: sqlite.FKCol[Account, int] = sqlite.Integer(default=1)
     factory: sqlite.FKCol[Account, int] = sqlite.Integer(default_factory=lambda: 1)
@@ -34,7 +37,8 @@ class Defaults[S = sqlite.Pending](sqlite.Model[S, "Defaults[sqlite.Fetched]"]):
     )
 
 
-class Required[S = sqlite.Pending](sqlite.Model[S, "Required[sqlite.Fetched]"]):
+class Required[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Required[sqlite.Row]]]
     account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
     reference: sqlite.FKCol[Account, int | None] = sqlite.Integer()
 
@@ -50,13 +54,12 @@ if TYPE_CHECKING:
     Account.manager_id.references(Other.account_id)  # ty: ignore[no-matching-overload]
     Account.account_id.references(Account.account_id)  # ty: ignore[unresolved-attribute]
 
-    class WrongDefault[S = sqlite.Pending](
-        sqlite.Model[S, "WrongDefault[sqlite.Fetched]"]
-    ):
+    class WrongDefault[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[WrongDefault[sqlite.Row]]]
         account_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
         reference: sqlite.FKCol[Account, int] = sqlite.Integer(default="wrong")  # ty: ignore[invalid-assignment]
 
-    def fetched(row: Defaults[sqlite.Fetched]) -> None:
+    def fetched(row: Defaults[sqlite.Row]) -> None:
         assert_type(row.literal, int)
         assert_type(row.null_factory, int | None)
 
@@ -64,19 +67,18 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     Account.manager_id.references(Account.name)  # ty: ignore[no-matching-overload]
 
-    class WrongFactory[S = sqlite.Pending](
-        sqlite.Model[S, "WrongFactory[sqlite.Fetched]"]
-    ):
+    class WrongFactory[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[WrongFactory[sqlite.Row]]]
         reference: sqlite.FKCol[Account, int] = sqlite.Integer(
             default_factory=lambda: "wrong"
         )  # ty: ignore[invalid-assignment]
 
-    class NonNullableDefault[S = sqlite.Pending](
-        sqlite.Model[S, "NonNullableDefault[sqlite.Fetched]"]
-    ):
+    class NonNullableDefault[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[NonNullableDefault[sqlite.Row]]]
         reference: sqlite.FKCol[Account, int] = sqlite.Integer(default=None)  # ty: ignore[invalid-assignment]
 
-    class DirectSelf[S = sqlite.Pending](sqlite.Model[S, "DirectSelf[sqlite.Fetched]"]):
+    class DirectSelf[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[DirectSelf[sqlite.Row]]]
         account_id: sqlite.GenCol[int] = sqlite.Integer(
             primary_key=True, auto_increment=True, default=sqlite.PENDING_GENERATION
         )

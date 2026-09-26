@@ -27,7 +27,7 @@ not a machine-readable protocol.
 | Area | Promise |
 | --- | --- |
 | Imports and calls | Keep public import paths, callable signatures, documented defaults and supported keyword arguments. Adding an optional operation must preserve existing calls. |
-| Typing | Preserve documented inference, annotation arity, result shapes, backend identity and Pending/Fetched distinctions under the supported checker profile. An accepted, valid helper must not require a new cast, ignore or annotation merely to upgrade snekql. |
+| Typing | Preserve documented inference, annotation arity, result shapes, backend identity and Pending/Row distinctions under the supported checker profile. An accepted, valid helper must not require a new cast, ignore or annotation merely to upgrade snekql. |
 | Query behavior | Preserve explicit Query Readiness, result cardinality, nullable joined rows, validation ownership and ordered positional or named result shapes. `fetch_one` remains exactly-one, not optional-one. |
 | SQL semantics | Preserve the meaning of supported expressions, parameter binding, NULL handling, conflict behavior and dialect-specific restrictions. Neither backend is a transparent substitute for the other. |
 | Transactions | Preserve explicit transaction boundaries, task ownership, cancellation cleanup, separate acquisition and operation deadlines, and truthful Commit Outcome evidence. Never replay an uncertain commit implicitly. |

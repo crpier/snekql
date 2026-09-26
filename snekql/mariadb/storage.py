@@ -295,8 +295,11 @@ def Integer(  # noqa: N802, PLR0913
 ) -> Any:
     """MariaDB integer column declaration for table model fields.
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: GenCol[int] = Integer(primary_key=True, default=PENDING_GENERATION)
+    >>> from typing import ClassVar
+    >>> from snekql import mariadb
+    >>> class User[S = mariadb.Pending](mariadb.Model[S]):
+    ...     __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
+    ...     id: mariadb.GenCol[int] = mariadb.Integer(primary_key=True, default=mariadb.PENDING_GENERATION)
     """
     return FKAttr[Any, Any, Any, Any, Any, Any](
         auto_increment=auto_increment,
@@ -1215,8 +1218,12 @@ def Uuid(  # noqa: N802, PLR0913
     scalar codec -- no dedicated native codec. To store a UUID as raw bytes
     instead, use ``Blob()`` with a ``Col[uuid.UUID]`` annotation.
 
-    >>> class User[S = Pending](Model[S, "User[Fetched]"]):
-    ...     id: Col[uuid.UUID] = Uuid(primary_key=True, default_factory=uuid4)
+    >>> from typing import ClassVar
+    >>> from snekql import mariadb
+    >>> from uuid import UUID, uuid4
+    >>> class User[S = mariadb.Pending](mariadb.Model[S]):
+    ...     __row_type__: ClassVar[mariadb.ReadType[User[mariadb.Row]]]
+    ...     id: mariadb.Col[UUID] = mariadb.Uuid(primary_key=True, default_factory=uuid4)
     """
     return FKAttr[Any, Any, Any, Any, Any, Any](
         default=default,

@@ -322,7 +322,7 @@ async def inner_join_consumes_a_cte_as_a_named_row() -> None:
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
 
-    assert_type(rows, list[tuple[Person[sqlite.Fetched], Identifier]])
+    assert_type(rows, list[tuple[Person[sqlite.Row], Identifier]])
     assert_eq(len(rows), 1)
     assert_eq(rows[0][0].id, 1)
     assert_eq(rows[0][1], Identifier(id=1))
@@ -375,7 +375,7 @@ async def native_inner_join_materializes_a_cte_alias() -> None:
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
 
-    assert_type(rows, list[tuple[MariaDocument[mariadb.Fetched], DocumentResult]])
+    assert_type(rows, list[tuple[MariaDocument[mariadb.Row], DocumentResult]])
     assert_eq(len(rows), 1)
     assert_eq(rows[0][0].id, UUID(int=1))
     assert_eq(rows[0][1], DocumentResult(key=UUID(int=1), values=[2, 3]))
@@ -403,7 +403,7 @@ async def left_join_distinguishes_a_matched_all_null_cte_row() -> None:
     async with database.transaction() as transaction:
         rows = await transaction.fetch_all(query)
 
-    assert_type(rows, list[tuple[Person[sqlite.Fetched], OptionalIdentifier | None]])
+    assert_type(rows, list[tuple[Person[sqlite.Row], OptionalIdentifier | None]])
     assert_eq(len(rows), 1)
     assert_eq(rows[0][1], OptionalIdentifier(id=None))
 
@@ -441,7 +441,7 @@ async def native_left_alias_distinguishes_null_output_from_missing_row() -> None
         present = await transaction.fetch_one(matched)
         absent = await transaction.fetch_one(missing)
 
-    assert_type(present, tuple[MariaDocument[mariadb.Fetched], OptionalKey | None])
+    assert_type(present, tuple[MariaDocument[mariadb.Row], OptionalKey | None])
     assert_eq(present[1], OptionalKey(id=None))
     assert_eq(absent[1], None)
 

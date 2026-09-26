@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from annotated_types import Ge
 from snektest import Param, assert_eq, assert_raises, test
@@ -13,8 +13,10 @@ from snekql.errors import ModelValidationError
 from tests.helpers import initialized_database
 
 
-class Reading[S = sqlite.Pending](sqlite.Model[S, "Reading[sqlite.Fetched]"]):
-    """Logical constraints can be violated by explicitly unchecked inputs."""
+class Reading[S = sqlite.Pending](sqlite.Model[S]):
+    """Raw SQL can store values that violate logical constraints."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Reading[sqlite.Row]]]
 
     score: Reading.Col[Annotated[int, Ge(0)]] = sqlite.Integer(nullable=False)
 
@@ -35,7 +37,7 @@ async def extrema_respect_validation_policy(case: tuple[str, str, str]) -> None:
         database=":memory:", models=[Reading]
     ) as database:
         async with database.transaction() as setup:
-            await setup.execute(sqlite.insert(Reading.construct(score=-1)))
+            await setup.execute(sqlite.raw("INSERT INTO reading (score) VALUES (-1)"))
 
         extremum = Reading.score.min() if case[0] == "min" else Reading.score.max()
         query = sqlite.select(extremum).all()
@@ -125,8 +127,10 @@ async def numeric_aggregate_normalization_is_unchanged(mode: str) -> None:
 async def default_extrema_decoding_preserves_logical_datetime_type() -> None:
     """Validated MIN/MAX still decode stored timestamp text to logical datetimes."""
 
-    class Event[S = sqlite.Pending](sqlite.Model[S, "Event[sqlite.Fetched]"]):
+    class Event[S = sqlite.Pending](sqlite.Model[S]):
         """An order-preserving logical timestamp over text storage."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Event[sqlite.Row]]]
 
         timestamp: Event.Col[sqlite.UtcDatetime] = sqlite.Text(nullable=False)
 

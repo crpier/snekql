@@ -35,8 +35,8 @@ async def provide_queue() -> AsyncGenerator[mariadb.Database]:
         )
         async with database.transaction() as transaction:
             await transaction.execute(
-                mariadb.insert(
-                    [Job(id=1, status="pending"), Job(id=2, status="pending")]
+                mariadb.insert_many(
+                    Job, [Job(id=1, status="pending"), Job(id=2, status="pending")]
                 )
             )
         yield database

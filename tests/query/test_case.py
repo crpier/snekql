@@ -234,7 +234,7 @@ def case_compares_computed_right_operand() -> None:
 def case_comparison_cannot_reference_a_future_join() -> None:
     """A CASE on the right of a comparison still obeys the ON join prefix."""
     query = (
-        sqlite.select(Profile)
+        sqlite.select(Profile)  # ty: ignore[no-matching-overload]
         .join(
             Inventory,
             on=Profile.id.eq_col(

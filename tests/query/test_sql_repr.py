@@ -8,14 +8,17 @@ inspection adds an approximate inlined form.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from snektest import assert_eq, test
 
 from snekql.sqlite import (
     PENDING_GENERATION,
-    Fetched,
     Integer,
     Model,
     Pending,
+    ReadType,
+    Row,
     Text,
     delete,
     insert,
@@ -25,8 +28,10 @@ from snekql.sqlite import (
 from tests.helpers import SQLITE_CODEC
 
 
-class User[S = Pending](Model[S, "User[Fetched]"]):
+class User[S = Pending](Model[S]):
     """Table model used across the SQL-inspection tests."""
+
+    __row_type__: ClassVar[ReadType[User[Row]]]
 
     id: User.GenCol[int] = Integer(
         primary_key=True,

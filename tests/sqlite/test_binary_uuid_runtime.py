@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, ClassVar
 from uuid import UUID
 
 from pydantic import UUID4, BeforeValidator, PlainSerializer
@@ -13,8 +13,10 @@ from snekql.errors import ModelValidationError
 from tests.helpers import initialized_database
 
 
-class Account[S = sqlite.Pending](sqlite.Model[S, "Account[sqlite.Fetched]"]):
+class Account[S = sqlite.Pending](sqlite.Model[S]):
     """A UUID stored in a binary column rather than text."""
+
+    __row_type__: ClassVar[sqlite.ReadType[Account[sqlite.Row]]]
 
     id: Account.Col[int] = sqlite.Integer(primary_key=True)
     account_id: Account.Col[UUID] = sqlite.Blob(nullable=False)
@@ -99,8 +101,10 @@ async def uuid_update_writes_binary_values() -> None:
 async def constrained_uuid_versions_still_validate_on_fetch() -> None:
     """Binary wire shaping does not replace Pydantic's UUID version validation."""
 
-    class Versioned[S = sqlite.Pending](sqlite.Model[S, "Versioned[sqlite.Fetched]"]):
+    class Versioned[S = sqlite.Pending](sqlite.Model[S]):
         """A UUID field constrained to version four."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Versioned[sqlite.Row]]]
 
         id: Versioned.Col[int] = sqlite.Integer(primary_key=True)
         account_id: Versioned.Col[UUID4] = sqlite.Blob(nullable=False)
@@ -112,7 +116,10 @@ async def constrained_uuid_versions_still_validate_on_fetch() -> None:
         async with database.transaction() as setup:
             await setup.execute(sqlite.insert(Versioned(id=1, account_id=account_id)))
             await setup.execute(
-                sqlite.insert(Versioned.construct(id=2, account_id=UUID(int=0)))
+                sqlite.raw(
+                    "INSERT INTO versioned (id, account_id) VALUES (2, ?)",
+                    params=(UUID(int=0).bytes,),
+                )
             )
 
         async with database.transaction() as tx:
@@ -141,8 +148,10 @@ async def custom_uuid_bytes_serializer_keeps_control_of_wire_form() -> None:
 
         return value.bytes_le
 
-    class Custom[S = sqlite.Pending](sqlite.Model[S, "Custom[sqlite.Fetched]"]):
+    class Custom[S = sqlite.Pending](sqlite.Model[S]):
         """An explicitly serialized UUID uses its chosen bytes."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Custom[sqlite.Row]]]
 
         account_id: Custom.Col[
             Annotated[
@@ -175,10 +184,10 @@ async def custom_uuid_bytes_serializer_keeps_control_of_wire_form() -> None:
 async def text_uuid_encoding_is_unchanged() -> None:
     """Text UUID columns retain their hyphenated string encoding."""
 
-    class TextAccount[S = sqlite.Pending](
-        sqlite.Model[S, "TextAccount[sqlite.Fetched]"]
-    ):
+    class TextAccount[S = sqlite.Pending](sqlite.Model[S]):
         """Text storage remains an independent wire choice."""
+
+        __row_type__: ClassVar[sqlite.ReadType[TextAccount[sqlite.Row]]]
 
         account_id: TextAccount.Col[UUID] = sqlite.Text(nullable=False)
 
