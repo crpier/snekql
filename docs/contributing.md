@@ -49,6 +49,12 @@ The fast group does not replace the full SQLite/MariaDB suite.
 Application code imports from `snekql.sqlite` or `snekql.mariadb`, not these
 implementation modules. Preserve that boundary when editing examples.
 
+## Review dependencies
+
+Follow [dependency maintenance](dependency-maintenance.md) for the agent-run
+review, commands, compatibility holds, and validation report. Updates are
+maintainer-triggered, roughly every two weeks, rather than bot PRs.
+
 ## Check packages before release
 
 Follow the [release checklist](adoption.md#release-checklist). Build and test an

@@ -293,12 +293,14 @@ async def stream_open_constraint_recovers_on_exit(backend: BackendFamily) -> Non
             case.namespace.raw("INSERT INTO nested_entries VALUES (1)")
         )
         with assert_raises(case.namespace.ExecutionError):
-            async with transaction.begin_nested():
-                async with transaction.fetch_chunks(
+            async with (
+                transaction.begin_nested(),
+                transaction.fetch_chunks(
                     case.namespace.raw("INSERT INTO nested_entries VALUES (1)"),
                     size=1,
-                ):
-                    pass
+                ),
+            ):
+                pass
         await transaction.execute(
             case.namespace.raw("INSERT INTO nested_entries VALUES (2)")
         )
@@ -370,14 +372,16 @@ async def mariadb_late_stream_constraint_remains_terminal() -> None:
     async with case.database.transaction() as transaction:
         await transaction.execute(mariadb.raw("INSERT INTO nested_entries VALUES (1)"))
         with assert_raises(mariadb.ExecutionError):
-            async with transaction.begin_nested():
-                async with transaction.fetch_chunks(
+            async with (
+                transaction.begin_nested(),
+                transaction.fetch_chunks(
                     mariadb.raw(
                         "INSERT INTO nested_entries VALUES (1) RETURNING value"
                     ),
                     size=1,
-                ) as stream:
-                    await anext(stream)
+                ) as stream,
+            ):
+                await anext(stream)
         with assert_raises(mariadb.DatabaseRuntimeError):
             await transaction.execute(mariadb.raw("SELECT 1"))
 
@@ -481,8 +485,10 @@ async def deferred_constraint_fails_at_outer_commit() -> None:
     )
 
     with assert_raises(sqlite.DatabaseRuntimeError):
-        async with case.database.transaction() as transaction:
-            async with transaction.begin_nested():
-                await transaction.execute(
-                    sqlite.raw("INSERT INTO deferred_children VALUES (1, 99)")
-                )
+        async with (
+            case.database.transaction() as transaction,
+            transaction.begin_nested(),
+        ):
+            await transaction.execute(
+                sqlite.raw("INSERT INTO deferred_children VALUES (1, 99)")
+            )

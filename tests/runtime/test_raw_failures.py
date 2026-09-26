@@ -206,10 +206,12 @@ async def rollback_logging_does_not_reveal_raw_driver_text() -> None:
     logger.addHandler(handler)
     try:
         async with await sqlite.Database.initialize(database=":memory:") as database:
-            with patch.object(SQLiteConnectionAdapter, "rollback", failed_rollback):
-                with assert_raises(sqlite.RawResultShapeError):
-                    async with database.transaction() as transaction:
-                        await transaction.execute(sqlite.raw("SELECT 1"))
+            with (
+                patch.object(SQLiteConnectionAdapter, "rollback", failed_rollback),
+                assert_raises(sqlite.RawResultShapeError),
+            ):
+                async with database.transaction() as transaction:
+                    await transaction.execute(sqlite.raw("SELECT 1"))
     finally:
         logger.removeHandler(handler)
 

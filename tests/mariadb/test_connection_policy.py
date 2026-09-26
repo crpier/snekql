@@ -176,11 +176,11 @@ async def passive_health_does_not_send_probes() -> None:
         raise OperationalError(2013, message)
 
     with patch.object(Connection, "ping", unexpected_ping):
-        async with await mariadb.Database.initialize(
-            server.config(pool_size=1)
-        ) as database:
-            async with database.transaction() as transaction:
-                rows = await transaction.fetch_all(mariadb.raw("SELECT 1 AS alive"))
+        async with (
+            await mariadb.Database.initialize(server.config(pool_size=1)) as database,
+            database.transaction() as transaction,
+        ):
+            rows = await transaction.fetch_all(mariadb.raw("SELECT 1 AS alive"))
     assert_eq(rows, [{"alive": 1}])
 
 

@@ -422,11 +422,13 @@ async def ordinary_observer_failures_are_not_logged() -> None:
         raise sqlite.DatabaseRuntimeError(message)
 
     with capture_snekql_logs() as logs:
-        async with await sqlite.Database.initialize(
-            sqlite.Config(database=":memory:"), observer=observer
-        ) as database:
-            async with database.transaction():
-                pass
+        async with (
+            await sqlite.Database.initialize(
+                sqlite.Config(database=":memory:"), observer=observer
+            ) as database,
+            database.transaction(),
+        ):
+            pass
 
     assert all(record.exc_info is None for record in logs.records)
     assert all(
@@ -489,13 +491,15 @@ async def coroutine_return_is_closed_without_running() -> None:
 async def waiting_acquisition_keeps_start_log() -> None:
     """Existing acquisition-start logging still includes attempts that time out."""
     with capture_snekql_logs() as logs:
-        async with await sqlite.Database.initialize(
-            sqlite.Config(database=":memory:")
-        ) as database:
-            async with database.transaction():
-                with assert_raises(sqlite.PoolTimeoutError):
-                    async with database.transaction(timeout=0):
-                        pass
+        async with (
+            await sqlite.Database.initialize(
+                sqlite.Config(database=":memory:")
+            ) as database,
+            database.transaction(),
+        ):
+            with assert_raises(sqlite.PoolTimeoutError):
+                async with database.transaction(timeout=0):
+                    pass
     assert_eq(
         sum(
             "connection acquisition started" in record.getMessage()
