@@ -122,8 +122,10 @@ supported.
 
 ## Scope and execution rules
 
-- Reachable definitions are emitted once, in dependency order. Parameters follow
-  SQL text order, including definitions and nested SELECTs.
+- SELECT queries emit reachable definitions once, in dependency order.
+  UPDATE/DELETE predicates can also read CTEs through subqueries. Each such
+  subquery includes its own WITH clause. Parameters follow SQL text order,
+  including assignments, definitions, and nested SELECTs.
 - Definitions see their own sources and dependencies, not an enclosing consumer
   row. Ordinary correlated subqueries can reference sources inside a definition.
 - Definition-local ordering and pagination apply there. Consumers need their own
@@ -136,9 +138,9 @@ supported.
   targets. Writable CTEs, lateral references and materialization hints are not
   supported.
 
-[Named UNION and UNION ALL](unions.md) results can also become CTEs. Windows and
-recursive builders remain separate follow-ups. Use the [raw reporting
-recipes](reporting.md) for those operations. The
-[composition design](query-composition-design.md) records their reviewed scope.
+[Named UNION and UNION ALL](unions.md) results can also become CTEs. For trees
+and other repeated steps, use [recursive CTEs](recursive-ctes.md). Windows still
+need the [raw reporting recipes](reporting.md). The
+[composition design](query-composition-design.md) records the design rationale.
 
 [All guides](README.md)

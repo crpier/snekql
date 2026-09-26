@@ -164,11 +164,16 @@ def _compile_scalar_sql(
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
+    include_ctes: bool = False,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a scalar subquery as a parenthesized correlated select."""
 
     state = require_single_column_subquery(scalar_subquery.subquery)
-    sub_sql, sub_params = _compile_select_state(state, dialect, outer=scope)
+    sub_sql, sub_params = (
+        compile_select_sql_for_dialect(state, dialect, outer=scope)
+        if include_ctes
+        else _compile_select_state(state, dialect, outer=scope)
+    )
     return f"({sub_sql})", sub_params
 
 
@@ -184,6 +189,7 @@ class _PredicateCompileContext:
 
     dialect: QueryDialect
     scope: ScopeResolver
+    include_ctes: bool = False
 
     @property
     def placeholder(self) -> str:
@@ -235,6 +241,7 @@ class _PredicateCompileContext:
             cast("_Scalar[Any, Any, Any]", scalar),
             self.dialect,
             scope=self.scope,
+            include_ctes=self.include_ctes,
         )
 
     def compile_subquery(
@@ -250,6 +257,8 @@ class _PredicateCompileContext:
             if single_column
             else require_subquery_state(subquery)
         )
+        if self.include_ctes:
+            return compile_select_sql_for_dialect(state, self.dialect, outer=self.scope)
         return _compile_select_state(state, self.dialect, outer=self.scope)
 
     def compile(self, predicate: Predicate[Any]) -> tuple[str, tuple[object, ...]]:
@@ -263,8 +272,11 @@ def _compile_predicate_sql(
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
+    include_ctes: bool = False,
 ) -> tuple[str, tuple[object, ...]]:
-    context = _PredicateCompileContext(dialect=dialect, scope=scope)
+    context = _PredicateCompileContext(
+        dialect=dialect, scope=scope, include_ctes=include_ctes
+    )
     return predicate.__compile_predicate_sql__(context)
 
 
@@ -302,6 +314,7 @@ def _compile_predicates_sql(
     dialect: QueryDialect,
     *,
     scope: ScopeResolver,
+    include_ctes: bool = False,
 ) -> tuple[str, tuple[object, ...]]:
     predicate_sql_parts: list[str] = []
     predicate_params: list[object] = []
@@ -310,6 +323,7 @@ def _compile_predicates_sql(
             predicate,
             dialect,
             scope=scope,
+            include_ctes=include_ctes,
         )
         predicate_sql_parts.append(f"({predicate_sql})")
         predicate_params.extend(compiled_params)
@@ -513,6 +527,7 @@ def _compile_update_sql(
             state.predicates,
             dialect,
             scope=scope,
+            include_ctes=True,
         )
         sql_parts.append(f" WHERE {predicate_sql}")
         params = (*params, *predicate_params)
@@ -543,6 +558,7 @@ def _compile_delete_sql(
             state.predicates,
             dialect,
             scope=ScopeResolver(own_models=(state.model,)),
+            include_ctes=True,
         )
         sql = f"{sql} WHERE {predicate_sql}"
     if state.returning:
@@ -769,11 +785,17 @@ def _compile_limit_offset_sql(
 def compile_select_sql_for_dialect(
     state: SelectState,
     dialect: QueryDialect,
+    *,
+    outer: ScopeResolver | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a select query's state into backend Dialect SQL."""
 
-    definitions = collect_cte_definitions(state)
-    sql, params = _compile_select_state(state, dialect)
+    # Writes cannot portably start with WITH, so their predicate subqueries
+    # own their definitions. SELECT consumers still hoist dependencies once.
+    definitions = collect_cte_definitions(
+        state, outer_models=outer.models if outer is not None else ()
+    )
+    sql, params = _compile_select_state(state, dialect, outer=outer)
     if not definitions:
         return sql, params
     parts: list[str] = []

@@ -74,6 +74,9 @@ def _validate_config(  # noqa: PLR0913
 def _validate_non_empty_string(name: str, value: str) -> None:
     """Reject empty string settings that cannot identify a database endpoint."""
 
+    if not isinstance(value, str):
+        msg = f"MariaDB {name} must be a string"
+        raise DatabaseRuntimeError(msg)
     if value.strip() == "":
         msg = f"MariaDB {name} must not be empty"
         raise DatabaseRuntimeError(msg)

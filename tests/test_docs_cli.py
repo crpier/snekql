@@ -219,3 +219,14 @@ async def readme_preview_has_exact_row_type() -> None:
     assert_eq(
         checked.returncode, 0, msg=checked.stdout.decode() + checked.stderr.decode()
     )
+
+
+@test(mark="fast")
+async def docs_cli_rejects_extra_example_arguments() -> None:
+    """A misspelled extra argument must not be silently ignored."""
+    completed = await run_process(
+        [sys.executable, "-m", "snekql", "example", "basic", "unexpected"],
+        check=False,
+    )
+
+    assert_eq((completed.returncode, completed.stdout), (2, b""))
