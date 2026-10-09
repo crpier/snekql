@@ -14,7 +14,7 @@ from platform import platform
 
 from anyio import Path as AsyncPath
 from anyio import TemporaryDirectory, fail_after, run, run_process, to_thread
-from pydantic import BaseModel, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 _CASES = (
     "lifecycle",
@@ -104,30 +104,6 @@ class _TyDiagnostic(BaseModel):
     severity: str
 
 
-class _Range(BaseModel):
-    start: _Position
-
-
-class _PyrightDiagnostic(BaseModel):
-    file: str
-    message: str
-    rule: str = "unknown"
-    severity: str
-    span: _Range = Field(alias="range")
-
-
-class _PyrightReport(BaseModel):
-    diagnostics: list[_PyrightDiagnostic] = Field(alias="generalDiagnostics")
-
-
-class _MypyDiagnostic(BaseModel):
-    code: str | None = None
-    file: str
-    line: int
-    message: str
-    severity: str
-
-
 class _Diagnostic(BaseModel):
     file: str
     line: int
@@ -206,145 +182,57 @@ async def _environment(root: AsyncPath) -> _Environment:
     return environment
 
 
-def _parse_diagnostics(checker: str, output: bytes) -> list[_Diagnostic]:
-    """Normalize real checker protocols without counting informational notes."""
-    if checker == "ty":
-        return [
-            _Diagnostic(
-                file=str(Path(d.location.path)),
-                line=d.location.positions.begin.line,
-                message=d.description,
-                rule=d.check_name,
-            )
-            for d in TypeAdapter(list[_TyDiagnostic]).validate_json(output)
-            if d.severity in ("major", "critical", "blocker")
-        ]
-    if checker == "pyright":
-        return [
-            _Diagnostic(
-                file=str(Path(d.file)),
-                line=d.span.start.line + 1,
-                message=d.message,
-                rule=d.rule,
-            )
-            for d in _PyrightReport.model_validate_json(output).diagnostics
-            if d.severity == "error"
-        ]
-    diagnostics: list[_Diagnostic] = []
-    for line in output.splitlines():
-        if not line.strip():
-            continue
-        diagnostic = _MypyDiagnostic.model_validate_json(line)
-        if diagnostic.severity == "error":
-            diagnostics.append(
-                _Diagnostic(
-                    file=str(Path(diagnostic.file)),
-                    line=diagnostic.line,
-                    message=diagnostic.message,
-                    rule=diagnostic.code or "unknown",
-                )
-            )
-    return diagnostics
+def _parse_diagnostics(output: bytes) -> list[_Diagnostic]:
+    """Normalize ty's error diagnostics without counting informational notes."""
+    return [
+        _Diagnostic(
+            file=str(Path(d.location.path)),
+            line=d.location.positions.begin.line,
+            message=d.description,
+            rule=d.check_name,
+        )
+        for d in TypeAdapter(list[_TyDiagnostic]).validate_json(output)
+        if d.severity in ("major", "critical", "blocker")
+    ]
 
 
 async def _invoke_checker(
-    checker: str, root: AsyncPath, directory: str, paths: list[str]
+    root: AsyncPath, directory: str, paths: list[str]
 ) -> tuple[str, list[str], list[_Diagnostic]]:
-    """Pin secondary tools and point every checker at the same consumer environment."""
-    environment = dict(os.environ)
-    if checker == "ty":
-        executable = str(
-            Path(sys.executable).with_name("ty.exe" if os.name == "nt" else "ty")
-        )
-        prefix = [executable]
-        config = AsyncPath(directory) / "ty.toml"
-        await config.write_text(
-            '[rules]\nall = "error"\nmissing-override-decorator = "ignore"\n'
-        )
-        arguments = [
-            "check",
-            "--config-file",
-            str(config),
-            "--python",
-            sys.executable,
-            "--python-version",
-            "3.15",
-            "--extra-search-path",
-            str(root),
-            "--output-format",
-            "gitlab",
-            *paths,
-        ]
-    elif checker == "pyright":
-        prefix = [
-            "uv",
-            "tool",
-            "run",
-            "--python",
-            sys.executable,
-            "--from",
-            "pyright==1.1.414",
-            "pyright",
-        ]
-        config = AsyncPath(directory) / "pyrightconfig.json"
-        await config.write_text(
-            dumps(
-                {
-                    "typeCheckingMode": "strict",
-                    "pythonVersion": "3.15",
-                    "include": paths,
-                    "extraPaths": [str(root)],
-                }
-            )
-        )
-        arguments = [
-            "--pythonpath",
-            sys.executable,
-            "--project",
-            str(config),
-            "--outputjson",
-        ]
-    else:
-        prefix = [
-            "uv",
-            "tool",
-            "run",
-            "--python",
-            sys.executable,
-            "--from",
-            "mypy==2.3.1",
-            "mypy",
-        ]
-        config = AsyncPath(directory) / "mypy.ini"
-        await config.write_text("[mypy]\n")
-        environment["MYPYPATH"] = str(root)
-        arguments = [
-            "--strict",
-            "--python-version",
-            "3.15",
-            "--python-executable",
-            sys.executable,
-            "--config-file",
-            str(config),
-            "--no-incremental",
-            "--cache-dir",
-            directory,
-            "--output",
-            "json",
-            *paths,
-        ]
-    version = await run_process([*prefix, "--version"], check=False, env=environment)
+    """Run the installed ty against the project interpreter's consumer environment."""
+    executable = str(
+        Path(sys.executable).with_name("ty.exe" if os.name == "nt" else "ty")
+    )
+    config = AsyncPath(directory) / "ty.toml"
+    await config.write_text(
+        '[rules]\nall = "error"\nmissing-override-decorator = "ignore"\n'
+    )
+    command = [
+        executable,
+        "check",
+        "--config-file",
+        str(config),
+        "--python",
+        sys.executable,
+        "--python-version",
+        "3.15",
+        "--extra-search-path",
+        str(root),
+        "--output-format",
+        "gitlab",
+        *paths,
+    ]
+    version = await run_process([executable, "--version"], check=False)
     if version.returncode != 0:
-        message = f"{checker} version probe failed"
+        message = "ty version probe failed"
         raise ProbeError(message)
-    command = [*prefix, *arguments]
-    completed = await run_process(command, check=False, env=environment)
+    completed = await run_process(command, check=False)
     if completed.returncode not in (0, 1):
-        message = f"{checker} invocation failed with status {completed.returncode}"
+        message = f"ty invocation failed with status {completed.returncode}"
         raise ProbeError(message)
-    diagnostics = _parse_diagnostics(checker, completed.stdout)
+    diagnostics = _parse_diagnostics(completed.stdout)
     if (completed.returncode == 1) != bool(diagnostics):
-        message = f"{checker} exit status disagrees with its error diagnostics"
+        message = "ty exit status disagrees with its error diagnostics"
         raise ProbeError(message)
     return version.stdout.decode().strip(), command, diagnostics
 
@@ -396,7 +284,7 @@ async def _write_sources(
     return sources
 
 
-async def _assess(backend: str, checker: str, case_name: str) -> _Report:
+async def _assess(backend: str, case_name: str) -> _Report:
     """A negative diagnostic is evidence only when its positive control is clean."""
     root = (await AsyncPath(__file__).resolve()).parent.parent
     async with TemporaryDirectory(prefix="snekql-typing-") as directory:
@@ -406,9 +294,7 @@ async def _assess(backend: str, checker: str, case_name: str) -> _Report:
             for source in sources
             for path in (source.positive_path, source.negative_path)
         ]
-        version, command, diagnostics = await _invoke_checker(
-            checker, root, directory, paths
-        )
+        version, command, diagnostics = await _invoke_checker(root, directory, paths)
         observations: list[_Case] = []
         for source in sources:
             positive_errors = [d for d in diagnostics if d.file == source.positive_path]
@@ -432,7 +318,7 @@ async def _assess(backend: str, checker: str, case_name: str) -> _Report:
         unmapped = [d for d in diagnostics if d.file not in paths]
         return _Report(
             cases=observations,
-            checker=checker,
+            checker="ty",
             checker_version=version,
             command=command,
             conforms=all(case.conforms for case in observations) and not unmapped,
@@ -442,23 +328,22 @@ async def _assess(backend: str, checker: str, case_name: str) -> _Report:
         )
 
 
-async def _run_cli(backend: str, checker: str, case_name: str) -> _Report:
+async def _run_cli(backend: str, case_name: str) -> _Report:
     """Bound the entire checker assessment, including tool startup."""
     with fail_after(90):
-        return await _assess(backend, checker, case_name)
+        return await _assess(backend, case_name)
 
 
 def main() -> int:
     """Emit one complete report, or a separate infrastructure error."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checker", choices=("ty", "pyright", "mypy"), default="ty")
     parser.add_argument(
         "--backend", choices=("all", "sqlite", "mariadb"), default="all"
     )
     parser.add_argument("--case", choices=("all", *_CASES), default="all")
     options = parser.parse_args()
     try:
-        report = run(_run_cli, options.backend, options.checker, options.case)
+        report = run(_run_cli, options.backend, options.case)
     except (OSError, TimeoutError, ValidationError, ProbeError) as error:
         print(f"typing assessment unavailable: {error}", file=sys.stderr)
         return 2

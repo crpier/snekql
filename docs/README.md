@@ -45,7 +45,7 @@ Read these in order, or jump to the task you have now:
 - [API reference](api-reference.md): operations and every public export
 - [Backend support](backend-capabilities.md): SQLite/MariaDB differences
 - [Typing reference](typing.md): exact result types, declarations, and helper annotations
-- [Type-checker support](typing-compatibility.md): use ty; Pyright and mypy have gaps
+- [Type-checker support](typing-compatibility.md): ty contracts, validation, and known limits
 - [MariaDB versions](mariadb-support.md)
 - [Optional JSON fields](optional-json.md)
 

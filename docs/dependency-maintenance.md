@@ -81,7 +81,7 @@ Check the intended product and stable release explicitly.
 | FastAPI, Starlette, HTTPX | `examples/service_app.py` and `tests/test_service_recipes.py`. Middleware and lifespan changes can affect request-owned transactions. |
 | SQLAlchemy and greenlet | `benchmarks/_comparison_*.py` and `tests/test_comparative_benchmarks.py`. Keep the asyncio extra. Correctness tests do not establish unchanged performance. |
 | snektest, Hypothesis | Test discovery, fixtures, warning capture, generated cases, and shrinking. New counterexamples need investigation, not weaker assertions. |
-| ty, Ruff, secondary checkers | Exact positive and negative typing controls, root typing, lint, and format. Inspect new diagnostics before fixes; keep rules and signatures intact. |
+| ty, Ruff | Exact positive and negative typing controls, root typing, lint, and format. Inspect new diagnostics before fixes; keep rules and signatures intact. |
 | uv, Hatchling, build dependencies | Resolver changes, lockfile compatibility, Python downloads and bundled SQLite, isolated wheel/sdist builds, fresh extras, metadata, and CLI examples. |
 | GitHub Actions | Release notes, runtime/runner requirements, inputs, permissions, cache policy, and transitive actions. Validate on CI; release and soak jobs need separate execution authorization. |
 
@@ -148,18 +148,13 @@ uv lock --check
 uv audit --locked --output-format json > "$review/after-audit.json"
 uv run python scripts/check_typing_compatibility.py > "$review/ty.json"
 
-# Unsupported checkers normally return 1 for nonconformance. Inspect reports.
-# Exit 2, crashes, and malformed reports are failed assessments, not rejections.
-uv run python scripts/check_typing_compatibility.py --checker pyright > "$review/pyright.json"
-uv run python scripts/check_typing_compatibility.py --checker mypy > "$review/mypy.json"
-
 rm -f dist/*.whl dist/*.tar.gz
 uv build --verbose > "$review/build.log" 2>&1
 uv run python scripts/check_artifacts.py --mariadb
 ```
 
-Run commands separately and record their status; an expected secondary-checker
-exit must not hide another failure. Build logs identify isolated build versions,
+Run commands separately and record their status. Typing assessment exit 1 means
+nonconformance; exit 2 means infrastructure failure, not a successful rejection. Build logs identify isolated build versions,
 which are not covered by `uv.lock`. Fresh artifact installs test published ranges,
 not just the development lock.
 

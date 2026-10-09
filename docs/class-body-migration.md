@@ -141,8 +141,8 @@ in a generic insert helper. All these names are annotations, not constructors.
   need runtime checks. Nominal IDs are not authorization, and defaults do not
   establish database ownership of a field.
 
-Only ty is supported for this interface. Pyright and mypy fail required positive
-controls; extra errors on invalid examples do not establish support. See
+Only ty is supported for this interface. A static rejection requires a clean
+positive control and a diagnostic at the intended invalid operation. See
 [the checker assessment](typing-compatibility.md) for versions and reproduction.
 
 [All guides](README.md)
