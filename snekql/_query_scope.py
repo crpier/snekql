@@ -14,17 +14,15 @@ dataclasses and ownership accessors and never imports this module; the Query
 Builder and Query Compilation import downward into it.
 """
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from typing import Any, cast
 
-from dataclasses import dataclass
-from typing import Any, cast
-
-from snekql._aliases import _AliasRelation
-from snekql._cte import _CteOutput, _CteRelation
-from snekql._dialect_expr import ReferencedColumns, SqlCompilable
-from snekql._literal import _IntegerLiteral
-from snekql._query_sources import grouping_key
-from snekql._query_state import (
+lazy from snekql._aliases import _AliasRelation
+lazy from snekql._cte import _CteOutput, _CteRelation
+lazy from snekql._dialect_expr import ReferencedColumns, SqlCompilable
+lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._query_sources import grouping_key
+lazy from snekql._query_state import (
     SelectState,
     require_column_model,
     require_field,
@@ -33,12 +31,12 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
-from snekql.errors import (
+lazy from snekql.errors import (
     QueryCompilationError,
     QueryConstructionError,
     QueryError,
 )
-from snekql.expressions import (
+lazy from snekql.expressions import (
     _Aggregate,
     _Assignment,
     _OrderBy,
@@ -46,8 +44,8 @@ from snekql.expressions import (
     _require_predicate_node,
     _Scalar,
 )
-from snekql.model import Table, require_model_backend, require_model_table_name
-from snekql.storage import Attr
+lazy from snekql.model import Table, require_model_backend, require_model_table_name
+lazy from snekql.storage import Attr
 
 
 def _query_owner_identity(

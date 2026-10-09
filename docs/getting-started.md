@@ -6,7 +6,8 @@ a database server.
 
 ## Install
 
-Use Python 3.14 or newer:
+Use Python 3.15 or newer (uv-managed downloads require uv 0.13.0+). See
+[Python and lazy imports](lazy-imports.md) for migration and forced-lazy testing:
 
 ```sh
 uv add 'snekql[aiosqlite]'
@@ -91,7 +92,7 @@ like. You write the table's columns only once.
 - Inserting the Pending value does not fill in that same Python object. Use a
   SELECT or `.returning()` to get the complete row back.
 
-Python 3.14 already defers annotations. No `from __future__ import annotations`
+Python 3.15 already defers annotations. No `from __future__ import annotations`
 is needed. See [models](models.md) for defaults, optional fields, and snapshots.
 
 ## Create the table deliberately

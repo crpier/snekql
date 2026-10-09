@@ -1,26 +1,24 @@
 """MariaDB adapter for the backend-neutral query runtime."""
 
-from __future__ import annotations
+lazy import asyncio
+lazy import logging
+lazy from collections.abc import Awaitable, Callable, Sequence
+lazy from importlib import import_module
+lazy from re import fullmatch
+lazy from typing import TYPE_CHECKING, Any, Literal, cast
 
-import asyncio
-import logging
-from collections.abc import Awaitable, Callable, Sequence
-from importlib import import_module
-from re import fullmatch
-from typing import TYPE_CHECKING, Any, Literal, cast
+lazy import anyio
+lazy from anyio.lowlevel import checkpoint
 
-import anyio
-from anyio.lowlevel import checkpoint
-
-from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
-from snekql._observation import Telemetry
-from snekql._pool_gate import FairAdmissionGate
-from snekql._query_codec import DialectQueryCodec
-from snekql._raw import NativeParameters
-from snekql._schema_verification import SchemaVerificationResult
-from snekql._statement_failure import StatementConstraintError
-from snekql._telemetry import ParameterVisibility
-from snekql.errors import (
+lazy from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
+lazy from snekql._observation import Telemetry
+lazy from snekql._pool_gate import FairAdmissionGate
+lazy from snekql._query_codec import DialectQueryCodec
+lazy from snekql._raw import NativeParameters
+lazy from snekql._schema_verification import SchemaVerificationResult
+lazy from snekql._statement_failure import StatementConstraintError
+lazy from snekql._telemetry import ParameterVisibility
+lazy from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
@@ -29,23 +27,23 @@ from snekql.errors import (
     FailureCategory,
     PoolTimeoutError,
 )
-from snekql.mariadb.config import Config
-from snekql.mariadb.migrations import (
+lazy from snekql.mariadb.config import Config
+lazy from snekql.mariadb.migrations import (
     MariaDBMigrationBackend,
     apply_mariadb_migrations,
     build_migration_lock_name,
     validate_mariadb_migrations,
     verify_mariadb_migrations,
 )
-from snekql.mariadb.schema import verify_mariadb_schema
-from snekql.mariadb.settings import configure_mariadb_connection
-from snekql.model import Table
-from snekql.storage import SchemaPolicy
-from snekql.telemetry import PoolStats
-from snekql.validation import NonNegativeFloat, PositiveInt
+lazy from snekql.mariadb.schema import verify_mariadb_schema
+lazy from snekql.mariadb.settings import configure_mariadb_connection
+lazy from snekql.model import Table
+lazy from snekql.storage import SchemaPolicy
+lazy from snekql.telemetry import PoolStats
+lazy from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
-    from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
+    lazy from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
 

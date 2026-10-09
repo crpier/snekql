@@ -1,22 +1,22 @@
 """Atomic construction of an anchor and its direct recursive member."""
 
-from collections.abc import Callable
-from dataclasses import dataclass, replace
-from typing import Any
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass, replace
+lazy from typing import Any
 
-from pydantic import BaseModel
+lazy from pydantic import BaseModel
 
-from snekql._compound import _NamedSetOperand, build_compound
-from snekql._cte import _Cte, _CteOutput, _CteRelation, build_cte
-from snekql._cte_graph import collect_cte_definitions
-from snekql._literal import _IntegerLiteral
-from snekql._query_readiness import _ExecutableQuery
-from snekql._query_state import SelectState
-from snekql.errors import QueryCompilationError, QueryConstructionError
-from snekql.expressions import _Aggregate
-from snekql.model import BackendFamily, Table, require_model_backend
-from snekql.query import NamedSelectQuery
-from snekql.storage import Attr
+lazy from snekql._compound import _NamedSetOperand, build_compound
+lazy from snekql._cte import _Cte, _CteOutput, _CteRelation, build_cte
+lazy from snekql._cte_graph import collect_cte_definitions
+lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._query_readiness import _ExecutableQuery
+lazy from snekql._query_state import SelectState
+lazy from snekql.errors import QueryCompilationError, QueryConstructionError
+lazy from snekql.expressions import _Aggregate
+lazy from snekql.model import BackendFamily, Table, require_model_backend
+lazy from snekql.query import NamedSelectQuery
+lazy from snekql.storage import Attr
 
 
 def _require_anchor_width(state: SelectState) -> None:

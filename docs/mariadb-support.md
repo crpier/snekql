@@ -1,7 +1,7 @@
 # MariaDB release support
 
 Use a maintained MariaDB release and install the `aiomysql` extra. snekql requires
-Python 3.14+ and MariaDB 10.11 or newer, but accepting a server version is not the
+Python 3.15+ and MariaDB 10.11 or newer, but accepting a server version is not the
 same as testing every release and platform.
 
 The table below distinguishes supported targets from extra regression jobs.

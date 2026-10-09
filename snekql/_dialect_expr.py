@@ -20,16 +20,14 @@ quoting) plus a column-reference renderer that already honours the enclosing
 statement's qualification strategy.
 """
 
-from __future__ import annotations
-
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from snekql.expressions import Predicate
-    from snekql.model import Table
-    from snekql.storage import StorageBackend
+    lazy from snekql.expressions import Predicate
+    lazy from snekql.model import Table
+    lazy from snekql.storage import StorageBackend
 
 
 @dataclass(frozen=True)

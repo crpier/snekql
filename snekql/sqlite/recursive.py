@@ -1,15 +1,15 @@
 """Backend-owned staged recursive CTE construction."""
 
-from typing import Any, Literal
+lazy from typing import Any, Literal
 
-from pydantic import BaseModel
+lazy from pydantic import BaseModel
 
-from snekql._compound import _NamedSetOperand
-from snekql._cte import _Cte
-from snekql._query_readiness import _ExecutableQuery
-from snekql._recursive import _RecursiveCteBuilder
-from snekql.model import Table
-from snekql.query import NamedSelectQuery
+lazy from snekql._compound import _NamedSetOperand
+lazy from snekql._cte import _Cte
+lazy from snekql._query_readiness import _ExecutableQuery
+lazy from snekql._recursive import _RecursiveCteBuilder
+lazy from snekql.model import Table
+lazy from snekql.query import NamedSelectQuery
 
 type Cte[
     SourceT: Table[Any],

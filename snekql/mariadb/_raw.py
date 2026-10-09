@@ -1,10 +1,10 @@
 """Native mariadb SQL declarations."""
 
-from collections.abc import Mapping, Sequence
-from typing import Literal, overload
+lazy from collections.abc import Mapping, Sequence
+lazy from typing import Literal, overload
 
-from snekql._raw import RawStatement as _RawStatement
-from snekql._raw import RowMode, build_raw
+lazy from snekql._raw import RawStatement as _RawStatement
+lazy from snekql._raw import RowMode, build_raw
 
 type RawStatement[RowT] = _RawStatement[Literal["mariadb"], RowT]
 

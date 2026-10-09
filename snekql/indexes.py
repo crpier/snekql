@@ -1,13 +1,11 @@
 """Public index declarations and normalized model index metadata."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeVar, cast
-
-from snekql.errors import ModelDeclarationError
-from snekql.expressions import Predicate
-from snekql.storage import (
+lazy from snekql.errors import ModelDeclarationError
+lazy from snekql.expressions import Predicate
+lazy from snekql.storage import (
     Attr,
     StorageBackend,
     _annotation_core_types,
@@ -18,7 +16,7 @@ from snekql.storage import (
 )
 
 if TYPE_CHECKING:
-    from snekql._checks import CheckExpression
+    lazy from snekql._checks import CheckExpression
 
 OwnerT = TypeVar("OwnerT")
 

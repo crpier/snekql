@@ -1,10 +1,8 @@
 """Bound-parameter visibility policy for logs and exception text."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from hashlib import sha256
-from typing import Literal
+lazy from dataclasses import dataclass
+lazy from hashlib import sha256
+lazy from typing import Literal
 
 type ParameterVisibility = Literal["redacted", "values"]
 

@@ -1,14 +1,12 @@
 """Intentional package-originated exception hierarchy for snekql."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass, field
+lazy from typing import TYPE_CHECKING, Literal
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
-
-from snekql._telemetry import ParameterVisibility, format_bound_params
+lazy from snekql._telemetry import ParameterVisibility, format_bound_params
 
 if TYPE_CHECKING:
-    from snekql._schema_verification import SchemaVerificationResult
+    lazy from snekql._schema_verification import SchemaVerificationResult
 
 
 class SnekqlError(Exception):

@@ -10,6 +10,12 @@ For application annotations, see the [typing reference](typing.md).
 
 ## Tested versions and scope
 
+The 2026-10-09 Python 3.15 migration validates ty 0.0.84 on CPython 3.15.0
+with Pydantic 2.14.0: all 118 positive/negative pairs conform and repository
+typing passes. Only ty is a current CI typing gate; secondary-checker results
+below are historical, not Python 3.15 certification. See the
+[migration review](dependency-reviews/2026-10-09-python315.md).
+
 Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
 has 59 cases on each backend, producing 118 positive/negative pairs. Reports
 record dependency versions, commands, revision and dirty status, and SHA-256
@@ -22,7 +28,7 @@ hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
 | mypy | 2.3.1 | Not supported for this interface; 4/118 pairs |
 | Pylance | Not assessed | No editor conformance claim |
 
-All tools target Python 3.14 and use the project interpreter's dependencies.
+The current assessment CLI targets Python 3.15 and use the project interpreter's dependencies.
 These results do not certify older Python, other checker versions, every API
 combination, or a complete secondary-checker analysis of library internals.
 
@@ -159,7 +165,7 @@ caller files; rerun the CLI to render fresh callers with comparable source hashe
 
 ## Editor guidance
 
-Select the application's Python 3.14+ environment with snekql and Pydantic
+Select the application's Python 3.15+ environment with snekql and Pydantic
 installed. Keep ty as the project gate and use its editor integration for matching
 diagnostics. Pylance, PyCharm and other engines have no conformance guarantee from
 this assessment. When an editor disagrees, reproduce with the pinned checker and

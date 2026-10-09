@@ -130,3 +130,30 @@ asyncio.run(main())
 
     assert_eq(result.returncode, 0)
     assert_in("snekql[aiosqlite]", result.stdout)
+
+
+@test(mark="medium")
+def package_metadata_requires_python315() -> None:
+    """Consumers must use an interpreter that supports explicit lazy imports."""
+    assert_eq(metadata("snekql")["Requires-Python"], ">=3.15")
+
+
+@test(mark="medium")
+def package_import_defers_backend_loading() -> None:
+    """Importing the package alone does not initialize either backend."""
+    result = _run_python("""
+import sys
+import snekql
+assert "snekql.sqlite" not in sys.modules
+assert "snekql.mariadb" not in sys.modules
+""")
+
+    assert_eq(result.returncode, 0, msg=result.stderr)
+
+
+@test(mark="medium")
+def package_metadata_requires_lazy_aware_pydantic() -> None:
+    """Fresh installs receive Pydantic's supported Python 3.15 implementation."""
+    requirements = metadata("snekql").get_all("Requires-Dist") or []
+
+    assert_in("pydantic>=2.14.0", requirements)

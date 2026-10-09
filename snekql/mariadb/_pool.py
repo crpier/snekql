@@ -5,16 +5,14 @@ connection-factory hook. Keep its pool-fill adaptation local and preserve its
 stale-reader checks. Import lazily after the optional driver is available.
 """
 
-from __future__ import annotations
+lazy import asyncio
+lazy from typing import Any
 
-import asyncio
-from typing import Any
+lazy from aiomysql.connection import Connection
+lazy from aiomysql.pool import Pool
+lazy from pymysql.constants.CLIENT import SSL
 
-from aiomysql.connection import Connection
-from aiomysql.pool import Pool
-from pymysql.constants.CLIENT import SSL
-
-from snekql.errors import DatabaseRuntimeError
+lazy from snekql.errors import DatabaseRuntimeError
 
 
 class _RequiredTLSConnection(Connection):

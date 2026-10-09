@@ -1,16 +1,14 @@
 """Owned subprocess creation and bounded cancellation-resistant cleanup."""
 
-from __future__ import annotations
+lazy import asyncio
+lazy import os
+lazy from collections.abc import AsyncGenerator, Mapping
+lazy from contextlib import asynccontextmanager
+lazy from signal import Signals
 
-import asyncio
-import os
-from collections.abc import AsyncGenerator, Mapping
-from contextlib import asynccontextmanager
-from signal import Signals
+lazy import anyio
 
-import anyio
-
-from snekql.testing.mariadb._types import TemporaryMariaDBServerError
+lazy from snekql.testing.mariadb._types import TemporaryMariaDBServerError
 
 _SHUTDOWN_TIMEOUT = 10.0
 """Grace for termination, followed by the same bounded kill/reap grace."""

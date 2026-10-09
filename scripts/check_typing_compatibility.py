@@ -268,7 +268,7 @@ async def _invoke_checker(
             "--python",
             sys.executable,
             "--python-version",
-            "3.14",
+            "3.15",
             "--extra-search-path",
             str(root),
             "--output-format",
@@ -276,13 +276,22 @@ async def _invoke_checker(
             *paths,
         ]
     elif checker == "pyright":
-        prefix = ["uv", "tool", "run", "--from", "pyright==1.1.414", "pyright"]
+        prefix = [
+            "uv",
+            "tool",
+            "run",
+            "--python",
+            sys.executable,
+            "--from",
+            "pyright==1.1.414",
+            "pyright",
+        ]
         config = AsyncPath(directory) / "pyrightconfig.json"
         await config.write_text(
             dumps(
                 {
                     "typeCheckingMode": "strict",
-                    "pythonVersion": "3.14",
+                    "pythonVersion": "3.15",
                     "include": paths,
                     "extraPaths": [str(root)],
                 }
@@ -296,14 +305,23 @@ async def _invoke_checker(
             "--outputjson",
         ]
     else:
-        prefix = ["uv", "tool", "run", "--from", "mypy==2.3.1", "mypy"]
+        prefix = [
+            "uv",
+            "tool",
+            "run",
+            "--python",
+            sys.executable,
+            "--from",
+            "mypy==2.3.1",
+            "mypy",
+        ]
         config = AsyncPath(directory) / "mypy.ini"
         await config.write_text("[mypy]\n")
         environment["MYPYPATH"] = str(root)
         arguments = [
             "--strict",
             "--python-version",
-            "3.14",
+            "3.15",
             "--python-executable",
             sys.executable,
             "--config-file",

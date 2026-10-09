@@ -7,22 +7,20 @@ actually does on execution -- most notably how SQLite reports affected rows --
 so the ``snekql.sqlite`` namespace surfaces SQLite-specific guidance.
 """
 
-from __future__ import annotations
+lazy from collections.abc import Sequence
+lazy from typing import Any, Literal, Never, cast, overload
 
-from collections.abc import Sequence
-from typing import Any, Literal, Never, cast, overload
+lazy from pydantic import BaseModel
 
-from pydantic import BaseModel
-
-from snekql._aliases import TableAlias, _AliasOwner, build_alias
-from snekql._cte import _Cte, _CteOwner, build_cte_alias
-from snekql._dialect_expr import DialectSelectable
-from snekql._query_readiness import _ExecutableQuery
-from snekql._query_state import selectable_owner_model
-from snekql.errors import QueryConstructionError
-from snekql.expressions import Aggregate, ColumnRef, Predicate, Scalar, _Scalar
-from snekql.model import Pending, Row, Table, require_model_backend
-from snekql.query import (
+lazy from snekql._aliases import TableAlias, _AliasOwner, build_alias
+lazy from snekql._cte import _Cte, _CteOwner, build_cte_alias
+lazy from snekql._dialect_expr import DialectSelectable
+lazy from snekql._query_readiness import _ExecutableQuery
+lazy from snekql._query_state import selectable_owner_model
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import Aggregate, ColumnRef, Predicate, Scalar, _Scalar
+lazy from snekql.model import Pending, Row, Table, require_model_backend
+lazy from snekql.query import (
     DeleteQuery,
     InsertableModel,
     InsertManyQuery,
@@ -40,17 +38,17 @@ from snekql.query import (
     build_insert_many,
     build_select,
 )
-from snekql.query import (
+lazy from snekql.query import (
     delete as build_delete,
 )
-from snekql.query import exists as build_exists
-from snekql.query import not_exists as build_not_exists
-from snekql.query import scalar as build_scalar
-from snekql.query import (
+lazy from snekql.query import exists as build_exists
+lazy from snekql.query import not_exists as build_not_exists
+lazy from snekql.query import scalar as build_scalar
+lazy from snekql.query import (
     update as build_update,
 )
-from snekql.sqlite.model import Model
-from snekql.storage import Attr
+lazy from snekql.sqlite.model import Model
+lazy from snekql.storage import Attr
 
 type ReadQuery[Scope, Result] = _ExecutableSelect[
     Literal["sqlite"], Scope, Scope, Result

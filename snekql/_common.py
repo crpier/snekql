@@ -12,19 +12,17 @@ This aggregator imports only dialect-neutral core modules; it must not import a
 Backend Namespace, so it stays compatible with the dialect-blindness invariant.
 """
 
-from __future__ import annotations
-
-from snekql._compiled import CompiledQuery
-from snekql._explain import ExplainResult
-from snekql._migrations import MigrationResult, MigrationStatus
-from snekql._schema_verification import (
+lazy from snekql._compiled import CompiledQuery
+lazy from snekql._explain import ExplainResult
+lazy from snekql._migrations import MigrationResult, MigrationStatus
+lazy from snekql._schema_verification import (
     SchemaDriftIssue,
     SchemaVerificationFact,
     SchemaVerificationResult,
 )
-from snekql.constraints import CheckConstraint, ForeignKeyConstraint
-from snekql.defaults import LiteralDefault
-from snekql.errors import (
+lazy from snekql.constraints import CheckConstraint, ForeignKeyConstraint
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
@@ -64,7 +62,7 @@ from snekql.errors import (
     TransactionStateError,
     ZonedDatetimeError,
 )
-from snekql.expressions import (
+lazy from snekql.expressions import (
     Aggregate,
     Assignment,
     ColumnRef,
@@ -75,22 +73,22 @@ from snekql.expressions import (
     Predicate,
     Scalar,
 )
-from snekql.indexes import Index
-from snekql.model import (
+lazy from snekql.indexes import Index
+lazy from snekql.model import (
     Col,
     FKCol,
     GenCol,
     Pending,
     Row,
 )
-from snekql.query import (
+lazy from snekql.query import (
     Write,
     exists,
     not_exists,
     scalar,
     select,
 )
-from snekql.runtime import (
+lazy from snekql.runtime import (
     ChunkStream,
     CommitOutcome,
     Database,
@@ -98,7 +96,7 @@ from snekql.runtime import (
     Transaction,
     TransactionMode,
 )
-from snekql.storage import (
+lazy from snekql.storage import (
     PENDING_GENERATION,
     Canonical,
     CanonicalDecimal,
@@ -110,7 +108,7 @@ from snekql.storage import (
     UtcDatetime,
     ZonedDatetime,
 )
-from snekql.telemetry import Observer, PoolStats, TelemetryEvent
+lazy from snekql.telemetry import Observer, PoolStats, TelemetryEvent
 
 __all__ = [
     "PENDING_GENERATION",

@@ -1,10 +1,8 @@
 """Embedded documentation and examples for coding agents."""
 
-from __future__ import annotations
+lazy from importlib.resources import files
 
-from importlib.resources import files
-
-from snekql.errors import SnekqlError
+lazy from snekql.errors import SnekqlError
 
 EXAMPLE_FILES: dict[str, str] = {
     "basic": "basic.py",
@@ -19,7 +17,7 @@ snekql is an async typed query builder and runtime for SQLite and MariaDB.
 ## Quick start
 
 Install `snekql[aiosqlite]`, save the example as `app.py`, and run it with Python
-3.14+. It uses an in-memory database, so it is safe to run again. Python 3.14+
+3.15+. It uses an in-memory database, so it is safe to run again. Python 3.15+
 defers annotations by default; no future import is needed.
 
 ```python

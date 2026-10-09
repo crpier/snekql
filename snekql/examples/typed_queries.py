@@ -1,12 +1,10 @@
 """ty-oriented examples for snekql's public typing surface."""
 
-from __future__ import annotations
+lazy from datetime import datetime
+lazy from typing import TYPE_CHECKING, ClassVar, assert_type
 
-from datetime import datetime
-from typing import TYPE_CHECKING, ClassVar, assert_type
-
-from snekql import sqlite
-from snekql.sqlite import (
+lazy from snekql import sqlite
+lazy from snekql.sqlite import (
     ClosedRead,
     Pending,
     PendingGeneration,

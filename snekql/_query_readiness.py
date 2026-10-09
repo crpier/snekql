@@ -1,7 +1,5 @@
 """Private static states describing whether query state can be executed."""
 
-from __future__ import annotations
-
 
 class _IncompleteQuery:
     """Typing-only marker for state guaranteed to fail Query Compilation."""

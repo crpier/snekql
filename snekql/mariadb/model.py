@@ -1,12 +1,10 @@
 """MariaDB table model declaration base."""
 
-from __future__ import annotations
+lazy from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
 
-from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
-
-from snekql.expressions import Aggregate, _Aggregate
-from snekql.indexes import NormalizedIndex
-from snekql.mariadb.storage import (
+lazy from snekql.expressions import Aggregate, _Aggregate
+lazy from snekql.indexes import NormalizedIndex
+lazy from snekql.mariadb.storage import (
     Blob,
     Boolean,
     DateTime,
@@ -18,7 +16,7 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.model import (
+lazy from snekql.model import (
     _MODEL_BASE_MARKER,
     Pending,
     Row,
@@ -26,9 +24,9 @@ from snekql.model import (
     _complete_model,
     _RowDeclaration,
 )
-from snekql.model import Model as BaseModel
-from snekql.model import ModelMeta as BaseModelMeta
-from snekql.storage import (
+lazy from snekql.model import Model as BaseModel
+lazy from snekql.model import ModelMeta as BaseModelMeta
+lazy from snekql.storage import (
     Attr,
     FKAttr,
     ForeignKey,

@@ -1,13 +1,13 @@
 """Backend-owned searched CASE expressions."""
 
-from typing import Any, Literal, overload
+lazy from typing import Any, Literal, overload
 
-from snekql._aliases import _AliasOwner
-from snekql._case import build_case
-from snekql._literal import _IntegerLiteral, build_integer_literal
-from snekql._value_expression import ExpressionMethods, ValueExpression
-from snekql.expressions import Predicate
-from snekql.sqlite.model import Model
+lazy from snekql._aliases import _AliasOwner
+lazy from snekql._case import build_case
+lazy from snekql._literal import _IntegerLiteral, build_integer_literal
+lazy from snekql._value_expression import ExpressionMethods, ValueExpression
+lazy from snekql.expressions import Predicate
+lazy from snekql.sqlite.model import Model
 
 
 @overload

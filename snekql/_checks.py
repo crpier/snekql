@@ -1,12 +1,12 @@
 """Bind bounded CHECK predicates to immutable, parameter-free schema expressions."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import Any
 
-from snekql.constraints import CheckConstraint
-from snekql.errors import ModelDeclarationError, SnekqlError
-from snekql.expressions import (
+lazy from snekql.constraints import CheckConstraint
+lazy from snekql.errors import ModelDeclarationError, SnekqlError
+lazy from snekql.expressions import (
     BetweenPredicate,
     ColumnComparisonPredicate,
     ComparisonPredicate,
@@ -15,7 +15,7 @@ from snekql.expressions import (
     NegatedPredicate,
     NullPredicate,
 )
-from snekql.storage import (
+lazy from snekql.storage import (
     Attr,
     StorageBackend,
     _annotation_core_types,

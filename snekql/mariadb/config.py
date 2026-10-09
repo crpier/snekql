@@ -1,19 +1,17 @@
 """MariaDB runtime configuration for snekql."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass, field
+lazy from importlib import import_module
+lazy from pathlib import Path
+lazy from ssl import Purpose, SSLContext, TLSVersion, create_default_context
+lazy from typing import Annotated, Any, Literal, cast
 
-from dataclasses import dataclass, field
-from importlib import import_module
-from pathlib import Path
-from ssl import Purpose, SSLContext, TLSVersion, create_default_context
-from typing import Annotated, Any, Literal, cast
+lazy from annotated_types import Gt
+lazy from pydantic import FiniteFloat
 
-from annotated_types import Gt
-from pydantic import FiniteFloat
-
-from snekql._telemetry import ParameterVisibility
-from snekql.errors import DatabaseRuntimeError
-from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+lazy from snekql._telemetry import ParameterVisibility
+lazy from snekql.errors import DatabaseRuntimeError
+lazy from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 type _ConnectionDuration = Annotated[FiniteFloat, Gt(0)]
 

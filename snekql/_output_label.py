@@ -1,9 +1,9 @@
 """Identity-bearing output labels derived from existing SQL expressions."""
 
-from dataclasses import dataclass
-from typing import Any
+lazy from dataclasses import dataclass
+lazy from typing import Any
 
-from snekql.errors import QueryConstructionError
+lazy from snekql.errors import QueryConstructionError
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)

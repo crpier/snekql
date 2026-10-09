@@ -18,18 +18,16 @@ safe boundary is the lock acquisition that happens before any work, so that is
 the only thing this retries.
 """
 
-from __future__ import annotations
+lazy import logging
+lazy import random
+lazy import sqlite3
+lazy from collections.abc import Awaitable, Callable
+lazy from dataclasses import dataclass
+lazy from math import ldexp
 
-import logging
-import random
-import sqlite3
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from math import ldexp
+lazy import anyio
 
-import anyio
-
-from snekql.validation import NonNegativeFloat, NonNegativeInt
+lazy from snekql.validation import NonNegativeFloat, NonNegativeInt
 
 logger = logging.getLogger(__name__)
 

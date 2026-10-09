@@ -1,27 +1,35 @@
 """Named set contracts and immutable binary query construction."""
 
-from dataclasses import replace
-from types import UnionType
-from typing import Any, Literal, Protocol, TypeAliasType, Union, get_args, get_origin
+lazy from dataclasses import replace
+lazy from types import UnionType
+lazy from typing import (
+    Any,
+    Literal,
+    Protocol,
+    TypeAliasType,
+    Union,
+    get_args,
+    get_origin,
+)
 
-from snekql._cte import _CompoundRelation, _CteDefinition, _CteOutput
-from snekql._literal import _IntegerLiteral
-from snekql._output_layout import (
+lazy from snekql._cte import _CompoundRelation, _CteDefinition, _CteOutput
+lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._output_layout import (
     LayoutOutput,
     OutputLayout,
     WireEncoding,
     build_output_layout,
 )
-from snekql._query_state import (
+lazy from snekql._query_state import (
     CompoundSpec,
     SelectState,
     require_single_column_subquery,
 )
-from snekql._value_expression import ValueExpression
-from snekql.errors import QueryConstructionError
-from snekql.expressions import _Aggregate, _Scalar
-from snekql.model import require_model_backend
-from snekql.storage import Attr, _extract_logical_type, _resolve_model_hint
+lazy from snekql._value_expression import ValueExpression
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import _Aggregate, _Scalar
+lazy from snekql.model import require_model_backend
+lazy from snekql.storage import Attr, _extract_logical_type, _resolve_model_hint
 
 
 class _CompoundRole:

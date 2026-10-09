@@ -5,38 +5,36 @@ backend identity, SQL, parameters, result cardinality, and materialization polic
 The runtime executes that instruction without naming Query Builder classes.
 """
 
-from __future__ import annotations
+lazy from collections.abc import Sequence
+lazy from dataclasses import dataclass, field
+lazy from typing import Literal, cast
 
-from collections.abc import Sequence
-from dataclasses import dataclass, field
-from typing import Literal, cast
-
-from snekql._query_compile import (
+lazy from snekql._query_compile import (
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
 )
-from snekql._query_dialect import QueryDialect
-from snekql._query_materialize import (
+lazy from snekql._query_dialect import QueryDialect
+lazy from snekql._query_materialize import (
     materialize_select_row_for_backend,
     materialize_write_returning_rows_for_backend,
 )
-from snekql._query_state import (
+lazy from snekql._query_state import (
     DeleteState,
     InsertState,
     SelectState,
     UpdateState,
     WriteState,
 )
-from snekql._telemetry import QueryDiagnostics
-from snekql.errors import (
+lazy from snekql._telemetry import QueryDiagnostics
+lazy from snekql.errors import (
     MultipleResultsError,
     NoResultError,
     QueryCompilationError,
     QueryConstructionError,
     ResultCardinalityError,
 )
-from snekql.model import BackendFamily, require_model_backend
-from snekql.query import SelectValueQuery
+lazy from snekql.model import BackendFamily, require_model_backend
+lazy from snekql.query import SelectValueQuery
 
 type SelectCardinality = Literal["one", "one_or_none", "many"]
 type WriteCardinality = Literal["none", "rowcount", "one", "many"]

@@ -1,8 +1,8 @@
 """Explicit markers for database-supplied literal values."""
 
-from dataclasses import dataclass
+lazy from dataclasses import dataclass
 
-from snekql.errors import ModelDeclarationError
+lazy from snekql.errors import ModelDeclarationError
 
 
 @dataclass(frozen=True)

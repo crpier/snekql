@@ -1,14 +1,12 @@
 """Backend Dialect facts used by Query Builder SQL compilation."""
 
-from __future__ import annotations
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import Any, Literal
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, Literal
-
-from snekql._query_state import LockWait, SelectState, WriteState
-from snekql.errors import QueryCompilationError
-from snekql.storage import Attr
+lazy from snekql._query_state import LockWait, SelectState, WriteState
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.storage import Attr
 
 type QueryColumn = Attr[Any, Any, Any, Any, Any]
 type ConflictDoNothingCompiler = Callable[[tuple[str, ...]], str]

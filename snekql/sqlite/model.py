@@ -1,12 +1,10 @@
 """SQLite Table Model declaration base and backend-pinned column aliases."""
 
-from __future__ import annotations
+lazy from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
 
-from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
-
-from snekql.expressions import Aggregate, _Aggregate
-from snekql.indexes import NormalizedIndex
-from snekql.model import (
+lazy from snekql.expressions import Aggregate, _Aggregate
+lazy from snekql.indexes import NormalizedIndex
+lazy from snekql.model import (
     _MODEL_BASE_MARKER,
     Pending,
     Row,
@@ -14,9 +12,9 @@ from snekql.model import (
     _complete_model,
     _RowDeclaration,
 )
-from snekql.model import Model as BaseModel
-from snekql.model import ModelMeta as BaseModelMeta
-from snekql.storage import (
+lazy from snekql.model import Model as BaseModel
+lazy from snekql.model import ModelMeta as BaseModelMeta
+lazy from snekql.storage import (
     Attr,
     Blob,
     ForeignKey,
@@ -26,7 +24,7 @@ from snekql.storage import (
     Text,
     _UnboundOwner,
 )
-from snekql.storage import FKAttr as _FKAttr
+lazy from snekql.storage import FKAttr as _FKAttr
 
 StateT = TypeVar("StateT")
 

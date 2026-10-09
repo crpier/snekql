@@ -1,13 +1,13 @@
 """Optional OpenTelemetry observation; importing backend namespaces needs no SDK."""
 
-from re import fullmatch
-from threading import Lock
+lazy from re import fullmatch
+lazy from threading import Lock
 
-from opentelemetry.metrics import Histogram, Meter
-from opentelemetry.trace import Span, SpanKind, StatusCode, Tracer
+lazy from opentelemetry.metrics import Histogram, Meter
+lazy from opentelemetry.trace import Span, SpanKind, StatusCode, Tracer
 
-from snekql.errors import ModelValidationError
-from snekql.telemetry import TelemetryEvent
+lazy from snekql.errors import ModelValidationError
+lazy from snekql.telemetry import TelemetryEvent
 
 _MAX_FINGERPRINTS = 1024
 """Maximum caller-approved metric fingerprint labels per observer."""

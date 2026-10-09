@@ -1,7 +1,5 @@
 """SQLite SQL identifier helpers."""
 
-from __future__ import annotations
-
 
 def quote_identifier(identifier: str) -> str:
     """Quote a SQLite identifier with double-quote escaping.

@@ -1,15 +1,13 @@
 """MariaDB Migration History v2, legacy adoption, and advisory locking."""
 
-from __future__ import annotations
+lazy import hashlib
+lazy from contextlib import asynccontextmanager
+lazy from typing import TYPE_CHECKING, Any, Literal, cast
 
-import hashlib
-from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, Literal, cast
+lazy import anyio
+lazy from anyio.lowlevel import checkpoint
 
-import anyio
-from anyio.lowlevel import checkpoint
-
-from snekql._migrations import (
+lazy from snekql._migrations import (
     Migration,
     MigrationPlan,
     MigrationRecord,
@@ -18,19 +16,19 @@ from snekql._migrations import (
     validate_history_prefix,
     validate_legacy_history,
 )
-from snekql.errors import (
+lazy from snekql.errors import (
     MigrationDeclarationError,
     MigrationError,
     MigrationHistoryError,
     MigrationLockError,
     MigrationLockTimeoutError,
 )
-from snekql.mariadb.identifiers import quote_identifier
-from snekql.mariadb.schema import TEXT_COLLATION
-from snekql.validation import NonNegativeFloat
+lazy from snekql.mariadb.identifiers import quote_identifier
+lazy from snekql.mariadb.schema import TEXT_COLLATION
+lazy from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    lazy from collections.abc import AsyncGenerator
 
 _HISTORY_TABLE = "snekql_migrations"
 

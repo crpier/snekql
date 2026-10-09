@@ -1,28 +1,26 @@
 """Query-only named definitions and their decoded output references."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass, field
+lazy from re import fullmatch
+lazy from typing import Any, ClassVar, Protocol, cast, overload
 
-from dataclasses import dataclass, field
-from re import fullmatch
-from typing import Any, ClassVar, Protocol, cast, overload
+lazy from pydantic import BaseModel
 
-from pydantic import BaseModel
-
-from snekql._dialect_expr import CompileCtx
-from snekql._literal import _IntegerLiteral
-from snekql._output_domain import OutputDomain
-from snekql._output_label import _NullExtendedLabel, _OutputLabel
-from snekql._output_layout import OutputLayout, OutputSlot, build_output_layout
-from snekql._query_dialect import query_dialect_for_backend
-from snekql._query_state import (
+lazy from snekql._dialect_expr import CompileCtx
+lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._output_domain import OutputDomain
+lazy from snekql._output_label import _NullExtendedLabel, _OutputLabel
+lazy from snekql._output_layout import OutputLayout, OutputSlot, build_output_layout
+lazy from snekql._query_dialect import query_dialect_for_backend
+lazy from snekql._query_state import (
     SelectState,
     require_single_column_subquery,
     selectable_owner_model,
 )
-from snekql._value_decode import _normalize_sum
-from snekql._value_expression import ExpressionMethods, ValueExpression
-from snekql.errors import QueryConstructionError
-from snekql.expressions import (
+lazy from snekql._value_decode import _normalize_sum
+lazy from snekql._value_expression import ExpressionMethods, ValueExpression
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import (
     Aggregate,
     Comparable,
     OrderBy,
@@ -30,8 +28,8 @@ from snekql.expressions import (
     _OrderBy,
     _Scalar,
 )
-from snekql.model import BackendFamily, Table, require_model_backend
-from snekql.storage import Attr, StorageBackend
+lazy from snekql.model import BackendFamily, Table, require_model_backend
+lazy from snekql.storage import Attr, StorageBackend
 
 
 class _LabelContract[OwnerT, T, CompareT, FamilyT = Any](Protocol):

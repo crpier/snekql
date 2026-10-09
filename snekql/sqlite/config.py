@@ -1,21 +1,18 @@
 """SQLite runtime configuration for snekql."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from importlib import import_module
+lazy from pathlib import Path
+lazy from typing import TYPE_CHECKING, Any, Literal, cast
 
-from dataclasses import dataclass
-from importlib import import_module
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
-
-from snekql._runtime_selection import register_default_backend_factory
-from snekql._telemetry import ParameterVisibility
-from snekql.errors import DatabaseRuntimeError
-from snekql.sqlite.retry import (
+lazy from snekql._telemetry import ParameterVisibility
+lazy from snekql.errors import DatabaseRuntimeError
+lazy from snekql.sqlite.retry import (
     DEFAULT_BUSY_BASE_BACKOFF,
     DEFAULT_BUSY_MAX_BACKOFF,
     DEFAULT_BUSY_MAX_RETRIES,
 )
-from snekql.validation import (
+lazy from snekql.validation import (
     NonNegativeFloat,
     NonNegativeInt,
     PositiveInt,
@@ -23,7 +20,7 @@ from snekql.validation import (
 )
 
 if TYPE_CHECKING:
-    from snekql._runtime_selection import RuntimeConfig
+    lazy from snekql._runtime_selection import RuntimeConfig
 
 
 def _resolve_pool_size(
@@ -122,6 +119,7 @@ class Config:
 
         try:
             runtime_module = import_module("snekql.sqlite.runtime")
+            return await cast("Any", runtime_module).initialize_runtime(self)
         except ModuleNotFoundError as error:
             if error.name == "aiosqlite":
                 msg = (
@@ -130,8 +128,6 @@ class Config:
                 )
                 raise DatabaseRuntimeError(msg) from error
             raise
-
-        return await cast("Any", runtime_module).initialize_runtime(self)
 
 
 def _build_default_config(
@@ -149,9 +145,3 @@ def _build_default_config(
         operation_timeout=operation_timeout,
         pool_size=pool_size,
     )
-
-
-# SQLite is the default backend for the bare ``Database.initialize(database=...)``
-# shape. Registering here keeps the core dialect-blind: it resolves ``database=``
-# through this callback rather than importing the SQLite Config (ADR 0004).
-register_default_backend_factory(_build_default_config)

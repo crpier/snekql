@@ -1,27 +1,25 @@
 """Internal async SQLite connection pool for Query Runtime."""
 
-from __future__ import annotations
+lazy import asyncio
+lazy import contextlib
+lazy import logging
+lazy from collections.abc import Sequence
+lazy from pathlib import Path
+lazy from typing import Literal, NoReturn
 
-import asyncio
-import contextlib
-import logging
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Literal, NoReturn
+lazy import anyio
+lazy from aiosqlite import Connection, Error, connect
 
-import anyio
-from aiosqlite import Connection, Error, connect
-
-from snekql._pool_gate import FairAdmissionGate
-from snekql.errors import (
+lazy from snekql._pool_gate import FairAdmissionGate
+lazy from snekql.errors import (
     DatabaseClosedError,
     DatabaseCloseTimeoutError,
     DatabaseClosingError,
     DatabaseRuntimeError,
     PoolTimeoutError,
 )
-from snekql.sqlite.settings import apply_sqlite_connection_settings
-from snekql.validation import NonNegativeFloat, PositiveInt
+lazy from snekql.sqlite.settings import apply_sqlite_connection_settings
+lazy from snekql.validation import NonNegativeFloat, PositiveInt
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +60,7 @@ async def open_sqlite_connection(
             with anyio.CancelScope(shield=True):
                 with contextlib.suppress(Exception):
                     await connection.close()
-        if isinstance(error, Error):
+        if connection is not None and isinstance(error, Error):
             msg = "could not initialize SQLite connection"
             raise DatabaseRuntimeError(msg) from error
         raise

@@ -1,19 +1,19 @@
 """Query source fields, separate from schema-owned column declarations."""
 
-from dataclasses import dataclass
-from typing import Any
+lazy from dataclasses import dataclass
+lazy from typing import Any
 
-from snekql._aliases import require_query_source as require_table_source
-from snekql._cte import _Cte, _CteOutput, _CtePresence, _CteRelation
-from snekql._dialect_expr import CompileCtx
-from snekql._query_state import (
+lazy from snekql._aliases import require_query_source as require_table_source
+lazy from snekql._cte import _Cte, _CteOutput, _CtePresence, _CteRelation
+lazy from snekql._dialect_expr import CompileCtx
+lazy from snekql._query_state import (
     Selectable,
     require_column_model,
     require_column_name,
     require_field,
 )
-from snekql.model import Table, require_model_columns, require_model_table_name
-from snekql.storage import Attr
+lazy from snekql.model import Table, require_model_columns, require_model_table_name
+lazy from snekql.storage import Attr
 
 
 @dataclass(frozen=True, slots=True)

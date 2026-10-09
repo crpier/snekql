@@ -1,17 +1,22 @@
 """Callback dispatch and clocks isolated from query diagnostics."""
 
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
-from contextvars import copy_context
-from inspect import isasyncgenfunction, isawaitable, iscoroutine, iscoroutinefunction
-from itertools import count
-from time import monotonic_ns, time_ns
-from typing import Literal
+lazy from collections.abc import Callable, Iterator
+lazy from contextlib import contextmanager
+lazy from contextvars import copy_context
+lazy from inspect import (
+    isasyncgenfunction,
+    isawaitable,
+    iscoroutine,
+    iscoroutinefunction,
+)
+lazy from itertools import count
+lazy from time import monotonic_ns, time_ns
+lazy from typing import Literal
 
-from anyio import get_cancelled_exc_class
+lazy from anyio import get_cancelled_exc_class
 
-from snekql.errors import DatabaseRuntimeError
-from snekql.telemetry import Observer, TelemetryEvent, _EventKind
+lazy from snekql.errors import DatabaseRuntimeError
+lazy from snekql.telemetry import Observer, TelemetryEvent, _EventKind
 
 _OPERATION_IDS = count(1)
 """Process-local correlation IDs, never metric labels or trace IDs."""

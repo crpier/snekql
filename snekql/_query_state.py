@@ -9,18 +9,16 @@ policy -- which tables an operand may reference -- lives in
 :mod:`snekql._query_scope`, which imports downward into this module.
 """
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from typing import Any, Literal, cast
 
-from dataclasses import dataclass
-from typing import Any, Literal, cast
-
-from snekql._dialect_expr import SqlCompilable
-from snekql._named_projection import NamedProjection
-from snekql.errors import (
+lazy from snekql._dialect_expr import SqlCompilable
+lazy from snekql._named_projection import NamedProjection
+lazy from snekql.errors import (
     ModelDeclarationError,
     QueryConstructionError,
 )
-from snekql.expressions import (
+lazy from snekql.expressions import (
     DoNothing,
     DoUpdate,
     _Aggregate,
@@ -29,12 +27,12 @@ from snekql.expressions import (
     _PredicateNode,
     _Scalar,
 )
-from snekql.model import (
+lazy from snekql.model import (
     Model,
     Table,
     require_model_columns,
 )
-from snekql.storage import Attr
+lazy from snekql.storage import Attr
 
 # A projectable expression: a column, an aggregate over a column, a scalar
 # subquery standing in for a single value, or an open-AST dialect expression

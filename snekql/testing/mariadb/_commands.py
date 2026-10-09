@@ -1,14 +1,12 @@
 """MariaDB client command construction for test-server helpers."""
 
-from __future__ import annotations
+lazy import os
+lazy import shlex
+lazy from collections.abc import Mapping
+lazy from dataclasses import dataclass
+lazy from pathlib import Path
 
-import os
-import shlex
-from collections.abc import Mapping
-from dataclasses import dataclass
-from pathlib import Path
-
-from snekql.testing.mariadb._types import (
+lazy from snekql.testing.mariadb._types import (
     MariaDBAuth,
     MariaDBTransport,
     TemporaryMariaDBServerError,

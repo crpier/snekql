@@ -7,11 +7,9 @@ JSON column and its path operators). There is no flat ``snekql.*`` surface; pick
 a backend namespace and import everything from it.
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING, Literal, TypeVar
 
-from typing import TYPE_CHECKING, Literal, TypeVar
-
-from snekql._common import (
+lazy from snekql._common import (
     PENDING_GENERATION,
     Assignment,
     Canonical,
@@ -86,23 +84,22 @@ from snekql._common import (
     ZonedDatetime,
     ZonedDatetimeError,
 )
-from snekql._common import (
+lazy from snekql._common import (
     Write as _RuntimeWrite,
 )
-from snekql.expressions import Aggregate as _AggregateType
-from snekql.expressions import ColumnRef as _ColumnRef
-from snekql.expressions import Predicate as _Predicate
-from snekql.expressions import Scalar as _ScalarType
-
-# Importing the dialect module registers the MariaDB query Dialect so a built
-# MariaDB query can render its own SQL for inspection (see _query_dialect).
-from snekql.mariadb import _dialect_sql as _dialect_sql
-from snekql.mariadb._raw import RawStatement, raw
-from snekql.mariadb.config import Config, TLSConfig
-from snekql.mariadb.functions import case, literal
-from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model, complete
-from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
-from snekql.mariadb.storage import (
+lazy from snekql._query_dialect import register_query_dialect
+lazy from snekql.expressions import Aggregate as _AggregateType
+lazy from snekql.expressions import ColumnRef as _ColumnRef
+lazy from snekql.expressions import Predicate as _Predicate
+lazy from snekql.expressions import Scalar as _ScalarType
+lazy from snekql.mariadb._dialect_sql import MARIADB_QUERY_DIALECT
+lazy from snekql.mariadb._raw import RawStatement, raw
+lazy from snekql.mariadb.config import Config, TLSConfig
+lazy from snekql.mariadb.functions import case, literal
+lazy from snekql.mariadb.model import Col, FKCol, GenCol, JsonCol, Model, complete
+lazy from snekql.mariadb.recursive import Cte, NamedOperand, recursive_cte
+lazy from snekql.mariadb.schema import scaffold_mariadb_ddl as scaffold
+lazy from snekql.mariadb.storage import (
     Blob,
     Boolean,
     CurrentTimestamp,
@@ -117,7 +114,7 @@ from snekql.mariadb.storage import (
     Text,
     Uuid,
 )
-from snekql.mariadb.verbs import (
+lazy from snekql.mariadb.verbs import (
     ClosedOptional,
     ClosedRead,
     OptionalRead,
@@ -134,10 +131,13 @@ from snekql.mariadb.verbs import (
     select,
     update,
 )
-from snekql.model import ReadType, is_complete
-from snekql.query import _Write
-from snekql.runtime import Database as _Database
-from snekql.runtime import Transaction as _Transaction
+lazy from snekql.model import ReadType, is_complete
+lazy from snekql.query import _Write
+lazy from snekql.runtime import Database as _Database
+lazy from snekql.runtime import Transaction as _Transaction
+
+# Resolve the dialect explicitly: lazy imports do not run registration side effects.
+register_query_dialect("mariadb", MARIADB_QUERY_DIALECT)
 
 if TYPE_CHECKING:
     _OwnerT = TypeVar("_OwnerT")
@@ -159,7 +159,6 @@ else:
     Transaction = _Transaction
     Write = _RuntimeWrite
 
-from snekql.mariadb.recursive import Cte, NamedOperand, recursive_cte
 
 __all__ = [
     "PENDING_GENERATION",

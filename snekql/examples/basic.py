@@ -1,12 +1,10 @@
 """Minimal runnable snekql application."""
 
-from __future__ import annotations
+lazy import asyncio
+lazy from typing import ClassVar
 
-import asyncio
-from typing import ClassVar
-
-from snekql import sqlite
-from snekql.sqlite import Database, Pending, Row, insert, select
+lazy from snekql import sqlite
+lazy from snekql.sqlite import Database, Pending, Row, insert, select
 
 
 class User[S = Pending](sqlite.Model[S]):

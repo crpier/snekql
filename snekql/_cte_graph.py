@@ -1,13 +1,13 @@
 """Reachable CTE definitions, dependency ordering and shared WITH name scope."""
 
-from typing import Any
+lazy from typing import Any
 
-from snekql._aliases import _AliasRelation
-from snekql._cte import _CompoundRelation, _CteDefinition, _CteRelation
-from snekql._query_state import SelectState, require_subquery_state
-from snekql.errors import QueryCompilationError
-from snekql.expressions import _PredicateNode, _require_predicate_node, _Scalar
-from snekql.model import Table, require_model_table_name
+lazy from snekql._aliases import _AliasRelation
+lazy from snekql._cte import _CompoundRelation, _CteDefinition, _CteRelation
+lazy from snekql._query_state import SelectState, require_subquery_state
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.expressions import _PredicateNode, _require_predicate_node, _Scalar
+lazy from snekql.model import Table, require_model_table_name
 
 
 class _DefinitionGraph:

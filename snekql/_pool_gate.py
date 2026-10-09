@@ -14,21 +14,19 @@ order alone:
   next FIFO waiter always finds a free connection to check out.
 """
 
-from __future__ import annotations
+lazy import asyncio
+lazy import logging
+lazy from collections import deque
+lazy from collections.abc import Callable
+lazy from typing import Literal
 
-import asyncio
-import logging
-from collections import deque
-from collections.abc import Callable
-from typing import Literal
+lazy import anyio
+lazy from anyio.lowlevel import checkpoint
 
-import anyio
-from anyio.lowlevel import checkpoint
-
-from snekql._observation import Telemetry
-from snekql.errors import PoolTimeoutError
-from snekql.telemetry import PoolStats
-from snekql.validation import NonNegativeFloat, PositiveInt
+lazy from snekql._observation import Telemetry
+lazy from snekql.errors import PoolTimeoutError
+lazy from snekql.telemetry import PoolStats
+lazy from snekql.validation import NonNegativeFloat, PositiveInt
 
 logger = logging.getLogger(__name__)
 

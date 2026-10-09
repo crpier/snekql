@@ -54,7 +54,7 @@ is an environment failure, not a passing timezone compatibility result.
 
 ## CI targets in this part
 
-- `Validate` runs the full suite on Ubuntu 24.04 with CPython 3.14 and the MariaDB
+- `Validate` runs the full suite on Ubuntu 24.04 with CPython 3.15 and the MariaDB
   12 rolling repository. It also runs typing, lint, generated-interface, lock,
   build, and isolated artifact checks.
 - `MariaDB <release>` installs native server/client tools for 10.11, 11.4,
@@ -71,8 +71,10 @@ is an environment failure, not a passing timezone compatibility result.
 
 ## Supported environment targets
 
-The compatibility gates use GIL-enabled CPython 3.14.2 and standard asyncio.
-Python 3.14 is the package minimum. Later Python releases, free-threaded builds,
+The configured compatibility gates target GIL-enabled CPython 3.15.0 and standard
+asyncio. The migration review records local results; the new cross-platform CI
+matrix still needs to run.
+Python 3.15 is the package minimum. Later Python releases, free-threaded builds,
 uvloop, and Trio are not certified by this matrix. Both database drivers depend
 on asyncio; using AnyIO internally does not make Trio a supported driver loop.
 
@@ -80,9 +82,9 @@ on asyncio; using AnyIO internally does not make Trio a supported driver loop.
 | --- | --- | --- | --- |
 | MariaDB | Ubuntu 24.04, x86-64 | 10.11, 11.4, 11.8, 12.3 LTS; 12.2 compatibility; 12 rolling | asyncio default |
 | SQLite | Ubuntu 24.04, x86-64 | 3.45.1 from the system library, setup-python CPython | asyncio default |
-| SQLite | Ubuntu 24.04 | 3.50.4 bundled with uv-managed CPython | asyncio default |
-| SQLite | macOS 15 | 3.50.4 bundled with uv-managed CPython | asyncio default |
-| SQLite | Windows Server 2025 | 3.50.4 bundled with uv-managed CPython | asyncio default, Proactor |
+| SQLite | Ubuntu 24.04 | 3.53.1 bundled with uv-managed CPython | asyncio default |
+| SQLite | macOS 15 | 3.53.1 bundled with uv-managed CPython | asyncio default |
+| SQLite | Windows Server 2025 | 3.53.1 bundled with uv-managed CPython | asyncio default, Proactor |
 
 Each SQLite job asserts the **loaded** SQLite version and reports OS,
 architecture, Python, and loop class. Changing a library search path cannot prove
@@ -105,7 +107,7 @@ package's runtime dependency policy.
 
 ## Reproducing deterministic checks
 
-Use Python 3.14+, the locked development dependencies, and native MariaDB tools
+Use Python 3.15+, the locked development dependencies, and native MariaDB tools
 from the release series under investigation:
 
 ```sh
@@ -144,8 +146,8 @@ PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests/testing/mariadb/test_proce
 
 From a source checkout, provision the interpreter shown in the matrix. Use
 `uv sync --locked --all-extras --python /path/to/python` for a system-library
-interpreter, or `uv python install 3.14.2` followed by
-`UV_PYTHON_PREFERENCE=only-managed uv sync --locked --all-extras --python 3.14.2`
+interpreter, or `uv python install 3.15.0` followed by
+`UV_PYTHON_PREFERENCE=only-managed uv sync --locked --all-extras --python 3.15.0`
 for the bundled target. Verify `sqlite3.sqlite_version` before running:
 
 ```sh

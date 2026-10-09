@@ -1,9 +1,9 @@
 """Immutable structured output from Query Compilation."""
 
-from dataclasses import dataclass
+lazy from dataclasses import dataclass
 
-from snekql._telemetry import fingerprint_sql, format_bound_params
-from snekql.model import BackendFamily
+lazy from snekql._telemetry import fingerprint_sql, format_bound_params
+lazy from snekql.model import BackendFamily
 
 
 @dataclass(frozen=True, slots=True, repr=False)

@@ -1,18 +1,23 @@
 """Backend Runtime Adapter selection for Database initialization."""
 
-from __future__ import annotations
+lazy from pathlib import Path
+lazy from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    Protocol,
+    TypeVar,
+    runtime_checkable,
+)
 
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
-
-from snekql.errors import DatabaseRuntimeError
-from snekql.model import require_model_backend
-from snekql.validation import NonNegativeFloat, PositiveInt
+lazy from snekql.errors import DatabaseRuntimeError
+lazy from snekql.model import require_model_backend
+lazy from snekql.validation import NonNegativeFloat, PositiveInt
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    lazy from collections.abc import Sequence
 
-    from snekql.model import BackendFamily, Table
+    lazy from snekql.model import BackendFamily, Table
 
 
 FamilyT_co = TypeVar("FamilyT_co", bound="BackendFamily", covariant=True)

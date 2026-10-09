@@ -1,24 +1,22 @@
 """Decode SQL output values without constructing intermediate result models."""
 
-from __future__ import annotations
+lazy from typing import Any, cast
 
-from typing import Any, cast
-
-from snekql._dialect_expr import (
+lazy from snekql._dialect_expr import (
     DialectSelectable,
     NullExtendedSelectable,
     NumericAggregatePolicy,
     PolicySelectable,
 )
-from snekql._query_state import (
+lazy from snekql._query_state import (
     Selectable,
     require_column_model,
     require_field,
     require_single_column_subquery,
 )
-from snekql.errors import QueryCompilationError
-from snekql.expressions import _Aggregate, _Scalar
-from snekql.storage import Attr, StorageBackend
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.expressions import _Aggregate, _Scalar
+lazy from snekql.storage import Attr, StorageBackend
 
 
 def _normalize_sum(column: Attr[Any, Any, Any, Any, Any], value: object) -> object:

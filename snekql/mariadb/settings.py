@@ -18,16 +18,14 @@ non-MariaDB servers such as MySQL) rather than letting feature gaps surface as
 obscure runtime errors later.
 """
 
-from __future__ import annotations
+lazy from typing import Any, cast
 
-from typing import Any, cast
-
-from snekql._settings import (
+lazy from snekql._settings import (
     ConnectionSetting,
     SettingsProbe,
     apply_connection_settings,
 )
-from snekql.errors import DatabaseRuntimeError
+lazy from snekql.errors import DatabaseRuntimeError
 
 # Admission floor for the shared SQL/type contract, not certification of every
 # intervening release or patch. Raising this floor is a breaking change.

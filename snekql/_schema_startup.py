@@ -6,33 +6,31 @@ expected shape, reporting Schema Drift under the active Schema Policy. It never
 creates anything -- migrations are the sole schema-creation authority (ADR 0007).
 """
 
-from __future__ import annotations
+lazy import logging
+lazy from typing import TYPE_CHECKING, Any, Protocol
 
-import logging
-from typing import TYPE_CHECKING, Any, Protocol
-
-from snekql._schema_plan import (
+lazy from snekql._schema_plan import (
     build_schema_plan,
 )
-from snekql._schema_plan import (
+lazy from snekql._schema_plan import (
     validate_schema_policy as validate_planned_schema_policy,
 )
-from snekql._schema_shape import compare_table_shapes
-from snekql._schema_verification import (
+lazy from snekql._schema_shape import compare_table_shapes
+lazy from snekql._schema_verification import (
     SchemaDriftIssue,
     SchemaVerificationFact,
     SchemaVerificationResult,
 )
-from snekql.errors import SchemaVerificationError
+lazy from snekql.errors import SchemaVerificationError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from contextlib import AbstractAsyncContextManager
+    lazy from collections.abc import Sequence
+    lazy from contextlib import AbstractAsyncContextManager
 
-    from snekql._schema_plan import PlannedModel
-    from snekql._schema_shape import TableShape
-    from snekql.model import Table
-    from snekql.storage import SchemaPolicy
+    lazy from snekql._schema_plan import PlannedModel
+    lazy from snekql._schema_shape import TableShape
+    lazy from snekql.model import Table
+    lazy from snekql.storage import SchemaPolicy
 
 logger = logging.getLogger(__name__)
 

@@ -6,11 +6,9 @@ SQLite's write verbs, ``Model`` base, and column constructors. There is no flat
 ``snekql.*`` surface; pick a backend namespace and import everything from it.
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING, Literal, TypeVar
 
-from typing import TYPE_CHECKING, Literal, TypeVar
-
-from snekql._common import (
+lazy from snekql._common import (
     PENDING_GENERATION,
     Assignment,
     Canonical,
@@ -85,27 +83,27 @@ from snekql._common import (
     ZonedDatetime,
     ZonedDatetimeError,
 )
-from snekql._common import (
+lazy from snekql._common import (
     Write as _RuntimeWrite,
 )
-from snekql.expressions import Aggregate as _AggregateType
-from snekql.expressions import ColumnRef as _ColumnRef
-from snekql.expressions import Predicate as _Predicate
-from snekql.expressions import Scalar as _ScalarType
-from snekql.model import ReadType, is_complete
-from snekql.query import _Write
-from snekql.runtime import Database as _Database
-from snekql.runtime import Transaction as _Transaction
-
-# Importing the dialect module registers the SQLite query Dialect so a built
-# SQLite query can render its own SQL for inspection (see _query_dialect).
-from snekql.sqlite import _dialect_sql as _dialect_sql
-from snekql.sqlite._raw import RawStatement, raw
-from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
-from snekql.sqlite.config import Config
-from snekql.sqlite.functions import case, literal
-from snekql.sqlite.model import Col, FKCol, GenCol, Model, complete
-from snekql.sqlite.verbs import (
+lazy from snekql._query_dialect import register_query_dialect
+lazy from snekql._runtime_selection import register_default_backend_factory
+lazy from snekql.expressions import Aggregate as _AggregateType
+lazy from snekql.expressions import ColumnRef as _ColumnRef
+lazy from snekql.expressions import Predicate as _Predicate
+lazy from snekql.expressions import Scalar as _ScalarType
+lazy from snekql.model import ReadType, is_complete
+lazy from snekql.query import _Write
+lazy from snekql.runtime import Database as _Database
+lazy from snekql.runtime import Transaction as _Transaction
+lazy from snekql.sqlite._dialect_sql import SQLITE_QUERY_DIALECT
+lazy from snekql.sqlite._raw import RawStatement, raw
+lazy from snekql.sqlite._schema_ddl import scaffold_sqlite_ddl as scaffold
+lazy from snekql.sqlite.config import Config, _build_default_config
+lazy from snekql.sqlite.functions import case, literal
+lazy from snekql.sqlite.model import Col, FKCol, GenCol, Model, complete
+lazy from snekql.sqlite.recursive import Cte, NamedOperand, recursive_cte
+lazy from snekql.sqlite.verbs import (
     ClosedOptional,
     ClosedRead,
     OptionalRead,
@@ -122,7 +120,7 @@ from snekql.sqlite.verbs import (
     select,
     update,
 )
-from snekql.storage import (
+lazy from snekql.storage import (
     Blob,
     CurrentTimestamp,
     ForeignKey,
@@ -130,6 +128,10 @@ from snekql.storage import (
     Real,
     Text,
 )
+
+# Resolve the dialect explicitly: lazy imports do not run registration side effects.
+register_query_dialect("sqlite", SQLITE_QUERY_DIALECT)
+register_default_backend_factory(_build_default_config)
 
 if TYPE_CHECKING:
     _OwnerT = TypeVar("_OwnerT")
@@ -151,7 +153,6 @@ else:
     Transaction = _Transaction
     Write = _RuntimeWrite
 
-from snekql.sqlite.recursive import Cte, NamedOperand, recursive_cte
 
 __all__ = [
     "PENDING_GENERATION",

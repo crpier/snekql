@@ -1,14 +1,12 @@
 """Shared SQLite dialect SQL fragments and query Dialect registration."""
 
-from __future__ import annotations
+lazy from typing import Any
 
-from typing import Any
-
-from snekql._query_dialect import ExplainMode, QueryDialect, register_query_dialect
-from snekql._query_state import SelectState, WriteState
-from snekql.errors import QueryCompilationError
-from snekql.sqlite.identifiers import quote_identifier
-from snekql.storage import Attr
+lazy from snekql._query_dialect import ExplainMode, QueryDialect
+lazy from snekql._query_state import SelectState, WriteState
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.sqlite.identifiers import quote_identifier
+lazy from snekql.storage import Attr
 
 # Server-side ISO-8601 UTC timestamp, shared by the CurrentTimestamp DDL default,
 # the migration-history applied_at default, and update-time server expressions so
@@ -77,5 +75,3 @@ SQLITE_QUERY_DIALECT = QueryDialect(
     supports_delete_returning=True,
     supports_update_returning=True,
 )
-
-register_query_dialect("sqlite", SQLITE_QUERY_DIALECT)

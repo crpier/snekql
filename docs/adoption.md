@@ -18,7 +18,7 @@ from the index.
 ```sh
 tmpdir=$(mktemp -d)
 cd "$tmpdir"
-uv init --bare --python 3.14
+uv init --bare --python 3.15
 uv add 'snekql[aiosqlite]'
 cat > smoke.py <<'PY'
 import asyncio
@@ -151,7 +151,7 @@ Before announcing a release:
 ## Adoption expectations
 
 Security reports use the private process in [`SECURITY.md`](../SECURITY.md).
-CI reproduces the full validation and artifact smoke path on Python 3.14 with a
+CI reproduces the full validation and artifact smoke path on Python 3.15 with a
 live rolling MariaDB 12 server. Native release jobs also run the full suite on
 10.11, 11.4, 11.8 and 12.3 LTS, plus the retained 12.2 compatibility target.
 They include owned-server restart and process-cleanup tests, rather than only

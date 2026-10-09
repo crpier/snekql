@@ -601,12 +601,12 @@ async def database_async_with_closes_on_block_exit() -> None:
 async def database_async_with_closes_when_block_raises() -> None:
     """The runtime is closed even when the `async with` body raises."""
 
-    sentinel = RuntimeError("boom")
+    failure = RuntimeError("boom")
     database = await initialized_database(database=":memory:", models=[_AsyncUser])
 
     with assert_raises(RuntimeError):
         async with database:
-            raise sentinel
+            raise failure
 
     with assert_raises(DatabaseClosedError):
         _ = database.transaction()

@@ -1,23 +1,21 @@
 """Foreground CLI for the Temporary MariaDB Test Server."""
 
-from __future__ import annotations
+lazy import argparse
+lazy import os
+lazy import sys
+lazy from dataclasses import dataclass
+lazy from pathlib import Path
 
-import argparse
-import os
-import sys
-from dataclasses import dataclass
-from pathlib import Path
+lazy import anyio
 
-import anyio
-
-from snekql.testing.mariadb import (
+lazy from snekql.testing.mariadb import (
     MariaDBAuth,
     MariaDBTransport,
     TemporaryMariaDBServer,
     TemporaryMariaDBServerError,
     temporary_mariadb_server,
 )
-from snekql.testing.mariadb._commands import MariaDBClientCommand
+lazy from snekql.testing.mariadb._commands import MariaDBClientCommand
 
 
 @dataclass(frozen=True, kw_only=True)

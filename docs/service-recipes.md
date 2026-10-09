@@ -9,8 +9,8 @@ source checkout, not the installed package; copy them into your application and
 update their `examples.*` imports. Start with [transactions](transactions.md) if
 the basic lifetime rules are new to you.
 
-The HTTP recipe is validated with FastAPI 0.141.1, Starlette 1.6.0 and httpx 0.28.1
-on Python 3.14. Tests exercise the real ASGI app and lifespan without a network
+The HTTP recipe is validated with FastAPI 0.141.1, Starlette 1.7.0 and httpx 0.28.1
+on Python 3.15. Tests exercise the real ASGI app and lifespan without a network
 listener. They do not certify every framework version or ASGI server deployment.
 FastAPI and httpx are development dependencies here, never snekql runtime
 requirements. An application using the recipe must install its own framework and

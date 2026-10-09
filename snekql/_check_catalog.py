@@ -1,10 +1,10 @@
 """Conservative catalog recognition for the supported CHECK expression grammar."""
 
-from dataclasses import dataclass
+lazy from dataclasses import dataclass
 
-from snekql._checks import CheckExpression
-from snekql.defaults import LiteralDefault
-from snekql.errors import SchemaError
+lazy from snekql._checks import CheckExpression
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import SchemaError
 
 
 class _UnsupportedCheckError(SchemaError):

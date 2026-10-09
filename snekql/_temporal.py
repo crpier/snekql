@@ -1,15 +1,15 @@
 """Concrete temporal meanings, independent of physical column storage."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta, timezone
-from json import JSONDecodeError, dumps, loads
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from datetime import UTC, datetime, timedelta, timezone
+lazy from json import JSONDecodeError, dumps, loads
+lazy from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import PydanticSerializationUnexpectedValue, core_schema
+lazy from pydantic import GetCoreSchemaHandler
+lazy from pydantic_core import PydanticSerializationUnexpectedValue, core_schema
 
-from snekql.errors import DatetimeError, ZonedDatetimeError
+lazy from snekql.errors import DatetimeError, ZonedDatetimeError
 
 _ZONED_DATETIME_WIRE_VERSION = 1
 

@@ -1,11 +1,9 @@
 """SQLite Migration History v2 and per-migration transaction execution."""
 
-from __future__ import annotations
-
-import logging
-from dataclasses import dataclass
-from functools import partial
-from sqlite3 import (
+lazy import logging
+lazy from dataclasses import dataclass
+lazy from functools import partial
+lazy from sqlite3 import (
     SQLITE_ALTER_TABLE,
     SQLITE_ATTACH,
     SQLITE_CREATE_INDEX,
@@ -37,13 +35,13 @@ from sqlite3 import (
     SQLITE_UPDATE,
     complete_statement,
 )
-from typing import Literal
+lazy from typing import Literal
 
-import anyio
-from aiosqlite import Connection
-from anyio.lowlevel import checkpoint
+lazy import anyio
+lazy from aiosqlite import Connection
+lazy from anyio.lowlevel import checkpoint
 
-from snekql._migrations import (
+lazy from snekql._migrations import (
     Migration,
     MigrationPlan,
     MigrationRecord,
@@ -52,15 +50,15 @@ from snekql._migrations import (
     validate_history_prefix,
     validate_legacy_history,
 )
-from snekql.errors import (
+lazy from snekql.errors import (
     MigrationDeclarationError,
     MigrationError,
     MigrationHistoryError,
     MigrationLockTimeoutError,
 )
-from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
-from snekql.sqlite.identifiers import quote_identifier
-from snekql.sqlite.retry import (
+lazy from snekql.sqlite._dialect_sql import CURRENT_TIMESTAMP_SQL
+lazy from snekql.sqlite.identifiers import quote_identifier
+lazy from snekql.sqlite.retry import (
     DEFAULT_BUSY_RETRY_POLICY,
     BusyRetryPolicy,
     is_sqlite_busy_error,

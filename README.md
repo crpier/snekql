@@ -22,7 +22,7 @@ There is no session tracking changes to your objects, and reading an attribute
 never loads a relationship. Want to change a row? Write an `update`.
 [How this differs from an ORM →](docs/why-not-orm.md)
 
-**Python 3.14+ · SQLite and MariaDB · Type checking with ty**
+**Python 3.15+ · SQLite and MariaDB · Type checking with ty**
 
 ## Try it
 

@@ -1,25 +1,27 @@
 """Temporary MariaDB Test Server support for integration tests."""
 
-from __future__ import annotations
+lazy import asyncio
+lazy import secrets
+lazy import shutil
+lazy import socket
+lazy from collections.abc import AsyncGenerator, Mapping
+lazy from contextlib import (
+    AbstractAsyncContextManager,
+    AsyncExitStack,
+    asynccontextmanager,
+)
+lazy from dataclasses import dataclass, field
+lazy from functools import partial
+lazy from pathlib import Path
+lazy from tempfile import mkdtemp
 
-import asyncio
-import secrets
-import shutil
-import socket
-from collections.abc import AsyncGenerator, Mapping
-from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from dataclasses import dataclass, field
-from functools import partial
-from pathlib import Path
-from tempfile import mkdtemp
+lazy import anyio
+lazy from anyio.to_thread import run_sync
 
-import anyio
-from anyio.to_thread import run_sync
-
-from snekql import mariadb
-from snekql.testing.mariadb._commands import MariaDBClientCommand
-from snekql.testing.mariadb._process import owned_process
-from snekql.testing.mariadb._types import (
+lazy from snekql import mariadb
+lazy from snekql.testing.mariadb._commands import MariaDBClientCommand
+lazy from snekql.testing.mariadb._process import owned_process
+lazy from snekql.testing.mariadb._types import (
     MariaDBAuth,
     MariaDBCommandResult,
     MariaDBTransport,

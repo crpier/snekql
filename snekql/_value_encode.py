@@ -1,16 +1,16 @@
 """Comparison encoders shared by SQL operands and derived output references."""
 
-from collections.abc import Callable
+lazy from collections.abc import Callable
 
-from snekql._dialect_expr import (
+lazy from snekql._dialect_expr import (
     ComparisonEncoder,
     NumericAggregatePolicy,
     SqlCompilable,
 )
-from snekql._query_dialect import QueryDialect
-from snekql._query_state import Selectable, require_field, require_selectable
-from snekql.errors import QueryCompilationError
-from snekql.expressions import _Aggregate, _Scalar
+lazy from snekql._query_dialect import QueryDialect
+lazy from snekql._query_state import Selectable, require_field, require_selectable
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.expressions import _Aggregate, _Scalar
 
 
 def _predicate_value_encoder(

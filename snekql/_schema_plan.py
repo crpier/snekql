@@ -1,17 +1,15 @@
 """Shared model-derived schema planning for backend schema startup."""
 
-from __future__ import annotations
+lazy from collections.abc import Sequence
+lazy from dataclasses import dataclass
+lazy from typing import Any, cast, get_args, get_origin
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Any, cast, get_args, get_origin
-
-from snekql._checks import BoundCheck
-from snekql.constraints import ForeignKeyConstraint
-from snekql.errors import ModelDeclarationError, SchemaError
-from snekql.indexes import NormalizedIndex
-from snekql.model import Table, require_model_columns, require_model_table_name
-from snekql.storage import Attr, SchemaPolicy, _resolve_model_hint
+lazy from snekql._checks import BoundCheck
+lazy from snekql.constraints import ForeignKeyConstraint
+lazy from snekql.errors import ModelDeclarationError, SchemaError
+lazy from snekql.indexes import NormalizedIndex
+lazy from snekql.model import Table, require_model_columns, require_model_table_name
+lazy from snekql.storage import Attr, SchemaPolicy, _resolve_model_hint
 
 
 @dataclass(frozen=True)

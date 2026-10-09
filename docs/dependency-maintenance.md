@@ -203,3 +203,5 @@ gh api --include "repos/$repo/vulnerability-alerts"  # 204 means alerts enabled
 ## Review history
 
 - [2026-09-26](dependency-reviews/2026-09-26.md)
+
+- [2026-10-09: Python 3.15 and lazy imports](dependency-reviews/2026-10-09-python315.md)

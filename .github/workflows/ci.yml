@@ -23,10 +23,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.19"
+          version: "0.13.0"
           enable-cache: true
-      - name: Install Python 3.14
-        run: uv python install 3.14
+      - name: Install Python 3.15
+        run: uv python install 3.15
       - name: Install MariaDB 12
         run: |
           curl -fsSL https://r.mariadb.com/downloads/mariadb_repo_setup \
@@ -49,19 +49,14 @@ jobs:
           PYTHON
       - name: Test
         run: uv run snektest tests
+      - name: Forced lazy imports
+        run: uv run python -X lazy_imports=all scripts/run_lazy_tests.py tests
       - name: Type check
         run: uv run ty check
       - name: Consumer type-checker assessments
         run: |
           mkdir -p typing-compatibility-reports
           uv run python scripts/check_typing_compatibility.py > typing-compatibility-reports/ty.json
-          for checker in pyright mypy; do
-            set +e
-            uv run python scripts/check_typing_compatibility.py --checker "$checker" > "typing-compatibility-reports/${checker}.json"
-            status=$?
-            set -e
-            test "$status" -eq 1
-          done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -96,10 +91,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.19"
+          version: "0.13.0"
           enable-cache: true
-      - name: Install Python 3.14
-        run: uv python install 3.14
+      - name: Install Python 3.15
+        run: uv python install 3.15
       - name: Sync locked environment
         run: uv sync --locked --all-extras
       - name: Install target MariaDB release
@@ -141,13 +136,13 @@ jobs:
             sqlite: 3.45.1
           - os: ubuntu-24.04
             python-source: managed
-            sqlite: 3.50.4
+            sqlite: 3.53.1
           - os: macos-15
             python-source: managed
-            sqlite: 3.50.4
+            sqlite: 3.53.1
           - os: windows-2025
             python-source: managed
-            sqlite: 3.50.4
+            sqlite: 3.53.1
     defaults:
       run:
         shell: bash
@@ -155,13 +150,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          version: "0.12.19"
+          version: "0.13.0"
           enable-cache: true
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: matrix.python-source == 'system-library'
         id: system-python
         with:
-          python-version: "3.14.2"
+          python-version: "3.15.0"
       - name: Sync system-library Python
         if: matrix.python-source == 'system-library'
         env:
@@ -172,8 +167,8 @@ jobs:
         env:
           UV_PYTHON_PREFERENCE: only-managed
         run: |
-          uv python install 3.14.2
-          uv sync --locked --all-extras --python 3.14.2
+          uv python install 3.15.0
+          uv sync --locked --all-extras --python 3.15.0
       - name: Verify actual environment
         env:
           EXPECTED_SQLITE: ${{ matrix.sqlite }}

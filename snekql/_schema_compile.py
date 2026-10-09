@@ -8,22 +8,20 @@ diverges between backends is delegated back to the dialect's callbacks; the
 foreign-key, index, table, and shape skeletons live here once.
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING
 
-from typing import TYPE_CHECKING
-
-from snekql._check_catalog import CheckShape
-from snekql._checks import render_check
-from snekql._schema_shape import (
+lazy from snekql._check_catalog import CheckShape
+lazy from snekql._checks import render_check
+lazy from snekql._schema_shape import (
     ForeignKeyShape,
     TableShape,
 )
-from snekql.model import require_model_backend
+lazy from snekql.model import require_model_backend
 
 if TYPE_CHECKING:
-    from snekql._schema_dialect import SchemaDialect
-    from snekql._schema_plan import PlannedForeignKey, PlannedModel
-    from snekql.indexes import NormalizedIndex
+    lazy from snekql._schema_dialect import SchemaDialect
+    lazy from snekql._schema_plan import PlannedForeignKey, PlannedModel
+    lazy from snekql.indexes import NormalizedIndex
 
 
 def compile_foreign_key_constraint(

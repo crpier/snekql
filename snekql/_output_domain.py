@@ -1,12 +1,12 @@
 """Logical SQL output domains, independent of application result validators."""
 
-from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable
+lazy from dataclasses import dataclass
+lazy from typing import Any, Protocol, runtime_checkable
 
-from snekql._value_expression import ValueExpression
-from snekql.errors import QueryConstructionError
-from snekql.expressions import _Aggregate
-from snekql.storage import (
+lazy from snekql._value_expression import ValueExpression
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import _Aggregate
+lazy from snekql.storage import (
     Attr,
     _extract_logical_type,
     _resolve_model_hint,

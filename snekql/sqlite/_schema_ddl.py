@@ -6,29 +6,27 @@ The model->DDL compilation and the public ``scaffold`` live here -- separate fro
 a runtime is actually initialized (ADR 0004).
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING, Any
 
-from typing import TYPE_CHECKING, Any
-
-from snekql._scaffold import (
+lazy from snekql._scaffold import (
     require_scaffold_models,
     scaffold_ddl,
     scaffold_statements,
 )
-from snekql._schema_dialect import SchemaDialect
-from snekql._schema_shape import ColumnShape, IndexShape
-from snekql._server_defaults import LiteralDefaultShape, render_literal_default
-from snekql.defaults import LiteralDefault
-from snekql.sqlite._dialect_sql import current_timestamp_sql
-from snekql.sqlite.identifiers import quote_identifier
-from snekql.storage import CurrentTimestamp
+lazy from snekql._schema_dialect import SchemaDialect
+lazy from snekql._schema_shape import ColumnShape, IndexShape
+lazy from snekql._server_defaults import LiteralDefaultShape, render_literal_default
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.sqlite._dialect_sql import current_timestamp_sql
+lazy from snekql.sqlite.identifiers import quote_identifier
+lazy from snekql.storage import CurrentTimestamp
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    lazy from collections.abc import Sequence
 
-    from snekql._schema_plan import PlannedColumn
-    from snekql.indexes import NormalizedIndex
-from snekql.sqlite.model import Model
+    lazy from snekql._schema_plan import PlannedColumn
+    lazy from snekql.indexes import NormalizedIndex
+lazy from snekql.sqlite.model import Model
 
 
 def sqlite_type_affinity(declared_type: str) -> str:

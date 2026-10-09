@@ -13,15 +13,13 @@ specific table, column, index, or foreign key so a migration author can act on
 it.
 """
 
-from __future__ import annotations
+lazy from collections import Counter, defaultdict
+lazy from dataclasses import dataclass, field
 
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
-
-from snekql._check_catalog import CheckShape, normalize_check
-from snekql._checks import CheckExpression
-from snekql._schema_verification import SchemaVerificationFact
-from snekql._server_defaults import LiteralDefaultShape, compare_literal_default
+lazy from snekql._check_catalog import CheckShape, normalize_check
+lazy from snekql._checks import CheckExpression
+lazy from snekql._schema_verification import SchemaVerificationFact
+lazy from snekql._server_defaults import LiteralDefaultShape, compare_literal_default
 
 _COMMON_LIMITS = (
     (

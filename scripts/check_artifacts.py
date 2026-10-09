@@ -94,7 +94,24 @@ query: sqlite.ClosedRead[User[sqlite.Row]] = sqlite.ready(sqlite.select(User))
 """
         )
         _run(str(python), "-I", str(runtime_smoke), cwd=directory)
+        _run(
+            str(python),
+            "-I",
+            "-X",
+            "lazy_imports=all",
+            str(runtime_smoke),
+            cwd=directory,
+        )
         _run(str(python), "-m", "snekql", "--help", cwd=directory)
+        _run(
+            str(python),
+            "-X",
+            "lazy_imports=all",
+            "-m",
+            "snekql",
+            "--help",
+            cwd=directory,
+        )
         _run(str(ty), "check", str(typing_smoke), cwd=directory)
         if mariadb:
             _run(

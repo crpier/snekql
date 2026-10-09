@@ -1,6 +1,6 @@
 """Adapter evidence that a constraint failure completed without interrupted IO."""
 
-from snekql.errors import DatabaseRuntimeError
+lazy from snekql.errors import DatabaseRuntimeError
 
 
 class StatementConstraintError(DatabaseRuntimeError):

@@ -1,11 +1,9 @@
 """SQLite adapter for the backend-neutral query runtime."""
 
-from __future__ import annotations
-
-import contextlib
-import logging
-from collections.abc import Sequence
-from sqlite3 import (
+lazy import contextlib
+lazy import logging
+lazy from collections.abc import Sequence
+lazy from sqlite3 import (
     SQLITE_BUSY,
     SQLITE_BUSY_SNAPSHOT,
     SQLITE_CONSTRAINT_CHECK,
@@ -17,45 +15,45 @@ from sqlite3 import (
     SQLITE_LOCKED,
     IntegrityError,
 )
-from typing import TYPE_CHECKING, Any, Literal, cast
+lazy from typing import TYPE_CHECKING, Any, Literal, cast
 
-import anyio
-from aiosqlite import Connection, Cursor, Error
-from anyio.lowlevel import checkpoint
+lazy import anyio
+lazy from aiosqlite import Connection, Cursor, Error
+lazy from anyio.lowlevel import checkpoint
 
-from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
-from snekql._observation import Telemetry
-from snekql._query_codec import DialectQueryCodec
-from snekql._raw import NativeParameters
-from snekql._schema_verification import SchemaVerificationResult
-from snekql._statement_failure import StatementConstraintError
-from snekql._telemetry import ParameterVisibility
-from snekql.errors import DatabaseFailure, DatabaseRuntimeError, FailureCategory
-from snekql.model import Table
-from snekql.sqlite.config import Config
-from snekql.sqlite.migrations import (
+lazy from snekql._migrations import MigrationPlan, MigrationResult, MigrationStatus
+lazy from snekql._observation import Telemetry
+lazy from snekql._query_codec import DialectQueryCodec
+lazy from snekql._raw import NativeParameters
+lazy from snekql._schema_verification import SchemaVerificationResult
+lazy from snekql._statement_failure import StatementConstraintError
+lazy from snekql._telemetry import ParameterVisibility
+lazy from snekql.errors import DatabaseFailure, DatabaseRuntimeError, FailureCategory
+lazy from snekql.model import Table
+lazy from snekql.sqlite.config import Config
+lazy from snekql.sqlite.migrations import (
     SQLiteMigrationConnectionState,
     apply_sqlite_migrations,
     validate_sqlite_migrations,
     verify_sqlite_migrations,
 )
-from snekql.sqlite.pool import (
+lazy from snekql.sqlite.pool import (
     SQLiteConnectionPool,
     normalize_sqlite_database,
     open_sqlite_connection,
 )
-from snekql.sqlite.retry import (
+lazy from snekql.sqlite.retry import (
     DEFAULT_BUSY_RETRY_POLICY,
     BusyRetryPolicy,
     retry_on_sqlite_busy,
 )
-from snekql.sqlite.schema import verify_sqlite_schema
-from snekql.storage import SchemaPolicy
-from snekql.telemetry import PoolStats
-from snekql.validation import NonNegativeFloat
+lazy from snekql.sqlite.schema import verify_sqlite_schema
+lazy from snekql.storage import SchemaPolicy
+lazy from snekql.telemetry import PoolStats
+lazy from snekql.validation import NonNegativeFloat
 
 if TYPE_CHECKING:
-    from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
+    lazy from snekql.runtime import CommitOutcome, IsolationLevel, TransactionMode
 
 logger = logging.getLogger(__name__)
 
