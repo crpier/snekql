@@ -9,16 +9,14 @@ expressible as flat facts; everything around them -- foreign-key constraints,
 index SQL, the CREATE TABLE skeleton, and the table-shape skeleton -- is shared.
 """
 
-from __future__ import annotations
-
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from snekql._schema_plan import PlannedColumn
-    from snekql._schema_shape import ColumnShape, IndexShape
-    from snekql.indexes import NormalizedIndex
+    lazy from snekql._schema_plan import PlannedColumn
+    lazy from snekql._schema_shape import ColumnShape, IndexShape
+    lazy from snekql.indexes import NormalizedIndex
 
 
 @dataclass(frozen=True)

@@ -12,9 +12,11 @@ from snektest import fixture, load_fixture
 
 from snekql._query_codec import DialectQueryCodec
 from snekql._runtime_selection import RuntimeConfig
+from snekql.mariadb._dialect_sql import MARIADB_QUERY_DIALECT
 from snekql.mariadb.schema import scaffold_mariadb_statements
 from snekql.model import BackendFamily
 from snekql.runtime import Database
+from snekql.sqlite._dialect_sql import SQLITE_QUERY_DIALECT
 from snekql.sqlite._schema_ddl import scaffold_sqlite_statements
 from snekql.storage import SchemaPolicy
 from snekql.testing.mariadb import (
@@ -25,10 +27,9 @@ from snekql.testing.mariadb import (
 if TYPE_CHECKING:
     from snekql.model import Table
 
-# The backend imports above pull in both Backend Namespaces, so each family's
-# query Dialect is registered before these shared test codecs resolve it.
-SQLITE_CODEC = DialectQueryCodec.for_backend("sqlite")
-MARIADB_CODEC = DialectQueryCodec.for_backend("mariadb")
+# Bind test codecs directly rather than depending on import registration order.
+SQLITE_CODEC = DialectQueryCodec(backend="sqlite", dialect=SQLITE_QUERY_DIALECT)
+MARIADB_CODEC = DialectQueryCodec(backend="mariadb", dialect=MARIADB_QUERY_DIALECT)
 
 
 def scaffold_migrations(

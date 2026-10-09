@@ -6,32 +6,30 @@ that each Backend Namespace populates on import. Query Runtime consumes plans;
 direct compilation and materialization helpers remain for internal callers.
 """
 
-from __future__ import annotations
+lazy from collections.abc import Sequence
+lazy from dataclasses import dataclass
+lazy from typing import Any, Literal, overload
 
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Any, Literal, overload
-
-from snekql._query_compile import (
+lazy from snekql._query_compile import (
     compile_select_sql_for_dialect,
     compile_write_sql_for_dialect,
 )
-from snekql._query_dialect import QueryDialect, query_dialect_for_backend
-from snekql._query_materialize import (
+lazy from snekql._query_dialect import QueryDialect, query_dialect_for_backend
+lazy from snekql._query_materialize import (
     materialize_select_row_for_backend,
     materialize_write_returning_rows_for_backend,
 )
-from snekql._query_plan import (
+lazy from snekql._query_plan import (
     SelectCardinality,
     SelectPlan,
     WritePlan,
     compile_select_plan_for_dialect,
     compile_write_plan_for_dialect,
 )
-from snekql._query_state import DeleteState, InsertState, UpdateState
-from snekql.errors import QueryCompilationError
-from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
-from snekql.storage import StorageBackend
+lazy from snekql._query_state import DeleteState, InsertState, UpdateState
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.query import AnySelectQuery, _ExecutableSelect, _ExecutableWrite
+lazy from snekql.storage import StorageBackend
 
 
 @dataclass(frozen=True)

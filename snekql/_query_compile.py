@@ -6,29 +6,27 @@ Query Builder classes, so the dependency points one way (builder -> state <-
 compilation).
 """
 
-from __future__ import annotations
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import Any, cast
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, cast
-
-from snekql._aliases import _AliasRelation
-from snekql._compiled import CompiledQuery
-from snekql._cte import _CteOutput, _CteRelation
-from snekql._cte_graph import collect_cte_definitions
-from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
-from snekql._named_projection import NamedProjection
-from snekql._output_domain import output_domain
-from snekql._query_dialect import QueryDialect, query_dialect_for_backend
-from snekql._query_scope import (
+lazy from snekql._aliases import _AliasRelation
+lazy from snekql._compiled import CompiledQuery
+lazy from snekql._cte import _CteOutput, _CteRelation
+lazy from snekql._cte_graph import collect_cte_definitions
+lazy from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
+lazy from snekql._named_projection import NamedProjection
+lazy from snekql._output_domain import output_domain
+lazy from snekql._query_dialect import QueryDialect, query_dialect_for_backend
+lazy from snekql._query_scope import (
     ScopeResolver,
     ensure_assignment_targets_model,
     ensure_grouping_covers_projection,
     ensure_having_targets,
     ensure_ordering_targets_models,
 )
-from snekql._query_sources import table_presence_name
-from snekql._query_state import (
+lazy from snekql._query_sources import table_presence_name
+lazy from snekql._query_state import (
     DeleteState,
     InsertState,
     Selectable,
@@ -42,10 +40,10 @@ from snekql._query_state import (
     require_single_column_subquery,
     require_subquery_state,
 )
-from snekql._value_encode import _predicate_value_encoder
-from snekql._value_expression import ValueExpression
-from snekql.errors import QueryCompilationError
-from snekql.expressions import (
+lazy from snekql._value_encode import _predicate_value_encoder
+lazy from snekql._value_expression import ValueExpression
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.expressions import (
     DoNothing,
     DoUpdate,
     InsertedValue,
@@ -54,13 +52,13 @@ from snekql.expressions import (
     _OrderBy,
     _Scalar,
 )
-from snekql.model import (
+lazy from snekql.model import (
     Table,
     require_model_backend,
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import (
+lazy from snekql.storage import (
     PENDING_GENERATION,
     Attr,
     CurrentTimestamp,

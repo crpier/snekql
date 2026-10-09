@@ -11,13 +11,11 @@ and run them through :func:`apply_connection_settings` at the single per-
 connection seam each backend owns.
 """
 
-from __future__ import annotations
+lazy from collections.abc import Callable, Sequence
+lazy from dataclasses import dataclass
+lazy from typing import Protocol
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from typing import Protocol
-
-from snekql.errors import DatabaseRuntimeError
+lazy from snekql.errors import DatabaseRuntimeError
 
 
 class _Unset:

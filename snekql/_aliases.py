@@ -1,14 +1,12 @@
 """Typed query roles, independent of schema declarations and model codecs."""
 
-from __future__ import annotations
+lazy from copy import copy
+lazy from dataclasses import dataclass
+lazy from re import fullmatch
+lazy from typing import Any, ClassVar, Never, cast
 
-from copy import copy
-from dataclasses import dataclass
-from re import fullmatch
-from typing import Any, ClassVar, Never, cast
-
-from snekql.errors import ModelDeclarationError, QueryConstructionError
-from snekql.model import (
+lazy from snekql.errors import ModelDeclarationError, QueryConstructionError
+lazy from snekql.model import (
     BackendFamily,
     ModelMeta,
     Table,
@@ -16,7 +14,7 @@ from snekql.model import (
     require_model_columns,
     require_model_table_name,
 )
-from snekql.storage import Attr
+lazy from snekql.storage import Attr
 
 
 class _AliasOwner[FamilyT, OwnerT, RoleT](Table[Any]):

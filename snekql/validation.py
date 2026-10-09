@@ -1,15 +1,13 @@
 """Boundary validation helpers for constrained public API values."""
 
-from __future__ import annotations
+lazy from collections.abc import Callable
+lazy from functools import wraps
+lazy from typing import Annotated
 
-from collections.abc import Callable
-from functools import wraps
-from typing import Annotated
+lazy from annotated_types import Ge, Gt
+lazy from pydantic import ConfigDict, ValidationError, validate_call
 
-from annotated_types import Ge, Gt
-from pydantic import ConfigDict, ValidationError, validate_call
-
-from snekql.errors import SnekqlError
+lazy from snekql.errors import SnekqlError
 
 # Constrained numeric aliases used after public boundary validation.
 type NonNegativeFloat = Annotated[float, Ge(0)]

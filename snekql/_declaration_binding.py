@@ -1,10 +1,10 @@
 """Synchronous, once-only declaration binding with terminal failure states."""
 
-from collections.abc import Callable
-from threading import RLock
-from typing import Literal, cast
+lazy from collections.abc import Callable
+lazy from threading import RLock
+lazy from typing import Literal, cast
 
-from snekql.errors import ModelDeclarationError
+lazy from snekql.errors import ModelDeclarationError
 
 _BINDING_LOCK = RLock()
 """Serialize first use across dependent bindings without a model registry."""

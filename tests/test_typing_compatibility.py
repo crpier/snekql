@@ -27,7 +27,7 @@ async def provide_probe_checkout() -> AsyncGenerator[Path]:
 
 @test(
     [Param("sqlite", name="sqlite"), Param("mariadb", name="mariadb")],
-    [Param(name, name=name) for name in ("ty", "pyright", "mypy")],
+    [Param(name, name=name) for name in ("ty",)],
     mark="fast",
 )
 async def lifecycle_report_requires_positive_control(
@@ -121,7 +121,7 @@ async def missing_probe_is_infrastructure_failure() -> None:
     assert_true(b"typing assessment unavailable" in completed.stderr)
 
 
-@test([Param(name, name=name) for name in ("ty", "pyright", "mypy")], mark="fast")
+@test([Param(name, name=name) for name in ("ty",)], mark="fast")
 async def readiness_report_retains_checker_limits(checker: str) -> None:
     """Only a clean positive control can establish row-scope rejection."""
     completed = await run_process(
@@ -138,14 +138,12 @@ async def readiness_report_retains_checker_limits(checker: str) -> None:
         check=False,
     )
 
-    assert_eq(
-        completed.returncode, 0 if checker == "ty" else 1, msg=completed.stderr.decode()
-    )
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
     report = loads(completed.stdout)
     case = report["cases"][0]
     assert_eq(case["name"], "readiness")
-    assert_eq(case["conforms"], checker == "ty")
-    assert_eq(bool(case["positive_errors"]), checker != "ty")
+    assert_eq(case["conforms"], True)
+    assert_eq(bool(case["positive_errors"]), False)
 
 
 @test(mark="fast")
@@ -230,9 +228,9 @@ async def raw_probe_rejects_consumption_time_validation_override() -> None:
     assert_true(loads(completed.stdout)["conforms"])
 
 
-@test([Param(name, name=name) for name in ("ty", "pyright", "mypy")], mark="fast")
-async def full_report_preserves_known_checker_limits(checker: str) -> None:
-    """Assess every domain on both backends, retaining incompatible controls."""
+@test([Param(name, name=name) for name in ("ty",)], mark="fast")
+async def full_report_certifies_supported_ty_contracts(checker: str) -> None:
+    """The supported checker accepts every positive and rejects every negative."""
     completed = await run_process(
         [
             sys.executable,
@@ -247,7 +245,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
 
     assert_eq(
         completed.returncode,
-        0 if checker == "ty" else 1,
+        0,
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
@@ -257,128 +255,7 @@ async def full_report_preserves_known_checker_limits(checker: str) -> None:
         for case in report["cases"]
         if not case["conforms"]
     }
-    unsupported = {
-        "ty": (),
-        "pyright": (
-            "row-constructor",
-            "insert-sequence",
-            "insert-empty",
-            "insert-tuple",
-            "source-select",
-            "source-row",
-            "source-pretender",
-            "source-join",
-            "source-left-join",
-            "source-update",
-            "source-delete",
-            "source-alias",
-            "compare-eq",
-            "compare-ne",
-            "compare-gt",
-            "compare-gte",
-            "compare-lt",
-            "compare-lte",
-            "compare-alias",
-            "bulk-destination",
-            "bulk-row-state",
-            "bulk-backend",
-            "bulk-source",
-            "read-scope",
-            "ready-write",
-            "ready-scope",
-            "closed-assignment",
-            "closed-optional",
-            "ready-backend",
-            "pending-input",
-            "read-constructor",
-            "readonly-scalar",
-            "exists-outer-scope",
-            "write-validation",
-            "returning-domain",
-            "exists-family",
-            "nested-exists-family",
-            "nested-scalar-family",
-            "nested-membership-family",
-            "nested-projection-family",
-            "nested-fk-family",
-            "nested-helper-family",
-            "not-exists-family",
-            "scalar-family",
-            "readiness",
-            "select-all",
-            "temporal-domains",
-            "backend-identity",
-            "named-result",
-            "joins",
-        ),
-        "mypy": (
-            "frozen-row",
-            "frozen-pending",
-            "frozen-generated",
-            "row-constructor",
-            "insert-sequence",
-            "insert-empty",
-            "insert-tuple",
-            "source-select",
-            "source-row",
-            "source-pretender",
-            "source-join",
-            "source-left-join",
-            "source-update",
-            "source-delete",
-            "source-alias",
-            "compare-eq",
-            "compare-ne",
-            "compare-gt",
-            "compare-gte",
-            "compare-lt",
-            "compare-lte",
-            "compare-alias",
-            "bulk-destination",
-            "bulk-row-state",
-            "bulk-backend",
-            "bulk-source",
-            "read-scope",
-            "ready-write",
-            "ready-scope",
-            "closed-assignment",
-            "closed-optional",
-            "ready-backend",
-            "pending-input",
-            "read-constructor",
-            "readonly-scalar",
-            "scalar-outer-scope",
-            "exists-outer-scope",
-            "nullable-expression",
-            "write-validation",
-            "returning-domain",
-            "exists-family",
-            "nested-exists-family",
-            "nested-scalar-family",
-            "nested-membership-family",
-            "nested-projection-family",
-            "nested-fk-family",
-            "nested-helper-family",
-            "not-exists-family",
-            "scalar-family",
-            "readiness",
-            "select-all",
-            "temporal-domains",
-            "backend-identity",
-            "positional-width",
-            "named-result",
-            "joins",
-            "fk-defaults",
-        ),
-    }
-    assert_eq(
-        failed,
-        {
-            (backend, name)
-            for backend in ("sqlite", "mariadb")
-            for name in unsupported[checker]
-        },
-    )
+    assert_eq(failed, set())
 
 
 @test(mark="fast")
@@ -428,7 +305,7 @@ async def ty_probe_uses_declared_configuration() -> None:
     assert_true(loads(completed.stdout)["conforms"])
 
 
-@test([Param(name, name=name) for name in ("ty", "pyright")], mark="fast")
+@test([Param(name, name=name) for name in ("ty",)], mark="fast")
 async def defaulted_fk_probe_preserves_target(checker: str) -> None:
     """Nullable defaults retain constructor inference and reject other targets."""
     completed = await run_process(

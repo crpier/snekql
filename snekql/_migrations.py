@@ -1,11 +1,9 @@
 """Immutable Migration declarations, results, and history comparison."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from hashlib import sha256
 
-from dataclasses import dataclass
-from hashlib import sha256
-
-from snekql.errors import (
+lazy from snekql.errors import (
     MigrationDeclarationError,
     MigrationHistoryError,
 )

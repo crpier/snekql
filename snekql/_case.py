@@ -1,26 +1,26 @@
 """Validate searched CASE ownership and native branch contracts."""
 
-from typing import Any, cast
+lazy from typing import Any, cast
 
-from snekql._query_state import (
+lazy from snekql._query_state import (
     require_column_model,
     require_field,
     selectable_owner_model,
 )
-from snekql._value_expression import (
+lazy from snekql._value_expression import (
     CaseRoot,
     ExpressionMethods,
     ValueExpression,
     _encode_native_literal,
 )
-from snekql.errors import QueryConstructionError
-from snekql.expressions import (
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import (
     ColumnComparisonPredicate,
     Predicate,
     _require_predicate_node,
     _Scalar,
 )
-from snekql.model import require_model_backend
+lazy from snekql.model import require_model_backend
 
 
 def _condition_inputs(condition: Predicate[Any]) -> tuple[object, ...]:

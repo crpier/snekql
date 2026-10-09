@@ -1,11 +1,9 @@
 """Shared Temporary MariaDB Test Server types."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass
+lazy from typing import Literal
 
-from dataclasses import dataclass
-from typing import Literal
-
-from snekql.errors import SnekqlError
+lazy from snekql.errors import SnekqlError
 
 type MariaDBAuth = Literal["insecure", "password"]
 type MariaDBTransport = Literal["unix_socket", "tcp"]

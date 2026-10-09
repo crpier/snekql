@@ -8,23 +8,21 @@ ADR 0001 amendment): the output is plain text the author owns and pastes into a
 Migration Declaration, append-only and immutable once committed.
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING, Any
 
-from typing import TYPE_CHECKING, Any
-
-from snekql._schema_compile import (
+lazy from snekql._schema_compile import (
     compile_create_index_sql,
     compile_create_table_sql,
 )
-from snekql._schema_plan import build_schema_plan
-from snekql.errors import ModelDeclarationError
-from snekql.model import BackendFamily, require_model_backend
+lazy from snekql._schema_plan import build_schema_plan
+lazy from snekql.errors import ModelDeclarationError
+lazy from snekql.model import BackendFamily, require_model_backend
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    lazy from collections.abc import Sequence
 
-    from snekql._schema_dialect import SchemaDialect
-    from snekql.model import Table
+    lazy from snekql._schema_dialect import SchemaDialect
+    lazy from snekql.model import Table
 
 
 def require_scaffold_models(

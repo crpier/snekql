@@ -1,19 +1,17 @@
 """Typed SQL value composition without changing column codecs."""
 
-from __future__ import annotations
+lazy from dataclasses import dataclass, replace
+lazy from math import isfinite
+lazy from typing import Any, Literal, cast, overload
 
-from dataclasses import dataclass, replace
-from math import isfinite
-from typing import Any, Literal, cast, overload
-
-from snekql._dialect_expr import CompileCtx
-from snekql._output_label import _NullExtendedLabel
-from snekql.errors import (
+lazy from snekql._dialect_expr import CompileCtx
+lazy from snekql._output_label import _NullExtendedLabel
+lazy from snekql.errors import (
     ModelValidationError,
     QueryCompilationError,
     QueryConstructionError,
 )
-from snekql.expressions import Comparable, Predicate
+lazy from snekql.expressions import Comparable, Predicate
 
 
 def _encode_native_literal(

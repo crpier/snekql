@@ -1,11 +1,9 @@
 """Query Builder expression objects shared by fields and queries."""
 
-from __future__ import annotations
-
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import (
+lazy from abc import ABC, abstractmethod
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import (
     Any,
     ClassVar,
     Literal,
@@ -16,9 +14,9 @@ from typing import (
     runtime_checkable,
 )
 
-from snekql._output_label import _OutputLabel
-from snekql._query_readiness import _ExecutableQuery
-from snekql.errors import QueryCompilationError, QueryConstructionError
+lazy from snekql._output_label import _OutputLabel
+lazy from snekql._query_readiness import _ExecutableQuery
+lazy from snekql.errors import QueryCompilationError, QueryConstructionError
 
 type AggregateFunction = Literal["AVG", "COUNT", "MAX", "MIN", "SUM"]
 

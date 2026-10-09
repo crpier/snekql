@@ -1,18 +1,16 @@
 """MariaDB storage declarations for table models."""
 
-from __future__ import annotations
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from types import EllipsisType
+lazy from typing import TYPE_CHECKING, Any, Literal, Never, cast, overload
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from types import EllipsisType
-from typing import TYPE_CHECKING, Any, Literal, Never, cast, overload
-
-from snekql._output_label import _NullExtendedLabel
-from snekql._query_state import require_column_model
-from snekql.defaults import LiteralDefault
-from snekql.errors import ModelDeclarationError, ModelValidationError
-from snekql.expressions import Comparable
-from snekql.storage import (
+lazy from snekql._output_label import _NullExtendedLabel
+lazy from snekql._query_state import require_column_model
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import ModelDeclarationError, ModelValidationError
+lazy from snekql.expressions import Comparable
+lazy from snekql.storage import (
     Attr,
     CurrentTimestamp,
     FKAttr,
@@ -22,7 +20,7 @@ from snekql.storage import (
 )
 
 if TYPE_CHECKING:
-    from snekql._dialect_expr import CompileCtx
+    lazy from snekql._dialect_expr import CompileCtx
 
 
 _DECIMAL_MAX_PRECISION = 65

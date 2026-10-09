@@ -5,16 +5,14 @@ query state plus a backend tag; like compilation, it depends only on the shared
 query state, never on the Query Builder classes.
 """
 
-from __future__ import annotations
+lazy from collections.abc import Sequence
 
-from collections.abc import Sequence
-
-from snekql._aliases import _AliasRelation
-from snekql._cte import _CteRelation
-from snekql._model_materialization import decode_model_row
-from snekql._named_projection import NamedProjection
-from snekql._query_sources import query_fields, table_presence_name
-from snekql._query_state import (
+lazy from snekql._aliases import _AliasRelation
+lazy from snekql._cte import _CteRelation
+lazy from snekql._model_materialization import decode_model_row
+lazy from snekql._named_projection import NamedProjection
+lazy from snekql._query_sources import query_fields, table_presence_name
+lazy from snekql._query_state import (
     InsertState,
     Selectable,
     SelectState,
@@ -22,10 +20,10 @@ from snekql._query_state import (
     require_column_name,
     require_field,
 )
-from snekql._value_decode import _decode_projection_field, _decode_selectable
-from snekql.errors import QueryCompilationError
-from snekql.model import require_model_columns
-from snekql.storage import StorageBackend
+lazy from snekql._value_decode import _decode_projection_field, _decode_selectable
+lazy from snekql.errors import QueryCompilationError
+lazy from snekql.model import require_model_columns
+lazy from snekql.storage import StorageBackend
 
 
 def _materialize_join_row(

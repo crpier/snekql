@@ -1,15 +1,15 @@
 """Named result contracts independent from table declarations."""
 
-from dataclasses import dataclass
-from types import UnionType
-from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
+lazy from dataclasses import dataclass
+lazy from types import UnionType
+lazy from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
 
-from pydantic import BaseModel
+lazy from pydantic import BaseModel
 
-from snekql._output_domain import output_domain
-from snekql._output_label import _OutputLabel
-from snekql.errors import ModelValidationError, QueryConstructionError
-from snekql.storage import (
+lazy from snekql._output_domain import output_domain
+lazy from snekql._output_label import _OutputLabel
+lazy from snekql.errors import ModelValidationError, QueryConstructionError
+lazy from snekql.storage import (
     _annotation_admits_none,
     _unwrap_annotated,
 )

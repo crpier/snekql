@@ -1,13 +1,11 @@
 """Shared Table Model row encoding and fetched-row materialization."""
 
-from __future__ import annotations
+lazy from collections.abc import Mapping
+lazy from typing import cast
 
-from collections.abc import Mapping
-from typing import cast
-
-from snekql.errors import ModelDeclarationError, QueryConstructionError
-from snekql.model import require_model_columns
-from snekql.storage import PENDING_GENERATION, StorageBackend
+lazy from snekql.errors import ModelDeclarationError, QueryConstructionError
+lazy from snekql.model import require_model_columns
+lazy from snekql.storage import PENDING_GENERATION, StorageBackend
 
 
 def _require_insert_model(row: object) -> type[object]:

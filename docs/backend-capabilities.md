@@ -5,7 +5,7 @@ names. Both support the same basic workflow, but result counts, locks, storage,
 and RETURNING differ.
 
 This table describes what **snekql supports**, not everything each database can
-do. Both require Python 3.14+. See [database settings](engine-settings.md) for
+do. Both require Python 3.15+. See [database settings](engine-settings.md) for
 connection requirements and [tested environments](failure-matrix.md) for evidence.
 
 | Capability | SQLite | MariaDB |

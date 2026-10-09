@@ -11,12 +11,10 @@ This keeps SQLite-only and MariaDB-only symbols from colliding in one namespace
 and stops auto-imports from landing on the wrong backend (see ADR 0004).
 """
 
-from __future__ import annotations
+lazy import logging
 
-import logging
-
-from snekql import mariadb as mariadb
-from snekql import sqlite as sqlite
+lazy from snekql import mariadb as mariadb
+lazy from snekql import sqlite as sqlite
 
 # Library logging hygiene: attach a do-nothing handler to the package's
 # top-level logger so snekql emits nothing unless the application configures

@@ -1,12 +1,12 @@
 """Validate and lower bounded literal server defaults."""
 
-from dataclasses import dataclass
-from typing import Any, Literal
+lazy from dataclasses import dataclass
+lazy from typing import Any, Literal
 
-from snekql._check_catalog import parse_default_literal
-from snekql.defaults import LiteralDefault
-from snekql.errors import ModelDeclarationError, SnekqlError
-from snekql.storage import (
+lazy from snekql._check_catalog import parse_default_literal
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import ModelDeclarationError, SnekqlError
+lazy from snekql.storage import (
     Attr,
     StorageBackend,
     _annotation_core_types,

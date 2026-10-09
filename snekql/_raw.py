@@ -1,15 +1,15 @@
 """Immutable backend-owned SQL declarations, without connection state."""
 
-import sys
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
-from typing import Literal, cast
-from warnings import catch_warnings
+lazy import sys
+lazy from collections.abc import Mapping, Sequence
+lazy from dataclasses import dataclass, field
+lazy from typing import Literal, cast
+lazy from warnings import catch_warnings
 
-from pydantic import TypeAdapter, ValidationError
+lazy from pydantic import TypeAdapter, ValidationError
 
-from snekql._telemetry import QueryDiagnostics
-from snekql.errors import (
+lazy from snekql._telemetry import QueryDiagnostics
+lazy from snekql.errors import (
     MultipleResultsError,
     NoResultError,
     QueryConstructionError,
@@ -17,7 +17,7 @@ from snekql.errors import (
     RawResultValidationError,
     _RawValidationDetail,
 )
-from snekql.model import BackendFamily
+lazy from snekql.model import BackendFamily
 
 type RowMode = Literal["mapping", "tuple"]
 type RawOperation = Literal[

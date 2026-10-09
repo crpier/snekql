@@ -88,8 +88,9 @@ import sys
 from snekql import mariadb, sqlite
 from snekql._runtime_selection import resolve_runtime_config
 
+config = sqlite.Config(database=':memory:')
 _ = resolve_runtime_config(backend=None, database=Path('app.db'), pool_size=5, acquire_timeout=30.0)
-_ = resolve_runtime_config(backend=sqlite.Config(database=':memory:'), database=None, pool_size=5, acquire_timeout=30.0)
+_ = resolve_runtime_config(backend=config, database=None, pool_size=5, acquire_timeout=30.0)
 _ = resolve_runtime_config(backend=mariadb.Config(database='app', user='snekql'), database=None, pool_size=5, acquire_timeout=30.0)
 for name in ('snekql.sqlite.runtime', 'snekql.mariadb.runtime', 'aiosqlite', 'aiomysql'):
     if name in sys.modules:

@@ -1,11 +1,11 @@
 """Table-level foreign-key declarations independent of column value construction."""
 
-from dataclasses import dataclass
-from typing import Any
+lazy from dataclasses import dataclass
+lazy from typing import Any
 
-from snekql.errors import ModelDeclarationError
-from snekql.expressions import Predicate
-from snekql.storage import Attr, ReferentialAction, _DeferredFKAttr
+lazy from snekql.errors import ModelDeclarationError
+lazy from snekql.expressions import Predicate
+lazy from snekql.storage import Attr, ReferentialAction, _DeferredFKAttr
 
 
 @dataclass(frozen=True, init=False)

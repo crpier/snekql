@@ -1,13 +1,13 @@
 """Public plan inspection results and private EXPLAIN compilation."""
 
-from dataclasses import dataclass
+lazy from dataclasses import dataclass
 
-from snekql._query_compile import compile_query_sql
-from snekql._query_dialect import query_dialect_for_backend
-from snekql._query_state import DeleteState, InsertState, SelectState, UpdateState
-from snekql._raw import RawPlan
-from snekql.errors import DatabaseRuntimeError, QueryCompilationError
-from snekql.model import BackendFamily
+lazy from snekql._query_compile import compile_query_sql
+lazy from snekql._query_dialect import query_dialect_for_backend
+lazy from snekql._query_state import DeleteState, InsertState, SelectState, UpdateState
+lazy from snekql._raw import RawPlan
+lazy from snekql.errors import DatabaseRuntimeError, QueryCompilationError
+lazy from snekql.model import BackendFamily
 
 
 @dataclass(frozen=True, slots=True, repr=False)

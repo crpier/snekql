@@ -37,7 +37,7 @@ The witness names this same model in Row state. It supplies whole-model SELECT,
 RETURNING, and `complete` results. Scalar, tuple, and named projection results are
 unchanged. Runtime checks validate the witness; ty does not reject every malformed
 witness. A class-body annotation can refer to its own class, but an eager base
-expression cannot. Python 3.14+ defers annotations by default, so
+expression cannot. Python 3.15+ defers annotations by default, so
 `from __future__ import annotations` is not required. That import selects
 stringized annotations instead; existing callers may keep it. Neither mode
 defers class bases or other ordinary expressions.

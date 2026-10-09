@@ -1,13 +1,15 @@
 """Backend-neutral database lifecycle and transaction runtime."""
 
-from __future__ import annotations
-
-import logging
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
-from contextlib import AbstractAsyncContextManager, AbstractContextManager, nullcontext
-from pathlib import Path
-from types import TracebackType
-from typing import (
+lazy import logging
+lazy from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+lazy from contextlib import (
+    AbstractAsyncContextManager,
+    AbstractContextManager,
+    nullcontext,
+)
+lazy from pathlib import Path
+lazy from types import TracebackType
+lazy from typing import (
     Any,
     Literal,
     Never,
@@ -20,40 +22,40 @@ from typing import (
     runtime_checkable,
 )
 
-import anyio
-import anyio.lowlevel
+lazy import anyio
+lazy import anyio.lowlevel
 
-from snekql._explain import ExplainResult, compile_explain_plan
-from snekql._migrations import (
+lazy from snekql._explain import ExplainResult, compile_explain_plan
+lazy from snekql._migrations import (
     MigrationPlan,
     MigrationResult,
     MigrationStatus,
     prepare_migrations,
 )
-from snekql._observation import Telemetry, validate_observer
-from snekql._query_plan import (
+lazy from snekql._observation import Telemetry, validate_observer
+lazy from snekql._query_plan import (
     SelectCardinality,
     SelectPlan,
     WritePlan,
     select_query_backend,
     validate_select_consumption,
 )
-from snekql._query_readiness import _ExecutableQuery, _ExecutableUpdate
-from snekql._raw import NativeParameters, RawPlan, RawStatement, lower_raw
-from snekql._runtime_selection import (
+lazy from snekql._query_readiness import _ExecutableQuery, _ExecutableUpdate
+lazy from snekql._raw import NativeParameters, RawPlan, RawStatement, lower_raw
+lazy from snekql._runtime_selection import (
     RuntimeConfig,
     resolve_runtime_config,
     validate_model_backends,
 )
-from snekql._schema_verification import SchemaVerificationResult
-from snekql._statement_failure import StatementConstraintError
-from snekql._telemetry import (
+lazy from snekql._schema_verification import SchemaVerificationResult
+lazy from snekql._statement_failure import StatementConstraintError
+lazy from snekql._telemetry import (
     ParameterVisibility,
     QueryDiagnostics,
     fingerprint_sql,
     format_bound_params,
 )
-from snekql.errors import (
+lazy from snekql.errors import (
     DatabaseFailure,
     DatabaseOperationTimeoutError,
     DatabaseRuntimeError,
@@ -65,12 +67,12 @@ from snekql.errors import (
     TransactionReuseError,
     TransactionStateError,
 )
-from snekql.model import (
+lazy from snekql.model import (
     BackendFamily,
     Table,
     require_model_table_name,
 )
-from snekql.query import (
+lazy from snekql.query import (
     AnySelectQuery,
     InsertManyQuery,
     InsertQuery,
@@ -81,9 +83,9 @@ from snekql.query import (
     _SchemaModelClass,
     _UpdateQuery,
 )
-from snekql.storage import SchemaPolicy
-from snekql.telemetry import Observer, PoolStats
-from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
+lazy from snekql.storage import SchemaPolicy
+lazy from snekql.telemetry import Observer, PoolStats
+lazy from snekql.validation import NonNegativeFloat, PositiveInt, validate_boundary
 
 logger = logging.getLogger(__name__)
 

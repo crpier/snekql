@@ -6,11 +6,9 @@ Dialect SQL, and Materialization (:mod:`snekql._query_materialize`) decodes
 result rows; this module owns only the typed construction surface.
 """
 
-from __future__ import annotations
-
-from collections.abc import Mapping, Sequence
-from dataclasses import replace
-from typing import (
+lazy from collections.abc import Mapping, Sequence
+lazy from dataclasses import replace
+lazy from typing import (
     Any,
     Never,
     Protocol,
@@ -21,12 +19,12 @@ from typing import (
     overload,
 )
 
-from pydantic import BaseModel
+lazy from pydantic import BaseModel
 
-from snekql._aliases import TableAlias
-from snekql._compiled import CompiledQuery
-from snekql._compound import _CompoundRole, _NamedSetOperand, build_compound
-from snekql._cte import (
+lazy from snekql._aliases import TableAlias
+lazy from snekql._compiled import CompiledQuery
+lazy from snekql._compound import _CompoundRole, _NamedSetOperand, build_compound
+lazy from snekql._cte import (
     _Cte,
     _CteOutput,
     _CteOwner,
@@ -35,10 +33,11 @@ from snekql._cte import (
     _SensitiveLabelContract,
     build_cte,
 )
-from snekql._dialect_expr import DialectSelectable, NullExtendedSelectable
-from snekql._named_projection import NamedProjection
-from snekql._output_label import _OutputLabel
-from snekql._query_readiness import (
+lazy from snekql._dialect_expr import DialectSelectable, NullExtendedSelectable
+lazy from snekql._named_projection import NamedProjection
+lazy from snekql._output_label import _OutputLabel
+lazy from snekql._query_compile import compile_query_sql, inspect_query_sql
+lazy from snekql._query_readiness import (
     _AssignedUpdate,
     _EmptyUpdate,
     _ExecutableQuery,
@@ -46,7 +45,7 @@ from snekql._query_readiness import (
     _IncompleteQuery,
     _ScopedUpdate,
 )
-from snekql._query_scope import (
+lazy from snekql._query_scope import (
     ScopeResolver,
     ensure_assignment_targets_model,
     ensure_grouping_targets_models,
@@ -54,12 +53,12 @@ from snekql._query_scope import (
     ensure_ordering_targets_models,
     ensure_predicate_targets_models,
 )
-from snekql._query_sources import (
+lazy from snekql._query_sources import (
     query_fields,
     require_grouping_column,
     require_query_source,
 )
-from snekql._query_state import (
+lazy from snekql._query_state import (
     DeleteState,
     InsertState,
     JoinSpec,
@@ -77,12 +76,12 @@ from snekql._query_state import (
     require_subquery_state,
     selectable_owner_model,
 )
-from snekql._telemetry import ParameterVisibility, format_bound_params
-from snekql.errors import (
+lazy from snekql._telemetry import ParameterVisibility, format_bound_params
+lazy from snekql.errors import (
     ModelDeclarationError,
     QueryConstructionError,
 )
-from snekql.expressions import (
+lazy from snekql.expressions import (
     Aggregate,
     Assignment,
     ColumnComparisonPredicate,
@@ -102,7 +101,7 @@ from snekql.expressions import (
     _require_predicate_node,
     _Scalar,
 )
-from snekql.model import (
+lazy from snekql.model import (
     BackendFamily,
     Model,
     ModelMeta,
@@ -112,8 +111,8 @@ from snekql.model import (
     require_model_backend,
     require_model_columns,
 )
-from snekql.storage import Attr
-from snekql.validation import NonNegativeInt, validate_boundary
+lazy from snekql.storage import Attr
+lazy from snekql.validation import NonNegativeInt, validate_boundary
 
 FamilyT_co = TypeVar("FamilyT_co", covariant=True)
 ModelT = TypeVar("ModelT", bound=Table[Any])
@@ -231,8 +230,6 @@ class _SqlInspectionMixin:
         bulk inserts. Execute the original query, not the compiled result.
         """
 
-        from snekql._query_compile import compile_query_sql  # noqa: PLC0415
-
         return compile_query_sql(self)
 
     @validate_boundary(error_type=QueryConstructionError)
@@ -246,8 +243,6 @@ class _SqlInspectionMixin:
         """
         if parameter_visibility == "redacted":
             return str(self)
-        from snekql._query_compile import inspect_query_sql  # noqa: PLC0415
-
         inspected = inspect_query_sql(self)
         return (
             "-- parameterized (executes):\n"

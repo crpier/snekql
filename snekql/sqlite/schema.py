@@ -1,29 +1,35 @@
 """SQLite schema backend: DDL compilation and sqlite_master inspection."""
 
-from __future__ import annotations
+lazy import contextlib
+lazy from collections.abc import AsyncGenerator, Sequence
+lazy from dataclasses import dataclass
+lazy from re import fullmatch
+lazy from typing import Any, Literal
 
-import contextlib
-from collections.abc import AsyncGenerator, Sequence
-from dataclasses import dataclass
-from re import fullmatch
-from typing import Any, Literal
+lazy import anyio
+lazy from aiosqlite import Connection, Error
 
-import anyio
-from aiosqlite import Connection, Error
-
-from snekql._check_catalog import sqlite_checks, sqlite_index_predicate
-from snekql._schema_compile import (
+lazy from snekql._check_catalog import sqlite_checks, sqlite_index_predicate
+lazy from snekql._schema_compile import (
     expected_table_shape,
 )
-from snekql._schema_plan import PlannedModel
-from snekql._schema_shape import ColumnShape, ForeignKeyShape, IndexShape, TableShape
-from snekql._schema_startup import verify_schema
-from snekql._schema_verification import SchemaVerificationFact, SchemaVerificationResult
-from snekql.errors import SchemaError
-from snekql.model import Table
-from snekql.sqlite._schema_ddl import SCHEMA_DIALECT, sqlite_type_affinity
-from snekql.sqlite.identifiers import quote_identifier
-from snekql.storage import SchemaPolicy
+lazy from snekql._schema_plan import PlannedModel
+lazy from snekql._schema_shape import (
+    ColumnShape,
+    ForeignKeyShape,
+    IndexShape,
+    TableShape,
+)
+lazy from snekql._schema_startup import verify_schema
+lazy from snekql._schema_verification import (
+    SchemaVerificationFact,
+    SchemaVerificationResult,
+)
+lazy from snekql.errors import SchemaError
+lazy from snekql.model import Table
+lazy from snekql.sqlite._schema_ddl import SCHEMA_DIALECT, sqlite_type_affinity
+lazy from snekql.sqlite.identifiers import quote_identifier
+lazy from snekql.storage import SchemaPolicy
 
 
 async def _execute_schema_sql(

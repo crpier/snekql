@@ -1,13 +1,11 @@
 """Table model declaration and materialization behavior."""
 
-from __future__ import annotations
-
-import annotationlib
-import inspect
-import warnings
-from collections.abc import Callable
-from types import EllipsisType, GenericAlias
-from typing import (
+lazy import annotationlib
+lazy import inspect
+lazy import warnings
+lazy from collections.abc import Callable
+lazy from types import EllipsisType, GenericAlias
+lazy from typing import (
     Any,
     ClassVar,
     Literal,
@@ -21,12 +19,12 @@ from typing import (
     get_origin,
 )
 
-from snekql._checks import BoundCheck, CheckExpression, _CheckBinder, bind_checks
-from snekql._declaration_binding import _OnceBinding
-from snekql._server_defaults import bind_literal_default
-from snekql.constraints import ForeignKeyConstraint
-from snekql.defaults import LiteralDefault
-from snekql.errors import (
+lazy from snekql._checks import BoundCheck, CheckExpression, _CheckBinder, bind_checks
+lazy from snekql._declaration_binding import _OnceBinding
+lazy from snekql._server_defaults import bind_literal_default
+lazy from snekql.constraints import ForeignKeyConstraint
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import (
     FrozenModelError,
     LexicalDecimalWarning,
     LexicalDurationWarning,
@@ -34,9 +32,9 @@ from snekql.errors import (
     ModelValidationError,
     SnekqlError,
 )
-from snekql.expressions import Aggregate, _Aggregate
-from snekql.indexes import NormalizedIndex, require_index_declaration
-from snekql.storage import (
+lazy from snekql.expressions import Aggregate, _Aggregate
+lazy from snekql.indexes import NormalizedIndex, require_index_declaration
+lazy from snekql.storage import (
     PENDING_GENERATION,
     Attr,
     Blob,

@@ -7,14 +7,12 @@ SQLite's native journal/synchronization behavior and have no crash durability.
 Foreign-key enforcement, busy waiting, and UTF-8 verification apply to both.
 """
 
-from __future__ import annotations
+lazy from typing import TYPE_CHECKING, Literal
 
-from typing import TYPE_CHECKING, Literal
-
-from snekql._settings import ConnectionSetting, apply_connection_settings
+lazy from snekql._settings import ConnectionSetting, apply_connection_settings
 
 if TYPE_CHECKING:
-    from aiosqlite import Connection
+    lazy from aiosqlite import Connection
 
 # Milliseconds a busy connection waits for a lock before failing. Chosen so a
 # pool of writers serializes instead of surfacing transient lock contention.

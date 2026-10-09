@@ -1,12 +1,15 @@
 """Command line documentation and read-only migration inspection."""
 
-from __future__ import annotations
+lazy import sys
+lazy from argparse import ArgumentParser
 
-import sys
-from argparse import ArgumentParser
-
-from snekql.agent_docs import get_agent_docs, get_example_source, get_examples_listing
-from snekql.errors import SnekqlError
+lazy from snekql._migration_cli import run_migrations_cli
+lazy from snekql.agent_docs import (
+    get_agent_docs,
+    get_example_source,
+    get_examples_listing,
+)
+lazy from snekql.errors import SnekqlError
 
 ARGS_ERROR = 2
 EXAMPLE_COMMAND_PARTS = 2
@@ -55,9 +58,6 @@ def main(argv: list[str] | None = None) -> int:
 
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ["migrations"]:
-        # Documentation commands do not need runtime imports.
-        from snekql._migration_cli import run_migrations_cli  # noqa: PLC0415
-
         return run_migrations_cli(arguments[1:])
     namespace = _build_parser().parse_args(arguments)
     example_name = namespace.example

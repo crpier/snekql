@@ -4,6 +4,9 @@
 
 ### Breaking
 
+- Require Python 3.15+ and Pydantic 2.14+ (2026-10-09). Python 3.14 is no
+  longer supported.
+
 - Reorganize date/datetime contracts around concrete `UtcDatetime`, new
   `LocalDatetime`, existing `ZonedDatetime`, and Python `date`. Pass explicit
   wrappers to models and predicates; use `.datetime` for standard-library access.
@@ -21,6 +24,12 @@
   `fetch_all()` still returns all result rows. Addresses #432.
 
 ### Changed
+
+- Use explicit Python 3.15 lazy imports throughout the library. Resolve backend
+  registration explicitly, preserve missing-extra diagnostics, and use native
+  deferred annotations for runtime validation. Validate forced-lazy execution
+  with test-only Hypothesis/OpenTelemetry SDK compatibility filters; see
+  [the migration review](docs/dependency-reviews/2026-10-09-python315.md).
 
 - Replace Dependabot update PRs with agent-reviewed dependency maintenance.
   Refresh runtime, telemetry, testing, and benchmark dependencies; upgrade uv

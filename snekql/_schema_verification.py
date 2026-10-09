@@ -1,9 +1,7 @@
 """Immutable public outcomes from Table Model schema verification."""
 
-from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Literal
+lazy from dataclasses import dataclass
+lazy from typing import Literal
 
 
 @dataclass(frozen=True, slots=True)

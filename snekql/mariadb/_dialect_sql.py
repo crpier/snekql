@@ -1,15 +1,13 @@
 """Shared MariaDB dialect SQL fragments and query Dialect registration."""
 
-from __future__ import annotations
+lazy from decimal import Decimal
+lazy from typing import Any
 
-from decimal import Decimal
-from typing import Any
-
-from snekql._query_dialect import ExplainMode, QueryDialect, register_query_dialect
-from snekql._query_state import InsertState, LockWait, SelectState, WriteState
-from snekql.errors import ModelValidationError, QueryCompilationError
-from snekql.mariadb.identifiers import quote_identifier
-from snekql.storage import Attr
+lazy from snekql._query_dialect import ExplainMode, QueryDialect
+lazy from snekql._query_state import InsertState, LockWait, SelectState, WriteState
+lazy from snekql.errors import ModelValidationError, QueryCompilationError
+lazy from snekql.mariadb.identifiers import quote_identifier
+lazy from snekql.storage import Attr
 
 
 # Server-side timestamp with millisecond precision, shared by the CurrentTimestamp
@@ -114,5 +112,3 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     placeholder="%s",
     quote_identifier=quote_identifier,
 )
-
-register_query_dialect("mariadb", MARIADB_QUERY_DIALECT)

@@ -50,7 +50,7 @@ Compatibility does not freeze database-server behavior, collation definitions,
 query planner choices or undocumented driver behavior. A dependency upgrade must
 still pass the supported runtime and typing contracts before release. Raising a
 supported Python or database minimum within 1.x is a breaking change, not a
-routine dependency refresh. Python 3.14+ and SQLite/MariaDB remain the scope;
+routine dependency refresh. Python 3.15+ and SQLite/MariaDB remain the scope;
 MySQL, PostgreSQL and ORM behavior are not implied by 1.0.
 
 ## Version and deprecation rules

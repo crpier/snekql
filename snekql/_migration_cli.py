@@ -1,19 +1,19 @@
 """Read-only migration commands using trusted application-owned database contexts."""
 
-import sys
-from argparse import ArgumentParser
-from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
-from importlib import import_module
-from inspect import iscoroutine
-from json import dumps
-from typing import cast
+lazy import sys
+lazy from argparse import ArgumentParser
+lazy from collections.abc import Callable
+lazy from contextlib import AbstractAsyncContextManager
+lazy from importlib import import_module
+lazy from inspect import iscoroutine
+lazy from json import dumps
+lazy from typing import cast
 
-from anyio import run, to_thread
+lazy from anyio import run, to_thread
 
-from snekql._migrations import MigrationStatus, prepare_migrations
-from snekql.errors import MigrationDeclarationError
-from snekql.runtime import Database
+lazy from snekql._migrations import MigrationStatus, prepare_migrations
+lazy from snekql.errors import MigrationDeclarationError
+lazy from snekql.runtime import Database
 
 
 def _load_reference(reference: str) -> object:

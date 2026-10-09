@@ -70,3 +70,5 @@ Design records explain decisions; they are **not current usage instructions**:
 - [Earlier schema compatibility audit](schema-compatibility-audit.md)
 
 [Back to the project README](../README.md)
+
+- [Python 3.15 and lazy imports](lazy-imports.md)

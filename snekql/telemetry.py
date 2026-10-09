@@ -1,8 +1,8 @@
 """Immutable, parameter-free observations of database runtime activity."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Literal
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from typing import Literal
 
 type _EventKind = Literal[
     "pool_wait", "pool_checkout", "driver", "materialization", "transaction", "stream"

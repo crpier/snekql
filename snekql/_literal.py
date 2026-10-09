@@ -1,16 +1,16 @@
 """Backend-owned native constants without query-source ownership."""
 
-from dataclasses import dataclass
-from typing import ClassVar, Never
+lazy from dataclasses import dataclass
+lazy from typing import ClassVar, Never
 
-from snekql._dialect_expr import CompileCtx
-from snekql._output_domain import OutputDomain
-from snekql._output_label import _OutputLabel
-from snekql._query_dialect import query_dialect_for_backend
-from snekql._value_expression import _encode_native_literal
-from snekql.errors import ModelValidationError, QueryConstructionError
-from snekql.model import BackendFamily
-from snekql.storage import StorageBackend
+lazy from snekql._dialect_expr import CompileCtx
+lazy from snekql._output_domain import OutputDomain
+lazy from snekql._output_label import _OutputLabel
+lazy from snekql._query_dialect import query_dialect_for_backend
+lazy from snekql._value_expression import _encode_native_literal
+lazy from snekql.errors import ModelValidationError, QueryConstructionError
+lazy from snekql.model import BackendFamily
+lazy from snekql.storage import StorageBackend
 
 
 @dataclass(frozen=True, slots=True, repr=False)

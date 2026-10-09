@@ -1,11 +1,9 @@
 """MariaDB migration, verification, insert, and read example."""
 
-from __future__ import annotations
+lazy from typing import ClassVar
 
-from typing import ClassVar
-
-from snekql import mariadb
-from snekql.mariadb import Database, Pending, Row, insert, select
+lazy from snekql import mariadb
+lazy from snekql.mariadb import Database, Pending, Row, insert, select
 
 
 class User[S = Pending](mariadb.Model[S]):

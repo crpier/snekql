@@ -1,26 +1,26 @@
 """Ordered SQL output slots retaining source wire and validation policies."""
 
-from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable
+lazy from dataclasses import dataclass
+lazy from typing import Any, Protocol, runtime_checkable
 
-from snekql._dialect_expr import SqlCompilable
-from snekql._literal import _IntegerLiteral
-from snekql._output_domain import OutputDomain, output_domain
-from snekql._output_label import _OutputLabel
-from snekql._query_dialect import query_dialect_for_backend
-from snekql._query_state import (
+lazy from snekql._dialect_expr import SqlCompilable
+lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._output_domain import OutputDomain, output_domain
+lazy from snekql._output_label import _OutputLabel
+lazy from snekql._query_dialect import query_dialect_for_backend
+lazy from snekql._query_state import (
     Selectable,
     SelectState,
     require_single_column_subquery,
     selectable_owner_model,
 )
-from snekql._value_decode import _decode_projection_field
-from snekql._value_encode import _predicate_value_encoder
-from snekql._value_expression import ValueExpression
-from snekql.errors import QueryConstructionError
-from snekql.expressions import _Aggregate, _Scalar
-from snekql.model import BackendFamily, require_model_backend
-from snekql.storage import Attr
+lazy from snekql._value_decode import _decode_projection_field
+lazy from snekql._value_encode import _predicate_value_encoder
+lazy from snekql._value_expression import ValueExpression
+lazy from snekql.errors import QueryConstructionError
+lazy from snekql.expressions import _Aggregate, _Scalar
+lazy from snekql.model import BackendFamily, require_model_backend
+lazy from snekql.storage import Attr
 
 
 @dataclass(frozen=True, slots=True)

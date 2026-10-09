@@ -1,44 +1,45 @@
 """MariaDB schema verification and scaffold for snekql table models."""
 
-from __future__ import annotations
+lazy from collections.abc import AsyncGenerator, Sequence
+lazy from contextlib import asynccontextmanager
+lazy from dataclasses import replace
+lazy from re import fullmatch, split, sub
+lazy from typing import TYPE_CHECKING, Any, cast
 
-from collections.abc import AsyncGenerator, Sequence
-from contextlib import asynccontextmanager
-from dataclasses import replace
-from re import fullmatch, split, sub
-from typing import TYPE_CHECKING, Any, cast
-
-from snekql._check_catalog import CheckShape, parse_check
-from snekql._scaffold import (
+lazy from snekql._check_catalog import CheckShape, parse_check
+lazy from snekql._scaffold import (
     require_scaffold_models,
     scaffold_ddl,
     scaffold_statements,
 )
-from snekql._schema_compile import (
+lazy from snekql._schema_compile import (
     expected_table_shape,
 )
-from snekql._schema_dialect import SchemaDialect
-from snekql._schema_plan import PlannedColumn, PlannedModel
-from snekql._schema_shape import (
+lazy from snekql._schema_dialect import SchemaDialect
+lazy from snekql._schema_plan import PlannedColumn, PlannedModel
+lazy from snekql._schema_shape import (
     ColumnShape,
     ForeignKeyShape,
     IndexShape,
     TableShape,
     group_foreign_keys,
 )
-from snekql._schema_startup import verify_schema
-from snekql._schema_verification import SchemaVerificationFact, SchemaVerificationResult
-from snekql._server_defaults import LiteralDefaultShape, render_literal_default
-from snekql.defaults import LiteralDefault
-from snekql.errors import SchemaError
-from snekql.mariadb._dialect_sql import current_timestamp_sql
-from snekql.mariadb.identifiers import quote_identifier
-from snekql.mariadb.model import Model
-from snekql.model import Table
-from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
+lazy from snekql._schema_startup import verify_schema
+lazy from snekql._schema_verification import (
+    SchemaVerificationFact,
+    SchemaVerificationResult,
+)
+lazy from snekql._server_defaults import LiteralDefaultShape, render_literal_default
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import SchemaError
+lazy from snekql.mariadb._dialect_sql import current_timestamp_sql
+lazy from snekql.mariadb.identifiers import quote_identifier
+lazy from snekql.mariadb.model import Model
+lazy from snekql.model import Table
+lazy from snekql.storage import Attr, CurrentTimestamp, SchemaPolicy
 
 if TYPE_CHECKING:
-    from snekql.indexes import NormalizedIndex
+    lazy from snekql.indexes import NormalizedIndex
 
 TEXT_COLLATION = "utf8mb4_bin"
 """Case-sensitive default; PAD SPACE semantics still differ from SQLite BINARY."""

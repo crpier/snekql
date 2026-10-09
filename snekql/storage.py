@@ -1,18 +1,16 @@
 """Physical storage declarations and derived value codecs for table models."""
 
-from __future__ import annotations
-
-import annotationlib
-import inspect
-import sys
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
-from json import JSONDecodeError, loads
-from math import isfinite
-from types import EllipsisType, UnionType
-from typing import (
+lazy import annotationlib
+lazy import inspect
+lazy import sys
+lazy from collections.abc import Callable
+lazy from dataclasses import dataclass
+lazy from datetime import UTC, date, datetime, timedelta
+lazy from decimal import Decimal
+lazy from json import JSONDecodeError, loads
+lazy from math import isfinite
+lazy from types import EllipsisType, UnionType
+lazy from typing import (
     Annotated,
     Any,
     ForwardRef,
@@ -20,6 +18,7 @@ from typing import (
     Never,
     Self,
     TypeAliasType,
+    TypeForm,
     TypeVar,
     cast,
     evaluate_forward_ref,
@@ -27,9 +26,9 @@ from typing import (
     get_origin,
     overload,
 )
-from uuid import UUID
+lazy from uuid import UUID
 
-from pydantic import (
+lazy from pydantic import (
     AfterValidator,
     AwareDatetime,
     BeforeValidator,
@@ -37,26 +36,26 @@ from pydantic import (
     TypeAdapter,
     ValidationError,
 )
-from pydantic import (
+lazy from pydantic import (
     Json as _PydanticJson,
 )
-from pydantic_core import (
+lazy from pydantic_core import (
     PydanticSerializationError,
 )
 
-from snekql._declaration_binding import _OnceBinding
-from snekql._output_label import _NullExtendedLabel
-from snekql._temporal import LocalDatetime, UtcDatetime, ZonedDatetime
-from snekql._value_expression import ExpressionMethods, ValueExpression
-from snekql.defaults import LiteralDefault
-from snekql.errors import (
+lazy from snekql._declaration_binding import _OnceBinding
+lazy from snekql._output_label import _NullExtendedLabel
+lazy from snekql._temporal import LocalDatetime, UtcDatetime, ZonedDatetime
+lazy from snekql._value_expression import ExpressionMethods, ValueExpression
+lazy from snekql.defaults import LiteralDefault
+lazy from snekql.errors import (
     FrozenModelError,
     ModelDeclarationError,
     ModelValidationError,
     QueryConstructionError,
     SnekqlError,
 )
-from snekql.expressions import (
+lazy from snekql.expressions import (
     Aggregate,
     Assignment,
     Comparable,
@@ -1494,7 +1493,7 @@ class Attr[
         # adapter validates and serializes the inner payload type, the same way
         # the MariaDB native ``Json`` column (a plain ``Col[T]`` annotation) does.
         validated_type = _strip_json_marker(_extract_logical_type(annotation, name))
-        adapter: TypeAdapter[Any] = TypeAdapter(validated_type)
+        adapter: TypeAdapter[Any] = TypeAdapter(cast("TypeForm[Any]", validated_type))
         self._logical_adapter_cache = adapter
         return adapter
 
