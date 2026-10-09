@@ -1,0 +1,22 @@
+"""Native closed result declarations reject unknown fields statically."""
+
+from typing import TypedDict, assert_type
+
+from snekql import __BACKEND__ as database
+
+
+class ClosedRow(TypedDict, closed=True):
+    amount: int
+
+
+class ExtraRow(TypedDict, extra_items=str):
+    amount: int
+
+
+async def declared_shapes(transaction: database.Transaction) -> None:
+    row = ClosedRow(amount=42)
+    assert_type(row["amount"], int)
+    closed = database.raw("SELECT 42 AS amount", validate=ClosedRow)
+    assert_type(await transaction.fetch_one(closed), ClosedRow)
+    extra = ExtraRow(amount=42, label="kept")
+    assert_type(extra["label"], str)

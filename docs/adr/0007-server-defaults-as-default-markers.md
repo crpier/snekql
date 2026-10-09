@@ -57,7 +57,7 @@ factory, and a distinguished marker is a server default. It reverses the prior
 guard that forbade `default=CurrentTimestamp`.
 
 Rules retained: a server-default column must be a Generated Column (`GenCol`) --
-its Pending value may be `PendingGeneration` -- and cannot also carry a `default_factory`.
+its Pending value may be `PENDING_GENERATION` -- and cannot also carry a `default_factory`.
 `auto_increment` is unchanged and still pairs with `default=PENDING_GENERATION` (it has no
 value-marker).
 

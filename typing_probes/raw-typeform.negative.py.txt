@@ -1,0 +1,4 @@
+
+
+def reject_value_contract() -> None:
+    database.raw("", validate=42)  # expect-error

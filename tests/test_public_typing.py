@@ -61,7 +61,6 @@ from snekql.sqlite import (
     Model,
     OrderBy,
     Pending,
-    PendingGeneration,
     Predicate,
     ReadType,
     Row,
@@ -465,9 +464,9 @@ if TYPE_CHECKING:
 
     pending_user = User(email="alice@example.com")
     _ = assert_type(pending_user, User[Pending])
-    _ = assert_type(pending_user.id, int | PendingGeneration)
+    _ = assert_type(pending_user.id, int | PENDING_GENERATION)
     _ = assert_type(pending_user.email, str)
-    _ = assert_type(pending_user.created_at, UtcDatetime | PendingGeneration)
+    _ = assert_type(pending_user.created_at, UtcDatetime | PENDING_GENERATION)
 
     def check_fetched_user(fetched_user: User[Row]) -> None:
         """Row-state generated values are narrowed by descriptor overloads."""

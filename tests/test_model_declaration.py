@@ -7,6 +7,7 @@ from abc import abstractmethod
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
+from operator import delitem
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import BaseModel, Json, PositiveInt
@@ -1065,3 +1066,20 @@ def require_model_columns_rejects_non_model_classes() -> None:
     with assert_raises(ModelDeclarationError) as shape_error:
         _ = require_model_columns(FakeColumns)
     assert_eq(str(shape_error.exception), "schema setup requires snekql table models")
+
+
+@test(mark="fast")
+def published_columns_reject_deletion() -> None:
+    """A caller cannot erase a column while its model descriptor remains bound."""
+
+    class Account[S = Pending](Model[S]):
+        __row_type__: ClassVar[ReadType[Account[Row]]]
+        email: Account.Col[str] = Text()
+
+    columns = require_model_columns(Account)
+
+    with assert_raises(TypeError):
+        # Exercise a dynamic mutation attempt despite the read-only annotation.
+        delitem(columns, "email")  # ty: ignore[no-matching-overload]
+
+    assert_is(require_model_columns(Account)["email"], Account.email)

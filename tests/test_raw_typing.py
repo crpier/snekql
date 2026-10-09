@@ -1,10 +1,9 @@
 """Exact backend-owned raw types and consumption-only Transaction overloads."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Literal, assert_type
+from typing import TYPE_CHECKING, Annotated, Literal, TypedDict, assert_type
 
 from pydantic import BaseModel, Field
-from typing_extensions import TypedDict
 
 from snekql import mariadb, sqlite
 
@@ -236,13 +235,13 @@ if TYPE_CHECKING:
             validate=Annotated[tuple[int], Field(min_length=1)],
             row_mode="tuple",
         )
-        assert_type(annotation, sqlite.RawStatement[object])
-        assert_type(await transaction.fetch_all(annotation), list[object])
-        assert_type(await transaction.fetch_one(annotation), object)
-        assert_type(await transaction.fetch_one_or_none(annotation), object | None)
+        assert_type(annotation, sqlite.RawStatement[tuple[int]])
+        assert_type(await transaction.fetch_all(annotation), list[tuple[int]])
+        assert_type(await transaction.fetch_one(annotation), tuple[int])
+        assert_type(await transaction.fetch_one_or_none(annotation), tuple[int] | None)
         assert_type(await transaction.execute(annotation), int)
         assert_type(
-            transaction.fetch_chunks(annotation, size=2), sqlite.ChunkStream[object]
+            transaction.fetch_chunks(annotation, size=2), sqlite.ChunkStream[tuple[int]]
         )
 
     async def mariadb_validated(
@@ -308,13 +307,14 @@ if TYPE_CHECKING:
             validate=Annotated[tuple[int], Field(min_length=1)],
             row_mode="tuple",
         )
-        assert_type(annotation, mariadb.RawStatement[object])
-        assert_type(await transaction.fetch_all(annotation), list[object])
-        assert_type(await transaction.fetch_one(annotation), object)
-        assert_type(await transaction.fetch_one_or_none(annotation), object | None)
+        assert_type(annotation, mariadb.RawStatement[tuple[int]])
+        assert_type(await transaction.fetch_all(annotation), list[tuple[int]])
+        assert_type(await transaction.fetch_one(annotation), tuple[int])
+        assert_type(await transaction.fetch_one_or_none(annotation), tuple[int] | None)
         assert_type(await transaction.execute(annotation), int)
         assert_type(
-            transaction.fetch_chunks(annotation, size=2), mariadb.ChunkStream[object]
+            transaction.fetch_chunks(annotation, size=2),
+            mariadb.ChunkStream[tuple[int]],
         )
 
     async def reject_sqlite_validated_misuse(
@@ -379,4 +379,18 @@ if TYPE_CHECKING:
         assert_type(
             mariadb.raw("", validate=tuple[int, str | None]),
             mariadb.RawStatement[tuple[int, str | None]],
+        )
+
+
+if TYPE_CHECKING:
+
+    def expression_contracts() -> None:
+        """Union and literal contracts preserve their actual validated result types."""
+        assert_type(
+            sqlite.raw("", validate=tuple[int] | tuple[str]),
+            sqlite.RawStatement[tuple[int] | tuple[str]],
+        )
+        assert_type(
+            mariadb.raw("", validate=tuple[Literal[1, 2]], row_mode="tuple"),
+            mariadb.RawStatement[tuple[Literal[1, 2]]],
         )

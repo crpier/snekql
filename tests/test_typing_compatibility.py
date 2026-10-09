@@ -240,7 +240,7 @@ async def full_report_certifies_supported_ty_contracts() -> None:
         msg=completed.stderr.decode(),
     )
     report = loads(completed.stdout)
-    assert_eq(len(report["cases"]), 118)
+    assert_eq(len(report["cases"]), 124)
     failed = {
         (case["backend"], case["name"])
         for case in report["cases"]

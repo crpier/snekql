@@ -1,6 +1,6 @@
 """Bind bounded CHECK predicates to immutable, parameter-free schema expressions."""
 
-lazy from collections.abc import Callable
+lazy from collections.abc import Callable, Mapping
 lazy from dataclasses import dataclass
 lazy from typing import Any
 
@@ -48,12 +48,12 @@ class _CheckBinder:
     def __init__(
         self,
         owner: type,
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
         backend: StorageBackend,
     ) -> None:
         self.backend: StorageBackend = backend
         self.owner: type = owner
-        self.columns: dict[str, Attr[Any, Any, Any, Any, Any]] = columns
+        self.columns: Mapping[str, Attr[Any, Any, Any, Any, Any]] = columns
 
     def bind(self, predicate: object) -> CheckExpression:
         if isinstance(predicate, CompoundPredicate):
@@ -167,7 +167,7 @@ class _CheckBinder:
 def bind_checks(
     declarations: object,
     owner: type,
-    columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     backend: StorageBackend,
 ) -> tuple[BoundCheck, ...]:
     """Snapshot table-level declarations after column ownership is assigned."""

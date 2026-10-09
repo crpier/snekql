@@ -1,5 +1,6 @@
 """SQLite Table Model declaration base and backend-pinned column aliases."""
 
+lazy from collections.abc import Mapping
 lazy from typing import Any, ClassVar, Literal, Self, TypeVar, dataclass_transform
 
 lazy from snekql.expressions import Aggregate, _Aggregate
@@ -15,11 +16,11 @@ lazy from snekql.model import (
 lazy from snekql.model import Model as BaseModel
 lazy from snekql.model import ModelMeta as BaseModelMeta
 lazy from snekql.storage import (
+    PENDING_GENERATION,
     Attr,
     Blob,
     ForeignKey,
     Integer,
-    PendingGeneration,
     Real,
     Text,
     _UnboundOwner,
@@ -45,7 +46,7 @@ class Model[StateT](
     """SQLite Table Model base for backend-specific declarations."""
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
-    __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_columns__: ClassVar[Mapping[str, Attr[Any, Any, Any, Any, Any]]]
     __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
     __tablename__: ClassVar[str]
@@ -57,9 +58,9 @@ class Model[StateT](
         Table[Pending],
         Table[Row],
         _UnboundOwner,
-        T | PendingGeneration,
+        T | PENDING_GENERATION,
         T,
-        T | PendingGeneration,
+        T | PENDING_GENERATION,
         Any,
         Literal["sqlite"],
     ]
@@ -96,9 +97,9 @@ type GenCol[T] = Attr[
     Table[Pending],
     Table[Row],
     _UnboundOwner,
-    T | PendingGeneration,
+    T | PENDING_GENERATION,
     T,
-    T | PendingGeneration,
+    T | PENDING_GENERATION,
     Any,
     Literal["sqlite"],
 ]

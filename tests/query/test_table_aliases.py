@@ -1,10 +1,12 @@
 """Typed table roles through the public Query Builder."""
 
+from operator import delitem
 from typing import TYPE_CHECKING, assert_type
 
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import mariadb, sqlite
+from snekql.model import require_model_columns
 from tests.query.test_join_compilation import Order, User
 
 
@@ -182,3 +184,16 @@ def alias_requires_a_declared_table() -> None:
     """A backend's model base is not a physical table source."""
     with assert_raises(sqlite.QueryConstructionError):
         sqlite.alias(sqlite.Model, ManagerRole, name="manager")  # ty: ignore[no-matching-overload]
+
+
+@test(mark="fast")
+def alias_metadata_rejects_column_deletion() -> None:
+    """An alias's query-source metadata is read-only like its original model."""
+    manager = sqlite.alias(User, ManagerRole, name="manager")
+    columns = require_model_columns(manager.__query_source__())
+
+    with assert_raises(TypeError):
+        # Dynamic callers cannot invalidate a role's previously bound columns.
+        delitem(columns, "email")  # ty: ignore[no-matching-overload]
+
+    assert_eq(manager.column(User.email).name, "email")

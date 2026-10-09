@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from traceback import format_exception
-from typing import Annotated, ForwardRef
+from typing import Annotated, ForwardRef, TypedDict
 
 from pydantic import (
     BaseModel,
@@ -14,7 +14,6 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema
 from snektest import Param, assert_eq, assert_raises, load_fixture, test
-from typing_extensions import TypedDict
 
 from snekql.model import BackendFamily
 from tests.runtime.test_raw_execution import provide_raw_case
@@ -510,3 +509,109 @@ async def scalar_contract_does_not_extract_a_column(
             await transaction.fetch_one(statement)
 
     assert_eq(raised.exception.details[0].code, "int_type")
+
+
+@test(
+    [
+        Param[BackendFamily](value="sqlite", name="sqlite"),
+        Param[BackendFamily](value="mariadb", name="mariadb"),
+    ],
+    [Param(value=method, name=method) for method in ("fetch_one", "fetch_chunks")],
+    mark="slow",
+)
+async def closed_typed_dict_accepts_declared_columns(
+    backend: BackendFamily, method: str
+) -> None:
+    """A native closed contract preserves its declared result through consumption."""
+    case = await load_fixture(provide_raw_case(backend))
+
+    class Total(TypedDict, closed=True):
+        amount: int
+
+    statement = case.namespace.raw("SELECT '42' AS amount", validate=Total)
+
+    async with case.database.transaction() as transaction:
+        if method == "fetch_chunks":
+            async with transaction.fetch_chunks(statement, size=1) as stream:
+                rows = [row async for chunk in stream for row in chunk]
+        else:
+            rows = [await transaction.fetch_one(statement)]
+
+    assert_eq(rows, [{"amount": 42}])
+
+
+@test(
+    [
+        Param[BackendFamily](value="sqlite", name="sqlite"),
+        Param[BackendFamily](value="mariadb", name="mariadb"),
+    ],
+    mark="slow",
+)
+async def closed_typed_dict_rejects_extra_columns(backend: BackendFamily) -> None:
+    """Extra SQL columns fail with redacted details rather than being discarded."""
+    case = await load_fixture(provide_raw_case(backend))
+
+    class Total(TypedDict, closed=True):
+        amount: int
+
+    statement = case.namespace.raw(
+        "SELECT 42 AS amount, 'private_value' AS private_alias", validate=Total
+    )
+
+    async with case.database.transaction() as transaction:
+        with assert_raises(case.namespace.RawResultValidationError) as raised:
+            await transaction.fetch_one(statement)
+
+    assert_eq(
+        [(detail.location, detail.code) for detail in raised.exception.details],
+        [(("<redacted>",), "extra_forbidden")],
+    )
+
+
+@test(
+    [
+        Param[BackendFamily](value="sqlite", name="sqlite"),
+        Param[BackendFamily](value="mariadb", name="mariadb"),
+    ],
+    mark="slow",
+)
+async def extra_items_typed_dict_preserves_extra_columns(
+    backend: BackendFamily,
+) -> None:
+    """Typed extra items remain in the validated row instead of disappearing."""
+    case = await load_fixture(provide_raw_case(backend))
+
+    class Total(TypedDict, extra_items=str):
+        amount: int
+
+    statement = case.namespace.raw(
+        "SELECT 42 AS amount, 'kept' AS label", validate=Total
+    )
+
+    async with case.database.transaction() as transaction:
+        row = await transaction.fetch_one(statement)
+
+    assert_eq(row, {"amount": 42, "label": "kept"})
+
+
+@test(
+    [
+        Param[BackendFamily](value="sqlite", name="sqlite"),
+        Param[BackendFamily](value="mariadb", name="mariadb"),
+    ],
+    mark="slow",
+)
+async def extra_items_typed_dict_rejects_wrong_types(backend: BackendFamily) -> None:
+    """The extra-items contract validates values outside explicitly named fields."""
+    case = await load_fixture(provide_raw_case(backend))
+
+    class Total(TypedDict, extra_items=str):
+        amount: int
+
+    statement = case.namespace.raw("SELECT 42 AS amount, 7 AS label", validate=Total)
+
+    async with case.database.transaction() as transaction:
+        with assert_raises(case.namespace.RawResultValidationError) as raised:
+            await transaction.fetch_one(statement)
+
+    assert_eq([detail.code for detail in raised.exception.details], ["string_type"])

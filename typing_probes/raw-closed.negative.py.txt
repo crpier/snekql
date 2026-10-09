@@ -1,0 +1,4 @@
+
+
+def reject_extra_field() -> None:
+    ClosedRow(amount=42, unexpected="not declared")  # expect-error

@@ -315,7 +315,7 @@ async def mariadb_long_text_default_is_generated() -> None:
     mark="medium",
 )
 async def sqlite_explicit_values_override_server_default(case: str) -> None:
-    """Only PendingGeneration omits the column; explicit NULL is still a value."""
+    """Only PENDING_GENERATION omits the column; explicit NULL is still a value."""
 
     class Entry[S = sqlite.Pending](sqlite.Model[S]):
         __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
@@ -367,7 +367,7 @@ async def sqlite_boolean_default_materializes() -> None:
     mark="slow",
 )
 async def mariadb_explicit_values_override_server_default(case: str) -> None:
-    """Only PendingGeneration omits the column; explicit NULL is still a value."""
+    """Only PENDING_GENERATION omits the column; explicit NULL is still a value."""
     server = await load_fixture(provide_mariadb_server())
 
     class Entry[S = mariadb.Pending](mariadb.Model[S]):

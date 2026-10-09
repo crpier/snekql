@@ -17,12 +17,8 @@ lazy from typing import Protocol
 
 lazy from snekql.errors import DatabaseRuntimeError
 
-
-class _Unset:
-    """Sentinel marking a setting that is verified through a predicate."""
-
-
-_UNSET = _Unset()
+_UNSET = sentinel("_UNSET")
+"""The setting has a predicate rather than an explicit expected value."""
 
 
 class SettingsProbe(Protocol):
@@ -65,7 +61,7 @@ class ConnectionSetting:
 
         if self.expectation:
             return self.expectation
-        if not isinstance(self.expected_value, _Unset):
+        if self.expected_value is not _UNSET:
             return repr(self.expected_value)
         return "a satisfied predicate"
 

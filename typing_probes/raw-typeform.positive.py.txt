@@ -1,0 +1,32 @@
+"""Type expressions preserve raw result shapes without broad object fallbacks."""
+
+from typing import Annotated, Literal, TypedDict, assert_type
+
+from pydantic import Field
+
+from snekql import __BACKEND__ as database
+
+
+class ClosedTotal(TypedDict, closed=True):
+    amount: int
+
+
+class ExtraTotal(TypedDict, extra_items=str):
+    amount: int
+
+
+async def raw_expressions(transaction: database.Transaction) -> None:
+    union = database.raw("", validate=tuple[int] | tuple[str], row_mode="tuple")
+    assert_type(union, database.RawStatement[tuple[int] | tuple[str]])
+    assert_type(await transaction.fetch_one(union), tuple[int] | tuple[str])
+    constrained = database.raw(
+        "", validate=Annotated[tuple[int], Field(min_length=1)], row_mode="tuple"
+    )
+    assert_type(constrained, database.RawStatement[tuple[int]])
+    assert_type(await transaction.fetch_one(constrained), tuple[int])
+    literal = database.raw("", validate=tuple[Literal[1, 2]], row_mode="tuple")
+    assert_type(literal, database.RawStatement[tuple[Literal[1, 2]]])
+    closed = database.raw("", validate=ClosedTotal)
+    assert_type(await transaction.fetch_one(closed), ClosedTotal)
+    extra = database.raw("", validate=ExtraTotal)
+    assert_type(await transaction.fetch_one(extra), ExtraTotal)

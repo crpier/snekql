@@ -72,3 +72,4 @@ Design records explain decisions; they are **not current usage instructions**:
 [Back to the project README](../README.md)
 
 - [Python 3.15 and lazy imports](lazy-imports.md)
+- [Python 3.15 native-contract evaluation](python315-native-contracts.md)

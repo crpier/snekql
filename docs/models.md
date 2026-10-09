@@ -100,6 +100,18 @@ query = (
 This is shallow immutability. A nested JSON dict or list can still be changed
 in Python, but that does not save it to the database.
 
+## Published declaration metadata
+
+A model's published column mapping is read-only, as is the column mapping used
+by a table alias. snekql builds the mapping during declaration and publishes a
+Python `frozendict` behind `Mapping` annotations. Lookup and iteration are
+supported; deleting, adding, or replacing entries is not.
+
+This freezes mapping membership, not stored column values or nested JSON.
+Descriptor declaration facts remain separately guarded, and callable foreign
+keys still resolve once on first metadata use. There is no extra finalization
+step for applications.
+
 ## Make a complete snapshot without a query
 
 Sometimes you already have every value and need a Row object:

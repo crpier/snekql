@@ -21,4 +21,4 @@ def control(account: Account[database.Row]) -> None:
     assert_type(Account.account_id.to(7), database.Assignment[Account])
     pending = Account(name="Ada", payload={"count": 1})
     assert_type(pending, Account[database.Pending])
-    assert_type(pending.account_id, int | database.PendingGeneration)
+    assert_type(pending.account_id, int | database.PENDING_GENERATION)

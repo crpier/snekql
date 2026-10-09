@@ -9,8 +9,10 @@ as each backend's ``Model`` and column constructors -- is imported from
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import copy, deepcopy
 from dataclasses import FrozenInstanceError
 from inspect import isclass
+from pickle import dumps, loads
 from typing import Any, ClassVar, cast
 
 from snektest import assert_raises, test
@@ -72,7 +74,6 @@ _NEUTRAL_NAMES = frozenset(
         "MigrationLockTimeoutError",
         "MigrationResult",
         "MigrationStatus",
-        "PendingGeneration",
         "ModelDeclarationError",
         "ModelError",
         "ModelValidationError",
@@ -489,7 +490,6 @@ def public_symbols_have_specific_docstrings() -> None:
         sqlite.MigrationLockTimeoutError,
         sqlite.MigrationResult,
         sqlite.MigrationStatus,
-        sqlite.PendingGeneration,
         sqlite.Model,
         sqlite.ModelDeclarationError,
         sqlite.ModelError,
@@ -527,7 +527,7 @@ def public_symbols_have_specific_docstrings() -> None:
 def pending_generation_sentinel_has_stable_singleton_behavior() -> None:
     """PENDING_GENERATION is the only pending value apps compare with."""
 
-    assert_is(sqlite.PendingGeneration(), sqlite.PENDING_GENERATION)
+    assert_is(mariadb.PENDING_GENERATION, sqlite.PENDING_GENERATION)
     assert_eq(repr(sqlite.PENDING_GENERATION), "PENDING_GENERATION")
 
 
@@ -675,3 +675,30 @@ def execution_error_without_cause_omits_cause_text() -> None:
     error = sqlite.ExecutionError("write failed", sql="SELECT 1", params=())
 
     assert_not_in("cause=", str(error))
+
+
+@test(mark="fast")
+def generated_value_is_a_native_sentinel() -> None:
+    """Generated values use a named Python sentinel, shared by both backends."""
+    assert_isinstance(sqlite.PENDING_GENERATION, sentinel)
+    assert_is(mariadb.PENDING_GENERATION, sqlite.PENDING_GENERATION)
+
+
+@test(mark="fast")
+def copied_generated_value_keeps_identity() -> None:
+    """Copying Pending field values does not manufacture an available value."""
+    assert_is(copy(sqlite.PENDING_GENERATION), sqlite.PENDING_GENERATION)
+
+
+@test(mark="fast")
+def deepcopied_generated_value_keeps_identity() -> None:
+    """Deep-copying a generated-value placeholder preserves its identity."""
+    assert_is(deepcopy(sqlite.PENDING_GENERATION), sqlite.PENDING_GENERATION)
+
+
+@test(mark="fast")
+def pickled_generated_value_keeps_identity() -> None:
+    """The canonical module binding survives serialization through re-exports."""
+    # Only our own named sentinel is deserialized, never untrusted input.
+    restored = loads(dumps(mariadb.PENDING_GENERATION))  # noqa: S301
+    assert_is(restored, sqlite.PENDING_GENERATION)

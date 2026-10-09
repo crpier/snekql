@@ -257,18 +257,31 @@ Use `Col[T]` for normal persisted values. The pending and fetched value type is
 `T`.
 
 Use `GenCol[T]` for server-filled/generated values. Pending instances may have
-`T | PendingGeneration`; fetched instances have `T`.
+`T | PENDING_GENERATION`; fetched instances have `T`.
 
 ```python
 pending_user = User(email="alice@example.com")
-pending_user.id  # int | PendingGeneration
+pending_user.id  # int | PENDING_GENERATION
 
 fetched_user: User[Row]
 fetched_user.id  # int
 ```
 
-`PENDING_GENERATION` is the singleton sentinel value for generated pending values that have
-not been filled by the database yet.
+`PENDING_GENERATION` is a native Python sentinel for generated pending values
+that have not been filled by the database yet. There is no `PendingGeneration`
+class. Use the sentinel itself in type annotations and compare with `is`:
+
+```python
+def available_id(pending: User[Pending]) -> int | None:
+    generated_value = pending.id
+    if generated_value is PENDING_GENERATION:
+        return None
+    return generated_value  # narrowed to int by ty
+```
+
+Copying, deep-copying, and pickling preserve the canonical sentinel's identity.
+Column validation handles this marker separately from the logical value type;
+it does not ask Pydantic to generate a schema for a sentinel union.
 
 ### Nullability
 

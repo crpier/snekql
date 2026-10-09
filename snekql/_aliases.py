@@ -1,5 +1,6 @@
 """Typed query roles, independent of schema declarations and model codecs."""
 
+lazy from collections.abc import Mapping
 lazy from copy import copy
 lazy from dataclasses import dataclass
 lazy from re import fullmatch
@@ -37,7 +38,7 @@ class _AliasRelation(Table[Any]):
     Query scope separately resolves their relation to this identity.
     """
 
-    __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_columns__: ClassVar[Mapping[str, Attr[Any, Any, Any, Any, Any]]]
     source_model: ClassVar[type[Table[Any]]]
     role: ClassVar[type[object]]
 
@@ -141,7 +142,7 @@ def build_alias(
         bound = copy(column)
         object.__setattr__(bound, "_query_relation", relation)
         bound_columns[column_name] = bound
-    relation.__snekql_columns__ = bound_columns
+    relation.__snekql_columns__ = frozendict(bound_columns)
     return TableAlias(relation)
 
 

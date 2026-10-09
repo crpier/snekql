@@ -11,7 +11,9 @@ The 2026-10-09 Python 3.15 migration validates ty 0.0.84 on CPython 3.15.0
 with Pydantic 2.14.0: all 118 positive/negative pairs conform and repository
 typing passes. See the [migration review](dependency-reviews/2026-10-09-python315.md).
 
-The suite has 59 cases on each backend, producing 118 positive/negative pairs.
+The native-contract follow-up validates all 124 paired cases on the same
+interpreter and checker versions; see the [feature evaluation](python315-native-contracts.md).
+The suite now has 62 cases on each backend, producing 124 positive/negative pairs.
 Reports record dependency versions, commands, revision and dirty status, and
 SHA-256 hashes of every rendered caller. A dirty checkout is not a clean-revision
 claim. The assessment targets Python 3.15 and uses the project interpreter's
@@ -51,9 +53,11 @@ The paired callers exercise both namespaces through their public APIs:
   exact-line challenges cover typed helper boundaries and incompatible inputs.
 - Positional width, named results, nullable model joins, raw query contracts,
   and defaulted typed foreign keys.
+- TypeForm union/literal/Annotated inference, native closed/extra-items TypedDict
+  rows, rejection of non-type raw contracts, and read-only column metadata.
 
 The templates and native typing tests contain exact `assert_type` controls.
-The 118 observations are paired backend cases, not 118 independent API guarantees.
+The 124 observations are paired backend cases, not 124 independent guarantees.
 
 ## Remaining limits
 
@@ -99,7 +103,7 @@ reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
 
 Use `--backend sqlite|mariadb` and `--case <name>` to select narrower checks.
-Defaults cover all 59 cases on both backends. The CLI checks types; it does not
+Defaults cover all 62 cases on both backends. The CLI checks types; it does not
 execute callers or connect to a database. Templates live in
 [`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
 not include intentional errors.
