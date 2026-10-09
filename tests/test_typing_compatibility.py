@@ -27,19 +27,14 @@ async def provide_probe_checkout() -> AsyncGenerator[Path]:
 
 @test(
     [Param("sqlite", name="sqlite"), Param("mariadb", name="mariadb")],
-    [Param(name, name=name) for name in ("ty",)],
     mark="fast",
 )
-async def lifecycle_report_requires_positive_control(
-    backend: str, checker: str
-) -> None:
+async def lifecycle_report_requires_positive_control(backend: str) -> None:
     """A generated-id rejection counts only beside correctly inferred states."""
     completed = await run_process(
         [
             sys.executable,
             "scripts/check_typing_compatibility.py",
-            "--checker",
-            checker,
             "--case",
             "lifecycle",
             "--backend",
@@ -51,8 +46,8 @@ async def lifecycle_report_requires_positive_control(
     assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
     report = loads(completed.stdout)
     assert_eq(report["schema_version"], 1)
-    assert_eq(report["checker"], checker)
-    assert_true(report["checker_version"].startswith(f"{checker} "))
+    assert_eq(report["checker"], "ty")
+    assert_true(report["checker_version"].startswith("ty "))
     assert_eq(len(report["cases"]), 1)
     case = report["cases"][0]
     assert_eq(case["backend"], backend)
@@ -121,15 +116,13 @@ async def missing_probe_is_infrastructure_failure() -> None:
     assert_true(b"typing assessment unavailable" in completed.stderr)
 
 
-@test([Param(name, name=name) for name in ("ty",)], mark="fast")
-async def readiness_report_retains_checker_limits(checker: str) -> None:
+@test(mark="fast")
+async def readiness_report_retains_checker_limits() -> None:
     """Only a clean positive control can establish row-scope rejection."""
     completed = await run_process(
         [
             sys.executable,
             "scripts/check_typing_compatibility.py",
-            "--checker",
-            checker,
             "--case",
             "readiness",
             "--backend",
@@ -228,15 +221,13 @@ async def raw_probe_rejects_consumption_time_validation_override() -> None:
     assert_true(loads(completed.stdout)["conforms"])
 
 
-@test([Param(name, name=name) for name in ("ty",)], mark="fast")
-async def full_report_certifies_supported_ty_contracts(checker: str) -> None:
+@test(mark="fast")
+async def full_report_certifies_supported_ty_contracts() -> None:
     """The supported checker accepts every positive and rejects every negative."""
     completed = await run_process(
         [
             sys.executable,
             "scripts/check_typing_compatibility.py",
-            "--checker",
-            checker,
             "--case",
             "all",
         ],
@@ -305,15 +296,13 @@ async def ty_probe_uses_declared_configuration() -> None:
     assert_true(loads(completed.stdout)["conforms"])
 
 
-@test([Param(name, name=name) for name in ("ty",)], mark="fast")
-async def defaulted_fk_probe_preserves_target(checker: str) -> None:
+@test(mark="fast")
+async def defaulted_fk_probe_preserves_target() -> None:
     """Nullable defaults retain constructor inference and reject other targets."""
     completed = await run_process(
         [
             sys.executable,
             "scripts/check_typing_compatibility.py",
-            "--checker",
-            checker,
             "--case",
             "fk-defaults",
         ],
@@ -334,8 +323,6 @@ async def row_constructor_requires_valid_pending_control(backend: str) -> None:
         [
             sys.executable,
             "scripts/check_typing_compatibility.py",
-            "--checker",
-            "ty",
             "--case",
             "row-constructor",
             "--backend",
@@ -540,3 +527,17 @@ async def single_insert_contract_requires_clean_control(kind: str) -> None:
         )
         assert_eq(observation["negative_errors"][0]["rule"], "invalid-argument-type")
         assert_true(observation["conforms"])
+
+
+@test(mark="fast")
+async def assessment_cli_has_no_checker_selection() -> None:
+    """The assessment exposes consumer selection, not a choice of typing engine."""
+    completed = await run_process(
+        [sys.executable, "scripts/check_typing_compatibility.py", "--help"],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+    assert_true(b"--backend" in completed.stdout)
+    assert_true(b"--case" in completed.stdout)
+    assert_true(b"--checker" not in completed.stdout)

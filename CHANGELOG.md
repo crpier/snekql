@@ -25,6 +25,10 @@
 
 ### Changed
 
+- Remove secondary type-checker runners, stored comparison reports, and obsolete
+  comparison research. The consumer assessment CLI always runs ty; `--checker`
+  is removed. Keep all positive/negative ty contracts and documented limits.
+
 - Use explicit Python 3.15 lazy imports throughout the library. Resolve backend
   registration explicitly, preserve missing-extra diagnostics, and use native
   deferred annotations for runtime validation. Validate forced-lazy execution
@@ -119,8 +123,7 @@
 - Query builders reject model instances and structural lookalikes as sources.
   Explicit lifecycle specializations still require runtime rejection despite
   passing ty. Native aliases and CTEs remain supported query roles.
-- Only ty is supported for the class-body interface. Pyright and mypy fail
-  required clean controls. See the [migration guide](docs/class-body-migration.md)
+- Only ty is supported for the class-body interface. See the [migration guide](docs/class-body-migration.md)
   and [checker assessment](docs/typing-compatibility.md).
 
 ### Fixed
@@ -202,9 +205,8 @@
   parallel backports. Clarify authorization and verification of the existing
   release provenance chain. Addresses #300.
 
-- Reproducible consumer typing assessments for ty 0.0.77, Pyright 1.1.414 and
-  mypy 2.3.1 across both backends. Only ty supports the class-body contract:
-  84/84 paired observations conform, versus 14/84 for Pyright and 4/84 for mypy.
+- Reproducible consumer typing assessments for ty 0.0.77 across both backends:
+  84/84 paired observations conform.
   Reports preserve diagnostics and source hashes. Failed positive controls do
   not establish static guarantees. Editor limits are explicit.
   Addresses #299.

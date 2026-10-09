@@ -1,40 +1,26 @@
-# Type-checker compatibility
+# Typing support and validation
 
-Use **ty 0.0.84** to check snekql applications. Pyright and mypy currently reject
-some valid examples or lose their result types, so they are not supported for
-the class-body model interface. An error-free editor display from another
-checker does not replace a ty run.
+Use **ty 0.0.84** to check snekql applications. It is the only supported type
+checker, and the consumer assessment CLI always runs ty. Static guarantees in
+the documentation refer to ty. For application annotations, see the
+[typing reference](typing.md).
 
-Below are the tested versions, known gaps, and commands to reproduce the results.
-For application annotations, see the [typing reference](typing.md).
-
-## Tested versions and scope
+## Tested version and scope
 
 The 2026-10-09 Python 3.15 migration validates ty 0.0.84 on CPython 3.15.0
 with Pydantic 2.14.0: all 118 positive/negative pairs conform and repository
-typing passes. Only ty is a current CI typing gate; secondary-checker results
-below are historical, not Python 3.15 certification. See the
-[migration review](dependency-reviews/2026-10-09-python315.md).
+typing passes. See the [migration review](dependency-reviews/2026-10-09-python315.md).
 
-Assessment updated 2026-09-26 on CPython 3.14.2, Linux x86-64. The current suite
-has 59 cases on each backend, producing 118 positive/negative pairs. Reports
-record dependency versions, commands, revision and dirty status, and SHA-256
-hashes of every rendered caller. A dirty checkout is not a clean-revision claim.
-
-| Tool | Version | Result |
-| --- | --- | --- |
-| ty | 0.0.84 | Supported; 118/118 pairs, plus native repository typing validation |
-| Pyright CLI | 1.1.414 | Not supported for this interface; 18/118 pairs |
-| mypy | 2.3.1 | Not supported for this interface; 4/118 pairs |
-| Pylance | Not assessed | No editor conformance claim |
-
-The current assessment CLI targets Python 3.15 and use the project interpreter's dependencies.
-These results do not certify older Python, other checker versions, every API
-combination, or a complete secondary-checker analysis of library internals.
+The suite has 59 cases on each backend, producing 118 positive/negative pairs.
+Reports record dependency versions, commands, revision and dirty status, and
+SHA-256 hashes of every rendered caller. A dirty checkout is not a clean-revision
+claim. The assessment targets Python 3.15 and uses the project interpreter's
+dependencies. These results do not certify other checker versions or every API
+combination.
 
 A static rejection counts only with a clean independent positive control and
 an error at the marked invalid operation. Migration and typing-sweep cases also
-assert one expected challenge-line diagnostic with its expected rule. `Any`/`Unknown`
+assert one expected challenge-line diagnostic with its expected rule. Erased
 results, malformed controls, unrelated errors, checker crashes, and runtime
 rejection do not establish a static guarantee.
 
@@ -97,14 +83,6 @@ labels and domains, and SQL validity still require runtime checks. `is_complete`
 narrows the true branch only; it does not prove persistence. Freezing is shallow.
 See the [migration guide](class-body-migration.md) for application examples.
 
-Pyright passes lifecycle, positional-width, raw-contract, defaulted-FK, three
-frozen-field pairs, scalar helper closure, and nullable computed expressions.
-It fails required model constructor, helper, batch, comparison and source
-controls, often rejecting nominal evidence or losing
-results to Unknown. Mypy passes only the lifecycle and raw-contract pairs.
-Extra errors on invalid callers with failing controls do not establish support.
-No weakened annotations or checker-specific escapes were added to certify them.
-
 ## Reproduce
 
 From the locked development environment:
@@ -113,12 +91,10 @@ From the locked development environment:
 uv sync --locked --all-extras
 uv run ty check
 uv run python scripts/check_typing_compatibility.py > ty-report.json
-uv run python scripts/check_typing_compatibility.py --checker pyright > pyright-report.json
-uv run python scripts/check_typing_compatibility.py --checker mypy > mypy-report.json
 ```
 
-The Pyright and mypy assessment commands currently exit 1. Exit 0
-means all selected pairs conform. Exit 2 means the assessment could not run
+Exit 0 means all selected pairs conform. Exit 1 means at least one selected
+pair does not conform. Exit 2 means the assessment could not run
 reliably, such as missing inputs, malformed diagnostics, or a checker deadline.
 Never count exit 2 as a successful rejection.
 
@@ -128,10 +104,9 @@ execute callers or connect to a database. Templates live in
 [`typing_probes/`](../typing_probes/) as `.py.txt` files so ordinary checking does
 not include intentional errors.
 
-Secondary tools run in version-pinned `uv tool run` environments, not runtime
-dependencies. They need cached tools or network access; Pyright also needs
-Node.js. Both receive explicit strict configurations. Ty uses the repository's
-all-errors policy with the existing missing-override-decorator exception.
+The assessment uses the development environment's installed ty, without fetching
+another tool. It uses the repository's all-errors policy with the existing
+missing-override-decorator exception.
 Ambient `TY_CONFIG_FILE` cannot override the assessment configuration.
 
 The 0.0.84 upgrade retains the all-errors policy. Source-local suppressions cover
@@ -140,11 +115,12 @@ checks, and mismatches in dependency annotations. These do not establish stronge
 static guarantees for those internal paths. Intentional invalid callers retain
 specific expected diagnostics, including abstract expression constructors.
 
-Current reports:
+Historical ty reports:
 
-- [ty](../typing_probes/results/2026-09-26-temporal-contracts/ty.json)
-- [Pyright](../typing_probes/results/2026-09-26-temporal-contracts/pyright.json)
-- [mypy](../typing_probes/results/2026-09-26-temporal-contracts/mypy.json)
+- [2026-09-26 temporal contracts](../typing_probes/results/2026-09-26-temporal-contracts/ty.json)
+
+These pre-migration reports are historical evidence, not Python 3.15 certification.
+Run the assessment command above to record the current environment.
 
 The reports under `typing_probes/results/2026-09-26-remove-select-all/` retain
 the 116-pair baseline before concrete temporal values.
@@ -167,8 +143,7 @@ caller files; rerun the CLI to render fresh callers with comparable source hashe
 
 Select the application's Python 3.15+ environment with snekql and Pydantic
 installed. Keep ty as the project gate and use its editor integration for matching
-diagnostics. Pylance, PyCharm and other engines have no conformance guarantee from
-this assessment. When an editor disagrees, reproduce with the pinned checker and
-correct interpreter rather than silencing a ty failure for an unassessed editor.
+diagnostics. When an editor disagrees, reproduce with ty and the correct
+interpreter rather than silencing a ty failure for an unassessed editor.
 
 [All guides](README.md)

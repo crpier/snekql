@@ -119,8 +119,7 @@ relationship loading or schema changes to an ORM. You still need to understand
 SQL, write migrations, and choose your transaction boundaries.
 
 It does not provide synchronous access, automatic migrations, or database
-backends other than SQLite and MariaDB. **ty 0.0.84 is the supported checker**;
-Pyright and mypy do not support the full model interface.
+backends other than SQLite and MariaDB. **ty 0.0.84 is the only supported checker**.
 [Typing support and limits](docs/typing-compatibility.md)
 
 snekql is on **0.x**. Minor releases can break compatibility, so pin the minor
