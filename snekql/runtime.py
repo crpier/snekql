@@ -1569,12 +1569,17 @@ class Transaction[FamilyT: BackendFamily]:
                 diagnostics.sql,
                 self._format_bound_params(diagnostics.params),
             )
-            raise self._execution_error(
+            execution_error = self._execution_error(
                 diagnostics.failure_message,
                 sql=diagnostics.sql,
                 params=diagnostics.params,
                 failure=self.runtime.classify_failure(error),
-            ) from error
+            )
+            if self.runtime.parameter_visibility == "redacted":
+                # Driver messages and notes can contain bound values even when
+                # the ExecutionError's own string representation redacts them.
+                raise execution_error from None
+            raise execution_error from error
 
     async def _run_driver_operation[ResultT](
         self,

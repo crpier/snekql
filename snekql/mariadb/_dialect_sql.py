@@ -20,6 +20,17 @@ def current_timestamp_sql(column: Attr[Any, Any, Any, Any, Any]) -> str:
     return "CONCAT(REPLACE(CURRENT_TIMESTAMP(6), ' ', 'T'), 'Z')"
 
 
+def _quote_query_identifier(identifier: str) -> str:
+    """Protect both SQL identifier delimiters and the driver's percent formatting.
+
+    Query SQL always goes through native parameter binding, even with no values.
+    Schema SQL and raw SQL have separate transport contracts and must retain the
+    ordinary identifier quoter rather than this driver-format-aware spelling.
+    """
+    quoted = quote_identifier(identifier)
+    return quoted.replace("%", "%%")
+
+
 def _conflict_do_nothing_sql(targets: tuple[str, ...]) -> str:
     target = targets[0]
     return f" ON DUPLICATE KEY UPDATE {target} = {target}"
@@ -110,5 +121,5 @@ MARIADB_QUERY_DIALECT = QueryDialect(
     # MariaDB uses the maximum unsigned LIMIT to select all remaining rows.
     offset_only_limit_sql="LIMIT 18446744073709551615",
     placeholder="%s",
-    quote_identifier=quote_identifier,
+    quote_identifier=_quote_query_identifier,
 )

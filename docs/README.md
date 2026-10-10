@@ -35,6 +35,7 @@ Read these in order, or jump to the task you have now:
 - [Change a schema while deploying application versions](rolling-migrations.md)
 - [Recover an interrupted migration](migration-recovery.md)
 - [Handle errors and decide whether a retry is safe](error-handling.md)
+- [Security boundaries and hardening checklist](security.md)
 - [Database settings and TLS](engine-settings.md)
 - [Connection replacement, credential rotation, and shutdown](connection-lifecycle.md)
 - [Pool measurements, logging, and OpenTelemetry](telemetry.md)
@@ -61,6 +62,8 @@ Read these in order, or jump to the task you have now:
 
 Start with [contributing and local checks](contributing.md).
 For dependency updates, use the [review procedure](dependency-maintenance.md).
+The [2026-10-10 security review](security-review-2026-10-10.md) records the
+structured-API hardening scope and validation.
 
 Design records explain decisions; they are **not current usage instructions**:
 

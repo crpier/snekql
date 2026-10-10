@@ -23,7 +23,9 @@ def validate_boundary[ErrorT: SnekqlError, **P, R](
 
     def decorate(function: Callable[P, R]) -> Callable[P, R]:
         validated = validate_call(
-            config=ConfigDict(arbitrary_types_allowed=True, strict=True),
+            config=ConfigDict(
+                arbitrary_types_allowed=True, hide_input_in_errors=True, strict=True
+            ),
         )(function)
 
         @wraps(function)
