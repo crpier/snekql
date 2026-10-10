@@ -1,6 +1,5 @@
 """ty-oriented examples for snekql's public typing surface."""
 
-lazy from datetime import datetime
 lazy from typing import TYPE_CHECKING, ClassVar, assert_type
 
 lazy from snekql import sqlite
@@ -31,7 +30,7 @@ class Account[S = Pending](sqlite.Model[S]):
     )
     email: sqlite.Col[str] = sqlite.Text()
     status: sqlite.Col[str] = sqlite.Text(default="active")
-    created_at: sqlite.GenCol[datetime] = sqlite.Text(
+    created_at: sqlite.GenCol[sqlite.UtcDatetime] = sqlite.Text(
         default=sqlite.CurrentTimestamp,
     )
 
@@ -50,14 +49,14 @@ if TYPE_CHECKING:
     pending_account = Account(email="alice@example.com")
     _ = assert_type(pending_account, Account[Pending])
     _ = assert_type(pending_account.id, int | PENDING_GENERATION)
-    _ = assert_type(pending_account.created_at, datetime | PENDING_GENERATION)
+    _ = assert_type(pending_account.created_at, sqlite.UtcDatetime | PENDING_GENERATION)
     _ = assert_type(pending_account.insert_payload(), dict[str, str])
 
     def check_fetched_account(fetched_account: Account[Row]) -> None:
         """Row generated columns are narrowed to concrete values."""
 
         _ = assert_type(fetched_account.id, int)
-        _ = assert_type(fetched_account.created_at, datetime)
+        _ = assert_type(fetched_account.created_at, sqlite.UtcDatetime)
         _ = assert_type(fetched_account.cache_key(), str)
 
     model_query: ClosedRead[Account[Row]] = ready(select(Account))

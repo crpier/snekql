@@ -230,3 +230,40 @@ async def docs_cli_rejects_extra_example_arguments() -> None:
     )
 
     assert_eq((completed.returncode, completed.stdout), (2, b""))
+
+
+@fixture
+async def provide_typed_queries_example() -> AsyncGenerator[str]:
+    """Capture the copyable typed example exactly as the public CLI emits it."""
+    printed = await run_process(
+        [sys.executable, "-m", "snekql", "example", "typed_queries"],
+        check=False,
+    )
+    assert_eq(printed.returncode, 0, msg=printed.stderr.decode())
+    yield printed.stdout.decode()
+
+
+@test(mark="slow")
+async def bundled_typed_queries_imports() -> None:
+    """The shipped typed model can be declared under the current temporal API."""
+    completed = await run_process(
+        [sys.executable, "-c", "import snekql.examples.typed_queries"],
+        check=False,
+    )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
+
+
+@test(mark="slow")
+async def copied_typed_queries_example_runs() -> None:
+    """Executing the CLI's unmodified example must not reject its declaration."""
+    source = await load_fixture(provide_typed_queries_example())
+    async with TemporaryDirectory(prefix="snekql-typed-example-") as directory:
+        caller = Path(directory) / "typed_queries.py"
+        await caller.write_text(source)
+
+        completed = await run_process(
+            [sys.executable, str(caller)], cwd=directory, check=False
+        )
+
+    assert_eq(completed.returncode, 0, msg=completed.stderr.decode())
