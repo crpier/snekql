@@ -2,8 +2,8 @@
 
 Tracking: maintainer-requested follow-up to #449, #453. This is a source review
 and regression record, not a security certification, penetration test, or CVE
-assessment. Findings and patches remain local pending the maintainer's disclosure
-and publication decision.
+assessment. The maintainer authorized publication of the findings and patches
+in a normal public pull request.
 
 ## Scope and method
 
