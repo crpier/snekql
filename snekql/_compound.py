@@ -1,35 +1,24 @@
 """Named set contracts and immutable binary query construction."""
 
 lazy from dataclasses import replace
-lazy from types import UnionType
 lazy from typing import (
     Any,
     Literal,
     Protocol,
-    TypeAliasType,
-    Union,
-    get_args,
-    get_origin,
 )
 
 lazy from snekql._cte import _CompoundRelation, _CteDefinition, _CteOutput
-lazy from snekql._literal import _IntegerLiteral
+lazy from snekql._output_domain import nonnull_output_annotation
 lazy from snekql._output_layout import (
-    LayoutOutput,
     OutputLayout,
-    WireEncoding,
     build_output_layout,
 )
 lazy from snekql._query_state import (
     CompoundSpec,
     SelectState,
-    require_single_column_subquery,
 )
-lazy from snekql._value_expression import ValueExpression
 lazy from snekql.errors import QueryConstructionError
-lazy from snekql.expressions import _Aggregate, _Scalar
 lazy from snekql.model import require_model_backend
-lazy from snekql.storage import Attr, _extract_logical_type, _resolve_model_hint
 
 
 class _CompoundRole:
@@ -51,68 +40,6 @@ class _NamedSetOperand[  # noqa: PYI046 - consumed by query builders
     def _set_result(self, result: ResultT) -> ResultT: ...
 
     def _readiness_type(self) -> ReadinessT: ...
-
-
-def _nonnull_annotation(annotation: object, remaining: int = 64) -> object:
-    """Remove only field-level optionality, never validators or JSON markers."""
-    if remaining <= 0:
-        msg = "UNION requires a resolvable output domain"
-        raise QueryConstructionError(msg)
-    if isinstance(annotation, TypeAliasType) and not annotation.__type_params__:
-        return _nonnull_annotation(annotation.__value__, remaining - 1)
-    if get_origin(annotation) in (Union, UnionType):
-        members = tuple(item for item in get_args(annotation) if item is not type(None))
-        if len(members) == 1:
-            return _nonnull_annotation(members[0], remaining - 1)
-    return annotation
-
-
-def _decode_policy(source: object) -> tuple[object, ...]:
-    """Compare decoding facts rather than descriptor identity or final models."""
-    while True:
-        if isinstance(source, LayoutOutput):
-            source = source.__output_slot__().source
-        elif isinstance(source, _Scalar):
-            source = require_single_column_subquery(source.subquery).fields[0]
-        elif isinstance(source, _Aggregate) and source.func in {"MIN", "MAX"}:
-            source = source.column
-        else:
-            break
-    if (
-        isinstance(source, Attr)
-        and source.owner is not None
-        and source.name is not None
-    ):
-        annotation = _extract_logical_type(
-            _resolve_model_hint(source.owner, source.name), source.name
-        )
-        return (
-            "column",
-            source.storage_class,
-            source.storage_type_name,
-            source.decimal_precision,
-            source.decimal_scale,
-            source.text_length,
-            source.text_collation,
-            _nonnull_annotation(annotation),
-        )
-    if isinstance(source, _IntegerLiteral):
-        return ("native", int)
-    if isinstance(source, ValueExpression):
-        return ("native", source.value_type)
-    if isinstance(source, _Aggregate):
-        if source.func == "COUNT":
-            return ("COUNT",)
-        return (source.func, _decode_policy(source.column))
-    msg = "UNION requires a known output decode policy"
-    raise QueryConstructionError(msg)
-
-
-def _wire_policy(wire: WireEncoding) -> WireEncoding:
-    """Extrema select an existing SQL value; unlike SUM/AVG they do not widen it."""
-    while wire.operation in {"MIN", "MAX"} and len(wire.inputs) == 1:
-        wire = wire.inputs[0]
-    return wire
 
 
 def _canonical_state(state: SelectState) -> SelectState:
@@ -152,14 +79,15 @@ def _require_compatible_outputs(
         if second.domain.nullable and not first.domain.nullable:
             msg = "UNION right output cannot widen the left output's nullability"
             raise QueryConstructionError(msg)
-        left_domain = _nonnull_annotation(first.domain.logical)
-        right_domain = _nonnull_annotation(second.domain.logical)
+        left_domain = nonnull_output_annotation(first.domain.logical)
+        right_domain = nonnull_output_annotation(second.domain.logical)
         if (
             left_domain is Any
             or right_domain is Any
             or left_domain != right_domain
-            or _wire_policy(first.wire) != _wire_policy(second.wire)
-            or _decode_policy(first.source) != _decode_policy(second.source)
+            or first.provenance.compatible_wire != second.provenance.compatible_wire
+            or first.provenance.require_decode_policy()
+            != second.provenance.require_decode_policy()
         ):
             msg = "UNION requires compatible logical domains, wire encodings and decode policies"
             raise QueryConstructionError(msg)

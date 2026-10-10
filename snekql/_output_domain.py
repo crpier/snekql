@@ -1,7 +1,16 @@
 """Logical SQL output domains, independent of application result validators."""
 
 lazy from dataclasses import dataclass
-lazy from typing import Any, Protocol, runtime_checkable
+lazy from types import UnionType
+lazy from typing import (
+    Any,
+    Protocol,
+    TypeAliasType,
+    Union,
+    get_args,
+    get_origin,
+    runtime_checkable,
+)
 
 lazy from snekql._value_expression import ValueExpression
 lazy from snekql.errors import QueryConstructionError
@@ -29,6 +38,15 @@ class DomainOutput(Protocol):
     def __output_domain__(self) -> OutputDomain: ...
 
 
+def _aggregate_domain(operand: _Aggregate[Any, Any]) -> OutputDomain:
+    """COUNT is stable; other aggregates can return NULL on empty input."""
+    if operand.func == "COUNT":
+        return OutputDomain(int, nullable=False)
+    if operand.func == "AVG":
+        return OutputDomain(float, nullable=True)
+    return OutputDomain(output_domain(operand.column).logical, nullable=True)
+
+
 def output_domain(operand: object) -> OutputDomain:
     """Resolve known domains without running validators or assuming wire types."""
     if isinstance(operand, Attr):
@@ -50,10 +68,15 @@ def output_domain(operand: object) -> OutputDomain:
     return OutputDomain()
 
 
-def _aggregate_domain(operand: _Aggregate[Any, Any]) -> OutputDomain:
-    """COUNT is stable; other aggregates can return NULL on empty input."""
-    if operand.func == "COUNT":
-        return OutputDomain(int, nullable=False)
-    if operand.func == "AVG":
-        return OutputDomain(float, nullable=True)
-    return OutputDomain(output_domain(operand.column).logical, nullable=True)
+def nonnull_output_annotation(annotation: object, remaining: int = 64) -> object:
+    """Remove only field-level optionality, never validators or JSON markers."""
+    if remaining <= 0:
+        msg = "UNION requires a resolvable output domain"
+        raise QueryConstructionError(msg)
+    if isinstance(annotation, TypeAliasType) and not annotation.__type_params__:
+        return nonnull_output_annotation(annotation.__value__, remaining - 1)
+    if get_origin(annotation) in (Union, UnionType):
+        members = tuple(item for item in get_args(annotation) if item is not type(None))
+        if len(members) == 1:
+            return nonnull_output_annotation(members[0], remaining - 1)
+    return annotation

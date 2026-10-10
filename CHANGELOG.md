@@ -34,6 +34,12 @@
 
 ### Changed
 
+- Retain independent Codec provenance facts on derived output slots so CTE
+  operations and UNION compatibility reuse established source policies instead
+  of repeatedly interpreting expressions. Preserve wire/domain distinctions,
+  leaf-owned validation, deferred capability errors, and public query contracts.
+  Addresses #447.
+
 - Concentrate whole-model joined row-shape policy in Materialization and retain
   resolved source spans in SELECT Execution Plans. Preserve physical/alias/CTE
   payloads, hidden presence witnesses, and matched all-NULL versus absent rows
