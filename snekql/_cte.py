@@ -7,17 +7,10 @@ lazy from typing import Any, ClassVar, Protocol, cast, overload
 lazy from pydantic import BaseModel
 
 lazy from snekql._dialect_expr import CompileCtx
-lazy from snekql._literal import _IntegerLiteral
 lazy from snekql._output_domain import OutputDomain
 lazy from snekql._output_label import _NullExtendedLabel, _OutputLabel
 lazy from snekql._output_layout import OutputLayout, OutputSlot, build_output_layout
-lazy from snekql._query_dialect import query_dialect_for_backend
-lazy from snekql._query_state import (
-    SelectState,
-    require_single_column_subquery,
-    selectable_owner_model,
-)
-lazy from snekql._value_decode import _normalize_sum
+lazy from snekql._query_state import SelectState
 lazy from snekql._value_expression import ExpressionMethods, ValueExpression
 lazy from snekql.errors import QueryConstructionError
 lazy from snekql.expressions import (
@@ -26,10 +19,9 @@ lazy from snekql.expressions import (
     OrderBy,
     _Aggregate,
     _OrderBy,
-    _Scalar,
 )
 lazy from snekql.model import BackendFamily, Table, require_model_backend
-lazy from snekql.storage import Attr, StorageBackend
+lazy from snekql.storage import StorageBackend
 
 
 class _LabelContract[OwnerT, T, CompareT, FamilyT = Any](Protocol):
@@ -170,8 +162,7 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT, FamilyT = Any](
 
     def __value_operand__(self) -> ValueExpression[OwnerT, T, T, FamilyT]:
         """Expose native wire-compatible operations without schema capabilities."""
-        state = self.relation.definition.state
-        value_type, nullable = _native_value_profile(state, state.fields[self.position])
+        value_type, nullable = self.__output_slot__().provenance.native_profile()
         return ValueExpression(
             column=self,
             owner=self.__owner_model__(),
@@ -185,51 +176,21 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT, FamilyT = Any](
 
     def sum(self) -> Aggregate[OwnerT, T | None, CompareT, FamilyT]:
         """Sum numeric outputs using their original SQL result domain."""
-        self._numeric_source()
+        self.__output_slot__().provenance.require_numeric_source()
         return _Aggregate(column=self, func="SUM", owner=self.relation)
 
     def avg(self) -> Aggregate[OwnerT, float | None, float, FamilyT]:
         """Average numeric outputs, returning NULL for an empty input."""
-        self._numeric_source()
+        self.__output_slot__().provenance.require_numeric_source()
         return _Aggregate(column=self, func="AVG", owner=self.relation)
 
     def __decode_sum__(self, raw: object) -> object:
-        source = self._numeric_source()
-        if isinstance(source, Attr):
-            return _normalize_sum(source, raw)
-        return source(cast("int | float", raw))
+        return self.__output_slot__().provenance.decode_sum(raw)
 
     def __encode_sum_comparison__(self, value: object) -> object:
-        source = self._numeric_source()
-        if isinstance(source, Attr):
-            dialect = query_dialect_for_backend(require_model_backend(self.relation))
-            return dialect.encode_sum_value(source, value)
-        return value
-
-    def _numeric_source(self) -> type[int | float] | Attr[Any, Any, Any, Any, Any]:
-        source = self.relation.definition.state.fields[self.position]
-        while True:
-            if isinstance(source, _CteOutput):
-                source = source.relation.definition.state.fields[source.position]
-            elif isinstance(source, _Scalar):
-                source = require_single_column_subquery(source.subquery).fields[0]
-            elif isinstance(source, _Aggregate):
-                if source.func == "COUNT":
-                    return int
-                if source.func == "AVG":
-                    return float
-                source = source.column
-            else:
-                break
-        if isinstance(source, Attr):
-            source.sum()
-            return source
-        if isinstance(
-            source, (ValueExpression, _IntegerLiteral)
-        ) and source.value_type in {int, float}:
-            return cast("type[int | float]", source.value_type)
-        msg = "sum()/avg() require a known numeric CTE output domain"
-        raise QueryConstructionError(msg)
+        return self.__output_slot__().provenance.encode_sum_comparison(
+            value, backend=require_model_backend(self.relation)
+        )
 
     def min(self) -> Aggregate[OwnerT, T | None, CompareT, FamilyT]:
         """Select the least output, or NULL when no non-NULL value exists."""
@@ -251,23 +212,13 @@ class _CteOutput[OwnerT: Table[Any], T, CompareT, FamilyT = Any](
         self._require_ordering()
         return _OrderBy(column=self, direction="DESC")
 
-    def _require_ordering(self) -> None:
-        source = self.relation.definition.state.fields[self.position]
-        while True:
-            if isinstance(source, _CteOutput):
-                source = source.relation.definition.state.fields[source.position]
-            elif isinstance(source, _Scalar):
-                source = require_single_column_subquery(source.subquery).fields[0]
-            elif isinstance(source, _Aggregate) and source.func in {"MIN", "MAX"}:
-                source = source.column
-            else:
-                break
-        if isinstance(source, Attr):
-            source.asc()
-
     def label(self, name: str) -> _NullExtendedLabel[OwnerT, T, CompareT, FamilyT]:
         """Bind this SQL output into a downstream named definition."""
         return _NullExtendedLabel(name=name, operand=self)
+
+    def _require_ordering(self) -> None:
+        """Comparable range predicates and extrema share the retained leaf gate."""
+        self.__output_slot__().provenance.require_ordering()
 
 
 @dataclass(frozen=True, slots=True, eq=False, repr=False)
@@ -328,29 +279,6 @@ class _Cte[
                     return _CteOutput(position=position, relation=self._relation)
         msg = "CTE column requires a label token bound by this definition"
         raise QueryConstructionError(msg)
-
-
-def _native_value_profile(
-    state: SelectState, source: object
-) -> tuple[type[int | float | str], bool]:
-    """Resolve native wire compatibility independently of the final result model."""
-    if isinstance(source, _IntegerLiteral):
-        return int, False
-    if isinstance(source, _Scalar):
-        inner = require_single_column_subquery(source.subquery)
-        value_type, _ = _native_value_profile(inner, inner.fields[0])
-        return value_type, True
-    if isinstance(source, _Aggregate) and source.func == "COUNT":
-        return int, False
-    if not isinstance(source, (Attr, ValueExpression, _CteOutput)):
-        msg = "CTE arithmetic requires a known native wire-compatible output"
-        raise QueryConstructionError(msg)
-    operand = source.__value_operand__()
-    nullable = operand.nullable
-    nullable_owners = {join.model for join in state.joins if join.join_type == "LEFT"}
-    if selectable_owner_model(source) in nullable_owners:
-        nullable = nullable or operand.__nullable_when_extended__()
-    return operand.value_type, nullable
 
 
 def _require_reference_identity(role: object, name: str) -> None:

@@ -4,10 +4,9 @@ lazy from dataclasses import dataclass
 lazy from typing import Any, Protocol, runtime_checkable
 
 lazy from snekql._dialect_expr import SqlCompilable
-lazy from snekql._literal import _IntegerLiteral
 lazy from snekql._output_domain import OutputDomain, output_domain
 lazy from snekql._output_label import _OutputLabel
-lazy from snekql._query_dialect import query_dialect_for_backend
+lazy from snekql._output_provenance import OutputProvenance
 lazy from snekql._query_state import (
     Selectable,
     SelectState,
@@ -15,23 +14,11 @@ lazy from snekql._query_state import (
     selectable_owner_model,
 )
 lazy from snekql._value_decode import _decode_projection_field
-lazy from snekql._value_encode import _predicate_value_encoder
 lazy from snekql._value_expression import ValueExpression
 lazy from snekql.errors import QueryConstructionError
-lazy from snekql.expressions import _Aggregate, _Scalar
+lazy from snekql.expressions import _Scalar
 lazy from snekql.model import BackendFamily, require_model_backend
 lazy from snekql.storage import Attr
-
-
-@dataclass(frozen=True, slots=True)
-class WireEncoding:
-    """Describe SQL provenance without equating logical types with driver values."""
-
-    operation: str
-    storage_class: str | None = None
-    storage_type: str | None = None
-    native_type: type | None = None
-    inputs: tuple[WireEncoding, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, repr=False)
@@ -42,7 +29,7 @@ class OutputSlot:
     token: _OutputLabel[Any, Any, Any] | None
     source: Selectable
     domain: OutputDomain
-    wire: WireEncoding
+    provenance: OutputProvenance
     backend: BackendFamily
     nullable_models: frozenset[type[object]]
 
@@ -57,11 +44,7 @@ class OutputSlot:
         )
 
     def encode_comparison(self, value: object) -> object:
-        source = self.source
-        while isinstance(source, _Scalar):
-            source = require_single_column_subquery(source.subquery).fields[0]
-        dialect = query_dialect_for_backend(self.backend)
-        return _predicate_value_encoder(source, dialect)(value)
+        return self.provenance.encode_comparison(value, backend=self.backend)
 
 
 @runtime_checkable
@@ -95,7 +78,9 @@ def build_output_layout(state: SelectState) -> OutputLayout:
             token=token,
             source=source,
             domain=definition_output_domain(state, source),
-            wire=_wire_encoding(source),
+            provenance=OutputProvenance.for_source(
+                source, nullable_models=nullable_models
+            ),
             backend=backend,
             nullable_models=nullable_models,
         )
@@ -127,24 +112,3 @@ def definition_output_domain(state: SelectState, source: object) -> OutputDomain
         ):
             return OutputDomain(domain.logical, nullable=True)
     return domain
-
-
-def _wire_encoding(source: object) -> WireEncoding:
-    if isinstance(source, Attr):
-        return WireEncoding(
-            "column",
-            storage_class=source.storage_class,
-            storage_type=source.storage_type_name,
-        )
-    if isinstance(source, (ValueExpression, _IntegerLiteral)):
-        return WireEncoding("native", native_type=source.value_type)
-    if isinstance(source, LayoutOutput):
-        return source.__output_slot__().wire
-    if isinstance(source, _Scalar):
-        inner = require_single_column_subquery(source.subquery)
-        return _wire_encoding(inner.fields[0])
-    if isinstance(source, _Aggregate):
-        inputs = () if source.func == "COUNT" else (_wire_encoding(source.column),)
-        native_type = int if source.func == "COUNT" else None
-        return WireEncoding(source.func, native_type=native_type, inputs=inputs)
-    return WireEncoding("unknown")
