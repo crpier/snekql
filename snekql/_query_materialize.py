@@ -6,138 +6,20 @@ query state, never on the Query Builder classes.
 """
 
 lazy from collections.abc import Sequence
+lazy from dataclasses import dataclass
 
-lazy from snekql._aliases import _AliasRelation
-lazy from snekql._cte import _CteRelation
+lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
 lazy from snekql._model_materialization import decode_model_row
 lazy from snekql._named_projection import NamedProjection
-lazy from snekql._query_sources import query_fields, table_presence_name
 lazy from snekql._query_state import (
     InsertState,
     Selectable,
     SelectState,
     WriteState,
-    require_column_name,
-    require_field,
 )
 lazy from snekql._value_decode import _decode_projection_field, _decode_selectable
-lazy from snekql.errors import QueryCompilationError
 lazy from snekql.model import require_model_columns
 lazy from snekql.storage import StorageBackend
-
-
-def _materialize_join_row(
-    state: SelectState,
-    row: Sequence[object],
-    *,
-    backend: StorageBackend,
-    validate: bool,
-) -> tuple[object, ...]:
-    """Split one joined row into a Row model per table, in join order.
-
-    A missing left-joined row becomes None. Sources whose payload can be all
-    NULL carry an extra witness so a real all-NULL row remains a model.
-    """
-
-    elements: list[object] = []
-    offset = 0
-    for index, model in enumerate(state.result_models()):
-        fields = query_fields(model)
-        cte_source = issubclass(model, _CteRelation)
-        has_presence = cte_source or table_presence_name(model) is not None
-        width = len(fields) + int(has_presence)
-        chunk = row[offset : offset + width]
-        offset += width
-        is_left_join = index > 0 and state.joins[index - 1].join_type == "LEFT"
-        absent = (
-            chunk[-1] is None if has_presence else all(value is None for value in chunk)
-        )
-        if is_left_join and absent:
-            elements.append(None)
-            continue
-        if issubclass(model, _CteRelation):
-            projection = model.definition.state.named_projection
-            if projection is None:
-                msg = "CTE row requires a named result contract"
-                raise QueryCompilationError(msg)
-            elements.append(
-                projection.materialize(
-                    tuple(
-                        _decode_selectable(
-                            field, value, backend=backend, validate=validate
-                        )
-                        for field, value in zip(fields, chunk[:-1], strict=True)
-                    )
-                )
-            )
-            continue
-        columns = require_model_columns(model)
-        values = {name: chunk[position] for position, name in enumerate(columns)}
-        elements.append(
-            decode_model_row(
-                model.source_model if issubclass(model, _AliasRelation) else model,
-                values,
-                backend=backend,
-                validate=validate,
-            ),
-        )
-    return tuple(elements)
-
-
-def materialize_select_row_for_backend(
-    state: SelectState,
-    row: Sequence[object],
-    *,
-    backend: StorageBackend,
-    validate: bool = True,
-) -> object:
-    """Materialize one database row into the select query's result shape.
-
-    Shared by every backend: a join select decodes the row into a tuple of
-    Row models (one per joined table), a model select decodes the whole row
-    into a Row Model, a single-column select returns one decoded scalar, and
-    a multi-column select returns a tuple of decoded scalars in order.
-    """
-
-    assert len(row) == len(state.fields), (  # noqa: S101
-        "database row shape did not match select query"
-    )
-    if state.joins and state.returns_model:
-        return _materialize_join_row(state, row, backend=backend, validate=validate)
-    if state.returns_model:
-        # Model selects only ever project real columns, never aggregates.
-        values = {
-            require_column_name(require_field(column)): row[index]
-            for index, column in enumerate(state.fields)
-        }
-        model = (
-            state.model.source_model
-            if issubclass(state.model, _AliasRelation)
-            else state.model
-        )
-        return decode_model_row(model, values, backend=backend, validate=validate)
-    nullable_models = _left_joined_models(state)
-    decoded_values = tuple(
-        _decode_projection_field(
-            column,
-            row[index],
-            nullable_models=nullable_models,
-            backend=backend,
-            validate=validate,
-        )
-        for index, column in enumerate(state.fields)
-    )
-    if state.named_projection is not None:
-        return state.named_projection.materialize(decoded_values)
-    if len(decoded_values) == 1:
-        return decoded_values[0]
-    return decoded_values
-
-
-def _left_joined_models(state: SelectState) -> frozenset[type[object]]:
-    """Models projected from the nullable side of a LEFT join, by identity."""
-
-    return frozenset(join.model for join in state.joins if join.join_type == "LEFT")
 
 
 def _materialize_insert_returning_fields(
@@ -171,6 +53,89 @@ def _materialize_insert_returning_fields(
             else decoded
         )
     return materialized
+
+
+@dataclass(frozen=True, slots=True)
+class SelectMaterialization:
+    """Capture a select's source shape and validation policy once per plan.
+
+    Row spans and nullable owners are immutable execution-local facts, not
+    work to repeat for every buffered or streamed row.
+    """
+
+    # Consumption facts followed by source shape facts.
+    backend: StorageBackend
+    state: SelectState
+    validate: bool
+    joined: JoinedRowShape | None
+    nullable_models: frozenset[type[object]]
+    source: SourceRowShape | None
+
+    @classmethod
+    def for_state(
+        cls, state: SelectState, *, backend: StorageBackend, validate: bool
+    ) -> SelectMaterialization:
+        """Resolve whole-source shapes separately from fixed projections."""
+        joined = (
+            JoinedRowShape.for_sources(state.model, state.joins)
+            if state.returns_model and state.joins
+            else None
+        )
+        source = (
+            SourceRowShape.for_source(state.model)
+            if state.returns_model and not state.joins
+            else None
+        )
+        return cls(
+            state=state,
+            backend=backend,
+            validate=validate,
+            joined=joined,
+            source=source,
+            nullable_models=frozenset(
+                join.model for join in state.joins if join.join_type == "LEFT"
+            ),
+        )
+
+    def materialize(self, row: Sequence[object]) -> object:
+        """Decode the result without reconstructing source widths or presence."""
+        assert len(row) == len(self.state.fields), (  # noqa: S101
+            "database row shape did not match select query"
+        )
+        if self.joined is not None:
+            return self.joined.materialize(
+                row, backend=self.backend, validate=self.validate
+            )
+        if self.source is not None:
+            return self.source.materialize(
+                row, backend=self.backend, validate=self.validate
+            )
+        decoded_values = tuple(
+            _decode_projection_field(
+                column,
+                value,
+                nullable_models=self.nullable_models,
+                backend=self.backend,
+                validate=self.validate,
+            )
+            for column, value in zip(self.state.fields, row, strict=True)
+        )
+        if self.state.named_projection is not None:
+            return self.state.named_projection.materialize(decoded_values)
+        return decoded_values[0] if len(decoded_values) == 1 else decoded_values
+
+
+def materialize_select_row_for_backend(
+    state: SelectState,
+    row: Sequence[object],
+    *,
+    backend: StorageBackend,
+    validate: bool = True,
+) -> object:
+    """Decode a standalone row; execution plans retain the resolved decoder."""
+    return SelectMaterialization.for_state(
+        state, backend=backend, validate=validate
+    ).materialize(row)
 
 
 def materialize_write_returning_rows_for_backend(

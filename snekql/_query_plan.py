@@ -15,7 +15,7 @@ lazy from snekql._query_compile import (
 )
 lazy from snekql._query_dialect import QueryDialect
 lazy from snekql._query_materialize import (
-    materialize_select_row_for_backend,
+    SelectMaterialization,
     materialize_write_returning_rows_for_backend,
 )
 lazy from snekql._query_state import (
@@ -48,13 +48,12 @@ class SelectPlan[ResultT]:
     params: tuple[object, ...]
     backend: BackendFamily
     cardinality: SelectCardinality
-    _state: SelectState = field(repr=False)
-    _validate: bool = field(repr=False)
+    _materialization: SelectMaterialization = field(repr=False)
 
     @property
     def requires_write_transaction(self) -> bool:
         """Expose execution policy without making runtime inspect builder state."""
-        return self._state.lock_wait is not None
+        return self._materialization.state.lock_wait is not None
 
     @property
     def diagnostics(self) -> QueryDiagnostics:
@@ -84,13 +83,8 @@ class SelectPlan[ResultT]:
     def materialize_row(self, row: Sequence[object]) -> ResultT:
         """Decode a row using the validation policy captured at compilation."""
 
-        result = materialize_select_row_for_backend(
-            self._state,
-            row,
-            backend=self.backend,
-            validate=self._validate,
-        )
-        return cast("ResultT", result)
+        # The typed builder factory fixes the result coordinate; runtime rows are erased.
+        return cast("ResultT", self._materialization.materialize(row))
 
 
 @dataclass(frozen=True)
@@ -189,14 +183,19 @@ def compile_select_plan_for_dialect(
     if not isinstance(state, SelectState):
         msg = "fetch requires a select query"
         raise QueryCompilationError(msg)
-    sql, params = compile_select_sql_for_dialect(state, dialect)
+    backend = require_model_backend(state.model)
+    materialization = SelectMaterialization.for_state(
+        state, backend=backend, validate=validate
+    )
+    sql, params = compile_select_sql_for_dialect(
+        state, dialect, joined_shape=materialization.joined
+    )
     return SelectPlan(
         sql=sql,
         params=params,
-        backend=require_model_backend(state.model),
+        backend=backend,
         cardinality=cardinality,
-        _state=state,
-        _validate=validate,
+        _materialization=materialization,
     )
 
 

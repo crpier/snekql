@@ -34,6 +34,7 @@ lazy from snekql._cte import (
     build_cte,
 )
 lazy from snekql._dialect_expr import DialectSelectable, NullExtendedSelectable
+lazy from snekql._materialization_shape import JoinedRowShape
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._output_label import _OutputLabel
 lazy from snekql._query_compile import compile_query_sql, inspect_query_sql
@@ -54,7 +55,6 @@ lazy from snekql._query_scope import (
     ensure_predicate_targets_models,
 )
 lazy from snekql._query_sources import (
-    query_fields,
     require_grouping_column,
     require_query_source,
 )
@@ -2330,7 +2330,6 @@ def _select_join(
     project: bool = False,
 ) -> SelectState:
     table_model = require_query_source(model)
-    new_fields = query_fields(table_model, presence=not project)
     anchor_backend = require_model_backend(state.model)
     joined_backend = require_model_backend(table_model)
     if joined_backend != anchor_backend:
@@ -2374,19 +2373,14 @@ def _select_join(
         # Projection selects keep their fixed projected columns; a join only
         # brings the table into the FROM graph, it never widens the SELECT list.
         return replace(state, joins=(*state.joins, spec))
+    joins = (*state.joins, spec)
+    shape = JoinedRowShape.for_sources(state.model, joins)
     return replace(
         state,
-        fields=(
-            *(
-                query_fields(state.model, presence=True)
-                if not state.joins
-                else state.fields
-            ),
-            *new_fields,
-        ),
+        fields=shape.fields,
         named_projection=None,
         returns_model=True,
-        joins=(*state.joins, spec),
+        joins=joins,
     )
 
 

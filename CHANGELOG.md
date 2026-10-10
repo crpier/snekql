@@ -34,6 +34,12 @@
 
 ### Changed
 
+- Concentrate whole-model joined row-shape policy in Materialization and retain
+  resolved source spans in SELECT Execution Plans. Preserve physical/alias/CTE
+  payloads, hidden presence witnesses, and matched all-NULL versus absent rows
+  across buffered and streamed reads; public query/result contracts are unchanged.
+  Addresses #445.
+
 - Adopt native sentinels for settings and framework markers. Document and test
   Python 3.15 closed/extra-items `TypedDict` raw contracts on both backends.
   See [the feature evaluation](docs/python315-native-contracts.md). Addresses #443.

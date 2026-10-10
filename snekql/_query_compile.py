@@ -15,6 +15,7 @@ lazy from snekql._compiled import CompiledQuery
 lazy from snekql._cte import _CteOutput, _CteRelation
 lazy from snekql._cte_graph import collect_cte_definitions
 lazy from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
+lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._output_domain import output_domain
 lazy from snekql._query_dialect import QueryDialect, query_dialect_for_backend
@@ -25,7 +26,6 @@ lazy from snekql._query_scope import (
     ensure_having_targets,
     ensure_ordering_targets_models,
 )
-lazy from snekql._query_sources import table_presence_name
 lazy from snekql._query_state import (
     DeleteState,
     InsertState,
@@ -649,21 +649,24 @@ def _compile_select_list(
 
 
 def _compile_source_sql(
-    model: type[Table[Any]], dialect: QueryDialect, *, presence: bool = False
+    model: type[Table[Any]],
+    dialect: QueryDialect,
+    *,
+    shape: SourceRowShape | None = None,
 ) -> str:
     """Render a physical table with its independent query-role name, if any."""
     name = dialect.quote_identifier(require_model_table_name(model))
     if issubclass(model, _CteRelation):
         definition = dialect.quote_identifier(model.definition.name)
         return definition if definition == name else f"{definition} AS {name}"
-    marker = table_presence_name(model) if presence else None
-    if marker is not None:
+    marker = shape.presence_name if shape is not None else None
+    if marker is not None and shape is not None:
         physical_model = (
             model.source_model if issubclass(model, _AliasRelation) else model
         )
         physical = dialect.quote_identifier(require_model_table_name(physical_model))
         columns = ", ".join(
-            dialect.quote_identifier(column) for column in require_model_columns(model)
+            dialect.quote_identifier(column) for column in shape.column_names
         )
         return (
             f"(SELECT {columns}, 1 AS {dialect.quote_identifier(marker)} "  # noqa: S608 - identifiers are dialect-quoted
@@ -709,13 +712,14 @@ def _compile_locking_clause(
 
 
 def _compile_select_source(
-    state: SelectState, dialect: QueryDialect
+    state: SelectState,
+    dialect: QueryDialect,
+    *,
+    shape: SourceRowShape | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     """Derived operands preserve binary grouping on both supported dialects."""
     if state.compound is None:
-        return _compile_source_sql(
-            state.model, dialect, presence=state.returns_model and bool(state.joins)
-        ), ()
+        return _compile_source_sql(state.model, dialect, shape=shape), ()
     left_sql, left_params = _compile_select_state(state.compound.left, dialect)
     right_sql, right_params = _compile_select_state(state.compound.right, dialect)
     alias = dialect.quote_identifier(require_model_table_name(state.model))
@@ -731,7 +735,10 @@ def _compile_select_state(
     *,
     outer: ScopeResolver | None = None,
     presence_name: str | None = None,
+    joined_shape: JoinedRowShape | None = None,
 ) -> tuple[str, tuple[object, ...]]:
+    if joined_shape is None and state.returns_model and state.joins:
+        joined_shape = JoinedRowShape.for_sources(state.model, state.joins)
     own_models = state.result_models()
     # A subquery layers the enclosing query's scope as outer, so correlated
     # references resolve against it; the resolver's qualification then makes
@@ -756,14 +763,24 @@ def _compile_select_state(
         state, dialect, scope=scope, presence_name=presence_name
     )
     select_keyword = "SELECT DISTINCT" if state.distinct else "SELECT"
-    quoted_table, source_params = _compile_select_source(state, dialect)
+    quoted_table, source_params = _compile_select_source(
+        state,
+        dialect,
+        shape=joined_shape.spans[0].shape if joined_shape is not None else None,
+    )
     params = (*params, *source_params)
     sql_parts = [
         f"{select_keyword} {quoted_columns} FROM {quoted_table}",
     ]
     for index, join in enumerate(state.joins):
         join_table = _compile_source_sql(
-            join.model, dialect, presence=state.returns_model
+            join.model,
+            dialect,
+            shape=(
+                joined_shape.spans[index + 1].shape
+                if joined_shape is not None
+                else None
+            ),
         )
         # ON can see the FROM anchor and preceding joins, never a later join.
         join_scope = ScopeResolver(
@@ -833,6 +850,7 @@ def compile_select_sql_for_dialect(
     dialect: QueryDialect,
     *,
     outer: ScopeResolver | None = None,
+    joined_shape: JoinedRowShape | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     """Compile a select query's state into backend Dialect SQL."""
 
@@ -841,7 +859,9 @@ def compile_select_sql_for_dialect(
     definitions = collect_cte_definitions(
         state, outer_models=outer.models if outer is not None else ()
     )
-    sql, params = _compile_select_state(state, dialect, outer=outer)
+    sql, params = _compile_select_state(
+        state, dialect, outer=outer, joined_shape=joined_shape
+    )
     if not definitions:
         return sql, params
     parts: list[str] = []
