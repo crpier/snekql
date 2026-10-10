@@ -104,7 +104,7 @@ class TemporaryMariaDBServer:
     data_directory: Path
     error_log_path: Path
     host: str | None
-    password: str
+    password: str = field(repr=False)
     pid_path: Path
     port: int | None
     socket_path: Path | None

@@ -11,6 +11,7 @@ from snektest import (
     assert_eq,
     assert_in,
     assert_is_none,
+    assert_not_in,
     assert_raises,
     assert_true,
     test,
@@ -279,3 +280,26 @@ async def temporary_mariadb_server_supports_password_auth() -> None:
             assert_eq(server.auth, "password")
             assert server.password != ""
             assert_in("1", result.stdout)
+
+
+@test(mark="fast")
+def temporary_server_representation_omits_password() -> None:
+    """Logging public server details must not accidentally reveal its credential."""
+    private_password = "test_server_password_secret"
+    server = TemporaryMariaDBServer(
+        auth="password",
+        database="test",
+        data_directory=Path("data"),
+        error_log_path=Path("mariadb.err"),
+        host="127.0.0.1",
+        password=private_password,
+        pid_path=Path("mariadb.pid"),
+        port=4306,
+        socket_path=None,
+        transports=frozenset({"tcp"}),
+        user="root",
+    )
+
+    rendered = str(server) + repr(server)
+
+    assert_not_in(private_password, rendered)

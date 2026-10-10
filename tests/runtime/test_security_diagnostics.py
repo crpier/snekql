@@ -1,10 +1,13 @@
 """Default database diagnostics omit values even in formatted tracebacks."""
 
+from collections.abc import Iterable
 from traceback import format_exception
 from typing import Any, ClassVar, Literal
+from unittest.mock import patch
 from uuid import UUID
 from warnings import catch_warnings, simplefilter, warn
 
+from aiosqlite import Connection, Cursor
 from pydantic import Json, create_model
 from snektest import Param, assert_eq, assert_not_in, assert_raises, load_fixture, test
 
@@ -197,3 +200,45 @@ async def builder_server_warnings_are_not_forwarded(consumption: str) -> None:
         warn("unrelated_warning", stacklevel=1)
 
     assert_eq([str(warning.message) for warning in captured], ["unrelated_warning"])
+
+
+@test(
+    [
+        Param[Literal["redacted", "values"]]("redacted", name="redacted"),
+        Param[Literal["redacted", "values"]]("values", name="values"),
+    ],
+    mark="medium",
+)
+async def builder_timeout_traceback_honors_visibility(
+    visibility: Literal["redacted", "values"],
+) -> None:
+    """Driver-originated timeouts must not bypass default query-error redaction."""
+    case = await load_fixture(provide_raw_case("sqlite", visibility=visibility))
+
+    class Entry[S = sqlite.Pending](sqlite.Model[S]):
+        __row_type__: ClassVar[sqlite.ReadType[Entry[sqlite.Row]]]
+        token: sqlite.Col[str] = sqlite.Text()
+
+    private_input = "driver_timeout_secret"
+    await case.database.migrate({"001": sqlite.scaffold([Entry])})
+    native_execute = Connection.execute
+
+    async def timeout_execute(
+        connection: Connection,
+        sql: str,
+        parameters: Iterable[object] | None = None,
+    ) -> Cursor:
+        if sql.startswith("SELECT "):
+            # A native driver can time out independently of the package deadline.
+            raise TimeoutError(private_input)
+        return await native_execute(connection, sql, parameters)
+
+    with (
+        patch.object(Connection, "execute", timeout_execute),
+        assert_raises(sqlite.DatabaseOperationTimeoutError) as caught,
+    ):
+        async with case.database.transaction() as transaction:
+            await transaction.fetch_all(sqlite.select(Entry.token))
+
+    rendered = "".join(format_exception(caught.exception))
+    assert_eq(private_input in rendered, visibility == "values")

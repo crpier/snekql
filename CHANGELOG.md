@@ -34,6 +34,11 @@
 
 ### Changed
 
+- Retain transaction finalization across repeated native task cancellation;
+  cancellation waits for owned cleanup and commit evidence to settle. Enforce
+  owning-task access for builder streams as well as raw streams, and suppress
+  native timeout causes under default query diagnostic redaction. Omit temporary
+  MariaDB server passwords from ordinary representations. Addresses #453.
 - Harden structured API boundaries and default diagnostics. MariaDB query
   identifiers preserve percent signs through driver binding; Decimal dimensions
   require native integers, and scalar foreign-key actions enforce their bounded
