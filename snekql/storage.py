@@ -919,6 +919,8 @@ def ForeignKey[Target, T](  # noqa: N802, PLR0913
         storage_class=target_column.storage_class,
         storage_type_name=target_column.storage_type_name,
         datetime_precision=target_column.datetime_precision,
+        decimal_precision=target_column.decimal_precision,
+        decimal_scale=target_column.decimal_scale,
         text_length=target_column.text_length,
         text_collation=target_column.text_collation,
         index=index,
