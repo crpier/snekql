@@ -65,7 +65,9 @@ For dependency updates, use the [review procedure](dependency-maintenance.md).
 The [2026-10-10 security review](security-review-2026-10-10.md) records the
 structured-API hardening scope and validation. The
 [second defensive review](security-review-2026-10-10-second-pass.md) records
-failure-path and composition checks and their limitations.
+failure-path and composition checks and their limitations. The
+[third defensive review](security-review-2026-10-10-third-pass.md) covers
+malformed legacy timestamp diagnostics and migration cleanup ownership.
 
 Design records explain decisions; they are **not current usage instructions**:
 

@@ -24,8 +24,9 @@ between **SQL structure** and **data** in its built-in structured APIs.
 - Reject primitive/JSON serialization type mismatches without value-bearing
   serializer warnings or chained errors. This does not reapply stored-value
   constraints to comparison bounds.
-- Omit invalid values from built-in model validation errors. Typed JSON
-  extraction errors must not disclose either the bound path or the stored value.
+- Omit invalid values from built-in model validation errors, including native
+  timestamp parser causes on mismatched legacy columns. Typed JSON extraction
+  errors must not disclose either the bound path or the stored value.
 - Do not forward MariaDB cursor server-warning text through Python warnings.
   Server diagnostics can contain values. This does not disable unrelated Python
   warnings or package advisory warnings.
@@ -87,7 +88,8 @@ Test through public boundaries:
   and public test-support credential objects.
 - Native task cancellation as well as AnyIO scope cancellation, including a
   second cancellation during cleanup. Prove that subsequent leases work and
-  pending writes do not leak into another transaction.
+  pending writes do not leak into another transaction. Include migration apply,
+  history verification, and status cleanup, not just Transaction exit.
 - Rejected cross-task stream reads and exits, verifying that the owning task's
   cursor remains usable and its lock ownership is intact.
 

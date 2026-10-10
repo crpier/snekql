@@ -2548,9 +2548,9 @@ def _decode_mariadb_datetime(value: object, name: str) -> datetime:
         raise ModelValidationError(msg)
     try:
         parsed = datetime.fromisoformat(value.replace(" ", "T"))
-    except ValueError as error:
+    except ValueError:
         msg = f"{name!r} timestamp is not valid MariaDB text"
-        raise ModelValidationError(msg) from error
+        raise ModelValidationError(msg) from None
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed

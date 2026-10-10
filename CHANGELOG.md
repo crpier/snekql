@@ -34,6 +34,10 @@
 
 ### Changed
 
+- Retain SQLite migration connection cleanup across repeated native task
+  cancellation, including migration verification and status reads. Suppress
+  value-bearing timestamp parser causes when built-in MariaDB decoding rejects
+  malformed legacy text. Addresses #455.
 - Retain transaction finalization across repeated native task cancellation;
   cancellation waits for owned cleanup and commit evidence to settle. Enforce
   owning-task access for builder streams as well as raw streams, and suppress

@@ -1,5 +1,6 @@
 """SQLite adapter for the backend-neutral query runtime."""
 
+lazy import asyncio
 lazy import contextlib
 lazy import logging
 lazy from collections.abc import Sequence
@@ -349,24 +350,53 @@ class SQLiteRuntime:
 
         validate_sqlite_migrations(migrations)
 
-    async def _release_migration_connection(
+    async def _release_migration_connection(  # noqa: C901 - retain lease ownership across native cancellation
         self,
         connection: Connection,
         connection_state: SQLiteMigrationConnectionState,
     ) -> None:
         """Return only a transaction-clean migration connection to the pool."""
 
-        discard = False
+        async def finish() -> BaseException | None:
+            """Settle the migration lease independently of caller cancellation."""
+            # Native cancellation bypasses AnyIO shielding. The worker retains
+            # the lease until rollback and return/discard have both settled.
+            try:
+                discard = False
+                with anyio.CancelScope(shield=True):
+                    if connection.in_transaction:
+                        try:
+                            await connection.rollback()
+                        except Exception:
+                            discard = True
+                    if (
+                        discard
+                        or not connection_state.reusable
+                        or connection.in_transaction
+                    ):
+                        await self.connection_pool.discard(connection)
+                    else:
+                        await self.connection_pool.release(connection)
+            except BaseException as e:
+                return e
+            return None
+
+        cleanup = asyncio.create_task(finish())
+        cancellation: asyncio.CancelledError | None = None
+        cleanup_error: BaseException | None = None
         with anyio.CancelScope(shield=True):
-            if connection.in_transaction:
+            while True:
                 try:
-                    await connection.rollback()
-                except Exception:
-                    discard = True
-            if discard or not connection_state.reusable or connection.in_transaction:
-                await self.connection_pool.discard(connection)
-            else:
-                await self.connection_pool.release(connection)
+                    cleanup_error = await asyncio.shield(cleanup)
+                    break
+                except asyncio.CancelledError as e:
+                    if cleanup.cancelled():
+                        raise
+                    cancellation = e
+        if cancellation is not None:
+            raise cancellation
+        if cleanup_error is not None:
+            raise cleanup_error
         await checkpoint()
 
     async def apply_migrations(
