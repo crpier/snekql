@@ -152,11 +152,28 @@ jobs:
         with:
           version: "0.13.0"
           enable-cache: true
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Check out CPython 3.15.0 for system-library SQLite
+        if: matrix.python-source == 'system-library'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: python/cpython
+          ref: d220409a13b77de7a6c30abe16ea90db01528edc # v3.15.0
+          path: .ci-cpython
+          persist-credentials: false
+      - name: Build Python against Ubuntu system libraries
         if: matrix.python-source == 'system-library'
         id: system-python
-        with:
-          python-version: "3.15.0"
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential pkg-config \
+            libsqlite3-dev libssl-dev zlib1g-dev libbz2-dev liblzma-dev \
+            libffi-dev libreadline-dev libncursesw5-dev uuid-dev libzstd-dev
+          prefix="${RUNNER_TEMP}/python315-system"
+          cd .ci-cpython
+          ./configure --prefix="$prefix" --with-ensurepip=no
+          make -j "$(nproc)"
+          make install
+          echo "python-path=${prefix}/bin/python3.15" >> "$GITHUB_OUTPUT"
       - name: Sync system-library Python
         if: matrix.python-source == 'system-library'
         env:
