@@ -65,7 +65,7 @@ Results:
   container provisioning/build/sync/test execution took about 66 seconds on the
   local host; this is not a hosted-runner timing guarantee.
 - `uv run ty check`, `uv run ruff check .`, and
-  `uv run ruff format --check .`: passed, 514 Python files.
+  `uv run ruff format --check .`: passed, 515 Python files.
 - `uv lock --check`, generated query-overload check, `git diff --check`, and
   Bash syntax check of the extracted validation commands: passed.
 
