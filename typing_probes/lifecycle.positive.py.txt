@@ -20,9 +20,17 @@ class Account[S = database.Pending](database.Model[S]):
 def pending() -> None:
     account = Account(name="Ada")
     assert_type(account, Account[database.Pending])
-    assert_type(account.id, int | database.PendingGeneration)
+    assert_type(account.id, int | database.PENDING_GENERATION)
 
 
 def fetched(account: Account[database.Row]) -> int:
     assert_type(account.id, int)
     return account.id
+
+
+def available_id(account: Account[database.Pending]) -> int:
+    generated_value = account.id
+    if generated_value is database.PENDING_GENERATION:
+        return 0
+    assert_type(generated_value, int)
+    return generated_value

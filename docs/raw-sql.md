@@ -125,11 +125,46 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Dataclasses, Pydantic models, TypedDicts, and tuple annotations infer exact row
-types. A dynamically selected valid row mode does not erase a declared type.
-Arbitrary annotations also work at runtime, but may infer `RawStatement[object]`.
-Direct `Annotated[...]` uses that fallback. Put constraints inside a supported
-row declaration when exact inference matters.
+Factory `validate` accepts `TypeForm[T]` and returns `RawStatement[T]`.
+Dataclasses, Pydantic models, TypedDicts, tuple annotations, unions, literals,
+and `Annotated` constraints preserve their exact result types. A dynamically
+selected valid row mode does not erase a declared type. Ordinary values such
+as `42` are not type contracts and are rejected statically; runtime construction
+still checks that Pydantic can build the declared validator.
+
+For example, `validate=Annotated[tuple[int], Field(min_length=1)]` with
+`row_mode="tuple"` yields `RawStatement[tuple[int]]`, not an erased object result.
+A type expression must describe the whole packaged mapping or tuple row, not
+just one column's scalar value.
+
+### Closed and extra-items TypedDict contracts
+
+Python 3.15's native `typing.TypedDict` supports explicit extra-column policies:
+
+```python
+from typing import TypedDict
+from snekql import sqlite as sql
+
+
+class Answer(TypedDict, closed=True):
+    answer: int
+
+
+statement = sql.raw("SELECT 42 AS answer", validate=Answer)
+# fetch_one(statement) has type Answer; extra SQL columns fail validation.
+
+
+class LabeledAnswer(TypedDict, extra_items=str):
+    answer: int
+
+
+labeled = sql.raw("SELECT 42 AS answer, 'kept' AS label", validate=LabeledAnswer)
+# Extra columns remain in the row and must validate as strings.
+```
+
+These contracts work on both backends. An open TypedDict remains open; closure
+is opt-in, not a new global policy. Closed-contract failures use the same redacted
+`RawResultValidationError` details as other raw validation failures.
 
 Each packaged mapping or tuple goes to `validate_python` with normal Pydantic
 behavior. Required fields, aliases, defaults, extras, nullability, coercion, and

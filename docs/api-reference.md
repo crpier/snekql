@@ -212,7 +212,6 @@ against both namespaces' `__all__` lists.
 | `PENDING_GENERATION` | yes | yes |
 | `Pending` | yes | yes |
 | `PendingInput` | yes | yes |
-| `PendingGeneration` | yes | yes |
 | `PoolStats` | yes | yes |
 | `PoolTimeoutError` | yes | yes |
 | `Predicate` | yes | yes |

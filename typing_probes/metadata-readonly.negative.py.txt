@@ -1,0 +1,4 @@
+
+
+def reject_column_replacement() -> None:
+    Account.__snekql_columns__["email"] = Account.email  # expect-error

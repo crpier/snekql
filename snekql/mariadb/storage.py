@@ -11,11 +11,11 @@ lazy from snekql.defaults import LiteralDefault
 lazy from snekql.errors import ModelDeclarationError, ModelValidationError
 lazy from snekql.expressions import Comparable
 lazy from snekql.storage import (
+    PENDING_GENERATION,
     Attr,
     CurrentTimestamp,
     FKAttr,
     ForeignKey,
-    PendingGeneration,
     _UnboundOwner,
 )
 
@@ -217,8 +217,8 @@ def Integer[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -230,7 +230,7 @@ def Integer[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -330,8 +330,8 @@ def Real[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -342,7 +342,7 @@ def Real[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -432,8 +432,8 @@ def Text[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -448,7 +448,7 @@ def Text[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -575,8 +575,8 @@ def LongText[T, Target = Never](
         "utf8mb4_bin", "utf8mb4_general_ci", "utf8mb4_unicode_ci"
     ] = "utf8mb4_bin",
     nullable: bool | None = None,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -587,7 +587,7 @@ def LongText[T, Target = Never](
     ] = "utf8mb4_bin",
     nullable: bool | None = None,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -685,8 +685,8 @@ def Blob[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -697,7 +697,7 @@ def Blob[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -785,8 +785,8 @@ def Decimal[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -962,8 +962,8 @@ def Boolean[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -973,7 +973,7 @@ def Boolean[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1051,8 +1051,8 @@ def Date[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1062,7 +1062,7 @@ def Date[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1141,8 +1141,8 @@ def DateTime[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1153,7 +1153,7 @@ def DateTime[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1242,8 +1242,8 @@ def Uuid[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1254,7 +1254,7 @@ def Uuid[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload

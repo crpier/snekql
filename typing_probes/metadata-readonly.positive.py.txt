@@ -1,0 +1,19 @@
+"""Published column metadata permits lookup without exposing mutators."""
+
+from collections.abc import Mapping
+from typing import ClassVar, assert_type
+
+from snekql import __BACKEND__ as database
+from snekql.model import require_model_columns
+
+
+class Account[S = database.Pending](database.Model[S]):
+    __row_type__: ClassVar[database.ReadType[Account[database.Row]]]
+    email: database.Col[str] = database.Text()
+
+
+def read_metadata() -> None:
+    columns = require_model_columns(Account)
+    readable: Mapping[str, object] = columns
+    assert_type(columns["email"].name, str | None)
+    assert_type(tuple(readable), tuple[str, ...])

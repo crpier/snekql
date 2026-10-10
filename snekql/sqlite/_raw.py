@@ -1,7 +1,7 @@
 """Native sqlite SQL declarations."""
 
 lazy from collections.abc import Mapping, Sequence
-lazy from typing import Literal, overload
+lazy from typing import Literal, TypeForm, overload
 
 lazy from snekql._raw import RawStatement as _RawStatement
 lazy from snekql._raw import RowMode, build_raw
@@ -44,19 +44,9 @@ def raw[RowT](
     sql: str,
     *,
     params: Mapping[str, object] | Sequence[object] | None = None,
-    validate: type[RowT],
+    validate: TypeForm[RowT],
     row_mode: RowMode = "mapping",
 ) -> RawStatement[RowT]: ...
-
-
-@overload
-def raw(
-    sql: str,
-    *,
-    params: Mapping[str, object] | Sequence[object] | None = None,
-    validate: object,
-    row_mode: RowMode = "mapping",
-) -> RawStatement[object]: ...
 
 
 def raw(

@@ -3,7 +3,7 @@
 lazy import annotationlib
 lazy import inspect
 lazy import sys
-lazy from collections.abc import Callable
+lazy from collections.abc import Callable, Mapping
 lazy from dataclasses import dataclass
 lazy from datetime import UTC, date, datetime, timedelta
 lazy from decimal import Decimal
@@ -16,7 +16,6 @@ lazy from typing import (
     ForwardRef,
     Literal,
     Never,
-    Self,
     TypeAliasType,
     TypeForm,
     TypeVar,
@@ -291,27 +290,8 @@ class _UnboundOwner:
     """Static owner marker for descriptors not yet accessed through a model."""
 
 
-class PendingGeneration:
-    """Sentinel type for generated values that are not available yet.
-
-    >>> PENDING_GENERATION is PendingGeneration()
-    True
-    >>> repr(PENDING_GENERATION)
-    'PENDING_GENERATION'
-    """
-
-    _instance: Self | None = None
-
-    def __new__(cls) -> Self:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __repr__(self) -> str:
-        return "PENDING_GENERATION"
-
-
-PENDING_GENERATION = PendingGeneration()
+PENDING_GENERATION = sentinel("PENDING_GENERATION")
+"""A generated field omitted from Pending input until the database supplies it."""
 
 
 # Startup schema verification behavior: strict raises on drift, warn logs and
@@ -329,8 +309,8 @@ def Integer[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -342,7 +322,7 @@ def Integer[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -446,8 +426,8 @@ def Real[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -458,7 +438,7 @@ def Real[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -552,8 +532,8 @@ def Text[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -565,7 +545,7 @@ def Text[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -673,8 +653,8 @@ def Blob[T, Target = Never](
     nullable: bool | None = None,
     unique: bool = False,
     index: bool = False,
-    default: PendingGeneration,
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+    default: PENDING_GENERATION,
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -685,7 +665,7 @@ def Blob[T, Target = Never](
     unique: bool = False,
     index: bool = False,
     default: type[CurrentTimestamp] | LiteralDefault[T],
-) -> FKAttr[Any, Any, _UnboundOwner, T | PendingGeneration, T, Target]: ...
+) -> FKAttr[Any, Any, _UnboundOwner, T | PENDING_GENERATION, T, Target]: ...
 
 
 @overload
@@ -1523,7 +1503,7 @@ class Attr[
         self._is_json_cache = result
         return result
 
-    def _coerce_pending_generation(self, *, fetched: bool) -> PendingGeneration:
+    def _coerce_pending_generation(self, *, fetched: bool) -> PENDING_GENERATION:
         if self.is_generated and not fetched:
             return PENDING_GENERATION
         msg = f"pending generated value for {self._require_name()!r}"
@@ -2504,7 +2484,7 @@ class _DeferredFKAttr(FKAttr[Any, Any, Any, Any, Any, Any]):
 
 
 def _finalize_model_columns(
-    columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+    columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
 ) -> None:
     """Freeze bound column metadata before model declaration callbacks run."""
 

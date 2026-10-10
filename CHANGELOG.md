@@ -4,6 +4,15 @@
 
 ### Breaking
 
+- Replace the public `PendingGeneration` class with Python's native
+  `PENDING_GENERATION` sentinel. Use `T | PENDING_GENERATION` annotations and
+  identity comparisons; no compatibility class is retained.
+- Raw result contracts now use `TypeForm[T]`: unions, literals, and `Annotated`
+  preserve exact result types. Remove the broad `object` overload; ordinary
+  values are not statically accepted as validation contracts.
+- Publish table and alias column metadata as `frozendict`, exposing read-only
+  `Mapping` annotations. Mutating mapping membership is no longer supported.
+
 - Require Python 3.15+ and Pydantic 2.14+ (2026-10-09). Python 3.14 is no
   longer supported.
 
@@ -24,6 +33,10 @@
   `fetch_all()` still returns all result rows. Addresses #432.
 
 ### Changed
+
+- Adopt native sentinels for settings and framework markers. Document and test
+  Python 3.15 closed/extra-items `TypedDict` raw contracts on both backends.
+  See [the feature evaluation](docs/python315-native-contracts.md). Addresses #443.
 
 - Remove secondary type-checker runners, stored comparison reports, and obsolete
   comparison research. The consumer assessment CLI always runs ty; `--checker`

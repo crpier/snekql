@@ -187,7 +187,7 @@ class _SchemaModelClass(  # noqa: PYI046 - shared with Query Runtime
     """Schema operations require declaration metadata, not just selectable roles."""
 
     @property
-    def __snekql_columns__(self) -> dict[str, Attr[Any, Any, Any, Any, Any]]: ...
+    def __snekql_columns__(self) -> Mapping[str, Attr[Any, Any, Any, Any, Any]]: ...
 
 
 class InsertableModel(Protocol[FamilyT_co, SelectableOwnerT, SelectableReadT_co]):

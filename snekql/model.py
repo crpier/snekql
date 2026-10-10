@@ -3,7 +3,7 @@
 lazy import annotationlib
 lazy import inspect
 lazy import warnings
-lazy from collections.abc import Callable
+lazy from collections.abc import Callable, Mapping
 lazy from types import EllipsisType, GenericAlias
 lazy from typing import (
     Any,
@@ -42,7 +42,6 @@ lazy from snekql.storage import (
     FKAttr,
     ForeignKey,
     Integer,
-    PendingGeneration,
     Real,
     StorageBackend,
     Text,
@@ -57,7 +56,7 @@ lazy from snekql.storage import (
 
 type BackendFamily = StorageBackend
 
-_MODEL_BASE_MARKER = object()
+_MODEL_BASE_MARKER = sentinel("_MODEL_BASE_MARKER")
 
 StateT = TypeVar("StateT")
 T = TypeVar("T")
@@ -75,7 +74,7 @@ class Pending:
 class Row:
     """Marker state for complete table-model values.
 
-    A generated column may be `T | PendingGeneration` on `Pending` instances but
+    A generated column may be `T | PENDING_GENERATION` on `Pending` instances but
     `T` on `Row` instances. Rows come from database results or validated
     snapshots; the state does not prove database persistence.
 
@@ -139,7 +138,7 @@ type GenCol[T] = Attr[
     Table[Pending],
     Table[Row],
     _UnboundOwner,
-    T | PendingGeneration,
+    T | PENDING_GENERATION,
     T,
 ]
 
@@ -233,7 +232,7 @@ class ModelMeta(type):
         )
         if not is_model_base:
             ModelMeta._bind_row_type(model_class)
-        columns = ModelMeta._bind_columns(model_class)
+        columns = frozendict(ModelMeta._bind_columns(model_class))
         model_metadata.__snekql_columns__ = columns
         deferred = any(
             isinstance(column, _DeferredFKAttr) for column in columns.values()
@@ -303,7 +302,7 @@ class ModelMeta(type):
     @staticmethod
     def _prepare_column_contracts(
         model_class: type[Table[Any]],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
         *,
         deferred: bool,
     ) -> None:
@@ -318,7 +317,7 @@ class ModelMeta(type):
     def _defer_model_declarations(
         model_class: type[Table[Any]],
         namespace: dict[str, object],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> None:
         """Capture frozen declarations now; validate physical facts after Python binds the class."""
         model_metadata = cast("Any", model_class)
@@ -369,7 +368,7 @@ class ModelMeta(type):
 
     @staticmethod
     def _validate_column_contracts(
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
         backend: BackendFamily,
     ) -> None:
         """Validate temporal meanings and warn about remaining lexical value hazards."""
@@ -512,7 +511,7 @@ class ModelMeta(type):
     @staticmethod
     def _validate_foreign_key_backends(
         model_class: type[Table[Any]],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> None:
         """Require physical foreign keys to target the declaring backend."""
 
@@ -539,7 +538,7 @@ class ModelMeta(type):
     def _bind_checks(
         model_class: type,
         namespace: dict[str, object],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
         backend: BackendFamily,
     ) -> tuple[BoundCheck, ...]:
         """Evaluate a synchronous declaration once against frozen column metadata."""
@@ -562,7 +561,7 @@ class ModelMeta(type):
     def _bind_foreign_keys(
         model_class: type,
         namespace: dict[str, object],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> tuple[ForeignKeyConstraint[Any, Any], ...]:
         """Freeze explicit relationships after columns and candidate keys are bound."""
         declarations = namespace.get("__foreign_keys__", [])
@@ -590,7 +589,7 @@ class ModelMeta(type):
     def _validate_foreign_key_target(
         model_class: type,
         declaration: ForeignKeyConstraint[Any, Any],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> None:
         """Require a single target candidate key and compatible local storage."""
         target_model = declaration.references[0].owner
@@ -664,7 +663,7 @@ class ModelMeta(type):
     def _bind_indexes(
         model_class: type,
         namespace: dict[str, object],
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> tuple[NormalizedIndex, ...]:
         indexes_object = namespace.get("__indexes__", [])
         if isinstance(indexes_object, classmethod):
@@ -816,7 +815,7 @@ class ModelMeta(type):
             column.default, LiteralDefault
         ):
             return
-        # Server-default markers leave a PendingGeneration value until INSERT.
+        # Server-default markers leave a PENDING_GENERATION value until INSERT.
         # The field needs the generated shape and cannot use a Python factory.
         if not column.is_generated:
             msg = f"Server defaults require a generated (GenCol) column: {name!r}"
@@ -825,14 +824,14 @@ class ModelMeta(type):
             msg = f"Server defaults cannot be combined with default_factory: {name!r}"
             raise ModelDeclarationError(msg)
         # Route the marker to the internal server default and leave the column
-        # omittable: construction yields PendingGeneration, and the insert omits it so the
+        # omittable: construction yields PENDING_GENERATION, and the insert omits it so the
         # database supplies the value.
         column.server_default = column.default
         column.default = PENDING_GENERATION
 
     @staticmethod
     def _validate_column_nullability(
-        columns: dict[str, Attr[Any, Any, Any, Any, Any]],
+        columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
     ) -> None:
         """Cross-check each column's ``nullable=`` flag against its annotation.
 
@@ -927,7 +926,7 @@ class Model[StateT](Table[StateT], metaclass=ModelMeta):
     """
 
     __snekql_backend__: ClassVar[Literal["sqlite"]] = "sqlite"
-    __snekql_columns__: ClassVar[dict[str, Attr[Any, Any, Any, Any, Any]]]
+    __snekql_columns__: ClassVar[Mapping[str, Attr[Any, Any, Any, Any, Any]]]
     __snekql_framework_base__: ClassVar[object] = _MODEL_BASE_MARKER
     __snekql_localns__: ClassVar[dict[str, Any] | None]
     __snekql_indexes__: ClassVar[tuple[NormalizedIndex, ...]]
@@ -935,7 +934,7 @@ class Model[StateT](Table[StateT], metaclass=ModelMeta):
 
     type Col[T] = Attr[Table[Pending], Table[Row], _UnboundOwner, T, T]
     type GenCol[T] = Attr[
-        Table[Pending], Table[Row], _UnboundOwner, T | PendingGeneration, T
+        Table[Pending], Table[Row], _UnboundOwner, T | PENDING_GENERATION, T
     ]
     type FKCol[Target, T] = FKAttr[
         Table[Pending], Table[Row], _UnboundOwner, T, T, Target
@@ -1080,17 +1079,17 @@ def _complete_model[Family, Result: Table[Row]](
 
 def require_model_columns(
     model: type[object],
-) -> dict[str, Attr[Any, Any, Any, Any, Any]]:
+) -> Mapping[str, Attr[Any, Any, Any, Any, Any]]:
     """Return frozen snekql column metadata for a table model."""
 
     binding = vars(model).get("__snekql_binding__")
     if isinstance(binding, _OnceBinding):
         binding.get()
     columns = getattr(model, "__snekql_columns__", None)
-    if not isinstance(columns, dict):
+    if not isinstance(columns, frozendict):
         msg = "schema setup requires snekql table models"
         raise ModelDeclarationError(msg)
-    return cast("dict[str, Attr[Any, Any, Any, Any, Any]]", columns)
+    return cast("Mapping[str, Attr[Any, Any, Any, Any, Any]]", columns)
 
 
 def require_model_table_name(model: type[Table[Any]]) -> str:

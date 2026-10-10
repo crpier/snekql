@@ -512,7 +512,7 @@ def current_timestamp_default_declares_a_server_filled_generated_column() -> Non
     """``default=CurrentTimestamp`` is the server-default declaration.
 
     The marker routes to an internal Server Default: the column is omittable at
-    construction (PendingGeneration until the database fills it) without writing
+    construction (PENDING_GENERATION until the database fills it) without writing
     ``default=PENDING_GENERATION``, yet an explicit value is still accepted. It must be a
     Generated Column and cannot also carry a Python factory.
     """

@@ -5,9 +5,9 @@ lazy from typing import TYPE_CHECKING, ClassVar, assert_type
 
 lazy from snekql import sqlite
 lazy from snekql.sqlite import (
+    PENDING_GENERATION,
     ClosedRead,
     Pending,
-    PendingGeneration,
     Predicate,
     Row,
     Transaction,
@@ -49,8 +49,8 @@ class Account[S = Pending](sqlite.Model[S]):
 if TYPE_CHECKING:
     pending_account = Account(email="alice@example.com")
     _ = assert_type(pending_account, Account[Pending])
-    _ = assert_type(pending_account.id, int | PendingGeneration)
-    _ = assert_type(pending_account.created_at, datetime | PendingGeneration)
+    _ = assert_type(pending_account.id, int | PENDING_GENERATION)
+    _ = assert_type(pending_account.created_at, datetime | PENDING_GENERATION)
     _ = assert_type(pending_account.insert_payload(), dict[str, str])
 
     def check_fetched_account(fetched_account: Account[Row]) -> None:
