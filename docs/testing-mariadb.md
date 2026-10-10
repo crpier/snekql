@@ -27,6 +27,14 @@ async with temporary_mariadb_server() as server:
 
 The context manager starts an unprivileged local `mariadbd`, waits until it is ready, creates the requested test database, yields connection details, and stops the server when the context exits.
 
+`startup_timeout` (default: 20 seconds) bounds each server's readiness polling,
+including client probes and retry delays. Password bootstrap and the final server
+each receive their own readiness budget. A probe completing after its deadline
+is not accepted as ready. Expiry raises `TemporaryMariaDBServerError` after stopping
+and reaping owned children; the separate cleanup grace below can extend elapsed
+time. This is not a total deadline for installation, OS process creation,
+password-setting SQL, or database creation/reset.
+
 Process ownership covers startup, password bootstrap and pre-yield database reset,
 not just the yielded context. Installer and SQL-client subprocesses also remain
 owned when their caller fails or is cancelled. Cleanup waits through AnyIO scope

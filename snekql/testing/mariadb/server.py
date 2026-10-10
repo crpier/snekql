@@ -457,7 +457,7 @@ async def _wait_until_ready(  # noqa: PLR0913
     error_log_path: Path,
     sensitive: bool = False,
 ) -> None:
-    """Poll the MariaDB CLI until the server accepts local connections."""
+    """Bound readiness probes and retries by one deadline, excluding child cleanup."""
 
     deadline = anyio.current_time() + startup_timeout
     while anyio.current_time() < deadline:
@@ -469,21 +469,31 @@ async def _wait_until_ready(  # noqa: PLR0913
             )
             msg = f"mariadbd exited before becoming ready\n{error_log}"
             raise TemporaryMariaDBServerError(msg)
-        result = await _run_client_sql(
-            auth=auth,
-            client=client,
-            database=database,
-            host=host,
-            password=password,
-            port=port,
-            socket_path=socket_path,
-            sql="SELECT 1",
-            transport=transport,
-            user=user,
-        )
+        result: MariaDBCommandResult | None = None
+        with anyio.CancelScope(deadline=deadline) as probe_scope:
+            result = await _run_client_sql(
+                auth=auth,
+                client=client,
+                database=database,
+                host=host,
+                password=password,
+                port=port,
+                socket_path=socket_path,
+                sql="SELECT 1",
+                transport=transport,
+                user=user,
+            )
+        # Owned child cleanup can outlast the readiness budget. Even a successful
+        # probe must not publish readiness after that deadline has passed.
+        if (
+            result is None
+            or probe_scope.cancel_called
+            or anyio.current_time() >= deadline
+        ):
+            break
         if result.returncode == 0:
             return
-        await anyio.sleep(0.25)
+        await anyio.sleep(min(0.25, max(0.0, deadline - anyio.current_time())))
     error_log = (
         "diagnostics suppressed for password-auth startup"
         if sensitive
