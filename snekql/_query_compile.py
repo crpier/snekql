@@ -248,11 +248,7 @@ class _PredicateCompileContext:
         correlates to), else the reference is rejected at compile time.
         """
 
-        operand = (
-            require_selectable(other)
-            if isinstance(other, SqlCompilable)
-            else require_field(other)
-        )
+        operand = require_selectable(other)
         self.scope.ensure_operand_in_scope(
             operand,
             clause="comparison",

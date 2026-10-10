@@ -218,11 +218,12 @@ def ensure_predicate_targets_models(
         return
     if arity == "single_column":
         _ = require_single_column_subquery(predicate.__predicate_subquery__())
-    operand = predicate.__predicate_operand__()
-    if operand is not None:
-        if isinstance(operand, _Aggregate):
+    for direct_operand in predicate.__predicate_grouping_operands__():
+        if isinstance(direct_operand, _Aggregate):
             msg = "aggregates cannot appear in where(); use having()"
             raise QueryConstructionError(msg)
+    operand = predicate.__predicate_operand__()
+    if operand is not None:
         scope.ensure_operand_in_scope(
             operand,
             clause="predicate",
