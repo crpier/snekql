@@ -1,5 +1,6 @@
 """Backend-neutral database lifecycle and transaction runtime."""
 
+lazy import asyncio
 lazy import logging
 lazy from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 lazy from contextlib import (
@@ -406,7 +407,7 @@ class ChunkStream[RowT]:
     ) -> None:
         _ = exc_type
         _ = traceback
-        self._check_raw_owner()
+        self._check_owner()
         pending = exc_value
         try:
             if isinstance(self._plan, RawPlan):
@@ -440,15 +441,14 @@ class ChunkStream[RowT]:
                 pending.__traceback__ if pending is not None else None,
             )
 
-    def _check_raw_owner(self) -> None:
-        """Reject cursor use outside its savepoint or raw stream's owning task."""
+    def _check_owner(self) -> None:
+        """Reject foreign-task cursor access before it can mutate stream state."""
 
         self._transaction._check_nested_owner()  # noqa: SLF001
-        if (
-            isinstance(self._plan, RawPlan)
-            and self._owner_task != anyio.get_current_task().id
+        if self._owner_task is not None and (
+            self._owner_task != anyio.get_current_task().id
         ):
-            msg = "raw stream must be consumed by its owning task"
+            msg = "chunk stream must be consumed and closed by its owning task"
             raise DatabaseRuntimeError(msg)
 
     async def _finish_raw(self, pending: BaseException | None = None) -> None:
@@ -478,7 +478,7 @@ class ChunkStream[RowT]:
         return self
 
     async def __anext__(self) -> list[RowT]:
-        self._check_raw_owner()
+        self._check_owner()
         cursor = self._cursor
         plan = self._plan
         if cursor is None and isinstance(plan, RawPlan):
@@ -671,6 +671,7 @@ class Transaction[FamilyT: BackendFamily]:
         )
         self._lifetime: AbstractContextManager[None] | None = None
         self._close_owner: int | None = None
+        self._close_task: asyncio.Task[BaseException | None] | None = None
         self._commit_outcome: CommitOutcome = "not_attempted"
         self.closed: bool = False
         self.connection: RuntimeConnection | None = None
@@ -772,7 +773,7 @@ class Transaction[FamilyT: BackendFamily]:
         finally:
             self._entering = False
 
-    async def __aexit__(
+    async def __aexit__(  # noqa: C901 - preserve cancellation and lease ownership together
         self,
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
@@ -780,26 +781,67 @@ class Transaction[FamilyT: BackendFamily]:
     ) -> None:
         _ = traceback
         self._check_nested_owner()
-        pending = exc_value
-        try:
-            await self._close(exc_type)
-        except BaseException as error:
-            pending = error
-            raise
-        finally:
-            if self._close_owner == anyio.get_current_task().id:
-                self._finish_lifetime(pending)
+        if self._stream_owner == anyio.get_current_task().id:
+            msg = "close the chunk stream before closing its transaction"
+            raise TransactionStateError(msg)
+        if self._close_task is not None:
+            # A competing exit may wait, but never owns cleanup or its span.
+            await asyncio.shield(self._close_task)
+            msg = "transaction is already closing or closed"
+            raise TransactionClosedError(msg)
+        owner_task = anyio.get_current_task().id
 
-    async def _close(self, exc_type: type[BaseException] | None) -> None:
+        async def finish() -> BaseException | None:
+            """Keep process-control failures in the caller, not a background Task."""
+            pending = exc_value
+            try:
+                try:
+                    await self._close(exc_type, owner_task=owner_task)
+                except BaseException as error:
+                    pending = error
+                    raise
+                finally:
+                    if self._close_owner == owner_task:
+                        self._finish_lifetime(pending)
+            except BaseException as error:
+                return error
+            return None
+
+        # Native Task.cancel() bypasses AnyIO cancellation shields, including
+        # while waiting for the transaction lock or restoring session policy.
+        # Join owned cleanup even after repeated cancellation; its driver calls
+        # retain their deadlines, and commit evidence settles before returning.
+        self._close_task = asyncio.create_task(finish())
+        cancellation: asyncio.CancelledError | None = None
+        cleanup_error: BaseException | None = None
+        with anyio.CancelScope(shield=True):
+            while True:
+                try:
+                    cleanup_error = await asyncio.shield(self._close_task)
+                    break
+                except asyncio.CancelledError as error:
+                    if self._close_task.cancelled():
+                        raise
+                    cancellation = error
+        if cancellation is not None:
+            raise cancellation
+        if cleanup_error is not None:
+            raise cleanup_error
+
+    async def _close(  # noqa: PLR0912 - retain lease ownership across all cleanup paths
+        self, exc_type: type[BaseException] | None, *, owner_task: int
+    ) -> None:
         """Finish native transaction control before returning or discarding its lease."""
         with anyio.CancelScope(shield=True):
             async with self._lock:
-                self._check_nested_owner()
+                if self._nested_owner not in (None, owner_task):
+                    msg = "nested transaction must be used by its owning task"
+                    raise TransactionStateError(msg)
                 connection = self.connection
                 if connection is None:
                     msg = "transaction is closed"
                     raise TransactionClosedError(msg)
-                self._close_owner = anyio.get_current_task().id
+                self._close_owner = owner_task
                 self.connection = None
                 self.closed = True
                 if self._nested_stack:
@@ -1545,7 +1587,9 @@ class Transaction[FamilyT: BackendFamily]:
                 observe=observe,
             )
         except DatabaseOperationTimeoutError as error:
-            if diagnostics.raw:
+            if diagnostics.raw or self.runtime.parameter_visibility == "redacted":
+                # Native timeout messages can contain the same private values as
+                # other driver failures, independently of our own deadline.
                 raise error from None
             raise
         except Exception as error:

@@ -83,7 +83,13 @@ Test through public boundaries:
 - Transactions on real SQLite and MariaDB for native interpretation.
 - `scaffold()` and public configuration for DDL and connection policy.
 - Ordinary `str`/`repr`, full `traceback.format_exception`, logs, warnings, and
-  observer events for unintended disclosure.
+  observer events for unintended disclosure, including driver-originated timeouts
+  and public test-support credential objects.
+- Native task cancellation as well as AnyIO scope cancellation, including a
+  second cancellation during cleanup. Prove that subsequent leases work and
+  pending writes do not leak into another transaction.
+- Rejected cross-task stream reads and exits, verifying that the owning task's
+  cursor remains usable and its lock ownership is intact.
 
 Use known payloads containing quotes, backticks, percent signs, comment markers,
 periods, NUL, and control characters as appropriate to each input domain. A query

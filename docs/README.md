@@ -63,7 +63,9 @@ Read these in order, or jump to the task you have now:
 Start with [contributing and local checks](contributing.md).
 For dependency updates, use the [review procedure](dependency-maintenance.md).
 The [2026-10-10 security review](security-review-2026-10-10.md) records the
-structured-API hardening scope and validation.
+structured-API hardening scope and validation. The
+[second defensive review](security-review-2026-10-10-second-pass.md) records
+failure-path and composition checks and their limitations.
 
 Design records explain decisions; they are **not current usage instructions**:
 

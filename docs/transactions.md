@@ -110,6 +110,11 @@ A timeout can leave it unclear whether a write committed. Check
 [commit outcomes](error-handling.md#commit-outcomes) before retrying. Never retry
 just because an exception looks temporary.
 
+Transaction exit retains ownership of native commit/rollback and connection
+cleanup even if its task is cancelled repeatedly. Cancellation can therefore
+wait for cleanup deadlines. It does not undo an acknowledged commit or prove
+that the server stopped executing; commit evidence settles before exit returns.
+
 ## Choose durability, isolation, and locks
 
 Use the linked guides for these deliberate choices:
