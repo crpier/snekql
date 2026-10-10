@@ -99,12 +99,9 @@ class _JsonExtractInt[OwnerT](
             raw = raw.decode()
         try:
             return int(cast("str | int | float", raw))
-        except (TypeError, ValueError) as error:
-            msg = (
-                f"json_extract_int({self.path!r}) expected an integer at the path "
-                f"but found {raw!r}"
-            )
-            raise ModelValidationError(msg) from error
+        except TypeError, ValueError:
+            msg = "json_extract_int expected an integer at the path"
+            raise ModelValidationError(msg) from None
 
 
 class JsonAttr[
@@ -870,11 +867,14 @@ def Decimal(  # noqa: N802, PLR0913
     constructor declares the native ``DECIMAL(precision, scale)`` storage shape.
     """
     if not (
-        1 <= precision <= _DECIMAL_MAX_PRECISION
+        type(precision) is int
+        and type(scale) is int
+        and 1 <= precision <= _DECIMAL_MAX_PRECISION
         and 0 <= scale <= min(_DECIMAL_MAX_SCALE, precision)
     ):
         msg = (
-            "Decimal precision/scale must satisfy 1 <= precision <= 65 and "
+            "Decimal precision/scale must be native integers satisfying "
+            "1 <= precision <= 65 and "
             "0 <= scale <= min(30, precision)"
         )
         raise ModelDeclarationError(msg)

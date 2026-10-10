@@ -114,6 +114,7 @@ async def accepted_scalar_targets_support_scaffold_replay_and_inserts(
         with assert_raises(ExecutionError) as caught:
             async with database.transaction() as tx:
                 await tx.execute(sqlite.insert(Child(parent=999)))
-        assert_eq(type(caught.exception.__cause__).__name__, "IntegrityError")
+        assert caught.exception.failure is not None
+        assert_eq(caught.exception.failure.category, "foreign_key_violation")
 
     assert_eq(rows, [expected])

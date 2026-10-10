@@ -637,10 +637,19 @@ except ExecutionError as error:
 Use a Backend Config's `parameter_visibility="values"` only in a controlled
 local diagnostic environment when raw values are required. That opt-in affects
 query logs and `ExecutionError.__str__`; `.params` remains available for explicit
-inspection under either policy. By default a chained driver error contributes
-only its exception type, not its potentially value-bearing message. SQL stays
-visible because Query Compilation binds values—including MariaDB JSON paths—
-rather than interpolating them.
+inspection under either policy. By default builder execution errors suppress
+driver exception chaining, so full formatted tracebacks cannot expose a driver's
+value-bearing message or notes. Use `error.failure` for classified driver
+metadata. The `values` policy retains the original driver cause as an unsafe
+opt-in. SQL stays visible because Query Compilation binds values—including
+MariaDB JSON paths—rather than interpolating them.
+
+Built-in model validation errors identify the column without including the
+invalid input or Pydantic's value-bearing exception chain. MariaDB typed JSON
+extraction errors omit the bound path and stored value. MariaDB cursor server
+warning text is not forwarded, under either visibility policy; unrelated Python
+warnings remain unchanged. See [security boundaries](security.md) for the limits
+of diagnostic redaction.
 
 ## JSON annotation enforcement
 

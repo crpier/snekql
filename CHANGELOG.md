@@ -34,6 +34,18 @@
 
 ### Changed
 
+- Harden structured API boundaries and default diagnostics. MariaDB query
+  identifiers preserve percent signs through driver binding; Decimal dimensions
+  require native integers, and scalar foreign-key actions enforce their bounded
+  SQL vocabulary before immediate or deferred declaration. Default builder execution tracebacks omit driver
+  causes while retaining classified failure metadata, and built-in validation
+  errors omit input values. Primitive/JSON serializer type mismatches raise
+  sanitized model errors instead of forwarding value-bearing warnings.
+  MariaDB cursor server warnings are not forwarded.
+  Code inspecting `ExecutionError.__cause__` should use `.failure`, or explicitly
+  opt into unsafe `parameter_visibility="values"` for local diagnostics.
+  See [security boundaries](docs/security.md). Addresses #449.
+
 - Retain independent Codec provenance facts on derived output slots so CTE
   operations and UNION compatibility reuse established source policies instead
   of repeatedly interpreting expressions. Preserve wire/domain distinctions,

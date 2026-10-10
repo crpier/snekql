@@ -80,10 +80,12 @@ explicit password display below remains intentional. Public `run_sql` results an
 raw SQL transport remain unchanged, so caller-supplied SQL is not automatically
 confidential.
 
-Stdin transport does not change SQL literal escaping. Generated passwords and
-provided passwords containing single quotes are covered; backslashes still have
-a separate correctness limitation under ordinary backslash-escaping SQL modes.
-Use generated credentials when fixed test passwords are unnecessary.
+The short-lived bootstrap client session sets `NO_BACKSLASH_ESCAPES` before
+parsing quote-doubled password literals. Provided passwords containing quotes,
+backslashes, or both therefore retain their exact value independently of the
+server's initial SQL mode. This session-only setting does not change the final
+server's requested mode. Generated credentials remain preferable when fixed test
+passwords are unnecessary.
 
 ## Data directories
 

@@ -202,8 +202,11 @@ class ExecutionError(DatabaseRuntimeError):
     >>> error.sql
     'SELECT ?'
 
-    A chained driver's type is included in ``str()``. Its message is redacted
-    with bound values unless parameter visibility explicitly opts into values.
+    Runtime builder failures omit driver chaining by default, protecting full
+    formatted tracebacks as well as `str()`. The unsafe `values` policy retains
+    the driver cause. Classified metadata remains available through `failure`.
+    Explicitly caller-chained causes contribute their type to `str()`; their
+    message is included only under the `values` policy.
     """
 
     sql: str

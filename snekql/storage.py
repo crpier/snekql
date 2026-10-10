@@ -1187,6 +1187,13 @@ class Attr[
         primary_key: bool = False,
         unique: bool = False,
     ) -> None:
+        for action in (on_delete, on_update):
+            if action is not None and (
+                type(action) is not str
+                or action not in ("CASCADE", "RESTRICT", "SET NULL", "NO ACTION")
+            ):
+                msg = "unsupported foreign-key referential action"
+                raise ModelDeclarationError(msg)
         if not isinstance(default, EllipsisType) and not isinstance(
             default_factory, EllipsisType
         ):
@@ -1390,7 +1397,9 @@ class Attr[
 
         Encoding performs only Layer 1 wire conversion (including the UTC and
         millisecond canonicalization for timestamps); logical type validation
-        happens when the Pending Model is constructed, not here.
+        happens when the Pending Model is constructed, not here. Serialization
+        type mismatches fail without value-bearing warnings; this does not
+        reapply application value constraints to comparison bounds.
         `integer_sum` widens only MariaDB Integer aggregate bounds; serialization
         remains unchanged and SQLite keeps its signed-64-bit parameter limit.
         """
@@ -1410,6 +1419,9 @@ class Attr[
             )
         except SnekqlError:
             raise
+        except PydanticSerializationError:
+            msg = f"invalid model value for {self._require_name()!r}"
+            raise ModelValidationError(msg) from None
         except Exception as error:
             msg = f"invalid model value for {self._require_name()!r}"
             raise ModelValidationError(
@@ -1455,9 +1467,9 @@ class Attr[
         value = self._coerce_int_column_bool(value)
         try:
             return self._logical_adapter().validate_python(value, strict=True)
-        except ValidationError as error:
-            msg = f"{self._require_name()!r} failed type validation: {error}"
-            raise ModelValidationError(msg) from error
+        except ValidationError:
+            msg = f"{self._require_name()!r} failed type validation"
+            raise ModelValidationError(msg) from None
 
     def _logical_adapter(self) -> TypeAdapter[Any]:
         cached = self._logical_adapter_cache
@@ -1542,9 +1554,9 @@ class Attr[
                 raise ModelValidationError(msg) from error
         try:
             return self._logical_adapter().validate_json(text)
-        except ValidationError as error:
-            msg = f"{self._require_name()!r} failed type validation: {error}"
-            raise ModelValidationError(msg) from error
+        except ValidationError:
+            msg = f"{self._require_name()!r} failed type validation"
+            raise ModelValidationError(msg) from None
 
     def _json_text(self, value: object, *, json_accepts_bytes: bool) -> str:
         """Extract raw JSON text from a backend value, before parsing.
@@ -1574,9 +1586,9 @@ class Attr[
         adapter = self._logical_adapter()
         try:
             decoded = adapter.validate_python(value)
-        except ValidationError as error:
-            msg = f"{self._require_name()!r} failed type validation: {error}"
-            raise ModelValidationError(msg) from error
+        except ValidationError:
+            msg = f"{self._require_name()!r} failed type validation"
+            raise ModelValidationError(msg) from None
         if (
             type(decoded) is date
             and self.storage_type_name in ("Text", "LongText")
@@ -1772,7 +1784,7 @@ class Attr[
 
         adapter = self._logical_adapter()
         if self.storage_class == "BLOB":
-            encoded = adapter.dump_python(value, mode="python")
+            encoded = adapter.dump_python(value, mode="python", warnings="error")
             if isinstance(encoded, UUID):
                 encoded = encoded.bytes
             if (
@@ -1799,7 +1811,7 @@ class Attr[
                     f"without shifting the instant"
                 )
                 raise ModelValidationError(msg)
-        encoded = adapter.dump_python(value, mode="json")
+        encoded = adapter.dump_python(value, mode="json", warnings="error")
         # Reject values no backend can store losslessly before they reach the
         # driver: non-finite floats (``nan`` silently becomes ``NULL`` in SQLite
         # and MariaDB DOUBLE refuses them outright) and integers outside the
@@ -1843,10 +1855,10 @@ class Attr[
         """
 
         try:
-            return self._logical_adapter().dump_json(value).decode()
-        except PydanticSerializationError as error:
+            return self._logical_adapter().dump_json(value, warnings="error").decode()
+        except PydanticSerializationError:
             msg = f"{self._require_name()!r} is not JSON serializable"
-            raise ModelValidationError(msg) from error
+            raise ModelValidationError(msg) from None
 
     @overload
     def like(

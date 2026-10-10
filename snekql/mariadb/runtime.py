@@ -195,7 +195,7 @@ class MariaDBConnectionAdapter:
         sql: str,
         params: tuple[object, ...],
     ) -> MariaDBCursorAdapter:
-        cursor = await cast("Any", self.connection).cursor()
+        cursor = await self._quiet_cursor(stream=False)
         return await self._run_on_cursor(cursor, sql, params)
 
     async def execute_stream(
@@ -208,8 +208,7 @@ class MariaDBConnectionAdapter:
         # server instead; it must be fully consumed or closed before the next
         # statement runs on this connection, which the held transaction lock and
         # the cursor close in fetch_chunks guarantee.
-        ss_cursor = cast("Any", import_module("aiomysql")).SSCursor
-        cursor = await cast("Any", self.connection).cursor(ss_cursor)
+        cursor = await self._quiet_cursor(stream=True)
         return await self._run_on_cursor(cursor, sql, params)
 
     async def execute_raw(
@@ -221,16 +220,7 @@ class MariaDBConnectionAdapter:
     ) -> MariaDBCursorAdapter:
         """Use native binding without forwarding server warning text."""
 
-        driver = _import_aiomysql()
-        base = driver.SSCursor if stream else driver.Cursor
-
-        class RawCursor(base):
-            async def _show_warnings(self, connection: object) -> None:
-                # aiomysql's default implementation emits server text and runs
-                # SHOW WARNINGS, which also interferes with result completion.
-                del connection
-
-        cursor = await cast("Any", self.connection).cursor(RawCursor)
+        cursor = await self._quiet_cursor(stream=stream)
         try:
             if params is None:
                 await cursor.execute(sql)
@@ -244,6 +234,23 @@ class MariaDBConnectionAdapter:
             cast("Any", self.connection).close()
             raise
         return MariaDBCursorAdapter(cursor)
+
+    async def _quiet_cursor(self, *, stream: bool) -> Any:
+        """Prevent native server diagnostics from bypassing value redaction.
+
+        Override the cursor hook rather than installing a Python warning filter;
+        unrelated warnings and other connections retain their own policies.
+        """
+        driver = _import_aiomysql()
+        base = driver.SSCursor if stream else driver.Cursor
+
+        class QuietCursor(base):
+            async def _show_warnings(self, connection: object) -> None:
+                # SHOW WARNINGS forwards server text and can interfere with
+                # native result completion. Neither is part of query results.
+                del connection
+
+        return await cast("Any", self.connection).cursor(QuietCursor)
 
     def _recoverable_constraint(self, error: BaseException) -> bool:
         """Only completed, recognized constraint packets are candidates for rollback.
