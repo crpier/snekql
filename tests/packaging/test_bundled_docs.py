@@ -68,6 +68,11 @@ async def installed_guides_have_resolvable_local_links() -> None:
 
     with TemporaryDirectory() as directory:
         environment = Path(directory) / ".venv"
+        python = (
+            environment / "Scripts" / "python.exe"
+            if sys.platform == "win32"
+            else environment / "bin" / "python"
+        )
         for command in (
             ["uv", "venv", "--python", sys.executable, str(environment)],
             [
@@ -76,7 +81,7 @@ async def installed_guides_have_resolvable_local_links() -> None:
                 "install",
                 "--no-deps",
                 "--python",
-                str(environment / "bin" / "python"),
+                str(python),
                 str(next(artifacts.glob("*.whl"))),
             ],
         ):
@@ -90,7 +95,7 @@ async def installed_guides_have_resolvable_local_links() -> None:
         probe = await asyncio.to_thread(
             _run,
             [
-                str(environment / "bin" / "python"),
+                str(python),
                 "-I",
                 "-c",
                 r"""
