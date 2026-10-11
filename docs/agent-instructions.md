@@ -40,23 +40,10 @@ Follow the index for other tasks and when guide names differ. Repository-only
 references require a matching source checkout; use the bundled usage guides for
 API decisions.
 
-If snekql cannot be imported, first check the project environment. If the bundle
-is absent, use this environment's `snekql --agent-docs` and `snekql --examples`;
-report the gap and request a version-matched reference if those are insufficient.
-Keep the project's dependency version unchanged just to obtain documentation.
+If snekql cannot be imported, first check the project environment. For an editable
+install without bundled resources, use the matching source checkout's
+`docs/README.md`.
 ````
-
-## When the bundle is unavailable
-
-Older published releases may have only the compact CLI guide and examples.
-Editable installs can expose the source package without the wheel's bundled
-resources. A missing `docs/README.md` therefore does not by itself mean the
-installation is broken.
-
-For a source checkout matching the installed version, use its `docs/README.md`.
-Otherwise, request documentation matching that release. The main branch and
-another release can describe different APIs, particularly across 0.x minor
-versions. Keep the fallback explicit rather than silently substituting them.
 
 ## Keep the instruction small
 
