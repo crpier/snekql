@@ -10,6 +10,32 @@ that with your project's Python runner if you do not use uv. The printed index
 identifies the release and links to its guides. Read those resources relative to
 `snekql/docs/`, not relative to your application's working directory.
 
+## Install the official skill
+
+snekql includes an Agent Skill at `snekql/.agents/skills/snekql/SKILL.md`. It gives
+agents a workflow for consulting the bundled guides, implementing against their
+contracts, and validating changes in your application.
+
+After installing your project's dependencies, run from the project directory:
+
+```sh
+uvx library-skills
+```
+
+Select the `snekql` skill and the installation target used by your agent:
+`.agents/skills` for agents supporting that directory, or `.claude/skills` for
+Claude Code. The tool discovers the skill in your installed snekql package; it is
+not a snekql runtime dependency.
+
+By default the tool creates a relative symlink, so replacing the installed package
+updates the linked skill too. Re-run `uvx library-skills` to repair links if the
+environment moves. Use `--copy` when symlinks are impractical; copied skills need
+manual refreshing after package updates.
+
+Installing a skill makes it available to a supporting agent, but does not guarantee
+activation. Keep the consumer instruction below if you want a persistent pointer
+to the installed docs as well.
+
 ## Copy into your project's instructions
 
 ````markdown

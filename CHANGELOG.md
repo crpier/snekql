@@ -227,6 +227,10 @@
 
 ### Added
 
+- Bundle an official `snekql` Agent Skill for discovery with `library-skills`,
+  directing agents to the included release-matched documentation and consumer
+  validation workflow. Addresses #469.
+
 - Backend-owned `literal(integer)` expressions for named projections and CTE
   outputs. Signed-64 validation, backend isolation and nonnullable constant
   labels preserve the native integer contract. MariaDB lowering establishes

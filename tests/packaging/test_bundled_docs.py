@@ -11,7 +11,15 @@ from tarfile import open as open_tar
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-from snektest import assert_eq, assert_in, assert_not_in, fixture, load_fixture, test
+from snektest import (
+    assert_eq,
+    assert_in,
+    assert_not_in,
+    assert_true,
+    fixture,
+    load_fixture,
+    test,
+)
 
 
 def _run(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
@@ -298,3 +306,122 @@ async def bundling_preserves_code_examples() -> None:
                     )
 
     await asyncio.to_thread(compare_examples)
+
+
+@test(mark="slow")
+async def release_wheel_includes_official_skill() -> None:
+    """Consumers receive the library-skills discovery resource with the package."""
+    artifacts = await load_fixture(release_artifacts())
+
+    def read_skill() -> str:
+        with ZipFile(next(artifacts.glob("*.whl"))) as archive:
+            return archive.read("snekql/.agents/skills/snekql/SKILL.md").decode()
+
+    skill = await asyncio.to_thread(read_skill)
+
+    assert_true(skill.startswith("---\nname: snekql\n"))
+    assert_in("description:", skill)
+    assert_in('files("snekql").joinpath("docs", "README.md")', skill)
+
+
+@test(mark="slow")
+async def source_rebuild_preserves_official_skill() -> None:
+    """The source channel retains the same skill exposed by direct wheel builds."""
+    artifacts = await load_fixture(release_artifacts())
+    resource = "snekql/.agents/skills/snekql/SKILL.md"
+
+    def read_source_skill() -> tuple[bytes, bytes]:
+        with ZipFile(next(artifacts.glob("*.whl"))) as archive:
+            wheel_skill = archive.read(resource)
+        with open_tar(next(artifacts.glob("*.tar.gz")), mode="r:gz") as archive:
+            member = next(
+                member
+                for member in archive.getmembers()
+                if member.name.split("/", 1)[-1] == resource
+            )
+            stream = archive.extractfile(member)
+            assert stream is not None
+            with stream:
+                return stream.read(), wheel_skill
+
+    source_skill, wheel_skill = await asyncio.to_thread(read_source_skill)
+
+    assert_eq(source_skill, wheel_skill)
+
+    with TemporaryDirectory() as directory:
+        build = await asyncio.to_thread(
+            _run,
+            [
+                "uv",
+                "build",
+                "--wheel",
+                str(next(artifacts.glob("*.tar.gz"))),
+                "--out-dir",
+                directory,
+            ],
+            cwd=directory,
+        )
+        assert_eq(build.returncode, 0, msg=build.stderr)
+
+        def read_rebuilt_skill() -> bytes:
+            with ZipFile(next(Path(directory).glob("*.whl"))) as archive:
+                return archive.read(resource)
+
+        rebuilt_skill = await asyncio.to_thread(read_rebuilt_skill)
+
+    assert_eq(rebuilt_skill, wheel_skill)
+
+
+@test(mark="slow")
+async def installed_skill_command_reads_matching_release_docs() -> None:
+    """The skill's actual retrieval command works with only the installed wheel."""
+    artifacts = await load_fixture(release_artifacts())
+
+    with TemporaryDirectory() as directory:
+        environment = Path(directory) / ".venv"
+        python = (
+            environment / "Scripts" / "python.exe"
+            if sys.platform == "win32"
+            else environment / "bin" / "python"
+        )
+        for command in (
+            ["uv", "venv", "--python", sys.executable, str(environment)],
+            [
+                "uv",
+                "pip",
+                "install",
+                "--no-deps",
+                "--python",
+                str(python),
+                str(next(artifacts.glob("*.whl"))),
+            ],
+        ):
+            setup = await asyncio.to_thread(_run, command, cwd=directory)
+            assert_eq(setup.returncode, 0, msg=setup.stderr)
+
+        probe = await asyncio.to_thread(
+            _run,
+            [
+                str(python),
+                "-I",
+                "-c",
+                r"""
+from importlib.metadata import version
+from importlib.resources import files
+from re import search
+from subprocess import run
+import sys
+
+skill = files("snekql").joinpath(".agents", "skills", "snekql", "SKILL.md").read_text()
+command = search(r"uv run python -c '([^']+)'", skill)
+assert command is not None
+result = run([sys.executable, "-I", "-c", command[1]], capture_output=True, text=True)
+assert result.returncode == 0, result.stderr
+assert "# Bundled snekql guides" in result.stdout
+assert f"Release: {version('snekql')}" in result.stdout
+""",
+            ],
+            cwd=directory,
+        )
+
+    assert_eq(probe.returncode, 0, msg=probe.stderr)
