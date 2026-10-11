@@ -55,6 +55,27 @@ Follow [dependency maintenance](dependency-maintenance.md) for the agent-run
 review, commands, compatibility holds, and validation report. Updates are
 maintainer-triggered, roughly every two weeks, rather than bot PRs.
 
+## Maintain bundled documentation
+
+`docs/` remains the authoring source. Add a guide to
+[the release index](release-index.md) to opt it into package builds. Keep that
+index limited to current consumer documentation; do not add proposals, ADRs,
+internal reviews, or contributor instructions.
+
+The build hook stages the selected guides at `snekql/docs/`, stamps the index with
+the release version, and includes linked recipe sources, the changelog, and the
+security policy. Prose links are adapted for offline navigation. References to
+excluded repository material become explicit repository-only references; fenced
+examples and inline code remain unchanged. No generated copies need committing.
+
+Source archives contain the prepared resources, so wheel rebuilds do not require
+the original `docs/` tree. Packaging tests compare direct wheels, source archives,
+and rebuilt wheels, and exercise installed resources outside the checkout:
+
+```sh
+uv run snektest tests/packaging
+```
+
 ## Check packages before release
 
 Follow the [release checklist](adoption.md#release-checklist). Build and test an

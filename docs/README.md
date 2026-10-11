@@ -58,6 +58,13 @@ Read these in order, or jump to the task you have now:
 - [Compatibility policy](compatibility.md) and [changelog](../CHANGELOG.md)
 - [Tested failures and environments](failure-matrix.md)
 
+## Offline release documentation
+
+Installed releases include curated guides at `snekql/docs/README.md`, readable
+with `importlib.resources.files("snekql").joinpath("docs", "README.md")`.
+The [release index](release-index.md) selects the shipped guides; repository-only
+references are identified explicitly in the bundle.
+
 ## Work on snekql
 
 Start with [contributing and local checks](contributing.md).

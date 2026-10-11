@@ -34,6 +34,10 @@
 
 ### Changed
 
+- Bundle curated, release-matched user guides and references under `snekql/docs/`
+  in wheels and source distributions, with an offline index and linked recipes.
+  Exclude historical designs and internal reviews. Addresses #465.
+
 - Retain SQLite migration connection cleanup across repeated native task
   cancellation, including migration verification and status reads. Suppress
   value-bearing timestamp parser causes when built-in MariaDB decoding rejects

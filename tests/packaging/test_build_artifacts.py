@@ -11,7 +11,7 @@ from zipfile import ZipFile
 from snektest import assert_eq, assert_in, assert_true, test
 
 
-@test(mark="medium")
+@test(mark="slow")
 def distributions_contain_only_release_inputs_and_typing_metadata() -> None:
     """The sdist is clean and the wheel carries its PEP 561 interface."""
 
@@ -50,6 +50,7 @@ def distributions_contain_only_release_inputs_and_typing_metadata() -> None:
             "PKG-INFO",
             "README.md",
             "pyproject.toml",
+            "hatch_build.py",
             "snekql",
         },
     )

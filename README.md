@@ -139,7 +139,18 @@ Start with the [migration guide](docs/class-body-migration.md).
 
 [Browse all documentation →](docs/README.md)
 
-Installed packages also include examples and a compact guide:
+Installed packages include curated guides under `snekql/docs/`, matched to the
+installed release. Read the offline index with:
+
+```sh
+python -c 'from importlib.resources import files; print(files("snekql").joinpath("docs", "README.md").read_text())'
+```
+
+The bundle includes user guides, API and typing references, upgrade guides, and
+linked recipes. Historical designs and internal reviews are not included; their
+references are marked repository-only.
+
+Examples and a compact guide are also available through the CLI:
 
 ```sh
 snekql --examples
