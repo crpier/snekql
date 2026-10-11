@@ -76,6 +76,20 @@ and rebuilt wheels, and exercise installed resources outside the checkout:
 uv run snektest tests/packaging
 ```
 
+## Maintain the packaged Agent Skill
+
+Edit `snekql/.agents/skills/snekql/SKILL.md` for the consumer skill discovered by
+`library-skills`. Keep its frontmatter compatible with the Agent Skills format
+and its workflow focused on reading the included docs and validating consumer
+changes. API examples and detailed contracts belong in `docs/`, not in the skill.
+
+Packaging tests verify the skill resource in direct wheels, source archives, and
+rebuilt wheels, and execute its retrieval command outside the checkout. When
+changing the layout or frontmatter, also check real discovery and installation
+in a temporary consumer environment with `uvx library-skills scan --json` and
+`uvx library-skills`. Skill availability and successful retrieval do not prove
+that an agent will activate it or follow it correctly.
+
 ## Check packages before release
 
 Follow the [release checklist](adoption.md#release-checklist). Build and test an

@@ -139,8 +139,8 @@ Start with the [migration guide](docs/class-body-migration.md).
 
 [Browse all documentation →](docs/README.md)
 
-Using a coding agent? Copy the [consumer `AGENTS.md` snippet](docs/agent-instructions.md)
-into your project so it consults the installed, version-matched guides.
+Using a coding agent? [Install the included skill or add consumer instructions](docs/agent-instructions.md)
+so it consults the installed, version-matched guides.
 
 Installed packages include curated guides under `snekql/docs/`, matched to the
 installed release. Read the offline index with:
