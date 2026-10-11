@@ -7,6 +7,9 @@ instructions are not included. References marked repository-only require a check
 New here? Start with [your first query](getting-started.md). It is a complete
 SQLite script you can copy and run without a server.
 
+Using a coding agent? Add the [consumer instruction snippet](agent-instructions.md)
+to your project so it reads these guides for snekql tasks.
+
 ## Learn the basics
 
 Read these in order, or jump to the task you have now:
