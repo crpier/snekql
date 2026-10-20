@@ -76,7 +76,7 @@ async def main() -> None:
         await db.verify([User])
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
-            email = await tx.fetch_one(select(User.email).all())
+            email = await tx.fetch_one(select(User.email))
             assert email == "alice@example.com"
 
 

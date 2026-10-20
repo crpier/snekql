@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## 0.9.0 - 2026-10-11
+
+### Added
+
+- Bundle an official `snekql` Agent Skill for discovery with `library-skills`,
+  directing agents to the included release-matched documentation and consumer
+  validation workflow. Addresses #469.
+- Add a consumer `AGENTS.md` snippet that routes coding agents to the installed,
+  release-matched documentation. Addresses #467.
+
 ### Breaking
 
 - Replace the public `PendingGeneration` class with Python's native
@@ -100,6 +110,13 @@
   all-errors policy. Update development pins and current adoption guidance.
 
 ### Fixed
+
+- Compile aggregate operands in HAVING comparisons. Addresses #457.
+- Retain declared Decimal dimensions through eager foreign keys. Addresses #458.
+- Bound temporary MariaDB readiness commands by the startup deadline.
+  Addresses #459.
+- Update the bundled typed example and adoption smoke test to current temporal
+  and executable SELECT contracts.
 
 - Include SQLite generated columns in schema verification. Their presence and
   exposed metadata are checked; their expressions remain unchecked.
@@ -226,10 +243,6 @@
   Raw statement representations remain opaque. Addresses #294.
 
 ### Added
-
-- Bundle an official `snekql` Agent Skill for discovery with `library-skills`,
-  directing agents to the included release-matched documentation and consumer
-  validation workflow. Addresses #469.
 
 - Backend-owned `literal(integer)` expressions for named projections and CTE
   outputs. Signed-64 validation, backend isolation and nonnullable constant
