@@ -7,6 +7,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_in, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 
 @test(
@@ -33,10 +34,12 @@ async def pagination_returns_expected_window(
 
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "create": "CREATE TABLE item (id INTEGER PRIMARY KEY) STRICT",
-                "seed": "INSERT INTO item VALUES (1), (2), (3)",
-            }
+            migration_functions(
+                {
+                    "create": "CREATE TABLE item (id INTEGER PRIMARY KEY) STRICT",
+                    "seed": "INSERT INTO item VALUES (1), (2), (3)",
+                }
+            )
         )
         query = (
             sqlite.select(Item.id)

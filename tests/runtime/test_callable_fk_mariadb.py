@@ -8,7 +8,7 @@ from uuid import UUID
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.test_callable_fk_typing_mariadb import Account, Other
 
 
@@ -21,7 +21,9 @@ async def provide_accounts() -> AsyncGenerator[mariadb.Database]:
     """Seed a root and child using generated primary keys and callable defaults."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Other, Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Other, Account])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Other(account_id=1, label="root")))
             await transaction.execute(mariadb.insert(Account()))
@@ -96,7 +98,9 @@ async def provide_decimal_accounts() -> AsyncGenerator[mariadb.Database]:
     """A decimal key exercises native precision and scale derivation."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([DecimalAccount])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([DecimalAccount])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(DecimalAccount(account_id=Decimal("1.20")))
@@ -155,7 +159,9 @@ async def provide_uuid_accounts() -> AsyncGenerator[mariadb.Database]:
     """Seed one reference whose Python domain differs from wire values."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([UuidAccount])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([UuidAccount])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(UuidAccount(account_id=UUID(int=1)))

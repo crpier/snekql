@@ -14,7 +14,7 @@ Read these in order, or jump to the task you have now:
 2. [Models](models.md): describe columns, defaults, and Pending/Row values.
 3. [Queries](queries.md): filter, sort, insert, update, and delete.
 4. [Connections and transactions](transactions.md): commit, roll back, stream, and close.
-5. [Migrations](migrations.md): keep database changes in reviewed SQL.
+5. [Migrations](migrations.md): generate initial DDL, then own changes as async functions.
 
 [Why not an ORM?](why-not-orm.md) explains what snekql deliberately leaves out.
 [Choosing storage](storage.md) covers Python values versus database types.

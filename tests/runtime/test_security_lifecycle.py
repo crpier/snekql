@@ -10,6 +10,7 @@ from anyio import Event, fail_after, sleep_forever, to_thread
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
+from tests.helpers import migration_functions
 from tests.runtime.test_nested_transactions import provide_nested_case
 
 
@@ -25,7 +26,9 @@ async def single_connection_file(
             observer=observer,
         ) as database:
             await database.migrate(
-                {"001": "CREATE TABLE entries (value INTEGER PRIMARY KEY) STRICT"}
+                migration_functions(
+                    {"001": "CREATE TABLE entries (value INTEGER PRIMARY KEY) STRICT"}
+                )
             )
             if seed:
                 async with database.transaction() as transaction:

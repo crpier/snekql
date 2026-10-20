@@ -7,6 +7,7 @@ from uuid import UUID
 from snektest import assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
+from tests.helpers import migration_functions
 from tests.query.test_table_aliases import ManagerRole, ReviewerRole
 from tests.runtime.test_join_predicates import (
     LocalParent,
@@ -181,7 +182,9 @@ class Document[S = sqlite.Pending](sqlite.Model[S]):
 async def provide_documents() -> AsyncGenerator[sqlite.Database]:
     """Seed a UUID before binding it through an alias."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_document": sqlite.scaffold([Document])})
+        await database.migrate(
+            migration_functions({"001_document": sqlite.scaffold([Document])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert(

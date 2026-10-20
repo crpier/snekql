@@ -54,13 +54,18 @@ class User[State = sqlite.Pending](sqlite.Model[State]):
     email: sqlite.Col[str] = sqlite.Text()
 
 
-MIGRATIONS = {
-    "001_create_user": """
+async def create_user(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("""
         CREATE TABLE "user" (
             "id" INTEGER PRIMARY KEY AUTOINCREMENT,
             "email" TEXT NOT NULL
         ) STRICT
-    """,
+    """)
+
+
+MIGRATIONS = {
+    "001_create_user": create_user,
 }
 
 

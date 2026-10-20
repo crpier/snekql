@@ -10,7 +10,7 @@ from anyio import to_thread
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_arithmetic import Inventory, NumericValues
 
 
@@ -32,7 +32,9 @@ async def provide_sqlite_inventory() -> AsyncGenerator[sqlite.Database]:
         async with await sqlite.Database.initialize(
             database=Path(directory.name) / "inventory.db", pool_size=3
         ) as database:
-            await database.migrate({"001_inventory": sqlite.scaffold([Inventory])})
+            await database.migrate(
+                migration_functions({"001_inventory": sqlite.scaffold([Inventory])})
+            )
             async with database.transaction() as transaction:
                 await transaction.execute(
                     sqlite.insert(Inventory(id=1, quantity=3, version=1))
@@ -47,7 +49,9 @@ async def provide_mariadb_inventory() -> AsyncGenerator[mariadb.Database]:
     """Seed stock on a real MariaDB server."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_inventory": mariadb.scaffold([MariaInventory])})
+        await database.migrate(
+            migration_functions({"001_inventory": mariadb.scaffold([MariaInventory])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(MariaInventory(id=1, quantity=3, version=1))
@@ -209,7 +213,9 @@ class MariaNumericValues[S = mariadb.Pending](mariadb.Model[S]):
 async def provide_sqlite_numeric_values() -> AsyncGenerator[sqlite.Database]:
     """Seed both missing and present numeric operands."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_numeric": sqlite.scaffold([NumericValues])})
+        await database.migrate(
+            migration_functions({"001_numeric": sqlite.scaffold([NumericValues])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(
@@ -300,7 +306,9 @@ async def provide_mariadb_numeric_values() -> AsyncGenerator[mariadb.Database]:
     """Seed both missing and present numeric operands."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_numeric": mariadb.scaffold([MariaNumericValues])})
+        await database.migrate(
+            migration_functions({"001_numeric": mariadb.scaffold([MariaNumericValues])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert_many(

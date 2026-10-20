@@ -6,7 +6,7 @@ from typing import assert_type
 from snektest import Param, assert_eq, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_literals import Depth, NativeSource, SeedRole, Source
 
 
@@ -14,7 +14,9 @@ from tests.query.test_literals import Depth, NativeSource, SeedRole, Source
 async def provide_literal_source() -> AsyncGenerator[sqlite.Database]:
     """Provide an explicit FROM row without borrowing its column's value type."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_source": sqlite.scaffold([Source])})
+        await database.migrate(
+            migration_functions({"001_source": sqlite.scaffold([Source])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Source(id=1)))
         yield database
@@ -25,7 +27,9 @@ async def provide_native_literal_source() -> AsyncGenerator[mariadb.Database]:
     """Run literal typing probes against the native SQL engine."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_source": mariadb.scaffold([NativeSource])})
+        await database.migrate(
+            migration_functions({"001_source": mariadb.scaffold([NativeSource])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(NativeSource(id=1)))
         yield database

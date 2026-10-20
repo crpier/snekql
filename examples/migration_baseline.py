@@ -9,19 +9,30 @@ Fresh databases use ordinary `migrate()` with the same literal declaration.
 from typing import ClassVar
 
 from snekql import mariadb, sqlite
+from snekql.sqlite import MigrationContext
+
+
+async def sqlite_reviewed_baseline(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        'CREATE TABLE IF NOT EXISTS "baseline_account" ("id" INTEGER PRIMARY KEY, "balance" INTEGER NOT NULL CHECK ("balance" >= 0)) STRICT'
+    )
+
 
 SQLITE_MIGRATIONS = {
-    "001_reviewed_baseline": (
-        'CREATE TABLE IF NOT EXISTS "baseline_account" ("id" INTEGER PRIMARY KEY, '
-        '"balance" INTEGER NOT NULL CHECK ("balance" >= 0)) STRICT'
-    ),
+    "001_reviewed_baseline": sqlite_reviewed_baseline,
 }
+
+
+async def mariadb_reviewed_baseline(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE IF NOT EXISTS baseline_account (id BIGINT NOT NULL PRIMARY KEY, balance BIGINT NOT NULL, CONSTRAINT ck_baseline_balance CHECK (balance >= 0)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+    )
+
+
 MARIADB_MIGRATIONS = {
-    "001_reviewed_baseline": (
-        "CREATE TABLE IF NOT EXISTS baseline_account (id BIGINT NOT NULL PRIMARY KEY, "
-        "balance BIGINT NOT NULL, CONSTRAINT ck_baseline_balance CHECK (balance >= 0)) "
-        "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
-    ),
+    "001_reviewed_baseline": mariadb_reviewed_baseline,
 }
 
 

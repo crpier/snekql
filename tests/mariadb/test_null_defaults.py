@@ -9,7 +9,7 @@ from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, t
 from snekql import mariadb
 from snekql.errors import SchemaVerificationError
 from snekql.storage import SchemaPolicy
-from tests.helpers import migrate_models, provide_mariadb_server
+from tests.helpers import migrate_models, migration_functions, provide_mariadb_server
 
 
 @test(
@@ -56,12 +56,14 @@ async def text_defaults_remain_distinct(literal: str) -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "create": (
-                    "CREATE TABLE entry (value VARCHAR(255) CHARACTER SET utf8mb4 "
-                    f"COLLATE utf8mb4_bin DEFAULT {literal}) ENGINE=InnoDB"
-                )
-            }
+            migration_functions(
+                {
+                    "create": (
+                        "CREATE TABLE entry (value VARCHAR(255) CHARACTER SET utf8mb4 "
+                        f"COLLATE utf8mb4_bin DEFAULT {literal}) ENGINE=InnoDB"
+                    )
+                }
+            )
         )
         before = await server.run_sql("SHOW CREATE TABLE entry")
         catalog = await server.run_sql(
@@ -93,7 +95,9 @@ async def integer_literal_default_is_drift() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {"create": "CREATE TABLE entry (value BIGINT DEFAULT 7)"}
+            migration_functions(
+                {"create": "CREATE TABLE entry (value BIGINT DEFAULT 7)"}
+            )
         )
         with assert_raises(SchemaVerificationError):
             await database.verify([Entry])

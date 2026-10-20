@@ -37,13 +37,18 @@ class User[State = sqlite.Pending](sqlite.Model[State]):
     email: sqlite.Col[str] = sqlite.Text()
 
 
-MIGRATIONS = {
-    "001_create_user": """
+async def create_user(migration: sqlite.MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute("""
         CREATE TABLE "user" (
             "id" INTEGER PRIMARY KEY AUTOINCREMENT,
             "email" TEXT NOT NULL
         ) STRICT
-    """,
+    """)
+
+
+MIGRATIONS = {
+    "001_create_user": create_user,
 }
 
 
@@ -99,9 +104,13 @@ is needed. See [models](models.md) for defaults, optional fields, and snapshots.
 
 `Database.initialize` connects; it does not create tables.
 
-`migrate(MIGRATIONS)` applies SQL that has not run yet and records its name and
-checksum. Keep migration SQL in your source code. Once a migration has run,
-append a new one instead of editing it.
+`migrate(MIGRATIONS)` calls pending async functions and records their revision
+IDs. Start with `scaffold([User])` during development, review the generated DDL,
+and commit it inside the function as shown above. See the
+[initial migration workflow](migrations.md#scaffolding-the-first-table).
+Never regenerate deployed migration SQL from current models at startup.
+Once a migration has run, append a new revision instead of editing it; history
+does not fingerprint Python function bodies.
 
 The two checks answer different questions:
 

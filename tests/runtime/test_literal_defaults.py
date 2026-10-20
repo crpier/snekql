@@ -7,7 +7,7 @@ from pydantic import PositiveInt
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -45,7 +45,7 @@ async def sqlite_supplies_omitted_text() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
@@ -66,7 +66,7 @@ async def mariadb_supplies_omitted_text() -> None:
         )
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
@@ -87,9 +87,11 @@ async def sqlite_verifies_declared_literal() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (attempts INTEGER NOT NULL DEFAULT ((+007))) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (attempts INTEGER NOT NULL DEFAULT ((+007))) STRICT"
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -124,9 +126,11 @@ async def sqlite_classifies_default_catalog(case: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE entry (attempts INTEGER NOT NULL {clauses[case]}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE entry (attempts INTEGER NOT NULL {clauses[case]}) STRICT"
+                }
+            )
         )
         report = await database.verify([Entry], policy="warn")
 
@@ -157,7 +161,7 @@ async def sqlite_verifies_nullable_null_default() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         report = await database.verify([Entry])
 
     assert_eq(
@@ -178,7 +182,7 @@ async def mariadb_verifies_literal_text() -> None:
         )
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         report = await database.verify([Entry])
 
     assert_eq(
@@ -200,9 +204,11 @@ async def mariadb_discloses_null_default_ambiguity() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (label VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (label VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Entry])
 
@@ -301,7 +307,7 @@ async def mariadb_long_text_default_is_generated() -> None:
         )
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
@@ -331,7 +337,7 @@ async def sqlite_explicit_values_override_server_default(case: str) -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(row))
         async with database.transaction() as transaction:
@@ -353,7 +359,7 @@ async def sqlite_boolean_default_materializes() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
@@ -382,7 +388,7 @@ async def mariadb_explicit_values_override_server_default(case: str) -> None:
         else Entry(label="ready" if case == "explicit" else None)
     )
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(row))
         async with database.transaction() as transaction:
@@ -403,7 +409,7 @@ async def mariadb_boolean_default_materializes() -> None:
         )
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Entry()))
         async with database.transaction() as transaction:
@@ -473,9 +479,11 @@ async def mariadb_classifies_default_catalog(case: str) -> None:
     }
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE entry (attempts BIGINT NULL {clauses[case]}) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE entry (attempts BIGINT NULL {clauses[case]}) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Entry], policy="warn")
 
@@ -506,7 +514,7 @@ async def sqlite_null_default_materializes() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Entry])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Entry])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Entry()))
         async with database.transaction() as transaction:
@@ -557,7 +565,9 @@ async def sqlite_distinguishes_null_from_text(
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": f"CREATE TABLE entry (label TEXT DEFAULT {sql}) STRICT"}
+            migration_functions(
+                {"001": f"CREATE TABLE entry (label TEXT DEFAULT {sql}) STRICT"}
+            )
         )
         report = await database.verify([Entry], policy="warn")
 
@@ -588,7 +598,11 @@ async def strict_policy_rejects_changed_literal() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": "CREATE TABLE entry (attempts INTEGER NOT NULL DEFAULT 8) STRICT"}
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (attempts INTEGER NOT NULL DEFAULT 8) STRICT"
+                }
+            )
         )
         with assert_raises(sqlite.SchemaVerificationError):
             await database.verify([Entry])
@@ -607,9 +621,11 @@ async def mariadb_nonnullable_absence_is_not_null_default() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (label VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (label VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Entry], policy="warn")
 

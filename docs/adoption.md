@@ -33,6 +33,7 @@ from snekql.sqlite import (
     GenCol,
     Integer,
     Model,
+    MigrationContext,
     Pending,
     ReadType,
     Text,
@@ -53,8 +54,8 @@ class User[S = Pending](Model[S]):
     created_at: GenCol[UtcDatetime] = Text(default=CurrentTimestamp)
 
 
-MIGRATIONS = {
-    "0001_create_user": (
+async def create_user(migration: MigrationContext) -> None:
+    await migration.execute(
         'CREATE TABLE "user" ('
         '"id" INTEGER PRIMARY KEY AUTOINCREMENT, '
         '"email" TEXT NOT NULL, '
@@ -62,11 +63,13 @@ MIGRATIONS = {
         "(strftime('%Y-%m-%dT%H:%M:%f', 'now') || '000Z')"
         ') STRICT'
     )
-}
+
+
+MIGRATIONS = {"0001_create_user": create_user}
 
 
 async def main() -> None:
-    # initialize connects only; migrations remain committed literal SQL.
+    # initialize connects only; migrations remain explicit functions with frozen SQL.
     async with await Database.initialize(
         database=":memory:",
         pool_size=1,
@@ -76,7 +79,7 @@ async def main() -> None:
         await db.verify([User])
         async with db.transaction() as tx:
             await tx.execute(insert(User(email="alice@example.com")))
-            email = await tx.fetch_one(select(User.email).all())
+            email = await tx.fetch_one(select(User.email))
             assert email == "alice@example.com"
 
 

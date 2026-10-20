@@ -19,8 +19,8 @@ procedure, not automatic migration retry or a generic repair interface.
    failing application's declaration and database identity. Back up the current
    database before attempting repair; retain the pre-deploy backup too.
 2. Reconnect with a newly initialized Database. Call
-   `migration_status(COMPLETE_DECLARATION)`. Do not change applied names, order,
-   checksums, or history rows to make validation pass.
+   `migration_status(COMPLETE_DECLARATION)`. Do not change applied revision IDs, order,
+   or history rows to make validation pass.
 3. Inspect actual effects independently of history. Review catalog definitions,
    constraints, indexes, triggers, data transformations, and external effects
    relevant to the failed body. Read-only status does not perform this review.
@@ -33,7 +33,7 @@ procedure, not automatic migration retry or a generic repair interface.
 
 | Recorded history and observed effects | Action |
 | --- | --- |
-| Expected row exists with the exact checksum | Do not repeat the body. Normal `migrate()` skips it; verify its effects before proceeding. |
+| Expected revision ID exists at the correct position | Do not repeat the body. Normal `migrate()` skips it; verify its effects before proceeding. |
 | Row missing, proven no effects | Rerun only after reviewing the complete body's replay conditions. |
 | Row missing, effects match reviewed replay-safe states | Rerun the same unchanged declaration through `migrate()` after review. |
 | Row missing, partial or non-idempotent effects | Do not blindly rerun. Restore or make an explicit reviewed repair, then reconcile again. |
@@ -86,7 +86,7 @@ or generated down migration is provided.
 
 SQLite migration bodies and their history rows are atomic, but cancellation
 around commit can still arrive after success. Inspect history before deciding
-whether a cancelled unit applied. External side effects in user-defined SQL
+whether a cancelled unit applied. External side effects in Python migration bodies or user-defined SQL
 functions are not made transactional by either backend.
 
 [All guides](README.md)

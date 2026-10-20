@@ -10,6 +10,7 @@ from pydantic import AfterValidator, BeforeValidator, Json, PlainSerializer
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 
 class NonemptyBatch[S = sqlite.Pending](sqlite.Model[S]):
@@ -27,10 +28,12 @@ async def stored_invalid_batch() -> AsyncGenerator[sqlite.Database]:
 
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {
-                "create": "CREATE TABLE metadata_batch (items TEXT NOT NULL) STRICT",
-                "legacy_row": "INSERT INTO metadata_batch VALUES ('[]')",
-            }
+            migration_functions(
+                {
+                    "create": "CREATE TABLE metadata_batch (items TEXT NOT NULL) STRICT",
+                    "legacy_row": "INSERT INTO metadata_batch VALUES ('[]')",
+                }
+            )
         )
         yield database
 

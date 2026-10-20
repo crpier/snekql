@@ -7,7 +7,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_in, load_fixture, test
 
 from snekql import mariadb
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(
@@ -36,10 +36,12 @@ async def pagination_returns_expected_window(
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "create": "CREATE TABLE item (id BIGINT PRIMARY KEY) ENGINE=InnoDB",
-                "seed": "INSERT INTO item VALUES (1), (2), (3)",
-            }
+            migration_functions(
+                {
+                    "create": "CREATE TABLE item (id BIGINT PRIMARY KEY) ENGINE=InnoDB",
+                    "seed": "INSERT INTO item VALUES (1), (2), (3)",
+                }
+            )
         )
         query = (
             mariadb.select(Item.id)

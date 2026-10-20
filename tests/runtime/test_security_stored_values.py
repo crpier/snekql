@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 from snektest import Param, assert_not_in, assert_raises, load_fixture, test
 
 from snekql import mariadb
+from tests.helpers import migration_functions
 from tests.runtime.test_raw_execution import provide_raw_case
 
 
@@ -31,7 +32,9 @@ async def legacy_datetime_traceback_omits_stored_text(
 
     private_text = "legacy_timestamp_private_value"
     await case.database.migrate(
-        {"001": "CREATE TABLE legacy_event (happened_at TEXT NOT NULL)"}
+        migration_functions(
+            {"001": "CREATE TABLE legacy_event (happened_at TEXT NOT NULL)"}
+        )
     )
     async with case.database.transaction() as setup:
         await setup.execute(

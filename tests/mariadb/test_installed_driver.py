@@ -26,10 +26,26 @@ async def provide_empty_database() -> AsyncGenerator[mariadb.Database]:
 
 
 @test(mark="slow")
-async def migration_checksum_survives_driver_binding() -> None:
-    """A fresh driver installation can persist and verify binary checksums."""
+async def revision_identity_survives_driver_binding() -> None:
+    """A fresh driver installation can persist and verify revision IDs."""
     database = await load_fixture(provide_empty_database())
-    declaration = {"001_probe": "CREATE TABLE driver_probe (id INTEGER PRIMARY KEY)"}
+
+    async def create_probe(migration: mariadb.MigrationContext) -> None:
+        await migration.execute("CREATE TABLE driver_probe (id INTEGER PRIMARY KEY)")
+        assert_eq(
+            await migration.execute(
+                "INSERT INTO driver_probe VALUES (%s)", params=(7,)
+            ),
+            1,
+        )
+        assert_eq(
+            await migration.fetch_all(
+                "SELECT id FROM driver_probe WHERE id=%s", params=(7,)
+            ),
+            [(7,)],
+        )
+
+    declaration = {"001_probe": create_probe}
 
     result = await database.migrate(declaration)
     await database.verify_migrations(declaration)
@@ -47,7 +63,13 @@ async def binary_values_survive_driver_binding() -> None:
         id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
         payload: mariadb.Col[bytes] = mariadb.Blob()
 
-    await database.migrate({"001_binary": mariadb.scaffold([BinaryRecord])})
+    async def create_binary(migration: mariadb.MigrationContext) -> None:
+        await migration.execute(
+            "CREATE TABLE binary_record (id BIGINT NOT NULL PRIMARY KEY, "
+            "payload BLOB NOT NULL) ENGINE=InnoDB"
+        )
+
+    await database.migrate({"001_binary": create_binary})
     async with database.transaction() as transaction:
         await transaction.execute(
             mariadb.insert(BinaryRecord(id=1, payload=bytes(range(256))))

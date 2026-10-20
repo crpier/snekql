@@ -7,7 +7,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -36,9 +36,11 @@ async def matching_long_text_verifies() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         assert_eq((await database.verify([Document])).issues, ())
 
@@ -81,9 +83,11 @@ async def long_text_supports_pattern_matching_and_large_values() -> None:
     value = "prefix-" + "🐍" * 20000
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Document(body=value)))
@@ -115,9 +119,11 @@ async def differing_native_storage_is_drift(declaration: tuple[str, str]) -> Non
     native_type, collation = declaration
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE long_document (body {native_type} CHARACTER SET utf8mb4 COLLATE {collation} NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE long_document (body {native_type} CHARACTER SET utf8mb4 COLLATE {collation} NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         with assert_raises(mariadb.SchemaVerificationError):
             await database.verify([Document])
@@ -142,9 +148,11 @@ async def json_alias_scope_does_not_hide_long_text_collation(collation: str) -> 
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE {collation} NOT NULL, payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE long_document (body LONGTEXT CHARACTER SET utf8mb4 COLLATE {collation} NOT NULL, payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         if collation == "utf8mb4_bin":
             assert_eq((await database.verify([Document])).issues, ())
@@ -194,9 +202,11 @@ async def nullable_long_text_keeps_python_default_semantics() -> None:
 
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE long_document (id BIGINT NOT NULL PRIMARY KEY, body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE long_document (id BIGINT NOT NULL PRIMARY KEY, body LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL) ENGINE=InnoDB"
+                }
+            )
         )
         await database.verify([Document])
         async with database.transaction() as transaction:

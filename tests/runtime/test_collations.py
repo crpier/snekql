@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Literal
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -137,9 +137,11 @@ async def sqlite_verifies_hand_created_collations(
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE collation_label (name TEXT COLLATE {actual} NOT NULL) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE collation_label (name TEXT COLLATE {actual} NOT NULL) STRICT"
+                }
+            )
         )
         if expected == actual:
             assert_eq((await database.verify([Label])).issues, ())
@@ -176,9 +178,11 @@ async def mariadb_verifies_hand_created_collations(
     sql_type = "VARCHAR(255)" if kind == "varchar" else "LONGTEXT"
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE collation_label (name {sql_type} CHARACTER SET utf8mb4 COLLATE {actual} NOT NULL) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE collation_label (name {sql_type} CHARACTER SET utf8mb4 COLLATE {actual} NOT NULL) ENGINE=InnoDB"
+                }
+            )
         )
         if expected == actual:
             assert_eq((await database.verify([Label])).issues, ())
@@ -225,7 +229,7 @@ async def sqlite_equality_uses_column_collation(case: SQLiteComparison) -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Label])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Label])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Label(name=stored)))
         async with database.transaction() as transaction:
@@ -264,7 +268,7 @@ async def mariadb_equality_uses_column_collation(case: MariaDBComparison) -> Non
         name: mariadb.Col[str] = mariadb.Text(collation=collation)
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Label])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Label])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Label(name=stored)))
         async with database.transaction() as transaction:
@@ -284,7 +288,7 @@ async def long_text_equality_uses_unicode_collation() -> None:
         name: mariadb.Col[str] = mariadb.LongText(collation="utf8mb4_unicode_ci")
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Label])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Label])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Label(name="café")))
         async with database.transaction() as transaction:
@@ -305,7 +309,7 @@ async def sqlite_unique_key_uses_nocase() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Label])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Label])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Label(name="Alpha")))
         with assert_raises(sqlite.ExecutionError):
@@ -325,7 +329,7 @@ async def mariadb_unique_key_uses_unicode_collation() -> None:
         )
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Label])})
+        await database.migrate(migration_functions({"001": mariadb.scaffold([Label])}))
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Label(name="café")))
         with assert_raises(mariadb.ExecutionError):
@@ -349,7 +353,9 @@ async def mariadb_foreign_key_inherits_collation() -> None:
         code: mariadb.FKCol[Parent, str] = mariadb.ForeignKey(Parent.code)
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Parent, Child])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Parent, Child])})
+        )
         assert_eq((await database.verify([Parent, Child])).issues, ())
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Parent(code="café")))
@@ -377,7 +383,9 @@ async def sqlite_foreign_key_matches_parent_collation() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Parent, Child])})
+        await database.migrate(
+            migration_functions({"001": sqlite.scaffold([Parent, Child])})
+        )
         assert_eq((await database.verify([Parent, Child])).issues, ())
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Parent(code="Alpha")))
@@ -410,6 +418,8 @@ async def sqlite_verifies_effective_collation(clause: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {"001": f"CREATE TABLE collation_label ({clause} NOT NULL) STRICT"}
+            migration_functions(
+                {"001": f"CREATE TABLE collation_label ({clause} NOT NULL) STRICT"}
+            )
         )
         assert_eq((await database.verify([Label])).issues, ())

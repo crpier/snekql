@@ -1312,13 +1312,26 @@ if TYPE_CHECKING:
     ) -> None:
         """Migration verbs expose one immutable result and a read-only check."""
 
-        migrations = {"001_users": 'CREATE TABLE "user" ("id" INTEGER) STRICT'}
+        async def create_user(migration: sqlite.MigrationContext) -> None:
+            assert_type(await migration.execute("CREATE TABLE user (id INTEGER)"), int)
+            assert_type(
+                await migration.fetch_all(
+                    "SELECT id FROM user WHERE id=?", params=(1,)
+                ),
+                list[tuple[object, ...]],
+            )
+
+        async def later(migration: mariadb.MigrationContext) -> None:
+            assert_type(await migration.execute("SELECT 1"), int)
+
+        migrations = {"001_users": create_user}
         migration_result = assert_type(
             await database.migrate(migrations),
             sqlite.MigrationResult,
         )
         migration_status = assert_type(
-            await database.migration_status(migrations), sqlite.MigrationStatus
+            await database.migration_status(migrations),
+            sqlite.MigrationStatus,
         )
         _ = assert_type(migration_status.applied, tuple[str, ...])
         _ = assert_type(migration_status.pending, tuple[str, ...])
@@ -1326,16 +1339,16 @@ if TYPE_CHECKING:
         await database.migration_status([])  # ty: ignore[invalid-argument-type]
         _ = assert_type(migration_result.applied, tuple[str, ...])
         _ = assert_type(migration_result.already_applied, tuple[str, ...])
-        _ = assert_type(migration_result.legacy_adopted, bool)
         _ = assert_type(await database.verify_migrations(migrations), None)
         _ = assert_type(
-            await database.verify_migrations(migrations, policy="strict"), None
+            await database.verify_migrations(migrations, policy="strict"),
+            None,
         )
         _ = assert_type(
             await database.verify_migrations(
                 migrations,
                 policy="compatible",
-                approved_later={"002_later": "SELECT 1"},
+                approved_later={"002_later": later},
             ),
             None,
         )
@@ -1353,6 +1366,10 @@ if TYPE_CHECKING:
         _ = await database.migrate(
             migrations,
             True,  # ty: ignore[too-many-positional-arguments]
+        )
+
+        await database.migrate(
+            {"001": "SELECT 1"}  # ty: ignore[invalid-argument-type]
         )
 
     class ConstraintParent[S = sqlite.Pending](sqlite.Model[S]):

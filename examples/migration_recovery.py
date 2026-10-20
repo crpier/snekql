@@ -5,16 +5,26 @@ an automatic retry loop, schema inference, or a repair of arbitrary migrations.
 """
 
 from snekql import mariadb
+from snekql.sqlite import MigrationContext
+
+
+async def entries(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "CREATE TABLE recovery_entries (id BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+    )
+
+
+async def note(migration: MigrationContext) -> None:
+    """Apply one reviewed revision."""
+    await migration.execute(
+        "ALTER TABLE recovery_entries ADD COLUMN IF NOT EXISTS note VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL"
+    )
+
 
 MIGRATIONS = {
-    "001_entries": (
-        "CREATE TABLE recovery_entries (id BIGINT NOT NULL PRIMARY KEY) "
-        "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
-    ),
-    "002_note": (
-        "ALTER TABLE recovery_entries ADD COLUMN IF NOT EXISTS note "
-        "VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL"
-    ),
+    "001_entries": entries,
+    "002_note": note,
 }
 
 _BEFORE = """CREATE TABLE `recovery_entries` (

@@ -8,7 +8,7 @@ from pydantic import BaseModel, model_validator
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_named_projection import (
     OptionalPersonSummary,
     PeerRole,
@@ -22,7 +22,9 @@ from tests.query.test_named_projection import (
 async def provide_people() -> AsyncGenerator[sqlite.Database]:
     """Seed a row for named result materialization."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_people": sqlite.scaffold([Person])})
+        await database.migrate(
+            migration_functions({"001_people": sqlite.scaffold([Person])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Person(id=1, name="Ada")))
         yield database
@@ -128,7 +130,9 @@ async def provide_maria_people() -> AsyncGenerator[mariadb.Database]:
     """Seed a real MariaDB table for named result materialization."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_people": mariadb.scaffold([MariaPerson])})
+        await database.migrate(
+            migration_functions({"001_people": mariadb.scaffold([MariaPerson])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(MariaPerson(id=1, name="Ada")))
         yield database

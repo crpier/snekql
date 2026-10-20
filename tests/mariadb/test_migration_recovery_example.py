@@ -16,7 +16,7 @@ from examples.migration_recovery import (
     resume_reviewed_ddl,
 )
 from snekql import mariadb
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,9 @@ async def provide_interrupted_ddl() -> AsyncGenerator[RecoveryCase]:
     server = await load_fixture(provide_mariadb_server())
     config = server.config(pool_size=1)
     async with await mariadb.Database.initialize(config) as database:
-        await database.migrate({"001_entries": MIGRATIONS["001_entries"]})
+        await database.migrate(
+            migration_functions({"001_entries": MIGRATIONS["001_entries"]})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.raw("INSERT INTO recovery_entries VALUES (1)")
@@ -48,7 +50,7 @@ async def provide_interrupted_ddl() -> AsyncGenerator[RecoveryCase]:
             patch.object(Cursor, "execute", fail_history),
             assert_raises(mariadb.MigrationHistoryError),
         ):
-            await database.migrate(MIGRATIONS)
+            await database.migrate(migration_functions(MIGRATIONS))
         yield RecoveryCase(config, database)
 
 
@@ -57,7 +59,7 @@ async def pending_history_can_have_committed_ddl() -> None:
     """Pending status does not mean the SQL body had no persistent effects."""
     case = await load_fixture(provide_interrupted_ddl())
 
-    status = await case.database.migration_status(MIGRATIONS)
+    status = await case.database.migration_status(migration_functions(MIGRATIONS))
     async with case.database.transaction() as transaction:
         rows = await transaction.fetch_all(
             mariadb.raw("SELECT id, note FROM recovery_entries")
@@ -75,7 +77,7 @@ async def reviewed_replay_records_history_after_restart() -> None:
 
     async with await mariadb.Database.initialize(case.config) as restarted:
         result = await resume_reviewed_ddl(restarted)
-        await restarted.verify_migrations(MIGRATIONS)
+        await restarted.verify_migrations(migration_functions(MIGRATIONS))
 
     assert_eq(result.applied, ("002_note",))
 
@@ -91,7 +93,10 @@ async def mismatched_existing_column_is_not_replayed() -> None:
 
     with assert_raises(RecoveryReviewError):
         await resume_reviewed_ddl(case.database)
-    assert_eq((await case.database.migration_status(MIGRATIONS)).pending, ("002_note",))
+    assert_eq(
+        (await case.database.migration_status(migration_functions(MIGRATIONS))).pending,
+        ("002_note",),
+    )
 
 
 @test(mark="slow")
@@ -99,7 +104,9 @@ async def acknowledged_server_commit_is_not_replayed_after_lost_reply() -> None:
     """When the history row committed, reconnecting resolves the uncertain outcome."""
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_entries": MIGRATIONS["001_entries"]})
+        await database.migrate(
+            migration_functions({"001_entries": MIGRATIONS["001_entries"]})
+        )
         commit = Connection.commit
 
         async def lose_reply(self: Connection) -> None:
@@ -111,7 +118,7 @@ async def acknowledged_server_commit_is_not_replayed_after_lost_reply() -> None:
             patch.object(Connection, "commit", lose_reply),
             assert_raises(mariadb.MigrationHistoryError),
         ):
-            await database.migrate(MIGRATIONS)
+            await database.migrate(migration_functions(MIGRATIONS))
     async with await mariadb.Database.initialize(server.config()) as restarted:
         result = await resume_reviewed_ddl(restarted)
 
@@ -128,7 +135,9 @@ async def replaying_mixed_dml_ddl_can_duplicate_data_effects() -> None:
         "002_change": "UPDATE recovery_counter SET value=value+1; ALTER TABLE recovery_counter ADD COLUMN IF NOT EXISTS note TEXT",
     }
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001_counter": migrations["001_counter"]})
+        await database.migrate(
+            migration_functions({"001_counter": migrations["001_counter"]})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.raw("INSERT INTO recovery_counter VALUES (1, 0)")
@@ -145,9 +154,9 @@ async def replaying_mixed_dml_ddl_can_duplicate_data_effects() -> None:
             patch.object(Cursor, "execute", fail_history),
             assert_raises(mariadb.MigrationHistoryError),
         ):
-            await database.migrate(migrations)
+            await database.migrate(migration_functions(migrations))
         # Deliberately demonstrate an unsafe operator action, not a recovery recipe.
-        await database.migrate(migrations)
+        await database.migrate(migration_functions(migrations))
         async with database.transaction() as transaction:
             row = await transaction.fetch_one(
                 mariadb.raw("SELECT value FROM recovery_counter WHERE id=1")

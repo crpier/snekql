@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 from tests.query.test_unions import (
     CombinedRole,
     Event,
@@ -54,7 +54,9 @@ async def provide_sqlite_events() -> AsyncGenerator[sqlite.Database]:
     """Seed duplicates and SQL NULLs before compound-query execution."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {"001_events": sqlite.scaffold([Event, NullableEvent, LocalText])}
+            migration_functions(
+                {"001_events": sqlite.scaffold([Event, NullableEvent, LocalText])}
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(
@@ -82,7 +84,13 @@ async def provide_mariadb_events() -> AsyncGenerator[mariadb.Database]:
     server = await load_fixture(provide_mariadb_server())
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {"001_events": mariadb.scaffold([MariaEvent, MariaNullable, NativeText])}
+            migration_functions(
+                {
+                    "001_events": mariadb.scaffold(
+                        [MariaEvent, MariaNullable, NativeText]
+                    )
+                }
+            )
         )
         async with database.transaction() as transaction:
             await transaction.execute(

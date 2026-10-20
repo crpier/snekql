@@ -5,6 +5,7 @@ from typing import ClassVar
 from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
+from tests.helpers import migration_functions
 
 
 @test([Param("VIRTUAL", name="virtual"), Param("STORED", name="stored")], mark="medium")
@@ -19,10 +20,12 @@ async def undeclared_generated_column_is_drift(storage: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (number INTEGER NOT NULL, "
-                f"doubled INTEGER GENERATED ALWAYS AS (number * 2) {storage}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (number INTEGER NOT NULL, "
+                    f"doubled INTEGER GENERATED ALWAYS AS (number * 2) {storage}) STRICT"
+                }
+            )
         )
 
         with assert_raises(sqlite.SchemaVerificationError) as raised:
@@ -52,11 +55,13 @@ async def declared_generated_column_has_comparable_metadata(storage: str) -> Non
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE entry (number INTEGER NOT NULL, "
-                "doubled INTEGER GENERATED ALWAYS AS (number * 2) "
-                f"{storage} NOT NULL) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE entry (number INTEGER NOT NULL, "
+                    "doubled INTEGER GENERATED ALWAYS AS (number * 2) "
+                    f"{storage} NOT NULL) STRICT"
+                }
+            )
         )
 
         report = await database.verify([Entry])

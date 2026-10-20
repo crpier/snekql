@@ -1,10 +1,15 @@
 """Immutable Migration declarations, results, and history comparison."""
 
+lazy from annotationlib import Format
+lazy from collections.abc import Awaitable, Callable, Mapping, Sequence
 lazy from dataclasses import dataclass
-lazy from hashlib import sha256
+lazy from inspect import iscoroutinefunction, signature
+
+lazy import anyio
 
 lazy from snekql.errors import (
     MigrationDeclarationError,
+    MigrationError,
     MigrationHistoryError,
 )
 
@@ -28,15 +33,12 @@ class MigrationStatus:
 class MigrationResult:
     """Ordered outcome of applying one complete Migration declaration.
 
-    `applied` names ran during this call. `already_applied` names were found in
-    valid history rather than run by this call. `legacy_adopted` is true when
-    this call adopted v1 history or completed a previously consented staged
-    adoption.
+    `applied` names ran during this call. `already_applied` names were found
+    in valid ordered history rather than run by this call.
     """
 
     applied: tuple[str, ...]
     already_applied: tuple[str, ...]
-    legacy_adopted: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,8 +47,7 @@ class Migration:
 
     position: int
     name: str
-    checksum: str
-    sql: str
+    body: MigrationFunction
 
     def history_record(self) -> MigrationRecord:
         """Return the correctness fields persisted in Migration History."""
@@ -54,7 +55,6 @@ class Migration:
         return MigrationRecord(
             position=self.position,
             name=self.name,
-            checksum=self.checksum,
         )
 
 
@@ -64,57 +64,92 @@ class MigrationRecord:
 
     position: int
     name: str
-    checksum: str
 
 
 type MigrationPlan = tuple[Migration, ...]
 
 
-def prepare_migrations(migrations: object) -> MigrationPlan:
-    """Snapshot and validate one complete linear Migration declaration.
+type MigrationParameters = Mapping[str, object] | Sequence[object] | None
 
-    Exact built-in strings keep names and checksums byte-stable and avoid a
-    mutable or hostile string subclass changing after validation.
+
+@dataclass(frozen=True, slots=True)
+class _MigrationQueryResult:
+    rows: list[tuple[object, ...]]
+    rowcount: int
+
+
+type _MigrationExecutor = Callable[
+    [str, MigrationParameters], Awaitable[_MigrationQueryResult]
+]
+
+
+class MigrationContext:
+    """SQL access on one managed migration connection, valid only in its body.
+
+    Values use native backend placeholders. There is no commit, rollback, pool
+    access, or transaction entry: the runner owns transaction/history completion.
     """
 
-    if type(migrations) is not dict:
-        msg = "migrations must be an exact dict[str, str]"
-        raise MigrationDeclarationError(msg)
+    def __init__(self, execute: _MigrationExecutor) -> None:
+        self._execute = execute
+        self._owner = anyio.get_current_task().id
+        self._active = True
 
+    def _expire(self) -> None:
+        self._active = False
+
+    async def _query(
+        self, sql: str, params: MigrationParameters
+    ) -> _MigrationQueryResult:
+        if not self._active or anyio.get_current_task().id != self._owner:
+            msg = "migration context is inactive or used from another task"
+            raise MigrationError(msg)
+        if type(sql) is not str or not sql.strip() or "\x00" in sql:
+            msg = "migration SQL must be a non-empty string without NUL characters"
+            raise MigrationDeclarationError(msg)
+        return await self._execute(sql, params)
+
+    async def execute(self, sql: str, *, params: MigrationParameters = None) -> int:
+        """Execute one SQL statement and return the driver row count."""
+        return (await self._query(sql, params)).rowcount
+
+    async def fetch_all(
+        self, sql: str, *, params: MigrationParameters = None
+    ) -> list[tuple[object, ...]]:
+        """Execute one SQL statement and return native tuple rows."""
+        return (await self._query(sql, params)).rows
+
+
+type MigrationFunction = Callable[[MigrationContext], Awaitable[None]]
+
+
+def prepare_migrations(migrations: object) -> MigrationPlan:
+    """Snapshot one complete ordered chain of revision IDs and async functions."""
+    if not isinstance(migrations, Mapping):
+        msg = "migrations must map revision IDs to async functions"
+        raise MigrationDeclarationError(msg)
     prepared: list[Migration] = []
-    for position, (name, sql) in enumerate(tuple(migrations.items()), start=1):
-        if type(name) is not str:
-            msg = f"migration name at position {position} must be an exact str"
+    for position, (name, body) in enumerate(tuple(migrations.items()), start=1):
+        if type(name) is not str or not name or len(name) > _MAX_MIGRATION_NAME_LENGTH:
+            msg = f"migration revision at position {position} must be a 1-255 character str"
             raise MigrationDeclarationError(msg)
-        if not name:
-            msg = f"migration name at position {position} must not be empty"
-            raise MigrationDeclarationError(msg)
-        if len(name) > _MAX_MIGRATION_NAME_LENGTH:
-            msg = f"migration name {name!r} exceeds 255 characters"
-            raise MigrationDeclarationError(msg)
-        if type(sql) is not str:
-            msg = f"migration {name!r} body must be an exact str"
-            raise MigrationDeclarationError(msg)
-        if not sql.strip():
-            msg = f"migration {name!r} body must contain SQL"
-            raise MigrationDeclarationError(msg)
-        if "\x00" in name or "\x00" in sql:
+        if "\x00" in name:
             msg = f"migration {name!r} contains a NUL character"
             raise MigrationDeclarationError(msg)
         try:
             name.encode("utf-8")
-            sql_bytes = sql.encode("utf-8")
         except UnicodeEncodeError as error:
             msg = f"migration {name!r} must contain valid UTF-8 text"
             raise MigrationDeclarationError(msg) from error
-        prepared.append(
-            Migration(
-                position=position,
-                name=name,
-                checksum=sha256(sql_bytes).hexdigest(),
-                sql=sql,
-            )
-        )
+        if not iscoroutinefunction(body):
+            msg = f"migration {name!r} must be an async function"
+            raise MigrationDeclarationError(msg)
+        try:
+            signature(body, annotation_format=Format.STRING).bind(object())
+        except (TypeError, ValueError) as error:
+            msg = f"migration {name!r} must accept one migration context"
+            raise MigrationDeclarationError(msg) from error
+        prepared.append(Migration(position=position, name=name, body=body))
     return tuple(prepared)
 
 
@@ -155,18 +190,13 @@ def validate_history_prefix(
         raise MigrationHistoryError(msg)
 
 
-def validate_legacy_history(
-    legacy_names: set[str],
-    expected: MigrationPlan,
-) -> int:
-    """Require unordered v1 names to equal one complete declared prefix set."""
-
-    if len(legacy_names) > len(expected):
-        msg = "legacy Migration History is longer than the declaration"
-        raise MigrationHistoryError(msg)
-    prefix_length = len(legacy_names)
-    declared_prefix = {migration.name for migration in expected[:prefix_length]}
-    if legacy_names != declared_prefix:
-        msg = "legacy Migration History is not the declared prefix"
-        raise MigrationHistoryError(msg)
-    return prefix_length
+async def run_migration(migration: Migration, execute: _MigrationExecutor) -> None:
+    """Bound context lifetime to its pending function, even on cancellation."""
+    context = MigrationContext(execute)
+    try:
+        result = await migration.body(context)
+        if result is not None:
+            msg = "migration functions must return None"
+            raise MigrationDeclarationError(msg)
+    finally:
+        context._expire()  # noqa: SLF001 - runner owns context lifetime

@@ -9,7 +9,7 @@ from snektest import Param, assert_eq, assert_raises, fixture, load_fixture, tes
 from snekql import mariadb, sqlite
 from snekql.model import BackendFamily
 from snekql.runtime import Database
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @dataclass(frozen=True)
@@ -473,7 +473,9 @@ async def mapping_names_preserve_exact_case(backend: BackendFamily) -> None:
 async def provide_raw_table(backend: BackendFamily) -> AsyncGenerator[RawCase]:
     case = await load_fixture(provide_raw_case(backend))
     await case.database.migrate(
-        {"001_table": "CREATE TABLE raw_entries (value INTEGER PRIMARY KEY)"}
+        migration_functions(
+            {"001_table": "CREATE TABLE raw_entries (value INTEGER PRIMARY KEY)"}
+        )
     )
     async with case.database.transaction() as transaction:
         await transaction.execute(

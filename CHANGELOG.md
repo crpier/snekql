@@ -4,6 +4,11 @@
 
 ### Breaking
 
+- Replace SQL-string migrations with async Python functions receiving a managed
+  `MigrationContext`. History tracks ordered revision IDs, not body checksums.
+  Remove legacy adoption and history-upgrade paths; older history layouts are
+  unsupported. Migration plans list pending IDs; remove SQL preview (`--sql`).
+
 - Replace the public `PendingGeneration` class with Python's native
   `PENDING_GENERATION` sentinel. Use `T | PENDING_GENERATION` annotations and
   identity comparisons; no compatibility class is retained.

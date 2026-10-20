@@ -16,6 +16,7 @@ from examples.migration_baseline import (
 from snekql import mariadb
 from snekql.model import BackendFamily
 from snekql.testing.mariadb import temporary_mariadb_server
+from tests.helpers import migration_functions
 from tests.runtime.test_raw_execution import RawCase, provide_raw_case
 
 _SQLITE_EXISTING = (
@@ -76,7 +77,6 @@ async def adoption_records_only_the_executed_baseline(backend: BackendFamily) ->
     )
 
     assert_eq(result.applied, ("001_reviewed_baseline",))
-    assert_eq(result.legacy_adopted, False)
 
 
 @test(
@@ -89,7 +89,7 @@ async def adoption_records_only_the_executed_baseline(backend: BackendFamily) ->
 async def existing_history_is_not_rebaselined(backend: BackendFamily) -> None:
     """Even an empty v2 history table must use its existing migration workflow."""
     case = await load_fixture(provide_existing(backend))
-    await case.database.migrate({})
+    await case.database.migrate(migration_functions({}))
 
     with assert_raises(BaselineReviewError):
         await (
@@ -116,7 +116,10 @@ async def missing_owned_table_is_rejected(backend: BackendFamily) -> None:
             if backend == "sqlite"
             else adopt_mariadb(case.database)
         )
-    assert_eq((await case.database.migration_status({})).history_present, False)
+    assert_eq(
+        (await case.database.migration_status(migration_functions({}))).history_present,
+        False,
+    )
 
 
 @test(
@@ -138,7 +141,10 @@ async def unreviewed_check_is_rejected_before_history_creation(
             if backend == "sqlite"
             else adopt_mariadb(case.database)
         )
-    assert_eq((await case.database.migration_status({})).history_present, False)
+    assert_eq(
+        (await case.database.migration_status(migration_functions({}))).history_present,
+        False,
+    )
 
 
 @test(
@@ -176,7 +182,10 @@ async def unreviewed_objects_are_rejected(backend: BackendFamily, kind: str) -> 
             if backend == "sqlite"
             else adopt_mariadb(case.database)
         )
-    assert_eq((await case.database.migration_status({})).history_present, False)
+    assert_eq(
+        (await case.database.migration_status(migration_functions({}))).history_present,
+        False,
+    )
 
 
 @test(
@@ -212,7 +221,10 @@ async def invalid_existing_data_is_rejected(backend: BackendFamily) -> None:
             if backend == "sqlite"
             else adopt_mariadb(case.database)
         )
-    assert_eq((await case.database.migration_status({})).history_present, False)
+    assert_eq(
+        (await case.database.migration_status(migration_functions({}))).history_present,
+        False,
+    )
 
 
 @test(
@@ -251,10 +263,10 @@ async def fresh_replay_builds_the_model_contract(backend: BackendFamily) -> None
     case = await load_fixture(provide_baseline_case(backend))
 
     if backend == "sqlite":
-        await case.database.migrate(SQLITE_MIGRATIONS)
+        await case.database.migrate(migration_functions(SQLITE_MIGRATIONS))
         verified = await case.database.verify([SQLiteAccount])
     else:
-        await case.database.migrate(MARIADB_MIGRATIONS)
+        await case.database.migrate(migration_functions(MARIADB_MIGRATIONS))
         verified = await case.database.verify([MariaDBAccount])
 
     assert_eq(verified.checked_tables, ("baseline_account",))
@@ -272,7 +284,9 @@ async def fresh_replay_enforces_the_reviewed_check(backend: BackendFamily) -> No
     """Fresh replay includes the CHECK that partial model verification cannot prove."""
     case = await load_fixture(provide_baseline_case(backend))
     await case.database.migrate(
-        SQLITE_MIGRATIONS if backend == "sqlite" else MARIADB_MIGRATIONS
+        migration_functions(
+            SQLITE_MIGRATIONS if backend == "sqlite" else MARIADB_MIGRATIONS
+        )
     )
 
     with assert_raises(case.namespace.ExecutionError):
@@ -302,8 +316,8 @@ async def adopted_database_extends_the_canonical_chain(backend: BackendFamily) -
         "002_note": "ALTER TABLE baseline_account ADD COLUMN note TEXT",
     }
 
-    result = await case.database.migrate(declaration)
-    await case.database.verify_migrations(declaration)
+    result = await case.database.migrate(migration_functions(declaration))
+    await case.database.verify_migrations(migration_functions(declaration))
 
     assert_eq(result.applied, ("002_note",))
     assert_eq(result.already_applied, ("001_reviewed_baseline",))
@@ -327,4 +341,7 @@ async def mariadb_unreviewed_automation_is_rejected(statement: str) -> None:
 
     with assert_raises(BaselineReviewError):
         await adopt_mariadb(case.database)
-    assert_eq((await case.database.migration_status({})).history_present, False)
+    assert_eq(
+        (await case.database.migration_status(migration_functions({}))).history_present,
+        False,
+    )

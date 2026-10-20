@@ -76,7 +76,7 @@ Check the intended product and stable release explicitly.
 | --- | --- |
 | Pydantic, pydantic-core, annotated-types, typing helpers | `model.py`, `storage.py`, declaration binding, validation, generated fields, codecs, materialization, and public typing probes. Keep Pydantic's exact core dependency together. |
 | AnyIO and its dependencies | Runtime deadlines, cancellation, pool admission, process cleanup, and context-local state. Run native cancellation and cleanup tests on both backends. |
-| aiomysql, PyMySQL, aiosqlite | Connection lifecycle, transactions, streaming, errors, TLS, binary binding, and migration checksums. Run real databases and freshly resolved wheel extras. |
+| aiomysql, PyMySQL, aiosqlite | Connection lifecycle, transactions, streaming, errors, TLS, binary binding, and migration revision history. Run real databases and freshly resolved wheel extras. |
 | OpenTelemetry API, SDK, semantic conventions | `snekql/opentelemetry.py`, span ancestry, metrics, cancellation, and parameter/error redaction. Upgrade coupled packages together. |
 | FastAPI, Starlette, HTTPX | `examples/service_app.py` and `tests/test_service_recipes.py`. Middleware and lifespan changes can affect request-owned transactions. |
 | SQLAlchemy and greenlet | `benchmarks/_comparison_*.py` and `tests/test_comparative_benchmarks.py`. Keep the asyncio extra. Correctness tests do not establish unchanged performance. |

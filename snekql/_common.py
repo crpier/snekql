@@ -14,7 +14,12 @@ Backend Namespace, so it stays compatible with the dialect-blindness invariant.
 
 lazy from snekql._compiled import CompiledQuery
 lazy from snekql._explain import ExplainResult
-lazy from snekql._migrations import MigrationResult, MigrationStatus
+lazy from snekql._migrations import (
+    MigrationContext,
+    MigrationFunction,
+    MigrationResult,
+    MigrationStatus,
+)
 lazy from snekql._schema_verification import (
     SchemaDriftIssue,
     SchemaVerificationFact,
@@ -146,8 +151,10 @@ __all__ = [
     "LexicalDurationWarning",
     "LiteralDefault",
     "LocalDatetime",
+    "MigrationContext",
     "MigrationDeclarationError",
     "MigrationError",
+    "MigrationFunction",
     "MigrationHistoryError",
     "MigrationLockError",
     "MigrationLockTimeoutError",

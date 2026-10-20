@@ -42,7 +42,7 @@ asyncio.run(deploy(sqlite.Config(database=Path("service.db"))))
 Use one persistent database path shared by the intended processes. Distinct
 `:memory:` configurations are distinct databases, not a way for a deploy job to
 prepare another process's database. Do not generate migrations from current
-models at startup. Deployed migration bodies and checksums must remain stable.
+models at startup. Deployed migration functions and their helpers must remain stable; history records revision IDs, not body checksums.
 
 For rolling releases, use the explicit reviewed suffix rules in
 [rolling migrations](rolling-migrations.md). Passing a readiness check does not

@@ -8,7 +8,7 @@ from pydantic import Json
 from snektest import Param, assert_eq, assert_in, assert_raises, load_fixture, test
 
 from snekql import mariadb, sqlite
-from tests.helpers import provide_mariadb_server
+from tests.helpers import migration_functions, provide_mariadb_server
 
 
 @test(mark="fast")
@@ -95,7 +95,7 @@ async def sqlite_check_rejects_invalid_pair() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Account])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Account])}))
         with assert_raises(sqlite.ExecutionError):
             async with database.transaction() as transaction:
                 await transaction.execute(sqlite.insert(Account(balance=5, ceiling=4)))
@@ -116,7 +116,7 @@ async def sqlite_null_satisfies_check() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Account])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Account])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Account(balance=None)))
         async with database.transaction() as transaction:
@@ -145,7 +145,7 @@ async def sqlite_text_literal_is_not_sql() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Account])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Account])}))
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert(Account(balance="quote'\\nul\0; DROP TABLE account; --é"))
@@ -171,7 +171,7 @@ async def sqlite_boolean_literal_uses_storage_codec() -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Account])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Account])}))
         async with database.transaction() as transaction:
             await transaction.execute(sqlite.insert(Account(balance=True)))
         async with database.transaction() as transaction:
@@ -200,7 +200,9 @@ async def mariadb_check_rejects_invalid_pair() -> None:
             ]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Account])})
+        )
         with assert_raises(mariadb.ExecutionError):
             async with database.transaction() as transaction:
                 await transaction.execute(mariadb.insert(Account(balance=5, ceiling=4)))
@@ -220,7 +222,9 @@ async def mariadb_null_satisfies_check() -> None:
             return [mariadb.CheckConstraint(cls.balance.gte(0), name="ck_balance")]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Account])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Account(balance=None)))
         async with database.transaction() as transaction:
@@ -248,7 +252,9 @@ async def mariadb_text_literal_is_not_sql() -> None:
             ]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Account])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(
                 mariadb.insert(
@@ -275,7 +281,9 @@ async def mariadb_boolean_literal_uses_storage_codec() -> None:
             return [mariadb.CheckConstraint(cls.balance.eq(True), name="ck_balance")]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Account])})
+        )
         async with database.transaction() as transaction:
             await transaction.execute(mariadb.insert(Account(balance=True)))
         async with database.transaction() as transaction:
@@ -312,9 +320,11 @@ async def sqlite_verifies_hand_created_check(case: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE account (balance INTEGER NOT NULL{clauses[case]}) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE account (balance INTEGER NOT NULL{clauses[case]}) STRICT"
+                }
+            )
         )
         report = await database.verify([Account], policy="warn")
 
@@ -364,9 +374,11 @@ async def mariadb_verifies_hand_created_check(case: str) -> None:
     }
     async with await mariadb.Database.initialize(server.config()) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE account (balance BIGINT NOT NULL{clauses[case]}) ENGINE=InnoDB"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE account (balance BIGINT NOT NULL{clauses[case]}) ENGINE=InnoDB"
+                }
+            )
         )
         report = await database.verify([Account], policy="warn")
 
@@ -443,7 +455,7 @@ async def sqlite_scaffold_checks_verify(case: str) -> None:
     async with await sqlite.Database.initialize(
         sqlite.Config(database=":memory:")
     ) as database:
-        await database.migrate({"001": sqlite.scaffold([Account])})
+        await database.migrate(migration_functions({"001": sqlite.scaffold([Account])}))
         report = await database.verify([Account])
 
     assert_eq(
@@ -505,7 +517,9 @@ async def mariadb_scaffold_checks_verify(case: str) -> None:
             return [mariadb.CheckConstraint(predicates[case], name="ck_rule")]
 
     async with await mariadb.Database.initialize(server.config()) as database:
-        await database.migrate({"001": mariadb.scaffold([Account])})
+        await database.migrate(
+            migration_functions({"001": mariadb.scaffold([Account])})
+        )
         report = await database.verify([Account])
 
     assert_eq(
@@ -616,9 +630,11 @@ async def sqlite_null_keyword_is_not_a_quoted_column() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": 'CREATE TABLE account ("NULL" INTEGER NOT NULL, CONSTRAINT ck_rule CHECK (NULL >= 0)) STRICT'
-            }
+            migration_functions(
+                {
+                    "001": 'CREATE TABLE account ("NULL" INTEGER NOT NULL, CONSTRAINT ck_rule CHECK (NULL >= 0)) STRICT'
+                }
+            )
         )
         report = await database.verify([Account])
 
@@ -676,9 +692,11 @@ async def unsupported_sqlite_expression_is_not_a_match(expression: str) -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": f"CREATE TABLE account (balance INTEGER NOT NULL, CONSTRAINT ck_rule CHECK ({expression})) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": f"CREATE TABLE account (balance INTEGER NOT NULL, CONSTRAINT ck_rule CHECK ({expression})) STRICT"
+                }
+            )
         )
         report = await database.verify([Account])
 
@@ -716,9 +734,11 @@ async def unmanaged_checks_share_one_fact_per_name() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE account (balance INTEGER NOT NULL, CHECK (balance >= 0), CHECK (balance <= 10)) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE account (balance INTEGER NOT NULL, CHECK (balance >= 0), CHECK (balance <= 10)) STRICT"
+                }
+            )
         )
         report = await database.verify([Account])
 
@@ -762,9 +782,11 @@ async def non_sql_whitespace_is_not_discarded() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": 'CREATE TABLE account (balance INTEGER NOT NULL, "\u00a00" INTEGER NOT NULL, CONSTRAINT ck_rule CHECK(balance >= \u00a00)) STRICT'
-            }
+            migration_functions(
+                {
+                    "001": 'CREATE TABLE account (balance INTEGER NOT NULL, "\u00a00" INTEGER NOT NULL, CONSTRAINT ck_rule CHECK(balance >= \u00a00)) STRICT'
+                }
+            )
         )
         report = await database.verify([Account], policy="warn")
 
@@ -791,9 +813,11 @@ async def unicode_identifier_is_not_constraint_keyword() -> None:
         sqlite.Config(database=":memory:")
     ) as database:
         await database.migrate(
-            {
-                "001": "CREATE TABLE account (constra\u0131nt INTEGER CHECK(balance >= 0) NOT NULL, balance INTEGER NOT NULL) STRICT"
-            }
+            migration_functions(
+                {
+                    "001": "CREATE TABLE account (constra\u0131nt INTEGER CHECK(balance >= 0) NOT NULL, balance INTEGER NOT NULL) STRICT"
+                }
+            )
         )
         report = await database.verify([Account], policy="warn")
 

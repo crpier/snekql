@@ -607,7 +607,6 @@ def migration_result_is_an_immutable_public_value() -> None:
     result = sqlite.MigrationResult(
         applied=("002",),
         already_applied=("001",),
-        legacy_adopted=False,
     )
 
     with assert_raises(FrozenInstanceError):

@@ -45,7 +45,7 @@ not just a successful connection or a changed version constant.
 | Plans | EXPLAIN and MariaDB ANALYZE; no INSERT plan inspection | Plan compilation/runtime suites |
 | Native types | BIGINT, BOOLEAN, DOUBLE, DATETIME(3), DECIMAL, JSON, UUID and bounded text/blob storage | Codec, round-trip and schema suites |
 | Declarations | Bounded utf8mb4 collations, prefix indexes, candidate keys, composite foreign keys, checks and defaults | Declaration, scaffold and drift suites |
-| Migrations | Advisory serialization, byte-exact history names/checksums, enforced history constraints, partial-DDL failure handling | Migration/baseline/recovery suites |
+| Migrations | Advisory serialization, byte-exact revision identities, enforced history constraints, partial-DDL failure handling | Migration/baseline/recovery suites |
 | Connections | Strict SQL mode, UTC, checks/FKs/uniqueness enabled, InnoDB pages at least 8192 bytes | Session-policy and acquisition suites |
 | Transport/lifecycle | Verified TLS, recycling, disconnect/restart handling, cancellation, streaming cleanup and process ownership | Native TLS, failure and test-server suites |
 
@@ -133,7 +133,7 @@ installations do not acquire this dependency.
 
 PyMySQL 1.2.1 removes symbols that aiomysql imports. Version 1.2.2 restores one
 but still fails import. Version 1.2.3 permits import but replaces the binary
-parameter encoder with a string, breaking BLOB writes and migration checksums.
+parameter encoder with a string, breaking BLOB writes and migration history identities.
 This is tracked in #402 and upstream aio-libs/aiomysql#1080 and #1081. There is
 no driver monkey patch in snekql.
 
@@ -150,7 +150,7 @@ review. Do not bypass the bound with an application override and assume support.
 After `uv build`, run `uv run python scripts/check_artifacts.py --mariadb` on a
 host with the supported MariaDB binaries. It installs wheel extras without the
 development lock, verifies the isolated import, prints driver versions, and runs
-snektest migration-checksum and binary round-trip tests against a temporary
+snektest migration-history and binary round-trip tests against a temporary
 server. CI runs this check in Validate and every maintained MariaDB version job.
 The default artifact command remains usable without native MariaDB binaries.
 

@@ -35,9 +35,9 @@ not a machine-readable protocol.
 | SQL semantics | Preserve the meaning of supported expressions, parameter binding, NULL handling, conflict behavior and dialect-specific restrictions. Neither backend is a transparent substitute for the other. |
 | Transactions | Preserve explicit transaction boundaries, task ownership, cancellation cleanup, separate acquisition and operation deadlines, and truthful Commit Outcome evidence. Never replay an uncertain commit implicitly. |
 | Schema declarations | Preserve supported declaration syntax, fixed declaration facts, storage/logical-type meaning and codecs' documented wire forms. Models do not create or alter tables at initialization. |
-| Migration history | Preserve ordered identities and exact-body checksums. Existing canonical history must remain readable, or a major upgrade must provide an explicit conversion procedure. No silent history rewriting or stamping. |
+| Migration history | Preserve ordered revision identities. Function bodies are immutable by convention, not checksummed. The switch to function migrations intentionally rejects older history formats; no upgrade path is provided. No silent history rewriting or stamping. |
 | Verification | Preserve documented matched, drift and unchecked meanings and strict/warn behavior. Partial verification does not become a claim of complete schema equality. |
-| Errors | Preserve public exception classes, catchable hierarchy and documented structured attributes. All intentional package-originated failures remain `SnekqlError` subclasses. Cancellation and arbitrary user-code failures are not rewritten into that hierarchy. |
+| Errors | Preserve public exception classes, catchable hierarchy and documented structured attributes. All intentional package-originated failures remain `SnekqlError` subclasses. Migration function failures retain their cause under `MigrationError`; cancellation is not rewritten into that hierarchy. |
 | Diagnostics | Preserve default parameter redaction and explicit opt-in value inspection. Preserve documented telemetry field meanings and bounded optional-adapter behavior. |
 
 Generated SQL whitespace, aliases, placeholder names, query plans, exception

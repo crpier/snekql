@@ -9,7 +9,7 @@ from snektest import Param, assert_eq, assert_raises, test
 
 from snekql import sqlite
 from snekql.errors import SchemaVerificationError
-from tests.helpers import migrate_models
+from tests.helpers import migrate_models, migration_functions
 
 type OptionalInteger = int | None
 type Maybe[T] = T | None
@@ -89,7 +89,9 @@ async def legacy_not_null_schema_is_not_rewritten() -> None:
 
     async with await sqlite.Database.initialize(database=":memory:") as database:
         await database.migrate(
-            {"legacy": "CREATE TABLE entry (value INTEGER NOT NULL) STRICT"}
+            migration_functions(
+                {"legacy": "CREATE TABLE entry (value INTEGER NOT NULL) STRICT"}
+            )
         )
         with assert_raises(SchemaVerificationError):
             await database.verify([Entry])

@@ -48,7 +48,14 @@ def active_users(minimum_id: int) -> sqlite.ClosedRead[UserSummary]:
 async def example() -> list[UserSummary]:
     """Create a disposable dataset and consume the named result contract."""
     async with await sqlite.Database.initialize(database=":memory:") as database:
-        await database.migrate({"001_users": sqlite.scaffold([User])})
+
+        async def create_users(migration: sqlite.MigrationContext) -> None:
+            await migration.execute(
+                'CREATE TABLE "user" ("id" INTEGER PRIMARY KEY, '
+                '"name" TEXT NOT NULL, "active" INTEGER NOT NULL) STRICT'
+            )
+
+        await database.migrate({"001_users": create_users})
         async with database.transaction() as transaction:
             await transaction.execute(
                 sqlite.insert_many(
