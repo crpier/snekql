@@ -79,7 +79,6 @@ Supply an ordered mapping of revision IDs to async functions:
 
 ```python
 async def add_status(migration: sqlite.MigrationContext) -> None:
-    await check_available_disk_space()
     await migration.execute(
         "ALTER TABLE user ADD COLUMN status TEXT NOT NULL DEFAULT 'active'"
     )
@@ -91,11 +90,10 @@ MIGRATIONS = {
 }
 ```
 
-Only pending functions execute, sequentially. A disk-space check inside a
-migration runs only when that revision is pending, after migration coordination
-and history validation. General deployment checks that must always run belong
-outside the functions. Custom checks can hold database locks while they run;
-keep that work bounded and use asynchronous I/O or an executor for blocking I/O.
+Only pending functions execute, sequentially, after migration coordination and
+history validation. Checks that must run on every deployment belong outside the
+functions. Work inside a migration can hold database locks while it runs; keep
+that work bounded and use asynchronous I/O or an executor for blocking I/O.
 
 Every call declares the complete canonical chain for this code version, not an
 independent feature subset. Mapping iteration order is authoritative; IDs are

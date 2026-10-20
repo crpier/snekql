@@ -16,7 +16,7 @@ async def pending_functions_execute_once_with_application_checks() -> None:
     checks: list[str] = []
 
     async def create_todos(migration: sqlite.MigrationContext) -> None:
-        checks.append("space checked")
+        checks.append("body ran")
         await migration.execute("CREATE TABLE todo (title TEXT NOT NULL) STRICT")
         await migration.execute("INSERT INTO todo VALUES (?)", params=("First",))
         assert_eq(await migration.fetch_all("SELECT title FROM todo"), [("First",)])
@@ -28,7 +28,7 @@ async def pending_functions_execute_once_with_application_checks() -> None:
         assert_eq((await db.migrate(declaration)).already_applied, ("001_create",))
         await db.verify_migrations(declaration)
         assert_eq((await db.migration_status(declaration)).pending, ())
-    assert_eq(checks, ["space checked"])
+    assert_eq(checks, ["body ran"])
 
 
 @test(mark="fast")
