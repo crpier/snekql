@@ -32,6 +32,8 @@ class _GreetingProxy:
         self.pause_greeting: bool = False
         self.greeting_paused: asyncio.Event = asyncio.Event()
         self.denied_bytes: list[int] = []
+        self.denied_packet_types: list[str] = []
+        self.response_observed: asyncio.Event = asyncio.Event()
         self.upstream_port: int = config.port
         self.tasks: list[asyncio.Task[None]] = []
         self.writers: set[asyncio.StreamWriter] = set()
@@ -65,6 +67,7 @@ class _GreetingProxy:
             if self.pause_greeting:
                 self.greeting_paused.set()
                 self.denied_bytes.append(len(await reader.read(65536)))
+                self.response_observed.set()
                 return
             denied = self.deny_tls
             if denied:
@@ -75,7 +78,7 @@ class _GreetingProxy:
             writer.write(header + greeting)
             await writer.drain()
             if denied:
-                self.denied_bytes.append(len(await reader.read(65536)))
+                await self._observe_denied_response(reader)
             else:
                 await asyncio.gather(
                     self._pipe(reader, upstream_writer),
@@ -90,6 +93,32 @@ class _GreetingProxy:
                     with suppress(ConnectionError):
                         await peer.wait_closed()
                     self.writers.discard(peer)
+
+    async def _observe_denied_response(self, reader: asyncio.StreamReader) -> None:
+        """Retain only counts/types, never authentication packet contents."""
+        try:
+            header = await reader.readexactly(4)
+        except asyncio.IncompleteReadError as error:
+            self.denied_bytes.append(len(error.partial))
+            self.denied_packet_types.append("incomplete" if error.partial else "eof")
+            self.response_observed.set()
+            return
+        length = int.from_bytes(header[:3], "little")
+        if length > 65536:
+            self.denied_bytes.append(4)
+            self.denied_packet_types.append("oversized")
+            self.response_observed.set()
+            return
+        payload = await reader.readexactly(length)
+        self.denied_bytes.append(4 + length)
+        if length == 32 and int.from_bytes(payload[:4], "little") & 0x0800:
+            kind = "ssl-request"
+        elif length > 32:
+            kind = "handshake-response"
+        else:
+            kind = "unknown"
+        self.denied_packet_types.append(kind)
+        self.response_observed.set()
 
     @staticmethod
     async def _pipe(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
