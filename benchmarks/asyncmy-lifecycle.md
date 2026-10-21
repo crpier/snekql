@@ -363,8 +363,8 @@ idle recycling. Its intended scope is owned-server raw-query experiments only.
 It reuses snekql's transaction machinery/admission gate and a native asyncmy pool,
 but does not port the production owned-pool/TLS implementation.
 
-Only code 2013 has candidate-specific failure classification; other asyncmy
-errors currently classify as unknown. Constraint recovery, deadlock/COMMIT
+At this checkpoint only code 2013 had candidate-specific failure classification;
+the constraint continuation below expands the tested categories. Deadlock/COMMIT
 rejection semantics, warning confidentiality, migrations, model/query-builder
 execution, cancellation through the public adapter, partial initialization and
 shutdown under faults are **not implemented or certified by these tests**.
@@ -408,3 +408,102 @@ is avoidable in these first-result-only adapter cases, and important COMMIT
 semantics survive the public transaction layer. Next gates are exception coverage
 and constraint recovery, value/diagnostic fidelity, public-adapter cancellation
 and shutdown, TLS/owned-pool behavior, and only then end-to-end performance.
+
+
+## Continuation: savepoint constraints and terminal guards — 2026-10-22
+
+Seven more public raw-transaction cases now compare the production aiomysql
+configuration and the restricted asyncmy prototype. The initial duplicate-key
+case exposed another inherited aiomysql-specific assumption: the prototype did
+not recognize asyncmy's constraint exception type, discarded the connection, and
+prevented the outer Transaction from continuing. The other constraint cases
+reproduced the same integration failure before the candidate allowlist was added.
+
+The adapter now recognizes completed asyncmy `IntegrityError`/`OperationalError`
+packets for exactly the same five constraint codes as the production adapter,
+and only while the native connection reports an active transaction. Error
+classification and permission to recover are deliberately separate: classifying
+an error does not grant permission to reuse a connection.
+
+| Failure inside a savepoint | Code | Category | Persisted IDs |
+| --- | ---: | --- | --- |
+| Duplicate unique value | 1062 | `unique_violation` | `[1, 3]` |
+| NOT NULL | 1048 | `not_null_violation` | `[1, 3]` |
+| CHECK | 4025 | `check_violation` | `[1, 3]` |
+| Missing referenced parent on insert | 1452 | `foreign_key_violation` | `[1, 3]` |
+| Deleting a referenced parent | 1451 | `foreign_key_violation` | `[1, 3]` |
+
+Each case inserts ID 1 before the savepoint, ID 2 inside it, then issues the
+invalid statement. After catching the public `ExecutionError` outside the nested
+context, the outer Transaction inserts ID 3 and commits. A subsequent public
+Transaction verifies `[1, 3]` and the original physical `CONNECTION_ID()`.
+Both drivers match on error category/code, connection reuse, committed outcome
+and exact persisted rows; no Python warnings were captured.
+
+### Recovery must remain narrow
+
+Two negative cases prevent an overbroad exception adaptation:
+
+- **Duplicate without a savepoint:** further operations are blocked, the old
+  connection is discarded, its outcome remains `not_attempted`, and a fresh
+  Transaction sees zero inserted rows on a different physical connection.
+- **Lock wait timeout inside a savepoint:** a separate owned Database holds a
+  row lock, and the tested query uses MariaDB `FOR UPDATE WAIT 1`. The server
+  returns code 1205. It is classified `lock_conflict`, but is **not** in the
+  recoverable-constraint allowlist. The connection is discarded, further work
+  is blocked, no outer or nested inserts persist, and a fresh connection works.
+  Lock ownership is established by an acknowledged locking query, not a guessed
+  scheduling delay. No session timeout settings are modified.
+
+Both negative cases pass for both configurations. The timeout case initially
+caught missing structured failure classification (`unknown` instead of
+`lock_conflict`); adding its category did not alter its terminal disposition.
+
+### Diagnostic canary
+
+The duplicate-key statement binds a deliberate noncredential secret canary as a
+unique value. Tests check that the canary is absent from public `str(error)`,
+`repr(error)`, the ordinary formatted traceback, and the subprocess stdout/stderr.
+The default redacted policy is used. This provides useful evidence for this
+constraint path, **not** certification of all SQL diagnostics, warning hooks,
+debug logging, explicit parameter visibility modes or manually inspected native
+exception objects.
+
+### Reproduce and validation
+
+```sh
+# Use the private $root/tmp setup from the earlier sections.
+for kind in unique not-null check foreign-insert foreign-delete no-savepoint lock-timeout; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "constraint-$kind" \
+    >"$root/constraint-$kind.json" || exit
+done
+```
+
+[Raw reports and provenance](results/2026-10-22-asyncmy-constraints/) were collected
+from clean source commit `7889de2`, with aiomysql 0.3.2 / asyncmy 0.2.16 on CPython
+3.15.0 / MariaDB 13.0.2. The earlier merge of #485/#486 remains included; no new
+merge of `main` was needed during this slice.
+
+Validation:
+
+- Seven new public-interface cases demonstrated red/green cycles, including
+  observed recovery and failure-classification defects before adapter changes.
+- **221 passed**: new constraint cases, five prototype cases, and existing nested
+  recovery, nested transaction, commit-outcome, raw-execution and raw-validation
+  lifecycle tests.
+- **11 native lifecycle probes passed** separately: total **232 focused tests**
+  across disjoint runs. Earlier COMMIT and stream behavior remains covered.
+- Typing, lint, formatting and whitespace checks passed; full suite not rerun.
+
+The adapter now has tested categories for 1062, 1048, 4025, 1451, 1452, 1205 and
+2013. Other error codes, SQLSTATE/constraint-name fidelity, deadlock rejection
+semantics and typed query-builder writes remain unported/uncertified. Recovery is
+still limited to the five constraint codes and an active savepoint managed by
+snekql. Production backend selection and dependencies are unchanged.
+
+Verdict remains **hold adoption, continue the prototype**. Basic raw constraint
+recovery is no longer an untested gap. Next priorities are binary/decimal/temporal
+value fidelity, diagnostic warning paths, cancellation through the public adapter,
+and the owned-pool/TLS/initialization/shutdown lifecycle.

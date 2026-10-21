@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scenario": "constraint-no-savepoint",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "blocked": true,
+      "category": "unique_violation",
+      "code": 1062,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": false,
+      "ids": [],
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "blocked": true,
+      "category": "unique_violation",
+      "code": 1062,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": false,
+      "ids": [],
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    }
+  ]
+}

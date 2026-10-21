@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scenario": "constraint-lock-timeout",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "blocked": true,
+      "category": "lock_conflict",
+      "code": 1205,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": false,
+      "ids": [],
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "blocked": true,
+      "category": "lock_conflict",
+      "code": 1205,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": false,
+      "ids": [],
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    }
+  ]
+}

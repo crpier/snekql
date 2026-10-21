@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "scenario": "constraint-check",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "blocked": false,
+      "category": "check_violation",
+      "code": 4025,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": true,
+      "ids": [
+        1,
+        3
+      ],
+      "commit_outcome": "committed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "blocked": false,
+      "category": "check_violation",
+      "code": 4025,
+      "error_redacted": true,
+      "traceback_redacted": true,
+      "same_connection": true,
+      "ids": [
+        1,
+        3
+      ],
+      "commit_outcome": "committed",
+      "warnings": []
+    }
+  ]
+}
