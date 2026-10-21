@@ -156,12 +156,14 @@ sys.path.insert(0, os.getcwd())
 from snekql import mariadb, sqlite
 import snekql.storage
 
+
 class SQLiteRecord[S = sqlite.Pending](sqlite.Model[S]):
     __row_type__: ClassVar[sqlite.ReadType[SQLiteRecord[sqlite.Row]]]
     number: sqlite.Col[int] = sqlite.Integer()
     text: sqlite.Col[str] = sqlite.Text()
     instant: sqlite.Col[sqlite.UtcDatetime] = sqlite.Text()
     civil: sqlite.Col[sqlite.LocalDatetime] = sqlite.Text()
+
 
 class MariaRecord[S = mariadb.Pending](mariadb.Model[S]):
     __row_type__: ClassVar[mariadb.ReadType[MariaRecord[mariadb.Row]]]
@@ -170,29 +172,71 @@ class MariaRecord[S = mariadb.Pending](mariadb.Model[S]):
     instant: mariadb.Col[mariadb.UtcDatetime] = mariadb.DateTime()
     civil: mariadb.Col[mariadb.LocalDatetime] = mariadb.DateTime()
 
-instant = sqlite.UtcDatetime(datetime(2026,1,2,3,4,5,123456,tzinfo=UTC))
-civil = sqlite.LocalDatetime(datetime(2026,1,2,3,4,5,123456))
-trials=[]
-for backend, model in [('sqlite',SQLiteRecord),('mariadb',MariaRecord)]:
-    cases=[('integer',model.number,7,7),('text',model.text,'payload','payload'),
-           ('utc',model.instant,instant,'2026-01-02T03:04:05.123456Z' if backend=='sqlite' else '2026-01-02 03:04:05.123456'),
-           ('civil',model.civil,civil,'2026-01-02T03:04:05.123456' if backend=='sqlite' else '2026-01-02 03:04:05.123456')]
+
+instant = sqlite.UtcDatetime(datetime(2026, 1, 2, 3, 4, 5, 123456, tzinfo=UTC))
+civil = sqlite.LocalDatetime(datetime(2026, 1, 2, 3, 4, 5, 123456))
+trials = []
+for backend, model in [("sqlite", SQLiteRecord), ("mariadb", MariaRecord)]:
+    cases = [
+        ("integer", model.number, 7, 7),
+        ("text", model.text, "payload", "payload"),
+        (
+            "utc",
+            model.instant,
+            instant,
+            "2026-01-02T03:04:05.123456Z"
+            if backend == "sqlite"
+            else "2026-01-02 03:04:05.123456",
+        ),
+        (
+            "civil",
+            model.civil,
+            civil,
+            "2026-01-02T03:04:05.123456"
+            if backend == "sqlite"
+            else "2026-01-02 03:04:05.123456",
+        ),
+    ]
     for trial in range(6):
-        for name,column,value,expected in cases[trial%4:]+cases[:trial%4]:
-            encode=column.encode
+        for name, column, value, expected in cases[trial % 4 :] + cases[: trial % 4]:
+            encode = column.encode
             for _ in range(1000):
-                assert encode(value,backend=backend,write=True)==expected
+                assert encode(value, backend=backend, write=True) == expected
             gc.collect()
             gc.disable()
             try:
-                start=time.perf_counter()
+                start = time.perf_counter()
                 for _ in range(50000):
-                    actual=encode(value,backend=backend,write=True)
-                elapsed=time.perf_counter()-start
+                    actual = encode(value, backend=backend, write=True)
+                elapsed = time.perf_counter() - start
             finally:
                 gc.enable()
-            assert actual==expected
-            trials.append(dict(backend=backend,case=name,trial=trial+1,operations=50000,elapsed_seconds=elapsed,encodes_per_second=50000/elapsed))
-print(json.dumps(dict(commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),dirty=bool(subprocess.check_output(['git','status','--porcelain'],text=True)),module=snekql.storage.__file__,python=sys.version,warmup_per_trial=1000,gc_during_timing=False,trials=trials)))
-
+            assert actual == expected
+            trials.append(
+                dict(
+                    backend=backend,
+                    case=name,
+                    trial=trial + 1,
+                    operations=50000,
+                    elapsed_seconds=elapsed,
+                    encodes_per_second=50000 / elapsed,
+                )
+            )
+print(
+    json.dumps(
+        dict(
+            commit=subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], text=True
+            ).strip(),
+            dirty=bool(
+                subprocess.check_output(["git", "status", "--porcelain"], text=True)
+            ),
+            module=snekql.storage.__file__,
+            python=sys.version,
+            warmup_per_trial=1000,
+            gc_during_timing=False,
+            trials=trials,
+        )
+    )
+)
 ```
