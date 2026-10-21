@@ -272,7 +272,7 @@ def model_projection_uses_checked_anchor(state: SelectState, model_meta: type) -
     namespace has checked its backend. Exact builtin descriptors cannot run
     extension hooks while resolving ownership; every field must still name
     that same anchor (including alias relation identity). Other expressions,
-    descriptor subclasses and custom metaclasses retain general dispatch.
+    custom descriptor subclasses and custom metaclasses retain general dispatch.
     Nothing is cached across calls or across query branches.
     """
     if type(state.model) is not model_meta and type(state.model) is not type:
