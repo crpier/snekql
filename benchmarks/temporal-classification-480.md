@@ -32,7 +32,7 @@ run overlapped the second phase; no tests ran during retained measurements.
 
 | Backend | Column / storage | Baseline encodes/s | Candidate encodes/s | Ratio |
 | --- | --- | ---: | ---: | ---: |
-| SQLite | Integer | 507,266 | 859,888 | 1.69× |
+| SQLite | Integer | 507,266 | 859,888 | 1.70× |
 | SQLite | Text | 522,382 | 893,604 | 1.71× |
 | SQLite | UTC / Text | 368,593 | 537,739 | 1.46× |
 | SQLite | Civil / Text | 420,317 | 636,184 | 1.51× |
