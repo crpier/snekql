@@ -1,0 +1,12 @@
+{
+  "source_commit": "53d0a5dd4ba3a0fc4e19d8150bdc191110e2496a",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "asyncmy": "0.2.16",
+  "aiomysql": "0.3.2",
+  "server": "13.0.2-MariaDB",
+  "transport": "loopback TCP",
+  "temp_storage": "private disk-backed TMPDIR under HOME/.cache",
+  "scope": "single-process sequential public-driver lifecycle probes; not end-to-end snekql"
+}

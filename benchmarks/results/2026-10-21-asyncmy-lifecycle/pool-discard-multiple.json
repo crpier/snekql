@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "scenario": "pool-discard-multiple",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "status": "replaced",
+      "same_connection": false,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "status": "replaced",
+      "same_connection": false,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "warnings": [
+        "coroutine 'MySQLResult._finish_unbuffered_query' was never awaited"
+      ]
+    }
+  ]
+}

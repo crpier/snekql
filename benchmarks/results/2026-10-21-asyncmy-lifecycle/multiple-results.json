@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "scenario": "multiple-results",
+  "results": [
+    {
+      "status": "reused",
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "first_identity": 1,
+      "same_connection": true,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "cleanup_peak_python_bytes": 4885091,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "status": "driver-error",
+      "phase": "reuse",
+      "error_type": "InternalError",
+      "error": "Packet sequence number wrong - got 8 expected 1",
+      "server": "13.0.2-MariaDB",
+      "warnings": [
+        "Previous unbuffered result was left incomplete",
+        "coroutine 'MySQLResult._finish_unbuffered_query' was never awaited",
+        "coroutine 'MySQLResult._finish_unbuffered_query' was never awaited"
+      ]
+    }
+  ]
+}

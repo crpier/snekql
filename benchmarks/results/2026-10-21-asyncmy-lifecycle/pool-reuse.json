@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "scenario": "pool-reuse",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "status": "reused",
+      "same_connection": true,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "status": "reused",
+      "same_connection": true,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "warnings": []
+    }
+  ]
+}

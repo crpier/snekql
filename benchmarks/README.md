@@ -195,3 +195,10 @@ models, Linux), with per-query bytes unchanged:
 control: unchanged within noise, confirming the gain comes from the reordered
 checks rather than run drift. `dataclasses.replace` remains the next bottleneck
 to target.
+
+## asyncmy lifecycle investigation
+
+See [the dated lifecycle findings](asyncmy-lifecycle.md) for the isolated
+aiomysql/asyncmy abandoned-stream and connection-reuse probes, including a
+reproduced asyncmy 0.2.16 multi-result protocol failure. These are compatibility
+experiments, not a production backend or a migration certification.
