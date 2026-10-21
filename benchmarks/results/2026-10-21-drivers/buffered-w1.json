@@ -1,0 +1,658 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T18:44:22.990575+00:00",
+  "configuration": {
+    "operations": 100,
+    "rows": 10000,
+    "trials": 6,
+    "warmup": 5,
+    "workers": 1,
+    "batch_size": 128,
+    "workload": "buffered"
+  },
+  "environment": {
+    "hardware": {
+      "cpu_model": "Intel(R) Core(TM) i7-14700F",
+      "memory_total_bytes": 33454784512,
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "cpu0_governor": "powersave"
+    },
+    "architecture": "x86_64",
+    "cpu": "",
+    "logical_cpus": 28,
+    "os": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "sqlite": "3.53.1",
+    "loop": "asyncio.unix_events._UnixSelectorEventLoop",
+    "gc_enabled": true,
+    "commit": "2dd8009fe955f18544c55c6a00e63d7cbd5a52b3",
+    "dirty": false,
+    "packages": {
+      "snekql": "0.9.0",
+      "aiosqlite": "0.22.1",
+      "aiomysql": "0.3.2",
+      "sqlalchemy": "2.1.1",
+      "greenlet": "3.5.6",
+      "pydantic": "2.14.0",
+      "anyio": "4.15.1",
+      "asyncmy": "0.2.16",
+      "pymysql": "1.2.0"
+    },
+    "mariadb": {
+      "version": "13.0.2-MariaDB",
+      "innodb_flush_log_at_trx_commit": 1,
+      "sync_binlog": 0,
+      "log_bin": 0,
+      "innodb_page_size": 16384,
+      "seed_session_isolation": "REPEATABLE-READ"
+    },
+    "server_data_directory": "/home/crpier/.cache/snekql-driver-review-xWAGFnZT/tmp/snekql-mariadb-3t291y89/data"
+  },
+  "measurement": {
+    "setup_included": false,
+    "warmup_included": false,
+    "correctness_checks_included": true,
+    "heartbeat_interval_seconds": 0.005,
+    "transaction": "explicit-begin-commit",
+    "transport": "tcp-loopback",
+    "connections": 1,
+    "pool": "none; one dedicated connection per worker",
+    "write_readback_included": true,
+    "independent_commit_audit_included": false
+  },
+  "trials": [
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 15.205524250413873,
+        "p50_ms": 14.875409498927183,
+        "p99_ms": 19.901339578427795,
+        "max_ms": 33.92494499712484
+      },
+      "loop_stall": {
+        "count": 119,
+        "mean_ms": 7.74024762450463,
+        "p50_ms": 9.351685002911836,
+        "p99_ms": 11.695198598608837,
+        "max_ms": 14.907413999026176
+      },
+      "elapsed_seconds": 1.5207539900002303,
+      "throughput_ops_s": 65.7568552557175,
+      "round": 1
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.692435949938954,
+        "p50_ms": 2.6686470009735785,
+        "p99_ms": 2.947227740587556,
+        "max_ms": 4.120451005292125
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.3305604033812415,
+        "p50_ms": 0.33049350531655364,
+        "p99_ms": 0.5685881754470755,
+        "max_ms": 0.5857220094185323
+      },
+      "elapsed_seconds": 0.26936628600378754,
+      "throughput_ops_s": 371.2417076522854,
+      "round": 1
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.7492194397200365,
+        "p50_ms": 2.6928214974759612,
+        "p99_ms": 3.6255554802482974,
+        "max_ms": 4.220791000989266
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.44437830278184265,
+        "p50_ms": 0.38430100175901316,
+        "p99_ms": 1.208688314654864,
+        "max_ms": 1.3341680023586378
+      },
+      "elapsed_seconds": 0.27504509100253927,
+      "throughput_ops_s": 363.57674894505493,
+      "round": 2
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 14.767926740532857,
+        "p50_ms": 14.683985002193367,
+        "p99_ms": 15.810853406510457,
+        "max_ms": 20.558736003295053
+      },
+      "loop_stall": {
+        "count": 108,
+        "mean_ms": 8.628759169840594,
+        "p50_ms": 9.621438002795912,
+        "p99_ms": 10.25936309415556,
+        "max_ms": 11.328774999128655
+      },
+      "elapsed_seconds": 1.4769527259995812,
+      "throughput_ops_s": 67.70697412289982,
+      "round": 2
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 14.709039949811995,
+        "p50_ms": 14.59997300116811,
+        "p99_ms": 16.536795672436714,
+        "max_ms": 17.191350998473354
+      },
+      "loop_stall": {
+        "count": 112,
+        "mean_ms": 8.089742573832025,
+        "p50_ms": 9.460435507207876,
+        "p99_ms": 10.294910511438504,
+        "max_ms": 12.20460700278636
+      },
+      "elapsed_seconds": 1.4710651720015449,
+      "throughput_ops_s": 67.9779535966711,
+      "round": 3
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.6629268396209227,
+        "p50_ms": 2.6579250006761868,
+        "p99_ms": 2.7541440004279147,
+        "max_ms": 2.8820520019507967
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.3277757226896938,
+        "p50_ms": 0.3203704982297495,
+        "p99_ms": 0.5084473037277348,
+        "max_ms": 0.5136070030857809
+      },
+      "elapsed_seconds": 0.26640488200064283,
+      "throughput_ops_s": 375.3684964367834,
+      "round": 3
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.666440989705734,
+        "p50_ms": 2.6632350018189754,
+        "p99_ms": 2.7428527110168943,
+        "max_ms": 2.7712370065273717
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.33179152305820026,
+        "p50_ms": 0.32957100484054536,
+        "p99_ms": 0.5334935343853431,
+        "max_ms": 0.5415800042101182
+      },
+      "elapsed_seconds": 0.2667532210034551,
+      "throughput_ops_s": 374.8783224578374,
+      "round": 4
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 14.589496970074833,
+        "p50_ms": 14.542404001986142,
+        "p99_ms": 16.092159209292742,
+        "max_ms": 18.490752001525834
+      },
+      "loop_stall": {
+        "count": 119,
+        "mean_ms": 7.259311599479871,
+        "p50_ms": 8.4385320005822,
+        "p99_ms": 10.029038220382063,
+        "max_ms": 10.932457007584162
+      },
+      "elapsed_seconds": 1.4591155519956374,
+      "throughput_ops_s": 68.53466804820883,
+      "round": 4
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 14.73880258956342,
+        "p50_ms": 14.616449501772877,
+        "p99_ms": 16.50390439499462,
+        "max_ms": 19.191496998246294
+      },
+      "loop_stall": {
+        "count": 114,
+        "mean_ms": 7.92805045012644,
+        "p50_ms": 9.392066502186935,
+        "p99_ms": 9.898520951901446,
+        "max_ms": 10.200081000220962
+      },
+      "elapsed_seconds": 1.474046825998812,
+      "throughput_ops_s": 67.8404500021498,
+      "round": 5
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.6716149501589825,
+        "p50_ms": 2.6541144980001263,
+        "p99_ms": 3.185714848368662,
+        "max_ms": 3.2157959940377623
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.3453271427133586,
+        "p50_ms": 0.29978350357851014,
+        "p99_ms": 0.9433211696159554,
+        "max_ms": 1.0908440017374232
+      },
+      "elapsed_seconds": 0.26728084799833596,
+      "throughput_ops_s": 374.13829217057327,
+      "round": 5
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 2.7031489995715674,
+        "p50_ms": 2.661756498127943,
+        "p99_ms": 3.1329300752986455,
+        "max_ms": 3.207781999662984
+      },
+      "loop_stall": {
+        "count": 50,
+        "mean_ms": 0.40161596291000023,
+        "p50_ms": 0.37748700196971186,
+        "p99_ms": 1.0380621541844444,
+        "max_ms": 1.188377005746588
+      },
+      "elapsed_seconds": 0.2704422690003412,
+      "throughput_ops_s": 369.7646834928524,
+      "round": 6
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        100
+      ],
+      "observed": {
+        "rows": 1000000,
+        "identity_sum": 5000500000
+      },
+      "stream": null,
+      "latency": {
+        "count": 100,
+        "mean_ms": 14.622917940505431,
+        "p50_ms": 14.573025502613746,
+        "p99_ms": 15.587515197112225,
+        "max_ms": 15.731975996459369
+      },
+      "loop_stall": {
+        "count": 114,
+        "mean_ms": 7.825877178044737,
+        "p50_ms": 9.384193501318805,
+        "p99_ms": 10.085542594970322,
+        "max_ms": 10.174738003115635
+      },
+      "elapsed_seconds": 1.462456708002719,
+      "throughput_ops_s": 68.3780924609866,
+      "round": 6
+    }
+  ]
+}

@@ -1,0 +1,2170 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21T18:48:07.266966+00:00",
+  "configuration": {
+    "operations": 200,
+    "rows": 10000,
+    "trials": 6,
+    "warmup": 5,
+    "workers": 8,
+    "batch_size": 128,
+    "workload": "bulk"
+  },
+  "environment": {
+    "hardware": {
+      "cpu_model": "Intel(R) Core(TM) i7-14700F",
+      "memory_total_bytes": 33454784512,
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "cpu0_governor": "powersave"
+    },
+    "architecture": "x86_64",
+    "cpu": "",
+    "logical_cpus": 28,
+    "os": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "sqlite": "3.53.1",
+    "loop": "asyncio.unix_events._UnixSelectorEventLoop",
+    "gc_enabled": true,
+    "commit": "2dd8009fe955f18544c55c6a00e63d7cbd5a52b3",
+    "dirty": false,
+    "packages": {
+      "snekql": "0.9.0",
+      "aiosqlite": "0.22.1",
+      "aiomysql": "0.3.2",
+      "sqlalchemy": "2.1.1",
+      "greenlet": "3.5.6",
+      "pydantic": "2.14.0",
+      "anyio": "4.15.1",
+      "asyncmy": "0.2.16",
+      "pymysql": "1.2.0"
+    },
+    "mariadb": {
+      "version": "13.0.2-MariaDB",
+      "innodb_flush_log_at_trx_commit": 1,
+      "sync_binlog": 0,
+      "log_bin": 0,
+      "innodb_page_size": 16384,
+      "seed_session_isolation": "REPEATABLE-READ"
+    },
+    "server_data_directory": "/home/crpier/.cache/snekql-driver-review-xWAGFnZT/tmp/snekql-mariadb-86c18jvv/data"
+  },
+  "measurement": {
+    "setup_included": false,
+    "warmup_included": false,
+    "correctness_checks_included": true,
+    "heartbeat_interval_seconds": 0.005,
+    "transaction": "explicit-begin-commit",
+    "transport": "tcp-loopback",
+    "connections": 8,
+    "pool": "none; one dedicated connection per worker",
+    "write_readback_included": true,
+    "independent_commit_audit_included": false
+  },
+  "trials": [
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 13.941773145161278,
+        "p50_ms": 10.177576001296984,
+        "p99_ms": 95.63781856290007,
+        "max_ms": 95.7347649964504
+      },
+      "loop_stall": {
+        "count": 66,
+        "mean_ms": 0.31617486621888186,
+        "p50_ms": 0.22878650270286016,
+        "p99_ms": 1.135467403946675,
+        "max_ms": 1.395131999743171
+      },
+      "elapsed_seconds": 0.3550271130006877,
+      "throughput_ops_s": 563.337257004404,
+      "round": 1
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.076691839713021,
+        "p50_ms": 10.08389750495553,
+        "p99_ms": 11.227855838515097,
+        "max_ms": 11.3294600014342
+      },
+      "loop_stall": {
+        "count": 47,
+        "mean_ms": 0.3628160668589036,
+        "p50_ms": 0.23057400539983064,
+        "p99_ms": 1.0043080823379567,
+        "max_ms": 1.011692002066411
+      },
+      "elapsed_seconds": 0.2528029999957653,
+      "throughput_ops_s": 791.1298521115265,
+      "round": 1
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 11.314837339959922,
+        "p50_ms": 10.009218498453265,
+        "p99_ms": 28.967332510801494,
+        "max_ms": 29.1263719991548
+      },
+      "loop_stall": {
+        "count": 53,
+        "mean_ms": 0.33399190798726913,
+        "p50_ms": 0.2700700060813688,
+        "p99_ms": 0.9657269634772091,
+        "max_ms": 0.973060006799642
+      },
+      "elapsed_seconds": 0.28384717199514853,
+      "throughput_ops_s": 704.6045186718237,
+      "round": 2
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.136139140158775,
+        "p50_ms": 10.06998850061791,
+        "p99_ms": 12.698801603546599,
+        "max_ms": 12.84557699545985
+      },
+      "loop_stall": {
+        "count": 46,
+        "mean_ms": 0.47754961064049933,
+        "p50_ms": 0.31699700048193336,
+        "p99_ms": 1.494823349275975,
+        "max_ms": 1.5384090002044104
+      },
+      "elapsed_seconds": 0.25433548000000883,
+      "throughput_ops_s": 786.3629565170894,
+      "round": 2
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.495333820290398,
+        "p50_ms": 10.168303997488692,
+        "p99_ms": 16.594102126473423,
+        "max_ms": 18.466035995515995
+      },
+      "loop_stall": {
+        "count": 49,
+        "mean_ms": 0.39238345094158184,
+        "p50_ms": 0.2503400028217584,
+        "p99_ms": 1.4111939212307332,
+        "max_ms": 1.4325520023703575
+      },
+      "elapsed_seconds": 0.2665137239964679,
+      "throughput_ops_s": 750.4303981083189,
+      "round": 3
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.124190215101407,
+        "p50_ms": 10.039950997452252,
+        "p99_ms": 11.633494782727212,
+        "max_ms": 11.951667998800986
+      },
+      "loop_stall": {
+        "count": 47,
+        "mean_ms": 0.3792015557608349,
+        "p50_ms": 0.28413100517354906,
+        "p99_ms": 1.0897756244230548,
+        "max_ms": 1.1202290043001994
+      },
+      "elapsed_seconds": 0.25407733600150095,
+      "throughput_ops_s": 787.1619056916533,
+      "round": 3
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.15591905452311,
+        "p50_ms": 10.111881001648726,
+        "p99_ms": 11.61300039195339,
+        "max_ms": 11.675722998916171
+      },
+      "loop_stall": {
+        "count": 47,
+        "mean_ms": 0.39503732114098966,
+        "p50_ms": 0.29746900690952316,
+        "p99_ms": 0.9862900228472427,
+        "max_ms": 0.9989000027417205
+      },
+      "elapsed_seconds": 0.254698142001871,
+      "throughput_ops_s": 785.2432625854443,
+      "round": 4
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.158636779997323,
+        "p50_ms": 10.039020497060847,
+        "p99_ms": 13.127137071642208,
+        "max_ms": 13.175833999412134
+      },
+      "loop_stall": {
+        "count": 47,
+        "mean_ms": 0.4766345775854635,
+        "p50_ms": 0.4711959991254844,
+        "p99_ms": 1.2779007639619522,
+        "max_ms": 1.3047160027781501
+      },
+      "elapsed_seconds": 0.25818660899676615,
+      "throughput_ops_s": 774.6335132450848,
+      "round": 4
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.132602724879689,
+        "p50_ms": 10.008407498389715,
+        "p99_ms": 13.289684757619396,
+        "max_ms": 13.776936997601297
+      },
+      "loop_stall": {
+        "count": 46,
+        "mean_ms": 0.47868104577545356,
+        "p50_ms": 0.3047265017812606,
+        "p99_ms": 1.4950879012758378,
+        "max_ms": 1.508029003161937
+      },
+      "elapsed_seconds": 0.25430986099672737,
+      "throughput_ops_s": 786.4421741891233,
+      "round": 5
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.178221094975015,
+        "p50_ms": 10.072620498249307,
+        "p99_ms": 11.73836437112186,
+        "max_ms": 12.006051001662854
+      },
+      "loop_stall": {
+        "count": 47,
+        "mean_ms": 0.41966930098653316,
+        "p50_ms": 0.3558450043783523,
+        "p99_ms": 0.9958246216410769,
+        "max_ms": 1.015353002003394
+      },
+      "elapsed_seconds": 0.2552577590031433,
+      "throughput_ops_s": 783.5217263563658,
+      "round": 5
+    },
+    {
+      "driver": "asyncmy",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.04750090509333,
+        "p50_ms": 10.00178750109626,
+        "p99_ms": 11.752391734626142,
+        "max_ms": 12.015607993816957
+      },
+      "loop_stall": {
+        "count": 46,
+        "mean_ms": 0.40721593715083465,
+        "p50_ms": 0.30159000380081125,
+        "p99_ms": 1.0374912497354671,
+        "max_ms": 1.0419169993838295
+      },
+      "elapsed_seconds": 0.25199562600028,
+      "throughput_ops_s": 793.6645693992234,
+      "round": 6
+    },
+    {
+      "driver": "aiomysql",
+      "session_policies": [
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        },
+        {
+          "charset": "utf8mb4",
+          "isolation": "REPEATABLE-READ",
+          "sql_mode": [
+            "ERROR_FOR_DIVISION_BY_ZERO",
+            "NO_ENGINE_SUBSTITUTION",
+            "NO_ZERO_DATE",
+            "NO_ZERO_IN_DATE",
+            "STRICT_ALL_TABLES"
+          ],
+          "time_zone": "+00:00",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "read_only": 0
+        }
+      ],
+      "per_worker_operations": [
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25,
+        25
+      ],
+      "observed": {
+        "rows": 25600,
+        "identity_sum": 327692800
+      },
+      "stream": null,
+      "latency": {
+        "count": 200,
+        "mean_ms": 10.106068349996349,
+        "p50_ms": 9.958499500498874,
+        "p99_ms": 13.86302931809041,
+        "max_ms": 13.927348001743667
+      },
+      "loop_stall": {
+        "count": 45,
+        "mean_ms": 0.535772136613054,
+        "p50_ms": 0.3739780077012256,
+        "p99_ms": 1.9996368035208458,
+        "max_ms": 2.457426002365537
+      },
+      "elapsed_seconds": 0.2538055400000303,
+      "throughput_ops_s": 788.0048638811277,
+      "round": 6
+    }
+  ]
+}

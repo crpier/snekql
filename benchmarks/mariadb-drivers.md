@@ -7,6 +7,9 @@ reuses the comparative harness's owned server, session policy checks, environmen
 metadata and heartbeat, but performs direct driver operations without Pydantic or
 query builders. It does not change the runtime dependency or certify a migration.
 
+[Dated findings and raw results](mariadb-driver-findings.md) summarize the first
+local comparison.
+
 ## Run
 
 From a source checkout with the project's Python 3.15 and MariaDB binaries:
