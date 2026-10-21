@@ -133,3 +133,122 @@ async def discarding_pending_results_gets_a_fresh_usable_pool_connection() -> No
             ),
         ],
     )
+
+
+@test(mark="slow")
+async def cancelled_query_discards_connection_and_rolls_back_pending_write() -> None:
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "cancel-query",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["cancelled"],
+                r["driver_closed"],
+                r["same_connection"],
+                r["visible_writes"],
+                r["answer"],
+            )
+            for r in report["results"]
+        ],
+        [("aiomysql", True, True, False, 0, 42), ("asyncmy", True, True, False, 0, 42)],
+    )
+
+
+@test(mark="slow")
+async def cancelled_stream_fetch_discards_connection_and_rolls_back_pending_write() -> (
+    None
+):
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "cancel-fetch",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["first_identity"],
+                r["cancelled"],
+                r["driver_closed"],
+                r["same_connection"],
+                r["visible_writes"],
+                r["recovered_writes"],
+                r["answer"],
+            )
+            for r in report["results"]
+        ],
+        [
+            ("aiomysql", 1, True, True, False, 0, 1, 42),
+            ("asyncmy", 1, True, True, False, 0, 1, 42),
+        ],
+    )
+
+
+@test(mark="slow")
+async def cancelled_stream_cleanup_discards_connection_and_rolls_back_pending_write() -> (
+    None
+):
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "cancel-close",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["first_identity"],
+                r["cancelled"],
+                r["driver_closed"],
+                r["same_connection"],
+                r["visible_writes"],
+                r["recovered_writes"],
+                r["answer"],
+            )
+            for r in report["results"]
+        ],
+        [
+            ("aiomysql", 1, True, True, False, 0, 1, 42),
+            ("asyncmy", 1, True, True, False, 0, 1, 42),
+        ],
+    )

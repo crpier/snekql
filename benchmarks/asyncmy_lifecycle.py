@@ -12,6 +12,7 @@ from typing import Any, cast
 
 from pymysql.constants import CLIENT
 
+from benchmarks._asyncmy_cancellation import probe as cancellation_probe
 from snekql.testing.mariadb import temporary_mariadb_server
 
 _ANSWER = 42
@@ -140,6 +141,9 @@ async def main() -> None:
             "multiple-results",
             "pool-reuse",
             "pool-discard-multiple",
+            "cancel-query",
+            "cancel-fetch",
+            "cancel-close",
         ),
         required=True,
     )
@@ -162,7 +166,9 @@ async def main() -> None:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 driver = import_module(name)
-                if args.scenario.startswith("pool-"):
+                if args.scenario.startswith("cancel-"):
+                    result = await cancellation_probe(driver, options, args.scenario)
+                elif args.scenario.startswith("pool-"):
                     result = await _pool_probe(
                         driver,
                         options,
