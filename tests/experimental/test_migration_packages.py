@@ -634,3 +634,11 @@ def package_check_detects_authoring_changes_not_yet_compiled() -> None:
     changed = draft.then(migrations.Checkpoint(name="new_authoring_point"))
     with assert_raises(migrations.PackageError):
         package.check(changed)
+
+
+@test(mark="fast")
+def serialized_execution_packages_are_reviewable_without_a_formatter() -> None:
+    """Committed artifacts expose individual statements in a readable JSON layout."""
+    package = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    assert_true('\n  "statements": [' in package.dump())
+    assert_eq(migrations.Package.load(package.dump()), package)

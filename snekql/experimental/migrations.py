@@ -170,7 +170,15 @@ class Package(_Value):
 
     def dump(self) -> str:
         """Serialize a complete model-independent deployment package."""
-        return _canonical(self.model_dump(mode="json"))
+        return (
+            json.dumps(
+                self.model_dump(mode="json"),
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
 
     def check(self, draft: Draft) -> None:
         """Reject a deployment artifact that no longer matches supplied authoring."""
