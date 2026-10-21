@@ -331,3 +331,145 @@ async def sqlite_rebuild_preserves_recorded_without_rowid_and_strict_storage() -
                     if row[1] == "keyed"
                 )
                 assert_eq(row[4:6], (1, 1))
+
+
+@test(mark="medium")
+async def sqlite_removal_rejects_legacy_quoted_trigger_event_columns() -> None:
+    """UPDATE OF 'column' is a dependency even when the body never reads it."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin")
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript("""
+                    CREATE TABLE audit(value INTEGER);
+                    CREATE TRIGGER begin AFTER UPDATE OF 'is_admin' ON account
+                    BEGIN INSERT INTO audit VALUES(1); END;
+                    INSERT INTO account(id,is_admin,role) VALUES(1,1,'user');
+                    UPDATE account SET is_admin=0;
+                """)
+                assert_eq(
+                    await (await app.execute("SELECT value FROM audit")).fetchall(),
+                    [(1,)],
+                )
+            with assert_raises(m.PackageError):
+                await target.prepare(second, preserve_unmanaged=True)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+
+
+@test(mark="medium")
+async def sqlite_removal_rejects_legacy_qualified_trigger_columns() -> None:
+    """NEW.'column' names a row field, not a harmless string literal."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin")
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript("""
+                    CREATE TABLE audit(value INTEGER);
+                    CREATE TRIGGER track_change AFTER UPDATE OF role ON account
+                    BEGIN INSERT INTO audit VALUES(NEW.'is_admin'); END;
+                    INSERT INTO account(id,is_admin,role) VALUES(1,1,'user');
+                    UPDATE account SET role='admin';
+                """)
+                assert_eq(
+                    await (await app.execute("SELECT value FROM audit")).fetchall(),
+                    [(1,)],
+                )
+            with assert_raises(m.PackageError):
+                await target.prepare(second, preserve_unmanaged=True)
+
+
+@test(mark="medium")
+async def sqlite_rebuild_retains_legacy_trigger_names_and_genuine_string_literals() -> (
+    None
+):
+    """Retained event columns and literal labels keep their behavior after rebuild."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin")
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript("""
+                    CREATE TABLE audit(value TEXT);
+                    CREATE TRIGGER record_label AFTER UPDATE OF 'role' ON 'account'
+                    BEGIN INSERT INTO audit VALUES('is_admin'); END;
+                    INSERT INTO account(id,is_admin,role) VALUES(1,1,'user');
+                """)
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (await app.execute("SELECT value FROM audit")).fetchall(), []
+                )
+                await app.execute("UPDATE account SET role='admin'")
+                assert_eq(
+                    await (await app.execute("SELECT value FROM audit")).fetchall(),
+                    [("is_admin",)],
+                )
+                assert_eq(
+                    await (await app.execute("SELECT id,role FROM account")).fetchall(),
+                    [(1, "admin")],
+                )
+
+
+@test(mark="medium")
+async def sqlite_same_package_rebuild_preserves_keyword_named_unique_index() -> None:
+    """An index named 'on' must retain both its identity and uniqueness enforcement."""
+    index = 'CREATE UNIQUE INDEX "on" ON "account" ("role")'
+    before = (
+        m.generate("before", [Expanded], backend="sqlite")
+        .target.tables[0]
+        .model_copy(update={"indexes": (index,)})
+    )
+    after = (
+        m.generate("after", [Contracted], backend="sqlite")
+        .target.tables[0]
+        .model_copy(update={"indexes": (index,)})
+    )
+    package = m.compile(
+        m.Draft(
+            revision="001",
+            predecessor=None,
+            before=m.State(backend="sqlite"),
+            target=m.State(backend="sqlite", tables=(after,)),
+            operations=(
+                m.CreateTable(table=before),
+                m.RequireNotNull(table_name="account", column_name="role"),
+                m.DropColumn(table_name="account", column_name="is_admin"),
+            ),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(package))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("INSERT INTO account(role) VALUES('user')")
+                with assert_raises(aiosqlite.IntegrityError):
+                    await app.execute("INSERT INTO account(role) VALUES('user')")
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT name FROM sqlite_schema WHERE type='index' AND name='on'"
+                        )
+                    ).fetchall(),
+                    [("on",)],
+                )

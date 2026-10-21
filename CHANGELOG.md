@@ -14,7 +14,8 @@
   adoption/re-adoption verifies matching existing declarations without creating
   tables; unmanaged extensions and MariaDB adoption remain unsupported. Scoped
   drift handling remains separate. SQLite has bounded preservation-aware
-  rebuilds; MariaDB can resume
+  rebuilds, including legacy quoted trigger dependencies and keyword-named index
+  preservation; MariaDB can resume
   proven remaining work without replaying acknowledged updates. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also

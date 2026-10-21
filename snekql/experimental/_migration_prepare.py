@@ -5,6 +5,7 @@ from typing import Any
 
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import (
+    Token,
     column_name,
     references,
     required_definition,
@@ -80,7 +81,10 @@ def prepare_steps(
 def _project(sql: str, objects: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
     """Track known preceding CREATE/ADD steps so a same-package rebuild sees them."""
     stream = tokens(sql)
-    words = [token.value.casefold() for token in stream]
+    # Keyword lookup must not treat quoted object names as SQL grammar.
+    words = [
+        token.value.casefold() if token.kind == "word" else None for token in stream
+    ]
     if words[:2] == ["create", "table"]:
         name = stream[2].value
         return [*objects, ("table", name, name, sql)]
@@ -132,6 +136,55 @@ def _mentions(sql: str, names: set[str]) -> bool:
     # string literal is safer than missing that dependency.
     folded = {name.casefold() for name in names}
     return any(token.value.casefold() in folded for token in tokens(sql))
+
+
+def _trigger_update_columns(stream: tuple[Token, ...]) -> tuple[Token, ...]:
+    """Read the event-column list, not similarly spelled names or body expressions."""
+    words = [
+        token.value.casefold() if token.kind == "word" else None for token in stream
+    ]
+    if words[:2] != ["create", "trigger"]:
+        return ()
+    start = 2
+    if words[start : start + 3] == ["if", "not", "exists"]:
+        start += 3
+    start += 1  # trigger name (which may itself be a SQL keyword)
+    if (
+        start < len(stream)
+        and stream[start].kind == "punct"
+        and stream[start].value == "."
+    ):
+        start += 2  # optional schema-qualified name
+    if words[start : start + 2] == ["instead", "of"]:
+        start += 2
+    elif words[start : start + 1] in (["before"], ["after"]):
+        start += 1
+    if words[start : start + 2] != ["update", "of"]:
+        return ()
+    for end in range(start + 2, len(stream)):
+        if words[end] == "on":
+            return stream[start + 2 : end]
+    return ()
+
+
+def _dependency_references(sql: str, names: set[str]) -> bool:
+    """Recognize bounded legacy identifier positions without treating literals as names."""
+    if references(sql, names):
+        return True
+    stream = tokens(sql)
+    folded = {name.casefold() for name in names}
+    if any(
+        token.kind == "string"
+        and token.value.casefold() in folded
+        and stream[index - 1].kind == "punct"
+        and stream[index - 1].value == "."
+        for index, token in enumerate(stream)
+        if index > 0
+    ):
+        return True
+    return any(
+        token.value.casefold() in folded for token in _trigger_update_columns(stream)
+    )
 
 
 def _views(objects: list[tuple[Any, ...]], table: str) -> list[tuple[Any, ...]]:
@@ -199,7 +252,7 @@ def _rebuild(
         for row in objects
         if row[0] == "table" and row[1] != table and references(row[3], {table})
     )
-    if any(references(sql, dropped) for sql in dependencies):
+    if any(_dependency_references(sql, dropped) for sql in dependencies):
         msg = f"{table}: a constraint, index, trigger, view or referencing table depends on removed columns"
         raise PackageError(msg)
     revised = [

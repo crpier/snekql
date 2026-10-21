@@ -246,7 +246,14 @@ unmanaged structure only after checking every recorded managed column, table
 constraint, storage suffix, and index. It does not authorize changes to managed
 definitions or adopt existing tables. Rebuilds preserve extra/generated columns,
 ordinary hidden row identity where accessible, indexes, triggers, dependent views,
-and AUTOINCREMENT high-water state. Checks and collations stay in their original
+and AUTOINCREMENT high-water state. Single-quoted trigger event columns
+(`UPDATE OF 'column'`) and qualified fields such as `NEW.'column'` are recognized
+as dependencies rather than string literals. Genuine literal labels remain
+unchanged. Keyword-like trigger/index names are not interpreted as SQL grammar;
+this includes preserving a unique index named `"on"` across same-package creation
+and rebuilding. These are bounded recognizers, not complete SQL dependency
+resolution; transaction-time checks and the documented unsupported cases remain
+important. Checks and collations stay in their original
 column/table definitions. STRICT and recorded WITHOUT ROWID storage are retained;
 the latter is exercised using an explicitly authored physical snapshot, not a new
 model-generator option.
