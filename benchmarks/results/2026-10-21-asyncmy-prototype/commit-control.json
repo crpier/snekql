@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "commit-control",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "commit_outcome": "committed",
+      "failure_category": null,
+      "failure_code": null,
+      "visible_writes": 1,
+      "server_ok_seen": true,
+      "commit_seen": true,
+      "commit_forwarded": true,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "commit_outcome": "committed",
+      "failure_category": null,
+      "failure_code": null,
+      "visible_writes": 1,
+      "server_ok_seen": true,
+      "commit_seen": true,
+      "commit_forwarded": true,
+      "warnings": []
+    }
+  ]
+}

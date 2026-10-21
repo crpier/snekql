@@ -141,15 +141,15 @@ cancellation-related desynchronization. Their closure does not establish safety
 for this different, non-cancellation reproducer. The non-cancellation reproducer has now been filed upstream as
 [asyncmy #165](https://github.com/long2ice/asyncmy/issues/165).
 
-Recommended next step: evaluate a cleanup fix, then build the isolated snekql
-adapter with fail-closed completion and verify the COMMIT fault cases below
-through its public transaction API. The native
+The later prototype continuation evaluates an explicit-drain workaround and
+first-result-only adapter completion, then verifies COMMIT faults through public
+transactions. Broader adapter validation remains necessary. The native
 close path must not become an accidental fallback for additional-result handling.
 Cancellation beyond the native asyncio cases below, snekql-level COMMIT integration,
 warnings containing server data, TLS,
 transactional pool reset, reconnects, maintained MariaDB LTS versions and
-cross-platform installation remain untested with asyncmy. The public snekql
-prototype seam is explicitly deferred, not considered passed by these probes.
+cross-platform installation remain untested with asyncmy. At this stage the public snekql prototype seam was deferred; the later
+prototype continuation below supplies narrowly scoped integration evidence.
 
 
 ## Continuation: cancellation and rollback — 2026-10-21
@@ -298,3 +298,113 @@ snekql transaction API, including cancellation and later cleanup failures. The
 multi-result protocol bug remains unresolved; upstream #165 is still open with
 no maintainer reply observed during this continuation. `main` was not merged in
 this slice.
+
+
+## Continuation: restricted public-interface prototype — 2026-10-21
+
+The investigation now includes `benchmarks/_asyncmy_adapter.py` and the runnable
+`benchmarks.asyncmy_prototype` command. `PrototypeConfig` opts into a separate
+runtime through `Database.initialize(config)`. It does not replace imports,
+monkeypatch snekql, register a backend or alter production dependencies.
+
+### Cleanup workaround versus adapter policy
+
+The new native `multiple-results-drained` experiment consumes each result with
+`fetchmany(128)` until exhausted, then advances with `nextset()`, and finally
+closes the cursor. Both drivers subsequently return the correct result on the
+same physical connection, without warnings. This is evidence for a **local
+explicit-drain workaround**, not a patched or fixed asyncmy release. aiomysql's
+`nextset()` can still buffer subsequent results; the fetch batch alone is not a
+memory bound on that driver.
+
+Draining every result is **not** snekql's policy: it would consume additional
+results that should instead be rejected. The prototype therefore adapts the
+existing first-result-only completion boundary to asyncmy's cursor representation.
+It finishes the initial unbuffered result, checks trailing `has_next`, and closes
+the physical connection if another result exists. It never advances with
+`nextset()` in that rejection path. The cursor's native `connection` reference is
+detached after disposal rather than using aiomysql's `_connection` name.
+
+This remains a private-protocol dependency (`_result` and
+`_finish_unbuffered_query()`), isolated in one experimental cursor adapter.
+The asyncmy command fallback and finalizer bugs have **not** been fixed, and
+native cancellation probes still retain their earlier finalizer warnings.
+
+### Public transaction observations
+
+The control uses the production aiomysql configuration. The candidate uses
+`PrototypeConfig`. All setup, queries, transaction outcomes and committed-row
+verification in these cases go through public snekql interfaces; transport-fault
+injection uses the same owned relay as before.
+
+| Public-interface case | Both configurations |
+| --- | --- |
+| Abandon a single-result stream, then query in the same Transaction | Same physical connection, correct result, final outcome `committed` |
+| Abandon a stream with another result pending | `RawResultShapeError`, old outcome `not_attempted`, next Transaction gets a different usable connection |
+| Normal COMMIT through relay | `committed`, one visible row |
+| Drop before COMMIT forwarding | `unknown`, failure category `connection_loss`, code 2013, zero visible rows |
+| Drop successful COMMIT acknowledgement | `unknown`, failure category `connection_loss`, code 2013, one visible row |
+
+No Python warnings were captured in these five prototype cases. Expected runtime
+logging on discarded connections is not suppressed; it is separate from Python
+warning capture and is not a diagnostic-confidentiality certification.
+
+The lost-ack test first failed because the aiomysql-specific classifier did not
+recognize asyncmy's exception: the outcome was already `unknown`, but structured
+failure metadata was absent. A candidate-specific classifier for the observed
+connection-loss code restored that public metadata. This was a real adapter
+integration failure caught by the agreed public seam, not a mocked exception.
+
+### Deliberate restrictions
+
+This is **not a complete MariaDB backend port**. The config rejects non-loopback
+hosts, TLS, Unix sockets, pools larger than one, active health checks and lifetime/
+idle recycling. Its intended scope is owned-server raw-query experiments only.
+It reuses snekql's transaction machinery/admission gate and a native asyncmy pool,
+but does not port the production owned-pool/TLS implementation.
+
+Only code 2013 has candidate-specific failure classification; other asyncmy
+errors currently classify as unknown. Constraint recovery, deadlock/COMMIT
+rejection semantics, warning confidentiality, migrations, model/query-builder
+execution, cancellation through the public adapter, partial initialization and
+shutdown under faults are **not implemented or certified by these tests**.
+Inherited aiomysql-specific paths must not be assumed compatible. The cursor's
+warning hook is adapted, but its confidentiality behavior still needs tests.
+
+### Reproduce and provenance
+
+```sh
+# Use the private $root/tmp setup from the earlier sections.
+for scenario in stream extra-results commit-control commit-drop-before commit-drop-ack; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "$scenario" \
+    >"$root/prototype-$scenario.json" || exit
+done
+TMPDIR="$root/tmp" uv run --locked --with asyncmy==0.2.16 python \
+  -m benchmarks.asyncmy_lifecycle --scenario multiple-results-drained \
+  >"$root/multiple-results-drained.json"
+```
+
+[Raw reports and provenance](results/2026-10-21-asyncmy-prototype/) were collected
+from clean merge commit `5f83785`. As requested, `origin/main` at `a10cd17` was
+merged into this branch at this checkpoint, bringing in #485 and #486. These
+are correctness observations, **not** end-to-end performance measurements of the
+combined optimizations and asyncmy.
+
+Post-merge validation:
+
+- **176 passed**: five prototype tests plus existing commit-outcome,
+  pool-cancellation-handoff, raw-execution and raw-validation lifecycle tests.
+- **25 passed**: eleven native lifecycle probes plus the fourteen regression
+  cases from #485/#486. Total: **201 passing focused tests** across disjoint runs.
+- New scenarios demonstrated red/green cycles; the missing candidate failure
+  classification produced an additional genuine integration regression test.
+- Type checking, lint, formatting and whitespace checks passed.
+- Full repository suite not rerun. No production driver/dependency switch.
+
+Verdict: **hold adoption, but continue the prototype**. The native cleanup problem
+is avoidable in these first-result-only adapter cases, and important COMMIT
+semantics survive the public transaction layer. Next gates are exception coverage
+and constraint recovery, value/diagnostic fidelity, public-adapter cancellation
+and shutdown, TLS/owned-pool behavior, and only then end-to-end performance.

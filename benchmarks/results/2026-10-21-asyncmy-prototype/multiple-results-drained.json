@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "multiple-results-drained",
+  "results": [
+    {
+      "status": "reused",
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "first_identity": 1,
+      "same_connection": true,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "cleanup_peak_python_bytes": 5014063,
+      "warnings": []
+    },
+    {
+      "status": "reused",
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "first_identity": 1,
+      "same_connection": true,
+      "answer": 42,
+      "server": "13.0.2-MariaDB",
+      "cleanup_peak_python_bytes": 419118,
+      "warnings": []
+    }
+  ]
+}

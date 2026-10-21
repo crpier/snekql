@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scenario": "stream",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "first_identity": 1,
+      "same_connection": true,
+      "answer": 42,
+      "commit_outcome": "committed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "first_identity": 1,
+      "same_connection": true,
+      "answer": 42,
+      "commit_outcome": "committed",
+      "warnings": []
+    }
+  ]
+}

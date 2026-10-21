@@ -1,0 +1,13 @@
+{
+  "source_commit": "5f8378585f6d1bfb5beebb6739b5e9d0e88450fa",
+  "source_dirty_during_collection": false,
+  "merged_main": "a10cd17",
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "asyncmy": "0.2.16",
+  "aiomysql": "0.3.2",
+  "server": "13.0.2-MariaDB",
+  "transport": "loopback TCP, plaintext relay for COMMIT cases",
+  "temp_storage": "private disk-backed TMPDIR under HOME/.cache",
+  "scope": "restricted benchmark-only adapter via public snekql transactions; no production registration or driver package patch"
+}

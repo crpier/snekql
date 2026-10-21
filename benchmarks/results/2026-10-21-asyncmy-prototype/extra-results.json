@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scenario": "extra-results",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "rejected": true,
+      "same_connection": false,
+      "answer": 42,
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "rejected": true,
+      "same_connection": false,
+      "answer": 42,
+      "commit_outcome": "not_attempted",
+      "warnings": []
+    }
+  ]
+}

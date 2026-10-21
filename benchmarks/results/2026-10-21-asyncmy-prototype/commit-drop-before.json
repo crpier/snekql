@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "commit-drop-before",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "commit_outcome": "unknown",
+      "failure_category": "connection_loss",
+      "failure_code": 2013,
+      "visible_writes": 0,
+      "server_ok_seen": false,
+      "commit_seen": true,
+      "commit_forwarded": false,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "commit_outcome": "unknown",
+      "failure_category": "connection_loss",
+      "failure_code": 2013,
+      "visible_writes": 0,
+      "server_ok_seen": false,
+      "commit_seen": true,
+      "commit_forwarded": false,
+      "warnings": []
+    }
+  ]
+}
