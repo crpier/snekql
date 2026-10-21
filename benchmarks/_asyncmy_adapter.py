@@ -10,7 +10,7 @@ from importlib import import_module
 from typing import Any, cast
 
 from snekql._raw import NativeParameters
-from snekql.errors import DatabaseFailure
+from snekql.errors import DatabaseFailure, FailureCategory
 from snekql.mariadb.config import Config
 from snekql.mariadb.runtime import (
     MariaDBConnectionAdapter,
@@ -21,6 +21,18 @@ from snekql.mariadb.runtime import (
 from snekql.validation import NonNegativeFloat
 
 _CONNECTION_LOST = 2013
+_CONSTRAINT_CATEGORIES: dict[int, FailureCategory] = {
+    1062: "unique_violation",
+    1048: "not_null_violation",
+    4025: "check_violation",
+    1451: "foreign_key_violation",
+    1452: "foreign_key_violation",
+}
+_FAILURE_CATEGORIES: dict[int, FailureCategory] = {
+    **_CONSTRAINT_CATEGORIES,
+    _CONNECTION_LOST: "connection_loss",
+    1205: "lock_conflict",
+}
 
 
 class _Cursor(MariaDBCursorAdapter):
@@ -39,6 +51,15 @@ class _Cursor(MariaDBCursorAdapter):
 
 
 class _Connection(MariaDBConnectionAdapter):
+    def _recoverable_constraint(self, error: BaseException) -> bool:
+        driver = import_module("asyncmy")
+        return bool(
+            isinstance(error, (driver.IntegrityError, driver.OperationalError))
+            and error.args
+            and error.args[0] in _CONSTRAINT_CATEGORIES
+            and cast("Any", self.connection).get_transaction_status()
+        )
+
     async def _quiet_cursor(self, *, stream: bool) -> Any:
         cursors = import_module("asyncmy.cursors")
         base = cursors.SSCursor if stream else cursors.Cursor
@@ -64,7 +85,9 @@ class _Runtime(MariaDBRuntime):
         code = error.args[0] if error.args and type(error.args[0]) is int else None
         return DatabaseFailure(
             backend="mariadb",
-            category="connection_loss" if code == _CONNECTION_LOST else "unknown",
+            category=_FAILURE_CATEGORIES.get(code, "unknown")
+            if code is not None
+            else "unknown",
             code=code,
         )
 

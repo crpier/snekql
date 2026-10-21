@@ -10,6 +10,7 @@ from typing import Any
 
 from benchmarks._asyncmy_adapter import PrototypeConfig
 from benchmarks._asyncmy_commit import _CommitRelay
+from benchmarks._asyncmy_constraints import probe as constraint_probe
 from snekql import mariadb
 from snekql.errors import DatabaseRuntimeError
 from snekql.testing.mariadb import temporary_mariadb_server
@@ -122,6 +123,13 @@ async def main() -> None:
     parser.add_argument(
         "--scenario",
         choices=(
+            "constraint-unique",
+            "constraint-no-savepoint",
+            "constraint-lock-timeout",
+            "constraint-not-null",
+            "constraint-check",
+            "constraint-foreign-insert",
+            "constraint-foreign-delete",
             "stream",
             "extra-results",
             "commit-drop-ack",
@@ -140,7 +148,9 @@ async def main() -> None:
         for name, config in (("aiomysql", baseline), ("asyncmy", prototype)):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                if args.scenario.startswith("commit-"):
+                if args.scenario.startswith("constraint-"):
+                    result = await constraint_probe(config, name, args.scenario)
+                elif args.scenario.startswith("commit-"):
                     result = await _commit(config, args.scenario, name)
                 else:
                     result = await (
