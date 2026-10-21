@@ -16,7 +16,8 @@ reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
 comparing numbers. The [dated baseline](findings.md) publishes individual trial
-reports and noise-aware regression guidance.
+reports and noise-aware regression guidance. The [temporal-classification optimization](temporal-classification-480.md)
+records isolated encoding and verified-bulk measurements for #480.
 
 ## Running
 
