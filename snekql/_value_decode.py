@@ -1,5 +1,7 @@
 """Decode SQL output values without constructing intermediate result models."""
 
+lazy from collections.abc import Callable
+lazy from functools import partial
 lazy from typing import Any, cast
 
 lazy from snekql._dialect_expr import (
@@ -141,3 +143,38 @@ def _decode_projection_field(
     ):
         return None
     return _decode_selectable(column, value, backend=backend, validate=validate)
+
+
+def resolve_projection_decoder(
+    column: Selectable,
+    *,
+    nullable_models: frozenset[type[object]],
+    backend: StorageBackend,
+    validate: bool,
+) -> Callable[[object], object]:
+    """Resolve ordinary column dispatch once for this execution's policy.
+
+    Structural extension seams take precedence even on Attr subclasses. Keep
+    those and non-column expressions on the general decoder; never cache by
+    class or globally, since ownership and validation belong to the execution.
+    """
+    if (
+        isinstance(column, Attr)
+        and not isinstance(column, PolicySelectable)
+        and not isinstance(column, DialectSelectable)
+    ):
+        decode = partial(column.decode, backend=backend, validate=validate)
+        if nullable_models and require_column_model(column) in nullable_models:
+
+            def decode_nullable(raw: object) -> object:
+                return None if raw is None else decode(raw)
+
+            return decode_nullable
+        return decode
+    return partial(
+        _decode_projection_field,
+        column,
+        nullable_models=nullable_models,
+        backend=backend,
+        validate=validate,
+    )
