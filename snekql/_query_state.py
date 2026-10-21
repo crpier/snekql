@@ -149,25 +149,6 @@ class InsertState:
 type WriteState = InsertState | UpdateState | DeleteState
 
 
-def model_projection_uses_checked_anchor(state: SelectState, model_meta: type) -> bool:
-    """Whether a whole-model projection repeats the checked anchor's facts.
-
-    Call only after build_select has validated the anchor metadata and the
-    namespace has checked its backend. Exact builtin descriptors cannot run
-    extension hooks while resolving ownership; every field must still name
-    that same anchor (including alias relation identity). Other expressions,
-    descriptor subclasses and custom metaclasses retain general dispatch.
-    Nothing is cached across calls or across query branches.
-    """
-    if type(state.model) is not model_meta and type(state.model) is not type:
-        return False
-    return all(
-        (type(field) is FKAttr or type(field) is Attr or type(field) is _DeferredFKAttr)
-        and getattr(field, "_query_relation", field.owner) is state.model
-        for field in state.fields
-    )
-
-
 def require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
     if not isinstance(value, Attr):
         msg = "select requires a model or field"
@@ -282,6 +263,25 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
         msg = "aggregate is not bound to a table model"
         raise QueryConstructionError(msg) from error
     return model
+
+
+def model_projection_uses_checked_anchor(state: SelectState, model_meta: type) -> bool:
+    """Whether a whole-model projection repeats the checked anchor's facts.
+
+    Call only after build_select has validated the anchor metadata and the
+    namespace has checked its backend. Exact builtin descriptors cannot run
+    extension hooks while resolving ownership; every field must still name
+    that same anchor (including alias relation identity). Other expressions,
+    descriptor subclasses and custom metaclasses retain general dispatch.
+    Nothing is cached across calls or across query branches.
+    """
+    if type(state.model) is not model_meta and type(state.model) is not type:
+        return False
+    return all(
+        (type(field) is FKAttr or type(field) is Attr or type(field) is _DeferredFKAttr)
+        and getattr(field, "_query_relation", field.owner) is state.model
+        for field in state.fields
+    )
 
 
 def require_model_returning_fields(
