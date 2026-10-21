@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scenario": "commit-control",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "server": "13.0.2-MariaDB",
+      "commit_returned": true,
+      "error_code": null,
+      "error_type": null,
+      "commit_seen": true,
+      "commit_forwarded": true,
+      "server_ok_seen": true,
+      "visible_writes": 1,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "server": "13.0.2-MariaDB",
+      "commit_returned": true,
+      "error_code": null,
+      "error_type": null,
+      "commit_seen": true,
+      "commit_forwarded": true,
+      "server_ok_seen": true,
+      "visible_writes": 1,
+      "warnings": []
+    }
+  ]
+}

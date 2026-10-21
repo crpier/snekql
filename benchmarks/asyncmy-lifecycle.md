@@ -141,10 +141,11 @@ cancellation-related desynchronization. Their closure does not establish safety
 for this different, non-cancellation reproducer. The non-cancellation reproducer has now been filed upstream as
 [asyncmy #165](https://github.com/long2ice/asyncmy/issues/165).
 
-Recommended next step: evaluate an upstream fix and investigate COMMIT
-acknowledgement loss, then build the isolated snekql adapter with fail-closed completion. The native
+Recommended next step: evaluate a cleanup fix, then build the isolated snekql
+adapter with fail-closed completion and verify the COMMIT fault cases below
+through its public transaction API. The native
 close path must not become an accidental fallback for additional-result handling.
-Cancellation beyond the native asyncio cases below, COMMIT outcomes,
+Cancellation beyond the native asyncio cases below, snekql-level COMMIT integration,
 warnings containing server data, TLS,
 transactional pool reset, reconnects, maintained MariaDB LTS versions and
 cross-platform installation remain untested with asyncmy. The public snekql
@@ -226,5 +227,74 @@ Validation for this continuation:
 
 Verdict remains **hold adoption**: the multi-result bug is unresolved, native
 cancellation recovery has useful positive evidence, and COMMIT outcome handling
-is the next untested correctness boundary. No merge of `main` was performed for
+still needs verification through an asyncmy-backed snekql transaction. No merge of `main` was performed for
 this continuation, as requested.
+
+
+## Continuation: COMMIT acknowledgement loss — 2026-10-21
+
+A new single-client loopback packet relay injects faults at the transport boundary.
+The driver is unmodified. A separate connection bypasses the relay to create an
+InnoDB table and inspect committed data. Each trial begins a transaction, inserts
+one row, and calls the driver's public `commit()` method exactly once.
+
+| Relay scenario | Client observation, both drivers | Independent visible rows |
+| --- | --- | ---: |
+| `commit-control`: forward command and reply normally | `commit()` returns | 1 |
+| `commit-drop-before`: receive COMMIT but close both sockets before forwarding it | `OperationalError(2013, ...)` | 0 |
+| `commit-drop-ack`: forward COMMIT, receive its successful OK packet, then close without forwarding the reply | `OperationalError(2013, ...)` | 1 |
+
+All cases positively record that the relay received the COMMIT command. The
+lost-ack case additionally requires a successful server OK packet; an unrelated
+server error is a probe failure, not accepted evidence of a lost commit reply.
+The no-fault control confirms that normal COMMIT acknowledgement survives the
+relay. There is no retry, replay, mocked `commit()` method or client timing guess.
+
+**The same client error corresponds to opposite persisted outcomes.** This is
+expected distributed-transaction uncertainty, not an asyncmy-specific defect.
+The harness knows where it injected the fault; an ordinary application does not.
+Error 2013 alone therefore cannot justify reporting rollback/rejection or blindly
+retrying a write. The existing snekql `unknown` outcome policy must be preserved
+by an asyncmy adapter. No new driver-side evidence removes that requirement.
+
+[Raw reports and provenance](results/2026-10-21-asyncmy-commit/) were collected from
+clean probe commit `e244243`, on CPython 3.15.0 / MariaDB 13.0.2. Both aiomysql
+0.3.2 and asyncmy 0.2.16 produced the table above, with no captured warnings.
+These are observations of committed visibility after a transport fault, not tests
+of crash recovery, disk durability, replication or failover.
+
+Using the private `TMPDIR` setup above:
+
+```sh
+for scenario in commit-control commit-drop-before commit-drop-ack; do
+  TMPDIR="$root/tmp" uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_lifecycle --scenario "$scenario" \
+    >"$root/$scenario.json" || exit
+done
+```
+
+The relay is narrowly scoped to an owned plaintext server, one client and
+sequential small text-protocol commands. It does not implement TLS, compression,
+prepared statements, pipelining or general proxy behavior. Packets, including
+handshake credentials, are forwarded in memory and never logged or persisted.
+It closes sockets and joins owned tasks during teardown. The separate observer
+runs its checks before the driver's final explicit close, so that cleanup cannot
+silently turn an acknowledged transaction into the asserted result.
+
+Validation for this continuation:
+
+- Three new real-driver probe tests demonstrated red/green cycles, bringing the
+  lifecycle suite to **ten** tests. Missing relay-interception evidence was also
+  exercised as a failing assertion before implementing its report field.
+- Combined focused run: **181 passed** (lifecycle probes plus existing
+  commit-outcome, pool-cancellation-handoff, raw-execution and raw-validation
+  lifecycle tests).
+- Type checking, lint, formatting and whitespace checks passed.
+- Full repository suite not rerun. Production runtime and dependencies unchanged.
+
+The raw-driver COMMIT ambiguity is now demonstrated rather than hypothetical.
+The next integration gate is preserving its classification through the public
+snekql transaction API, including cancellation and later cleanup failures. The
+multi-result protocol bug remains unresolved; upstream #165 is still open with
+no maintainer reply observed during this continuation. `main` was not merged in
+this slice.

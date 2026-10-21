@@ -1,0 +1,9 @@
+{
+  "source_commit": "e244243d52d26e884ddb54682ae82c4c2bf4bc4d",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "transport": "single-client plaintext loopback MySQL packet relay to owned MariaDB",
+  "temp_storage": "private disk-backed TMPDIR under HOME/.cache",
+  "scope": "raw-driver COMMIT response and independent committed-row observation; not a snekql adapter"
+}
