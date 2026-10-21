@@ -1242,6 +1242,9 @@ class Attr[
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
+        self._temporal_type_cache: (
+            tuple[type[UtcDatetime | LocalDatetime | ZonedDatetime] | None] | None
+        ) = None
         self._snekql_metadata_frozen: bool = False
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -1453,7 +1456,11 @@ class Attr[
         """Allow only private codec caches after model declaration finishes."""
 
         frozen = getattr(self, "_snekql_metadata_frozen", False)
-        if not frozen or name in ("_logical_adapter_cache", "_is_json_cache"):
+        if not frozen or name in (
+            "_logical_adapter_cache",
+            "_is_json_cache",
+            "_temporal_type_cache",
+        ):
             return
         owner = self.owner
         owner_name = owner.__name__ if owner is not None else "<unbound>"
@@ -1603,17 +1610,34 @@ class Attr[
     def _temporal_type(
         self,
     ) -> type[UtcDatetime | LocalDatetime | ZonedDatetime] | None:
-        """Recover temporal meaning from the logical annotation, never from storage."""
+        """Retain resolved temporal meaning, including a known non-temporal result.
+
+        This descriptor-local cache follows annotation binding, not storage or
+        backend identity. Unbound and partially resolved declarations are never
+        cached; aliases may copy the result because they retain the source type.
+        """
+        cached = self._temporal_type_cache
+        if cached is not None:
+            return cached[0]
         if self.owner is None or self.name is None:
             return None
         logical = _extract_logical_type(
             _resolve_model_hint(self.owner, self.name), self.name
         )
         types = _annotation_core_types(logical)
-        for temporal_type in (UtcDatetime, LocalDatetime, ZonedDatetime):
-            if temporal_type in types:
-                return temporal_type
-        return None
+        result = next(
+            (
+                kind
+                for kind in (UtcDatetime, LocalDatetime, ZonedDatetime)
+                if kind in types
+            ),
+            None,
+        )
+        # A module-level forward reference can resolve after declaration.
+        # Unknown is not a negative classification; retry it on the next use.
+        if not _contains_forward_ref(logical):
+            self._temporal_type_cache = (result,)
+        return result
 
     def validate_temporal_declaration(self, backend: StorageBackend) -> None:
         """Reject ambiguous temporal storage before it can claim a query contract."""
