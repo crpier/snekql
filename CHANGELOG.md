@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Experimental
+
+- Add an opt-in recorded-state migration prototype in
+  `snekql.experimental.migrations`: structured drafts, named historical query
+  contracts, frozen execution packages, explicit target preparation, and
+  uncertain-progress reporting on MariaDB. Supports creation, unconstrained
+  nullable additions, and typed UPDATE backfills. Formats are provisional;
+  adoption, rebuilds, general recovery and production runtime integration remain
+  incomplete. Existing migration interfaces are unchanged. Tracks #477.
+
 ## 0.9.0 - 2026-10-11
 
 ### Added
