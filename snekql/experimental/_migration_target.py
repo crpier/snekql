@@ -15,6 +15,7 @@ from snekql.experimental._migration_prepare import (
     ExecutionStep,
     prepare_steps,
     validate_adopted,
+    validate_completed,
     validate_preserved,
 )
 from snekql.experimental._migration_reconcile import matches_contraction
@@ -391,12 +392,15 @@ class Target:
         ):
             msg_0 = "rebuild failed foreign-key validation; transaction rolled back"
             raise PackageError(msg_0)
+        completed_catalog = await self._catalog()
+        if self._sqlite:
+            validate_completed(package, completed_catalog)
         await self._query(
             "UPDATE `snekql_experimental_migrations` SET phase='complete', catalog="  # noqa: S608 - fixed placeholders or quoted identifiers
             + marker
             + " WHERE digest="
             + marker,
-            (_digest(await self._catalog()), package.digest),
+            (_digest(completed_catalog), package.digest),
         )
         await self._connection.commit()
 

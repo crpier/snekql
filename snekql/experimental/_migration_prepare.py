@@ -18,6 +18,7 @@ from snekql.experimental.migrations import (
     Package,
     PackageError,
     Parameter,
+    State,
     _Value,
 )
 from snekql.sqlite.identifiers import quote_identifier as quote
@@ -326,9 +327,31 @@ def _signature(sql: str) -> tuple[tuple[str, str], ...]:
     )
 
 
+def _index_signature(sql: str) -> tuple[tuple[str, str], ...]:
+    """Ignore only the known execution guard, not persistent index properties."""
+    signature = _signature(sql)
+    guard = (("word", "if"), ("word", "not"), ("word", "exists"))
+    for prefix in (
+        (("word", "create"), ("word", "index")),
+        (("word", "create"), ("word", "unique"), ("word", "index")),
+    ):
+        offset = len(prefix)
+        if (
+            signature[:offset] == prefix
+            and signature[offset : offset + len(guard)] == guard
+        ):
+            return signature[:offset] + signature[offset + len(guard) :]
+    return signature
+
+
 def validate_preserved(package: Package, objects: list[tuple[Any, ...]]) -> None:
     """Allow unmanaged additions only after validating every recorded managed fact."""
-    for table in package.draft.before.tables:
+    validate_managed(package.draft.before, objects)
+
+
+def validate_managed(state: State, objects: list[tuple[Any, ...]]) -> None:
+    """Check recorded SQLite facts without claiming ownership of unmanaged extras."""
+    for table in state.tables:
         actual = next(
             (row[3] for row in objects if row[0] == "table" and row[1] == table.name),
             None,
@@ -338,22 +361,31 @@ def validate_preserved(package: Package, objects: list[tuple[Any, ...]]) -> None
             raise PackageError(msg)
         _, expected_parts, expected_suffix = split_table(table.sql)
         _, actual_parts, actual_suffix = split_table(actual)
-        actual_signatures = {_part_signature(part) for part in actual_parts}
-        if _signature(expected_suffix) != _signature(actual_suffix) or any(
-            _part_signature(part) not in actual_signatures for part in expected_parts
+        expected_signatures = Counter(_part_signature(part) for part in expected_parts)
+        actual_signatures = Counter(_part_signature(part) for part in actual_parts)
+        if (
+            _signature(expected_suffix) != _signature(actual_suffix)
+            or expected_signatures - actual_signatures
         ):
-            msg = (
-                f"{table.name}: preservation cannot accept changed managed definitions"
-            )
+            msg = f"{table.name}: managed declarations differ from the observed definitions"
             raise PackageError(msg)
         indexes = {
-            _signature(row[3])
+            _index_signature(row[3])
             for row in objects
             if row[0] == "index" and row[2] == table.name and row[3] is not None
         }
-        if any(_signature(sql) not in indexes for sql in table.indexes):
+        if any(_index_signature(sql) not in indexes for sql in table.indexes):
             msg = f"{table.name}: a managed index has changed or disappeared"
             raise PackageError(msg)
+
+
+def validate_completed(package: Package, objects: list[tuple[Any, ...]]) -> None:
+    """Require the managed SQLite endpoint before committing completion evidence."""
+    try:
+        validate_managed(package.target, objects)
+    except (PackageError, SchemaError) as error:
+        msg = f"managed schema postcondition failed; transaction rolled back: {error}"
+        raise PackageError(msg) from error
 
 
 def _part_signature(sql: str) -> tuple[str | None, tuple[tuple[str, str], ...]]:
@@ -396,8 +428,8 @@ def validate_adopted(package: Package, objects: list[tuple[Any, ...]]) -> None:
                 )
             if _signature(expected_suffix) != _signature(actual_suffix):
                 differences.append("table storage options")
-            if Counter(_signature(sql) for sql in table.indexes) != Counter(
-                _signature(row[3])
+            if Counter(_index_signature(sql) for sql in table.indexes) != Counter(
+                _index_signature(row[3])
                 for row in objects
                 if row[0] == "index" and row[2] == table.name and row[3] is not None
             ):

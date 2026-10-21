@@ -380,6 +380,35 @@ scope cancellation while acceptance is row-lock blocked, plus cancellation of a
 blocked read-only status query. They verify fresh-session inspection and recovery,
 not every cancellation/commit window or repeated cancellation during cleanup.
 
+## SQLite managed endpoint validation
+
+Before writing completion evidence or committing, SQLite observes the resulting
+catalog and checks the recorded managed endpoint. Managed tables, column/table
+constraint declarations, storage options and declared indexes must be present
+and match the bounded comparison, including recorded occurrences of repeated
+constraint declarations. Unmanaged extras remain outside that claim,
+and relinquished tables are not silently re-adopted. The same managed-fact
+comparison is used for preservation review and endpoint checking.
+
+Successful SQL calls alone are insufficient. For example, `CREATE INDEX IF NOT
+EXISTS` can succeed without creating the intended index if its name is occupied
+on another table. Endpoint validation rejects that result. It recognizes that
+`IF NOT EXISTS` is an execution guard, not a persistent index property, while
+still checking ownership, uniqueness and the indexed declaration.
+
+A mismatch raises `PackageError` identifying a managed-schema postcondition
+failure. The entire SQLite package rolls back, including schema/data work and
+new history records; earlier committed history remains intact. Existing tests
+also exercise successful adoption, contraction, unmanaged preservation and
+relinquishment with this check enabled.
+
+This is not general SQL equivalence, row/codec validation, a complete dependency
+proof, or application readiness certification. Construction statements remain
+trusted executable inputs, not a SQL sandbox. It does not retroactively repair
+or re-certify already completed experimental packages. MariaDB does not yet have
+this endpoint guard: its implicit-commit DDL needs a separate evidence/recovery
+policy, not a promise of SQLite-style rollback.
+
 ## Current execution behavior
 
 - SQLite uses a writer transaction for the entire package, including progress

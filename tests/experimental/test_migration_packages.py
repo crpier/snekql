@@ -1159,3 +1159,227 @@ async def adoption_requires_declared_indexes_to_exist_and_match() -> None:
             plan = await target.prepare(package)
             assert_eq(plan.statements, ())
             assert_eq(await target.apply(plan), "applied")
+
+
+@test(mark="medium")
+async def sqlite_completion_requires_the_managed_index_to_materialize() -> None:
+    """Successful statements are insufficient when conditional DDL skipped a constraint."""
+    draft = migrations.generate("001", [Entry], backend="sqlite")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "indexes": (
+                'CREATE UNIQUE INDEX IF NOT EXISTS "entry_title" ON "entry" ("title")',
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="sqlite", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.executescript("""
+                CREATE TABLE other(value TEXT);
+                INSERT INTO other VALUES('kept');
+                CREATE INDEX entry_title ON other(value);
+            """)
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(await target.prepare(package))
+            assert_true("postcondition" in str(error.exception))
+            assert_eq(await target.status(), ())
+        async with aiosqlite.connect(str(config.database)) as app:
+            assert_eq(
+                await (await app.execute("SELECT value FROM other")).fetchall(),
+                [("kept",)],
+            )
+            assert_eq(
+                await (
+                    await app.execute(
+                        "SELECT name FROM sqlite_schema WHERE name='entry'"
+                    )
+                ).fetchall(),
+                [],
+            )
+            assert_eq(
+                await (
+                    await app.execute(
+                        "SELECT tbl_name FROM sqlite_schema WHERE name='entry_title'"
+                    )
+                ).fetchall(),
+                [("other",)],
+            )
+
+
+@test(mark="medium")
+async def failed_postcondition_rolls_back_backfill_and_preserves_prior_history() -> (
+    None
+):
+    """Endpoint rejection rolls back the whole package, not just its final receipt."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    added = first.target.tables[0].model_copy(
+        update={
+            "name": "new_entry",
+            "quoted_name": '"new_entry"',
+            "sql": first.target.tables[0].sql.replace('"entry"', '"new_entry"'),
+            "indexes": (
+                'CREATE UNIQUE INDEX IF NOT EXISTS "occupied" ON "new_entry" ("title")',
+            ),
+        }
+    )
+    draft = migrations.Draft(
+        revision="002",
+        predecessor=first.digest,
+        before=first.target,
+        target=migrations.State(backend="sqlite", tables=(*first.target.tables, added)),
+        operations=(
+            migrations.CreateTable(table=added),
+            migrations.Checkpoint(name="backfill"),
+        ),
+    )
+    package = migrations.compile(
+        draft.then(
+            migrations.DataChange.from_query(
+                sqlite.update(Entry).set(Entry.title.to("must roll back")).all(),
+                checkpoint="backfill",
+                contract_digest=migrations.contract_digest(draft, point="backfill"),
+            )
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.executescript(
+                "CREATE TABLE other(value TEXT); CREATE INDEX occupied ON other(value);"
+            )
+        async with migrations.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("INSERT INTO entry VALUES(1,'kept')")
+                await app.commit()
+            with assert_raises(migrations.PackageError):
+                await target.apply(await target.prepare(package))
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            assert_eq(
+                await target.apply(await target.prepare(first)), "already_applied"
+            )
+        async with (
+            await sqlite.Database.initialize(config) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(await tx.fetch_all(sqlite.select(Entry.title)), ["kept"])
+            assert_eq(
+                await tx.fetch_all(
+                    sqlite.raw("SELECT name FROM sqlite_schema WHERE name='new_entry'")
+                ),
+                [],
+            )
+
+
+@test(mark="medium")
+async def sqlite_postcondition_accepts_a_materialized_conditional_index() -> None:
+    """IF NOT EXISTS is an execution guard, not a persistent index property."""
+    draft = migrations.generate("001", [Entry], backend="sqlite")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "indexes": (
+                'CREATE UNIQUE INDEX IF NOT EXISTS "entry_title" ON "entry" ("title")',
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="sqlite", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with migrations.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(package)), "applied")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute("INSERT INTO entry VALUES(1,'one')")
+            with assert_raises(aiosqlite.IntegrityError):
+                await app.execute("INSERT INTO entry VALUES(2,'one')")
+
+
+@test(mark="medium")
+async def sqlite_completion_rejects_a_missing_declared_managed_table() -> None:
+    """A custom construction statement must actually produce its declared table."""
+    draft = migrations.generate("001", [Entry], backend="sqlite")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "sql": draft.target.tables[0].sql.replace('"entry"', '"wrong_table"'),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="sqlite", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(await target.prepare(package))
+            assert_true("postcondition" in str(error.exception))
+            assert_true("entry" in str(error.exception))
+            assert_eq(await target.status(), ())
+        async with aiosqlite.connect(str(config.database)) as app:
+            assert_eq(
+                await (
+                    await app.execute(
+                        "SELECT name FROM sqlite_schema WHERE name='wrong_table'"
+                    )
+                ).fetchall(),
+                [],
+            )
+
+
+@test(mark="medium")
+async def managed_constraint_occurrences_cannot_disappear_during_preservation_review() -> (
+    None
+):
+    """Repeated declarations remain recorded facts, not a deduplicated token set."""
+    draft = migrations.generate("001", [Entry], backend="sqlite")
+    table = draft.target.tables[0]
+    sql = table.sql.removesuffix(") STRICT")
+    check = ", CHECK(length(title)>0)"
+    table = table.model_copy(update={"sql": sql + check + check + ") STRICT"})
+    first = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="sqlite", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    next_package = migrations.compile(
+        migrations.Draft(
+            revision="002",
+            predecessor=first.digest,
+            before=first.target,
+            target=first.target,
+            operations=(),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with migrations.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("DROP TABLE entry")
+                await app.execute(sql + check + ") STRICT")
+            with assert_raises(migrations.PackageError):
+                await target.prepare(next_package, preserve_unmanaged=True)
+            assert_eq([p.revision for p in await target.status()], ["001"])
