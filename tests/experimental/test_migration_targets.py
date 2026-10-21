@@ -8,6 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import ClassVar
 
+import aiomysql
 from pymysql.err import IntegrityError, OperationalError
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
@@ -338,6 +339,18 @@ async def recovery_resumes_rolled_back_data_without_replaying_acknowledged_work(
         assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
         assert_eq(assessment.disposition, "retry_remaining")
         assert_eq(assessment.acknowledged_steps, 1)
+        with assert_raises(migrations.PackageError):
+            await target.reconcile(
+                assessment,
+                reason="Cannot infer a data update from schema",
+                schema_writers_excluded=True,
+            )
+        with assert_raises(migrations.PackageError):
+            await target.reconcile(
+                assessment.model_copy(update={"disposition": "reconcile_structural"}),
+                reason="A caller flag is not evidence",
+                schema_writers_excluded=True,
+            )
         await server.run_sql(
             "CREATE TRIGGER side_effect BEFORE UPDATE ON counter FOR EACH ROW SET @touched=1"
         )
@@ -363,10 +376,10 @@ async def recovery_resumes_rolled_back_data_without_replaying_acknowledged_work(
     assert_eq(rows, [{"id": 42, "count": 1}])
 
 
-@test(mark="slow")
-async def committed_contraction_without_acknowledgement_stays_ambiguous() -> None:
-    """A schema endpoint is not permission to invent a missing execution receipt."""
-    server = await load_fixture(provide_package_server())
+async def lose_contraction_receipt(
+    server: TemporaryMariaDBServer,
+) -> migrations.Prepared:
+    """Set up a real DDL commit with an externally rejected journal update."""
     first = migrations.compile(
         migrations.generate("001", [EntryWithNote], backend="mariadb")
     )
@@ -374,6 +387,9 @@ async def committed_contraction_without_acknowledgement_stays_ambiguous() -> Non
         migrations.generate(
             "002", [RequiredEntry], backend="mariadb", previous=first
         ).resolve(migrations.DropColumn(table_name="entry", column_name="title"))
+    )
+    await server.run_sql(
+        "CREATE TABLE unrelated(id INTEGER) COMMENT=' AUTO_INCREMENT=7'"
     )
     async with migrations.connect(server.config()) as target:
         await target.apply(await target.prepare(first, schema_writers_excluded=True))
@@ -385,11 +401,65 @@ async def committed_contraction_without_acknowledgement_stays_ambiguous() -> Non
         with assert_raises(OperationalError):
             await target.apply(plan)
         await server.run_sql("DROP TRIGGER fail_receipt")
+        return plan
+
+
+@fixture
+async def provide_contraction_failure() -> AsyncGenerator[
+    tuple[TemporaryMariaDBServer, migrations.Prepared]
+]:
+    """A reviewed contraction whose DDL committed but whose receipt did not."""
+    server = await load_fixture(provide_package_server())
+    yield server, await lose_contraction_receipt(server)
+
+
+@test(mark="slow")
+async def committed_contraction_can_be_reconciled_without_replaying_ddl() -> None:
+    """Exact structural acceptance is explicit, durable, and distinct from execution."""
+    server, plan = await load_fixture(provide_contraction_failure())
+    async with migrations.connect(server.config()) as target:
         assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
-        assert_eq(assessment.disposition, "ambiguous")
+        assert_eq(assessment.disposition, "reconcile_structural")
         assert_eq(assessment.acknowledged_steps, 0)
+        original_sql = next(
+            sql for _, name, sql in assessment.before_catalog if name == "entry"
+        )
+        observed_sql = next(
+            sql for _, name, sql in assessment.observed_catalog if name == "entry"
+        )
+        assert "`title`" in original_sql
+        assert "`title`" not in observed_sql
         with assert_raises(migrations.PackageError):
             await target.resume(assessment, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError):
+            await target.reconcile(assessment, reason=" ", schema_writers_excluded=True)
+        accepted = await target.reconcile(
+            assessment,
+            reason="Reviewed the lost contraction receipt",
+            schema_writers_excluded=True,
+        )
+        assert_eq(accepted.disposition, "finish")
+        with assert_raises(migrations.PackageError):
+            await target.reconcile(
+                assessment, reason="Must not accept twice", schema_writers_excluded=True
+            )
+    async with migrations.connect(server.config()) as reopened:
+        assessed = await reopened.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(assessed.disposition, "finish")
+        assert_eq(
+            await reopened.resume(assessed, schema_writers_excluded=True), "applied"
+        )
+        progress = next(p for p in await reopened.status() if p.revision == "002")
+        assert_eq(len(progress.reconciliations), 1)
+        assert_eq(progress.reconciliations[0].step, 1)
+        assert_eq(
+            progress.reconciliations[0].reason, "Reviewed the lost contraction receipt"
+        )
+        assert_eq(progress.reconciliations[0].before_catalog, assessment.before_catalog)
+        assert_eq(
+            progress.reconciliations[0].after_catalog, assessment.observed_catalog
+        )
+        assert_eq(await reopened.apply(plan), "already_applied")
     async with (
         await mariadb.Database.initialize(server.config()) as db,
         db.transaction() as tx,
@@ -398,3 +468,249 @@ async def committed_contraction_without_acknowledgement_stays_ambiguous() -> Non
             await tx.fetch_all(mariadb.raw("SELECT * FROM entry")),
             [{"id": 1, "note": "kept"}],
         )
+
+
+@test(mark="slow")
+async def reconciliation_refuses_changed_catalog_and_stale_review() -> None:
+    """Only the exact next transition qualifies, including untouched objects."""
+    server, plan = await load_fixture(provide_contraction_failure())
+    async with migrations.connect(server.config()) as target:
+        assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        for change, restore in (
+            (
+                "ALTER TABLE unrelated COMMENT=' AUTO_INCREMENT=8'",
+                "ALTER TABLE unrelated COMMENT=' AUTO_INCREMENT=7'",
+            ),
+            ("CREATE TABLE unexpected(id INTEGER)", "DROP TABLE unexpected"),
+            (
+                "ALTER TABLE entry MODIFY note VARCHAR(256) NOT NULL",
+                "ALTER TABLE entry MODIFY note VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+            ),
+        ):
+            await server.run_sql(change)
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+            with assert_raises(migrations.PackageError):
+                await target.reconcile(
+                    assessment,
+                    reason="Not the reviewed schema",
+                    schema_writers_excluded=True,
+                )
+            await server.run_sql(restore)
+        progress = next(p for p in await target.status() if p.revision == "002")
+        assert_eq(progress.acknowledged_steps, 0)
+        assert_eq(progress.reconciliations, ())
+
+
+@test(mark="slow")
+async def reconciliation_refuses_changed_rendering_profile() -> None:
+    """Identical SHOW CREATE text under another SQL mode is not equivalent evidence."""
+    server, plan = await load_fixture(provide_contraction_failure())
+    async with migrations.connect(server.config()) as target:
+        assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+    await server.run_sql(
+        "SET GLOBAL sql_mode=CONCAT(@@GLOBAL.sql_mode,',NO_BACKSLASH_ESCAPES')"
+    )
+    try:
+        async with migrations.connect(server.config()) as different_mode:
+            assert_eq(
+                (
+                    await different_mode.inspect_recovery(
+                        plan, schema_writers_excluded=True
+                    )
+                ).disposition,
+                "ambiguous",
+            )
+            with assert_raises(migrations.PackageError):
+                await different_mode.reconcile(
+                    assessment,
+                    reason="Different rendering",
+                    schema_writers_excluded=True,
+                )
+    finally:
+        await server.run_sql(
+            "SET GLOBAL sql_mode='"
+            + assessment.before_profile[1].replace("'", "''")
+            + "'"
+        )
+
+
+@test(mark="slow")
+async def structural_acceptance_survives_server_restart_before_completion() -> None:
+    """A committed acceptance must not become a second DDL attempt after restart."""
+    with TemporaryDirectory() as directory:
+        data, socket = Path(directory) / "data", Path(directory) / "server.sock"
+        async with temporary_mariadb_server(
+            data_directory=data, socket_path=socket
+        ) as server:
+            plan = await lose_contraction_receipt(server)
+            async with migrations.connect(server.config()) as target:
+                assessment = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                await target.reconcile(
+                    assessment,
+                    reason="Reviewed before restart",
+                    schema_writers_excluded=True,
+                )
+            pid = int(await asyncio.to_thread(server.pid_path.read_text))
+            os.kill(pid, signal.SIGKILL)
+        async with (
+            temporary_mariadb_server(
+                data_directory=data, socket_path=socket
+            ) as restarted,
+            migrations.connect(restarted.config()) as target,
+        ):
+            progress = next(p for p in await target.status() if p.revision == "002")
+            assert_eq(progress.phase, "uncertain")
+            assert_eq(progress.acknowledged_steps, 1)
+            assert_eq(len(progress.reconciliations), 1)
+            assert_eq(progress.reconciliations[0].reason, "Reviewed before restart")
+            remaining = await target.inspect_recovery(
+                plan, schema_writers_excluded=True
+            )
+            assert_eq(remaining.disposition, "finish")
+            assert_eq(
+                await target.resume(remaining, schema_writers_excluded=True), "applied"
+            )
+
+
+@test(mark="slow")
+async def competing_reconcilers_record_only_one_acceptance() -> None:
+    """The losing reviewer must reassess, rather than append a duplicate receipt."""
+    server, plan = await load_fixture(provide_contraction_failure())
+    async with (
+        migrations.connect(server.config()) as first,
+        migrations.connect(server.config()) as second,
+    ):
+        a = await first.inspect_recovery(plan, schema_writers_excluded=True)
+        b = await second.inspect_recovery(plan, schema_writers_excluded=True)
+        results = await asyncio.gather(
+            first.reconcile(a, reason="first reviewer", schema_writers_excluded=True),
+            second.reconcile(b, reason="second reviewer", schema_writers_excluded=True),
+            return_exceptions=True,
+        )
+        assert_eq(sum(isinstance(result, migrations.Recovery) for result in results), 1)
+        assert_eq(
+            sum(isinstance(result, migrations.PackageError) for result in results), 1
+        )
+        progress = next(p for p in await first.status() if p.revision == "002")
+        assert_eq(progress.acknowledged_steps, 1)
+        assert_eq(len(progress.reconciliations), 1)
+
+
+@test(mark="slow")
+async def unacknowledged_creation_is_not_guessed_from_the_destination() -> None:
+    """The supported contraction proof must not generalize to other SQL steps."""
+    server = await load_fixture(provide_package_server())
+    first = migrations.compile(migrations.generate("001", [Entry], backend="mariadb"))
+    second = migrations.compile(
+        migrations.generate("002", [Entry, Counter], backend="mariadb", previous=first)
+    )
+    async with migrations.connect(server.config()) as target:
+        await target.apply(await target.prepare(first, schema_writers_excluded=True))
+        await server.run_sql(
+            "CREATE TRIGGER fail_receipt BEFORE UPDATE ON snekql_experimental_migrations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='receipt unavailable'"
+        )
+        plan = await target.prepare(second, schema_writers_excluded=True)
+        with assert_raises(OperationalError):
+            await target.apply(plan)
+        await server.run_sql("DROP TRIGGER fail_receipt")
+        assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(assessment.disposition, "ambiguous")
+        assert any(name == "counter" for _, name, _ in assessment.observed_catalog)
+        with assert_raises(migrations.PackageError):
+            await target.reconcile(
+                assessment,
+                reason="An endpoint alone is insufficient",
+                schema_writers_excluded=True,
+            )
+        assert_eq(
+            next(
+                p for p in await target.status() if p.revision == "002"
+            ).acknowledged_steps,
+            0,
+        )
+
+
+@test(mark="slow")
+async def interrupted_reconciliation_keeps_progress_and_audit_unaccepted() -> None:
+    """Kill an owned server while acceptance is blocked on its journal row lock."""
+    with TemporaryDirectory() as directory:
+        data, socket = Path(directory) / "data", Path(directory) / "server.sock"
+        async with temporary_mariadb_server(
+            data_directory=data, socket_path=socket
+        ) as server:
+            plan = await lose_contraction_receipt(server)
+            config = server.config()
+            blocker = await aiomysql.connect(
+                unix_socket=str(config.unix_socket),
+                user=config.user,
+                password=config.password,
+                db=config.database,
+                autocommit=False,
+            )
+            try:
+                async with migrations.connect(config) as target:
+                    assessment = await target.inspect_recovery(
+                        plan, schema_writers_excluded=True
+                    )
+                    async with blocker.cursor() as cursor:
+                        await cursor.execute(
+                            "SELECT digest FROM snekql_experimental_migrations WHERE digest=%s FOR UPDATE",
+                            (plan.package.digest,),
+                        )
+                        assert_eq(await cursor.fetchall(), ((plan.package.digest,),))
+                    accepting = asyncio.create_task(
+                        target.reconcile(
+                            assessment,
+                            reason="Must not survive an uncommitted acceptance",
+                            schema_writers_excluded=True,
+                        )
+                    )
+                    try:
+                        async with asyncio.timeout(10):
+                            while True:
+                                waiting = await server.run_sql(
+                                    "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE INFO LIKE 'UPDATE %snekql_experimental_migrations%'"
+                                )
+                                if waiting.stdout.splitlines()[-1] == "1":
+                                    break
+                                await asyncio.sleep(0.02)
+                        pid = int(await asyncio.to_thread(server.pid_path.read_text))
+                        os.kill(pid, signal.SIGKILL)
+                        outcome = await asyncio.gather(
+                            accepting, return_exceptions=True
+                        )
+                        assert isinstance(outcome[0], Exception)
+                    finally:
+                        if not accepting.done():
+                            accepting.cancel()
+                            await asyncio.gather(accepting, return_exceptions=True)
+            finally:
+                blocker.close()
+        async with (
+            temporary_mariadb_server(
+                data_directory=data, socket_path=socket
+            ) as restarted,
+            migrations.connect(restarted.config()) as target,
+        ):
+            progress = next(p for p in await target.status() if p.revision == "002")
+            assert_eq(progress.acknowledged_steps, 0)
+            assert_eq(progress.reconciliations, ())
+            reassessed = await target.inspect_recovery(
+                plan, schema_writers_excluded=True
+            )
+            assert_eq(reassessed.disposition, "reconcile_structural")
+            accepted = await target.reconcile(
+                reassessed,
+                reason="Reviewed after restart",
+                schema_writers_excluded=True,
+            )
+            assert_eq(
+                await target.resume(accepted, schema_writers_excluded=True), "applied"
+            )

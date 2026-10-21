@@ -23,6 +23,7 @@ from snekql.storage import _extract_logical_type, _resolve_model_hint
 lazy from snekql.experimental._migration_target import (
     Prepared,
     Progress,
+    Reconciliation,
     Recovery,
     Target,
     connect,
@@ -746,6 +747,7 @@ __all__ = [
     "PackageError",
     "Prepared",
     "Progress",
+    "Reconciliation",
     "Recovery",
     "RequireNotNull",
     "State",

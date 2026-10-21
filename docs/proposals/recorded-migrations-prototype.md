@@ -205,14 +205,65 @@ Packages remain trusted inputs: this is a claim about supported transactional
 database effects, not arbitrary SQL, external functions or exactly-once external
 side effects.
 
-If DDL committed without its receipt, the changed catalog remains **ambiguous**,
-even when it resembles the desired endpoint. `resume` refuses it. Automatic
-structural reconciliation and operator-supplied acknowledgement are still absent;
-never delete history or replay the package to resolve this case. Native tests cover
-a failed non-idempotent data sequence, an externally injected receipt failure after
-committed contraction, stale recovery evidence, and resuming acknowledged partial
-DDL after an owned server's SIGKILL/restart. They do not prove arbitrary in-flight
-crash points or hardware power-loss durability.
+### Explicit structural reconciliation
+
+An unacknowledged change is not automatically retryable. Recovery can now report
+`reconcile_structural` for **exactly the next grouped required/drop-column
+contraction**, when projecting that transition onto the last acknowledged observed
+catalog matches the entire current observed catalog. This is more evidence than
+matching the desired model or an arbitrary endpoint. Unchanged objects, column
+attributes, defaults, indexes and table options must also match. CREATE, ADD,
+arbitrary SQL and typed data changes do not receive this proof.
+
+```python
+assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+# These expose (kind, name, SHOW CREATE SQL) records for review.
+print(assessment.before_catalog, assessment.observed_catalog)
+if assessment.disposition == "reconcile_structural":
+    assessment = await target.reconcile(
+        assessment,
+        reason="Reviewed the exact contracted schema after receipt failure",
+        schema_writers_excluded=True,
+    )
+# Acceptance records evidence only; it does not execute remaining package steps.
+if assessment.disposition in {"retry_remaining", "finish"}:
+    await target.resume(assessment, schema_writers_excluded=True)
+```
+
+`reconcile` requires a nonempty review reason and rechecks the evidence under the
+advisory lock. It atomically advances **one** step and appends a durable acceptance
+containing its step number, reason, before/after catalog snapshots and digests,
+and rendering profile. Each `Progress` returned by `await target.status()` exposes
+`reconciliations`, distinguishing these acceptances from ordinary execution
+acknowledgements. It is
+acceptance of a supported structural postcondition, **not proof that arbitrary
+application data transformations ran**, an authenticated reviewer identity, or
+permission to skip arbitrary steps. Forged dispositions, stale reviews, and
+concurrent duplicate acceptance are rejected. After a lost connection, inspect
+status/evidence again instead of repeating an old acceptance request.
+
+Acknowledged observations retain the server version, session SQL mode, and
+SHOW CREATE quoting setting. A changed rendering profile blocks recovery rather
+than treating identical SQL text under different interpretation rules as proof.
+Structural reconciliation currently declines NO_BACKSLASH_ESCAPES rendering.
+AUTO_INCREMENT normalization omits only the actual unquoted table-option counter;
+matching text in comments/defaults remains significant. The ledger stores complete
+observations and acceptance evidence (LONGTEXT on MariaDB); older experimental
+ledger layouts are explicitly rejected, with no automatic conversion.
+
+The schema proof remains deliberately bounded and uses the migration account's
+visible catalog. Complete metadata visibility is an operational prerequisite, not
+a privilege audit implemented by this prototype. Non-InnoDB tables, visible
+triggers and stored routines still block this recovery path. Unknown renderings,
+unsupported transitions and additional drift stay `ambiguous`; there is no
+force-accept override. Never delete history or replay uncertain DDL to bypass it.
+
+Native tests cover non-idempotent data recovery, a receipt fault after committed
+contraction, unrelated/comment/type drift, changed rendering profiles, competing
+reconcilers, and owned-server SIGKILL/restart both while acceptance is blocked on
+a journal row lock and after acceptance commits but before package completion.
+These exercise rollback and durable acceptance separately. They do not establish
+arbitrary in-flight crash behavior or hardware power-loss durability.
 
 ## Current execution behavior
 
@@ -223,10 +274,12 @@ crash points or hardware power-loss durability.
   a single transaction spanning several UPDATEs or DDL.
 - An acknowledgement is persisted after each successful execution step. DDL may have
   committed before an acknowledgement was written. `acknowledged_steps` is a
-  lower bound on recorded successful work, not proof later work had no effect.
+  lower bound on acknowledged work, not proof later work had no effect. Explicit
+  structural acceptances also advance this count and remain separately auditable.
 - Incomplete MariaDB progress blocks further application, including requests to
   reapply an earlier completed revision. Only explicitly reviewed, proven recovery
-  can resume; ambiguous DDL still requires unimplemented reconciliation.
+  can resume. Exact supported contraction postconditions can be explicitly
+  reconciled; other ambiguous DDL remains blocked.
 - Competing runners reread history after obtaining SQLite writer coordination or
   MariaDB advisory coordination. The predecessor is an execution-package digest,
   so packages generated from divergent predecessors cannot silently form forks.
@@ -257,7 +310,7 @@ on MariaDB, including the period between preparation and application.
 | Historical application modules removed | JSON-only deployment works in a fresh process |
 | Package corruption / unknown version | Rejected; no format-upgrade implementation yet |
 | Competing runners | Native tests show one execution and one already-applied outcome |
-| Interrupted MariaDB DDL | Explicit recovery can skip acknowledged work after restart; changed catalog without receipt remains ambiguous |
+| Interrupted MariaDB DDL | Skip acknowledged work after restart; exact contraction postconditions require explicit durable reconciliation; other changed DDL remains ambiguous |
 | Brownfield ownership transfer | Unresolved/rejected, not implemented |
 | SQLite preservation-sensitive rebuild | Bounded observed-definition rebuild; referencing rows, extras, generated columns, index/trigger/view behavior, storage and sequence state tested |
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
@@ -280,7 +333,7 @@ Tests live in `tests/experimental/`. Use `snektest`, real backend servers, and
 separate data directories and never kill the session-wide shared server.
 
 ```sh
-uv run snektest tests/experimental
+PYTHON_CONTEXT_AWARE_WARNINGS=1 uv run snektest tests/experimental
 uv run ty check
 uv run ruff check .
 uv run ruff format --check .

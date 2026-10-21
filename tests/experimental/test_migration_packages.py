@@ -644,3 +644,24 @@ def serialized_execution_packages_are_reviewable_without_a_formatter() -> None:
     package = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
     assert_true('\n  "statements": [' in package.dump())
     assert_eq(migrations.Package.load(package.dump()), package)
+
+
+@test(mark="medium")
+async def incompatible_experimental_ledger_has_an_explicit_format_error() -> None:
+    """An older prototype journal is never silently converted or treated as empty."""
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(
+                "CREATE TABLE snekql_experimental_migrations (digest TEXT PRIMARY KEY, revision TEXT, predecessor TEXT, phase TEXT, catalog TEXT, acknowledged INTEGER, total INTEGER, state TEXT, plan TEXT)"
+            )
+            await app.commit()
+        package = migrations.compile(
+            migrations.generate("001", [Entry], backend="sqlite")
+        )
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package)
+            assert_true(
+                "unsupported experimental ledger layout" in str(error.exception)
+            )

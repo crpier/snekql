@@ -1,7 +1,7 @@
 """Explicit target preparation and execution for experimental migration packages."""
 
 import hashlib
-import re
+import json
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -16,11 +16,13 @@ from snekql.experimental._migration_prepare import (
     prepare_steps,
     validate_preserved,
 )
-from snekql.experimental._migration_sql import tokens
+from snekql.experimental._migration_reconcile import matches_contraction
+from snekql.experimental._migration_sql import tokens, without_auto_increment_counter
 from snekql.experimental.migrations import (
     CreateTable,
     Package,
     PackageError,
+    _canonical,
     _digest,
     _Value,
 )
@@ -31,14 +33,27 @@ from snekql.sqlite.config import Config as SQLiteConfig
 _HISTORY = "snekql_experimental_migrations"
 
 
+class Reconciliation(_Value):
+    """Durable acceptance of a structural postcondition, not an execution receipt."""
+
+    step: int
+    reason: str
+    before_digest: str
+    after_digest: str
+    before_catalog: tuple[tuple[str, str, str], ...]
+    after_catalog: tuple[tuple[str, str, str], ...]
+    rendering_profile: tuple[str, ...]
+
+
 class Progress(_Value):
-    """Persisted acknowledgement, not proof an unacknowledged operation did nothing."""
+    """Acknowledged progress, with structural acceptances distinguished from receipts."""
 
     revision: str
     digest: str
     phase: Literal["complete", "uncertain"]
     acknowledged_steps: int
     total_steps: int
+    reconciliations: tuple[Reconciliation, ...] = ()
 
 
 class Prepared(_Value):
@@ -62,15 +77,22 @@ class Recovery(_Value):
     prepared: Prepared
     acknowledged_steps: int
     catalog_digest: str
-    disposition: Literal["retry_remaining", "finish", "ambiguous"]
+    disposition: Literal[
+        "retry_remaining", "finish", "ambiguous", "reconcile_structural"
+    ]
     explanation: str
+    before_catalog: tuple[tuple[str, str, str], ...]
+    observed_catalog: tuple[tuple[str, str, str], ...]
+    before_profile: tuple[str, ...]
+    observed_profile: tuple[str, ...]
 
 
 class Target:
     """An explicitly opened migration connection; never initialized implicitly.
 
-    Connections and prepared plans are local to this context. SQLite applies one
-    package atomically. The initial executor supports creation, nullable additions and typed UPDATEs.
+    Connections are local to this context; prepared plans bind an observed target
+    identity. SQLite applies a package atomically. MariaDB uses durable evidence
+    and explicit recovery, not automatic replay.
     """
 
     def __init__(self, connection: Any, config: SQLiteConfig | MariaDBConfig) -> None:
@@ -118,29 +140,40 @@ class Target:
     async def _catalog(self) -> list[tuple[Any, ...]]:
         if not self._sqlite:
             objects = await self._query("SHOW FULL TABLES")
-            return sorted(
-                [
-                    (
-                        kind,
-                        name,
-                        re.sub(
-                            r"(?m)(^\) ENGINE=[^\n]*?) AUTO_INCREMENT=\d+\b",
-                            r"\1",
-                            (
-                                await self._query(
-                                    "SHOW CREATE TABLE " + quote_identifier(name)
-                                )
-                            )[0][1],
-                        ),
+            mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
+            observed = []
+            for name, kind in objects:
+                if name == _HISTORY:
+                    continue
+                sql = (
+                    await self._query("SHOW CREATE TABLE " + quote_identifier(name))
+                )[0][1]
+                if kind == "BASE TABLE":
+                    sql = without_auto_increment_counter(
+                        sql,
+                        backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
                     )
-                    for name, kind in objects
-                    if name != _HISTORY
-                ]
-            )
+                observed.append((kind, name, sql))
+            return sorted(observed)
         return await self._query(
             "SELECT type,name,tbl_name,sql FROM sqlite_schema "
             "WHERE name NOT GLOB 'sqlite_*' AND name != ? ORDER BY type,name",
             (_HISTORY,),
+        )
+
+    async def _rendering_profile(self) -> tuple[str, ...]:
+        if self._sqlite:
+            return ()
+        row = (
+            await self._query(
+                "SELECT VERSION(),@@SESSION.sql_mode,@@SESSION.sql_quote_show_create"
+            )
+        )[0]
+        return tuple(str(value) for value in row)
+
+    async def _record_observation(self, catalog: list[tuple[Any, ...]]) -> str:
+        return _canonical(
+            {"catalog": catalog, "profile": await self._rendering_profile()}
         )
 
     async def _history(self) -> list[tuple[Any, ...]]:
@@ -156,8 +189,39 @@ class Target:
             )
         if not exists:
             return []
+        if self._sqlite:
+            columns = {
+                row[1]
+                for row in await self._query(
+                    "PRAGMA table_info(`snekql_experimental_migrations`)"
+                )
+            }
+        else:
+            columns = {
+                row[0]
+                for row in await self._query(
+                    "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s",
+                    (_HISTORY,),
+                )
+            }
+        expected = {
+            "digest",
+            "revision",
+            "predecessor",
+            "phase",
+            "catalog",
+            "acknowledged",
+            "total",
+            "state",
+            "plan",
+            "observation",
+            "reconciliations",
+        }
+        if columns != expected:
+            msg = "unsupported experimental ledger layout; no automatic conversion is available"
+            raise PackageError(msg)
         return await self._query(
-            "SELECT digest,revision,predecessor,phase,catalog,acknowledged,total,state,plan FROM `snekql_experimental_migrations`"
+            "SELECT digest,revision,predecessor,phase,catalog,acknowledged,total,state,plan,observation,reconciliations FROM `snekql_experimental_migrations`"
         )
 
     async def status(self) -> tuple[Progress, ...]:
@@ -171,6 +235,10 @@ class Target:
                     phase="complete" if row[3] == "complete" else "uncertain",
                     acknowledged_steps=row[5],
                     total_steps=row[6],
+                    reconciliations=tuple(
+                        Reconciliation.model_validate(item)
+                        for item in json.loads(row[10])
+                    ),
                 )
                 for row in await self._history()
             )
@@ -289,14 +357,22 @@ class Target:
                     raise PackageError(msg)
                 await self._connection.begin()
             await self._execute_step(step)
+            observation = await self._catalog()
             await self._query(
                 "UPDATE `snekql_experimental_migrations` SET acknowledged="  # noqa: S608 - fixed placeholders or quoted identifiers
                 + marker
                 + ", catalog="
                 + marker
+                + ", observation="
+                + marker
                 + " WHERE digest="
                 + marker,
-                (index, _digest(await self._catalog()), package.digest),
+                (
+                    index,
+                    _digest(observation),
+                    await self._record_observation(observation),
+                    package.digest,
+                ),
             )
             if step.transactional and not self._sqlite:
                 await self._connection.commit()
@@ -322,26 +398,35 @@ class Target:
         await self._query(
             "CREATE TABLE IF NOT EXISTS `snekql_experimental_migrations` ("
             "digest VARCHAR(64) PRIMARY KEY, revision TEXT NOT NULL, predecessor VARCHAR(64), "
-            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL) "
+            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL, observation LONGTEXT NOT NULL, reconciliations LONGTEXT NOT NULL) "
             + suffix
             if not self._sqlite
             else "CREATE TABLE IF NOT EXISTS `snekql_experimental_migrations` ("
             "digest TEXT PRIMARY KEY, revision TEXT NOT NULL, predecessor TEXT, "
-            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL) STRICT"
+            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL, observation TEXT NOT NULL, reconciliations TEXT NOT NULL) STRICT"
         )
-        markers = "?,?,?,?,?,?,?,?,?" if self._sqlite else "%s,%s,%s,%s,%s,%s,%s,%s,%s"
+        markers = (
+            "?,?,?,?,?,?,?,?,?,?,?"
+            if self._sqlite
+            else "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+        )
+        observation = await self._catalog()
         await self._query(
-            "INSERT INTO `snekql_experimental_migrations` VALUES(" + markers + ")",
+            "INSERT INTO `snekql_experimental_migrations` (digest,revision,predecessor,phase,catalog,acknowledged,total,state,plan,observation,reconciliations) VALUES("
+            + markers
+            + ")",
             (
                 package.digest,
                 package.draft.revision,
                 package.draft.predecessor,
                 "started",
-                _digest(await self._catalog()),
+                _digest(observation),
                 0,
                 len(package.statements),
                 _digest(package.target.model_dump(mode="json")),
                 _digest(prepared.model_dump(mode="json")),
+                await self._record_observation(observation),
+                "[]",
             ),
         )
 
@@ -483,16 +568,27 @@ class Target:
         self._check_history(
             prepared.package, [item for item in rows if item[3] == "complete"]
         )
-        catalog = _digest(await self._catalog())
+        observation = await self._catalog()
+        catalog = _digest(observation)
+        recorded = json.loads(row[9])
+        baseline = recorded["catalog"]
+        profile = await self._rendering_profile()
+        if _digest(baseline) != row[4]:
+            msg = "recorded observation does not match the acknowledged catalog"
+            raise PackageError(msg)
         acknowledged = int(row[5])
         if int(row[6]) != len(prepared.steps) or not 0 <= acknowledged <= len(
             prepared.steps
         ):
             msg = "invalid recorded progress"
             raise PackageError(msg)
-        disposition: Literal["retry_remaining", "finish", "ambiguous"] = "ambiguous"
+        disposition: Literal[
+            "retry_remaining", "finish", "ambiguous", "reconcile_structural"
+        ] = "ambiguous"
         explanation = "catalog differs from the last acknowledgement; structural completion needs reconciliation"
-        if catalog == row[4]:
+        if recorded["profile"] != list(profile):
+            explanation = "server/session rendering profile differs from the acknowledged observation"
+        elif catalog == row[4]:
             if await self._transactional_obstacles():
                 explanation = "transactional recovery is not proven with non-InnoDB tables, triggers or stored routines"
             else:
@@ -502,13 +598,76 @@ class Target:
                     else "retry_remaining"
                 )
                 explanation = "catalog matches the last durable acknowledgement; transactional updates and their markers commit together"
+        elif (
+            acknowledged < len(prepared.steps)
+            and "NO_BACKSLASH_ESCAPES" not in profile[1].split(",")
+            and not await self._transactional_obstacles()
+            and matches_contraction(
+                prepared.package.contractions[acknowledged], baseline, observation
+            )
+        ):
+            disposition = "reconcile_structural"
+            explanation = "the entire observed catalog matches exactly the next planned contraction; explicit acceptance is required"
         return Recovery(
             prepared=prepared,
             acknowledged_steps=acknowledged,
             catalog_digest=catalog,
             disposition=disposition,
             explanation=explanation,
+            before_catalog=tuple((kind, name, sql) for kind, name, sql in baseline),
+            observed_catalog=tuple(
+                (kind, name, sql) for kind, name, sql in observation
+            ),
+            before_profile=tuple(recorded["profile"]),
+            observed_profile=profile,
         )
+
+    async def reconcile(
+        self, recovery: Recovery, *, reason: str, schema_writers_excluded: bool = False
+    ) -> Recovery:
+        """Accept one verified structural postcondition without replaying or continuing."""
+        if not reason.strip():
+            msg = "reconciliation requires a nonempty review reason"
+            raise PackageError(msg)
+        async with self._guard:
+            self._require_open()
+            self._require_recovery_access(
+                recovery.prepared, excluded=schema_writers_excluded
+            )
+            async with self._coordinated():
+                current = await self._assess_recovery(recovery.prepared)
+                if current != recovery or current.disposition != "reconcile_structural":
+                    msg = "reconciliation evidence is stale or does not prove a supported structural transition"
+                    raise PackageError(msg)
+                row = next(
+                    row
+                    for row in await self._history()
+                    if row[0] == recovery.prepared.package.digest
+                )
+                observation = await self._catalog()
+                acceptance = Reconciliation(
+                    step=current.acknowledged_steps + 1,
+                    reason=reason.strip(),
+                    before_digest=row[4],
+                    after_digest=current.catalog_digest,
+                    before_catalog=current.before_catalog,
+                    after_catalog=current.observed_catalog,
+                    rendering_profile=current.observed_profile,
+                )
+                audit = [*json.loads(row[10]), acceptance.model_dump(mode="json")]
+                await self._connection.begin()
+                await self._query(
+                    "UPDATE `snekql_experimental_migrations` SET acknowledged=%s,catalog=%s,observation=%s,reconciliations=%s WHERE digest=%s",
+                    (
+                        acceptance.step,
+                        current.catalog_digest,
+                        await self._record_observation(observation),
+                        _canonical(audit),
+                        recovery.prepared.package.digest,
+                    ),
+                )
+                await self._connection.commit()
+                return await self._assess_recovery(recovery.prepared)
 
     async def resume(
         self, recovery: Recovery, *, schema_writers_excluded: bool = False
@@ -521,7 +680,10 @@ class Target:
             )
             async with self._coordinated():
                 current = await self._assess_recovery(recovery.prepared)
-                if current != recovery or current.disposition == "ambiguous":
+                if current != recovery or current.disposition not in {
+                    "retry_remaining",
+                    "finish",
+                }:
                     msg = "recovery evidence is stale or ambiguous; inspect before continuing"
                     raise PackageError(msg)
                 await self._execute_package(

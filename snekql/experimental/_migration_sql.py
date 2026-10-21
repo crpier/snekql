@@ -40,7 +40,9 @@ def _quoted(sql: str, start: int, *, mysql: bool) -> Token:
     return Token(value, start, index, "string" if char == "'" else "identifier")
 
 
-def tokens(sql: str, *, mysql: bool = False) -> tuple[Token, ...]:
+def tokens(
+    sql: str, *, mysql: bool = False, allow_executable_comments: bool = False
+) -> tuple[Token, ...]:
     """Keep strings separate from identifiers and skip comments without rewriting SQL."""
     result: list[Token] = []
     index = 0
@@ -57,8 +59,10 @@ def tokens(sql: str, *, mysql: bool = False) -> tuple[Token, ...]:
             if end < 0:
                 msg = "unterminated SQL comment"
                 raise SchemaError(msg)
-            if mysql and (
-                sql.startswith("/*!", index) or sql.startswith("/*M!", index)
+            if (
+                mysql
+                and not allow_executable_comments
+                and (sql.startswith("/*!", index) or sql.startswith("/*M!", index))
             ):
                 msg = "executable comments require an explicit migration adapter"
                 raise SchemaError(msg)
@@ -124,9 +128,9 @@ def required_definition(sql: str, *, mysql: bool = False) -> str:
     return sql + " NOT NULL"
 
 
-def split_table(sql: str) -> tuple[str, tuple[str, ...], str]:
-    """Split ordinary SQLite CREATE TABLE definitions, preserving original text."""
-    stream = tokens(sql)
+def split_table(sql: str, *, mysql: bool = False) -> tuple[str, tuple[str, ...], str]:
+    """Split ordinary CREATE TABLE definitions, preserving original text."""
+    stream = tokens(sql, mysql=mysql)
     if any(t.value.casefold() == "virtual" for t in stream[:3]):
         msg = "virtual-table rebuild requires an explicit adapter"
         raise SchemaError(msg)
@@ -152,9 +156,9 @@ def split_table(sql: str) -> tuple[str, tuple[str, ...], str]:
     raise SchemaError(msg)
 
 
-def column_name(definition: str) -> str | None:
+def column_name(definition: str, *, mysql: bool = False) -> str | None:
     """Return the column identifier, or None for a table constraint."""
-    first = tokens(definition)[0]
+    first = tokens(definition, mysql=mysql)[0]
     if first.kind == "word" and first.value.casefold() in {
         "constraint",
         "primary",
@@ -163,4 +167,34 @@ def column_name(definition: str) -> str | None:
         "foreign",
     }:
         return None
+    if (
+        mysql
+        and first.kind == "word"
+        and first.value.casefold() in {"key", "index", "fulltext", "spatial"}
+    ):
+        return None
     return first.value
+
+
+def without_auto_increment_counter(sql: str, *, backslash_escapes: bool) -> str:
+    """Omit only an unquoted table-option counter, never text in COMMENT/defaults."""
+    stream = tokens(sql, mysql=backslash_escapes, allow_executable_comments=True)
+    depth = 0
+    for index, token in enumerate(stream[:-2]):
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif (
+            depth == 0
+            and token.kind == "word"
+            and token.value.casefold() == "auto_increment"
+        ):
+            equals, number = stream[index + 1 : index + 3]
+            if (
+                equals.value == "="
+                and number.kind == "word"
+                and number.value.isdecimal()
+            ):
+                return sql[: token.start].rstrip() + sql[number.end :]
+    return sql
