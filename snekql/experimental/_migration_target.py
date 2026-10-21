@@ -129,6 +129,12 @@ class Target:
         try:
             await cursor.execute(sql, params if self._sqlite else params or None)
             return [tuple(row) for row in await cursor.fetchall()]
+        except anyio.get_cancelled_exc_class():
+            if not self._sqlite:
+                # Inspection also performs protocol reads outside _coordinated.
+                self._closed = True
+                self._connection.close()
+            raise
         finally:
             await cursor.close()
 
@@ -699,15 +705,22 @@ class Target:
                 await self._query("PRAGMA foreign_keys=OFF")
             await self._begin()
             yield
-        except BaseException:
-            with anyio.CancelScope(shield=True):
-                await self._connection.rollback()
+        except BaseException as error:
+            if not self._sqlite and isinstance(error, anyio.get_cancelled_exc_class()):
+                # A cancelled protocol read may already have closed the socket.
+                # Do not mask cancellation with rollback/release on that session,
+                # or reuse a stream whose response boundaries are uncertain.
+                self._closed = True
+                self._connection.close()
+            else:
+                with anyio.CancelScope(shield=True):
+                    await self._connection.rollback()
             raise
         finally:
             with anyio.CancelScope(shield=True):
                 if rebuild:
                     await self._query("PRAGMA foreign_keys=ON")
-                if not self._sqlite:
+                if not self._sqlite and not self._closed:
                     await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
 
     async def apply(self, prepared: Prepared) -> Literal["applied", "already_applied"]:

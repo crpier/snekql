@@ -13,7 +13,9 @@
   proven remaining work without replaying acknowledged updates. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
-  checks the server/session rendering profile. Format 2 is provisional; adoption,
+  checks the server/session rendering profile. Cancelled native protocol operations
+  discard their target connection without masking cancellation with cleanup errors,
+  including read-only inspection. Format 2 is provisional; adoption,
   general reconciliation and production runtime integration remain incomplete. Existing migration interfaces are unchanged. Tracks #477.
 
 ## 0.9.0 - 2026-10-11

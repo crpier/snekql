@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import ClassVar
 
 import aiomysql
+import anyio
 from pymysql.err import IntegrityError, OperationalError
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
@@ -714,3 +715,138 @@ async def interrupted_reconciliation_keeps_progress_and_audit_unaccepted() -> No
             assert_eq(
                 await target.resume(accepted, schema_writers_excluded=True), "applied"
             )
+
+
+async def check_cancelled_reconciliation(*, level_cancellation: bool) -> None:
+    """Exercise native cancellation with the server blocked on a journal row lock."""
+    server, plan = await load_fixture(provide_contraction_failure())
+    config = server.config()
+    blocker = await aiomysql.connect(
+        unix_socket=str(config.unix_socket),
+        user=config.user,
+        password=config.password,
+        db=config.database,
+        autocommit=False,
+    )
+    try:
+        async with migrations.connect(config) as target:
+            assessment = await target.inspect_recovery(
+                plan, schema_writers_excluded=True
+            )
+            async with blocker.cursor() as cursor:
+                await cursor.execute(
+                    "SELECT digest FROM snekql_experimental_migrations WHERE digest=%s FOR UPDATE",
+                    (plan.package.digest,),
+                )
+                assert_eq(await cursor.fetchall(), ((plan.package.digest,),))
+            scope = anyio.CancelScope()
+
+            async def accept() -> None:
+                if level_cancellation:
+                    with scope:
+                        await target.reconcile(
+                            assessment,
+                            reason="Cancelled review",
+                            schema_writers_excluded=True,
+                        )
+                else:
+                    await target.reconcile(
+                        assessment,
+                        reason="Cancelled review",
+                        schema_writers_excluded=True,
+                    )
+
+            accepting = asyncio.create_task(accept())
+            try:
+                async with asyncio.timeout(10):
+                    while True:
+                        waiting = await server.run_sql(
+                            "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE INFO LIKE 'UPDATE %snekql_experimental_migrations%'"
+                        )
+                        if waiting.stdout.splitlines()[-1] == "1":
+                            break
+                        await asyncio.sleep(0.02)
+                if level_cancellation:
+                    scope.cancel()
+                    await accepting
+                    assert scope.cancelled_caught
+                else:
+                    accepting.cancel()
+                    with assert_raises(asyncio.CancelledError):
+                        await accepting
+                with assert_raises(migrations.PackageError):
+                    await target.status()
+            finally:
+                if not accepting.done():
+                    accepting.cancel()
+                await asyncio.gather(accepting, return_exceptions=True)
+    finally:
+        await blocker.rollback()
+        blocker.close()
+    async with asyncio.timeout(10), migrations.connect(config) as reopened:
+        progress = next(p for p in await reopened.status() if p.revision == "002")
+        assert_eq((progress.acknowledged_steps, progress.reconciliations), (0, ()))
+        fresh = await reopened.inspect_recovery(plan, schema_writers_excluded=True)
+        accepted = await reopened.reconcile(
+            fresh, reason="Fresh review", schema_writers_excluded=True
+        )
+        assert_eq(
+            await reopened.resume(accepted, schema_writers_excluded=True), "applied"
+        )
+
+
+@test(mark="slow")
+async def cancelled_reconciliation_releases_coordination_without_acceptance() -> None:
+    """Task cancellation remains cancellation and invalidates the uncertain session."""
+    await check_cancelled_reconciliation(level_cancellation=False)
+
+
+@test(mark="slow")
+async def scope_cancelled_reconciliation_releases_coordination_without_acceptance() -> (
+    None
+):
+    """Level cancellation is not masked by cleanup on a cancelled protocol read."""
+    await check_cancelled_reconciliation(level_cancellation=True)
+
+
+@test(mark="slow")
+async def cancelled_status_invalidates_the_interrupted_connection() -> None:
+    """Read-only inspection must not leave a broken session apparently reusable."""
+    server, _ = await load_fixture(provide_contraction_failure())
+    config = server.config()
+    blocker = await aiomysql.connect(
+        unix_socket=str(config.unix_socket),
+        user=config.user,
+        password=config.password,
+        db=config.database,
+    )
+    try:
+        async with blocker.cursor() as cursor:
+            await cursor.execute("LOCK TABLES snekql_experimental_migrations WRITE")
+        async with migrations.connect(config) as target:
+            inspecting = asyncio.create_task(target.status())
+            try:
+                async with asyncio.timeout(10):
+                    while True:
+                        waiting = await server.run_sql(
+                            "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE INFO LIKE 'SELECT digest,revision,predecessor,%'"
+                        )
+                        if waiting.stdout.splitlines()[-1] == "1":
+                            break
+                        await asyncio.sleep(0.02)
+                inspecting.cancel()
+                with assert_raises(asyncio.CancelledError):
+                    await inspecting
+                with assert_raises(migrations.PackageError):
+                    await target.status()
+            finally:
+                if not inspecting.done():
+                    inspecting.cancel()
+                await asyncio.gather(inspecting, return_exceptions=True)
+    finally:
+        async with blocker.cursor() as cursor:
+            await cursor.execute("UNLOCK TABLES")
+        blocker.close()
+    async with asyncio.timeout(10), migrations.connect(config) as reopened:
+        progress = next(p for p in await reopened.status() if p.revision == "002")
+        assert_eq((progress.acknowledged_steps, progress.reconciliations), (0, ()))

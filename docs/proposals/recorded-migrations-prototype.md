@@ -265,6 +265,24 @@ a journal row lock and after acceptance commits but before package completion.
 These exercise rollback and durable acceptance separately. They do not establish
 arbitrary in-flight crash behavior or hardware power-loss durability.
 
+### Cancellation and connection lifetime
+
+Cancelling an in-flight MariaDB protocol operation invalidates that `Target`.
+Cancellation remains cancellation: cleanup does not replace it with an error from
+attempting rollback or advisory-lock release on a broken socket. The connection
+is discarded, and subsequent calls reject the closed target. This also applies to
+read-only inspection, not just execution/reconciliation. Open a new target and
+inspect durable progress before deciding what to do next.
+
+Closing the socket is **not** a server-side statement-cancellation guarantee or
+proof that work did not commit. A blocked server operation may finish before the
+server notices disconnection and releases its session/advisory locks. DDL or a
+commit already sent can still take effect; never infer retry safety from the
+cancellation exception. Native tests cover asyncio task cancellation and AnyIO
+scope cancellation while acceptance is row-lock blocked, plus cancellation of a
+blocked read-only status query. They verify fresh-session inspection and recovery,
+not every cancellation/commit window or repeated cancellation during cleanup.
+
 ## Current execution behavior
 
 - SQLite uses a writer transaction for the entire package, including progress
