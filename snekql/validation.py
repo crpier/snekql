@@ -1,7 +1,8 @@
 """Boundary validation helpers for constrained public API values."""
 
 lazy from collections.abc import Callable
-lazy from functools import wraps
+lazy from functools import cache, wraps
+lazy from importlib.metadata import entry_points
 lazy from inspect import Parameter, iscoroutinefunction, signature
 lazy from typing import Annotated, cast
 
@@ -17,6 +18,16 @@ type PositiveInt = Annotated[int, Gt(0)]
 
 
 _METHOD_ARGUMENT_COUNT = 2
+
+
+@cache
+def _has_pydantic_plugins() -> bool:
+    """Installed plugins may enforce additional policy even for plain integers.
+
+    Be conservative even when an installed plugin is disabled. Plugin discovery
+    is setup work, not a per-call scan, just as it is in Pydantic itself.
+    """
+    return bool(entry_points(group="pydantic"))
 
 
 def _is_plain_nonnegative_int_method(function: Callable[..., object]) -> bool:
@@ -39,6 +50,7 @@ def _is_plain_nonnegative_int_method(function: Callable[..., object]) -> bool:
             p.kind is Parameter.POSITIONAL_OR_KEYWORD and p.default is Parameter.empty
             for p in parameters
         )
+        and not _has_pydantic_plugins()
     )
 
 

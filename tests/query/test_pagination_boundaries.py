@@ -1,6 +1,11 @@
 """Pagination retains its strict public call contract on every SELECT shape."""
 
+import os
+import subprocess
+import sys
 from enum import IntEnum
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ValidationError
@@ -134,3 +139,74 @@ async def pagination_applies_to_rows_without_changing_the_base(shape: str) -> No
             assert_eq(
                 [row.member_id for row in await transaction.fetch_all(base)], expected
             )
+
+
+@test(mark="medium")
+def pagination_respects_installed_validation_plugins() -> None:
+    """A real plugin may reject even a valid integer at the public builder seam."""
+    plugin = """
+class Handler:
+    def on_enter(self, input, **kwargs):
+        raise ValueError("pagination blocked by plugin")
+
+class Plugin:
+    def new_schema_validator(self, schema, schema_type, path, kind, config, settings):
+        if kind == "validate_call" and path.name.endswith((".limit", ".offset")):
+            return Handler(), None, None
+        return None, None, None
+
+plugin = Plugin()
+"""
+    program = """
+from typing import ClassVar
+from pydantic import BaseModel
+from snekql import sqlite
+
+class Member[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[Member[sqlite.Row]]]
+    member_id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+class Result(BaseModel):
+    member_id: int
+
+base = sqlite.select(Member)
+named = base.project(Result, member_id=Member.member_id.label("member_id"))
+for query in (base, named.union_all(named)):
+    for name in ("limit", "offset"):
+        method = getattr(query, name)
+        for args, kwargs in (((1,), {}), ((), {"value": 1})):
+            try:
+                method(*args, **kwargs)
+            except ValueError as error:
+                assert str(error) == "pagination blocked by plugin", str(error)
+            else:
+                raise AssertionError("pagination bypassed plugin policy")
+"""
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        (root / "pagination_plugin.py").write_text(plugin)
+        metadata = root / "snekql_pagination_plugin-0.0.0.dist-info"
+        metadata.mkdir()
+        (metadata / "METADATA").write_text(
+            "Metadata-Version: 2.1\nName: snekql-pagination-plugin\nVersion: 0.0.0\n"
+        )
+        (metadata / "entry_points.txt").write_text(
+            "[pydantic]\npagination = pagination_plugin:plugin\n"
+        )
+        assert sqlite.__file__ is not None
+        package_root = Path(sqlite.__file__).resolve().parents[2]
+        environment = dict(os.environ)
+        environment.pop("PYDANTIC_DISABLE_PLUGINS", None)
+        environment["PYTHONPATH"] = os.pathsep.join(
+            (str(root), str(package_root), environment.get("PYTHONPATH", ""))
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", program],
+            cwd=package_root,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    assert_eq(result.returncode, 0, msg=result.stdout + result.stderr)
