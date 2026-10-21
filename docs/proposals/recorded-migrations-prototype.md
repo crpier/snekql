@@ -120,6 +120,50 @@ A deployed package alone cannot detect edits to a separate authoring file it has
 not been given. CI can explicitly supply the current draft to `package.check(draft)`;
 file discovery and general authoring-file freshness checks remain unimplemented.
 
+## Explicit whole-table relinquishment
+
+Omitting a previously managed table remains an unresolved decision. To stop
+managing it **without deleting or rebuilding it**, resolve that named decision:
+
+```python
+# Following the completed second package above; retain other managed models in
+# this list when only one table is being relinquished.
+handoff = migrations.compile(
+    migrations.generate("003_handoff", [], backend="sqlite", previous=second).resolve(
+        migrations.RelinquishTable(table_name="entry")
+    )
+)
+assert handoff.statements == ()
+# Prepare/review/apply normally. This still records a migration, not a silent stamp.
+```
+
+`RelinquishTable` removes the table from subsequent **managed** state snapshots
+without emitting application SQL. It leaves the physical table, indexes,
+constraints, triggers, dependent views and rows alone. Application query models
+remain usable; they do not need to disappear when migration ownership ends.
+Earlier historical query declarations remain available. New generated managed
+contracts omit the relinquished table, and a backfill cannot be moved across the
+handoff while retaining its old checkpoint digest.
+
+Relinquishment does not mean deletion. Later managed operations on that table
+are rejected, and a CREATE cannot reclaim it within the same route. A later
+revision that includes it again encounters the existing-object adoption guard.
+Explicit adoption/re-adoption, column-level relinquishment, DROP TABLE, registering
+a new owner and coordinating another migration system are **not implemented**.
+This is a journaled end to this chain's managed claim, not a cross-system transfer.
+
+Review `plan.package.draft.operations` and the before/target states, not just
+`plan.statements`: empty SQL can still represent an ownership change. The change
+takes effect as a completed package; zero execution statements do not imply completion. SQLite records it atomically. MariaDB can retain an uncertain
+zero-step package if the completion receipt fails; inspect and explicitly finish
+it through recovery rather than stamping history or replaying user SQL.
+
+The whole-catalog drift guard remains in place. Relinquishment does not silently
+ignore later external changes or certify dependencies/readiness after those
+changes. SQLite's existing explicit `preserve_unmanaged=True` review can validate
+remaining managed facts; this is not a new general scoped-drift policy. Review and
+coordination requirements apply even to a package containing only relinquishment.
+
 ## Explicit contraction and preservation
 
 After backfilling `role`, generate a final model without `is_admin` and with
@@ -329,7 +373,8 @@ on MariaDB, including the period between preparation and application.
 | Package corruption / unknown version | Rejected; no format-upgrade implementation yet |
 | Competing runners | Native tests show one execution and one already-applied outcome |
 | Interrupted MariaDB DDL | Skip acknowledged work after restart; exact contraction postconditions require explicit durable reconciliation; other changed DDL remains ambiguous |
-| Brownfield ownership transfer | Unresolved/rejected, not implemented |
+| Whole-table relinquishment | Explicit metadata-only change; physical objects/data and query mapping remain intact |
+| Brownfield adoption / re-adoption / cross-system transfer | Rejected, not implemented; relinquishment is not adoption or a scoped-drift exemption |
 | SQLite preservation-sensitive rebuild | Bounded observed-definition rebuild; referencing rows, extras, generated columns, index/trigger/view behavior, storage and sequence state tested |
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |

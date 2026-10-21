@@ -850,3 +850,56 @@ async def cancelled_status_invalidates_the_interrupted_connection() -> None:
     async with asyncio.timeout(10), migrations.connect(config) as reopened:
         progress = next(p for p in await reopened.status() if p.revision == "002")
         assert_eq((progress.acknowledged_steps, progress.reconciliations), (0, ()))
+
+
+@test(mark="slow")
+async def mariadb_relinquishment_recovers_without_replaying_application_sql() -> None:
+    """A failed completion receipt leaves a recoverable metadata-only handoff."""
+    server = await load_fixture(provide_package_server())
+    first = migrations.compile(
+        migrations.generate("001", [Entry, Counter], backend="mariadb")
+    )
+    second = migrations.Package.load(
+        migrations.compile(
+            migrations.generate(
+                "002", [Counter], backend="mariadb", previous=first
+            ).resolve(migrations.RelinquishTable(table_name="entry"))
+        ).dump()
+    )
+    async with migrations.connect(server.config()) as target:
+        await target.apply(await target.prepare(first, schema_writers_excluded=True))
+        await server.run_sql("INSERT INTO entry VALUES(17,'kept')")
+        plan = await target.prepare(second, schema_writers_excluded=True)
+        assert_eq(plan.statements, ())
+        await server.run_sql(
+            "CREATE TRIGGER fail_receipt BEFORE UPDATE ON snekql_experimental_migrations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='receipt unavailable'"
+        )
+        with assert_raises(OperationalError):
+            await target.apply(plan)
+        await server.run_sql("DROP TRIGGER fail_receipt")
+    async with migrations.connect(server.config()) as reopened:
+        progress = next(p for p in await reopened.status() if p.revision == "002")
+        assert_eq(
+            (progress.phase, progress.acknowledged_steps, progress.total_steps),
+            ("uncertain", 0, 0),
+        )
+        assessment = await reopened.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(assessment.disposition, "finish")
+        assert_eq(
+            await reopened.resume(assessment, schema_writers_excluded=True), "applied"
+        )
+        assert_eq(await reopened.apply(plan), "already_applied")
+        assert_eq([table.name for table in second.target.tables], ["counter"])
+        async with (
+            await mariadb.Database.initialize(server.config()) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(await tx.fetch_all(mariadb.select(Entry.title)), ["kept"])
+            assert_eq(await tx.fetch_all(mariadb.select(Entry.id)), [17])
+        # Ownership handoff is not a blanket exemption from catalog drift checks.
+        await server.run_sql("ALTER TABLE entry ADD COLUMN external_note TEXT")
+        continuation = migrations.compile(
+            migrations.generate("003", [Counter], backend="mariadb", previous=second)
+        )
+        with assert_raises(migrations.PackageError):
+            await reopened.prepare(continuation, schema_writers_excluded=True)

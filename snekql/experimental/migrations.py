@@ -100,6 +100,13 @@ class DropColumn(_Value):
     column_name: str
 
 
+class RelinquishTable(_Value):
+    """Stop managing one table without changing its physical schema or rows."""
+
+    kind: Literal["relinquish_table"] = "relinquish_table"
+    table_name: str
+
+
 class Contraction(_Value):
     """A grouped table transition requiring backend-aware execution planning."""
 
@@ -161,7 +168,13 @@ class Draft(_Value):
     before: State
     target: State
     operations: tuple[
-        CreateTable | AddColumn | RequireNotNull | DropColumn | Checkpoint | DataChange,
+        CreateTable
+        | AddColumn
+        | RequireNotNull
+        | DropColumn
+        | RelinquishTable
+        | Checkpoint
+        | DataChange,
         ...,
     ]
     unresolved: tuple[str, ...] = ()
@@ -172,19 +185,24 @@ class Draft(_Value):
         | AddColumn
         | RequireNotNull
         | DropColumn
+        | RelinquishTable
         | Checkpoint
         | DataChange,
     ) -> Self:
         """Append typed authoring steps while retaining the original immutable draft."""
         return self.model_copy(update={"operations": (*self.operations, *operations)})
 
-    def resolve(self, *removals: DropColumn) -> Self:
-        """Authorize only the named pending removals; retain other unresolved decisions."""
+    def resolve(self, *removals: DropColumn | RelinquishTable) -> Self:
+        """Resolve named column deletions or table relinquishments, never infer either."""
         unresolved = list(self.unresolved)
         for removal in removals:
-            decision = _drop_decision(removal.table_name, removal.column_name)
+            decision = (
+                _relinquish_decision(removal.table_name)
+                if isinstance(removal, RelinquishTable)
+                else _drop_decision(removal.table_name, removal.column_name)
+            )
             if decision not in unresolved:
-                msg = f"no pending removal decision for {removal.table_name}.{removal.column_name}"
+                msg = f"no pending removal decision: {decision}"
                 raise PackageError(msg)
             unresolved.remove(decision)
         return self.model_copy(
@@ -265,7 +283,8 @@ def generate(
     """Draft changes against recorded intent, never against a developer database.
 
     Unsupported alterations and ownership removal remain explicit unresolved
-    decisions. Supported routes include creation, nullable additions, typed backfills, and contraction.
+    decisions. Supported routes include creation, nullable additions, typed
+    backfills, contraction, and explicit whole-table relinquishment.
     """
     require_scaffold_models(backend, models)
     if previous is not None:
@@ -303,10 +322,7 @@ def generate(
     )
     old = {table.name: table for table in before.tables}
     desired = {table.name: table for table in tables}
-    unresolved = [
-        f"{name}: deletion versus relinquishing ownership requires a decision"
-        for name in old.keys() - desired.keys()
-    ]
+    unresolved = [_relinquish_decision(name) for name in old.keys() - desired.keys()]
     operations: list[CreateTable | AddColumn | RequireNotNull] = []
     for table in tables:
         if table.name not in old:
@@ -360,6 +376,25 @@ def _changes(
         msg = "alteration is not representable by supported operations"
         raise PackageError(msg)
     return candidates, removed
+
+
+def _relinquish_decision(table: str) -> str:
+    return f"{table}: deletion versus relinquishing ownership requires a decision"
+
+
+def _managed_table(tables: dict[str, TableState], name: str) -> TableState:
+    try:
+        return tables[name]
+    except KeyError as error:
+        msg = f"table {name!r} is not managed at this point in the route"
+        raise PackageError(msg) from error
+
+
+def _relinquish(tables: dict[str, TableState], name: str) -> None:
+    if name not in tables:
+        msg = f"cannot relinquish unmanaged table {name!r}"
+        raise PackageError(msg)
+    del tables[name]
 
 
 def _drop_decision(table: str, column: str) -> str:
@@ -452,15 +487,19 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
     """
     tables = {item.name: item for item in draft.before.tables}
     for operation in draft.operations:
-        if isinstance(operation, CreateTable):
+        if isinstance(operation, RelinquishTable):
+            _relinquish(tables, operation.table_name)
+        elif isinstance(operation, CreateTable):
             tables[operation.table.name] = operation.table
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
-                tables[operation.table_name], operation.column
+                _managed_table(tables, operation.table_name), operation.column
             )
         elif isinstance(operation, RequireNotNull | DropColumn):
             tables[operation.table_name] = _contract_table(
-                tables[operation.table_name], operation, draft.target.backend
+                _managed_table(tables, operation.table_name),
+                operation,
+                draft.target.backend,
             )
         elif isinstance(operation, Checkpoint) and operation.name == point:
             if table not in tables:
@@ -478,15 +517,19 @@ def contract_digest(draft: Draft, *, point: str) -> str:
     """Identify a named draft query contract without importing a generated module."""
     tables = {table.name: table for table in draft.before.tables}
     for operation in draft.operations:
-        if isinstance(operation, CreateTable):
+        if isinstance(operation, RelinquishTable):
+            _relinquish(tables, operation.table_name)
+        elif isinstance(operation, CreateTable):
             tables[operation.table.name] = operation.table
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
-                tables[operation.table_name], operation.column
+                _managed_table(tables, operation.table_name), operation.column
             )
         elif isinstance(operation, RequireNotNull | DropColumn):
             tables[operation.table_name] = _contract_table(
-                tables[operation.table_name], operation, draft.target.backend
+                _managed_table(tables, operation.table_name),
+                operation,
+                draft.target.backend,
             )
         elif isinstance(operation, Checkpoint) and operation.name == point:
             return _state_digest(draft.target.backend, tables)
@@ -565,7 +608,15 @@ _RESERVED = frozenset({"snekql_migrations", "snekql_experimental_migrations"})
 def _validate_draft(draft: Draft) -> None:
     if any(
         table.name.casefold() in _RESERVED
-        for table in (*draft.before.tables, *draft.target.tables)
+        for table in (
+            *draft.before.tables,
+            *draft.target.tables,
+            *(
+                operation.table
+                for operation in draft.operations
+                if isinstance(operation, CreateTable)
+            ),
+        )
     ):
         msg = "runner metadata cannot be managed by application migrations"
         raise PackageError(msg)
@@ -602,6 +653,7 @@ class _Emission:
         self.transactional: list[bool] = []
         self.contractions: list[Contraction | None] = []
         self.pending: Contraction | None = None
+        self.relinquished: set[str] = set()
 
     def emit(
         self,
@@ -663,6 +715,9 @@ class _Emission:
 def _emit_creation(
     table: TableState, tables: dict[str, TableState], emission: _Emission
 ) -> None:
+    if table.name in emission.relinquished:
+        msg = f"table {table.name!r} remains physically present after relinquishment; explicit adoption is required"
+        raise PackageError(msg)
     if table.name in tables:
         msg = f"table {table.name!r} already exists in managed state"
         raise PackageError(msg)
@@ -678,8 +733,13 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
     emission = _Emission(draft.target.backend)
     checkpoints: dict[str, str] = {}
     for operation in draft.operations:
+        if isinstance(operation, RelinquishTable):
+            emission.flush()
+            _relinquish(tables, operation.table_name)
+            emission.relinquished.add(operation.table_name)
+            continue
         if isinstance(operation, RequireNotNull | DropColumn):
-            before = tables[operation.table_name]
+            before = _managed_table(tables, operation.table_name)
             after = _contract_table(before, operation, draft.target.backend)
             tables[operation.table_name] = after
             emission.contract(before, after, operation)
@@ -749,6 +809,7 @@ __all__ = [
     "Progress",
     "Reconciliation",
     "Recovery",
+    "RelinquishTable",
     "RequireNotNull",
     "State",
     "TableState",

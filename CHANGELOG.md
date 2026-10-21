@@ -9,7 +9,10 @@
   contracts, frozen execution packages, explicit target preparation, and
   uncertain-progress reporting on MariaDB. Supports creation, unconstrained
   nullable additions, typed UPDATE backfills, and explicit required/drop-column
-  contraction. SQLite has bounded preservation-aware rebuilds; MariaDB can resume
+  contraction. Explicit whole-table relinquishment records the end of management
+  without deleting application objects or disabling query models; adoption and
+  scoped drift handling remain separate. SQLite has bounded preservation-aware
+  rebuilds; MariaDB can resume
   proven remaining work without replaying acknowledged updates. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also

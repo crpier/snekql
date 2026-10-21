@@ -450,6 +450,15 @@ def runner_metadata_cannot_be_claimed_as_an_application_table() -> None:
     with assert_raises(migrations.PackageError):
         migrations.compile(migrations.generate("001", [Ledger], backend="sqlite"))
 
+    # Hiding the table from the endpoint must not bypass metadata protection.
+    ledger = migrations.generate("001", [Ledger], backend="sqlite").target.tables[0]
+    transient = migrations.generate("001", [], backend="sqlite").then(
+        migrations.CreateTable(table=ledger),
+        migrations.RelinquishTable(table_name=ledger.name),
+    )
+    with assert_raises(migrations.PackageError):
+        migrations.compile(transient)
+
 
 @test(mark="medium")
 async def edited_before_state_must_match_the_recorded_predecessor_contract() -> None:
@@ -665,3 +674,165 @@ async def incompatible_experimental_ledger_has_an_explicit_format_error() -> Non
             assert_true(
                 "unsupported experimental ledger layout" in str(error.exception)
             )
+
+
+@test(mark="fast")
+def omitted_table_requires_explicit_non_destructive_relinquishment() -> None:
+    """Removing ownership is a recorded decision, not an implicit DROP TABLE."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    draft = migrations.generate("002", [], backend="sqlite", previous=first)
+    with assert_raises(migrations.PackageError):
+        migrations.compile(draft)
+    resolved = draft.resolve(migrations.RelinquishTable(table_name="entry"))
+    second = migrations.compile(resolved)
+    assert_eq(second.target.tables, ())
+    assert_eq(second.statements, ())
+    assert_eq(second.draft.before, first.target)
+    assert_eq(migrations.Package.load(second.dump()), second)
+    second.check(resolved)
+    with assert_raises(migrations.PackageError):
+        draft.resolve(migrations.RelinquishTable(table_name="other"))
+    with assert_raises(migrations.PackageError):
+        resolved.resolve(migrations.RelinquishTable(table_name="entry"))
+
+
+@test(mark="fast")
+def relinquishment_changes_only_subsequent_managed_contracts() -> None:
+    """Earlier query declarations survive, but later ownership snapshots omit the table."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    draft = (
+        migrations.generate("002", [], backend="sqlite", previous=first)
+        .then(migrations.Checkpoint(name="before_handoff"))
+        .resolve(migrations.RelinquishTable(table_name="entry"))
+        .then(migrations.Checkpoint(name="after_handoff"))
+    )
+    source = migrations.contract_source(draft, point="before_handoff", table="entry")
+    assert_true("__tablename__ = 'entry'" in source)
+    with assert_raises(migrations.PackageError):
+        migrations.contract_source(draft, point="after_handoff", table="entry")
+    assert_true(
+        migrations.contract_digest(draft, point="before_handoff")
+        != migrations.contract_digest(draft, point="after_handoff")
+    )
+    assert_eq(migrations.compile(draft).statements, ())
+
+
+@test(mark="medium")
+async def sqlite_relinquishment_preserves_objects_and_query_mapping() -> None:
+    """A journaled handoff leaves application structure, rows and query models usable."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    second = migrations.Package.load(
+        migrations.compile(
+            migrations.generate("002", [], backend="sqlite", previous=first).resolve(
+                migrations.RelinquishTable(table_name="entry")
+            )
+        ).dump()
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with migrations.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript("""
+                    CREATE TABLE audit(title TEXT);
+                    CREATE INDEX entry_title ON entry(title);
+                    CREATE VIEW entry_view AS SELECT id,title FROM entry;
+                    CREATE TRIGGER entry_audit AFTER UPDATE ON entry
+                    BEGIN INSERT INTO audit VALUES(new.title); END;
+                    INSERT INTO entry VALUES(17,'kept');
+                """)
+            with assert_raises(migrations.PackageError):
+                await target.prepare(second)
+            plan = await target.prepare(second, preserve_unmanaged=True)
+            assert_eq(plan.statements, ())
+            async with await sqlite.Database.initialize(config) as db:
+                catalog = sqlite.raw(
+                    "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('entry','audit','entry_title','entry_view','entry_audit') ORDER BY name"
+                )
+                async with db.transaction() as tx:
+                    before = await tx.fetch_all(catalog)
+                assert_eq(await target.apply(plan), "applied")
+                assert_eq(await target.apply(plan), "already_applied")
+                async with db.transaction() as tx:
+                    assert_eq(await tx.fetch_all(catalog), before)
+                    assert_eq(await tx.fetch_all(sqlite.select(Entry.title)), ["kept"])
+                    await tx.execute(
+                        sqlite.update(Entry).set(Entry.title.to("edited")).all()
+                    )
+                    assert_eq(await tx.fetch_all(sqlite.select(Entry.id)), [17])
+                    assert_eq(
+                        await tx.fetch_all(sqlite.raw("SELECT title FROM audit")),
+                        [{"title": "edited"}],
+                    )
+                    assert_eq(
+                        await tx.fetch_all(sqlite.raw("SELECT title FROM entry_view")),
+                        [{"title": "edited"}],
+                    )
+            progress = next(p for p in await target.status() if p.revision == "002")
+            assert_eq((progress.phase, progress.total_steps), ("complete", 0))
+            # Mapping the table again is not authorization to reclaim an existing object.
+            reclaim = migrations.compile(
+                migrations.generate("003", [Entry], backend="sqlite", previous=second)
+            )
+            with assert_raises(migrations.PackageError):
+                await target.prepare(reclaim)
+
+
+@test(mark="fast")
+def relinquishment_cannot_be_used_as_a_physical_table_removal() -> None:
+    """A state-only handoff cannot make CREATE safe against the retained object."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    draft = migrations.generate("002", [Entry], backend="sqlite", previous=first).then(
+        migrations.RelinquishTable(table_name="entry"),
+        migrations.CreateTable(table=first.target.tables[0]),
+    )
+    with assert_raises(migrations.PackageError):
+        migrations.compile(draft)
+
+
+@test(mark="fast")
+def relinquished_tables_reject_later_managed_operations() -> None:
+    """Every route interpreter reports a missing ownership contract, not a KeyError."""
+    first = migrations.compile(
+        migrations.generate("001", [EntryWithNote], backend="sqlite")
+    )
+    released = migrations.generate("002", [], backend="sqlite", previous=first).resolve(
+        migrations.RelinquishTable(table_name="entry")
+    )
+    for operation in (
+        migrations.RequireNotNull(table_name="entry", column_name="note"),
+        migrations.DropColumn(table_name="entry", column_name="note"),
+        migrations.AddColumn(
+            table_name="entry", column=first.target.tables[0].columns[-1]
+        ),
+        migrations.RelinquishTable(table_name="entry"),
+    ):
+        invalid = released.then(operation, migrations.Checkpoint(name="invalid"))
+        with assert_raises(migrations.PackageError):
+            migrations.compile(invalid)
+        with assert_raises(migrations.PackageError):
+            migrations.contract_source(invalid, point="invalid", table="entry")
+        with assert_raises(migrations.PackageError):
+            migrations.contract_digest(invalid, point="invalid")
+
+
+@test(mark="fast")
+def backfill_contract_cannot_be_moved_across_an_ownership_handoff() -> None:
+    """A pre-handoff query contract must be used before, not after, relinquishment."""
+    first = migrations.compile(
+        migrations.generate("001", [EntryWithNote], backend="sqlite")
+    )
+    draft = migrations.generate("002", [], backend="sqlite", previous=first).then(
+        migrations.Checkpoint(name="backfill")
+    )
+    change = migrations.DataChange.from_query(
+        sqlite.update(EntryWithNote).set(EntryWithNote.note.to("handed off")).all(),
+        checkpoint="backfill",
+        contract_digest=migrations.contract_digest(draft, point="backfill"),
+    )
+    release = migrations.RelinquishTable(table_name="entry")
+    ordered = migrations.compile(draft.then(change).resolve(release))
+    assert_eq(len(ordered.statements), 1)
+    assert_eq(ordered.target.tables, ())
+    with assert_raises(migrations.PackageError):
+        migrations.compile(draft.resolve(release).then(change))
