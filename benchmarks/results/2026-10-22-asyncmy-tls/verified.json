@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scenario": "verified",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "connected": true,
+      "cipher_present": true,
+      "tls_version": "TLSv1.3",
+      "answer": 42
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "connected": true,
+      "cipher_present": true,
+      "tls_version": "TLSv1.3",
+      "answer": 42
+    }
+  ]
+}

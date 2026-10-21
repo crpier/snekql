@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scenario": "stripped",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "connected": false,
+      "certificate_failure": false,
+      "error_type": "OperationalError",
+      "response_kind": "handshake-response",
+      "response_bytes": 146
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "connected": false,
+      "certificate_failure": false,
+      "error_type": "OperationalError",
+      "response_kind": "ssl-request",
+      "response_bytes": 36
+    },
+    {
+      "driver": "snekql-aiomysql",
+      "version": "0.3.2",
+      "connected": false,
+      "error_type": "DatabaseRuntimeError",
+      "response_kind": "eof",
+      "response_bytes": 0
+    }
+  ]
+}

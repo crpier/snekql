@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "scenario": "untrusted",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "connected": false,
+      "certificate_failure": true,
+      "error_type": "OperationalError"
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "connected": false,
+      "certificate_failure": true,
+      "error_type": "OperationalError"
+    }
+  ]
+}

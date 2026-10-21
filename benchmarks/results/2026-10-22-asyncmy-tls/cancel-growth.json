@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scenario": "cancel-growth",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "error_type": "CancelledError",
+      "peer_closed_before_cleanup": true,
+      "pre_cleanup_response_bytes": 0,
+      "recovery_answer": 42,
+      "recovery_cipher_present": true,
+      "different_connection": true,
+      "size_with_first_held": 2,
+      "free_with_first_held": 1,
+      "shutdown_completed": true
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "error_type": "CancelledError",
+      "peer_closed_before_cleanup": true,
+      "pre_cleanup_response_bytes": 0,
+      "recovery_answer": 42,
+      "recovery_cipher_present": true,
+      "different_connection": true,
+      "size_with_first_held": 2,
+      "free_with_first_held": 1,
+      "shutdown_completed": true
+    }
+  ]
+}

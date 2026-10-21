@@ -1,0 +1,21 @@
+{
+  "source_commit": "a66a4f0c4521daa86da6fa79bdf2325d276363fe",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "openssl": "OpenSSL 3.5.9 29 Sep 2026",
+  "packages": {
+    "aiomysql": "0.3.2",
+    "pymysql": "1.2.0",
+    "asyncmy": "0.2.16"
+  },
+  "server_binary": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "transport": "owned loopback TCP with generated trusted certificate; password-authenticated disposable server",
+  "tls_minimum": "TLSv1.2",
+  "cancellation_barrier": "proxy accepted upstream greeting and withheld it from client; EOF observed before forced disconnect or explicit GC",
+  "native_pool_bounds": {
+    "minsize": 1,
+    "maxsize": 2
+  },
+  "scope": "native driver TLS and native pool cancellation; snekql-aiomysql public initialization control for stripped greeting; prototype TLS remains disabled"
+}

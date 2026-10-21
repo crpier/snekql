@@ -721,3 +721,112 @@ shutdown, TLS enforcement and production owned-pool parity remain separate gates
 The shared timeout-reporting defect and asyncmy's native cleanup/value defects
 remain open concerns. **Hold adoption**; next work is the owned-pool/TLS and
 initialization/shutdown boundary, alongside a separately scoped fix for #491.
+
+## Continuation: native TLS and partial pool connections — 2026-10-22
+
+Before enabling TLS in the prototype, six new scenarios exercise the **native
+public driver/pool APIs** against the project's owned, password-authenticated TLS
+server. The certificate is freshly generated with an IP SAN for `127.0.0.1`.
+Clients use a verifying standard-library SSL context with minimum TLS 1.2.
+Nothing changes the host trust store. A public production snekql initialization
+control is included for the stripped-greeting case; these are **not** asyncmy
+prototype TLS certification tests. Prototype TLS remains disabled.
+
+### Negotiation and certificate verification
+
+Both aiomysql 0.3.2 and asyncmy 0.2.16:
+
+- Negotiate **TLS 1.3** with the explicitly trusted certificate, report a nonempty
+  session cipher and return the expected answer `42` from a real query.
+- Reject an untrusted certificate and a trusted certificate with the wrong
+  hostname (`localhost` versus the certificate's IP SAN).
+- Preserve an `SSLCertVerificationError` in the native `OperationalError` context
+  chain for both rejection cases. A generic connection failure alone is not
+  accepted as evidence of certificate verification.
+
+### Stripped TLS capability: distinguish driver behavior from snekql policy
+
+The owned byte-forwarding peer clears SSL support from the server greeting and
+observes the first client packet, retaining **only its length and structural
+packet type**, never its contents. It then closes the connection.
+
+| Client | First observed response | Recorded bytes, including packet header |
+| --- | --- | ---: |
+| Bare aiomysql with an SSL context | Authentication handshake response, without TLS | 146 |
+| Bare asyncmy with an SSL context | SSLRequest | 36 |
+| Production snekql/aiomysql with required TLS | EOF; no client response | 0 |
+
+The aiomysql response includes authentication material on an unencrypted channel;
+this is **not** a claim that the plaintext password itself was sent. The byte
+count can depend on generated credentials. Production snekql's existing required-
+TLS guard prevents that native fallback.
+
+Asyncmy's SSLRequest is **not an authentication response**, and this experiment
+must not be presented as asyncmy leaking credentials or falling back to plaintext.
+It also does not meet the stronger existing snekql zero-response behavior. Since
+this peer closes after observing the first packet, the native connection failures
+are not proof that the drivers independently reject the stripped capability.
+A future adapter must retain and test the snekql policy on every new/replacement
+connection, not merely forward an `ssl=` argument. No new upstream defect is
+asserted from this policy difference.
+
+The original zero-response expectation failed on the native arms. The retained
+test is explicitly a characterization of all three responses, not certification
+that the native drivers implement snekql's guard.
+
+### Cancellation while awaiting a greeting
+
+A second peer mode accepts the upstream greeting but withholds it from the client.
+An event proves the client has reached that connection before `Task.cancel()`.
+Both drivers propagate `CancelledError` during native pool initialization and
+during growth from one to two connections.
+
+Crucially, the peer observes **client EOF with zero response bytes before forced
+disconnect, fixture teardown, or explicit GC**. A two-second observation deadline
+would record failure rather than letting cleanup manufacture a successful EOF.
+
+- After cancelled initialization, a fresh native pool performs a verified-TLS
+  query and closes normally. This does not assert reuse of the failed pool object,
+  which the public factory never returned.
+- During cancelled growth, the first connection remains leased. Recovery acquires
+  a **different connection from the same bounded pool**, executes over TLS, and
+  returns it. With the original lease still held, public native statistics show
+  size **2** and free count **1**, matching `minsize=1, maxsize=2`.
+- Releasing the original lease and ordinary `close()` / `wait_closed()` completes.
+
+This covers cancellation while awaiting the **initial server greeting**, not
+cancellation during the subsequent TLS handshake or authentication exchange.
+It does not establish repeated AnyIO cancellation or shutdown-fault behavior.
+
+### Reproduction, evidence and validation
+
+```sh
+for scenario in verified untrusted wrong-host stripped cancel-initialization cancel-growth; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_tls --scenario "$scenario" \
+    >"$root/tls-$scenario.json" || exit
+done
+```
+
+[Raw reports and provenance](results/2026-10-22-asyncmy-tls/) were collected from
+clean source commit `a66a4f0`. Environment: CPython 3.15.0, MariaDB 13.0.2,
+aiomysql 0.3.2 / PyMySQL 1.2.0 and asyncmy 0.2.16. All six recorded CLI runs had
+empty stderr. The shared TLS test peer gained bounded first-packet classification
+and an observation event; it still stores no authentication payload.
+
+- Red/green cycles covered each new CLI scenario; the stronger native
+  zero-response contract failure was retained as an explicit characterization.
+- **22 focused tests passed in one run**: six new scenarios, eight production TLS
+  tests, three partial-initialization tests and five shutdown tests.
+- Typing, lint, formatting and whitespace checks passed. Full suite not rerun.
+- No production runtime, adapter configuration policy, dependency or lockfile
+  changes were made.
+
+**Hold adoption.** Basic native TLS and greeting-cancellation results are positive,
+but they are only prerequisites for porting the production owned-pool policy.
+Still needed: prototype-level TLS guards on startup/growth/replacement, session
+initialization/reset/recycling, legacy-protocol and broader TLS configuration
+coverage, cancellation during actual handshake/authentication, and interrupted or
+failed shutdown. The earlier cleanup/value defects and shared #491 timeout defect
+remain separate open concerns.

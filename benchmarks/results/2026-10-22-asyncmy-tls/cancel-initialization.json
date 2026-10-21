@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "scenario": "cancel-initialization",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "version": "0.3.2",
+      "error_type": "CancelledError",
+      "peer_closed_before_cleanup": true,
+      "pre_cleanup_response_bytes": 0,
+      "recovery_answer": 42,
+      "recovery_cipher_present": true,
+      "shutdown_completed": true
+    },
+    {
+      "driver": "asyncmy",
+      "version": "0.2.16",
+      "error_type": "CancelledError",
+      "peer_closed_before_cleanup": true,
+      "pre_cleanup_response_bytes": 0,
+      "recovery_answer": 42,
+      "recovery_cipher_present": true,
+      "shutdown_completed": true
+    }
+  ]
+}
