@@ -16,8 +16,7 @@ reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
 comparing numbers. The [dated baseline](findings.md) publishes individual trial
-reports and noise-aware regression guidance. The [temporal-classification optimization](temporal-classification-480.md)
-records isolated encoding and verified-bulk measurements for #480.
+reports and noise-aware regression guidance.
 
 ## Running
 
@@ -61,6 +60,9 @@ records event-loop wake-up lateness. Reported per scenario:
   monopolized the pool. The per-worker `min..max` op spread is printed too.
 - **loop stall** — worst heartbeat lateness; a large value means a synchronous
   stretch (typically row materialization) blocked the event loop.
+
+For focused codec measurements, the [temporal-classification optimization](temporal-classification-480.md)
+records isolated encoding and verified-bulk results for #480.
 
 ## Historical findings, June 2026
 
