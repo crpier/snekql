@@ -2,7 +2,8 @@
 
 lazy from collections.abc import Callable
 lazy from functools import wraps
-lazy from typing import Annotated
+lazy from inspect import Parameter, iscoroutinefunction, signature
+lazy from typing import Annotated, cast
 
 lazy from annotated_types import Ge, Gt
 lazy from pydantic import ConfigDict, ValidationError, validate_call
@@ -13,6 +14,32 @@ lazy from snekql.errors import SnekqlError
 type NonNegativeFloat = Annotated[float, Ge(0)]
 type NonNegativeInt = Annotated[int, Ge(0)]
 type PositiveInt = Annotated[int, Gt(0)]
+
+
+_METHOD_ARGUMENT_COUNT = 2
+
+
+def _is_plain_nonnegative_int_method(function: Callable[..., object]) -> bool:
+    """Recognize only a required, untyped self and one plain integer argument.
+
+    Check the alias definition as well as the method's annotation: adding a
+    constraint or transformation must automatically restore general validation.
+    """
+    if iscoroutinefunction(function):
+        return False
+    if NonNegativeInt.__value__ != Annotated[int, Ge(0)]:
+        return False
+    parameters = tuple(signature(function).parameters.values())
+    return (
+        len(parameters) == _METHOD_ARGUMENT_COUNT
+        and parameters[0].name == "self"
+        and parameters[0].annotation is Parameter.empty
+        and parameters[1].annotation is NonNegativeInt
+        and all(
+            p.kind is Parameter.POSITIONAL_OR_KEYWORD and p.default is Parameter.empty
+            for p in parameters
+        )
+    )
 
 
 def validate_boundary[ErrorT: SnekqlError, **P, R](
@@ -27,6 +54,26 @@ def validate_boundary[ErrorT: SnekqlError, **P, R](
                 arbitrary_types_allowed=True, hide_input_in_errors=True, strict=True
             ),
         )(function)
+
+        if _is_plain_nonnegative_int_method(function):
+            # The signature guard permits this positional call; narrowing args
+            # to two objects otherwise loses the ParamSpec relationship.
+            direct = cast("Callable[..., R]", function)
+
+            @wraps(function)
+            def integer_method(*args: P.args, **kwargs: P.kwargs) -> R:
+                try:
+                    # Exact built-ins need no normalization. Subtypes,
+                    # keywords, malformed calls and failures use Pydantic.
+                    if len(args) == _METHOD_ARGUMENT_COUNT and not kwargs:
+                        value = args[1]
+                        if type(value) is int and value >= 0:
+                            return direct(args[0], value)
+                    return validated(*args, **kwargs)
+                except ValidationError as error:
+                    raise error_type(str(error)) from error
+
+            return integer_method
 
         @wraps(function)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
