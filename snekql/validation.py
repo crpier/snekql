@@ -1,5 +1,6 @@
 """Boundary validation helpers for constrained public API values."""
 
+lazy from annotationlib import Format
 lazy from collections.abc import Callable
 lazy from functools import cache, wraps
 lazy from importlib.metadata import entry_points
@@ -40,7 +41,9 @@ def _is_plain_nonnegative_int_method(function: Callable[..., object]) -> bool:
         return False
     if NonNegativeInt.__value__ != Annotated[int, Ge(0)]:
         return False
-    parameters = tuple(signature(function).parameters.values())
+    parameters = tuple(
+        signature(function, annotation_format=Format.FORWARDREF).parameters.values()
+    )
     return (
         len(parameters) == _METHOD_ARGUMENT_COUNT
         and parameters[0].name == "self"
@@ -57,8 +60,13 @@ def _is_plain_nonnegative_int_method(function: Callable[..., object]) -> bool:
 def validate_boundary[ErrorT: SnekqlError, **P, R](
     *,
     error_type: type[ErrorT],
+    _specialize_nonnegative_int: bool = False,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Validate public API calls and wrap validation errors as domain errors."""
+    """Validate public API calls and wrap validation errors as domain errors.
+
+    The private specialization opt-in is only for pagination's known integer
+    methods; ordinary callers retain the general validator unchanged.
+    """
 
     def decorate(function: Callable[P, R]) -> Callable[P, R]:
         validated = validate_call(
@@ -67,7 +75,7 @@ def validate_boundary[ErrorT: SnekqlError, **P, R](
             ),
         )(function)
 
-        if _is_plain_nonnegative_int_method(function):
+        if _specialize_nonnegative_int and _is_plain_nonnegative_int_method(function):
             # The signature guard permits this positional call; narrowing args
             # to two objects otherwise loses the ParamSpec relationship.
             direct = cast("Callable[..., R]", function)
