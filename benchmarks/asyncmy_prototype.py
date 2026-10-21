@@ -11,6 +11,7 @@ from typing import Any
 from benchmarks._asyncmy_adapter import PrototypeConfig
 from benchmarks._asyncmy_commit import _CommitRelay
 from benchmarks._asyncmy_constraints import probe as constraint_probe
+from benchmarks._asyncmy_public_cancellation import probe as public_cancellation_probe
 from benchmarks._asyncmy_values import probe as value_probe
 from benchmarks._asyncmy_values import warning_probe
 from snekql import mariadb
@@ -136,6 +137,12 @@ async def main() -> None:
             "warnings-stream",
             "values-buffered",
             "values-stream",
+            "deadline-query",
+            "deadline-fetch",
+            "deadline-close",
+            "cancel-query",
+            "cancel-fetch",
+            "cancel-close",
             "stream",
             "extra-results",
             "commit-drop-ack",
@@ -154,7 +161,11 @@ async def main() -> None:
         for name, config in (("aiomysql", baseline), ("asyncmy", prototype)):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                if args.scenario.startswith("warnings-"):
+                if args.scenario.startswith(("cancel-", "deadline-")):
+                    result = await public_cancellation_probe(
+                        config, name, args.scenario
+                    )
+                elif args.scenario.startswith("warnings-"):
                     result = await warning_probe(
                         config, stream=args.scenario == "warnings-stream"
                     )
