@@ -1,0 +1,9 @@
+construction benchmark: 15 trials x 50000 builds (warmup 5000)
+
+workload       median ops/s     mean ops/s     cv%  bytes/query
+---------------------------------------------------------------
+point_read           92,202         92,145   0.20%        521.6
+filtered             42,654         42,639   0.17%        769.5
+projection           74,001         73,970   0.15%        506.8
+insert              250,709        250,781   0.11%        473.2
+update              132,970        132,777   0.55%        522.2

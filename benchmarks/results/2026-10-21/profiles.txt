@@ -1,0 +1,266 @@
+
+CONSTRUCTION point_read
+         4442358 function calls (4442355 primitive calls) in 0.922 seconds
+
+   Ordered by: internal time
+   List reduced from 252 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    40000    0.099    0.000    0.175    0.000 dataclasses.py:1791(_replace)
+   140000    0.096    0.000    0.157    0.000 model.py:1080(require_model_columns)
+   920341    0.072    0.000    0.102    0.000 {built-in method builtins.isinstance}
+   900120    0.056    0.000    0.056    0.000 {built-in method builtins.getattr}
+   100000    0.056    0.000    0.118    0.000 verbs.py:71(_require_sqlite_model)
+    20000    0.052    0.000    0.167    0.000 query.py:2888(build_select)
+    20000    0.040    0.000    0.513    0.000 verbs.py:613(select)
+   100000    0.038    0.000    0.161    0.000 _query_state.py:213(require_column_model)
+   100000    0.026    0.000    0.037    0.000 model.py:1105(require_model_backend)
+    20000    0.022    0.000    0.257    0.000 query.py:2263(_select_where)
+    80000    0.022    0.000    0.154    0.000 _query_state.py:227(selectable_owner_model)
+   440000    0.021    0.000    0.021    0.000 typing.py:2369(cast)
+    20000    0.021    0.000    0.984    0.000 construction.py:55(build_point_read)
+    40000    0.019    0.000    0.204    0.000 dataclasses.py:1772(replace)
+    20000    0.018    0.000    0.091    0.000 _query_scope.py:202(ensure_predicate_targets_models)
+
+
+
+CONSTRUCTION filtered
+         8640001 function calls in 1.917 seconds
+
+   Ordered by: internal time
+   List reduced from 75 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   100000    0.250    0.000    0.438    0.000 dataclasses.py:1791(_replace)
+  1680000    0.138    0.000    0.180    0.000 {built-in method builtins.isinstance}
+   180000    0.127    0.000    0.206    0.000 model.py:1080(require_model_columns)
+  1940000    0.121    0.000    0.121    0.000 {built-in method builtins.getattr}
+   100000    0.059    0.000    0.123    0.000 verbs.py:71(_require_sqlite_model)
+    20000    0.058    0.000    0.177    0.000 query.py:2888(build_select)
+   140000    0.056    0.000    0.232    0.000 _query_state.py:213(require_column_model)
+    20000    0.055    0.000    2.050    0.000 construction.py:61(build_filtered)
+   100000    0.046    0.000    0.511    0.000 dataclasses.py:1772(replace)
+    40000    0.046    0.000    0.518    0.000 query.py:2263(_select_where)
+    20000    0.043    0.000    0.539    0.000 verbs.py:613(select)
+    60000    0.043    0.000    0.161    0.000 _query_scope.py:152(ensure_operand_in_scope)
+   120000    0.038    0.000    0.064    0.000 typing.py:2556(get_origin)
+    40000    0.038    0.000    0.184    0.000 _query_scope.py:202(ensure_predicate_targets_models)
+   720000    0.036    0.000    0.036    0.000 typing.py:2369(cast)
+
+
+
+CONSTRUCTION projection
+         4720217 function calls in 1.068 seconds
+
+   Ordered by: internal time
+   List reduced from 92 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    40000    0.101    0.000    0.176    0.000 dataclasses.py:1791(_replace)
+   920053    0.080    0.000    0.112    0.000 {built-in method builtins.isinstance}
+    20000    0.074    0.000    0.221    0.000 query.py:2888(build_select)
+    80000    0.058    0.000    0.093    0.000 model.py:1080(require_model_columns)
+   840017    0.053    0.000    0.053    0.000 {built-in method builtins.getattr}
+    60000    0.036    0.000    0.075    0.000 verbs.py:71(_require_sqlite_model)
+    80000    0.033    0.000    0.136    0.000 _query_state.py:213(require_column_model)
+    60000    0.032    0.000    0.042    0.000 storage.py:2340(__get__)
+    20000    0.031    0.000    0.323    0.000 query.py:1187(where)
+    20000    0.029    0.000    1.130    0.000 construction.py:74(build_projection)
+    20000    0.028    0.000    0.423    0.000 verbs.py:613(select)
+    20000    0.024    0.000    0.265    0.000 query.py:2263(_select_where)
+   460000    0.023    0.000    0.023    0.000 typing.py:2369(cast)
+    40000    0.020    0.000    0.207    0.000 dataclasses.py:1772(replace)
+    60000    0.019    0.000    0.032    0.000 typing.py:2556(get_origin)
+
+
+
+CONSTRUCTION insert
+         1880917 function calls (1880901 primitive calls) in 0.408 seconds
+
+   Ordered by: internal time
+   List reduced from 243 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    20000    0.055    0.000    0.286    0.000 model.py:951(_snekql_populate)
+    80000    0.037    0.000    0.051    0.000 storage.py:1327(__set__)
+    80000    0.035    0.000    0.091    0.000 model.py:986(__setattr__)
+    80000    0.033    0.000    0.067    0.000 storage.py:1464(_validate_logical_value)
+   220133    0.016    0.000    0.016    0.000 {built-in method builtins.isinstance}
+    20000    0.016    0.000    0.058    0.000 query.py:3000(build_insert)
+    20000    0.015    0.000    0.408    0.000 construction.py:86(build_insert)
+    20000    0.015    0.000    0.025    0.000 model.py:1080(require_model_columns)
+    80001    0.015    0.000    0.105    0.000 {built-in method builtins.setattr}
+    80000    0.015    0.000    0.082    0.000 storage.py:1433(validate_model_value)
+   200042    0.013    0.000    0.013    0.000 {built-in method builtins.getattr}
+    20000    0.012    0.000    0.026    0.000 verbs.py:71(_require_sqlite_model)
+    20000    0.012    0.000    0.012    0.000 <string>:2(__init__)
+   240009    0.011    0.000    0.011    0.000 typing.py:2369(cast)
+    60000    0.011    0.000    0.021    0.000 type_adapter.py:362(validate_python)
+
+
+
+CONSTRUCTION update
+         2480072 function calls in 0.580 seconds
+
+   Ordered by: internal time
+   List reduced from 66 to 15 due to restriction <15>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    40000    0.062    0.000    0.105    0.000 dataclasses.py:1791(_replace)
+    60000    0.043    0.000    0.071    0.000 model.py:1080(require_model_columns)
+    20000    0.034    0.000    0.086    0.000 query.py:3024(update)
+   360013    0.030    0.000    0.041    0.000 {built-in method builtins.isinstance}
+    40000    0.028    0.000    0.107    0.000 _query_scope.py:152(ensure_operand_in_scope)
+    20000    0.027    0.000    0.626    0.000 construction.py:92(build_update)
+   400004    0.026    0.000    0.026    0.000 {built-in method builtins.getattr}
+    40000    0.022    0.000    0.028    0.000 storage.py:2340(__get__)
+    20000    0.020    0.000    0.163    0.000 query.py:2436(_update_set)
+    20000    0.018    0.000    0.089    0.000 _query_scope.py:202(ensure_predicate_targets_models)
+    20000    0.018    0.000    0.206    0.000 query.py:2454(_update_where)
+    40000    0.017    0.000    0.132    0.000 dataclasses.py:1772(replace)
+    40000    0.016    0.000    0.068    0.000 _query_state.py:213(require_column_model)
+   320000    0.015    0.000    0.015    0.000 typing.py:2369(cast)
+    20000    0.013    0.000    0.027    0.000 verbs.py:71(_require_sqlite_model)
+
+
+
+RUNTIME stream
+Wed Oct 21 21:04:09 2026    /tmp/snekql-perf/stream.prof
+
+         38232179 function calls (38211661 primitive calls) in 11.457 seconds
+
+   Ordered by: internal time
+   List reduced from 6005 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  9240721    2.927    0.000    2.927    0.000 inspect.py:1743(_shadowed_dict)
+  1320124    1.552    0.000    3.753    0.000 inspect.py:1716(_check_class)
+  1320134    1.030    0.000    7.377    0.000 typing.py:2076(__instancecheck__)
+  1320124    0.929    0.000    5.816    0.000 inspect.py:1756(getattr_static)
+  3591626    0.561    0.000    8.235    0.000 {built-in method builtins.isinstance}
+   660000    0.422    0.000    9.524    0.000 _value_decode.py:75(_decode_selectable)
+  2640458    0.330    0.000    0.585    0.000 <frozen abc>:117(__instancecheck__)
+  1320122    0.309    0.000    0.409    0.000 inspect.py:1707(_check_instance)
+   660000    0.286    0.000    0.588    0.000 storage.py:1577(_decode_primitive)
+   220000    0.278    0.000   10.593    0.000 _query_materialize.py:100(materialize)
+  2640458    0.256    0.000    0.256    0.000 {built-in method _abc._abc_instancecheck}
+   660000    0.250    0.000    0.889    0.000 storage.py:1342(decode)
+   880023    0.249    0.000    0.249    0.000 {method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects}
+3987247/3987240    0.245    0.000    0.246    0.000 {built-in method builtins.getattr}
+   220000    0.222    0.000    0.453    0.000 _named_projection.py:83(materialize)
+   880000    0.185    0.000    9.834    0.000 _query_materialize.py:113(<genexpr>)
+   660000    0.126    0.000    0.244    0.000 type_adapter.py:362(validate_python)
+   660000    0.124    0.000    9.649    0.000 _value_decode.py:113(_decode_projection_field)
+  1330811    0.102    0.000    0.102    0.000 {method 'get' of 'dict' objects}
+     3783    0.102    0.000   22.462    0.006 selectors.py:435(select)
+   220000    0.081    0.000   10.689    0.000 _query_plan.py:83(materialize_row)
+     1760    0.074    0.000   10.855    0.006 runtime.py:480(__anext__)
+913952/913191    0.061    0.000    0.061    0.000 {built-in method builtins.len}
+   660000    0.058    0.000    0.058    0.000 storage.py:1476(_logical_adapter)
+   220000    0.055    0.000    0.186    0.000 main.py:746(model_validate)
+   660016    0.051    0.000    0.051    0.000 storage.py:1494(_is_json_column)
+      869    0.045    0.000    0.045    0.000 _comparison_contract.py:35(consume)
+   662931    0.035    0.000    0.035    0.000 typing.py:2369(cast)
+      451    0.034    0.000    0.034    0.000 {built-in method marshal.loads}
+    830/1    0.030    0.000   11.460   11.460 {built-in method builtins.exec}
+     1760    0.021    0.000    0.035    0.000 runtime.py:86(fetchmany)
+2377/2251    0.020    0.000    0.113    0.000 {built-in method builtins.__build_class__}
+     3783    0.018    0.000   22.318    0.006 {method 'poll' of 'select.epoll' objects}
+     3783    0.015    0.000   33.471    0.009 base_events.py:1988(_run_once)
+     1837    0.014    0.000   10.931    0.006 _comparison_sqlite.py:207(stream)
+
+
+
+RUNTIME point-read
+Wed Oct 21 21:04:36 2026    /tmp/snekql-perf/point-read.prof
+
+         3485166 function calls (3428142 primitive calls) in 1.629 seconds
+
+   Ordered by: internal time
+   List reduced from 6021 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    22361    0.069    0.000    4.017    0.000 base_events.py:1988(_run_once)
+   129062    0.056    0.000    0.056    0.000 inspect.py:1743(_shadowed_dict)
+    22361    0.048    0.000    2.832    0.000 selectors.py:435(select)
+   383595    0.043    0.000    0.213    0.000 {built-in method builtins.isinstance}
+      452    0.035    0.000    0.035    0.000 {built-in method marshal.loads}
+    19892    0.031    0.000    0.070    0.000 inspect.py:1716(_check_class)
+    831/1    0.030    0.000    1.644    1.644 {built-in method builtins.exec}
+    15522    0.024    0.000    0.024    0.000 {method 'recv' of '_socket.socket' objects}
+  32656/7    0.024    0.000    1.356    0.194 {method 'run' of '_contextvars.Context' objects}
+    22361    0.023    0.000    2.691    0.000 {method 'poll' of 'select.epoll' objects}
+    19892    0.023    0.000    0.122    0.000 inspect.py:1756(getattr_static)
+    17646    0.023    0.000    0.155    0.000 typing.py:2076(__instancecheck__)
+     7757    0.022    0.000    0.022    0.000 {method 'get' of '_queue.SimpleQueue' objects}
+2377/2251    0.020    0.000    0.113    0.000 {built-in method builtins.__build_class__}
+189109/189102    0.019    0.000    0.019    0.000 {built-in method builtins.getattr}
+    11019    0.017    0.000    0.045    0.000 _asyncio.py:422(__enter__)
+    16500    0.016    0.000    0.027    0.000 model.py:1080(require_model_columns)
+    28186    0.016    0.000    0.020    0.000 events.py:41(__init__)
+    11019    0.016    0.000    0.032    0.000 _asyncio.py:453(__exit__)
+    32645    0.015    0.000    1.064    0.000 events.py:92(_run)
+    39216    0.014    0.000    0.024    0.000 typing.py:2556(get_origin)
+     1100    0.014    0.000    0.166    0.000 query.py:433(_project_state)
+     3300    0.012    0.000    0.018    0.000 dataclasses.py:1791(_replace)
+    16888    0.012    0.000    0.022    0.000 base_events.py:851(_call_soon)
+    15486    0.011    0.000    0.024    0.000 core.py:150(_execute)
+    11000    0.011    0.000    0.163    0.000 runtime.py:1628(_run_driver_operation)
+     1309    0.011    0.000    0.011    0.000 {built-in method builtins.compile}
+107636/106875    0.011    0.000    0.011    0.000 {built-in method builtins.len}
+    57273    0.011    0.000    0.020    0.000 <frozen abc>:117(__instancecheck__)
+     7761    0.010    0.000    0.010    0.000 {method 'send' of '_socket.socket' objects}
+     5500    0.010    0.000    0.386    0.000 runtime.py:974(fetch_all)
+     7761    0.010    0.000    0.038    0.000 base_events.py:875(call_soon_threadsafe)
+     9900    0.010    0.000    0.802    0.000 compare.py:54(_operation)
+     9900    0.010    0.000    0.784    0.000 _comparison_sqlite.py:180(read)
+    57273    0.009    0.000    0.009    0.000 {built-in method _abc._abc_instancecheck}
+
+
+
+RUNTIME bulk
+Wed Oct 21 21:04:48 2026    /tmp/snekql-perf/bulk.prof
+
+         35781322 function calls (35676032 primitive calls) in 11.224 seconds
+
+   Ordered by: internal time
+   List reduced from 6075 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  4324282    1.511    0.000    1.511    0.000 inspect.py:1743(_shadowed_dict)
+   859147    0.766    0.000    1.780    0.000 inspect.py:1716(_check_class)
+   859147    0.581    0.000    3.149    0.000 inspect.py:1756(getattr_static)
+  4428586    0.462    0.000    4.378    0.000 {built-in method builtins.isinstance}
+   438948    0.447    0.000    3.793    0.000 typing.py:2076(__instancecheck__)
+3262565/3262558    0.265    0.000    0.531    0.000 {built-in method builtins.getattr}
+   213400    0.248    0.000    0.248    0.000 {method 'to_python' of 'pydantic_core._pydantic_core.SchemaSerializer' objects}
+   859145    0.218    0.000    0.291    0.000 inspect.py:1707(_check_instance)
+   565403    0.185    0.000    0.217    0.000 {method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects}
+    70400    0.177    0.000    0.916    0.000 model.py:951(_snekql_populate)
+   213400    0.173    0.000    0.519    0.000 storage.py:1773(_encode_primitive)
+   436965    0.167    0.000    0.275    0.000 typing.py:2586(get_args)
+    42387    0.153    0.000   22.250    0.001 selectors.py:435(select)
+   211200    0.150    0.000    4.445    0.000 _value_decode.py:75(_decode_selectable)
+   160602    0.136    0.000    0.223    0.000 model.py:1080(require_model_columns)
+    42387    0.131    0.000   32.836    0.001 base_events.py:1988(_run_once)
+   213416    0.130    0.000    0.996    0.000 storage.py:1603(_temporal_type)
+   213400    0.129    0.000    1.660    0.000 storage.py:1684(_encode_value)
+   217800    0.127    0.000    0.271    0.000 storage.py:2340(__get__)
+   909775    0.125    0.000    0.230    0.000 <frozen abc>:117(__instancecheck__)
+   216752    0.124    0.000    0.340    0.000 storage.py:1135(_annotation_core_types)
+    70400    0.118    0.000    2.462    0.000 _query_compile.py:357(_encode_insert_row)
+   211200    0.113    0.000    0.277    0.000 model.py:986(__setattr__)
+   211200    0.111    0.000    0.151    0.000 storage.py:1327(__set__)
+   220087    0.111    0.000    0.385    0.000 storage.py:986(_extract_logical_type)
+   211200    0.109    0.000    0.232    0.000 storage.py:1464(_validate_logical_value)
+  2096726    0.106    0.000    0.106    0.000 typing.py:2369(cast)
+   213400    0.105    0.000    1.796    0.000 storage.py:1390(encode)
+   220109    0.105    0.000    0.168    0.000 storage.py:939(_resolve_model_hint)
+   909775    0.104    0.000    0.105    0.000 {built-in method _abc._abc_instancecheck}
+   211200    0.104    0.000    0.213    0.000 storage.py:1577(_decode_primitive)
+    70400    0.104    0.000    4.849    0.000 _query_materialize.py:100(materialize)
+   217800    0.096    0.000    0.124    0.000 storage.py:1318(__get__)
+  1049597    0.094    0.000    0.094    0.000 {method 'get' of 'dict' objects}
+   211200    0.094    0.000    0.325    0.000 storage.py:1342(decode)
+
+

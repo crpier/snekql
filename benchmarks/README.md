@@ -16,7 +16,9 @@ reads, bounded streaming, indexed joins and verified bulk writes on both
 backends, including shared-capacity contention, heartbeat diagnostics and
 separate pool/memory profiles. See its measurement-scope limitations before
 comparing numbers. The [dated baseline](findings.md) publishes individual trial
-reports and noise-aware regression guidance.
+reports and noise-aware regression guidance. The [2026-10-21 investigation](investigation-2026-10-21.md)
+adds current measurements and profiles identifying projection dispatch, temporal
+classification, and builder construction as optimization candidates.
 
 ## Running
 
