@@ -18,6 +18,10 @@ separate pool/memory profiles. See its measurement-scope limitations before
 comparing numbers. The [dated baseline](findings.md) publishes individual trial
 reports and noise-aware regression guidance.
 
+A separate [direct MariaDB driver comparison](mariadb-drivers.md) measures
+aiomysql against asyncmy on the same owned server, without changing runtime
+dependencies.
+
 ## Running
 
 ```bash
