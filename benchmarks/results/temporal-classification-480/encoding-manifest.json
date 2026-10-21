@@ -1,0 +1,38 @@
+[
+  {
+    "run": "round3-baseline-encode",
+    "commit": "cb4db57a18f44be1d2e76ad815c214095bf10f6f",
+    "dirty": false,
+    "module": "/home/crpier/.cache/snekql-479/baseline/snekql/storage.py",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "warmup_per_trial": 1000,
+    "gc_during_timing": false
+  },
+  {
+    "run": "round4-candidate-encode",
+    "commit": "0afeea34a776796a3aa0c03fd30bbbabea97e6d8",
+    "dirty": false,
+    "module": "/home/crpier/Projects/third-snekql/snekql/storage.py",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "warmup_per_trial": 1000,
+    "gc_during_timing": false
+  },
+  {
+    "run": "round5-baseline-encode",
+    "commit": "cb4db57a18f44be1d2e76ad815c214095bf10f6f",
+    "dirty": false,
+    "module": "/home/crpier/.cache/snekql-479/baseline/snekql/storage.py",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "warmup_per_trial": 1000,
+    "gc_during_timing": false
+  },
+  {
+    "run": "round6-candidate-encode",
+    "commit": "0afeea34a776796a3aa0c03fd30bbbabea97e6d8",
+    "dirty": false,
+    "module": "/home/crpier/Projects/third-snekql/snekql/storage.py",
+    "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+    "warmup_per_trial": 1000,
+    "gc_during_timing": false
+  }
+]

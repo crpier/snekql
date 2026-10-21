@@ -62,6 +62,9 @@ records event-loop wake-up lateness. Reported per scenario:
 - **loop stall** — worst heartbeat lateness; a large value means a synchronous
   stretch (typically row materialization) blocked the event loop.
 
+For focused codec measurements, the [temporal-classification optimization](temporal-classification-480.md)
+records isolated encoding and verified-bulk results for #480.
+
 ## Historical findings, June 2026
 
 These results predate current runtime hardening. They are historical evidence,
