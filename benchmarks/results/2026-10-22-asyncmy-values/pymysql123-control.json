@@ -1,0 +1,9 @@
+{
+  "pymysql": "1.2.3",
+  "aiomysql": "0.3.2",
+  "asyncmy": "0.2.16",
+  "standalone_duration_sql": "'-47:59:56.543211'",
+  "matrix_completed": false,
+  "error_type": "TypeError",
+  "error": "'str' object is not callable"
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "warnings-stream",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "value": 0,
+      "server_warning_present": true,
+      "server_warning_codes": [
+        1292
+      ],
+      "warnings": [
+        "unrelated-probe-warning"
+      ]
+    },
+    {
+      "driver": "asyncmy",
+      "value": 0,
+      "server_warning_present": true,
+      "server_warning_codes": [
+        1292
+      ],
+      "warnings": [
+        "unrelated-probe-warning"
+      ]
+    }
+  ]
+}

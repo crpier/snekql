@@ -507,3 +507,121 @@ Verdict remains **hold adoption, continue the prototype**. Basic raw constraint
 recovery is no longer an untested gap. Next priorities are binary/decimal/temporal
 value fidelity, diagnostic warning paths, cancellation through the public adapter,
 and the owned-pool/TLS/initialization/shutdown lifecycle.
+
+## Continuation: native values and warning diagnostics — 2026-10-22
+
+Two value probes and two warning probes now run through public raw-query
+transactions, with aiomysql and the restricted asyncmy adapter as controls.
+Buffered reads and streaming reads (chunks of 2, 2 and 1 rows) agree on the
+observed values and native Python types.
+
+### Positive observations
+
+The fixture verifies all 256 byte values in a BLOB, an exact 29-digit decimal
+with nine fractional places, leap-day DATE and naive DATETIME(6) with microseconds,
+a positive TIME(6) duration, Unicode including a supplementary-plane character,
+quotes/backslash/NUL in text, signed BIGINT minimum, unsigned BIGINT maximum, and
+an exactly representable DOUBLE. NULL rows and empty blob/text values are also
+retained. Decimal zero is reported as `0E-9`, preserving its scale.
+
+These are native wire-value checks through `raw()`, **not** certification of
+snekql's typed model codecs, UTC/civil/zoned semantics, invalid dates, timezone
+conversion, the full numeric range matrix or every SQL mode.
+
+### New negative-duration defect
+
+The first exact round-trip test failed for **both** locked drivers:
+
+| Observation | Value |
+| --- | --- |
+| Input Python value | `timedelta(days=-2, seconds=3, microseconds=456789)` |
+| Intended signed microseconds | `-172796543211` |
+| Intended TIME text | `-47:59:56.543211` |
+| Actual stored TIME text | `-48:00:03.456789` |
+| Actual decoded microseconds | `-172803456789` |
+
+`CAST(duration AS CHAR)` confirms the incorrect value was stored. A separate row
+bound using the correct textual TIME value decodes correctly, and the positive
+`timedelta(days=2, seconds=3, microseconds=456789)` round-trips correctly. This
+isolates the tested mismatch to negative timedelta binding, rather than our
+JSON rendering or general TIME decoding.
+
+The tests explicitly **characterize the mismatch** (`duration_exact=false`);
+green tests do not claim exact negative-duration fidelity. The original failing
+expectation and its diagnostic logs are retained outside tracked source.
+
+The encoder computes signed hours from normalized `days` but uses the positive
+`seconds`/`microseconds` components directly. The observed behavior affects the
+locked aiomysql 0.3.2 / PyMySQL 1.2.0 control and asyncmy 0.2.16. It has been filed
+separately as [asyncmy #166](https://github.com/long2ice/asyncmy/issues/166).
+The raw TIME binding path is distinct from snekql's declared `Duration` integer-
+millisecond codec; existing production Duration tests pass, but no asyncmy typed
+Duration model is certified by this experiment.
+
+### A newer PyMySQL encoder is not a validated dependency upgrade
+
+An isolated PyMySQL **1.2.3** overlay encodes the same timedelta correctly in the
+standalone encoder check. However, the full public value matrix with aiomysql
+fails before producing its report: `aiomysql.connection.escape` attempts to call
+`escape_bytes_prefixed`, which is a string with that PyMySQL version, raising
+`TypeError: 'str' object is not callable` during binary binding.
+
+The failed matrix was reproduced and retained as `pymysql123-control.json`.
+**No successful end-to-end upgraded control is claimed**, and no dependency or
+lockfile was changed. An early upstream draft overstated the upgraded control;
+it was promptly corrected to distinguish the standalone fix from the failed
+integration experiment. Any PyMySQL upgrade needs its own dependency-maintenance
+review and aiomysql compatibility work, not a version bump inferred from this
+one encoder fix.
+
+### Warning isolation
+
+The warning probes bind a canary to `CAST(... AS UNSIGNED)`, consume the result
+buffered or via an early-exited stream, then explicitly query `SHOW WARNINGS`.
+Both paths confirm that server warning 1292 exists and contains the canary.
+Only that existence/code is reported; diagnostic text is not written to reports.
+
+For both drivers, the canary is absent from subprocess stdout/stderr and no
+native warning is forwarded. An unrelated Python warning is still captured.
+This exercises the actual server warning path, not an empty-warning assertion,
+and does not install a global ignore filter. It remains a selected default-policy
+case, not coverage of all warning sources, debug settings or visibility policies.
+
+### Reproduce and evidence
+
+```sh
+# Use the private $root/tmp setup from the earlier sections.
+for scenario in values-buffered values-stream warnings-buffered warnings-stream; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "$scenario" \
+    >"$root/$scenario.json" || exit
+done
+# Separate exploratory control: expected to fail on binary binding, not pass.
+TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+  uv run --locked --with asyncmy==0.2.16 --with pymysql==1.2.3 python \
+  -m benchmarks.asyncmy_prototype --scenario values-buffered
+```
+
+[Raw reports and provenance](results/2026-10-22-asyncmy-values/) were collected from
+clean source commit `0b51c1c` on CPython 3.15.0 / MariaDB 13.0.2. Four reports use
+the locked PyMySQL 1.2.0; the separate failed control records PyMySQL 1.2.3.
+
+Validation for this slice:
+
+- **9 passed**: four new value/warning characterizations and five existing public
+  adapter tests. New command paths demonstrated red/green cycles; the native
+  negative-duration failure is preserved explicitly rather than presented as fixed.
+- **22 passed** separately: seven constraint cases, production raw diagnostic,
+  installed-driver binary/migration checks, and native Duration runtime tests.
+- Total **31 focused tests** across disjoint runs; typing, lint, formatting and
+  whitespace checks pass. Full suite not rerun.
+- No adapter behavior or production driver/dependency selection changed in this
+  slice. The earlier merge of #485/#486 remains included.
+
+Verdict remains **hold adoption**. Most selected native values and the tested
+warning hooks match; negative native TIME binding now has a concrete upstream
+report and needs a fix or an explicit supported-policy decision. Next gates
+remain public-adapter cancellation/deadlines and owned-pool/TLS/initialization/
+shutdown, followed by broader typed-model/error-metadata coverage and end-to-end
+performance on the combined optimizations.

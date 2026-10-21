@@ -1,0 +1,16 @@
+{
+  "source_commit": "0b51c1c12337638c4367be87eac7012869d95385",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "aiomysql": "0.3.2",
+    "pymysql": "1.2.0",
+    "asyncmy": "0.2.16"
+  },
+  "server": "13.0.2-MariaDB",
+  "transport": "owned loopback TCP",
+  "temp_storage": "private disk-backed TMPDIR under HOME/.cache",
+  "pymysql123_control": "separate uv --with pymysql==1.2.3 overlay; failed full matrix, corrected standalone encoder only",
+  "scope": "native raw values and selected warning paths, not typed model codec certification"
+}
