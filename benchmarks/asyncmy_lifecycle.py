@@ -39,7 +39,7 @@ async def _probe(
             try:
                 phase = "execute-stream"
                 sql = "SELECT seq, REPEAT('x', 1024) FROM seq_1_to_4096 ORDER BY seq"
-                if scenario == "multiple-results":
+                if scenario.startswith("multiple-results"):
                     sql += "; " + sql + "; SELECT 99"
                 await cursor.execute(sql)
                 phase = "fetch-first"
@@ -48,6 +48,12 @@ async def _probe(
                 phase = "close-stream"
                 tracemalloc.start()
                 try:
+                    if scenario == "multiple-results-drained":
+                        while True:
+                            while await cursor.fetchmany(128):
+                                pass
+                            if not await cursor.nextset():
+                                break
                     await cursor.close()
                     _, cleanup_peak = tracemalloc.get_traced_memory()
                 finally:
@@ -140,6 +146,7 @@ async def main() -> None:
         choices=(
             "abandoned-stream",
             "multiple-results",
+            "multiple-results-drained",
             "pool-reuse",
             "pool-discard-multiple",
             "cancel-query",

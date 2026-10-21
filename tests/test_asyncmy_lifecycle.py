@@ -372,3 +372,31 @@ async def commit_relay_control_preserves_acknowledged_commits() -> None:
             ("asyncmy", True, True, None, True, True, 1),
         ],
     )
+
+
+@test(mark="slow")
+async def explicitly_draining_each_result_avoids_native_cleanup_failure() -> None:
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "multiple-results-drained",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq(
+        [
+            (r["driver"], r["status"], r["same_connection"], r["answer"], r["warnings"])
+            for r in report["results"]
+        ],
+        [("aiomysql", "reused", True, 42, []), ("asyncmy", "reused", True, 42, [])],
+    )
