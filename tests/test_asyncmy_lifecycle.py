@@ -252,3 +252,123 @@ async def cancelled_stream_cleanup_discards_connection_and_rolls_back_pending_wr
             ("asyncmy", 1, True, True, False, 0, 1, 42),
         ],
     )
+
+
+@test(mark="slow")
+async def lost_commit_acknowledgement_can_hide_a_committed_write() -> None:
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "commit-drop-ack",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq([r["commit_seen"] for r in report["results"]], [True, True])
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["commit_returned"],
+                r["error_code"],
+                r["commit_forwarded"],
+                r["server_ok_seen"],
+                r["visible_writes"],
+            )
+            for r in report["results"]
+        ],
+        [
+            ("aiomysql", False, 2013, True, True, 1),
+            ("asyncmy", False, 2013, True, True, 1),
+        ],
+    )
+
+
+@test(mark="slow")
+async def loss_before_commit_has_the_same_client_error_without_persisting_the_write() -> (
+    None
+):
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "commit-drop-before",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq([r["commit_seen"] for r in report["results"]], [True, True])
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["commit_returned"],
+                r["error_code"],
+                r["commit_forwarded"],
+                r["server_ok_seen"],
+                r["visible_writes"],
+            )
+            for r in report["results"]
+        ],
+        [
+            ("aiomysql", False, 2013, False, False, 0),
+            ("asyncmy", False, 2013, False, False, 0),
+        ],
+    )
+
+
+@test(mark="slow")
+async def commit_relay_control_preserves_acknowledged_commits() -> None:
+    result = await run_process(
+        [
+            "uv",
+            "run",
+            "--locked",
+            "--with",
+            "asyncmy==0.2.16",
+            "python",
+            "-m",
+            "benchmarks.asyncmy_lifecycle",
+            "--scenario",
+            "commit-control",
+        ],
+        check=False,
+    )
+    assert_eq((result.returncode, result.stderr.decode()), (0, ""))
+    report = loads(result.stdout)
+    assert_eq([r["commit_seen"] for r in report["results"]], [True, True])
+    assert_eq(
+        [
+            (
+                r["driver"],
+                r["commit_seen"],
+                r["commit_returned"],
+                r["error_code"],
+                r["commit_forwarded"],
+                r["server_ok_seen"],
+                r["visible_writes"],
+            )
+            for r in report["results"]
+        ],
+        [
+            ("aiomysql", True, True, None, True, True, 1),
+            ("asyncmy", True, True, None, True, True, 1),
+        ],
+    )

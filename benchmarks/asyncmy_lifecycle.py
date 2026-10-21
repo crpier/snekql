@@ -13,6 +13,7 @@ from typing import Any, cast
 from pymysql.constants import CLIENT
 
 from benchmarks._asyncmy_cancellation import probe as cancellation_probe
+from benchmarks._asyncmy_commit import probe as commit_probe
 from snekql.testing.mariadb import temporary_mariadb_server
 
 _ANSWER = 42
@@ -144,6 +145,9 @@ async def main() -> None:
             "cancel-query",
             "cancel-fetch",
             "cancel-close",
+            "commit-drop-ack",
+            "commit-drop-before",
+            "commit-control",
         ),
         required=True,
     )
@@ -166,7 +170,9 @@ async def main() -> None:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 driver = import_module(name)
-                if args.scenario.startswith("cancel-"):
+                if args.scenario.startswith("commit-"):
+                    result = await commit_probe(driver, options, args.scenario)
+                elif args.scenario.startswith("cancel-"):
                     result = await cancellation_probe(driver, options, args.scenario)
                 elif args.scenario.startswith("pool-"):
                     result = await _pool_probe(
