@@ -1,6 +1,6 @@
 """Experimental recorded-state migration authoring and frozen execution packages.
 
-Format 1 is a prototype, not a supported long-term interchange contract. Models
+Format 2 is a prototype, not a supported long-term interchange contract. Models
 are consulted only during generation; loading execution packages imports none.
 """
 
@@ -16,12 +16,14 @@ from snekql._scaffold import require_scaffold_models
 from snekql._schema_compile import compile_create_index_sql, compile_create_table_sql
 from snekql._schema_plan import build_schema_plan
 from snekql.errors import SnekqlError
+from snekql.experimental._migration_sql import references, required_definition
 from snekql.model import Table
 from snekql.query import Write
 from snekql.storage import _extract_logical_type, _resolve_model_hint
 lazy from snekql.experimental._migration_target import (
     Prepared,
     Progress,
+    Recovery,
     Target,
     connect,
 )
@@ -81,6 +83,31 @@ class AddColumn(_Value):
     column: ColumnState
 
 
+class RequireNotNull(_Value):
+    """Require a populated managed column; execution checks existing data first."""
+
+    kind: Literal["require_not_null"] = "require_not_null"
+    table_name: str
+    column_name: str
+
+
+class DropColumn(_Value):
+    """Explicit authorization to remove one managed column, not its dependencies."""
+
+    kind: Literal["drop_column"] = "drop_column"
+    table_name: str
+    column_name: str
+
+
+class Contraction(_Value):
+    """A grouped table transition requiring backend-aware execution planning."""
+
+    before: TableState
+    after: TableState
+    required: tuple[str, ...] = ()
+    dropped: tuple[str, ...] = ()
+
+
 class Checkpoint(_Value):
     """Name a schema point for generating static query declarations during drafting."""
 
@@ -132,14 +159,39 @@ class Draft(_Value):
     predecessor: str | None
     before: State
     target: State
-    operations: tuple[CreateTable | AddColumn | Checkpoint | DataChange, ...]
+    operations: tuple[
+        CreateTable | AddColumn | RequireNotNull | DropColumn | Checkpoint | DataChange,
+        ...,
+    ]
     unresolved: tuple[str, ...] = ()
 
     def then(
-        self, *operations: CreateTable | AddColumn | Checkpoint | DataChange
+        self,
+        *operations: CreateTable
+        | AddColumn
+        | RequireNotNull
+        | DropColumn
+        | Checkpoint
+        | DataChange,
     ) -> Self:
         """Append typed authoring steps while retaining the original immutable draft."""
         return self.model_copy(update={"operations": (*self.operations, *operations)})
+
+    def resolve(self, *removals: DropColumn) -> Self:
+        """Authorize only the named pending removals; retain other unresolved decisions."""
+        unresolved = list(self.unresolved)
+        for removal in removals:
+            decision = _drop_decision(removal.table_name, removal.column_name)
+            if decision not in unresolved:
+                msg = f"no pending removal decision for {removal.table_name}.{removal.column_name}"
+                raise PackageError(msg)
+            unresolved.remove(decision)
+        return self.model_copy(
+            update={
+                "operations": (*self.operations, *removals),
+                "unresolved": tuple(unresolved),
+            }
+        )
 
 
 def _canonical(value: object) -> str:
@@ -156,9 +208,10 @@ class Package(_Value):
     Digests detect changes, not malicious publishers. Load only trusted packages.
     """
 
-    version: Literal[1] = 1
+    version: Literal[2] = 2
     draft: Draft
-    statements: tuple[str, ...]
+    statements: tuple[str | None, ...]
+    contractions: tuple[Contraction | None, ...]
     bindings: tuple[tuple[Parameter, ...], ...]
     transactional: tuple[bool, ...]
     digest: str
@@ -211,7 +264,7 @@ def generate(
     """Draft changes against recorded intent, never against a developer database.
 
     Unsupported alterations and ownership removal remain explicit unresolved
-    decisions. This slice supports creation, nullable additions and explicit typed backfills.
+    decisions. Supported routes include creation, nullable additions, typed backfills, and contraction.
     """
     require_scaffold_models(backend, models)
     if previous is not None:
@@ -253,27 +306,20 @@ def generate(
         f"{name}: deletion versus relinquishing ownership requires a decision"
         for name in old.keys() - desired.keys()
     ]
-    operations: list[CreateTable | AddColumn] = []
+    operations: list[CreateTable | AddColumn | RequireNotNull] = []
     for table in tables:
         if table.name not in old:
             operations.append(CreateTable(table=table))
         elif old[table.name] != table:
-            current = old[table.name]
-            additions = table.columns[len(current.columns) :]
-            candidates = [
-                AddColumn(table_name=table.name, column=column) for column in additions
-            ]
             try:
-                for operation in candidates:
-                    current = _add_column(current, operation.column)
+                candidates, removed = _changes(old[table.name], table, backend)
             except PackageError:
-                current = old[table.name]
-            if current == table:
-                operations.extend(candidates)
-            else:
                 unresolved.append(
                     f"{table.name}: alteration requires a supported structured operation"
                 )
+            else:
+                operations.extend(candidates)
+                unresolved.extend(_drop_decision(table.name, name) for name in removed)
     return Draft(
         revision=revision,
         predecessor=previous.digest if previous else None,
@@ -282,6 +328,103 @@ def generate(
         operations=tuple(operations),
         unresolved=tuple(sorted(unresolved)),
     )
+
+
+def _changes(
+    current: TableState, desired: TableState, backend: Backend
+) -> tuple[list[AddColumn | RequireNotNull], list[str]]:
+    candidates: list[AddColumn | RequireNotNull] = []
+    removed = [
+        column.name
+        for column in current.columns
+        if column.name not in {item.name for item in desired.columns}
+    ]
+    for column in desired.columns:
+        existing = next(
+            (item for item in current.columns if item.name == column.name), None
+        )
+        if existing is None:
+            change = AddColumn(table_name=desired.name, column=column)
+            current = _add_column(current, column)
+            candidates.append(change)
+        elif existing != column:
+            change = RequireNotNull(table_name=desired.name, column_name=column.name)
+            current = _contract_table(current, change, backend)
+            candidates.append(change)
+    for name in removed:
+        current = _contract_table(
+            current, DropColumn(table_name=desired.name, column_name=name), backend
+        )
+    if current != desired:
+        msg = "alteration is not representable by supported operations"
+        raise PackageError(msg)
+    return candidates, removed
+
+
+def _drop_decision(table: str, column: str) -> str:
+    return f"{table}.{column}: explicit DropColumn required"
+
+
+def _contract_table(
+    table: TableState, operation: RequireNotNull | DropColumn, backend: Backend
+) -> TableState:
+    column = next(
+        (item for item in table.columns if item.name == operation.column_name), None
+    )
+    if column is None:
+        msg = f"unknown managed column {table.name}.{operation.column_name}"
+        raise PackageError(msg)
+    prefix = f"CREATE TABLE {table.quoted_name} (" + ", ".join(
+        item.definition for item in table.columns
+    )
+    if not table.sql.startswith(prefix):
+        msg = "recorded table and column definitions disagree"
+        raise PackageError(msg)
+    tail = table.sql[len(prefix) :]
+    if isinstance(operation, DropColumn):
+        dependencies = (
+            tail,
+            *table.indexes,
+            *(item.definition for item in table.columns if item != column),
+        )
+        if references(
+            column.definition,
+            {"primary", "unique", "references"},
+            mysql=backend == "mariadb",
+        ) or any(
+            references(sql, {column.name}, mysql=backend == "mariadb")
+            for sql in dependencies
+        ):
+            msg = f"{table.name}.{column.name}: remove dependent constraints/indexes explicitly"
+            raise PackageError(msg)
+        columns = tuple(item for item in table.columns if item != column)
+    else:
+        if not column.nullable:
+            msg = f"{table.name}.{column.name} is already required"
+            raise PackageError(msg)
+        required = column.model_copy(
+            update={
+                "nullable": False,
+                "definition": required_definition(
+                    column.definition, mysql=backend == "mariadb"
+                ),
+                "query_type": " | ".join(
+                    part for part in column.query_type.split(" | ") if part != "None"
+                )
+                if column.query_type
+                else None,
+            }
+        )
+        columns = tuple(required if item == column else item for item in table.columns)
+    if not columns:
+        msg = "cannot remove every column from a table"
+        raise PackageError(msg)
+    sql = (
+        f"CREATE TABLE {table.quoted_name} ("
+        + ", ".join(item.definition for item in columns)
+        + tail
+    )
+    return table.model_copy(update={"columns": columns, "sql": sql})
 
 
 def _query_type(model: type[Table[Any]], name: str) -> str | None:
@@ -314,6 +457,10 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
             tables[operation.table_name] = _add_column(
                 tables[operation.table_name], operation.column
             )
+        elif isinstance(operation, RequireNotNull | DropColumn):
+            tables[operation.table_name] = _contract_table(
+                tables[operation.table_name], operation, draft.target.backend
+            )
         elif isinstance(operation, Checkpoint) and operation.name == point:
             if table not in tables:
                 msg = f"table {table!r} is not present at checkpoint {point!r}"
@@ -335,6 +482,10 @@ def contract_digest(draft: Draft, *, point: str) -> str:
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
                 tables[operation.table_name], operation.column
+            )
+        elif isinstance(operation, RequireNotNull | DropColumn):
+            tables[operation.table_name] = _contract_table(
+                tables[operation.table_name], operation, draft.target.backend
             )
         elif isinstance(operation, Checkpoint) and operation.name == point:
             return _state_digest(draft.target.backend, tables)
@@ -442,16 +593,98 @@ def _validate_data_change(
         raise PackageError(msg)
 
 
+class _Emission:
+    def __init__(self, backend: Backend) -> None:
+        self.backend = backend
+        self.statements: list[str | None] = []
+        self.bindings: list[tuple[Parameter, ...]] = []
+        self.transactional: list[bool] = []
+        self.contractions: list[Contraction | None] = []
+        self.pending: Contraction | None = None
+
+    def emit(
+        self,
+        sql: str,
+        params: tuple[Parameter, ...] = (),
+        *,
+        transactional: bool = False,
+    ) -> None:
+        self.flush()
+        self.statements.append(sql)
+        self.bindings.append(params)
+        self.transactional.append(transactional)
+        self.contractions.append(None)
+
+    def contract(
+        self,
+        before: TableState,
+        after: TableState,
+        operation: RequireNotNull | DropColumn,
+    ) -> None:
+        if self.pending is not None and self.pending.before.name != before.name:
+            self.flush()
+        pending = self.pending or Contraction(before=before, after=after)
+        self.pending = pending.model_copy(
+            update={
+                "after": after,
+                "required": (*pending.required, operation.column_name)
+                if isinstance(operation, RequireNotNull)
+                else pending.required,
+                "dropped": (*pending.dropped, operation.column_name)
+                if isinstance(operation, DropColumn)
+                else pending.dropped,
+            }
+        )
+
+    def flush(self) -> None:
+        pending = self.pending
+        if pending is None:
+            return
+        clauses = [
+            "MODIFY COLUMN "
+            + next(c.definition for c in pending.after.columns if c.name == name)
+            for name in pending.required
+        ]
+        clauses.extend(
+            "DROP COLUMN `" + name.replace("`", "``") + "`" for name in pending.dropped
+        )
+        self.statements.append(
+            None
+            if self.backend == "sqlite"
+            else f"ALTER TABLE {pending.before.quoted_name} " + ", ".join(clauses)
+        )
+        self.bindings.append(())
+        self.transactional.append(False)
+        self.contractions.append(pending)
+        self.pending = None
+
+
+def _emit_creation(
+    table: TableState, tables: dict[str, TableState], emission: _Emission
+) -> None:
+    if table.name in tables:
+        msg = f"table {table.name!r} already exists in managed state"
+        raise PackageError(msg)
+    tables[table.name] = table
+    for sql in (table.sql, *table.indexes):
+        emission.emit(sql)
+
+
 def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
     """Validate the route and freeze SQL; never import current application models."""
     _validate_draft(draft)
     tables = {table.name: table for table in draft.before.tables}
-    statements: list[str] = []
-    bindings: list[tuple[Parameter, ...]] = []
-    transactional: list[bool] = []
+    emission = _Emission(draft.target.backend)
     checkpoints: dict[str, str] = {}
     for operation in draft.operations:
+        if isinstance(operation, RequireNotNull | DropColumn):
+            before = tables[operation.table_name]
+            after = _contract_table(before, operation, draft.target.backend)
+            tables[operation.table_name] = after
+            emission.contract(before, after, operation)
+            continue
         if isinstance(operation, Checkpoint):
+            emission.flush()
             if not operation.name or operation.name in checkpoints:
                 msg = "checkpoint names must be nonempty and unique"
                 raise PackageError(msg)
@@ -459,9 +692,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
             continue
         if isinstance(operation, DataChange):
             _validate_data_change(operation, draft, checkpoints, tables)
-            statements.append(operation.sql)
-            bindings.append(operation.params)
-            transactional.append(True)
+            emission.emit(operation.sql, operation.params, transactional=True)
             continue
         if isinstance(operation, AddColumn):
             if operation.table_name not in tables:
@@ -469,35 +700,33 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
                 raise PackageError(msg)
             current = tables[operation.table_name]
             tables[operation.table_name] = _add_column(current, operation.column)
-            statements.append(
+            emission.emit(
                 f"ALTER TABLE {current.quoted_name} ADD COLUMN {operation.column.definition}"
             )
-            bindings.append(())
-            transactional.append(False)
             continue
         table = operation.table
-        if table.name in tables:
-            msg = f"table {table.name!r} already managed"
-            raise PackageError(msg)
-        tables[table.name] = table
-        statements.extend((table.sql, *table.indexes))
-        bindings.extend(() for _ in (table.sql, *table.indexes))
-        transactional.extend(False for _ in (table.sql, *table.indexes))
+        _emit_creation(table, tables, emission)
     if tables != {table.name: table for table in draft.target.tables}:
         msg = "operation endpoint does not match the recorded target state"
         raise PackageError(msg)
+    emission.flush()
     payload = {
-        "version": 1,
+        "version": 2,
         "draft": draft.model_dump(mode="json"),
-        "statements": statements,
-        "bindings": bindings,
-        "transactional": transactional,
+        "statements": emission.statements,
+        "bindings": emission.bindings,
+        "transactional": emission.transactional,
+        "contractions": [
+            item.model_dump(mode="json") if item else None
+            for item in emission.contractions
+        ],
     }
     return Package(
         draft=draft,
-        statements=tuple(statements),
-        bindings=tuple(bindings),
-        transactional=tuple(transactional),
+        statements=tuple(emission.statements),
+        bindings=tuple(emission.bindings),
+        transactional=tuple(emission.transactional),
+        contractions=tuple(emission.contractions),
         digest=_digest(payload),
     )
 
@@ -508,13 +737,17 @@ __all__ = [
     "AddColumn",
     "Checkpoint",
     "ColumnState",
+    "Contraction",
     "CreateTable",
     "DataChange",
     "Draft",
+    "DropColumn",
     "Package",
     "PackageError",
     "Prepared",
     "Progress",
+    "Recovery",
+    "RequireNotNull",
     "State",
     "TableState",
     "Target",

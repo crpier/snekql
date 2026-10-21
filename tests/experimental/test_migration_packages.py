@@ -551,7 +551,9 @@ def authoring_appends_typed_steps_without_pydantic_update_dictionaries() -> None
 
 
 @test(mark="medium")
-async def admin_role_expand_backfill_works_and_unsupported_contraction_stops() -> None:
+async def admin_role_expand_backfill_does_not_implicitly_authorize_contraction() -> (
+    None
+):
     """Exercise old/new fields together without pretending DROP/NOT NULL is implemented."""
 
     class Before[S = sqlite.Pending](sqlite.Model[S]):

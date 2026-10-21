@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import ClassVar
 
-from pymysql.err import OperationalError
+from pymysql.err import IntegrityError, OperationalError
 from snektest import assert_eq, assert_raises, fixture, load_fixture, test
 
 from snekql import mariadb
@@ -153,15 +153,20 @@ async def uncertain_progress_survives_native_server_kill_and_restart() -> None:
     )
     with TemporaryDirectory() as directory:
         data = Path(directory) / "data"
-        async with temporary_mariadb_server(data_directory=data) as server:
+        socket = Path(directory) / "server.sock"
+        async with temporary_mariadb_server(
+            data_directory=data, socket_path=socket
+        ) as server:
             async with migrations.connect(server.config()) as target:
                 plan = await target.prepare(package, schema_writers_excluded=True)
-                with assert_raises(OperationalError):
+                with assert_raises(OperationalError) as original:
                     await target.apply(plan)
             pid = int(await asyncio.to_thread(server.pid_path.read_text))
             os.kill(pid, signal.SIGKILL)
         async with (
-            temporary_mariadb_server(data_directory=data) as restarted,
+            temporary_mariadb_server(
+                data_directory=data, socket_path=socket
+            ) as restarted,
             migrations.connect(restarted.config()) as target,
         ):
             progress = await target.status()
@@ -169,6 +174,14 @@ async def uncertain_progress_survives_native_server_kill_and_restart() -> None:
             assert_eq(progress[0].acknowledged_steps, 1)
             with assert_raises(migrations.PackageError):
                 await target.prepare(package, schema_writers_excluded=True)
+            assessment = await target.inspect_recovery(
+                plan, schema_writers_excluded=True
+            )
+            assert_eq(assessment.disposition, "retry_remaining")
+            with assert_raises(OperationalError) as retried:
+                await target.resume(assessment, schema_writers_excluded=True)
+            assert_eq(retried.exception.args[0], original.exception.args[0])
+            assert_eq((await target.status())[0].acknowledged_steps, 1)
 
 
 @test(mark="slow")
@@ -235,3 +248,153 @@ async def mariadb_typed_backfill_uses_frozen_bindings() -> None:
     ):
         rows = await tx.fetch_all(mariadb.raw("SELECT note FROM entry"))
     assert_eq(rows, [{"note": "reviewed"}])
+
+
+class RequiredEntry[S = mariadb.Pending](mariadb.Model[S]):
+    """Final native contraction after the nullable-note backfill."""
+
+    __tablename__ = "entry"
+    __row_type__: ClassVar[mariadb.ReadType[RequiredEntry[mariadb.Row]]]
+    id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+    note: mariadb.Col[str] = mariadb.Text()
+
+
+@test(mark="slow")
+async def contraction_rejects_nulls_before_starting_and_preserves_native_data() -> None:
+    """Data preconditions fail without falsely recording ambiguous DDL progress."""
+    server = await load_fixture(provide_package_server())
+    first = migrations.compile(
+        migrations.generate("001", [EntryWithNote], backend="mariadb")
+    )
+    draft = migrations.generate(
+        "002", [RequiredEntry], backend="mariadb", previous=first
+    )
+    second = migrations.compile(
+        draft.resolve(migrations.DropColumn(table_name="entry", column_name="title"))
+    )
+    async with migrations.connect(server.config()) as target:
+        await target.apply(await target.prepare(first, schema_writers_excluded=True))
+        await server.run_sql("INSERT INTO entry VALUES(1,'old',NULL)")
+        plan = await target.prepare(second, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError):
+            await target.apply(plan)
+        assert_eq([p.revision for p in await target.status()], ["001"])
+        await server.run_sql("UPDATE entry SET note='kept'")
+        assert_eq(await target.apply(plan), "applied")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        rows = await tx.fetch_all(mariadb.raw("SELECT * FROM entry"))
+    assert_eq(rows, [{"id": 1, "note": "kept"}])
+    invalid = await server.run_sql(
+        "INSERT INTO entry(id,note) VALUES(2,NULL)", check=False
+    )
+    assert_eq(invalid.returncode, 1)
+
+
+class Counter[S = mariadb.Pending](mariadb.Model[S]):
+    """A non-idempotent transformation followed by an independently failing update."""
+
+    __row_type__: ClassVar[mariadb.ReadType[Counter[mariadb.Row]]]
+    id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+    count: mariadb.Col[int] = mariadb.Integer()
+
+
+@test(mark="slow")
+async def recovery_resumes_rolled_back_data_without_replaying_acknowledged_work() -> (
+    None
+):
+    """A failed transactional update may be retried, but the prior increment may not."""
+
+    server = await load_fixture(provide_package_server())
+    first = migrations.compile(migrations.generate("001", [Counter], backend="mariadb"))
+    draft = migrations.generate(
+        "002", [Counter], backend="mariadb", previous=first
+    ).then(migrations.Checkpoint(name="work"))
+    contract = migrations.contract_digest(draft, point="work")
+    second = migrations.compile(
+        draft.then(
+            migrations.DataChange.from_query(
+                mariadb.update(Counter)
+                .set(Counter.count.to_expr(Counter.count.add(1)))
+                .all(),
+                checkpoint="work",
+                contract_digest=contract,
+            ),
+            migrations.DataChange.from_query(
+                mariadb.update(Counter).set(Counter.id.to(42)).all(),
+                checkpoint="work",
+                contract_digest=contract,
+            ),
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        await target.apply(await target.prepare(first, schema_writers_excluded=True))
+        await server.run_sql("INSERT INTO counter VALUES(1,0),(2,0)")
+        plan = await target.prepare(second, schema_writers_excluded=True)
+        with assert_raises(IntegrityError):
+            await target.apply(plan)
+        assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(assessment.disposition, "retry_remaining")
+        assert_eq(assessment.acknowledged_steps, 1)
+        await server.run_sql(
+            "CREATE TRIGGER side_effect BEFORE UPDATE ON counter FOR EACH ROW SET @touched=1"
+        )
+        assert_eq(
+            (
+                await target.inspect_recovery(plan, schema_writers_excluded=True)
+            ).disposition,
+            "ambiguous",
+        )
+        with assert_raises(migrations.PackageError):
+            await target.resume(assessment, schema_writers_excluded=True)
+        await server.run_sql("DROP TRIGGER side_effect")
+        await server.run_sql("DELETE FROM counter WHERE id=2")
+        assert_eq(
+            await target.resume(assessment, schema_writers_excluded=True), "applied"
+        )
+        assert_eq(await target.apply(plan), "already_applied")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        rows = await tx.fetch_all(mariadb.raw("SELECT * FROM counter"))
+    assert_eq(rows, [{"id": 42, "count": 1}])
+
+
+@test(mark="slow")
+async def committed_contraction_without_acknowledgement_stays_ambiguous() -> None:
+    """A schema endpoint is not permission to invent a missing execution receipt."""
+    server = await load_fixture(provide_package_server())
+    first = migrations.compile(
+        migrations.generate("001", [EntryWithNote], backend="mariadb")
+    )
+    second = migrations.compile(
+        migrations.generate(
+            "002", [RequiredEntry], backend="mariadb", previous=first
+        ).resolve(migrations.DropColumn(table_name="entry", column_name="title"))
+    )
+    async with migrations.connect(server.config()) as target:
+        await target.apply(await target.prepare(first, schema_writers_excluded=True))
+        await server.run_sql("INSERT INTO entry VALUES(1,'old','kept')")
+        await server.run_sql(
+            "CREATE TRIGGER fail_receipt BEFORE UPDATE ON snekql_experimental_migrations FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='receipt unavailable'"
+        )
+        plan = await target.prepare(second, schema_writers_excluded=True)
+        with assert_raises(OperationalError):
+            await target.apply(plan)
+        await server.run_sql("DROP TRIGGER fail_receipt")
+        assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(assessment.disposition, "ambiguous")
+        assert_eq(assessment.acknowledged_steps, 0)
+        with assert_raises(migrations.PackageError):
+            await target.resume(assessment, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(mariadb.raw("SELECT * FROM entry")),
+            [{"id": 1, "note": "kept"}],
+        )

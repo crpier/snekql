@@ -11,6 +11,12 @@ import anyio
 lazy import aiomysql
 lazy import aiosqlite
 
+from snekql.experimental._migration_prepare import (
+    ExecutionStep,
+    prepare_steps,
+    validate_preserved,
+)
+from snekql.experimental._migration_sql import tokens
 from snekql.experimental.migrations import (
     CreateTable,
     Package,
@@ -41,11 +47,23 @@ class Prepared(_Value):
     package: Package
     target_id: str
     catalog_digest: str
+    steps: tuple[ExecutionStep, ...]
+    preserve_unmanaged: bool = False
 
     @property
     def statements(self) -> tuple[str, ...]:
         """Return frozen SQL in execution order."""
-        return self.package.statements
+        return tuple(sql for step in self.steps for sql in step.statements)
+
+
+class Recovery(_Value):
+    """Inspectable evidence, not permission to guess whether uncertain work ran."""
+
+    prepared: Prepared
+    acknowledged_steps: int
+    catalog_digest: str
+    disposition: Literal["retry_remaining", "finish", "ambiguous"]
+    explanation: str
 
 
 class Target:
@@ -139,7 +157,7 @@ class Target:
         if not exists:
             return []
         return await self._query(
-            "SELECT digest,revision,predecessor,phase,catalog,acknowledged,total,state FROM `snekql_experimental_migrations`"
+            "SELECT digest,revision,predecessor,phase,catalog,acknowledged,total,state,plan FROM `snekql_experimental_migrations`"
         )
 
     async def status(self) -> tuple[Progress, ...]:
@@ -158,7 +176,11 @@ class Target:
             )
 
     async def prepare(
-        self, package: Package, *, schema_writers_excluded: bool = False
+        self,
+        package: Package,
+        *,
+        schema_writers_excluded: bool = False,
+        preserve_unmanaged: bool = False,
     ) -> Prepared:
         """Observe without creating history or modifying the target schema."""
         async with self._guard:
@@ -174,7 +196,13 @@ class Target:
             catalog = _digest(objects)
             rows = await self._history()
             already_applied = self._check_history(package, rows)
-            self._check_catalog_history(rows, catalog)
+            if preserve_unmanaged and not already_applied:
+                if not self._sqlite:
+                    msg_0 = "preservation review currently supports SQLite only"
+                    raise PackageError(msg_0)
+                validate_preserved(package, objects)
+            else:
+                self._check_catalog_history(rows, catalog)
             if not already_applied:
                 names = {row[1] for row in objects}
                 conflicts = [
@@ -190,6 +218,8 @@ class Target:
                 package=package,
                 target_id=self._target_id,
                 catalog_digest=catalog,
+                steps=() if already_applied else prepare_steps(package, objects),
+                preserve_unmanaged=preserve_unmanaged,
             )
 
     @staticmethod
@@ -242,19 +272,64 @@ class Target:
                 msg = "could not acquire migration advisory lock"
                 raise PackageError(msg)
 
-    async def _execute_package(self, package: Package) -> None:
+    async def _execute_package(
+        self, prepared: Prepared, *, start: int | None = None
+    ) -> None:
+        package = prepared.package
+        first = start or 0
+        if first < len(prepared.steps):
+            await self._check_required(prepared.steps[first])
+        if start is None:
+            await self._start_package(prepared)
+        marker = "?" if self._sqlite else "%s"
+        for index, step in enumerate(prepared.steps[first:], start=first + 1):
+            if step.transactional and not self._sqlite:
+                if await self._transactional_obstacles():
+                    msg = "transactional data changes require InnoDB tables without triggers or stored routines"
+                    raise PackageError(msg)
+                await self._connection.begin()
+            await self._execute_step(step)
+            await self._query(
+                "UPDATE `snekql_experimental_migrations` SET acknowledged="  # noqa: S608 - fixed placeholders or quoted identifiers
+                + marker
+                + ", catalog="
+                + marker
+                + " WHERE digest="
+                + marker,
+                (index, _digest(await self._catalog()), package.digest),
+            )
+            if step.transactional and not self._sqlite:
+                await self._connection.commit()
+        if (
+            self._sqlite
+            and any(step.rebuild for step in prepared.steps)
+            and await self._query("PRAGMA foreign_key_check")
+        ):
+            msg_0 = "rebuild failed foreign-key validation; transaction rolled back"
+            raise PackageError(msg_0)
+        await self._query(
+            "UPDATE `snekql_experimental_migrations` SET phase='complete', catalog="  # noqa: S608 - fixed placeholders or quoted identifiers
+            + marker
+            + " WHERE digest="
+            + marker,
+            (_digest(await self._catalog()), package.digest),
+        )
+        await self._connection.commit()
+
+    async def _start_package(self, prepared: Prepared) -> None:
+        package = prepared.package
         suffix = "STRICT" if self._sqlite else "ENGINE=InnoDB"
         await self._query(
             "CREATE TABLE IF NOT EXISTS `snekql_experimental_migrations` ("
             "digest VARCHAR(64) PRIMARY KEY, revision TEXT NOT NULL, predecessor VARCHAR(64), "
-            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL) "
+            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL) "
             + suffix
             if not self._sqlite
             else "CREATE TABLE IF NOT EXISTS `snekql_experimental_migrations` ("
             "digest TEXT PRIMARY KEY, revision TEXT NOT NULL, predecessor TEXT, "
-            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL) STRICT"
+            "phase TEXT NOT NULL, catalog TEXT NOT NULL, acknowledged INTEGER NOT NULL, total INTEGER NOT NULL, state TEXT NOT NULL, plan TEXT NOT NULL) STRICT"
         )
-        markers = "?,?,?,?,?,?,?,?" if self._sqlite else "%s,%s,%s,%s,%s,%s,%s,%s"
+        markers = "?,?,?,?,?,?,?,?,?" if self._sqlite else "%s,%s,%s,%s,%s,%s,%s,%s,%s"
         await self._query(
             "INSERT INTO `snekql_experimental_migrations` VALUES(" + markers + ")",
             (
@@ -262,41 +337,216 @@ class Target:
                 package.draft.revision,
                 package.draft.predecessor,
                 "started",
-                "",
+                _digest(await self._catalog()),
                 0,
                 len(package.statements),
                 _digest(package.target.model_dump(mode="json")),
+                _digest(prepared.model_dump(mode="json")),
             ),
         )
-        # MariaDB autocommit makes the started marker durable before any DDL.
-        # Any failure thereafter is deliberately uncertain, never blindly replayed.
-        marker = "?" if self._sqlite else "%s"
-        for index, (statement, params, transactional) in enumerate(
-            zip(
-                package.statements, package.bindings, package.transactional, strict=True
-            ),
-            start=1,
-        ):
-            if transactional and not self._sqlite:
-                await self._connection.begin()
-            await self._query(statement, params)
-            await self._query(
-                "UPDATE `snekql_experimental_migrations` SET acknowledged="  # noqa: S608 - only fixed placeholders are interpolated
-                + marker
-                + " WHERE digest="
-                + marker,
-                (index, package.digest),
+
+    async def _check_required(self, step: ExecutionStep) -> None:
+        quote = quote_identifier
+        for table, column in step.required:
+            if await self._query(
+                f"SELECT 1 FROM {quote(table)} WHERE {quote(column)} IS NULL LIMIT 1"  # noqa: S608 - fixed placeholders or quoted identifiers
+            ):
+                msg = f"{table}.{column}: NULL rows remain; backfill before requiring the column"
+                raise PackageError(msg)
+        if step.required and not self._sqlite:
+            mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
+            if not {"STRICT_ALL_TABLES", "STRICT_TRANS_TABLES"}.intersection(
+                mode.split(",")
+            ):
+                msg = "required-column alteration needs strict MariaDB SQL mode"
+                raise PackageError(msg)
+
+    async def _execute_step(self, step: ExecutionStep) -> None:
+        await self._check_required(step)
+        quote = quote_identifier
+        sequence = []
+        if step.sequence_table:
+            sequence = await self._query(
+                "SELECT seq FROM sqlite_sequence WHERE name=?", (step.sequence_table,)
             )
-            if transactional and not self._sqlite:
-                await self._connection.commit()
-        await self._query(
-            "UPDATE `snekql_experimental_migrations` SET phase='complete', catalog="  # noqa: S608 - only fixed placeholders are interpolated
-            + marker
-            + " WHERE digest="
-            + marker,
-            (_digest(await self._catalog()), package.digest),
+            if len(sequence) > 1:
+                msg = "ambiguous SQLite sequence metadata"
+                raise PackageError(msg)
+        count = None
+        if step.copy_tables:
+            count = (
+                await self._query(f"SELECT COUNT(*) FROM {quote(step.copy_tables[0])}")  # noqa: S608 - fixed placeholders or quoted identifiers
+            )[0][0]
+        for index, (sql, params) in enumerate(
+            zip(step.statements, step.bindings, strict=True)
+        ):
+            await self._query(sql, params)
+            if index == step.copy_at and step.copy_tables:
+                copied = (
+                    await self._query(
+                        f"SELECT COUNT(*) FROM {quote(step.copy_tables[1])}"  # noqa: S608 - fixed placeholders or quoted identifiers
+                    )
+                )[0][0]
+                if copied != count:
+                    msg = "rebuild did not preserve row count"
+                    raise PackageError(msg)
+        if step.validate_triggers:
+            await self._validate_triggers()
+        if sequence:
+            current = await self._query(
+                "SELECT seq FROM sqlite_sequence WHERE name=?", (step.sequence_table,)
+            )
+            highwater = max(sequence[0][0], current[0][0] if current else 0)
+            await self._query(
+                "DELETE FROM sqlite_sequence WHERE name=?", (step.sequence_table,)
+            )
+            await self._query(
+                "INSERT INTO sqlite_sequence(name,seq) VALUES(?,?)",
+                (step.sequence_table, highwater),
+            )
+
+    async def _validate_triggers(self) -> None:
+        """Ask SQLite to compile trigger programs without executing their effects."""
+        for owner, sql in await self._query(
+            "SELECT tbl_name,sql FROM sqlite_schema WHERE type='trigger'"
+        ):
+            stream = tokens(sql)
+            event = next(
+                (
+                    token.value.casefold()
+                    for token in stream[3:]
+                    if token.kind == "word"
+                    and token.value.casefold() in {"insert", "update", "delete"}
+                ),
+                None,
+            )
+            table = quote_identifier(owner)
+            if event == "insert":
+                statement = f"EXPLAIN INSERT INTO {table} DEFAULT VALUES"
+            elif event == "delete":
+                statement = f"EXPLAIN DELETE FROM {table} WHERE 0"  # noqa: S608 - fixed placeholders or quoted identifiers
+            elif event == "update":
+                columns = await self._query(f"PRAGMA table_xinfo({table})")
+                assignments = ", ".join(
+                    f"{quote_identifier(row[1])}={quote_identifier(row[1])}"
+                    for row in columns
+                    if row[6] == 0
+                )
+                statement = f"EXPLAIN UPDATE {table} SET {assignments} WHERE 0"  # noqa: S608 - fixed placeholders or quoted identifiers
+            else:
+                msg = "unsupported trigger declaration during rebuild validation"
+                raise PackageError(msg)
+            await self._query(statement)
+
+    async def inspect_recovery(
+        self, prepared: Prepared, *, schema_writers_excluded: bool = False
+    ) -> Recovery:
+        """Classify progress using durable acknowledgement and current catalog evidence."""
+        async with self._guard:
+            self._require_open()
+            self._require_recovery_access(prepared, excluded=schema_writers_excluded)
+            async with self._coordinated():
+                return await self._assess_recovery(prepared)
+
+    def _require_recovery_access(self, prepared: Prepared, *, excluded: bool) -> None:
+        if self._sqlite or not excluded:
+            msg = "recovery requires MariaDB with external schema writers excluded"
+            raise PackageError(msg)
+        if (
+            prepared.target_id != self._target_id
+            or prepared.package.target.backend != "mariadb"
+        ):
+            msg = "recovery plan belongs to another target"
+            raise PackageError(msg)
+        Package.load(prepared.package.dump())
+
+    async def _transactional_obstacles(self) -> bool:
+        unsafe = await self._query(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE' AND ENGINE <> 'InnoDB'"
         )
-        await self._connection.commit()
+        triggers = await self._query("SHOW TRIGGERS")
+        routines = await self._query(
+            "SELECT ROUTINE_NAME FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE()"
+        )
+        return bool(unsafe or triggers or routines)
+
+    async def _assess_recovery(self, prepared: Prepared) -> Recovery:
+        rows = await self._history()
+        pending = [row for row in rows if row[3] != "complete"]
+        if len(pending) != 1 or pending[0][0] != prepared.package.digest:
+            msg = "no unique incomplete execution matches this package"
+            raise PackageError(msg)
+        row = pending[0]
+        if row[8] != _digest(prepared.model_dump(mode="json")):
+            msg = "recovery requires the original reviewed prepared plan"
+            raise PackageError(msg)
+        self._check_history(
+            prepared.package, [item for item in rows if item[3] == "complete"]
+        )
+        catalog = _digest(await self._catalog())
+        acknowledged = int(row[5])
+        if int(row[6]) != len(prepared.steps) or not 0 <= acknowledged <= len(
+            prepared.steps
+        ):
+            msg = "invalid recorded progress"
+            raise PackageError(msg)
+        disposition: Literal["retry_remaining", "finish", "ambiguous"] = "ambiguous"
+        explanation = "catalog differs from the last acknowledgement; structural completion needs reconciliation"
+        if catalog == row[4]:
+            if await self._transactional_obstacles():
+                explanation = "transactional recovery is not proven with non-InnoDB tables, triggers or stored routines"
+            else:
+                disposition = (
+                    "finish"
+                    if acknowledged == len(prepared.steps)
+                    else "retry_remaining"
+                )
+                explanation = "catalog matches the last durable acknowledgement; transactional updates and their markers commit together"
+        return Recovery(
+            prepared=prepared,
+            acknowledged_steps=acknowledged,
+            catalog_digest=catalog,
+            disposition=disposition,
+            explanation=explanation,
+        )
+
+    async def resume(
+        self, recovery: Recovery, *, schema_writers_excluded: bool = False
+    ) -> Literal["applied"]:
+        """Recheck reviewed evidence under coordination and continue only proven work."""
+        async with self._guard:
+            self._require_open()
+            self._require_recovery_access(
+                recovery.prepared, excluded=schema_writers_excluded
+            )
+            async with self._coordinated():
+                current = await self._assess_recovery(recovery.prepared)
+                if current != recovery or current.disposition == "ambiguous":
+                    msg = "recovery evidence is stale or ambiguous; inspect before continuing"
+                    raise PackageError(msg)
+                await self._execute_package(
+                    recovery.prepared, start=current.acknowledged_steps
+                )
+            return "applied"
+
+    @asynccontextmanager
+    async def _coordinated(self, *, rebuild: bool = False) -> AsyncIterator[None]:
+        """Restore connection policy even if acquisition or execution is cancelled."""
+        try:
+            if rebuild:
+                await self._query("PRAGMA foreign_keys=OFF")
+            await self._begin()
+            yield
+        except BaseException:
+            with anyio.CancelScope(shield=True):
+                await self._connection.rollback()
+            raise
+        finally:
+            with anyio.CancelScope(shield=True):
+                if rebuild:
+                    await self._query("PRAGMA foreign_keys=ON")
+                if not self._sqlite:
+                    await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
 
     async def apply(self, prepared: Prepared) -> Literal["applied", "already_applied"]:
         """Recheck observations under coordination; never replay uncertain progress."""
@@ -306,27 +556,26 @@ class Target:
             if prepared.target_id != self._target_id:
                 msg = "prepared plan belongs to another target"
                 raise PackageError(msg)
-            await self._begin()
-            try:
+            rebuild = self._sqlite and any(step.rebuild for step in prepared.steps)
+            async with self._coordinated(rebuild=rebuild):
                 rows = await self._history()
                 already_applied = self._check_history(package, rows)
-                catalog = _digest(await self._catalog())
-                self._check_catalog_history(rows, catalog)
+                objects = await self._catalog()
+                catalog = _digest(objects)
+                if prepared.preserve_unmanaged and not already_applied:
+                    validate_preserved(package, objects)
+                else:
+                    self._check_catalog_history(rows, catalog)
                 if already_applied:
                     await self._connection.rollback()
                     return "already_applied"
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"
-                    raise PackageError(msg)  # noqa: TRY301 - rollback covers validation
-                await self._execute_package(package)
-            except BaseException:
-                with anyio.CancelScope(shield=True):
-                    await self._connection.rollback()
-                raise
-            finally:
-                if not self._sqlite:
-                    with anyio.CancelScope(shield=True):
-                        await self._query("SELECT RELEASE_LOCK(%s)", (self._lock_name,))
+                    raise PackageError(msg)
+                if prepared.steps != prepare_steps(package, objects):
+                    msg_0 = "prepared execution steps have changed"
+                    raise PackageError(msg_0)
+                await self._execute_package(prepared)
             return "applied"
 
 

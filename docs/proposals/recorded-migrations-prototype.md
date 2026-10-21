@@ -5,7 +5,9 @@ Status: **experimental, incomplete, not ready for production or merge**.
 This implements the first vertical slices of the design discussed in #475,
 replacing the function-only direction in draft #476. The prototype lives in
 `snekql.experimental.migrations`; existing migration interfaces are unchanged.
-Artifact format 1 is provisional. No compatibility or adoption path from another
+Artifact format 2 is provisional. It replaces the unpublished format-1 prototype;
+old packages must be regenerated, and old experimental ledgers have no automatic
+upgrade path. Do not delete a real database or its history to work around this. No compatibility or adoption path from another
 migration history format is promised.
 
 ## The four interfaces
@@ -14,14 +16,14 @@ migration history format is promised.
    editable `Draft` against the previous package's recorded managed state.
 2. `compile(draft)` checks the route and produces a `Package`. `dump()` and
    `Package.load()` round-trip state, structured changes, frozen SQL, encoded
-   scalar bindings, transaction flags and a content digest. `package.check(draft)`
+   scalar bindings, transaction flags, deferred table contractions and a content digest. `package.check(draft)`
    verifies that a supplied current draft still matches its committed artifact.
 3. `target.prepare(package)` observes the target without creating history and
    returns an inspectable `Prepared` plan. MariaDB requires the caller to assert
    `schema_writers_excluded=True`; advisory locking cannot enforce that promise.
 4. `target.apply(prepared)` checks history and observations under coordination.
    `target.status()` exposes completion or uncertain progress and the number of
-   acknowledged statements. It is not application readiness verification.
+   acknowledged execution steps (a SQLite rebuild contains several statements). It is not application readiness verification.
 
 These are library calls, not a new CLI, directory-discovery convention or
 application initialization mechanism. Query-only models never acquire migration
@@ -118,19 +120,113 @@ A deployed package alone cannot detect edits to a separate authoring file it has
 not been given. CI can explicitly supply the current draft to `package.check(draft)`;
 file discovery and general authoring-file freshness checks remain unimplemented.
 
+## Explicit contraction and preservation
+
+After backfilling `role`, generate a final model without `is_admin` and with
+non-nullable `role`. Missing columns do **not** authorize deletion:
+
+```python
+draft = migrations.generate(
+    "003_role_required",
+    [AccountWithRequiredRole],
+    backend="sqlite",
+    previous=expanded_and_backfilled,
+)
+contracted = migrations.compile(
+    draft.resolve(
+        migrations.DropColumn(table_name="account", column_name="is_admin"),
+    )
+)
+```
+
+Generation proposes `RequireNotNull`; `resolve` authorizes only the named removal.
+Other unresolved decisions remain unresolved. Compilation checks the exact final
+state, and named query contracts interpret both operations. Adjacent contractions
+of one table are grouped. MariaDB emits one ALTER; SQLite records a deferred
+contraction (`None` in `package.statements`, with details in `package.contractions`).
+The executable SQL is available in `prepared.statements` after target observation.
+`prepared.steps` also exposes required-column checks, row-count checks, sequence
+preservation, and trigger validation. Re-preparing a completed package returns no
+execution steps.
+
+SQLite preparation retains observed definitions rather than reconstructing the
+whole table from application models. By default, unexpected catalog changes still
+stop preparation. The explicit `preserve_unmanaged=True` option accepts additional
+unmanaged structure only after checking every recorded managed column, table
+constraint, storage suffix, and index. It does not authorize changes to managed
+definitions or adopt existing tables. Rebuilds preserve extra/generated columns,
+ordinary hidden row identity where accessible, indexes, triggers, dependent views,
+and AUTOINCREMENT high-water state. Checks and collations stay in their original
+column/table definitions. STRICT and recorded WITHOUT ROWID storage are retained;
+the latter is exercised using an explicitly authored physical snapshot, not a new
+model-generator option.
+
+Foreign-key enforcement is disabled **before** the writer transaction and restored
+on exit. This prevents DROP TABLE from cascading into referencing rows. Required
+values and copy row counts are checked, and foreign keys, views and trigger
+programs are validated before commit. Sequence values are read under the writer
+lock, not frozen at preparation time. Unknown or conflicting dependencies stop
+execution or roll it back. Dependency scanning is conservative, not a general SQL
+parser: references to removed columns and wildcard-dependent views/triggers need
+explicit resolution. Complex SQL, custom functions, virtual tables, and other
+schema features need further characterization before production use.
+
+An explicit route can also combine nullable addition, checkpoint, typed backfills,
+required enforcement and removal in one SQLite package. Preparation projects the
+earlier structured steps without executing them. Separate expand/backfill/contract
+revisions remain useful for application rollout compatibility; completing a
+migration does not establish application readiness.
+
+## Bounded MariaDB recovery
+
+Save the original prepared plan before application, for example with
+`plan.model_dump_json(indent=2)`; it contains sensitive values just like the package.
+The journal binds progress to that plan. After a failure:
+
+```python
+assessment = await target.inspect_recovery(plan, schema_writers_excluded=True)
+print(assessment.disposition, assessment.explanation)
+# Review the evidence and repair any application-data precondition if appropriate.
+if assessment.disposition in {"retry_remaining", "finish"}:
+    await target.resume(assessment, schema_writers_excluded=True)
+```
+
+The caller must actually exclude external schema writers during both assessment
+and continuation. Recovery rechecks the evidence under the advisory lock; stale
+assessments and edited/different prepared plans are rejected. A different connection
+address is a different target identity, even if it ultimately reaches the same data.
+
+Each acknowledgement now records the observed catalog. If the catalog still matches
+the last acknowledgement, acknowledged work is skipped and remaining work can be
+retried under the supported engine assumptions. A typed UPDATE and its receipt
+commit in the same InnoDB transaction. Execution and recovery refuse transactional
+data work with non-InnoDB base tables, triggers or stored routines in the database.
+Packages remain trusted inputs: this is a claim about supported transactional
+database effects, not arbitrary SQL, external functions or exactly-once external
+side effects.
+
+If DDL committed without its receipt, the changed catalog remains **ambiguous**,
+even when it resembles the desired endpoint. `resume` refuses it. Automatic
+structural reconciliation and operator-supplied acknowledgement are still absent;
+never delete history or replay the package to resolve this case. Native tests cover
+a failed non-idempotent data sequence, an externally injected receipt failure after
+committed contraction, stale recovery evidence, and resuming acknowledged partial
+DDL after an owned server's SIGKILL/restart. They do not prove arbitrary in-flight
+crash points or hardware power-loss durability.
+
 ## Current execution behavior
 
 - SQLite uses a writer transaction for the entire package, including progress
-  and completion. This prototype never rebuilds tables.
+  and completion, including prepared rebuilds.
 - MariaDB records `started` durably before operations. DDL can commit implicitly.
   Each typed UPDATE and its acknowledgement run in one transaction; this is not
   a single transaction spanning several UPDATEs or DDL.
-- An acknowledgement is persisted after each successful statement. DDL may have
+- An acknowledgement is persisted after each successful execution step. DDL may have
   committed before an acknowledgement was written. `acknowledged_steps` is a
   lower bound on recorded successful work, not proof later work had no effect.
 - Incomplete MariaDB progress blocks further application, including requests to
-  reapply an earlier completed revision. There is no automatic resume, repair or
-  operator acknowledgement interface yet. Do not delete the ledger to retry.
+  reapply an earlier completed revision. Only explicitly reviewed, proven recovery
+  can resume; ambiguous DDL still requires unimplemented reconciliation.
 - Competing runners reread history after obtaining SQLite writer coordination or
   MariaDB advisory coordination. The predecessor is an execution-package digest,
   so packages generated from divergent predecessors cannot silently form forks.
@@ -161,13 +257,13 @@ on MariaDB, including the period between preparation and application.
 | Historical application modules removed | JSON-only deployment works in a fresh process |
 | Package corruption / unknown version | Rejected; no format-upgrade implementation yet |
 | Competing runners | Native tests show one execution and one already-applied outcome |
-| Interrupted MariaDB DDL | Partial progress blocks replay; evidence survives native server kill/restart |
+| Interrupted MariaDB DDL | Explicit recovery can skip acknowledged work after restart; changed catalog without receipt remains ambiguous |
 | Brownfield ownership transfer | Unresolved/rejected, not implemented |
-| SQLite preservation-sensitive rebuild | Unimplemented; alterations beyond supported nullable additions stop |
-| Required-column enforcement, rename, DROP | Unimplemented; full is_admin-to-required-role contraction remains pending |
+| SQLite preservation-sensitive rebuild | Bounded observed-definition rebuild; referencing rows, extras, generated columns, index/trigger/view behavior, storage and sequence state tested |
+| Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |
 | General custom SQL / Python | Unimplemented; typed UPDATE output only |
-| Historical codec/compiler evolution | Scalar-only declarations; reader revalidates version-1 operations; no long-term compatibility promise |
+| Historical codec/compiler evolution | Scalar-only declarations; reader revalidates version-2 operations; no long-term compatibility promise |
 | Source freshness / collaboration tooling | No file-management or automatic semantic rebase interface |
 
 The dedicated connection currently uses path/credentials/TLS and SQLite busy

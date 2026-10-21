@@ -8,9 +8,11 @@
   `snekql.experimental.migrations`: structured drafts, named historical query
   contracts, frozen execution packages, explicit target preparation, and
   uncertain-progress reporting on MariaDB. Supports creation, unconstrained
-  nullable additions, and typed UPDATE backfills. Formats are provisional;
-  adoption, rebuilds, general recovery and production runtime integration remain
-  incomplete. Existing migration interfaces are unchanged. Tracks #477.
+  nullable additions, typed UPDATE backfills, and explicit required/drop-column
+  contraction. SQLite has bounded preservation-aware rebuilds; MariaDB can resume
+  proven remaining work without replaying acknowledged updates. Unacknowledged
+  changed DDL remains ambiguous. Format 2 is provisional; adoption, general
+  reconciliation and production runtime integration remain incomplete. Existing migration interfaces are unchanged. Tracks #477.
 
 ## 0.9.0 - 2026-10-11
 
