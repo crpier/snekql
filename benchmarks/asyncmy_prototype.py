@@ -11,6 +11,8 @@ from typing import Any
 from benchmarks._asyncmy_adapter import PrototypeConfig
 from benchmarks._asyncmy_commit import _CommitRelay
 from benchmarks._asyncmy_constraints import probe as constraint_probe
+from benchmarks._asyncmy_values import probe as value_probe
+from benchmarks._asyncmy_values import warning_probe
 from snekql import mariadb
 from snekql.errors import DatabaseRuntimeError
 from snekql.testing.mariadb import temporary_mariadb_server
@@ -130,6 +132,10 @@ async def main() -> None:
             "constraint-check",
             "constraint-foreign-insert",
             "constraint-foreign-delete",
+            "warnings-buffered",
+            "warnings-stream",
+            "values-buffered",
+            "values-stream",
             "stream",
             "extra-results",
             "commit-drop-ack",
@@ -148,7 +154,15 @@ async def main() -> None:
         for name, config in (("aiomysql", baseline), ("asyncmy", prototype)):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
-                if args.scenario.startswith("constraint-"):
+                if args.scenario.startswith("warnings-"):
+                    result = await warning_probe(
+                        config, stream=args.scenario == "warnings-stream"
+                    )
+                elif args.scenario.startswith("values-"):
+                    result = await value_probe(
+                        config, name, stream=args.scenario == "values-stream"
+                    )
+                elif args.scenario.startswith("constraint-"):
                     result = await constraint_probe(config, name, args.scenario)
                 elif args.scenario.startswith("commit-"):
                     result = await _commit(config, args.scenario, name)
