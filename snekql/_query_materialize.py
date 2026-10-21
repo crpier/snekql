@@ -5,7 +5,7 @@ query state plus a backend tag; like compilation, it depends only on the shared
 query state, never on the Query Builder classes.
 """
 
-lazy from collections.abc import Sequence
+lazy from collections.abc import Callable, Sequence
 lazy from dataclasses import dataclass
 
 lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
@@ -17,7 +17,7 @@ lazy from snekql._query_state import (
     SelectState,
     WriteState,
 )
-lazy from snekql._value_decode import _decode_projection_field, _decode_selectable
+lazy from snekql._value_decode import resolve_projection_decoder
 lazy from snekql.model import require_model_columns
 lazy from snekql.storage import StorageBackend
 
@@ -36,14 +36,19 @@ def _materialize_insert_returning_fields(
     row, several yield a tuple per row, both through the shared selectable decode.
     """
 
+    decoders = tuple(
+        resolve_projection_decoder(
+            field, nullable_models=frozenset(), backend=backend, validate=validate
+        )
+        for field in fields
+    )
     materialized: list[object] = []
     for row in rows:
         assert len(row) == len(fields), (  # noqa: S101
             "returning row shape did not match the projection"
         )
         decoded = tuple(
-            _decode_selectable(field, row[index], backend=backend, validate=validate)
-            for index, field in enumerate(fields)
+            decode(value) for decode, value in zip(decoders, row, strict=True)
         )
         materialized.append(
             projection.materialize(decoded)
@@ -59,8 +64,8 @@ def _materialize_insert_returning_fields(
 class SelectMaterialization:
     """Capture a select's source shape and validation policy once per plan.
 
-    Row spans and nullable owners are immutable execution-local facts, not
-    work to repeat for every buffered or streamed row.
+    Row spans, projection decoders and nullable owners are execution-local
+    facts, not work to repeat for every buffered or streamed row.
     """
 
     # Consumption facts followed by source shape facts.
@@ -68,7 +73,7 @@ class SelectMaterialization:
     state: SelectState
     validate: bool
     joined: JoinedRowShape | None
-    nullable_models: frozenset[type[object]]
+    decoders: tuple[Callable[[object], object], ...]
     source: SourceRowShape | None
 
     @classmethod
@@ -86,15 +91,29 @@ class SelectMaterialization:
             if state.returns_model and not state.joins
             else None
         )
+        nullable_models = frozenset(
+            join.model for join in state.joins if join.join_type == "LEFT"
+        )
+        decoders = (
+            tuple(
+                resolve_projection_decoder(
+                    column,
+                    nullable_models=nullable_models,
+                    backend=backend,
+                    validate=validate,
+                )
+                for column in state.fields
+            )
+            if not state.returns_model
+            else ()
+        )
         return cls(
             state=state,
             backend=backend,
             validate=validate,
             joined=joined,
             source=source,
-            nullable_models=frozenset(
-                join.model for join in state.joins if join.join_type == "LEFT"
-            ),
+            decoders=decoders,
         )
 
     def materialize(self, row: Sequence[object]) -> object:
@@ -111,14 +130,7 @@ class SelectMaterialization:
                 row, backend=self.backend, validate=self.validate
             )
         decoded_values = tuple(
-            _decode_projection_field(
-                column,
-                value,
-                nullable_models=self.nullable_models,
-                backend=self.backend,
-                validate=self.validate,
-            )
-            for column, value in zip(self.state.fields, row, strict=True)
+            decode(value) for decode, value in zip(self.decoders, row, strict=True)
         )
         if self.state.named_projection is not None:
             return self.state.named_projection.materialize(decoded_values)
