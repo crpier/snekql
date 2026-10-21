@@ -1,0 +1,17 @@
+{
+  "source_commit": "031d47dc36153d0ef600692b6451e124f36f7de9",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "aiomysql": "0.3.2",
+    "pymysql": "1.2.0",
+    "asyncmy": "0.2.16"
+  },
+  "server": "13.0.2-MariaDB",
+  "transport": "owned loopback TCP, independent public observer Database",
+  "barrier": "PROCESSLIST User sleep for tested connection after operation entry",
+  "deadline_seconds": 1,
+  "server_sleep_seconds": 5,
+  "scope": "public raw transactions; native asyncio cancellation and one-shot AnyIO operation deadlines; normal shutdown only"
+}

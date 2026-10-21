@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "scenario": "deadline-close",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "error_type": "DatabaseOperationTimeoutError",
+      "timeout_evidence": "direct",
+      "unsafe_work_blocked": true,
+      "phase": "close",
+      "first_identity": 1,
+      "same_connection": false,
+      "visible_writes": 0,
+      "recovered_writes": 1,
+      "commit_outcome": "not_attempted",
+      "recovery_outcome": "committed",
+      "occupied": 0,
+      "waiters": 0,
+      "discarded_connections": 1,
+      "pool_state_after_close": "closed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "error_type": "DatabaseOperationTimeoutError",
+      "timeout_evidence": "direct",
+      "unsafe_work_blocked": true,
+      "phase": "close",
+      "first_identity": 1,
+      "same_connection": false,
+      "visible_writes": 0,
+      "recovered_writes": 1,
+      "commit_outcome": "not_attempted",
+      "recovery_outcome": "committed",
+      "occupied": 0,
+      "waiters": 0,
+      "discarded_connections": 1,
+      "pool_state_after_close": "closed",
+      "warnings": [
+        "coroutine 'MySQLResult._finish_unbuffered_query' was never awaited"
+      ]
+    }
+  ]
+}

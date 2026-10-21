@@ -625,3 +625,99 @@ report and needs a fix or an explicit supported-policy decision. Next gates
 remain public-adapter cancellation/deadlines and owned-pool/TLS/initialization/
 shutdown, followed by broader typed-model/error-metadata coverage and end-to-end
 performance on the combined optimizations.
+
+## Continuation: public cancellation and operation deadlines — 2026-10-22
+
+Six further cases exercise the public `Transaction`/`fetch_chunks` interface
+rather than calling the drivers directly. Each inserts uncommitted data, then
+blocks during query execution, the second streamed fetch, or stream completion.
+A separate public Database observes the tested connection in `PROCESSLIST`'s
+`User sleep` state; a task-entry event and pending-task check prevent cancelling
+an operation that has not entered or has already finished.
+
+Streaming delivers and verifies a 64 KiB first-row payload before the second row
+sleeps. Native cancellation uses `Task.cancel()`. Deadline cases use the public
+`transaction(timeout=1)` setting against a five-second server sleep; no driver
+method is patched. Recovery has a separate ten-second budget so it can wait for
+the server to release the old write lock after the injected sleep finishes.
+
+| Fault location | Native cancellation, both adapters | Operation deadline, both adapters |
+| --- | --- | --- |
+| Query execution | `CancelledError` | `DatabaseOperationTimeoutError` |
+| Next streamed fetch | `CancelledError` | **`ExecutionError` masks the timeout** |
+| Stream completion | `CancelledError` | `DatabaseOperationTimeoutError` |
+
+### Shared snekql defect: stream-fetch deadline masking
+
+The initial stream-fetch deadline expectation failed on the **production aiomysql
+control**, before the prototype case ran. A separate reproduction then confirmed
+the same caller-visible replacement with asyncmy. Tracing the exception context
+shows that the fetch correctly raises `DatabaseOperationTimeoutError`, but
+`ChunkStream._finish_raw` attempts cursor completion on the already-unsafe
+connection. aiomysql's reader has been closed, so another read raises an
+`AttributeError`, subsequently wrapped as `ExecutionError`.
+
+Tracked separately as [#491](https://github.com/crpier/snekql/issues/491). No shared
+production runtime fix is hidden in this experimental PR. The characterization
+test now explicitly expects `ExecutionError` with the original timeout present
+in its context chain. A green characterization test does **not** mean the public
+deadline exception contract passes. The direction for a fix is to preserve the
+original driver/deadline failure once the connection is unsafe, while retaining
+the intentional precedence of completion errors over validation errors on usable
+streams. SQLite cleanup implications also need coverage in that fix.
+
+### Resource and transaction evidence
+
+Despite the exception-type defect, both configurations pass all of these checks
+in all six cases:
+
+- Another public operation attempted inside the same failed Transaction is
+  rejected with the lifecycle `DatabaseRuntimeError`, rather than allowed to run.
+- The original transaction's outcome remains `not_attempted`; COMMIT was never
+  in flight in these cases.
+- A recovery Transaction gets a different physical `CONNECTION_ID()`.
+- The original row is absent. Inserting the same primary key succeeds, and a
+  separate verification Transaction sees the recovery write committed.
+- Public pool statistics show zero occupied slots, zero waiters and one discard.
+- Ordinary context-manager shutdown completes, with public pool state `closed`.
+
+No explicit rollback or server KILL assists the failed transaction. Native
+asyncmy fetch/completion cancellation and their deadline variants still emit the
+known unawaited-finalizer warning; reports retain it. This does not prevent the
+observed recovery, and is not claimed fixed by the prototype.
+
+### Reproduction and validation
+
+```sh
+# Use the private $root/tmp setup from earlier sections.
+for scenario in cancel-query cancel-fetch cancel-close deadline-query deadline-fetch deadline-close; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "$scenario" \
+    >"$root/public-$scenario.json" || exit
+done
+```
+
+[Raw reports and provenance](results/2026-10-22-asyncmy-public-cancellation/) were
+collected from clean source commit `031d47d`, on CPython 3.15.0 / MariaDB 13.0.2,
+with aiomysql 0.3.2 / PyMySQL 1.2.0 and asyncmy 0.2.16. `main` was fetched at this
+checkpoint; no new commits needed merging. The previous #485/#486 merge remains.
+
+- **Six new cases passed as characterizations**, including the explicitly failing
+  stream-fetch timeout contract. New command cases demonstrated red/green cycles;
+  the original timeout expectation failure and diagnostic trace are retained
+  outside tracked source.
+- **64 related tests passed** separately: earlier prototype cases, production raw
+  lifecycle/validated-lifecycle, cancellation handoff and MariaDB shutdown tests.
+  Total **70 focused tests** across disjoint runs.
+- Typing, lint, formatting and whitespace checks passed; full suite not rerun.
+- No adapter or production runtime behavior changed in this slice; only probes,
+  tests and evidence were added.
+
+This establishes public-adapter cancellation and basic deadline disposal evidence,
+not complete lifecycle certification. Repeated AnyIO cancellation, cancellation
+while acquiring/authenticating, COMMIT cancellation windows, concurrent or failed
+shutdown, TLS enforcement and production owned-pool parity remain separate gates.
+The shared timeout-reporting defect and asyncmy's native cleanup/value defects
+remain open concerns. **Hold adoption**; next work is the owned-pool/TLS and
+initialization/shutdown boundary, alongside a separately scoped fix for #491.
