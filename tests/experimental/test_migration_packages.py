@@ -623,3 +623,14 @@ def package_validation_uses_the_library_error_root() -> None:
     """Consumers can catch experimental validation with the ordinary snekql root."""
     with assert_raises(sqlite.SnekqlError):
         migrations.compile(migrations.generate("", [], backend="sqlite"))
+
+
+@test(mark="fast")
+def package_check_detects_authoring_changes_not_yet_compiled() -> None:
+    """CI can compare a supplied current draft with its committed deployment artifact."""
+    draft = migrations.generate("001", [Entry], backend="sqlite")
+    package = migrations.compile(draft)
+    package.check(draft)
+    changed = draft.then(migrations.Checkpoint(name="new_authoring_point"))
+    with assert_raises(migrations.PackageError):
+        package.check(changed)

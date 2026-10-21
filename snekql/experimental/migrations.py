@@ -172,6 +172,12 @@ class Package(_Value):
         """Serialize a complete model-independent deployment package."""
         return _canonical(self.model_dump(mode="json"))
 
+    def check(self, draft: Draft) -> None:
+        """Reject a deployment artifact that no longer matches supplied authoring."""
+        if self != compile(draft):
+            msg = "compiled package is stale or inconsistent; recompile the reviewed draft"
+            raise PackageError(msg)
+
     @classmethod
     def load(cls, text: str) -> Self:
         """Reject corrupt, unsupported, or internally inconsistent packages."""

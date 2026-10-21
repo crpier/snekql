@@ -14,7 +14,8 @@ migration history format is promised.
    editable `Draft` against the previous package's recorded managed state.
 2. `compile(draft)` checks the route and produces a `Package`. `dump()` and
    `Package.load()` round-trip state, structured changes, frozen SQL, encoded
-   scalar bindings, transaction flags and a content digest.
+   scalar bindings, transaction flags and a content digest. `package.check(draft)`
+   verifies that a supplied current draft still matches its committed artifact.
 3. `target.prepare(package)` observes the target without creating history and
    returns an inspectable `Prepared` plan. MariaDB requires the caller to assert
    `schema_writers_excluded=True`; advisory locking cannot enforce that promise.
@@ -114,7 +115,8 @@ Packages are trusted executable inputs and may contain sensitive bound values.
 Their hashes detect accidental changes; they are not signatures or a sandbox.
 Do not modify generated SQL, fingerprints or state by hand. Recompile the draft.
 A deployed package alone cannot detect edits to a separate authoring file it has
-not been given. General authoring-file freshness checks remain unimplemented.
+not been given. CI can explicitly supply the current draft to `package.check(draft)`;
+file discovery and general authoring-file freshness checks remain unimplemented.
 
 ## Current execution behavior
 
