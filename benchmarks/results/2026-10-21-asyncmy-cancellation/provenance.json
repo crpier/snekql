@@ -1,0 +1,9 @@
+{
+  "source_commit": "adfb2d7985c898d4088f36b4e5104c19f1f3c41c",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "transport": "loopback TCP",
+  "temp_storage": "private disk-backed TMPDIR under HOME/.cache",
+  "scope": "native asyncio cancellation, observed server sleep, uncommitted writes; no COMMIT in flight"
+}

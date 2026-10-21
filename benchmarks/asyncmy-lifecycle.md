@@ -138,13 +138,93 @@ short excerpt.
 Upstream issues [#89](https://github.com/long2ice/asyncmy/issues/89) and
 [#103](https://github.com/long2ice/asyncmy/issues/103) are closed and discuss prior
 cancellation-related desynchronization. Their closure does not establish safety
-for this different, non-cancellation reproducer. No new upstream issue has been
-filed as part of this investigation.
+for this different, non-cancellation reproducer. The non-cancellation reproducer has now been filed upstream as
+[asyncmy #165](https://github.com/long2ice/asyncmy/issues/165).
 
-Recommended next step: submit the small reproducer upstream and evaluate a fix,
-then build the isolated snekql adapter with fail-closed completion. The native
+Recommended next step: evaluate an upstream fix and investigate COMMIT
+acknowledgement loss, then build the isolated snekql adapter with fail-closed completion. The native
 close path must not become an accidental fallback for additional-result handling.
-Cancellation, transaction outcomes, warnings containing server data, TLS,
+Cancellation beyond the native asyncio cases below, COMMIT outcomes,
+warnings containing server data, TLS,
 transactional pool reset, reconnects, maintained MariaDB LTS versions and
 cross-platform installation remain untested with asyncmy. The public snekql
 prototype seam is explicitly deferred, not considered passed by these probes.
+
+
+## Continuation: cancellation and rollback — 2026-10-21
+
+The same PR now includes three further public-driver probes:
+
+- `cancel-query`: cancel `execute()` while the server is running `SLEEP(5)`.
+- `cancel-fetch`: consume the first streamed row, then cancel the fetch of the
+  second row while the server is sleeping.
+- `cancel-close`: consume the first streamed row, then cancel cursor close while
+  it is draining the sleeping second row.
+
+Each case begins an explicit transaction and inserts primary key 1 into an InnoDB
+table before the operation under test. A separate observer connection polls
+`information_schema.PROCESSLIST` for that exact connection ID in `User sleep`.
+A task-start event plus a pending-task check ensures the operation has entered
+and has not already completed when cancellation is issued. There is no arbitrary
+client delay used to guess when to cancel. Five seconds is the injected server
+stall, not a performance threshold; failure to reach the barrier aborts the probe.
+
+For streaming, a 64 KiB first-row payload makes data available before the second
+row enters its sleep. The probe verifies that complete first row before attempting
+the second fetch or close. No private driver methods are patched or inspected.
+
+| Observation | aiomysql 0.3.2 | asyncmy 0.2.16 |
+| --- | --- | --- |
+| `CancelledError` propagated in all three cases | Yes | Yes |
+| Driver reports closed before harness defensive close | Yes | Yes |
+| Next pool checkout has a different `CONNECTION_ID()` | Yes | Yes |
+| Old uncommitted insert is visible | No | No |
+| Replacement can insert the same key and read it back | Yes | Yes |
+| Deferred cleanup warnings | None | Unawaited cleanup coroutine on fetch/close cancellation |
+
+The driver's closure indicator is measured **before** the harness unconditionally
+closes the connection as a safety measure. Consequently this checks the driver
+indicator and recovery under an explicit fail-closed application policy, not a
+claim that every native-pool failure path is safe without application cleanup.
+The replacement insert checks lock release as well as visibility: an uncommitted
+row hidden by MVCC alone would not permit immediate successful reuse of the key.
+The server may take time to finish its injected sleep and release the old write.
+No server `KILL` or explicit `ROLLBACK` assists the normal path.
+
+These are **rollback-before-COMMIT** cases. They provide no evidence that a failed
+or cancelled COMMIT did not commit. No command replay occurs. Native
+`asyncio.Task.cancel()` is tested; AnyIO repeated cancellation, transport faults,
+server restarts and acknowledgement-loss windows remain separate gates.
+
+[Raw reports and provenance](results/2026-10-21-asyncmy-cancellation/) were collected
+from clean probe commit `adfb2d7` on CPython 3.15.0 / MariaDB 13.0.2. All six
+(driver, scenario) cases recover correctly under the policy above. asyncmy's
+unawaited-finalizer warnings remain recorded; they are not a protocol failure in
+these cases and are not considered fixed.
+
+Reproduce using the same private `TMPDIR` setup above, replacing the scenario
+loop with:
+
+```sh
+for scenario in cancel-query cancel-fetch cancel-close; do
+  TMPDIR="$root/tmp" uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_lifecycle --scenario "$scenario" \
+    >"$root/$scenario.json" || exit
+done
+```
+
+Validation for this continuation:
+
+- Three new scenario commands demonstrated red/green cycles; **seven** probe
+  characterization tests now pass in total.
+- Combined focused run: **178 passed** across the probe tests and existing
+  commit-outcome, pool-cancellation-handoff, raw-execution and raw-validation
+  lifecycle tests. Existing runtime tests still use the production backend,
+  not an asyncmy-backed snekql adapter.
+- Type checking, lint, formatting and whitespace checks passed.
+- Full repository suite not rerun; no production runtime or dependency changes.
+
+Verdict remains **hold adoption**: the multi-result bug is unresolved, native
+cancellation recovery has useful positive evidence, and COMMIT outcome handling
+is the next untested correctness boundary. No merge of `main` was performed for
+this continuation, as requested.
