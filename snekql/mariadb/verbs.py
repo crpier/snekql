@@ -16,10 +16,13 @@ lazy from snekql._aliases import TableAlias, _AliasOwner, build_alias
 lazy from snekql._cte import _Cte, _CteOwner, build_cte_alias
 lazy from snekql._dialect_expr import DialectSelectable
 lazy from snekql._query_readiness import _ExecutableQuery
-lazy from snekql._query_state import selectable_owner_model
+lazy from snekql._query_state import (
+    model_projection_uses_checked_anchor,
+    selectable_owner_model,
+)
 lazy from snekql.errors import QueryConstructionError
 lazy from snekql.expressions import Aggregate, ColumnRef, Predicate, Scalar, _Scalar
-lazy from snekql.mariadb.model import Model
+lazy from snekql.mariadb.model import Model, ModelMeta
 lazy from snekql.model import Pending, Row, Table, require_model_backend
 lazy from snekql.query import (
     DeleteQuery,
@@ -616,6 +619,8 @@ def select(*args: object) -> object:
     query = build_select(*args)
     state = cast("Any", query).state
     _require_mariadb_model(state.model)
+    if state.returns_model and model_projection_uses_checked_anchor(state, ModelMeta):
+        return query
     for field in state.fields:
         if isinstance(field, _Scalar):
             _require_mariadb_model(field.subquery.state.model)
