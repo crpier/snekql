@@ -14,6 +14,7 @@ lazy import aiosqlite
 from snekql.experimental._migration_prepare import (
     ExecutionStep,
     prepare_steps,
+    validate_adopted,
     validate_preserved,
 )
 from snekql.experimental._migration_reconcile import matches_contraction
@@ -278,6 +279,7 @@ class Target:
             else:
                 self._check_catalog_history(rows, catalog)
             if not already_applied:
+                validate_adopted(package, objects)
                 names = {row[1] for row in objects}
                 conflicts = [
                     operation.table.name
@@ -728,6 +730,9 @@ class Target:
         async with self._guard:
             self._require_open()
             package = Package.load(prepared.package.dump())
+            if package.target.backend != self._config.backend_family:
+                msg = "package backend differs from target"
+                raise PackageError(msg)
             if prepared.target_id != self._target_id:
                 msg = "prepared plan belongs to another target"
                 raise PackageError(msg)
@@ -744,6 +749,7 @@ class Target:
                 if already_applied:
                     await self._connection.rollback()
                     return "already_applied"
+                validate_adopted(package, objects)
                 if prepared.catalog_digest != catalog:
                     msg = "prepared catalog is stale; prepare and review again"
                     raise PackageError(msg)

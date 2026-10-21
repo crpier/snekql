@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from sqlite3 import IntegrityError
 from tempfile import TemporaryDirectory
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import aiosqlite
 from snektest import assert_eq, assert_raises, assert_true, test
@@ -459,6 +459,13 @@ def runner_metadata_cannot_be_claimed_as_an_application_table() -> None:
     with assert_raises(migrations.PackageError):
         migrations.compile(transient)
 
+    transient_adoption = migrations.generate("001", [], backend="sqlite").then(
+        migrations.AdoptTable(table=ledger),
+        migrations.RelinquishTable(table_name=ledger.name),
+    )
+    with assert_raises(migrations.PackageError):
+        migrations.compile(transient_adoption)
+
 
 @test(mark="medium")
 async def edited_before_state_must_match_the_recorded_predecessor_contract() -> None:
@@ -836,3 +843,319 @@ def backfill_contract_cannot_be_moved_across_an_ownership_handoff() -> None:
     assert_eq(ordered.target.tables, ())
     with assert_raises(migrations.PackageError):
         migrations.compile(draft.resolve(release).then(change))
+
+
+@test(mark="fast")
+def adoption_is_an_explicit_alternative_to_proposed_creation() -> None:
+    """Choosing adoption retains the declared contract but emits no creation SQL."""
+    draft = migrations.generate("001", [Entry], backend="sqlite").then(
+        migrations.Checkpoint(name="ready")
+    )
+    adopted = draft.adopt("entry")
+    package = migrations.compile(adopted)
+    assert_eq(package.statements, ())
+    assert_eq(package.target, draft.target)
+    assert_true(isinstance(adopted.operations[0], migrations.AdoptTable))
+    assert_eq(
+        migrations.contract_digest(adopted, point="ready"),
+        migrations.contract_digest(draft, point="ready"),
+    )
+    assert_true(
+        "__tablename__ = 'entry'"
+        in migrations.contract_source(adopted, point="ready", table="entry")
+    )
+    assert_eq(migrations.Package.load(package.dump()), package)
+    with assert_raises(migrations.PackageError):
+        package.check(draft)
+    with assert_raises(migrations.PackageError):
+        draft.adopt("missing")
+    with assert_raises(migrations.PackageError):
+        draft.adopt("entry", "entry")
+    with assert_raises(migrations.PackageError):
+        adopted.adopt("entry")
+
+
+@test(mark="medium")
+async def adoption_rejects_missing_mismatched_and_extended_tables_without_stamping() -> (
+    None
+):
+    """The preservation opt-in cannot weaken the strict first adoption contract."""
+    package = migrations.compile(
+        migrations.generate("001", [Entry], backend="sqlite").adopt("entry")
+    )
+    with TemporaryDirectory() as directory:
+        for index, ddl in enumerate(
+            (
+                "",
+                "CREATE VIEW entry AS SELECT 1 AS id, 'x' AS title",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title BLOB NOT NULL) STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY) STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT) STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL)",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL, extra TEXT) STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL CHECK(title <> '')) STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL DEFAULT 'x') STRICT",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT; CREATE INDEX extra ON entry(title)",
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT; CREATE TRIGGER extra AFTER UPDATE ON entry BEGIN SELECT 1; END",
+            )
+        ):
+            config = sqlite.Config(database=Path(directory) / f"case-{index}.db")
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript(ddl)
+            async with migrations.connect(config) as target:
+                for preserve in (False, True):
+                    with assert_raises(migrations.PackageError) as error:
+                        await target.prepare(package, preserve_unmanaged=preserve)
+                    category = (
+                        "existing table",
+                        "existing table",
+                        "column/constraint",
+                        "column/constraint",
+                        "column/constraint",
+                        "storage",
+                        "column/constraint",
+                        "column/constraint",
+                        "column/constraint",
+                        "index",
+                        "trigger",
+                    )[index]
+                    assert_true(category in str(error.exception))
+                assert_eq(await target.status(), ())
+
+
+@test(mark="medium")
+async def sqlite_adoption_preserves_rows_then_allows_recorded_expansion() -> None:
+    """Explicit adoption validates existing structure and begins an ordinary chain."""
+    first = migrations.Package.load(
+        migrations.compile(
+            migrations.generate("001", [Entry], backend="sqlite").adopt("entry")
+        ).dump()
+    )
+    second = migrations.compile(
+        migrations.generate("002", [EntryWithNote], backend="sqlite", previous=first)
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.executescript(
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT; INSERT INTO entry VALUES(17,'kept');"
+            )
+        async with migrations.connect(config) as target:
+            plan = await target.prepare(first)
+            assert_eq(plan.statements, ())
+            assert_eq(await target.status(), ())
+            assert_eq(await target.apply(plan), "applied")
+            assert_eq(await target.apply(plan), "already_applied")
+            await target.apply(await target.prepare(second))
+            # Already-applied adoption must not revalidate the obsolete initial shape.
+            assert_eq(
+                await target.apply(await target.prepare(first)), "already_applied"
+            )
+            assert_eq([p.revision for p in await target.status()], ["001", "002"])
+        async with (
+            await sqlite.Database.initialize(config) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(await tx.fetch_all(sqlite.select(Entry.id)), [17])
+            assert_eq(await tx.fetch_all(sqlite.select(Entry.title)), ["kept"])
+            assert_eq(await tx.fetch_all(sqlite.select(EntryWithNote.note)), [None])
+
+
+@test(mark="medium")
+async def adoption_revalidates_the_claim_and_catalog_before_writing_history() -> None:
+    """Neither edited plans nor schema changes after review can authorize adoption."""
+    first = migrations.compile(
+        migrations.generate("001", [Entry], backend="sqlite").adopt("entry")
+    )
+    different = migrations.compile(
+        migrations.generate("001", [EntryWithNote], backend="sqlite").adopt("entry")
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT"
+            )
+        async with migrations.connect(config) as target:
+            plan = await target.prepare(first)
+            with assert_raises(migrations.PackageError):
+                await target.apply(plan.model_copy(update={"package": different}))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("ALTER TABLE entry ADD COLUMN extra TEXT")
+            with assert_raises(migrations.PackageError):
+                await target.apply(plan)
+            assert_eq(await target.status(), ())
+
+
+@test(mark="medium")
+async def failed_backfill_rolls_back_adoption_instead_of_stamping_existing_rows() -> (
+    None
+):
+    """Adoption and supported data work share SQLite's package transaction."""
+    draft = (
+        migrations.generate("001", [Entry], backend="sqlite")
+        .adopt("entry")
+        .then(migrations.Checkpoint(name="adopted"))
+    )
+    change = migrations.DataChange.from_query(
+        sqlite.update(Entry).set(Entry.id.to(1)).all(),
+        checkpoint="adopted",
+        contract_digest=migrations.contract_digest(draft, point="adopted"),
+    )
+    package = migrations.compile(draft.then(change))
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.executescript(
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT; INSERT INTO entry VALUES(1,'one'),(2,'two');"
+            )
+        async with migrations.connect(config) as target:
+            with assert_raises(aiosqlite.IntegrityError):
+                await target.apply(await target.prepare(package))
+            assert_eq(await target.status(), ())
+            await target.apply(await target.prepare(migrations.compile(draft)))
+        async with (
+            await sqlite.Database.initialize(config) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(
+                sorted(await tx.fetch_all(sqlite.select(Entry.title))), ["one", "two"]
+            )
+
+
+@test(mark="medium")
+async def relinquished_matching_table_can_be_explicitly_readopted() -> None:
+    """A later revision can reclaim a verified table without recreating its rows."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    second = migrations.compile(
+        migrations.generate("002", [], backend="sqlite", previous=first).resolve(
+            migrations.RelinquishTable(table_name="entry")
+        )
+    )
+    third = migrations.compile(
+        migrations.generate("003", [Entry], backend="sqlite", previous=second).adopt(
+            "entry"
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with migrations.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("INSERT INTO entry VALUES(17,'kept')")
+                await app.commit()
+            await target.apply(await target.prepare(second))
+            plan = await target.prepare(third)
+            assert_eq(plan.statements, ())
+            await target.apply(plan)
+            assert_eq(third.target, first.target)
+            assert_eq(
+                [p.revision for p in await target.status()], ["001", "002", "003"]
+            )
+        async with (
+            await sqlite.Database.initialize(config) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(await tx.fetch_all(sqlite.select(Entry.title)), ["kept"])
+
+
+@test(mark="fast")
+def adoption_cannot_overwrite_or_cycle_current_route_ownership() -> None:
+    """Adoption is checked against entry-time observation, not guessed intermediate DDL."""
+    first = migrations.compile(migrations.generate("001", [Entry], backend="sqlite"))
+    draft = migrations.generate("002", [Entry], backend="sqlite", previous=first)
+    adopt = migrations.AdoptTable(table=first.target.tables[0])
+    with assert_raises(migrations.PackageError):
+        migrations.compile(draft.then(adopt))
+    with assert_raises(migrations.PackageError):
+        migrations.compile(
+            draft.then(migrations.RelinquishTable(table_name="entry"), adopt)
+        )
+
+
+@test(mark="medium")
+async def ordinary_table_named_virtual_is_not_mistaken_for_a_virtual_table() -> None:
+    """Adoption interprets CREATE syntax, not incidental table-name words."""
+
+    class Virtual[S = sqlite.Pending](sqlite.Model[S]):
+        """An ordinary table with a legal SQL-keyword name."""
+
+        __row_type__: ClassVar[sqlite.ReadType[Virtual[sqlite.Row]]]
+        id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+
+    package = migrations.compile(
+        migrations.generate("001", [Virtual], backend="sqlite").adopt("virtual")
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute('CREATE TABLE "virtual" (id INTEGER PRIMARY KEY) STRICT')
+        async with migrations.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(package)), "applied")
+
+
+@test(mark="medium")
+async def adopted_bare_identifiers_remain_valid_during_later_preservation_review() -> (
+    None
+):
+    """Adoption and preservation agree on the same recorded column declarations."""
+    first = migrations.compile(
+        migrations.generate("001", [Entry], backend="sqlite").adopt("entry")
+    )
+    second = migrations.compile(
+        migrations.generate("002", [EntryWithNote], backend="sqlite", previous=first)
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT"
+            )
+        async with migrations.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("CREATE INDEX extra_title ON entry(title)")
+            with assert_raises(migrations.PackageError):
+                await target.prepare(second)
+            plan = await target.prepare(second, preserve_unmanaged=True)
+            assert_eq(await target.apply(plan), "applied")
+
+
+@test(mark="medium")
+async def adoption_requires_declared_indexes_to_exist_and_match() -> None:
+    """A matching table name and columns cannot hide an absent or wrong index."""
+
+    class Indexed[S = sqlite.Pending](sqlite.Model[S]):
+        """Existing table with an explicitly managed index."""
+
+        __tablename__ = "entry"
+        __row_type__: ClassVar[sqlite.ReadType[Indexed[sqlite.Row]]]
+        id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+        title: sqlite.Col[str] = sqlite.Text()
+        __indexes__: ClassVar[list[sqlite.Index[Any]]] = [
+            sqlite.Index(title, name="entry_title")
+        ]
+
+    package = migrations.compile(
+        migrations.generate("001", [Indexed], backend="sqlite").adopt("entry")
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(
+                "CREATE TABLE entry(id INTEGER PRIMARY KEY, title TEXT NOT NULL) STRICT"
+            )
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError):
+                await target.prepare(package)
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute('CREATE INDEX "entry_title" ON "entry" ("id")')
+            with assert_raises(migrations.PackageError):
+                await target.prepare(package)
+            assert_eq(await target.status(), ())
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute('DROP INDEX "entry_title"')
+                await app.execute('CREATE INDEX "entry_title" ON "entry" ("title")')
+            plan = await target.prepare(package)
+            assert_eq(plan.statements, ())
+            assert_eq(await target.apply(plan), "applied")

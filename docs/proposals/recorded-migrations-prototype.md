@@ -68,6 +68,51 @@ pooled application Database. For MariaDB, use `mariadb` models, `backend="mariad
 and its Config, and pass `schema_writers_excluded=True` to `prepare` only when the
 caller has actually arranged exclusion of other schema writers.
 
+## Explicit SQLite adoption
+
+For an existing SQLite table, choose adoption **instead of** the proposed initial
+creation. This is an alternative to the initial-creation example above:
+
+```python
+adoption = migrations.compile(
+    migrations.generate("001_existing", [Entry], backend="sqlite").adopt("entry")
+)
+async with migrations.connect(config) as target:
+    plan = await target.prepare(adoption)  # Read-only; does not stamp history.
+    assert plan.statements == ()
+    await target.apply(plan)  # Revalidates under the SQLite writer lock.
+```
+
+`Draft.adopt(*table_names)` replaces exactly one proposed creation per distinct
+name with `AdoptTable`; missing or duplicate choices are rejected. Names alone
+are not evidence. Preparation requires an actual table, matching column and
+constraint declarations, table storage options, and declared indexes. Extra
+columns, defaults, constraints, indexes and triggers on the adopted table stop
+this first slice—even with `preserve_unmanaged=True`. Diagnostics identify the
+mismatch category and affected column/constraint names without printing default
+values. No table is created as a fallback when adoption fails.
+
+This is a bounded declaration comparison, not a general SQL equivalence parser:
+ordinary bare/quoted column-name spellings and column ordering are supported;
+unknown renderings or other equivalent declaration arrangements may be rejected.
+Virtual tables remain unsupported. MariaDB adoption is explicitly rejected during
+compilation until a backend-specific proof is implemented.
+
+Application checks the claim and the reviewed catalog again before recording
+history. Adoption emits no application SQL by itself; it can precede supported
+SQLite data changes in the same atomic package. A failed backfill rolls back both
+data work and the ownership record. Later revisions can expand or contract the
+adopted table through the usual recorded-state workflow. Declare the **existing**
+structure for adoption; do not present a future desired shape and assume missing
+columns will be created. A later revision can explicitly re-adopt a relinquished
+matching table, but same-route ownership cycles are rejected.
+
+Adoption does not validate existing rows against Python codecs or application
+rules, certify readiness, import another tool's history, or coordinate an external
+schema owner. Arrange any cross-system cutover separately. It also does not disable
+subsequent catalog-drift checks. Query models remain independent of migration
+ownership; applications can continue querying without adopting their tables.
+
 ## Draft first, then write the backfill
 
 After adding an unconstrained nullable `note` column to the desired model (shown
@@ -148,8 +193,9 @@ handoff while retaining its old checkpoint digest.
 Relinquishment does not mean deletion. Later managed operations on that table
 are rejected, and a CREATE cannot reclaim it within the same route. A later
 revision that includes it again encounters the existing-object adoption guard.
-Explicit adoption/re-adoption, column-level relinquishment, DROP TABLE, registering
-a new owner and coordinating another migration system are **not implemented**.
+SQLite adoption/re-adoption is available only for the bounded matching-table case
+above. MariaDB adoption, column-level relinquishment, DROP TABLE, registering a
+new external owner and coordinating another migration system are **not implemented**.
 This is a journaled end to this chain's managed claim, not a cross-system transfer.
 
 Review `plan.package.draft.operations` and the before/target states, not just
@@ -351,7 +397,9 @@ not every cancellation/commit window or repeated cancellation during cleanup.
   and execution identity, so an edited draft cannot invent its starting contract.
   The last accepted observed catalog is recorded separately from that declarative
   managed state. Re-preparing after drift does not silently accept it. Matching
-  untracked tables require explicit adoption; adoption is not implemented yet.
+  untracked tables require explicit adoption. The bounded SQLite path above is
+  supported; matching names alone never authorize it, and MariaDB adoption remains
+  unsupported.
 
 The catalog guard is deliberately conservative: it currently includes unrelated
 objects in the observed catalog too. SQLite reads schema records; MariaDB reads
@@ -374,7 +422,8 @@ on MariaDB, including the period between preparation and application.
 | Competing runners | Native tests show one execution and one already-applied outcome |
 | Interrupted MariaDB DDL | Skip acknowledged work after restart; exact contraction postconditions require explicit durable reconciliation; other changed DDL remains ambiguous |
 | Whole-table relinquishment | Explicit metadata-only change; physical objects/data and query mapping remain intact |
-| Brownfield adoption / re-adoption / cross-system transfer | Rejected, not implemented; relinquishment is not adoption or a scoped-drift exemption |
+| SQLite adoption / re-adoption | Explicit matching-table claim, rechecked under the writer lock; extensions/triggers and unknown renderings are rejected |
+| MariaDB adoption / cross-system transfer | Not implemented; SQLite adoption does not certify another backend or another manager's history |
 | SQLite preservation-sensitive rebuild | Bounded observed-definition rebuild; referencing rows, extras, generated columns, index/trigger/view behavior, storage and sequence state tested |
 | Required-column enforcement and explicit column removal | Executed on both engines; populated full SQLite expand/backfill/contract route tested; rename and dependent-object changes remain unsupported |
 | Long resumable backfill | Unimplemented; only individual bounded UPDATE operations |

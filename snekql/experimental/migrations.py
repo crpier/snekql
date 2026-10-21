@@ -76,6 +76,13 @@ class CreateTable(_Value):
     table: TableState
 
 
+class AdoptTable(_Value):
+    """Claim a matching existing SQLite table without creating or changing it."""
+
+    kind: Literal["adopt_table"] = "adopt_table"
+    table: TableState
+
+
 class AddColumn(_Value):
     """Add one unconstrained nullable column without rebuilding a table."""
 
@@ -169,6 +176,7 @@ class Draft(_Value):
     target: State
     operations: tuple[
         CreateTable
+        | AdoptTable
         | AddColumn
         | RequireNotNull
         | DropColumn
@@ -182,6 +190,7 @@ class Draft(_Value):
     def then(
         self,
         *operations: CreateTable
+        | AdoptTable
         | AddColumn
         | RequireNotNull
         | DropColumn
@@ -191,6 +200,30 @@ class Draft(_Value):
     ) -> Self:
         """Append typed authoring steps while retaining the original immutable draft."""
         return self.model_copy(update={"operations": (*self.operations, *operations)})
+
+    def adopt(self, *table_names: str) -> Self:
+        """Replace named proposed creations with explicit, target-verified adoption."""
+        if len(set(table_names)) != len(table_names) or any(
+            sum(
+                isinstance(operation, CreateTable) and operation.table.name == name
+                for operation in self.operations
+            )
+            != 1
+            for name in table_names
+        ):
+            msg = "adoption requires distinct names with exactly one proposed creation each"
+            raise PackageError(msg)
+        return self.model_copy(
+            update={
+                "operations": tuple(
+                    AdoptTable(table=operation.table)
+                    if isinstance(operation, CreateTable)
+                    and operation.table.name in table_names
+                    else operation
+                    for operation in self.operations
+                )
+            }
+        )
 
     def resolve(self, *removals: DropColumn | RelinquishTable) -> Self:
         """Resolve named column deletions or table relinquishments, never infer either."""
@@ -284,7 +317,7 @@ def generate(
 
     Unsupported alterations and ownership removal remain explicit unresolved
     decisions. Supported routes include creation, nullable additions, typed
-    backfills, contraction, and explicit whole-table relinquishment.
+    backfills, contraction, explicit whole-table relinquishment, and SQLite adoption.
     """
     require_scaffold_models(backend, models)
     if previous is not None:
@@ -489,7 +522,7 @@ def contract_source(draft: Draft, *, point: str, table: str) -> str:
     for operation in draft.operations:
         if isinstance(operation, RelinquishTable):
             _relinquish(tables, operation.table_name)
-        elif isinstance(operation, CreateTable):
+        elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
@@ -519,7 +552,7 @@ def contract_digest(draft: Draft, *, point: str) -> str:
     for operation in draft.operations:
         if isinstance(operation, RelinquishTable):
             _relinquish(tables, operation.table_name)
-        elif isinstance(operation, CreateTable):
+        elif isinstance(operation, CreateTable | AdoptTable):
             tables[operation.table.name] = operation.table
         elif isinstance(operation, AddColumn):
             tables[operation.table_name] = _add_column(
@@ -614,7 +647,7 @@ def _validate_draft(draft: Draft) -> None:
             *(
                 operation.table
                 for operation in draft.operations
-                if isinstance(operation, CreateTable)
+                if isinstance(operation, CreateTable | AdoptTable)
             ),
         )
     ):
@@ -712,9 +745,15 @@ class _Emission:
         self.pending = None
 
 
-def _emit_creation(
-    table: TableState, tables: dict[str, TableState], emission: _Emission
+def _emit_table(
+    operation: CreateTable | AdoptTable,
+    tables: dict[str, TableState],
+    emission: _Emission,
 ) -> None:
+    table = operation.table
+    if isinstance(operation, AdoptTable):
+        _emit_adoption(table, tables, emission)
+        return
     if table.name in emission.relinquished:
         msg = f"table {table.name!r} remains physically present after relinquishment; explicit adoption is required"
         raise PackageError(msg)
@@ -724,6 +763,19 @@ def _emit_creation(
     tables[table.name] = table
     for sql in (table.sql, *table.indexes):
         emission.emit(sql)
+
+
+def _emit_adoption(
+    table: TableState, tables: dict[str, TableState], emission: _Emission
+) -> None:
+    if emission.backend != "sqlite":
+        msg = "table adoption currently supports SQLite only"
+        raise PackageError(msg)
+    if table.name in tables or table.name in emission.relinquished:
+        msg = "adoption requires a table not already managed or relinquished in this route"
+        raise PackageError(msg)
+    emission.flush()
+    tables[table.name] = table
 
 
 def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
@@ -765,8 +817,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
                 f"ALTER TABLE {current.quoted_name} ADD COLUMN {operation.column.definition}"
             )
             continue
-        table = operation.table
-        _emit_creation(table, tables, emission)
+        _emit_table(operation, tables, emission)
     if tables != {table.name: table for table in draft.target.tables}:
         msg = "operation endpoint does not match the recorded target state"
         raise PackageError(msg)
@@ -796,6 +847,7 @@ def compile(draft: Draft) -> Package:  # noqa: A001 - deliberate authoring verb
 
 __all__ = [
     "AddColumn",
+    "AdoptTable",
     "Checkpoint",
     "ColumnState",
     "Contraction",

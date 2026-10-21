@@ -903,3 +903,25 @@ async def mariadb_relinquishment_recovers_without_replaying_application_sql() ->
         )
         with assert_raises(migrations.PackageError):
             await reopened.prepare(continuation, schema_writers_excluded=True)
+
+
+@test(mark="fast")
+def mariadb_adoption_requires_a_backend_specific_proof() -> None:
+    """SQLite's declaration comparison must not silently certify another backend."""
+    with assert_raises(migrations.PackageError):
+        migrations.compile(
+            migrations.generate("001", [Entry], backend="mariadb").adopt("entry")
+        )
+
+
+@test(mark="slow")
+async def edited_metadata_only_plan_cannot_cross_backend_contracts() -> None:
+    """An empty SQL route still must match the target's backend before journaling."""
+    server = await load_fixture(provide_package_server())
+    native = migrations.compile(migrations.generate("001", [], backend="mariadb"))
+    foreign = migrations.compile(migrations.generate("001", [], backend="sqlite"))
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(native, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError):
+            await target.apply(plan.model_copy(update={"package": foreign}))
+        assert_eq(await target.status(), ())

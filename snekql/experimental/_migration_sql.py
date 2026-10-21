@@ -131,7 +131,11 @@ def required_definition(sql: str, *, mysql: bool = False) -> str:
 def split_table(sql: str, *, mysql: bool = False) -> tuple[str, tuple[str, ...], str]:
     """Split ordinary CREATE TABLE definitions, preserving original text."""
     stream = tokens(sql, mysql=mysql)
-    if any(t.value.casefold() == "virtual" for t in stream[:3]):
+    if [(t.kind, t.value.casefold()) for t in stream[:3]] == [
+        ("word", "create"),
+        ("word", "virtual"),
+        ("word", "table"),
+    ]:
         msg = "virtual-table rebuild requires an explicit adapter"
         raise SchemaError(msg)
     depth = 0
