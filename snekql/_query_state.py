@@ -9,7 +9,7 @@ policy -- which tables an operand may reference -- lives in
 :mod:`snekql._query_scope`, which imports downward into this module.
 """
 
-lazy from dataclasses import dataclass
+lazy from dataclasses import dataclass, replace
 lazy from typing import Any, Literal, cast
 
 lazy from snekql._dialect_expr import SqlCompilable
@@ -147,6 +147,22 @@ class InsertState:
 
 
 type WriteState = InsertState | UpdateState | DeleteState
+
+
+def replace_query_state[StateT: SelectState | WriteState](
+    state: StateT, **changes: Any
+) -> StateT:
+    """Copy owned plain records without generic dataclass field discovery.
+
+    These exact record classes contain only ordinary constructor fields. Merge
+    into a fresh mapping, retaining every field (including future additions),
+    then run the normal constructor. Subclasses keep dataclasses.replace's
+    handling of slots, InitVars and non-init fields. Never mutate the source
+    mapping: other query branches may still hold it.
+    """
+    if type(state) not in (SelectState, InsertState, UpdateState, DeleteState):
+        return replace(state, **changes)
+    return type(state)(**(vars(state) | changes))
 
 
 def require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
