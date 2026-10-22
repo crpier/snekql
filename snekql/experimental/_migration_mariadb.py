@@ -152,6 +152,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 return f"{table.name!r}.{column.name!r}: {error}"
         try:
             mariadb_declared_primary_key(table)
+            mariadb_table_engine(table.sql)
         except PackageError as error:
             return f"{table.name!r}: {error}"
     return None
@@ -429,3 +430,79 @@ def mariadb_json_check_columns(sql: str, *, backslash_escapes: bool) -> tuple[st
     except SchemaError:
         return ()  # Unsupported rendering is no proof of a required JSON check.
     return tuple(names)
+
+
+def _engine_option(stream: tuple[Token, ...], index: int) -> tuple[str, int]:
+    """Read a single literal engine option, not a session variable or expression."""
+    if index < len(stream) and stream[index].value == "=":
+        index += 1
+    if index >= len(stream):
+        msg = "unsupported MariaDB engine declaration; explicit adapter required"
+        raise PackageError(msg)
+    token = stream[index]
+    if (
+        token.kind not in {"word", "identifier", "string"}
+        or re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", token.value) is None
+    ):
+        msg = "unsupported MariaDB engine declaration; explicit adapter required"
+        raise PackageError(msg)
+    name = token.value.lower()
+    if name == "default":
+        msg = (
+            "unsupported MariaDB DEFAULT engine declaration; explicit adapter required"
+        )
+        raise PackageError(msg)
+    return {"heap": "memory", "merge": "mrg_myisam"}.get(name, name), index + 1
+
+
+def mariadb_table_engine(sql: str, *, backslash_escapes: bool = True) -> str | None:
+    """Read an explicit table engine; an absent option makes no fixed claim."""
+    try:
+        head = [
+            (token.kind, token.value.lower())
+            for token in tokens(sql, mysql=backslash_escapes)[:5]
+        ]
+        if head[:1] != [("word", "create")]:
+            return None
+        position = 3 if head[1:3] == [("word", "or"), ("word", "replace")] else 1
+        if head[position : position + 1] == [("word", "temporary")]:
+            position += 1
+        if head[position : position + 1] != [("word", "table")]:
+            return None
+        _, _, suffix = split_table(sql, mysql=backslash_escapes)
+        stream = tokens(suffix, mysql=backslash_escapes)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    options: list[str] = []
+    depth = 0
+    index = 0
+    while index < len(stream):
+        token = stream[index]
+        index += 1
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "engine"):
+            value, index = _engine_option(stream, index)
+            options.append(value)
+    if len(options) > 1:
+        msg = "multiple MariaDB engine declarations require an explicit adapter"
+        raise PackageError(msg)
+    return options[0] if options else None
+
+
+def mariadb_engine_obstacle(
+    table: TableState, observed: str, *, backslash_escapes: bool
+) -> str | None:
+    """Compare the explicit recorded engine to the already server-resolved definition."""
+    expected = mariadb_table_engine(table.sql)
+    if expected is None:
+        return None
+    try:
+        actual = mariadb_table_engine(observed, backslash_escapes=backslash_escapes)
+    except PackageError as error:
+        return f"managed table postcondition failed: {table.name!r} has unsupported engine metadata: {error}; committed MariaDB effects may remain"
+    if expected != actual:
+        return f"managed table postcondition failed: {table.name!r} engine differs from the recorded contract or is unavailable in metadata; committed MariaDB effects may remain"
+    return None

@@ -17,6 +17,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declared_collation,
     mariadb_declared_json_columns,
     mariadb_declared_primary_key,
+    mariadb_engine_obstacle,
     mariadb_json_check_columns,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
@@ -454,6 +455,12 @@ class Target:
                 not in definitions
             ):
                 return f"managed table postcondition failed: {table.name!r} is not an observed base table; committed MariaDB effects may remain"
+            if obstacle := mariadb_engine_obstacle(
+                table,
+                resolved[0][1],
+                backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+            ):
+                return obstacle
             checks = (
                 mariadb_json_check_columns(
                     resolved[0][1],

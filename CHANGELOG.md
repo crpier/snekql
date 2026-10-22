@@ -39,7 +39,10 @@
   preparation. JSON aliases also require a recognized JSON_VALID check on the
   correct physical column; constants, weaker expressions and comment text are not
   proof. Stored JSON values, constraint-check session policy and secondary-index
-  constraints remain unverified. Exact observed
+  constraints remain unverified. Explicit native engine identities must match
+  server-resolved definitions, with known aliases normalized. Silent substitution
+  or unavailable engine metadata cannot certify completion; engine properties and
+  durability are not inferred from the engine name. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

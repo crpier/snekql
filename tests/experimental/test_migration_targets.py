@@ -2508,3 +2508,226 @@ async def mariadb_json_checks_resolve_names_and_accept_named_table_constraints()
             "applied",
         )
         assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_engine_substitution_cannot_complete_or_finish() -> None:
+    """A stronger substituted engine is still not the recorded physical engine."""
+    await asyncio.to_thread(Path(".snektest").mkdir, exist_ok=True)
+    with TemporaryDirectory(prefix="packages-engine-", dir=".snektest") as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data",
+            server_args=(
+                "--enforce-storage-engine=InnoDB",
+                "--sql-mode=STRICT_ALL_TABLES",
+            ),
+        ) as server:
+            draft = migrations.generate("001", [Entry], backend="mariadb")
+            original = draft.target.tables[0]
+            table = original.model_copy(
+                update={"sql": original.sql.replace("ENGINE=InnoDB", "ENGINE=MyISAM")}
+            )
+            package = migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "engine differs" in str(error.exception)
+                assert_eq((await target.status())[0].phase, "uncertain")
+            async with migrations.connect(server.config()) as target:
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                assert "engine differs" in recovery.explanation
+                with assert_raises(migrations.PackageError):
+                    await target.resume(recovery, schema_writers_excluded=True)
+            async with (
+                await mariadb.Database.initialize(server.config()) as db,
+                db.transaction() as tx,
+            ):
+                assert_eq(
+                    await tx.fetch_all(
+                        mariadb.raw(
+                            "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry'"
+                        )
+                    ),
+                    [{"ENGINE": "InnoDB"}],
+                )
+
+
+@test(mark="slow")
+async def mariadb_requested_innodb_cannot_silently_become_myisam() -> None:
+    """Keep the ledger transactional while exposing an application-engine downgrade."""
+    await asyncio.to_thread(Path(".snektest").mkdir, exist_ok=True)
+    with TemporaryDirectory(prefix="packages-engine-", dir=".snektest") as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data",
+            server_args=("--sql-mode=STRICT_ALL_TABLES",),
+        ) as server:
+            initial = migrations.compile(
+                migrations.generate("000", [], backend="mariadb")
+            )
+            async with migrations.connect(server.config()) as target:
+                assert_eq(
+                    await target.apply(
+                        await target.prepare(initial, schema_writers_excluded=True)
+                    ),
+                    "applied",
+                )
+            await server.run_sql("SET GLOBAL enforce_storage_engine='MyISAM'")
+            package = migrations.compile(
+                migrations.generate("001", [Entry], backend="mariadb", previous=initial)
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "engine differs" in str(error.exception)
+                assert_eq(
+                    {
+                        progress.revision: progress.phase
+                        for progress in await target.status()
+                    },
+                    {"000": "complete", "001": "uncertain"},
+                )
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                with assert_raises(migrations.PackageError):
+                    await target.resume(recovery, schema_writers_excluded=True)
+            async with (
+                await mariadb.Database.initialize(server.config()) as db,
+                db.transaction() as tx,
+            ):
+                assert_eq(
+                    await tx.fetch_all(
+                        mariadb.raw(
+                            "SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME"
+                        )
+                    ),
+                    [
+                        {"TABLE_NAME": "entry", "ENGINE": "MyISAM"},
+                        {
+                            "TABLE_NAME": "snekql_experimental_migrations",
+                            "ENGINE": "InnoDB",
+                        },
+                    ],
+                )
+
+
+@test(mark="slow")
+async def mariadb_engine_literals_aliases_and_absence_are_not_comment_text() -> None:
+    """Only an explicit engine option claims policy, not names or quoted text."""
+    server = await load_fixture(provide_package_server())
+    for option, engine in (
+        ("ENGINE 'mYiSaM'", "MyISAM"),
+        ("ENGINE=`InnoDB`", "InnoDB"),
+        ("ENGINE=HEAP", "MEMORY"),
+        ("ENGINE=MERGE", "MRG_MyISAM"),
+        ("", "InnoDB"),
+    ):
+        await server.reset_database()
+        column = migrations.ColumnState(
+            name="engine",
+            definition="`engine` BIGINT NOT NULL DEFAULT 7 COMMENT 'ENGINE=Aria'",
+            nullable=False,
+            storage="INTEGER",
+        )
+        table = migrations.TableState(
+            name="EngineChoice",
+            quoted_name="`EngineChoice`",
+            columns=(column,),
+            sql=f"CREATE TABLE `EngineChoice` (`ENGINE` BIGINT NOT NULL DEFAULT 7 COMMENT 'ENGINE=Aria') {option} COMMENT='ENGINE=missing'",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            assert_eq(
+                await target.apply(
+                    await target.prepare(package, schema_writers_excluded=True)
+                ),
+                "applied",
+            )
+            assert_eq((await target.status())[0].phase, "complete")
+        async with (
+            await mariadb.Database.initialize(server.config()) as db,
+            db.transaction() as tx,
+        ):
+            assert_eq(
+                await tx.fetch_all(
+                    mariadb.raw(
+                        "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='EngineChoice'"
+                    )
+                ),
+                [{"ENGINE": engine}],
+            )
+
+
+@test(mark="slow")
+async def mariadb_ambiguous_engine_declarations_fail_before_effects() -> None:
+    """Do not guess duplicate option precedence or evaluate engine expressions."""
+    server = await load_fixture(provide_package_server())
+    for option in (
+        "ENGINE=InnoDB ENGINE=MyISAM",
+        "ENGINE=@wanted_engine",
+        "ENGINE=DEFAULT",
+    ):
+        draft = migrations.generate("001", [Entry], backend="mariadb")
+        original = draft.target.tables[0]
+        table = original.model_copy(
+            update={"sql": original.sql.replace("ENGINE=InnoDB", option)}
+        )
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "engine declaration" in str(error.exception)
+            assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_hidden_engine_metadata_cannot_certify_a_declared_engine() -> None:
+    """Rendering modes that hide table options are not evidence of engine identity."""
+    await asyncio.to_thread(Path(".snektest").mkdir, exist_ok=True)
+    with TemporaryDirectory(prefix="packages-engine-", dir=".snektest") as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data",
+            server_args=("--sql-mode=STRICT_ALL_TABLES,NO_TABLE_OPTIONS",),
+        ) as server:
+            package = migrations.compile(
+                migrations.generate("001", [Entry], backend="mariadb")
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "unavailable in metadata" in str(error.exception)
+                assert_eq((await target.status())[0].phase, "uncertain")
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                assert "unavailable in metadata" in recovery.explanation

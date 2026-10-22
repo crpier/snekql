@@ -357,19 +357,31 @@ comments, constants such as JSON_VALID('true'), weakened OR expressions and
 unrecognized equivalent expressions do not certify the contract. Unsupported native
 rendering is no evidence of a required check.
 
+Explicit literal ENGINE options are compared to the already server-resolved SHOW
+CREATE TABLE definition. Case-insensitive engine names and the known HEAP/MEMORY
+and MERGE/MRG_MyISAM aliases normalize; quoted literals are supported. Column names,
+comment text and nested partition options are not table-engine declarations. Missing
+ENGINE options make no fixed claim about deployment defaults. Duplicate options,
+expressions and ENGINE=DEFAULT require explicit support; the latter is not accepted
+as an omission. Substitution in either direction and hidden/unsupported engine
+metadata block completion and finish. NO_TABLE_OPTIONS can therefore leave committed
+DDL uncertain rather than allowing completion without engine evidence. This proves
+engine identity, not row format, encryption, engine capabilities, data durability or
+transactional recovery eligibility; existing InnoDB recovery prerequisites remain.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
-collation, AUTO_INCREMENT, primary-key and JSON-check-definition checks**, not full
-native schema verification. JSON constraint presence/shape is not an audit of stored
+collation, AUTO_INCREMENT, primary-key, JSON-check-definition and engine-identity
+checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
-constraints, secondary indexes, engines, codecs and values remain unverified. Construction SQL remains
+constraints, secondary indexes, engine properties, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT or primary-key claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check or engine claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope
