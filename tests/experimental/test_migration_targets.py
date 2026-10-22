@@ -2345,3 +2345,166 @@ async def mariadb_model_generated_text_primary_key_can_complete() -> None:
             "applied",
         )
         assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_json_without_validity_constraint_cannot_complete_or_finish() -> None:
+    """LONGTEXT and binary collation alone are not the recorded JSON constraint."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [NativeTypes], backend="mariadb")
+    original = draft.target.tables[0]
+    assert "`metadata` JSON" in original.sql
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                "`metadata` JSON",
+                "`metadata` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "JSON validity constraint" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "JSON validity constraint" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_json_checks_on_other_columns_or_weaker_expressions_do_not_prove_validity() -> (
+    None
+):
+    """A different predicate or quoted comment cannot certify the JSON column."""
+    server = await load_fixture(provide_package_server())
+    for clause, comment in (
+        ("CHECK (json_valid(`notes`))", ""),
+        ("CHECK (json_valid(`metadata`) OR 1)", ""),
+        ("", " COMMENT 'CHECK (json_valid(`metadata`))'"),
+    ):
+        await server.reset_database()
+        draft = migrations.generate("001", [NativeTypes], backend="mariadb")
+        original = draft.target.tables[0]
+        metadata = next(
+            column for column in original.columns if column.name == "metadata"
+        )
+        replacement = (
+            metadata.definition.replace(
+                " JSON", " LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"
+            )
+            + comment
+        )
+        sql = original.sql.replace(metadata.definition, replacement)
+        if clause:
+            sql = sql.replace(") ENGINE=InnoDB", ", " + clause + ") ENGINE=InnoDB")
+        table = original.model_copy(update={"sql": sql})
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "JSON validity constraint" in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+
+
+@test(mark="slow")
+async def mariadb_json_valid_constant_is_not_a_column_constraint() -> None:
+    """The valid JSON literal 'true' is not a reference to a column named true."""
+    server = await load_fixture(provide_package_server())
+    column = migrations.ColumnState(
+        name="true", definition="`true` JSON NOT NULL", nullable=False, storage="TEXT"
+    )
+    table = migrations.TableState(
+        name="misleading",
+        quoted_name="`misleading`",
+        columns=(column,),
+        sql="CREATE TABLE misleading (`true` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, CHECK (JSON_VALID('true'))) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "JSON validity constraint" in str(error.exception)
+        assert_eq(
+            (
+                await target.inspect_recovery(plan, schema_writers_excluded=True)
+            ).disposition,
+            "ambiguous",
+        )
+
+
+@test(mark="slow")
+async def mariadb_json_checks_resolve_names_and_accept_named_table_constraints() -> (
+    None
+):
+    """Every JSON claim binds independently despite casing, quoting and check order."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="first", definition="`first` JSON NULL", nullable=True, storage="TEXT"
+        ),
+        migrations.ColumnState(
+            name="fi`eld",
+            definition="`fi``eld` JSON NOT NULL",
+            nullable=False,
+            storage="TEXT",
+        ),
+    )
+    table = migrations.TableState(
+        name="json_pairs",
+        quoted_name="`json_pairs`",
+        columns=columns,
+        sql="CREATE TABLE json_pairs (`FI``ELD` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `FIRST` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL, CONSTRAINT second_check CHECK ((JSON_VALID(`fi``eld`))), CONSTRAINT first_check CHECK (JSON_VALID(`first`))) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")

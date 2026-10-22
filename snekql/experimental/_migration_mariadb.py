@@ -17,6 +17,7 @@ _TYPE = re.compile(
 )
 _DECIMAL_ARITY = 2
 _KEY_LIST_MIN_TOKENS = 3
+_JSON_CHECK_TOKENS = 4
 _INTEGERS = {"tinyint", "smallint", "mediumint", "int", "bigint"}
 _ALIASES = {
     "integer": "int",
@@ -355,3 +356,76 @@ def mariadb_declared_primary_key(table: TableState) -> tuple[str, ...]:
         msg = "multiple primary-key declarations require an explicit MariaDB adapter"
         raise PackageError(msg)
     return inline or (keys[0] if keys else ())
+
+
+def mariadb_declared_json_columns(table: TableState) -> tuple[str, ...]:
+    """Identify JSON aliases in already validated recorded type prefixes."""
+    names: list[str] = []
+    for column in table.columns:
+        declaration = _COLUMN.match(column.definition)
+        datatype = _TYPE.match(str(declaration[1])) if declaration is not None else None
+        if datatype is not None and str(datatype[1]).lower() == "json":
+            names.append(column.name)
+    return tuple(names)
+
+
+def _check_expression(stream: tuple[Token, ...]) -> tuple[Token, ...]:
+    """Take one balanced CHECK expression, excluding its outer parentheses."""
+    if not stream or (stream[0].kind, stream[0].value) != ("punct", "("):
+        return ()
+    depth = 0
+    for index, token in enumerate(stream):
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+            if depth == 0:
+                return stream[1:index]
+    return ()
+
+
+def _json_check_reference(expression: tuple[Token, ...]) -> str | None:
+    """Recognize only JSON_VALID(quoted-column), never constants or weaker checks."""
+    while expression and (expression[0].kind, expression[0].value) == ("punct", "("):
+        inner = _check_expression(expression)
+        if len(inner) != len(expression) - 2:
+            break
+        expression = inner
+    if len(expression) != _JSON_CHECK_TOKENS:
+        return None
+    function, opening, argument, closing = expression
+    if (
+        (function.kind, function.value.lower()) == ("word", "json_valid")
+        and (opening.kind, opening.value) == ("punct", "(")
+        and argument.kind == "identifier"
+        and (closing.kind, closing.value) == ("punct", ")")
+    ):
+        return argument.value
+    return None
+
+
+def mariadb_json_check_columns(sql: str, *, backslash_escapes: bool) -> tuple[str, ...]:
+    """Extract recognized native CHECK references, not evidence from arbitrary SQL text."""
+    names: list[str] = []
+    try:
+        _, parts, _ = split_table(sql, mysql=backslash_escapes)
+        for part in parts:
+            stream = tokens(part, mysql=backslash_escapes)
+            depth = 0
+            for index, token in enumerate(stream):
+                if token.kind == "punct" and token.value == "(":
+                    depth += 1
+                elif token.kind == "punct" and token.value == ")":
+                    depth -= 1
+                elif depth == 0 and (token.kind, token.value.lower()) == (
+                    "word",
+                    "check",
+                ):
+                    reference = _json_check_reference(
+                        _check_expression(stream[index + 1 :])
+                    )
+                    if reference is not None:
+                        names.append(reference)
+    except SchemaError:
+        return ()  # Unsupported rendering is no proof of a required JSON check.
+    return tuple(names)

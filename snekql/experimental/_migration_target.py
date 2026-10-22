@@ -15,7 +15,9 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
+    mariadb_declared_json_columns,
     mariadb_declared_primary_key,
+    mariadb_json_check_columns,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
 )
@@ -452,14 +454,26 @@ class Target:
                 not in definitions
             ):
                 return f"managed table postcondition failed: {table.name!r} is not an observed base table; committed MariaDB effects may remain"
-            if obstacle := await self._mariadb_column_obstacle(table):
+            checks = (
+                mariadb_json_check_columns(
+                    resolved[0][1],
+                    backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+                )
+                if mariadb_declared_json_columns(table)
+                else ()
+            )
+            if obstacle := await self._mariadb_column_obstacle(
+                table, json_checks=checks
+            ):
                 return obstacle
         return None
 
-    async def _mariadb_column_obstacle(self, table: TableState) -> str | None:
+    async def _mariadb_column_obstacle(
+        self, table: TableState, *, json_checks: tuple[str, ...] = ()
+    ) -> str | None:
         """Bind physical metadata by server-resolved names, then check recorded facts."""
         primary = mariadb_declared_primary_key(table)
-        names = tuple(column.name for column in table.columns) + primary
+        names = tuple(column.name for column in table.columns) + primary + json_checks
         if not names:
             return await self._mariadb_primary_key_obstacle(table, ())
         observed = await self._query(
@@ -491,15 +505,32 @@ class Target:
         ):
             return f"managed column postcondition failed: {table.name!r} has ambiguous resolved metadata; committed MariaDB effects may remain"
         matched = tuple(metadata[key] for key in resolved[0][: len(table.columns)])
+        key_end = len(table.columns) + len(primary)
         primary_names = tuple(
-            metadata[key][0] for key in resolved[0][len(table.columns) :]
+            metadata[key][0] for key in resolved[0][len(table.columns) : key_end]
         )
+        checked_names = frozenset(metadata[key][0] for key in resolved[0][key_end:])
         for column, row in zip(table.columns, matched, strict=True):
             if row[3] != ("YES" if column.nullable else "NO"):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
-        return self._mariadb_type_obstacle(
-            table, matched
-        ) or await self._mariadb_primary_key_obstacle(table, primary_names)
+        return (
+            self._mariadb_type_obstacle(table, matched)
+            or self._mariadb_json_obstacle(table, matched, checked_names)
+            or await self._mariadb_primary_key_obstacle(table, primary_names)
+        )
+
+    @staticmethod
+    def _mariadb_json_obstacle(
+        table: TableState,
+        observed: tuple[tuple[Any, ...], ...],
+        checked: frozenset[str],
+    ) -> str | None:
+        """Require a recognized JSON_VALID check bound to each JSON physical column."""
+        declared = mariadb_declared_json_columns(table)
+        for column, row in zip(table.columns, observed, strict=True):
+            if column.name in declared and row[0] not in checked:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} JSON validity constraint is missing or unsupported; committed MariaDB effects may remain"
+        return None
 
     async def _mariadb_primary_key_obstacle(
         self, table: TableState, names: tuple[str, ...]

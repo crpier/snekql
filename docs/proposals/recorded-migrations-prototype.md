@@ -349,9 +349,19 @@ primary-key declarations require explicit support rather than normalization gues
 This adds verification, not general primary-key alteration authoring or secondary
 index/foreign-key equivalence checking.
 
+JSON aliases also require a recognized CHECK (JSON_VALID(column)) in the
+server-resolved SHOW CREATE TABLE definition. Both inline and named table checks
+are understood, with harmless outer parentheses. Check references bind through the
+same physical-column namespace; a check on a different column is not proof. Quoted
+comments, constants such as JSON_VALID('true'), weakened OR expressions and
+unrecognized equivalent expressions do not certify the contract. Unsupported native
+rendering is no evidence of a required check.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
-collation, AUTO_INCREMENT and primary-key checks**, not full native schema verification. JSON validity remains
-unverified. Defaults, charset-only declarations without a recorded collation, other
+collation, AUTO_INCREMENT, primary-key and JSON-check-definition checks**, not full
+native schema verification. JSON constraint presence/shape is not an audit of stored
+values or a guarantee that application sessions leave check_constraint_checks enabled.
+Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
 constraints, secondary indexes, engines, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
