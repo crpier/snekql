@@ -8,7 +8,9 @@ Existing benchmark families:
   and workload mixes ([issue #66](https://github.com/crpier/snekql/issues/66)).
 - **Construction** (`benchmarks.construction`): the pure-CPU cost of the
   immutable Query Builder, with no I/O. See
-  [Query construction throughput](#query-construction-throughput) below.
+  [Query construction throughput](#query-construction-throughput) below. The
+  [SELECT metadata measurements](select-metadata-481.md) cover construction-local
+  reuse of whole-model namespace checks.
 
 A new [comparative runtime command](comparison.md) measures equivalent validated
 work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
@@ -141,6 +143,9 @@ From the sweep (read-mostly point queries, one event loop):
 
 ## Query construction throughput
 
+The [logical-annotation measurements](logical-annotations-481.md) cover repeated
+type resolution in ordering, range predicates and numeric expressions.
+
 `benchmarks.construction` measures how fast `select(...).where(...).limit(...)`
 chains (and insert/update builds) turn into immutable query state — no database,
 no async. It reports a throughput distribution over repeated trials and
@@ -155,6 +160,9 @@ warmup), with the GC disabled inside each timed trial so a background collection
 cannot land mid-sample. Reported per workload: median and mean builds/second,
 the coefficient of variation (stdev / mean) across trials, and mean retained
 bytes per built query (`tracemalloc` snapshot diff with every query held alive).
+
+The [pagination-validation measurements](pagination-validation-481.md) cover
+strict integer argument handling, including keyword/subtype and execution controls.
 
 ### Variance
 
@@ -199,6 +207,9 @@ models, Linux), with per-query bytes unchanged:
 control: unchanged within noise, confirming the gain comes from the reordered
 checks rather than run drift. `dataclasses.replace` remains the next bottleneck
 to target.
+
+The [immutable query-construction measurements](query-construction-481.md) cover
+#481’s state-copy optimization, including the retained-intermediate memory tradeoff.
 
 ## asyncmy lifecycle investigation
 
