@@ -311,13 +311,17 @@ class _BaseSelectQuery(_SqlInspectionMixin):
             return self
         return self._replace_state(state)
 
-    @validate_boundary(error_type=QueryConstructionError)
+    @validate_boundary(
+        error_type=QueryConstructionError, _specialize_nonnegative_int=True
+    )
     def limit(self, value: NonNegativeInt) -> Self:
         """Limit the number of selected rows."""
 
         return self._replace_state(_select_limit(self.state, value))
 
-    @validate_boundary(error_type=QueryConstructionError)
+    @validate_boundary(
+        error_type=QueryConstructionError, _specialize_nonnegative_int=True
+    )
     def offset(self, value: NonNegativeInt) -> Self:
         """Skip the given number of selected rows."""
 
@@ -663,12 +667,16 @@ class CompoundSelectQuery[
                 raise QueryConstructionError(msg)
         return type(self)(_select_order_by(self.state, (ordering, *orderings)))
 
-    @validate_boundary(error_type=QueryConstructionError)
+    @validate_boundary(
+        error_type=QueryConstructionError, _specialize_nonnegative_int=True
+    )
     def limit(self, value: NonNegativeInt) -> Self:
         """Bound the whole compound result."""
         return type(self)(_select_limit(self.state, value))
 
-    @validate_boundary(error_type=QueryConstructionError)
+    @validate_boundary(
+        error_type=QueryConstructionError, _specialize_nonnegative_int=True
+    )
     def offset(self, value: NonNegativeInt) -> Self:
         """Skip rows from the whole compound result."""
         return type(self)(_select_offset(self.state, value))
