@@ -828,3 +828,143 @@ async def sqlite_value_comparison_preserves_hidden_identity_with_a_shadowed_alia
                         (900, "two", "kept", "shadow-two"),
                     ],
                 )
+
+
+@test(mark="medium")
+async def sqlite_wide_rebuild_preserves_all_retained_values() -> None:
+    """Valid wide source tables must not exceed column limits merely to verify copying."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    extras = ", ".join(f"spare{i} TEXT" for i in range(1000))
+    head, tail = first.target.tables[0].sql.rsplit(")", 1)
+    payload = tuple(f"value-{i}" for i in range(1000))
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("DROP TABLE account")
+                await app.execute(head + ", " + extras + ")" + tail)
+                placeholders = ",".join("?" for _ in range(1003))
+                await app.execute(
+                    f"INSERT INTO account VALUES({placeholders})",
+                    (41, 1, "admin", *payload),
+                )
+                await app.commit()
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (await app.execute("SELECT * FROM account")).fetchall(),
+                    [(41, "admin", *payload)],
+                )
+
+
+@test(mark="medium")
+async def sqlite_wide_without_rowid_rebuild_preserves_all_retained_values() -> None:
+    """Natural-key tables also keep all wide-row values without a hidden rowid."""
+    draft = m.generate("001", [KeyedBefore], backend="sqlite")
+    table = draft.target.tables[0]
+    table = table.model_copy(update={"sql": table.sql + ", WITHOUT ROWID"})
+    first = m.compile(
+        draft.model_copy(
+            update={
+                "target": m.State(backend="sqlite", tables=(table,)),
+                "operations": (m.CreateTable(table=table),),
+            }
+        )
+    )
+    after = m.generate("desired", [KeyedAfter], backend="sqlite").target.tables[0]
+    after = after.model_copy(update={"sql": after.sql + ", WITHOUT ROWID"})
+    second = m.compile(
+        m.Draft(
+            revision="002",
+            predecessor=first.digest,
+            before=first.target,
+            target=m.State(backend="sqlite", tables=(after,)),
+            operations=(
+                m.RequireNotNull(table_name="keyed", column_name="value"),
+                m.DropColumn(table_name="keyed", column_name="old"),
+            ),
+        )
+    )
+    extras = ", ".join(f"spare{i} TEXT" for i in range(1000))
+    head, tail = table.sql.rsplit(")", 1)
+    payload = tuple(f"value-{i}" for i in range(1000))
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("DROP TABLE keyed")
+                await app.execute(head + ", " + extras + ")" + tail)
+                placeholders = ",".join("?" for _ in range(1003))
+                await app.execute(
+                    f"INSERT INTO keyed VALUES({placeholders})",
+                    ("one", 1, "kept", *payload),
+                )
+                await app.commit()
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (await app.execute("SELECT * FROM keyed")).fetchall(),
+                    [("one", "kept", *payload)],
+                )
+
+
+@test(mark="medium")
+async def sqlite_wide_rebuild_rejects_reassigned_generated_values() -> None:
+    """Equal value sets must not conceal values moving between identities in late columns."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    extras = ", ".join(f"spare{i} TEXT" for i in range(1000))
+    head, tail = first.target.tables[0].sql.rsplit(")", 1)
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("DROP TABLE account")
+                await app.execute(
+                    head
+                    + ", base INTEGER, "
+                    + extras
+                    + ", label TEXT AS(CASE WHEN base=1 THEN 'A' ELSE 'B' END) STORED)"
+                    + tail
+                )
+                await app.execute(
+                    "INSERT INTO account(id,is_admin,role,base) VALUES(1,1,'admin',1),(2,0,'admin',2)"
+                )
+                await app.commit()
+                # Isolated legacy fixture: swap computed labels without rewriting stored data.
+                await app.execute("PRAGMA writable_schema=ON")
+                await app.execute(
+                    "UPDATE sqlite_schema SET sql=replace(sql,'base=1','base=2') WHERE type='table' AND name='account'"
+                )
+                await app.execute("PRAGMA writable_schema=OFF")
+                version = await (await app.execute("PRAGMA schema_version")).fetchone()
+                assert version is not None
+                await app.execute(f"PRAGMA schema_version={version[0] + 1}")
+                await app.commit()
+            with assert_raises(m.PackageError) as error:
+                await target.apply(
+                    await target.prepare(second, preserve_unmanaged=True)
+                )
+            assert "copied values" in str(error.exception)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT id,is_admin,label FROM account ORDER BY id"
+                        )
+                    ).fetchall(),
+                    [(1, 1, "A"), (2, 0, "B")],
+                )

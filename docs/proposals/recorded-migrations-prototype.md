@@ -435,6 +435,14 @@ key of a WITHOUT ROWID table. These identities make rows distinct; combined with
 the existing equal-row-count check, one-way set difference detects changed or
 missing rows without collapsing duplicate application values.
 
+Retained columns are compared in bounded batches instead of doubling the entire
+table width in one SELECT. Every batch repeats the complete hidden or natural
+identity, so unchanged value sets cannot conceal values moving between rows.
+Wide rowid and WITHOUT ROWID fixtures retain all 1,000 unmanaged extra columns;
+a late-column generated-value swap is rejected even though its value set is
+unchanged. The runner reads the full primary key from SQLite metadata rather
+than guessing it from the SQL recognizer.
+
 Stored generated values are included, not just ordinary copied columns. A rebuild
 must not silently refresh old stored values under a changed expression. Tests
 use isolated legacy-schema fixtures to demonstrate both affinity conversion of
@@ -448,9 +456,10 @@ Positive coverage includes NULLs, blobs, embedded-NUL text, large integers,
 precise reals, generated values, and hidden identity with a shadowed rowid alias.
 
 Numeric values use SQLite equality, not bitwise floating-point equivalence.
-This adds a source/destination scan and SQL set comparison; large or wide tables
-remain subject to SQLite statement and resource limits, with failures rolling
-back rather than bypassing validation. It checks current SQLite value semantics,
+This adds a source/destination scan and SQL set comparison per batch. It bounds
+ordinary projection growth, not total work: large tables and very wide composite
+identities remain subject to SQLite statement and resource limits, with failures
+rolling back rather than bypassing validation. It checks current SQLite value semantics,
 not physical file encoding, historical application behavior, arbitrary external
 functions, hardware power-loss durability, or application readiness. It does not
 repair earlier committed data loss or introduce MariaDB value verification.

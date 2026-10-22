@@ -487,12 +487,10 @@ class Target:
     ) -> None:
         """Compare retained typed values and row identity before dropping the source."""
         source, destination = tables
-        names = [
-            row[0]
-            for row in await self._query(
-                "SELECT name FROM pragma_table_xinfo(?)", (source,)
-            )
-        ]
+        columns = await self._query(
+            "SELECT name, pk FROM pragma_table_xinfo(?)", (source,)
+        )
+        names = [name for name, _ in columns]
         retained = [name for name in names if name not in dropped_columns]
         storage = await self._query(
             "SELECT wr FROM pragma_table_list WHERE schema='main' AND name=?", (source,)
@@ -506,24 +504,32 @@ class Target:
             if rowid is None:
                 msg = "rebuild copied values cannot be checked without accessible row identity"
                 raise PackageError(msg)
-            retained.append(rowid)
-        elif storage != [(1,)]:
+            identity = [rowid]
+        elif storage == [(1,)]:
+            identity = [name for name, primary in columns if primary]
+            if not identity or not set(identity) <= set(retained):
+                msg = "rebuild copied values require a retained SQLite primary key"
+                raise PackageError(msg)
+        else:
             msg = "rebuild copied values require known SQLite table storage"
             raise PackageError(msg)
-        # WITHOUT ROWID tables retain their primary key in this projection; other
-        # tables include the hidden rowid. Rows are therefore distinct, and the
-        # separately checked equal row counts make one-way EXCEPT sufficient.
-        projection = ", ".join(
-            f"typeof({quote_identifier(name)}), {quote_identifier(name)} COLLATE BINARY"
-            for name in retained
-        )
-        mismatch = await self._query(
-            f"SELECT 1 FROM (SELECT {projection} FROM {quote_identifier(source)} "  # noqa: S608 - fixed placeholders or quoted identifiers
-            f"EXCEPT SELECT {projection} FROM {quote_identifier(destination)}) LIMIT 1"
-        )
-        if mismatch:
-            msg = "rebuild did not preserve copied values; transaction rolled back"
-            raise PackageError(msg)
+        # Repeat the complete identity in every batch: otherwise values could move
+        # between rows while each batch still has the same set of values. Equal
+        # row counts and distinct identities make one-way EXCEPT sufficient.
+        retained = [name for name in retained if name not in identity]
+        for offset in range(0, max(len(retained), 1), 64):
+            selected = identity + retained[offset : offset + 64]
+            projection = ", ".join(
+                f"typeof({quote_identifier(name)}), {quote_identifier(name)} COLLATE BINARY"
+                for name in selected
+            )
+            mismatch = await self._query(
+                f"SELECT 1 FROM (SELECT {projection} FROM {quote_identifier(source)} "  # noqa: S608 - fixed placeholders or quoted identifiers
+                f"EXCEPT SELECT {projection} FROM {quote_identifier(destination)}) LIMIT 1"
+            )
+            if mismatch:
+                msg = "rebuild did not preserve copied values; transaction rolled back"
+                raise PackageError(msg)
 
     async def _execute_step(self, step: ExecutionStep) -> None:
         await self._check_required(step)
