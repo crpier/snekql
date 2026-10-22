@@ -4,20 +4,20 @@ Query Builder and Query Compilation consume the same source interpretation that
 Execution Plans retain for decoding. No backend namespace or runtime is needed.
 """
 
-lazy from collections.abc import Sequence
+lazy from collections.abc import Mapping, Sequence
 lazy from dataclasses import dataclass
 lazy from typing import Any
 
 lazy from snekql._aliases import _AliasRelation
 lazy from snekql._cte import _CteOutput, _CtePresence, _CteRelation
 lazy from snekql._dialect_expr import CompileCtx
-lazy from snekql._model_materialization import decode_model_row
+lazy from snekql._model_materialization import decode_model_row, decode_model_values
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._query_state import JoinSpec, Selectable
 lazy from snekql._value_decode import _decode_selectable
 lazy from snekql.errors import QueryCompilationError
 lazy from snekql.model import Table, require_model_columns, require_model_table_name
-lazy from snekql.storage import StorageBackend
+lazy from snekql.storage import Attr, StorageBackend
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +49,7 @@ class SourceRowShape:
     column_names: tuple[str, ...]
     projection: NamedProjection | None
     row_model: type[Table[Any]] | None
+    model_columns: Mapping[str, Attr[Any, Any, Any, Any, Any]] | None
 
     @classmethod
     def for_source(
@@ -68,6 +69,7 @@ class SourceRowShape:
                 presence=_CtePresence(source) if presence else None,
                 column_names=(),
                 row_model=None,
+                model_columns=None,
                 projection=projection,
             )
         columns = require_model_columns(source)
@@ -78,13 +80,21 @@ class SourceRowShape:
             while marker_name.casefold() in names:
                 marker_name += "_"
             marker = _TablePresence(source, marker_name)
+        row_model = (
+            source.source_model if issubclass(source, _AliasRelation) else source
+        )
+        model_columns = (
+            require_model_columns(row_model) if row_model is not source else columns
+        )
+        # A reordered alias retains the general name-based materialization path.
+        if row_model is not source and tuple(model_columns) != tuple(columns):
+            model_columns = None
         return cls(
             payload=tuple(columns.values()),
             presence=marker,
             column_names=tuple(columns),
-            row_model=source.source_model
-            if issubclass(source, _AliasRelation)
-            else source,
+            row_model=row_model,
+            model_columns=model_columns,
             projection=None,
         )
 
@@ -135,6 +145,14 @@ class SourceRowShape:
         if self.row_model is None:
             msg = "source row lost its model contract"
             raise QueryCompilationError(msg)
+        if self.model_columns is not None:
+            return decode_model_values(
+                self.row_model,
+                self.model_columns,
+                payload,
+                backend=backend,
+                validate=validate,
+            )
         return decode_model_row(
             self.row_model,
             dict(zip(self.column_names, payload, strict=True)),

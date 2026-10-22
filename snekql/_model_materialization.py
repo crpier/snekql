@@ -1,11 +1,11 @@
 """Shared Table Model row encoding and fetched-row materialization."""
 
-lazy from collections.abc import Mapping
-lazy from typing import cast
+lazy from collections.abc import Mapping, Sequence
+lazy from typing import Any, cast
 
 lazy from snekql.errors import ModelDeclarationError, QueryConstructionError
 lazy from snekql.model import require_model_columns
-lazy from snekql.storage import PENDING_GENERATION, StorageBackend
+lazy from snekql.storage import PENDING_GENERATION, Attr, StorageBackend
 
 
 def _require_insert_model(row: object) -> type[object]:
@@ -65,5 +65,35 @@ def decode_model_row(
     assert not remaining_values, (  # noqa: S101
         f"unknown database values: {', '.join(sorted(remaining_values))}"
     )
+    storage["_snekql_frozen"] = True
+    return model_instance
+
+
+def decode_model_values(
+    model: type[object],
+    columns: Mapping[str, Attr[Any, Any, Any, Any, Any]],
+    values: Sequence[object],
+    *,
+    backend: StorageBackend,
+    validate: bool,
+) -> object:
+    """Decode an already resolved, ordered physical source without row mappings.
+
+    Keep column decoding and normal attribute assignment: custom descriptors and
+    model setters must not be bypassed by direct writes into instance storage.
+    """
+    assert len(values) == len(columns), "database values do not match model columns"  # noqa: S101
+    model_instance = object.__new__(model)
+    storage = cast(
+        "dict[str, object]", object.__getattribute__(model_instance, "__dict__")
+    )
+    storage["_snekql_frozen"] = False
+    storage["_snekql_state"] = "Row"
+    for (name, column), value in zip(columns.items(), values, strict=True):
+        setattr(
+            model_instance,
+            name,
+            column.decode(value, backend=backend, validate=validate),
+        )
     storage["_snekql_frozen"] = True
     return model_instance
