@@ -12,9 +12,11 @@ lazy import aiomysql
 lazy import aiosqlite
 
 from snekql.experimental._migration_mariadb import (
+    MariaDBIndex,
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
+    mariadb_declared_indexes,
     mariadb_declared_json_columns,
     mariadb_declared_primary_key,
     mariadb_engine_obstacle,
@@ -480,7 +482,14 @@ class Target:
     ) -> str | None:
         """Bind physical metadata by server-resolved names, then check recorded facts."""
         primary = mariadb_declared_primary_key(table)
-        names = tuple(column.name for column in table.columns) + primary + json_checks
+        indexes = mariadb_declared_indexes(table)
+        index_columns = tuple(name for index in indexes for name in index.columns)
+        names = (
+            tuple(column.name for column in table.columns)
+            + primary
+            + json_checks
+            + index_columns
+        )
         if not names:
             return await self._mariadb_primary_key_obstacle(table, ())
         observed = await self._query(
@@ -516,7 +525,11 @@ class Target:
         primary_names = tuple(
             metadata[key][0] for key in resolved[0][len(table.columns) : key_end]
         )
-        checked_names = frozenset(metadata[key][0] for key in resolved[0][key_end:])
+        check_end = key_end + len(json_checks)
+        checked_names = frozenset(
+            metadata[key][0] for key in resolved[0][key_end:check_end]
+        )
+        indexed_names = tuple(metadata[key][0] for key in resolved[0][check_end:])
         for column, row in zip(table.columns, matched, strict=True):
             if row[3] != ("YES" if column.nullable else "NO"):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
@@ -524,7 +537,40 @@ class Target:
             self._mariadb_type_obstacle(table, matched)
             or self._mariadb_json_obstacle(table, matched, checked_names)
             or await self._mariadb_primary_key_obstacle(table, primary_names)
+            or await self._mariadb_secondary_index_obstacle(
+                table, indexes, indexed_names
+            )
         )
+
+    async def _mariadb_secondary_index_obstacle(
+        self,
+        table: TableState,
+        indexes: tuple[MariaDBIndex, ...],
+        names: tuple[str, ...],
+    ) -> str | None:
+        """Check named ascending BTREE claims; leave other indexes unclaimed."""
+        if not indexes:
+            return None
+        observed = await self._query("SHOW INDEX FROM " + quote_identifier(table.name))
+        offset = 0
+        for index in indexes:
+            rows = [row for row in observed if row[2] == index.name]
+            columns = names[offset : offset + len(index.columns)]
+            offset += len(index.columns)
+            if any(
+                row[1] != int(not index.unique)
+                or row[5] != "A"
+                or row[10] != "BTREE"
+                or row[13] != "NO"
+                for row in rows
+            ) or tuple(sorted((row[3], row[4], row[7]) for row in rows)) != tuple(
+                (position, column, prefix)
+                for position, (column, prefix) in enumerate(
+                    zip(columns, index.prefixes, strict=True), start=1
+                )
+            ):
+                return f"managed table postcondition failed: {table.name!r} secondary index {index.name!r} is missing or differs from the recorded contract; committed MariaDB effects may remain"
+        return None
 
     @staticmethod
     def _mariadb_json_obstacle(

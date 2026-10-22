@@ -1,6 +1,7 @@
 """Bounded native schema-fact comparison for recorded migration contracts."""
 
 import re
+from dataclasses import dataclass
 
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import Token, split_table, tokens
@@ -153,6 +154,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
         try:
             mariadb_declared_primary_key(table)
             mariadb_table_engine(table.sql)
+            mariadb_declared_indexes(table)
         except PackageError as error:
             return f"{table.name!r}: {error}"
     return None
@@ -506,3 +508,104 @@ def mariadb_engine_obstacle(
     if expected != actual:
         return f"managed table postcondition failed: {table.name!r} engine differs from the recorded contract or is unavailable in metadata; committed MariaDB effects may remain"
     return None
+
+
+@dataclass(frozen=True)
+class MariaDBIndex:
+    """A bounded recorded secondary-index claim, not a serialized artifact field."""
+
+    name: str
+    columns: tuple[str, ...]
+    unique: bool
+    prefixes: tuple[int | None, ...]
+
+
+def _index_member(part: tuple[Token, ...]) -> tuple[str, int | None]:
+    """Read one ascending column, with an optional positive literal prefix."""
+    if len(part) > 1 and (part[-1].kind, part[-1].value.lower()) == ("word", "asc"):
+        part = part[:-1]
+    if not part or part[0].kind not in {"word", "identifier"}:
+        msg = "unsupported MariaDB secondary index member"
+        raise PackageError(msg)
+    if len(part) == 1:
+        return part[0].value, None
+    opening, count, closing = part[1:]
+    if (
+        (opening.kind, opening.value) != ("punct", "(")
+        or (closing.kind, closing.value) != ("punct", ")")
+        or count.kind != "word"
+        or re.fullmatch(r"[1-9][0-9]*", count.value) is None
+    ):
+        msg = "unsupported MariaDB secondary index prefix"
+        raise PackageError(msg)
+    return part[0].value, int(count.value)
+
+
+def _index_members(stream: tuple[Token, ...]) -> tuple[tuple[str, int | None], ...]:
+    """Split a bounded key list without treating prefix parentheses as members."""
+    body = _check_expression(stream)
+    if not body or len(body) != len(stream) - 2:
+        msg = "unsupported MariaDB secondary index key list or options"
+        raise PackageError(msg)
+    start = 0
+    depth = 0
+    parts: list[tuple[Token, ...]] = []
+    for index, token in enumerate(body):
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif token.kind == "punct" and token.value == "," and depth == 0:
+            parts.append(body[start:index])
+            start = index + 1
+    parts.append(body[start:])
+    return tuple(_index_member(part) for part in parts)
+
+
+def _secondary_index(sql: str, table: str) -> MariaDBIndex:
+    """Read emitted CREATE [UNIQUE] INDEX, optionally guarded by IF NOT EXISTS."""
+    stream = tokens(sql, mysql=True)
+    words = tuple(
+        token.value.lower() if token.kind == "word" else None for token in stream
+    )
+    position = 1
+    unique = words[1:2] == ("unique",)
+    position += int(unique)
+    if words[:1] != ("create",) or words[position : position + 1] != ("index",):
+        msg = (
+            "unsupported MariaDB secondary index declaration; explicit adapter required"
+        )
+        raise PackageError(msg)
+    position += 1
+    if words[position : position + 3] == ("if", "not", "exists"):
+        position += 3
+    name, on, owner = stream[position : position + 3]
+    if (
+        name.kind not in {"word", "identifier"}
+        or name.value.lower() == "primary"
+        or (on.kind, on.value.lower()) != ("word", "on")
+        or owner.kind not in {"word", "identifier"}
+        or owner.value != table
+    ):
+        msg = "unsupported MariaDB secondary index name or owner; explicit adapter required"
+        raise PackageError(msg)
+    members = _index_members(stream[position + 3 :])
+    return MariaDBIndex(
+        name=name.value,
+        columns=tuple(column for column, _ in members),
+        unique=unique,
+        prefixes=tuple(prefix for _, prefix in members),
+    )
+
+
+def mariadb_declared_indexes(table: TableState) -> tuple[MariaDBIndex, ...]:
+    """Require bounded declarations before executing native index construction."""
+    try:
+        indexes = tuple(_secondary_index(sql, table.name) for sql in table.indexes)
+    except (SchemaError, ValueError) as error:
+        msg = f"unsupported MariaDB secondary index declaration: {error}"
+        raise PackageError(msg) from error
+    if len({index.name for index in indexes}) != len(indexes):
+        msg = "duplicate MariaDB secondary index claims require an explicit adapter"
+        raise PackageError(msg)
+    return indexes

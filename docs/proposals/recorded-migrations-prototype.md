@@ -369,19 +369,31 @@ DDL uncertain rather than allowing completion without engine evidence. This prov
 engine identity, not row format, encryption, engine capabilities, data durability or
 transactional recovery eligibility; existing InnoDB recovery prerequisites remain.
 
+Explicit secondary indexes in TableState.indexes also require matching native
+SHOW INDEX facts: ordered column members, exact prefix lengths, uniqueness,
+ascending direction, BTREE type and non-ignored state. IF NOT EXISTS is only an
+execution guard; an occupied name with another shape does not certify completion.
+Column references bind through the native physical-column namespace, independently
+of primary-key and JSON-check references. Index names currently require exact
+observed spelling, and ON-table names must match the recorded table spelling;
+identifier alias equivalence for those names is not inferred. Expression/descending
+indexes, FULLTEXT/SPATIAL, extra options and other unsupported declarations fail
+preparation. Unlisted and inline-only secondary indexes remain outside this check.
+Prefix/full-column equivalence beyond exact native metadata is not guessed.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
-collation, AUTO_INCREMENT, primary-key, JSON-check-definition and engine-identity
-checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
+collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity and
+listed-secondary-index checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
-constraints, secondary indexes, engine properties, codecs and values remain unverified. Construction SQL remains
+constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check or engine claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine or listed-secondary-index claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

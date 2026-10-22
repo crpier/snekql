@@ -2731,3 +2731,226 @@ async def mariadb_hidden_engine_metadata_cannot_certify_a_declared_engine() -> N
                 )
                 assert_eq(recovery.disposition, "ambiguous")
                 assert "unavailable in metadata" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_occupied_index_name_cannot_certify_wrong_columns() -> None:
+    """IF NOT EXISTS is execution control, not proof of an index definition."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                ") ENGINE=InnoDB", ", KEY `lookup` (`id`)) ENGINE=InnoDB"
+            ),
+            "indexes": ("CREATE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`)",),
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "secondary index" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "secondary index" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_index_uniqueness_prefixes_and_ignored_state_must_match() -> None:
+    """Occupied names cannot hide stricter/weaker uniqueness or unusable key shapes."""
+    server = await load_fixture(provide_package_server())
+    for physical, declared in (
+        (
+            "KEY `lookup` (`title`)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`)",
+        ),
+        (
+            "UNIQUE KEY `lookup` (`title`)",
+            "CREATE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`)",
+        ),
+        (
+            "KEY `lookup` (`title`(8))",
+            "CREATE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`)",
+        ),
+        (
+            "KEY `lookup` (`title`) IGNORED",
+            "CREATE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`)",
+        ),
+        (
+            "KEY `lookup` (`id`, `title`)",
+            "CREATE INDEX IF NOT EXISTS `lookup` ON `entry` (`title`, `id`)",
+        ),
+    ):
+        await server.reset_database()
+        draft = migrations.generate("001", [Entry], backend="mariadb")
+        original = draft.target.tables[0]
+        table = original.model_copy(
+            update={
+                "sql": original.sql.replace(
+                    ") ENGINE=InnoDB", ", " + physical + ") ENGINE=InnoDB"
+                ),
+                "indexes": (declared,),
+            }
+        )
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "secondary index" in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+
+
+@test(mark="slow")
+async def mariadb_generated_indexes_coexist_with_primary_and_json_claims() -> None:
+    """Independent primary/JSON/index bindings survive multiple emitted indexes."""
+    server = await load_fixture(provide_package_server())
+
+    class Indexed[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Indexed[mariadb.Row]]]
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+        title: mariadb.Col[str] = mariadb.Text(index=True)
+        code: mariadb.Col[str] = mariadb.Text(unique=True)
+        payload: mariadb.JsonCol[dict[str, int]] = mariadb.Json()
+
+    package = migrations.compile(
+        migrations.generate("001", [Indexed], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_generated_composite_prefix_index_can_complete() -> None:
+    """Native emitted prefix lengths remain distinct from whole-column key parts."""
+    server = await load_fixture(provide_package_server())
+
+    class PrefixEntry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[PrefixEntry[mariadb.Row]]]
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+        tenant: mariadb.Col[int] = mariadb.Integer()
+        title: mariadb.Col[str] = mariadb.Text(length=255)
+        __indexes__: ClassVar = [
+            mariadb.Index(
+                tenant, title, prefix_lengths=(None, 16), name="by_tenant_title"
+            )
+        ]
+
+    package = migrations.compile(
+        migrations.generate("001", [PrefixEntry], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_index_members_bind_native_names_with_escaped_identifiers() -> None:
+    """Key parts bind by server-resolved names, not physical or recorded column order."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="id",
+            definition="`id` BIGINT NOT NULL PRIMARY KEY",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="ti`tle",
+            definition="`ti``tle` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL",
+            nullable=False,
+            storage="TEXT",
+        ),
+    )
+    table = migrations.TableState(
+        name="indexed_case",
+        quoted_name="`indexed_case`",
+        columns=columns,
+        sql="CREATE TABLE indexed_case (`TI``TLE` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, `ID` BIGINT NOT NULL PRIMARY KEY) ENGINE=InnoDB",
+        indexes=("CREATE INDEX `look``up` ON `indexed_case` (`ti``tle`(8), `id` ASC)",),
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_unsupported_index_forms_fail_before_effects() -> None:
+    """Do not guess expression/direction/options or claims on another table."""
+    server = await load_fixture(provide_package_server())
+    for declaration in (
+        "CREATE INDEX lookup ON entry ((lower(title)))",
+        "CREATE INDEX lookup ON entry (title DESC)",
+        "CREATE FULLTEXT INDEX lookup ON entry (title)",
+        "CREATE INDEX lookup ON entry (title) IGNORED",
+        "CREATE INDEX lookup ON other_table (title)",
+        "CREATE INDEX",
+    ):
+        draft = migrations.generate("001", [Entry], backend="mariadb")
+        original = draft.target.tables[0]
+        table = original.model_copy(update={"indexes": (declaration,)})
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "secondary index" in str(error.exception)
+            assert_eq(await target.status(), ())

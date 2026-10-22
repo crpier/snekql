@@ -39,7 +39,11 @@
   preparation. JSON aliases also require a recognized JSON_VALID check on the
   correct physical column; constants, weaker expressions and comment text are not
   proof. Stored JSON values, constraint-check session policy and secondary-index
-  constraints remain unverified. Explicit native engine identities must match
+  constraints outside listed indexes remain unverified. Listed native secondary
+  indexes now require exact observed names and matching ordered members, prefix
+  lengths, uniqueness, ascending BTREE type and non-ignored state. Unsupported
+  forms fail preparation; IF NOT EXISTS cannot certify an occupied wrong index.
+  Explicit native engine identities must match
   server-resolved definitions, with known aliases normalized. Silent substitution
   or unavailable engine metadata cannot certify completion; engine properties and
   durability are not inferred from the engine name. Exact observed
