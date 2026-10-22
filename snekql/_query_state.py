@@ -9,7 +9,7 @@ policy -- which tables an operand may reference -- lives in
 :mod:`snekql._query_scope`, which imports downward into this module.
 """
 
-lazy from dataclasses import dataclass
+lazy from dataclasses import dataclass, replace
 lazy from typing import Any, Literal, cast
 
 lazy from snekql._dialect_expr import SqlCompilable
@@ -32,7 +32,7 @@ lazy from snekql.model import (
     Table,
     require_model_columns,
 )
-lazy from snekql.storage import Attr
+lazy from snekql.storage import Attr, FKAttr, _DeferredFKAttr
 
 # A projectable expression: a column, an aggregate over a column, a scalar
 # subquery standing in for a single value, or an open-AST dialect expression
@@ -149,6 +149,22 @@ class InsertState:
 type WriteState = InsertState | UpdateState | DeleteState
 
 
+def replace_query_state[StateT: SelectState | WriteState](
+    state: StateT, **changes: Any
+) -> StateT:
+    """Copy owned plain records without generic dataclass field discovery.
+
+    These exact record classes contain only ordinary constructor fields. Merge
+    into a fresh mapping, retaining every field (including future additions),
+    then run the normal constructor. Subclasses keep dataclasses.replace's
+    handling of slots, InitVars and non-init fields. Never mutate the source
+    mapping: other query branches may still hold it.
+    """
+    if type(state) not in (SelectState, InsertState, UpdateState, DeleteState):
+        return replace(state, **changes)
+    return type(state)(**(vars(state) | changes))
+
+
 def require_field(value: object) -> Attr[Any, Any, Any, Any, Any]:
     if not isinstance(value, Attr):
         msg = "select requires a model or field"
@@ -263,6 +279,25 @@ def selectable_owner_model(field: Selectable) -> type[Table[Any]]:
         msg = "aggregate is not bound to a table model"
         raise QueryConstructionError(msg) from error
     return model
+
+
+def model_projection_uses_checked_anchor(state: SelectState, model_meta: type) -> bool:
+    """Whether a whole-model projection repeats the checked anchor's facts.
+
+    Call only after build_select has validated the anchor metadata and the
+    namespace has checked its backend. Exact builtin descriptors cannot run
+    extension hooks while resolving ownership; every field must still name
+    that same anchor (including alias relation identity). Other expressions,
+    custom descriptor subclasses and custom metaclasses retain general dispatch.
+    Nothing is cached across calls or across query branches.
+    """
+    if type(state.model) is not model_meta and type(state.model) is not type:
+        return False
+    return all(
+        (type(field) is FKAttr or type(field) is Attr or type(field) is _DeferredFKAttr)
+        and getattr(field, "_query_relation", field.owner) is state.model
+        for field in state.fields
+    )
 
 
 def require_model_returning_fields(
