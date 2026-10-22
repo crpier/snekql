@@ -214,3 +214,7 @@ to target.
 
 The [immutable query-construction measurements](query-construction-481.md) cover
 #481’s state-copy optimization, including the retained-intermediate memory tradeoff.
+
+[Buffered SQLite worker dispatch](sqlite-buffered-496.md) measures the local
+cleanup-safe driver adapter, including final-version controls, wide reads,
+retained memory, and a longer repeat of an initially unfavorable scenario.
