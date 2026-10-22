@@ -11,10 +11,11 @@ lazy from dataclasses import dataclass
 lazy from typing import Any, cast
 
 lazy from snekql._aliases import _AliasRelation
+lazy from snekql._column_protocols import is_sql_compilable
 lazy from snekql._compiled import CompiledQuery
 lazy from snekql._cte import _CteOutput, _CteRelation
 lazy from snekql._cte_graph import collect_cte_definitions
-lazy from snekql._dialect_expr import CompileCtx, DialectSelectable, SqlCompilable
+lazy from snekql._dialect_expr import CompileCtx, DialectSelectable
 lazy from snekql._materialization_shape import JoinedRowShape, SourceRowShape
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._output_domain import output_domain
@@ -156,7 +157,7 @@ def _render_selectable(
         raise QueryCompilationError(msg)
     if isinstance(field, _Aggregate):
         return _render_aggregate(field, dialect, qualified=qualified), ()
-    if isinstance(field, SqlCompilable):
+    if is_sql_compilable(field):
         # Open-AST dialect expression: the core renders it structurally through
         # the protocol, never naming the leaf. A projection uses the select seam
         # (`__compile_select_sql__`); an operand uses the operand seam.
