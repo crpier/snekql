@@ -473,3 +473,70 @@ async def sqlite_same_package_rebuild_preserves_keyword_named_unique_index() -> 
                     ).fetchall(),
                     [("on",)],
                 )
+
+
+@test(mark="medium")
+async def sqlite_rebuild_copies_unicode_columns_that_resemble_keywords() -> None:
+    """A bare chec-Kelvin-sign column is not a CHECK constraint; its values survive."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("ALTER TABLE account ADD COLUMN chec\u212a TEXT")
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN tag TEXT DEFAULT a\u017f"
+                )
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN plain TEXT DEFAULT GENERATED"
+                )
+                await app.execute(
+                    "INSERT INTO account VALUES(1,1,'admin','must survive','also kept','literal default')"
+                )
+                await app.commit()
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute("SELECT chec\u212a,tag,plain FROM account")
+                    ).fetchall(),
+                    [("must survive", "also kept", "literal default")],
+                )
+
+
+@test(mark="medium")
+async def sqlite_rebuild_keeps_non_ascii_identifier_tokens_whole() -> None:
+    """Combining marks, non-ASCII spaces and symbols are SQLite identifier characters."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.executescript(
+                    "ALTER TABLE account ADD COLUMN legacy\u0301AS TEXT;"
+                    "ALTER TABLE account ADD COLUMN legacy\u00a0AS TEXT;"
+                    "ALTER TABLE account ADD COLUMN legacy\U0001f40dAS TEXT;"
+                    "INSERT INTO account VALUES(1,1,'admin','combining','space','symbol');"
+                )
+            await target.apply(await target.prepare(second, preserve_unmanaged=True))
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT legacy\u0301AS,legacy\u00a0AS,legacy\U0001f40dAS FROM account"
+                        )
+                    ).fetchall(),
+                    [("combining", "space", "symbol")],
+                )

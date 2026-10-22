@@ -1383,3 +1383,83 @@ async def managed_constraint_occurrences_cannot_disappear_during_preservation_re
             with assert_raises(migrations.PackageError):
                 await target.prepare(next_package, preserve_unmanaged=True)
             assert_eq([p.revision for p in await target.status()], ["001"])
+
+
+class StreetNames[S = sqlite.Pending](sqlite.Model[S]):
+    """SQLite distinguishes these identifiers even though Unicode casefold does not."""
+
+    __tablename__ = "street_names"
+    __row_type__: ClassVar[sqlite.ReadType[StreetNames[sqlite.Row]]]
+    id: sqlite.Col[int] = sqlite.Integer(primary_key=True)
+    straße: sqlite.Col[str] = sqlite.Text()  # noqa: PLC2401 - distinct SQLite identifier under test
+    strasse: sqlite.Col[str] = sqlite.Text()
+
+
+@test(mark="medium")
+async def sqlite_adoption_does_not_fold_distinct_unicode_index_columns() -> None:
+    """An index on strasse does not establish the promised uniqueness of straße."""
+    draft = migrations.generate("001", [StreetNames], backend="sqlite")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "indexes": (
+                'CREATE UNIQUE INDEX "unique_street" ON "street_names" (straße)',
+            )
+        }
+    )
+    draft = draft.model_copy(
+        update={
+            "target": migrations.State(backend="sqlite", tables=(table,)),
+            "operations": (migrations.CreateTable(table=table),),
+        }
+    )
+    package = migrations.compile(draft.adopt("street_names"))
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(table.sql)
+            await app.execute(
+                'CREATE UNIQUE INDEX "unique_street" ON "street_names" (strasse)'
+            )
+            await app.execute(
+                "INSERT INTO street_names VALUES(1,'same','one'),(2,'same','two')"
+            )
+            await app.commit()
+        async with migrations.connect(config) as target:
+            with assert_raises(migrations.PackageError):
+                await target.prepare(package)
+            assert_eq(await target.status(), ())
+
+
+@test(mark="medium")
+async def sqlite_adoption_keeps_ascii_case_insensitivity_inside_unicode_names() -> None:
+    """ASCII case changes are harmless even when the identifier contains sharp s."""
+    draft = migrations.generate("001", [StreetNames], backend="sqlite")
+    table = draft.target.tables[0].model_copy(
+        update={
+            "indexes": (
+                'CREATE UNIQUE INDEX "unique_street" ON "street_names" (straße)',
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="sqlite", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        ).adopt("street_names")
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute(table.sql)
+            await app.execute(
+                'create unique index "unique_street" on "street_names" (STRAßE)'
+            )
+        async with migrations.connect(config) as target:
+            assert_eq(await target.apply(await target.prepare(package)), "applied")
+            assert_eq([p.revision for p in await target.status()], ["001"])
+        async with aiosqlite.connect(str(config.database)) as app:
+            await app.execute("INSERT INTO street_names VALUES(1,'same','one')")
+            with assert_raises(aiosqlite.IntegrityError):
+                await app.execute("INSERT INTO street_names VALUES(2,'same','two')")

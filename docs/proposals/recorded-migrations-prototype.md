@@ -380,6 +380,26 @@ scope cancellation while acceptance is row-lock blocked, plus cancellation of a
 blocked read-only status query. They verify fresh-session inspection and recovery,
 not every cancellation/commit window or repeated cancellation during cleanup.
 
+## SQLite identifier handling during comparison and rebuilding
+
+SQLite comparisons fold ASCII letters only: an unquoted reference to `straße`
+is not a reference to `strasse`, while `STRAßE` still refers to `straße`. The
+bounded adoption/preservation/endpoint comparison retains that distinction.
+SQLite bare identifier tokens also retain non-ASCII combining marks, spaces and
+symbols rather than splitting them into apparent SQL keywords.
+
+Rebuild classification must preserve data as well as declarations. A column whose
+name resembles `CHECK` under Unicode casefold is still a column, and a default
+literal resembling `AS` is not generated-column syntax. Even the valid literal
+`DEFAULT GENERATED` does not make a column generated: recognition requires the
+actual top-level `AS(expression)` clause. Regression tests verify that existing
+values survive, rather than being replaced by NULL or defaults during copying.
+
+These fixes do not introduce general SQL equivalence, Unicode normalization of
+names, or a new MariaDB identifier-comparison policy. Shared keyword recognition
+is ASCII-only; MariaDB identifier-reference comparison and its lexer mode retain
+their existing behavior. The overall prototype remains bounded and experimental.
+
 ## SQLite managed endpoint validation
 
 Before writing completion evidence or committing, SQLite observes the resulting

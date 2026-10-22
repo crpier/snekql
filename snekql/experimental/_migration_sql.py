@@ -1,8 +1,16 @@
 """Lossless token spans for bounded migration edits, not a general SQL parser."""
 
 from dataclasses import dataclass
+from string import ascii_lowercase, ascii_uppercase
 
 from snekql.errors import SchemaError
+
+_ASCII_LOWER = str.maketrans(ascii_uppercase, ascii_lowercase)
+
+
+def ascii_lower(value: str) -> str:
+    """Fold SQL keywords and SQLite identifiers without conflating Unicode names."""
+    return value.translate(_ASCII_LOWER)
 
 
 @dataclass(frozen=True)
@@ -49,7 +57,7 @@ def tokens(
     while index < len(sql):
         start = index
         char = sql[index]
-        if char.isspace():
+        if char.isspace() and (mysql or char.isascii()):
             index += 1
         elif sql.startswith("--", index):
             end = sql.find("\n", index)
@@ -71,9 +79,16 @@ def tokens(
             token = _quoted(sql, start, mysql=mysql)
             result.append(token)
             index = token.end
-        elif char.isalnum() or char in "_$":
+        elif char.isalnum() or char in "_$" or (not mysql and not char.isascii()):
             index += 1
-            while index < len(sql) and (sql[index].isalnum() or sql[index] in "_$"):
+            # SQLite accepts every non-ASCII character inside bare identifiers,
+            # including combining marks and Unicode whitespace. Splitting one
+            # can manufacture an AS keyword and incorrectly omit copied data.
+            while index < len(sql) and (
+                sql[index].isalnum()
+                or sql[index] in "_$"
+                or (not mysql and not sql[index].isascii())
+            ):
                 index += 1
             result.append(Token(sql[start:index], start, index, "word"))
         else:
@@ -84,9 +99,10 @@ def tokens(
 
 def references(sql: str, names: set[str], *, mysql: bool = False) -> bool:
     """Conservatively recognize identifier mentions, never string-literal contents."""
-    folded = {name.casefold() for name in names}
+    fold = str.casefold if mysql else ascii_lower
+    folded = {fold(name) for name in names}
     return any(
-        t.kind in {"word", "identifier"} and t.value.casefold() in folded
+        t.kind in {"word", "identifier"} and fold(t.value) in folded
         for t in tokens(sql, mysql=mysql)
     )
 
@@ -115,13 +131,13 @@ def required_definition(sql: str, *, mysql: bool = False) -> str:
         elif (
             depth == 0
             and token.kind == "word"
-            and token.value.casefold() in constraints
+            and ascii_lower(token.value) in constraints
         ):
-            if token.value.casefold() == "null":
+            if ascii_lower(token.value) == "null":
                 return sql[: token.start] + "NOT NULL" + sql[token.end :]
             if (
-                token.value.casefold() == "not"
-                and stream[index + 1].value.casefold() == "null"
+                ascii_lower(token.value) == "not"
+                and ascii_lower(stream[index + 1].value) == "null"
             ):
                 return sql
             return sql[: token.start] + "NOT NULL " + sql[token.start :]
@@ -131,7 +147,7 @@ def required_definition(sql: str, *, mysql: bool = False) -> str:
 def split_table(sql: str, *, mysql: bool = False) -> tuple[str, tuple[str, ...], str]:
     """Split ordinary CREATE TABLE definitions, preserving original text."""
     stream = tokens(sql, mysql=mysql)
-    if [(t.kind, t.value.casefold()) for t in stream[:3]] == [
+    if [(t.kind, ascii_lower(t.value)) for t in stream[:3]] == [
         ("word", "create"),
         ("word", "virtual"),
         ("word", "table"),
@@ -163,7 +179,7 @@ def split_table(sql: str, *, mysql: bool = False) -> tuple[str, tuple[str, ...],
 def column_name(definition: str, *, mysql: bool = False) -> str | None:
     """Return the column identifier, or None for a table constraint."""
     first = tokens(definition, mysql=mysql)[0]
-    if first.kind == "word" and first.value.casefold() in {
+    if first.kind == "word" and ascii_lower(first.value) in {
         "constraint",
         "primary",
         "unique",
@@ -174,7 +190,7 @@ def column_name(definition: str, *, mysql: bool = False) -> str | None:
     if (
         mysql
         and first.kind == "word"
-        and first.value.casefold() in {"key", "index", "fulltext", "spatial"}
+        and ascii_lower(first.value) in {"key", "index", "fulltext", "spatial"}
     ):
         return None
     return first.value
@@ -192,7 +208,7 @@ def without_auto_increment_counter(sql: str, *, backslash_escapes: bool) -> str:
         elif (
             depth == 0
             and token.kind == "word"
-            and token.value.casefold() == "auto_increment"
+            and ascii_lower(token.value) == "auto_increment"
         ):
             equals, number = stream[index + 1 : index + 3]
             if (

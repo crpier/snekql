@@ -6,6 +6,7 @@ from typing import Any
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import (
     Token,
+    ascii_lower,
     column_name,
     references,
     required_definition,
@@ -84,7 +85,7 @@ def _project(sql: str, objects: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
     stream = tokens(sql)
     # Keyword lookup must not treat quoted object names as SQL grammar.
     words = [
-        token.value.casefold() if token.kind == "word" else None for token in stream
+        ascii_lower(token.value) if token.kind == "word" else None for token in stream
     ]
     if words[:2] == ["create", "table"]:
         name = stream[2].value
@@ -117,8 +118,10 @@ def _project(sql: str, objects: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
 
 
 def _generated(definition: str) -> bool:
+    # Only AS(expression) declares generation; GENERATED can be a default literal.
     depth = 0
-    for token in tokens(definition)[1:]:
+    stream = tokens(definition)
+    for index, token in enumerate(stream[1:-1], start=1):
         if token.kind == "punct" and token.value == "(":
             depth += 1
         elif token.kind == "punct" and token.value == ")":
@@ -126,7 +129,9 @@ def _generated(definition: str) -> bool:
         elif (
             depth == 0
             and token.kind == "word"
-            and token.value.casefold() in {"as", "generated"}
+            and ascii_lower(token.value) == "as"
+            and stream[index + 1].kind == "punct"
+            and stream[index + 1].value == "("
         ):
             return True
     return False
@@ -135,14 +140,14 @@ def _generated(definition: str) -> bool:
 def _mentions(sql: str, names: set[str]) -> bool:
     # SQLite permits legacy single-quoted table identifiers. Over-selecting a
     # string literal is safer than missing that dependency.
-    folded = {name.casefold() for name in names}
-    return any(token.value.casefold() in folded for token in tokens(sql))
+    folded = {ascii_lower(name) for name in names}
+    return any(ascii_lower(token.value) in folded for token in tokens(sql))
 
 
 def _trigger_update_columns(stream: tuple[Token, ...]) -> tuple[Token, ...]:
     """Read the event-column list, not similarly spelled names or body expressions."""
     words = [
-        token.value.casefold() if token.kind == "word" else None for token in stream
+        ascii_lower(token.value) if token.kind == "word" else None for token in stream
     ]
     if words[:2] != ["create", "trigger"]:
         return ()
@@ -173,10 +178,10 @@ def _dependency_references(sql: str, names: set[str]) -> bool:
     if references(sql, names):
         return True
     stream = tokens(sql)
-    folded = {name.casefold() for name in names}
+    folded = {ascii_lower(name) for name in names}
     if any(
         token.kind == "string"
-        and token.value.casefold() in folded
+        and ascii_lower(token.value) in folded
         and stream[index - 1].kind == "punct"
         and stream[index - 1].value == "."
         for index, token in enumerate(stream)
@@ -184,7 +189,7 @@ def _dependency_references(sql: str, names: set[str]) -> bool:
     ):
         return True
     return any(
-        token.value.casefold() in folded for token in _trigger_update_columns(stream)
+        ascii_lower(token.value) in folded for token in _trigger_update_columns(stream)
     )
 
 
@@ -270,7 +275,7 @@ def _rebuild(
             (
                 name
                 for name in ("_rowid_", "rowid", "oid")
-                if name not in {str(col).casefold() for col in columns}
+                if name not in {ascii_lower(str(col)) for col in columns}
             ),
             None,
         )
@@ -322,7 +327,10 @@ def _rebuild(
 
 def _signature(sql: str) -> tuple[tuple[str, str], ...]:
     return tuple(
-        (token.kind, token.value.casefold() if token.kind == "word" else token.value)
+        (
+            token.kind,
+            ascii_lower(token.value) if token.kind == "word" else token.value,
+        )
         for token in tokens(sql)
     )
 
