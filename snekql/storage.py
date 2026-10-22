@@ -1242,6 +1242,7 @@ class Attr[
         self.unique: bool = unique
         self._logical_adapter_cache: TypeAdapter[Any] | None = None
         self._is_json_cache: bool | None = None
+        self._resolved_logical_type_cache: tuple[object] | None = None
         self._temporal_type_cache: (
             tuple[type[UtcDatetime | LocalDatetime | ZonedDatetime] | None] | None
         ) = None
@@ -1459,6 +1460,7 @@ class Attr[
         if not frozen or name in (
             "_logical_adapter_cache",
             "_is_json_cache",
+            "_resolved_logical_type_cache",
             "_temporal_type_cache",
         ):
             return
@@ -1977,19 +1979,28 @@ class Attr[
         (with the ``pydantic.Json`` marker stripped) rather than a validator, so
         the nullability/numeric gates can inspect it. Resolution can legitimately
         fail before a model's declaring scope is fully populated (forward refs);
-        callers treat ``None`` as "unknown" and stay permissive.
+        callers treat ``None`` as "unknown" and stay permissive. Fully resolved
+        types are retained per descriptor, like the logical validator; unresolved
+        references and resolution failures must be retried. Query aliases retain
+        their source annotation and may share the resolved type object.
         """
 
+        cached = self._resolved_logical_type_cache
+        if cached is not None:
+            return cached[0]
         owner = self.owner
         if owner is None:
             return None
         try:
             annotation = _resolve_model_hint(owner, self._require_name())
-            return _strip_json_marker(
+            logical = _strip_json_marker(
                 _extract_logical_type(annotation, self._require_name())
             )
         except ModelDeclarationError, NameError, TypeError:
             return None
+        if not _contains_forward_ref(logical):
+            self._resolved_logical_type_cache = (logical,)
+        return logical
 
     def _require_ordering(self) -> None:
         logical = self._resolved_logical_type()

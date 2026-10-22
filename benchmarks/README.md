@@ -143,6 +143,9 @@ From the sweep (read-mostly point queries, one event loop):
 
 ## Query construction throughput
 
+The [logical-annotation measurements](logical-annotations-481.md) cover repeated
+type resolution in ordering, range predicates and numeric expressions.
+
 `benchmarks.construction` measures how fast `select(...).where(...).limit(...)`
 chains (and insert/update builds) turn into immutable query state — no database,
 no async. It reports a throughput distribution over repeated trials and
