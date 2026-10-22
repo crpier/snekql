@@ -7,6 +7,8 @@ classes globally: all other driver methods retain their original implementation.
 """
 
 lazy import sqlite3
+
+lazy import aiosqlite
 lazy from typing import Any
 
 lazy from aiosqlite import Connection
@@ -34,8 +36,12 @@ class BufferedConnection(Connection):
             cursor.close()
 
 
-def connect(database: str) -> BufferedConnection:
+def connect(database: str) -> Connection:
     """Use the driver's worker/start/close lifecycle with our local subclass."""
+    # Future releases must not silently bypass our worker cleanup callback.
+    # Keep their supported cursor lifecycle until compatibility is reviewed.
+    if aiosqlite.__version__ != "0.22.1":
+        return aiosqlite.connect(database, isolation_level=None)
     return BufferedConnection(
         lambda: sqlite3.connect(database, isolation_level=None),
         iter_chunk_size=64,

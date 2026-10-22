@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 from unittest.mock import patch
 
+import aiosqlite
 from anyio import Event, TemporaryDirectory, fail_after
 from snektest import Param, assert_eq, assert_raises, test
 
@@ -270,3 +271,30 @@ async def buffered_execution_failure_preserves_explicit_driver_cause() -> None:
             native = caught.exception.__cause__
             assert native is not None
             assert_eq(str(native.__cause__), "native execution cause")
+
+
+@test(mark="medium")
+async def unreviewed_driver_keeps_the_ordinary_cursor_lifecycle() -> None:
+    """Unknown driver releases need not preserve the combined helper contract."""
+
+    async def changed_helper(
+        self: aiosqlite.Connection, sql: str, parameters: Any = None
+    ) -> list[Any]:
+        del self, sql, parameters
+        msg = "unreviewed driver changed its combined helper"
+        raise RuntimeError(msg)
+
+    with (
+        patch.object(aiosqlite, "__version__", "999.0.0"),
+        patch.object(aiosqlite.Connection, "execute_fetchall", changed_helper),
+    ):
+        async with (
+            await initialized_database(
+                database=":memory:", models=[CleanupReading]
+            ) as database,
+            database.transaction() as transaction,
+        ):
+            await transaction.execute(sqlite.insert(CleanupReading(value=7)))
+            assert_eq(
+                await transaction.fetch_all(sqlite.select(CleanupReading.value)), [7]
+            )
