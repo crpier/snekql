@@ -5,6 +5,7 @@ lazy from functools import partial
 lazy from typing import Any, cast
 
 lazy from snekql._column_protocols import is_dialect_selectable, is_policy_selectable
+lazy from snekql._cte import _CteOutput
 lazy from snekql._dialect_expr import (
     DialectSelectable,
     NullExtendedSelectable,
@@ -153,12 +154,34 @@ def resolve_projection_decoder(
     backend: StorageBackend,
     validate: bool,
 ) -> Callable[[object], object]:
-    """Resolve ordinary column dispatch once for this execution's policy.
+    """Resolve ordinary columns and built-in derived chains for this execution.
 
     Structural extension seams take precedence even on Attr subclasses. Keep
     those and non-column expressions on the general decoder; never cache by
     class or globally, since ownership and validation belong to the execution.
     """
+    # Built-in derived references only forward to their definition's wire
+    # source. Resolve that chain with each definition's own NULL-extension
+    # context; never validate its intermediate application result model.
+    if type(cast("object", column)) is _CteOutput:
+        reference = cast("_CteOutput[Any, Any, Any]", column)
+        slot = reference.__output_slot__()
+        if backend == slot.backend:
+            decode = resolve_projection_decoder(
+                slot.source,
+                nullable_models=slot.nullable_models,
+                backend=slot.backend,
+                validate=validate,
+            )
+            if reference.relation in nullable_models:
+
+                def decode_derived_nullable(raw: object) -> object:
+                    return None if raw is None else decode(raw)
+
+                return decode_derived_nullable
+            return decode
+        # Preserve the existing error boundary: an incompatible slot fails
+        # when decoded, not while resolving an empty or NULL-extended read.
     if (
         isinstance(column, Attr)
         and not is_policy_selectable(column)
