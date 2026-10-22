@@ -916,3 +916,99 @@ public interrupted shutdown, not prototype TLS, native physical-close failure,
 settings/authentication failure during startup, recycling, or a completed
 production owned-pool port. Earlier protocol cleanup, negative-duration and #491
 limitations remain. No additional issues were published to other projects.
+
+## Continuation: startup faults and an authentication deadline fix — 2026-10-22
+
+Four new public `Database.initialize()` scenarios run against an owned,
+password-authenticated MariaDB over loopback TCP. A bounded single-client packet
+relay either withholds startup traffic or rewrites one session-setting command.
+It records only stage flags, error metadata and EOF observations, never credentials
+or packet contents. These probes do not cover TLS, compression or pipelining.
+
+### Found and fixed: prototype authentication outside the acquisition deadline
+
+The initial `startup-auth-deadline` regression failed for the prototype:
+
+| Implementation | Config acquisition budget | Result before harness intervention |
+| --- | --- | --- |
+| Production aiomysql | 0.5 seconds | `PoolTimeoutError`; client EOF observed |
+| Original asyncmy prototype | 0.5 seconds | Still pending at the separate 2-second watchdog |
+
+The relay receives the initial client authentication packet and withholds it, so
+this is waiting for the authentication response, **not** a TCP-connect timeout or
+a missing server greeting. The watchdog is explicitly distinct from the Config
+budget. The original candidate report records `watchdog_expired=true`, no public
+error yet, and no established pre-cleanup EOF; the harness then cancels the task.
+That assisted cleanup is not counted as successful deadline enforcement and is
+not evidence of a persistent socket leak.
+
+The prototype eagerly called native `create_pool(minsize=1)` **before** entering
+snekql's protected checkout. Native `connect_timeout` did not bound that
+post-connect authentication wait. The isolated fix changes native `minsize` to
+**0**, deferring the first connection until `wrapper.acquire()` applies the
+acquisition deadline and initialization cleanup. Public initialization still
+warms/configures one connection before returning; maximum capacity remains one.
+
+The unchanged regression now passes: both implementations raise `PoolTimeoutError`
+and close the partial client connection before the watchdog/relay cleanup.
+[Before evidence](results/2026-10-22-asyncmy-startup/auth-before.json) comes from
+clean source `c88402a`; [fixed evidence](results/2026-10-22-asyncmy-startup/startup-auth-deadline.json)
+comes from `293cfe4`. This is a prototype integration fix, not an asyncmy upstream
+bug claim or a complete production owned-pool port.
+
+### Settings deadlines, cancellation and rejection
+
+The settings relay waits until it sees `SET SESSION sql_mode`, after successful
+authentication and the preceding startup traffic. For the deadline and native
+cancellation scenarios it withholds that command. Both implementations:
+
+- propagate `PoolTimeoutError` for the 0.5-second acquisition deadline, or the
+  original `CancelledError` when cancelled at the observed settings barrier;
+- close the partial client connection before the relay forces either transport
+  closed (an explicit ordering flag prevents relay-induced EOF from passing);
+- permit a **fresh, independent** initialization to query `42` with UTC timezone
+  and then close normally. No failed Database/pool object was returned for reuse.
+
+The rejection scenario instead forwards a deliberately invalid SQL-mode value to
+MariaDB. The **real server** rejects it with code **1231**; both implementations
+close the partial connection and recover through a fresh initialization.
+
+The stronger expectation of a public snekql exception failed: both production
+aiomysql and the prototype expose native `OperationalError`, with
+`public_error=false`, at this initialization boundary. The retained test explicitly
+characterizes that shared behavior, not successful exception normalization. No
+production change or new issue was made for it; any policy change needs separate
+scope rather than being hidden in the driver experiment.
+
+### Reproduction and validation
+
+```sh
+for scenario in startup-deadline startup-cancel startup-rejected-setting startup-auth-deadline; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "$scenario" \
+    >"$root/$scenario.json" || exit
+done
+```
+
+[Reports/provenance](results/2026-10-22-asyncmy-startup/) retain the pre-fix control
+and all four fixed-source runs. Fixed source: `293cfe4`; CPython 3.15.0, MariaDB
+13.0.2, aiomysql 0.3.2 / PyMySQL 1.2.0, asyncmy 0.2.16. All four final CLI runs had
+empty stderr and no captured Python warnings.
+
+- **49 focused tests passed in completed, disjoint batches: 32 + 6 + 11.** Coverage
+  includes new startup faults, prior public session/shutdown/stream/COMMIT probes,
+  production initialization/settings/deadlines, public cancellation, constraints
+  and values.
+- An earlier combined regression invocation hit the tool's 180-second limit and
+  was interrupted. It is excluded from the totals; split reruns completed. No
+  surviving processes under this probe's owned temporary root were found.
+- Typing, lint, formatting and whitespace checks passed. Full suite not rerun.
+- Fetched main at the checkpoint; no further merge was needed.
+- No production runtime, dependency or lockfile changes. The only adapter change
+  is deferred native connection creation in the isolated prototype.
+
+**Hold adoption remains the verdict.** Required TLS on every prototype connection,
+recycling, physical-close failures, repeated cancellation, and the broader owned-
+pool port remain gates. Existing protocol/value and #491 findings are not fixed
+by this change. No issues were published to other projects.

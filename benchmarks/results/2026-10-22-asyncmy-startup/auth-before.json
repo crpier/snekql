@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "startup-auth-deadline",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "authentication_seen": true,
+      "error_type": "PoolTimeoutError",
+      "watchdog_expired": false,
+      "client_eof_before_cleanup": true,
+      "recovery_answer": 42,
+      "recovery_zone": "+00:00",
+      "final_state": "closed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "authentication_seen": true,
+      "error_type": null,
+      "watchdog_expired": true,
+      "client_eof_before_cleanup": false,
+      "recovery_answer": 42,
+      "recovery_zone": "+00:00",
+      "final_state": "closed",
+      "warnings": []
+    }
+  ]
+}

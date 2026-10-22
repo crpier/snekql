@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scenario": "startup-rejected-setting",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "settings_seen": true,
+      "error_type": "OperationalError",
+      "error_code": 1231,
+      "public_error": false,
+      "client_eof_before_cleanup": true,
+      "relay_stopped_before_observation": false,
+      "recovery_answer": 42,
+      "recovery_zone": "+00:00",
+      "final_state": "closed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "settings_seen": true,
+      "error_type": "OperationalError",
+      "error_code": 1231,
+      "public_error": false,
+      "client_eof_before_cleanup": true,
+      "relay_stopped_before_observation": false,
+      "recovery_answer": 42,
+      "recovery_zone": "+00:00",
+      "final_state": "closed",
+      "warnings": []
+    }
+  ]
+}

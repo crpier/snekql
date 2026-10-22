@@ -1,0 +1,26 @@
+{
+  "source_commit": "293cfe4ad3646576e23a84ffea43666cee2591cb",
+  "before_source_commit": "c88402af4281b09d7e7d56ec43fd8da2c5e36b05",
+  "source_dirty_during_collection": false,
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "aiomysql": "0.3.2",
+    "pymysql": "1.2.0",
+    "asyncmy": "0.2.16"
+  },
+  "server_binary": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "transport": "owned loopback TCP; password authentication; no TLS/compression/pipelining",
+  "acquisition_timeout_seconds": 0.5,
+  "authentication_watchdog_seconds": 2,
+  "cancellation_and_rejection_acquisition_timeout_seconds": 10,
+  "outer_probe_timeout_seconds": 15,
+  "scope": "public initialization; real settings rejection via rewritten command; client EOF before relay stop/cleanup; fresh independent recovery pool",
+  "validation": {
+    "startup_and_related": 32,
+    "public_cancellation": 6,
+    "constraints_and_values": 11,
+    "combined_regression_attempt": "tool timeout at 180 seconds; excluded from totals; reran as two successful batches",
+    "full_suite_rerun": false
+  }
+}
