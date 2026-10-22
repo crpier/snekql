@@ -18,6 +18,12 @@ from benchmarks._asyncmy_sessions import (
     shutdown_probe,
 )
 from benchmarks._asyncmy_sessions import probe as session_probe
+from benchmarks._asyncmy_startup import (
+    authentication_deadline_probe,
+    rejected_setting_probe,
+)
+from benchmarks._asyncmy_startup import cancellation_probe as startup_cancellation_probe
+from benchmarks._asyncmy_startup import deadline_probe as startup_deadline_probe
 from benchmarks._asyncmy_values import probe as value_probe
 from benchmarks._asyncmy_values import warning_probe
 from snekql import mariadb
@@ -25,6 +31,10 @@ from snekql.errors import DatabaseRuntimeError
 from snekql.testing.mariadb import temporary_mariadb_server
 
 _SESSION_SCENARIOS = {
+    "startup-auth-deadline": authentication_deadline_probe,
+    "startup-rejected-setting": rejected_setting_probe,
+    "startup-deadline": startup_deadline_probe,
+    "startup-cancel": startup_cancellation_probe,
     "session-settings": session_probe,
     "session-mutations": mutation_probe,
     "shutdown-timeout": shutdown_probe,
@@ -139,6 +149,10 @@ async def main() -> None:
     parser.add_argument(
         "--scenario",
         choices=(
+            "startup-rejected-setting",
+            "startup-auth-deadline",
+            "startup-deadline",
+            "startup-cancel",
             "shutdown-timeout",
             "shutdown-cancel",
             "session-settings",
@@ -170,7 +184,10 @@ async def main() -> None:
     )
     args = parser.parse_args()
     results = []
-    async with temporary_mariadb_server(transports={"tcp"}) as server:
+    async with temporary_mariadb_server(
+        transports={"tcp"},
+        auth="password" if args.scenario.startswith("startup-") else "insecure",
+    ) as server:
         baseline = server.config(pool_size=1)
         prototype = PrototypeConfig(
             **{field.name: getattr(baseline, field.name) for field in fields(baseline)}
