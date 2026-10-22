@@ -233,7 +233,14 @@ async def builder_timeout_traceback_honors_visibility(
             raise TimeoutError(private_input)
         return await native_execute(connection, sql, parameters)
 
+    async def timeout_buffered(
+        connection: Connection, sql: str, parameters: Iterable[object] | None = None
+    ) -> list[tuple[object, ...]]:
+        del connection, sql, parameters
+        raise TimeoutError(private_input)
+
     with (
+        patch.object(Connection, "execute_fetchall", timeout_buffered),
         patch.object(Connection, "execute", timeout_execute),
         assert_raises(sqlite.DatabaseOperationTimeoutError) as caught,
     ):

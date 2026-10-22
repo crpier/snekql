@@ -1,0 +1,481 @@
+{
+  "environment_variables": {
+    "TMPDIR": "/home/crpier/.cache/snekql-496/tmp",
+    "PYTHON_CONTEXT_AWARE_WARNINGS": "1"
+  },
+  "environments": {
+    "environment-1": {
+      "hardware": {
+        "cpu_model": "Intel(R) Core(TM) i7-14700F",
+        "memory_total_bytes": 33454784512,
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "cpu0_governor": "powersave"
+      },
+      "architecture": "x86_64",
+      "cpu": "",
+      "logical_cpus": 28,
+      "os": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "sqlite": "3.53.1",
+      "loop": "asyncio.unix_events._UnixSelectorEventLoop",
+      "gc_enabled": true,
+      "commit": "7259771d856bfaf136621c888a9d519bb0056565",
+      "dirty": false,
+      "packages": {
+        "snekql": "0.9.0",
+        "aiosqlite": "0.22.1",
+        "aiomysql": "0.3.2",
+        "sqlalchemy": "2.1.1",
+        "greenlet": "3.5.6",
+        "pydantic": "2.14.0",
+        "anyio": "4.15.1"
+      },
+      "mariadb": null
+    },
+    "environment-2": {
+      "hardware": {
+        "cpu_model": "Intel(R) Core(TM) i7-14700F",
+        "memory_total_bytes": 33454784512,
+        "affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        "cpu0_governor": "powersave"
+      },
+      "architecture": "x86_64",
+      "cpu": "",
+      "logical_cpus": 28,
+      "os": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+      "python": "3.15.0 (main, Oct  9 2026, 15:24:40) [Clang 22.1.3 ]",
+      "sqlite": "3.53.1",
+      "loop": "asyncio.unix_events._UnixSelectorEventLoop",
+      "gc_enabled": true,
+      "commit": "090e2ea1a3e3d245c972c7d76d7cf47096b77fe2",
+      "dirty": false,
+      "packages": {
+        "snekql": "0.9.0",
+        "aiosqlite": "0.22.1",
+        "aiomysql": "0.3.2",
+        "sqlalchemy": "2.1.1",
+        "greenlet": "3.5.6",
+        "pydantic": "2.14.0",
+        "anyio": "4.15.1"
+      },
+      "mariadb": null
+    }
+  },
+  "session_policies": {
+    "policy-1": null
+  },
+  "runs": [
+    {
+      "id": "final-point-1792692843457853111",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/.cache/snekql-496/baseline",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692843.4578612,
+      "elapsed": 13.19007682800293,
+      "report": "final-point-1792692843457853111.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-1",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:14:16.582704+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    },
+    {
+      "id": "final-point-1792692861260862606",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/Projects/third-snekql",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692861.2608678,
+      "elapsed": 10.472339630126953,
+      "report": "final-point-1792692861260862606.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-2",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:14:31.675175+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    },
+    {
+      "id": "final-point-1792692876227788416",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/.cache/snekql-496/baseline",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692876.227792,
+      "elapsed": 10.604546546936035,
+      "report": "final-point-1792692876227788416.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-1",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:14:46.767388+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    },
+    {
+      "id": "final-point-1792692891369000979",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/Projects/third-snekql",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692891.3690069,
+      "elapsed": 10.291871309280396,
+      "report": "final-point-1792692891369000979.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-2",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:15:01.603036+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    },
+    {
+      "id": "final-point-1792692906271123338",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/.cache/snekql-496/baseline",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692906.271127,
+      "elapsed": 10.19535231590271,
+      "report": "final-point-1792692906271123338.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-1",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:15:16.409939+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    },
+    {
+      "id": "final-point-1792692920967552598",
+      "command": [
+        "/home/crpier/Projects/third-snekql/.venv/bin/python",
+        "-m",
+        "benchmarks.compare",
+        "--backend",
+        "sqlite",
+        "--workload",
+        "point-read",
+        "--rows",
+        "2000",
+        "--operations",
+        "2000",
+        "--trials",
+        "6",
+        "--warmup",
+        "200"
+      ],
+      "cwd": "/home/crpier/Projects/third-snekql",
+      "exit": 0,
+      "stderr": "",
+      "started": 1792692920.9675567,
+      "elapsed": 10.25934910774231,
+      "report": "final-point-1792692920967552598.json",
+      "report_metadata": {
+        "backend": "sqlite",
+        "configuration": {
+          "operations": 2000,
+          "rows": 2000,
+          "trials": 6,
+          "warmup": 200,
+          "workers": 1,
+          "pool_size": 1,
+          "payload_bytes": 32,
+          "buffering": "fetch-all",
+          "validation": "strict-pydantic",
+          "transaction": "explicit-begin-commit",
+          "query_construction": "per-operation",
+          "sqlite": {
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "foreign_keys": true,
+            "busy_timeout_ms": 5000
+          }
+        },
+        "environment": "environment-2",
+        "measurement": {
+          "profile": "timing",
+          "heartbeat_interval_seconds": 0.005,
+          "latency_includes_correctness_checks": true,
+          "setup_included": false,
+          "warmup_included": false
+        },
+        "recorded_at": "2026-10-22T18:15:31.171185+00:00",
+        "schema_version": 1,
+        "workload": "point-read"
+      }
+    }
+  ]
+}
