@@ -15,15 +15,16 @@ def _plain_column_lacks_hook(value: object, protocol: type, hook: str) -> bool:
 
     Exact builtins have ordinary instance dictionaries and class lookup. Keep
     nominal/registered membership on the original path, and inspect both places
-    where an extension can install its hook. Subclasses may redefine lookup and
+    where an extension can install its hook, without invoking descriptors or
+    customized dictionary membership. Subclasses may redefine lookup and
     must use the protocol's full rules instead.
     """
     cls = type(value)
     return (
         (cls is Attr or cls is FKAttr or cls is _DeferredFKAttr)
         and not issubclass(cls, protocol)
-        and hook not in vars(value)
-        and getattr(cls, hook, None) is None
+        and not dict.__contains__(vars(value), hook)
+        and all(hook not in base.__dict__ for base in cls.__mro__)
     )
 
 
