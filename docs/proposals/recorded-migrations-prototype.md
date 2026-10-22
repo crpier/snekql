@@ -274,6 +274,35 @@ earlier structured steps without executing them. Separate expand/backfill/contra
 revisions remain useful for application rollout compatibility; completing a
 migration does not establish application readiness.
 
+## MariaDB managed-table presence guard
+
+Before recording a new completion, MariaDB requires every table in the target
+managed scope to resolve to an observed base table. A missing table or a view with
+the right name does not satisfy that claim. This does not restrict query-only
+model mappings to views; mapping and ownership remain separate.
+
+The runner asks the server to resolve each declared name with SHOW CREATE TABLE
+and matches its normalized definition to the observed base-table catalog. It does
+not implement identifier folding in Python: on a lower-case-table-names server,
+SHOW's name column can echo the requested spelling while the definition contains
+the physical name. Existing AUTO_INCREMENT counter normalization is reused so
+ordinary inserts do not change structural identity.
+
+This is deliberately a **presence and object-kind guard**, not full native schema
+verification. Matching the resolved definition to the observed catalog does not
+compare columns, types, defaults, constraints, indexes, engines, codecs or values
+against the recorded contract. Those native endpoint checks remain future work.
+Construction SQL remains trusted executable input, not a sandbox.
+
+Unlike SQLite, rejected completion cannot roll back already committed MariaDB
+DDL. The actual object and acknowledged steps remain, progress stays uncertain,
+and the error warns that committed effects may remain. An otherwise all-steps-
+acknowledged recovery also checks this guard before offering `finish`; a failed
+claim yields `ambiguous`, and resume cannot bypass it. There is no automatic
+repair, cleanup, force-completion or history rewriting. Earlier records already
+marked complete are not re-certified by this change. Empty relinquished scope
+does not re-adopt old tables.
+
 ## Bounded MariaDB recovery
 
 Save the original prepared plan before application, for example with

@@ -941,3 +941,121 @@ async def sqlite_copy_metadata_does_not_change_native_plan_serialization() -> No
         restored = migrations.Prepared.model_validate(legacy)
         assert_eq(restored.model_dump(mode="json"), legacy)
         assert_eq(await target.apply(restored), "applied")
+
+
+@test(mark="slow")
+async def mariadb_missing_managed_table_cannot_complete_or_finish_recovery() -> None:
+    """Committed DDL is not completion when the declared managed table is absent."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    table = draft.target.tables[0]
+    table = table.model_copy(
+        update={"sql": table.sql.replace("`entry`", "`wrong_table`")}
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        prepared = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(prepared)
+        assert "managed table postcondition" in str(error.exception)
+        assert "entry" in str(error.exception)
+        progress = await target.status()
+        assert_eq(
+            [(p.phase, p.acknowledged_steps, p.total_steps) for p in progress],
+            [("uncertain", 1, 1)],
+        )
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(prepared, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "managed table postcondition" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        rows = await tx.fetch_all(
+            mariadb.raw(
+                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='wrong_table'"
+            )
+        )
+        assert_eq(rows, [{"TABLE_NAME": "wrong_table"}])
+
+
+@test(mark="slow")
+async def mariadb_view_cannot_satisfy_a_managed_table_claim() -> None:
+    """A queryable object with the right name is not necessarily a base table."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    table = draft.target.tables[0].model_copy(
+        update={"sql": "CREATE VIEW entry AS SELECT 1 AS id, 'visible' AS title"}
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        prepared = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(prepared)
+        assert "not an observed base table" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(prepared, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(mariadb.raw("SELECT title FROM entry")),
+            [{"title": "visible"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_table_postcondition_uses_server_identifier_resolution() -> None:
+    """Case-folding servers resolve a declared mixed-case table without Python folding."""
+
+    class Mixed[S = mariadb.Pending](mariadb.Model[S]):
+        """A deliberately mixed-case physical name."""
+
+        __tablename__ = "MixedEntry"
+        __row_type__: ClassVar[mariadb.ReadType[Mixed[mariadb.Row]]]
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    await asyncio.to_thread(Path(".snektest").mkdir, exist_ok=True)
+    with TemporaryDirectory(prefix="packages-case-", dir=".snektest") as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data",
+            server_args=("--lower-case-table-names=1",),
+        ) as server:
+            package = migrations.compile(
+                migrations.generate("001", [Mixed], backend="mariadb")
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                assert_eq(await target.apply(plan), "applied")
+                assert_eq((await target.status())[0].phase, "complete")
+            async with (
+                await mariadb.Database.initialize(server.config()) as db,
+                db.transaction() as tx,
+            ):
+                assert_eq(
+                    await tx.fetch_all(
+                        mariadb.raw(
+                            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='mixedentry'"
+                        )
+                    ),
+                    [{"TABLE_NAME": "mixedentry"}],
+                )

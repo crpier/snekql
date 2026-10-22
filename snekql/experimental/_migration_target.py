@@ -37,6 +37,7 @@ from snekql.mariadb.identifiers import quote_identifier
 from snekql.sqlite.config import Config as SQLiteConfig
 
 _HISTORY = "snekql_experimental_migrations"
+_MARIADB_NO_SUCH_TABLE = 1146
 
 
 class Reconciliation(_Value):
@@ -399,6 +400,8 @@ class Target:
         completed_catalog = await self._catalog()
         if self._sqlite:
             validate_completed(package, completed_catalog)
+        elif obstacle := await self._mariadb_table_obstacle(package, completed_catalog):
+            raise PackageError(obstacle)
         await self._query(
             "UPDATE `snekql_experimental_migrations` SET phase='complete', catalog="  # noqa: S608 - fixed placeholders or quoted identifiers
             + marker
@@ -407,6 +410,36 @@ class Target:
             (_digest(completed_catalog), package.digest),
         )
         await self._connection.commit()
+
+    async def _mariadb_table_obstacle(
+        self, package: Package, catalog: list[tuple[Any, ...]]
+    ) -> str | None:
+        """Explain a claimed table that does not resolve to an observed base table."""
+        if not package.target.tables:
+            return None
+        mode = (await self._query("SELECT @@SESSION.sql_mode"))[0][0]
+        definitions = {sql for kind, _, sql in catalog if kind == "BASE TABLE"}
+        for table in package.target.tables:
+            try:
+                resolved = await self._query(
+                    "SHOW CREATE TABLE " + quote_identifier(table.name)
+                )
+            except aiomysql.ProgrammingError as error:
+                if error.args[:1] != (_MARIADB_NO_SUCH_TABLE,):
+                    raise
+                return f"managed table postcondition failed: {table.name!r} is missing; committed MariaDB effects may remain"
+            # SHOW's name column may echo the requested spelling. Its definition
+            # uses the server-resolved physical name, including case-folding modes.
+            if (
+                len(resolved) != 1
+                or without_auto_increment_counter(
+                    resolved[0][1],
+                    backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+                )
+                not in definitions
+            ):
+                return f"managed table postcondition failed: {table.name!r} is not an observed base table; committed MariaDB effects may remain"
+        return None
 
     async def _start_package(self, prepared: Prepared) -> None:
         package = prepared.package
@@ -687,6 +720,13 @@ class Target:
                     else "retry_remaining"
                 )
                 explanation = "catalog matches the last durable acknowledgement; transactional updates and their markers commit together"
+                if disposition == "finish" and (
+                    obstacle := await self._mariadb_table_obstacle(
+                        prepared.package, observation
+                    )
+                ):
+                    disposition = "ambiguous"
+                    explanation = obstacle
         elif (
             acknowledged < len(prepared.steps)
             and "NO_BACKSLASH_ESCAPES" not in profile[1].split(",")
