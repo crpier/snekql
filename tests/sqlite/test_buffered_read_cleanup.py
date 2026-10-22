@@ -252,7 +252,8 @@ async def buffered_execution_failure_preserves_explicit_driver_cause() -> None:
         def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
             if sql == target_sql:
                 cause = ValueError("native execution cause")
-                raise sqlite3.IntegrityError("native execution failure") from cause
+                msg = "native execution failure"
+                raise sqlite3.IntegrityError(msg) from cause
             return super().execute(sql, parameters)
 
     connect = partial(sqlite3.connect, factory=FaultConnection)
