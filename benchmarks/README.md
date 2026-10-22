@@ -230,3 +230,7 @@ ordinary projection controls, memory samples and preserved validation policies.
 [Whole-source joined CTE decoding](joined-derived-502.md) measures execution-local
 named-source decoders while preserving physical-model assignment and joined-row
 presence witnesses, with wide/point controls and longer single-row follow-ups.
+
+[Scalar-subquery decoder resolution](scalar-decoders-504.md) measures execution-local
+source decoding while preserving scalar NULLs and validation, including initial
+and final measurements, guard-order refinement and longer single-row controls.
