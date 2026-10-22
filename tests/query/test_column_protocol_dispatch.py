@@ -53,8 +53,11 @@ def instance_column_hooks_keep_projection_and_operand_bindings(backend: str) -> 
     assert_in(f"({quote}value{quote} + {marker})", compiled.sql)
 
 
-def policy_extended(column: Attr[Any, Any, Any, Any, Any]) -> Any:
-    column = extended(column)
+def policy_extended(
+    column: Attr[Any, Any, Any, Any, Any], *, sql_hooks: bool = True
+) -> Any:
+    if sql_hooks:
+        column = extended(column)
 
     def decode(raw: object, *, backend: StorageBackend, validate: bool) -> object:
         value = cast("int", column.decode(raw, backend=backend, validate=validate))
@@ -70,8 +73,16 @@ class PolicySqlReading[S = sqlite.Pending](sqlite.Model[S]):
     value: PolicySqlReading.Col[int] = policy_extended(sqlite.Integer())
 
 
+class PolicyOnlySqlReading[S = sqlite.Pending](sqlite.Model[S]):
+    __row_type__: ClassVar[sqlite.ReadType[PolicyOnlySqlReading[sqlite.Row]]]
+    key: PolicyOnlySqlReading.Col[int] = sqlite.Integer(primary_key=True)
+    value: PolicyOnlySqlReading.Col[int] = policy_extended(
+        sqlite.Integer(), sql_hooks=False
+    )
+
+
 @test(
-    [Param(value="dialect", name="dialect"), Param(value="policy", name="policy")],
+    [Param(value=kind, name=kind) for kind in ("dialect", "policy", "policy_only")],
     [
         Param(value="buffered", name="buffered"),
         Param(value="streamed", name="streamed"),
@@ -81,14 +92,18 @@ class PolicySqlReading[S = sqlite.Pending](sqlite.Model[S]):
 async def instance_column_hooks_keep_each_executions_decode_policy(
     kind: str, consumption: str
 ) -> None:
-    model: Any = SqlReading if kind == "dialect" else PolicySqlReading
+    model: Any = {
+        "dialect": SqlReading,
+        "policy": PolicySqlReading,
+        "policy_only": PolicyOnlySqlReading,
+    }[kind]
     async with (
         await initialized_database(database=":memory:", models=[model]) as db,
         db.transaction() as tx,
     ):
         await tx.execute(sqlite.insert(model(key=1, value=7)))
         whole = await tx.fetch_one(sqlite.select(model))
-        assert_eq(whole.value, 27)
+        assert_eq(whole.value, 7 if kind == "policy_only" else 27)
         query = sqlite.select(model.value)
         for validate in (False, True, False):
             if consumption == "buffered":
@@ -96,5 +111,9 @@ async def instance_column_hooks_keep_each_executions_decode_policy(
             else:
                 async with tx.fetch_chunks(query, size=1, validate=validate) as chunks:
                     values = [value async for batch in chunks for value in batch]
-            expected = 327 if kind == "dialect" else 127 if validate else 227
+            expected = {
+                "dialect": {False: 327, True: 327},
+                "policy": {False: 227, True: 127},
+                "policy_only": {False: 207, True: 107},
+            }[kind][validate]
             assert_eq(values, [expected])
