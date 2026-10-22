@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "scenario": "session-settings",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "sessions": [
+        {
+          "id": 5,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        },
+        {
+          "id": 5,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        },
+        {
+          "id": 6,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        }
+      ],
+      "reused": true,
+      "replaced": true,
+      "extra_results_rejected": true,
+      "occupied": 0,
+      "waiters": 0,
+      "discarded_connections": 1,
+      "pool_state_after_close": "closed",
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "sessions": [
+        {
+          "id": 7,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        },
+        {
+          "id": 7,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        },
+        {
+          "id": 8,
+          "time_zone": "+00:00",
+          "sql_mode": "STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION",
+          "foreign_key_checks": 1,
+          "check_constraint_checks": 1,
+          "unique_checks": 1,
+          "autocommit": 0,
+          "character_set_connection": "utf8mb4"
+        }
+      ],
+      "reused": true,
+      "replaced": true,
+      "extra_results_rejected": true,
+      "occupied": 0,
+      "waiters": 0,
+      "discarded_connections": 1,
+      "pool_state_after_close": "closed",
+      "warnings": []
+    }
+  ]
+}

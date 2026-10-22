@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "scenario": "session-mutations",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "within_lease": {
+        "id": 5,
+        "time_zone": "+05:30",
+        "marker": 42
+      },
+      "next_lease": {
+        "id": 5,
+        "time_zone": "+05:30",
+        "marker": 42
+      },
+      "replacement": {
+        "id": 6,
+        "time_zone": "+00:00",
+        "marker": null
+      },
+      "reused": true,
+      "replaced": true,
+      "extra_results_rejected": true,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "within_lease": {
+        "id": 7,
+        "time_zone": "+05:30",
+        "marker": 42
+      },
+      "next_lease": {
+        "id": 7,
+        "time_zone": "+05:30",
+        "marker": 42
+      },
+      "replacement": {
+        "id": 8,
+        "time_zone": "+00:00",
+        "marker": null
+      },
+      "reused": true,
+      "replaced": true,
+      "extra_results_rejected": true,
+      "warnings": []
+    }
+  ]
+}

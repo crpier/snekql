@@ -1,0 +1,24 @@
+{
+  "source_commit": "090dfa47b92837ace10c77728bf3ebcafc1e73b7",
+  "source_dirty_during_collection": false,
+  "merged_main": "84e6f0d",
+  "python": "3.15.0",
+  "platform": "Linux-7.2.8-9-omarchy-x86_64-with-glibc2.44",
+  "packages": {
+    "aiomysql": "0.3.2",
+    "pymysql": "1.2.0",
+    "asyncmy": "0.2.16"
+  },
+  "server_binary": "mariadbd  Ver 13.0.2-MariaDB for Linux on x86_64 (Arch Linux)",
+  "transport": "owned loopback TCP; no TLS in prototype",
+  "pool_size": 1,
+  "shutdown_timeout_seconds": 0.5,
+  "shutdown_cancel_barrier": "held public transaction, wait_all_tasks_blocked, observed closing pool state and pending close caller",
+  "probe_deadline_seconds": 15,
+  "scope": "public raw transactions via production aiomysql and isolated asyncmy prototype; no driver monkeypatches",
+  "validation": {
+    "session_related_tests": 37,
+    "merge_and_previous_probe_tests": 37,
+    "full_suite_rerun": false
+  }
+}

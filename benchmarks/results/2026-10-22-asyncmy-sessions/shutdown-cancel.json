@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scenario": "shutdown-cancel",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "cancel_error": "CancelledError",
+      "concurrent_close_pending": true,
+      "new_work_error": "DatabaseClosingError",
+      "active_answer": 42,
+      "commit_outcome": "committed",
+      "final_state": "closed",
+      "occupied": 0,
+      "waiters": 0,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "cancel_error": "CancelledError",
+      "concurrent_close_pending": true,
+      "new_work_error": "DatabaseClosingError",
+      "active_answer": 42,
+      "commit_outcome": "committed",
+      "final_state": "closed",
+      "occupied": 0,
+      "waiters": 0,
+      "warnings": []
+    }
+  ]
+}

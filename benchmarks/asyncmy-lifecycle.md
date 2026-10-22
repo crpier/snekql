@@ -830,3 +830,89 @@ initialization/reset/recycling, legacy-protocol and broader TLS configuration
 coverage, cancellation during actual handshake/authentication, and interrupted or
 failed shutdown. The earlier cleanup/value defects and shared #491 timeout defect
 remain separate open concerns.
+
+## Continuation: public session policy and interrupted shutdown — 2026-10-22
+
+Four further scenarios use public snekql transactions and pool statistics against
+owned MariaDB, comparing production aiomysql with the existing size-one asyncmy
+prototype. No driver methods, internal pool state or cleanup collaborators are
+patched. This advances session/replacement and shutdown coverage without claiming
+that the production owned-pool port is complete.
+
+### Session settings and replacement
+
+At first checkout, reuse and replacement, both implementations expose:
+
+- UTC session timezone (`+00:00`), `STRICT_ALL_TABLES` and
+  `NO_ENGINE_SUBSTITUTION` SQL-mode flags;
+- enabled foreign-key, CHECK and uniqueness checks;
+- autocommit disabled and `utf8mb4` connection encoding.
+
+The first two transactions have the same `CONNECTION_ID()`. An intentionally
+abandoned multi-result stream is rejected through the existing reject-and-discard
+policy; the next transaction has a different ID and the required settings. Each
+pool records one discard, zero occupied slots and zero waiters, then closes.
+
+A separate raw-session-mutation control sets timezone `+05:30` and a user variable
+to `42`. **Both implementations retain both values across ordinary reuse.** After
+physical discard, the replacement has timezone `+00:00` and a NULL user variable.
+This is a characterization of existing session behavior, not encouragement to
+change required settings: ordinary checkout is **not a complete session reset**.
+It also does not count initialization statements or measure their cost. No new
+candidate/baseline discrepancy was found in these scenarios.
+
+### Shutdown deadline and caller cancellation
+
+The real shutdown-timeout scenario holds a public transaction while awaiting
+`database.close()`. With a 0.5-second configured acquisition/close budget, both:
+
+1. Raise `DatabaseCloseTimeoutError` and remain `closing` with one occupied slot.
+2. Reject new transactions with `DatabaseClosingError`.
+3. Allow the already-held transaction to query and commit normally.
+4. Finish a later close after the lease returns, tolerate another close, and
+   reject subsequent work with `DatabaseClosedError`.
+5. End `closed` with zero occupied slots and zero waiters.
+
+The cancellation scenario starts a close caller while holding a real transaction.
+A scheduler barrier plus public pool state and pending-task checks establish that
+shutdown is blocked on the lease before native `Task.cancel()` is issued. The
+caller receives `CancelledError`, but a second close caller remains pending on the
+owned shutdown. New work is rejected; the existing transaction queries and
+commits; the second close completes with the pool closed and capacity released.
+This tests one native cancellation, not repeated AnyIO cancellation or an injected
+failure of physical socket close.
+
+### Evidence and validation
+
+```sh
+for scenario in session-settings session-mutations shutdown-timeout shutdown-cancel; do
+  TMPDIR="$root/tmp" PYTHON_CONTEXT_AWARE_WARNINGS=1 \
+    uv run --locked --with asyncmy==0.2.16 python \
+    -m benchmarks.asyncmy_prototype --scenario "$scenario" \
+    >"$root/$scenario.json" || exit
+done
+```
+
+[Reports and provenance](results/2026-10-22-asyncmy-sessions/) come from clean source
+`090dfa4`. All four command runs had empty stderr and no captured Python warnings.
+The environment remains CPython 3.15.0, MariaDB 13.0.2, aiomysql 0.3.2 / PyMySQL
+1.2.0 and asyncmy 0.2.16. Probe execution has a 15-second outer bound, excluding
+server bootstrap.
+
+Current `main` (`84e6f0d`, including #489/#490/#492/#493) was merged at `58393be`.
+The README-only merge conflict was resolved by preserving both benchmark links.
+Post-merge validation passed **74 focused tests in two disjoint runs**:
+
+- 37 session/prototype, settings, partial-initialization and shutdown tests;
+- 37 earlier cancellation/TLS probes and regressions for the merged query changes.
+
+Each new scenario had a missing-command red test followed by its real-server green
+implementation. Typing, lint, formatting and whitespace checks passed. The full
+suite was not rerun, and no production runtime, dependency or lockfile changes
+were made by this continuation (the main merge imports its existing changes).
+
+**Verdict remains hold adoption.** These results cover configured replacement and
+public interrupted shutdown, not prototype TLS, native physical-close failure,
+settings/authentication failure during startup, recycling, or a completed
+production owned-pool port. Earlier protocol cleanup, negative-duration and #491
+limitations remain. No additional issues were published to other projects.

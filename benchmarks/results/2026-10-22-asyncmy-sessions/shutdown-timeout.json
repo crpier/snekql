@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "scenario": "shutdown-timeout",
+  "results": [
+    {
+      "driver": "aiomysql",
+      "close_error": "DatabaseCloseTimeoutError",
+      "new_work_error": "DatabaseClosingError",
+      "closed_work_error": "DatabaseClosedError",
+      "state_after_failure": "closing",
+      "occupied_after_failure": 1,
+      "active_answer": 42,
+      "commit_outcome": "committed",
+      "final_state": "closed",
+      "occupied": 0,
+      "waiters": 0,
+      "warnings": []
+    },
+    {
+      "driver": "asyncmy",
+      "close_error": "DatabaseCloseTimeoutError",
+      "new_work_error": "DatabaseClosingError",
+      "closed_work_error": "DatabaseClosedError",
+      "state_after_failure": "closing",
+      "occupied_after_failure": 1,
+      "active_answer": 42,
+      "commit_outcome": "committed",
+      "final_state": "closed",
+      "occupied": 0,
+      "waiters": 0,
+      "warnings": []
+    }
+  ]
+}
