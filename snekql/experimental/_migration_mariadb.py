@@ -145,6 +145,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
             try:
                 _signature(column.definition, declaration=True)
                 mariadb_declared_collation(column.definition)
+                mariadb_declared_auto_increment(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
     return None
@@ -189,3 +190,36 @@ def mariadb_declared_collation(definition: str) -> str | None:
     if collation is not None:
         return str(collation[1]).lower()
     return "utf8mb4_bin" if str(datatype[1]).lower() == "json" else None
+
+
+def mariadb_declared_auto_increment(definition: str) -> bool:
+    """Recognize a bounded attribute prefix, never reinterpret arbitrary defaults."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    try:
+        stream = tokens(source[datatype.end() :], mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    depth = 0
+    unparsed = False
+    found = False
+    prefix_words = {"not", "null", "primary", "key", "unique", "invisible", "visible"}
+    for token in stream:
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif depth == 0 and token.kind == "word":
+            word = token.value.lower()
+            if word == "auto_increment":
+                if unparsed:
+                    msg = "unsupported MariaDB AUTO_INCREMENT position; explicit adapter required"
+                    raise PackageError(msg)
+                found = True
+            elif word not in prefix_words:
+                unparsed = True
+    return found

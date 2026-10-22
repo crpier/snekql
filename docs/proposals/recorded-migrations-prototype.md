@@ -329,8 +329,16 @@ do not acquire a claim on deployment-dependent defaults. Additional COLLATE synt
 outside the supported prefix, including expression uses, stops preparation rather
 than being guessed; quoted defaults/comments are not mistaken for declarations.
 
-These remain bounded **presence, object-kind, nullability, storage-type and recorded
-collation checks**, not full native schema verification. JSON validity remains
+AUTO_INCREMENT must also match the name-bound EXTRA metadata in both directions.
+A primary key alone does not prove a generator, and an unrequested generator does
+not satisfy a nongenerating column claim. Recognition is bounded to the understood
+attribute prefix; ambiguous occurrences after unparsed attributes fail preparation.
+Column names, quoted literals and nested expressions do not become generator claims.
+This does not verify counter values, gaplessness, allocation policy, triggers or
+sequence-backed defaults; ordinary inserts may advance the counter without drift.
+
+These remain bounded **presence, object-kind, nullability, storage-type, recorded
+collation and AUTO_INCREMENT checks**, not full native schema verification. JSON validity remains
 unverified. Defaults, charset-only declarations without a recorded collation, other
 constraints, indexes, engines, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
@@ -339,8 +347,8 @@ Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type or collation claim yields `ambiguous`, and resume cannot bypass
-it. There is no automatic repair, cleanup, force-completion or history rewriting.
+table, column-name, nullability, storage-type, collation or AUTO_INCREMENT claim
+yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope
 does not re-adopt old tables.

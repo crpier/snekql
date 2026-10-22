@@ -13,6 +13,7 @@ lazy import aiosqlite
 
 from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
+    mariadb_declared_auto_increment,
     mariadb_declared_collation,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
@@ -498,7 +499,7 @@ class Target:
     def _mariadb_type_obstacle(
         table: TableState, observed: tuple[tuple[Any, ...], ...]
     ) -> str | None:
-        """Explain an unsupported or different physical storage type."""
+        """Explain unsupported or different storage, generation or collation facts."""
         for column, row in zip(table.columns, observed, strict=True):
             try:
                 matches = mariadb_storage_type_matches(column.definition, row[1])
@@ -506,6 +507,11 @@ class Target:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
             if not matches:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} storage type differs from the recorded contract; committed MariaDB effects may remain"
+            auto_increment = mariadb_declared_auto_increment(column.definition)
+            if not isinstance(row[6], str):
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} has unsupported EXTRA metadata; committed MariaDB effects may remain"
+            if auto_increment != ("auto_increment" in row[6].lower().split()):
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} AUTO_INCREMENT differs from the recorded contract; committed MariaDB effects may remain"
             collation = mariadb_declared_collation(column.definition)
             if collation is not None and row[2] != collation:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} collation differs from the recorded contract; committed MariaDB effects may remain"

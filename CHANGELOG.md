@@ -32,6 +32,8 @@
   failures retain uncertain progress without claiming DDL rollback. Explicit
   supported collations and JSON's implicit binary collation are also verified by
   server-resolved column names; unsupported collation positions fail preparation.
+  AUTO_INCREMENT attributes must match in both directions without claiming current
+  counter values; ambiguous declarations fail preparation rather than being guessed.
   JSON validity constraints remain unverified. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also

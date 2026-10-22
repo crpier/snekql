@@ -1936,3 +1936,178 @@ async def mariadb_collations_bind_by_name_and_ignore_default_literal_words() -> 
                 {"COLUMN_NAME": "FIRST", "COLLATION_NAME": "utf8mb4_bin"},
             ],
         )
+
+
+@test(mark="slow")
+async def mariadb_missing_auto_increment_blocks_completion_and_finish() -> None:
+    """A primary key is not proof of the recorded server-side ID generator."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    identifier = original.columns[0].model_copy(
+        update={"definition": "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"}
+    )
+    table = original.model_copy(update={"columns": (identifier, original.columns[1])})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "AUTO_INCREMENT differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "AUTO_INCREMENT differs" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='id'"
+                )
+            ),
+            [{"EXTRA": ""}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_unrequested_auto_increment_cannot_complete() -> None:
+    """A stricter server-side generation policy is not the declared contract either."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                original.columns[0].definition,
+                "`id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY",
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "AUTO_INCREMENT differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "AUTO_INCREMENT differs" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_auto_increment_binds_by_name_without_claiming_counter_values() -> (
+    None
+):
+    """Names/literals do not create a generator claim; inserts may advance its counter."""
+    server = await load_fixture(provide_package_server())
+
+    class AutoEntry[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[AutoEntry[mariadb.Row]]]
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True, auto_increment=True)
+        auto_increment: mariadb.Col[int] = mariadb.Integer()
+
+    draft = migrations.generate("001", [AutoEntry], backend="mariadb")
+    original = draft.target.tables[0]
+    value = original.columns[1].model_copy(
+        update={
+            "definition": "`auto_increment` BIGINT NOT NULL DEFAULT 9 COMMENT 'AUTO_INCREMENT'"
+        }
+    )
+    table = original.model_copy(
+        update={
+            "columns": (original.columns[0], value),
+            "sql": "CREATE TABLE auto_entry (`AUTO_INCREMENT` BIGINT NOT NULL DEFAULT 9 COMMENT 'AUTO_INCREMENT', `ID` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB",
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        await tx.execute(mariadb.raw("INSERT INTO auto_entry () VALUES (), ()"))
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw("SELECT id, `auto_increment` FROM auto_entry ORDER BY id")
+            ),
+            [{"id": 1, "auto_increment": 9}, {"id": 2, "auto_increment": 9}],
+        )
+    followup = migrations.compile(
+        migrations.Draft(
+            revision="002",
+            predecessor=package.digest,
+            before=package.target,
+            target=package.target,
+            operations=(),
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(followup, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq(
+            [progress.phase for progress in await target.status()],
+            ["complete", "complete"],
+        )
+
+
+@test(mark="slow")
+async def mariadb_auto_increment_in_unparsed_attribute_text_requires_review() -> None:
+    """A bare word in an unsupported default must not become a generator claim."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={"definition": "`title` VARCHAR(255) NOT NULL DEFAULT auto_increment"}
+    )
+    table = original.model_copy(update={"columns": (original.columns[0], title)})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "unsupported MariaDB AUTO_INCREMENT position" in str(error.exception)
+        assert_eq(await target.status(), ())
