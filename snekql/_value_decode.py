@@ -4,6 +4,7 @@ lazy from collections.abc import Callable
 lazy from functools import partial
 lazy from typing import Any, cast
 
+lazy from snekql._column_protocols import is_dialect_selectable, is_policy_selectable
 lazy from snekql._dialect_expr import (
     DialectSelectable,
     NullExtendedSelectable,
@@ -160,8 +161,8 @@ def resolve_projection_decoder(
     """
     if (
         isinstance(column, Attr)
-        and not isinstance(column, PolicySelectable)
-        and not isinstance(column, DialectSelectable)
+        and not is_policy_selectable(column)
+        and not is_dialect_selectable(column)
     ):
         decode = partial(column.decode, backend=backend, validate=validate)
         if nullable_models and require_column_model(column) in nullable_models:
