@@ -458,8 +458,29 @@ class Target:
                 msg = "required-column alteration needs strict MariaDB SQL mode"
                 raise PackageError(msg)
 
+    async def _validate_copy_contract(self, step: ExecutionStep) -> None:
+        """Cross-check planned copying against SQLite's independent column metadata."""
+        if step.copy_tables is None:
+            return
+        columns = await self._query(
+            "SELECT name, hidden FROM pragma_table_xinfo(?)", (step.copy_tables[0],)
+        )
+        ordinary = {name for name, hidden in columns if hidden == 0}
+        dropped = set(step.dropped_columns)
+        copied = set(step.copy_columns)
+        if (
+            not columns
+            or any(hidden not in {0, 2, 3} for _, hidden in columns)
+            or not dropped <= {name for name, _ in columns}
+            or len(copied) != len(step.copy_columns)
+            or copied != ordinary - dropped
+        ):
+            msg = "SQLite rebuild copy contract differs from engine column metadata; reprepare or use an explicit adapter"
+            raise PackageError(msg)
+
     async def _execute_step(self, step: ExecutionStep) -> None:
         await self._check_required(step)
+        await self._validate_copy_contract(step)
         quote = quote_identifier
         sequence = []
         if step.sequence_table:

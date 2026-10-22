@@ -18,7 +18,8 @@
   preservation. SQLite now verifies the observed managed endpoint before committing
   completion and rolls back the whole package on a mismatch. SQLite identifier
   handling now preserves distinct Unicode names and prevents rebuild copy omissions
-  caused by keyword-like names or defaults. MariaDB can resume
+  caused by keyword-like names or defaults. Rebuild copy contracts are independently
+  checked against SQLite column metadata before DDL. MariaDB can resume
   proven remaining work without replaying acknowledged updates. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also

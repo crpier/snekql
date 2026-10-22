@@ -540,3 +540,99 @@ async def sqlite_rebuild_keeps_non_ascii_identifier_tokens_whole() -> None:
                     ).fetchall(),
                     [("combining", "space", "symbol")],
                 )
+
+
+@test(mark="medium")
+async def sqlite_copy_plan_must_agree_with_engine_column_metadata() -> None:
+    """A valid but unrecognized BOM spelling stops safely before the copy executes."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute("DROP TABLE account")
+                await app.execute(
+                    first.target.tables[0].sql.removesuffix(") STRICT")
+                    + ", \ufeffextra TEXT) STRICT"
+                )
+                await app.execute("INSERT INTO account VALUES(1,1,'admin','kept')")
+                await app.commit()
+            plan = await target.prepare(second, preserve_unmanaged=True)
+            with assert_raises(m.PackageError) as error:
+                await target.apply(plan)
+            assert "copy contract" in str(error.exception)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute("SELECT is_admin,extra FROM account")
+                    ).fetchall(),
+                    [(1, "kept")],
+                )
+
+
+@test(mark="medium")
+async def sqlite_copy_contract_preserves_generated_values_and_requires_reviewed_plans() -> (
+    None
+):
+    """Engine classification covers virtual/stored columns without copying generated data."""
+    first = m.compile(m.generate("001", [Expanded], backend="sqlite"))
+    second = m.compile(
+        m.generate("002", [Contracted], backend="sqlite", previous=first).resolve(
+            m.DropColumn(table_name="account", column_name="is_admin"),
+        )
+    )
+    with TemporaryDirectory() as directory:
+        config = sqlite.Config(database=Path(directory) / "app.db")
+        async with m.connect(config) as target:
+            await target.apply(await target.prepare(first))
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN upper_role TEXT AS(upper(role)) VIRTUAL"
+                )
+                await app.execute(
+                    "ALTER TABLE account ADD COLUMN role_size INTEGER GENERATED ALWAYS AS(length(role)) STORED"
+                )
+                await app.execute(
+                    "INSERT INTO account(id,is_admin,role) VALUES(1,1,'admin')"
+                )
+                await app.commit()
+            plan = await target.prepare(second, preserve_unmanaged=True)
+            legacy = plan.model_dump(mode="json")
+            for step in legacy["steps"]:
+                step.pop("copy_columns", None)
+                step.pop("dropped_columns", None)
+            with assert_raises(m.PackageError) as error:
+                await target.apply(m.Prepared.model_validate(legacy))
+            assert "prepared execution steps have changed" in str(error.exception)
+            assert_eq([p.revision for p in await target.status()], ["001"])
+            async with aiosqlite.connect(str(config.database)) as app:
+                await app.execute(
+                    "INSERT INTO account(id,is_admin,role) VALUES(2,0,'owner')"
+                )
+                await app.commit()
+            await target.apply(plan)
+            async with aiosqlite.connect(str(config.database)) as app:
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT id,upper_role,role_size FROM account ORDER BY id"
+                        )
+                    ).fetchall(),
+                    [(1, "ADMIN", 5), (2, "OWNER", 5)],
+                )
+                await app.execute("UPDATE account SET role='user' WHERE id=1")
+                assert_eq(
+                    await (
+                        await app.execute(
+                            "SELECT upper_role,role_size FROM account WHERE id=1"
+                        )
+                    ).fetchall(),
+                    [("USER", 4)],
+                )

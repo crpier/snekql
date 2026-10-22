@@ -925,3 +925,19 @@ async def edited_metadata_only_plan_cannot_cross_backend_contracts() -> None:
         with assert_raises(migrations.PackageError):
             await target.apply(plan.model_copy(update={"package": foreign}))
         assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def sqlite_copy_metadata_does_not_change_native_plan_serialization() -> None:
+    """Pre-copy-contract native plan JSON retains its canonical recovery identity."""
+    server = await load_fixture(provide_package_server())
+    package = migrations.compile(migrations.generate("001", [Entry], backend="mariadb"))
+    async with migrations.connect(server.config()) as target:
+        prepared = await target.prepare(package, schema_writers_excluded=True)
+        legacy = prepared.model_dump(mode="json")
+        for step in legacy["steps"]:
+            step.pop("copy_columns", None)
+            step.pop("dropped_columns", None)
+        restored = migrations.Prepared.model_validate(legacy)
+        assert_eq(restored.model_dump(mode="json"), legacy)
+        assert_eq(await target.apply(restored), "applied")

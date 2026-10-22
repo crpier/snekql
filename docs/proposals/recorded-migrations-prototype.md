@@ -400,6 +400,29 @@ names, or a new MariaDB identifier-comparison policy. Shared keyword recognition
 is ASCII-only; MariaDB identifier-reference comparison and its lexer mode retain
 their existing behavior. The overall prototype remains bounded and experimental.
 
+## SQLite engine-checked copy contracts
+
+Prepared rebuild steps record their ordinary copied columns and explicitly
+removed columns. Immediately before each rebuild's DDL, under the SQLite writer
+transaction, the runner reads `pragma_table_xinfo` and requires every ordinary
+source column except authorized removals to appear exactly once in that copy
+contract. Generated columns must not appear in the ordinary copy list; both
+virtual and stored generated columns remain supported. Unknown hidden-column
+classifications, missing columns or a mismatched copy classification stop with
+`PackageError`, rather than trusting the same SQL recognizer twice.
+
+This check uses the live source after earlier package steps, not a stale row or
+column snapshot taken during preparation. It supplements row-count, dependency,
+storage/identity and endpoint checks; it is not a proof of every copied value or
+arbitrary SQL semantics. A valid but unrecognized spelling (such as a leading
+BOM retained inside CREATE TABLE text) can therefore require an explicit adapter
+instead of being guessed. The whole SQLite package rolls back on rejection.
+
+Older serialized SQLite rebuild plans without the copy contract must be
+re-prepared and reviewed. Empty copy metadata is omitted from serialization, so
+non-rebuild plans—including MariaDB plans—retain their existing canonical shape
+and recovery identity. No ledger or execution-package format upgrade is implied.
+
 ## SQLite managed endpoint validation
 
 Before writing completion evidence or committing, SQLite observes the resulting

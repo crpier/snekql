@@ -3,6 +3,8 @@
 from collections import Counter
 from typing import Any
 
+from pydantic import Field
+
 from snekql.errors import SchemaError
 from snekql.experimental._migration_sql import (
     Token,
@@ -36,6 +38,12 @@ class ExecutionStep(_Value):
     sequence_table: str | None = None
     copy_tables: tuple[str, str] | None = None
     copy_at: int | None = None
+    copy_columns: tuple[str, ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
+    dropped_columns: tuple[str, ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
     validate_triggers: bool = False
 
 
@@ -270,6 +278,7 @@ def _rebuild(
         for part in retained
         if column_name(part) is not None and not _generated(part)
     ]
+    copy_columns = tuple(str(name) for name in copied)
     if not references(suffix, {"without"}):
         rowid = next(
             (
@@ -321,6 +330,8 @@ def _rebuild(
         sequence_table=table if references(source, {"autoincrement"}) else None,
         copy_tables=(table, temporary),
         copy_at=copy_at,
+        copy_columns=copy_columns,
+        dropped_columns=change.dropped,
         validate_triggers=True,
     ), projected
 
