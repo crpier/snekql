@@ -156,6 +156,9 @@ cannot land mid-sample. Reported per workload: median and mean builds/second,
 the coefficient of variation (stdev / mean) across trials, and mean retained
 bytes per built query (`tracemalloc` snapshot diff with every query held alive).
 
+The [pagination-validation measurements](pagination-validation-481.md) cover
+strict integer argument handling, including keyword/subtype and execution controls.
+
 ### Variance
 
 Within-run variance is small (CV typically < 1%). The larger source of noise is
