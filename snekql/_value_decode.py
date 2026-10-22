@@ -160,6 +160,21 @@ def resolve_projection_decoder(
     those and non-column expressions on the general decoder; never cache by
     class or globally, since ownership and validation belong to the execution.
     """
+    if type(column) is _Scalar:
+        inner = require_single_column_subquery(column.subquery)
+        decode = resolve_projection_decoder(
+            inner.fields[0],
+            nullable_models=frozenset(),
+            backend=backend,
+            validate=validate,
+        )
+
+        def decode_scalar(raw: object) -> object:
+            # SQL NULL from an empty scalar bypasses even a NOT NULL source
+            # codec, just as it does on the general selectable path.
+            return None if raw is None else decode(raw)
+
+        return decode_scalar
     # Built-in derived references only forward to their definition's wire
     # source. Resolve that chain with each definition's own NULL-extension
     # context; never validate its intermediate application result model.
