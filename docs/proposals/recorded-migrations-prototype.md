@@ -410,20 +410,33 @@ clauses. Other function spellings, arbitrary expressions, ambiguous attribute ro
 and unsupported precision require explicit support. This does not verify defaults,
 clock/timezone semantics, actual timestamp values or general write behavior.
 
+Foreign-key definitions are compared against the already server-resolved SHOW CREATE
+TABLE definition. Ordinary table-level declarations and simple inline references
+from recorded ColumnState definitions contribute ordered local/referenced members,
+unqualified target tables, actions and multiplicity. Native generated constraint
+names are not relationship identity. Immediate NO ACTION/RESTRICT and omitted
+actions normalize; CASCADE and SET NULL are supported. Missing, unexpected and
+mismatched relationships block completion and finish, including engines that
+accept but discard foreign-key syntax. Identifiers currently require exact
+observed spelling; native alias equivalence is not inferred. Cross-schema targets,
+MATCH, SET DEFAULT, unsupported members/options and inline action syntax need
+explicit support. This does not audit referenced-object availability, existing
+rows, constraint names or session enforcement such as foreign_key_checks.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,
-listed-secondary-index, generation-kind, visibility and automatic-temporal-update
-checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
+listed-secondary-index, generation-kind, visibility, automatic-temporal-update
+and foreign-key-definition checks**, not full native schema verification. JSON constraint presence/shape is not an audit of stored
 values or a guarantee that application sessions leave check_constraint_checks enabled.
 Application JSON shape/codec compatibility also remains separate. Defaults, charset-only declarations without a recorded collation, other
-constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
+other constraints, unlisted index facts, engine properties, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index, generation-kind, visibility or automatic-update claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT, primary-key, JSON-check, engine, listed-secondary-index, generation-kind, visibility, automatic-update or foreign-key claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

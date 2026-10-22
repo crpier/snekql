@@ -1,6 +1,7 @@
 """Bounded native schema-fact comparison for recorded migration contracts."""
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 
 from snekql.errors import SchemaError
@@ -161,6 +162,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
             mariadb_declared_primary_key(table)
             mariadb_table_engine(table.sql)
             mariadb_declared_indexes(table)
+            mariadb_declared_foreign_keys(table)
         except PackageError as error:
             return f"{table.name!r}: {error}"
     return None
@@ -894,3 +896,178 @@ def mariadb_observed_on_update(extra: str) -> int | None:
         msg = "unsupported MariaDB ON UPDATE metadata; explicit adapter required"
         raise PackageError(msg)
     return int(match[1] or "0")
+
+
+@dataclass(frozen=True)
+class _ForeignKey:
+    """Ordered relationship identity; constraint names and enforcement are separate."""
+
+    columns: tuple[str, ...]
+    target: str
+    references: tuple[str, ...]
+    on_delete: str
+    on_update: str
+
+
+def _foreign_key_members(
+    stream: tuple[Token, ...],
+) -> tuple[tuple[str, ...], tuple[Token, ...]]:
+    """Read full identifier members, not expressions, ordering or prefix lengths."""
+    body = _check_expression(stream)
+    if (
+        not body
+        or len(body) % 2 == 0
+        or any(token.kind not in {"word", "identifier"} for token in body[::2])
+        or any((token.kind, token.value) != ("punct", ",") for token in body[1::2])
+    ):
+        msg = "unsupported MariaDB foreign-key members; explicit adapter required"
+        raise PackageError(msg)
+    return tuple(token.value for token in body[::2]), stream[len(body) + 2 :]
+
+
+def _foreign_reference(
+    columns: tuple[str, ...], stream: tuple[Token, ...]
+) -> _ForeignKey:
+    """Read unqualified references and bounded immediate referential actions."""
+    if not stream or stream[0].kind not in {"word", "identifier"}:
+        msg = "unsupported MariaDB foreign-key target; explicit adapter required"
+        raise PackageError(msg)
+    target = stream[0].value
+    references, remainder = _foreign_key_members(stream[1:])
+    if len(columns) != len(references):
+        msg = "MariaDB foreign-key member counts differ"
+        raise PackageError(msg)
+    actions: dict[str, str] = {}
+    words = tuple(
+        token.value.lower() if token.kind == "word" else None for token in remainder
+    )
+    position = 0
+    while position < len(words):
+        prefix = words[position : position + 2]
+        if (
+            prefix not in {("on", "delete"), ("on", "update")}
+            or str(prefix[1]) in actions
+        ):
+            msg = "unsupported MariaDB foreign-key action position; explicit adapter required"
+            raise PackageError(msg)
+        action = words[position + 2 : position + 3]
+        if action in {("restrict",), ("cascade",)}:
+            value = str(action[0])
+            size = 3
+        elif words[position + 2 : position + 4] in {("no", "action"), ("set", "null")}:
+            value = "restrict" if words[position + 2] == "no" else "set null"
+            size = 4
+        else:
+            msg = "unsupported MariaDB foreign-key action; explicit adapter required"
+            raise PackageError(msg)
+        actions[str(prefix[1])] = value
+        position += size
+    return _ForeignKey(
+        columns,
+        target,
+        references,
+        actions.get("delete", "restrict"),
+        actions.get("update", "restrict"),
+    )
+
+
+def _table_foreign_keys(
+    sql: str, *, backslash_escapes: bool = True
+) -> tuple[_ForeignKey, ...]:
+    """Extract table-level foreign-key definitions from ordinary construction SQL."""
+    head = tokens(sql, mysql=backslash_escapes)[:2]
+    if [(token.kind, token.value.lower()) for token in head] != [
+        ("word", "create"),
+        ("word", "table"),
+    ]:
+        return ()
+    _, parts, _ = split_table(sql, mysql=backslash_escapes)
+    keys: list[_ForeignKey] = []
+    for part in parts:
+        stream = tokens(part, mysql=backslash_escapes)
+        if stream and (stream[0].kind, stream[0].value.lower()) == (
+            "word",
+            "constraint",
+        ):
+            stream = stream[1:]
+            if stream and (stream[0].kind, stream[0].value.lower()) != (
+                "word",
+                "foreign",
+            ):
+                stream = stream[1:]
+        if not stream or (stream[0].kind, stream[0].value.lower()) != (
+            "word",
+            "foreign",
+        ):
+            continue
+        if [(token.kind, token.value.lower()) for token in stream[:2]] != [
+            ("word", "foreign"),
+            ("word", "key"),
+        ]:
+            msg = "unsupported MariaDB foreign-key definition"
+            raise PackageError(msg)
+        stream = stream[2:]
+        if stream and stream[0].kind in {"word", "identifier"}:
+            stream = stream[
+                1:
+            ]  # Optional supporting-index name is not relationship identity.
+        columns, stream = _foreign_key_members(stream)
+        if not stream or (stream[0].kind, stream[0].value.lower()) != (
+            "word",
+            "references",
+        ):
+            msg = "unsupported MariaDB foreign-key reference"
+            raise PackageError(msg)
+        keys.append(_foreign_reference(columns, stream[1:]))
+    return tuple(keys)
+
+
+def _inline_foreign_keys(name: str, definition: str) -> tuple[_ForeignKey, ...]:
+    """Read simple inline references from the recorded column, not construction text."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB foreign-key column declaration"
+        raise PackageError(msg)
+    stream = tokens(source[datatype.end() :], mysql=True)
+    depth = 0
+    positions: list[int] = []
+    for index, token in enumerate(stream):
+        if (token.kind, token.value) == ("punct", "("):
+            depth += 1
+        elif (token.kind, token.value) == ("punct", ")"):
+            depth -= 1
+        elif depth == 0 and (token.kind, token.value.lower()) == ("word", "references"):
+            positions.append(index)
+    if not positions:
+        return ()
+    if len(positions) != 1 or not _on_update_prefix(stream[: positions[0]]):
+        msg = "unsupported MariaDB foreign-key reference position; explicit adapter required"
+        raise PackageError(msg)
+    return (_foreign_reference((name,), stream[positions[0] + 1 :]),)
+
+
+def mariadb_declared_foreign_keys(table: TableState) -> tuple[_ForeignKey, ...]:
+    """Validate bounded relationship claims before any construction effects."""
+    try:
+        return _table_foreign_keys(table.sql) + tuple(
+            key
+            for column in table.columns
+            for key in _inline_foreign_keys(column.name, column.definition)
+        )
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+
+
+def mariadb_foreign_key_obstacle(
+    table: TableState, observed: str, *, backslash_escapes: bool
+) -> str | None:
+    """Compare native relationship definitions and multiplicity, not session policy."""
+    try:
+        actual = _table_foreign_keys(observed, backslash_escapes=backslash_escapes)
+    except (SchemaError, PackageError) as error:
+        return f"managed table postcondition failed: {table.name!r} has unsupported foreign-key metadata: {error}; committed MariaDB effects may remain"
+    if Counter(actual) != Counter(mariadb_declared_foreign_keys(table)):
+        return f"managed table postcondition failed: {table.name!r} foreign-key definitions differ from the recorded contract; committed MariaDB effects may remain"
+    return None

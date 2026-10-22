@@ -3499,3 +3499,342 @@ async def mariadb_unsupported_timestamp_updates_fail_before_effects() -> None:
                 await target.prepare(package, schema_writers_excluded=True)
             assert "ON UPDATE" in str(error.exception)
             assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_ignored_foreign_key_ddl_cannot_certify_a_relationship() -> None:
+    """MyISAM accepts foreign-key syntax without retaining a native constraint."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="id",
+            definition="`id` BIGINT NOT NULL PRIMARY KEY",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="parent_id",
+            definition="`parent_id` BIGINT NULL",
+            nullable=True,
+            storage="INTEGER",
+        ),
+    )
+    table = migrations.TableState(
+        name="entry",
+        quoted_name="`entry`",
+        columns=columns,
+        sql="CREATE TABLE entry (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NULL, FOREIGN KEY (parent_id) REFERENCES entry(id)) ENGINE=MyISAM",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "foreign-key" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+
+
+@test(mark="slow")
+async def mariadb_missing_inline_foreign_key_blocks_completion_and_finish() -> None:
+    """Inline recorded references need actual constraints, not just matching types."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="id",
+            definition="`id` BIGINT NOT NULL PRIMARY KEY",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="parent_id",
+            definition="`parent_id` BIGINT NULL REFERENCES entry(id)",
+            nullable=True,
+            storage="INTEGER",
+        ),
+    )
+    table = migrations.TableState(
+        name="entry",
+        quoted_name="`entry`",
+        columns=columns,
+        sql="CREATE TABLE entry (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NULL) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "foreign-key" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "foreign-key" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_generated_composite_foreign_keys_can_complete() -> None:
+    """Model-emitted relationships retain grouping and both referential actions."""
+    server = await load_fixture(provide_package_server())
+
+    class Parent[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Parent[mariadb.Row]]]
+        first: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+        second: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+
+    class Child[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Child[mariadb.Row]]]
+        first: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
+        second: mariadb.Col[int | None] = mariadb.Integer(nullable=True)
+        __foreign_keys__: ClassVar = [
+            mariadb.ForeignKeyConstraint(
+                first,
+                second,
+                references=(Parent.first, Parent.second),
+                on_delete="SET NULL",
+                on_update="CASCADE",
+            )
+        ]
+
+    package = migrations.compile(
+        migrations.generate("001", [Parent, Child], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_inline_foreign_keys_require_matching_native_members_and_actions() -> (
+    None
+):
+    """Types and columns can match while the actual relationship differs."""
+    server = await load_fixture(provide_package_server())
+    for target_table, parent_clause, other_clause in (
+        ("entry", "REFERENCES entry(id) ON DELETE CASCADE", "UNIQUE"),
+        ("entry", "REFERENCES entry(id) ON UPDATE CASCADE", "UNIQUE"),
+        ("entry", "REFERENCES entry(other)", "UNIQUE"),
+        ("entry", "", "REFERENCES entry(id)"),
+        ("another_parent", "REFERENCES entry(id)", "UNIQUE"),
+    ):
+        await server.reset_database()
+        columns = (
+            migrations.ColumnState(
+                name="id",
+                definition="`id` BIGINT NOT NULL PRIMARY KEY",
+                nullable=False,
+                storage="INTEGER",
+            ),
+            migrations.ColumnState(
+                name="parent_id",
+                definition=f"`parent_id` BIGINT NULL REFERENCES {target_table}(id)",
+                nullable=True,
+                storage="INTEGER",
+            ),
+            migrations.ColumnState(
+                name="other",
+                definition="`other` BIGINT NULL",
+                nullable=True,
+                storage="INTEGER",
+            ),
+        )
+        table = migrations.TableState(
+            name="entry",
+            quoted_name="`entry`",
+            columns=columns,
+            sql="CREATE TABLE entry (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NULL "
+            + parent_clause
+            + ", other BIGINT NULL "
+            + other_clause
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "foreign-key" in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+
+
+@test(mark="slow")
+async def mariadb_inline_foreign_key_names_and_default_actions_can_complete() -> None:
+    """Constraint names are not relationship identity; native immediate actions normalize."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="id",
+            definition="`id` BIGINT NOT NULL PRIMARY KEY",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="par`ent",
+            definition="`par``ent` BIGINT NULL REFERENCES `entry` (`id`)",
+            nullable=True,
+            storage="INTEGER",
+        ),
+    )
+    table = migrations.TableState(
+        name="entry",
+        quoted_name="`entry`",
+        columns=columns,
+        sql="CREATE TABLE entry (`id` BIGINT NOT NULL PRIMARY KEY, `par``ent` BIGINT NULL REFERENCES `entry` (`id`) ON DELETE NO ACTION ON UPDATE RESTRICT) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_foreign_key_absence_and_multiplicity_are_recorded_facts() -> None:
+    """One actual relationship is neither zero nor two recorded relationships."""
+    server = await load_fixture(provide_package_server())
+    for recorded_reference, physical_inline, table_constraint in (
+        ("", "REFERENCES entry(id)", ""),
+        (" REFERENCES entry(id)", "", ", FOREIGN KEY(parent_id) REFERENCES entry(id)"),
+    ):
+        await server.reset_database()
+        columns = (
+            migrations.ColumnState(
+                name="id",
+                definition="`id` BIGINT NOT NULL PRIMARY KEY",
+                nullable=False,
+                storage="INTEGER",
+            ),
+            migrations.ColumnState(
+                name="parent_id",
+                definition="`parent_id` BIGINT NULL" + recorded_reference,
+                nullable=True,
+                storage="INTEGER",
+            ),
+        )
+        table = migrations.TableState(
+            name="entry",
+            quoted_name="`entry`",
+            columns=columns,
+            sql="CREATE TABLE entry (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NULL "
+            + physical_inline
+            + table_constraint
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            plan = await target.prepare(package, schema_writers_excluded=True)
+            with assert_raises(migrations.PackageError) as error:
+                await target.apply(plan)
+            assert "foreign-key" in str(error.exception)
+            assert_eq((await target.status())[0].phase, "uncertain")
+            assert_eq(
+                (
+                    await target.inspect_recovery(plan, schema_writers_excluded=True)
+                ).disposition,
+                "ambiguous",
+            )
+
+
+@test(mark="slow")
+async def mariadb_unsupported_foreign_key_forms_fail_before_effects() -> None:
+    """Cross-schema, MATCH and unsupported action/member semantics need support."""
+    server = await load_fixture(provide_package_server())
+    for constraint in (
+        "FOREIGN KEY(parent_id) REFERENCES entry(id) MATCH FULL",
+        "FOREIGN KEY(parent_id) REFERENCES other_db.entry(id)",
+        "FOREIGN KEY(parent_id) REFERENCES entry(id) ON DELETE SET DEFAULT",
+        "FOREIGN KEY(parent_id) REFERENCES entry(id) ON DELETE CASCADE ON DELETE RESTRICT",
+        "FOREIGN KEY(parent_id(4)) REFERENCES entry(id)",
+    ):
+        columns = (
+            migrations.ColumnState(
+                name="id",
+                definition="`id` BIGINT NOT NULL PRIMARY KEY",
+                nullable=False,
+                storage="INTEGER",
+            ),
+            migrations.ColumnState(
+                name="parent_id",
+                definition="`parent_id` BIGINT NULL",
+                nullable=True,
+                storage="INTEGER",
+            ),
+        )
+        table = migrations.TableState(
+            name="entry",
+            quoted_name="`entry`",
+            columns=columns,
+            sql="CREATE TABLE entry (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NULL, "
+            + constraint
+            + ") ENGINE=InnoDB",
+        )
+        draft = migrations.generate("001", [], backend="mariadb")
+        package = migrations.compile(
+            draft.model_copy(
+                update={
+                    "target": migrations.State(backend="mariadb", tables=(table,)),
+                    "operations": (migrations.CreateTable(table=table),),
+                }
+            )
+        )
+        async with migrations.connect(server.config()) as target:
+            with assert_raises(migrations.PackageError) as error:
+                await target.prepare(package, schema_writers_excluded=True)
+            assert "foreign-key" in str(error.exception)
+            assert_eq(await target.status(), ())

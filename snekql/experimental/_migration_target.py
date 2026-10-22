@@ -24,6 +24,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declared_primary_key,
     mariadb_engine_obstacle,
     mariadb_extra_words,
+    mariadb_foreign_key_obstacle,
     mariadb_json_check_columns,
     mariadb_observed_generation,
     mariadb_observed_on_update,
@@ -463,10 +464,17 @@ class Target:
                 not in definitions
             ):
                 return f"managed table postcondition failed: {table.name!r} is not an observed base table; committed MariaDB effects may remain"
-            if obstacle := mariadb_engine_obstacle(
-                table,
-                resolved[0][1],
-                backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+            if obstacle := (
+                mariadb_engine_obstacle(
+                    table,
+                    resolved[0][1],
+                    backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+                )
+                or mariadb_foreign_key_obstacle(
+                    table,
+                    resolved[0][1],
+                    backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+                )
             ):
                 return obstacle
             checks = (

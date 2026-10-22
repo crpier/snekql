@@ -57,8 +57,11 @@
   CURRENT_TIMESTAMP clauses now require matching native metadata and precision;
   omitted arguments inherit column precision, while unsupported forms fail
   preparation. Default-value and general write-behavior equivalence remain
-  unverified. Exact observed
-  contraction postconditions can be explicitly reconciled with durable audit
+  unverified. Bounded native foreign-key definitions now require matching ordered
+  members, targets, referential actions and multiplicity. Discarded or mismatched
+  constraints cannot certify completion. Exact identifier spelling is required;
+  existing-row integrity and session enforcement remain outside this check.
+  Exact observed contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations
   discard their target connection without masking cancellation with cleanup errors,
