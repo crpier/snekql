@@ -50,7 +50,10 @@
   Native ordinary/virtual/stored generation kinds must also match recorded column
   declarations. Implicit virtual and STORED/PERSISTENT aliases normalize; ambiguous
   generation syntax fails preparation. Expressions and generated values remain
-  unverified. Exact observed
+  unverified. Native column visibility must match in both directions. Bounded
+  INVISIBLE declarations distinguish literal/expression words; ambiguous positions
+  require explicit support. Comma-separated EXTRA flags preserve generated and
+  AUTO_INCREMENT facts when combined with INVISIBLE. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations
