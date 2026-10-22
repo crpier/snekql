@@ -420,8 +420,16 @@ mismatched relationships block completion and finish, including engines that
 accept but discard foreign-key syntax. Identifiers currently require exact
 observed spelling; native alias equivalence is not inferred. Cross-schema targets,
 MATCH, SET DEFAULT, unsupported members/options and inline action syntax need
-explicit support. This does not audit referenced-object availability, existing
-rows, constraint names or session enforcement such as foreign_key_checks.
+explicit support. This does not audit existing rows, constraint names or session
+enforcement such as foreign_key_checks.
+
+Referenced targets must also resolve to definitions in the same observed BASE TABLE
+catalog before completion or finish. A dangling relationship or a view with the
+referenced name is not sufficient, even when foreign_key_checks=0 allowed its
+creation. Checking an unmanaged parent does not acquire ownership. Existing
+AUTO_INCREMENT-counter normalization allows ordinary parent inserts without schema
+drift. This is base-table availability, not independent referenced-column, index,
+engine or type compatibility verification, data auditing or session-policy proof.
 
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
 collation, AUTO_INCREMENT, primary-key, JSON-check-definition, engine-identity,

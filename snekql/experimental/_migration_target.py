@@ -16,6 +16,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
+    mariadb_declared_foreign_keys,
     mariadb_declared_generation,
     mariadb_declared_indexes,
     mariadb_declared_invisible,
@@ -475,6 +476,11 @@ class Target:
                     resolved[0][1],
                     backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
                 )
+                or await self._mariadb_reference_obstacle(
+                    table,
+                    definitions,
+                    backslash_escapes="NO_BACKSLASH_ESCAPES" not in mode.split(","),
+                )
             ):
                 return obstacle
             checks = (
@@ -489,6 +495,29 @@ class Target:
                 table, json_checks=checks
             ):
                 return obstacle
+        return None
+
+    async def _mariadb_reference_obstacle(
+        self, table: TableState, definitions: set[str], *, backslash_escapes: bool
+    ) -> str | None:
+        """Resolve referenced base tables without acquiring ownership of them."""
+        for key in mariadb_declared_foreign_keys(table):
+            try:
+                resolved = await self._query(
+                    "SHOW CREATE TABLE " + quote_identifier(key.target)
+                )
+            except (aiomysql.ProgrammingError, aiomysql.OperationalError) as error:
+                if error.args[:1] != (_MARIADB_NO_SUCH_TABLE,):
+                    raise
+                return f"managed table postcondition failed: {table.name!r} referenced table {key.target!r} is missing; committed MariaDB effects may remain"
+            if (
+                len(resolved) != 1
+                or without_auto_increment_counter(
+                    resolved[0][1], backslash_escapes=backslash_escapes
+                )
+                not in definitions
+            ):
+                return f"managed table postcondition failed: {table.name!r} referenced table {key.target!r} is not an observed base table; committed MariaDB effects may remain"
         return None
 
     async def _mariadb_column_obstacle(

@@ -3838,3 +3838,139 @@ async def mariadb_unsupported_foreign_key_forms_fail_before_effects() -> None:
                 await target.prepare(package, schema_writers_excluded=True)
             assert "foreign-key" in str(error.exception)
             assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_missing_referenced_table_cannot_complete_or_finish() -> None:
+    """A native relationship definition can survive without its referenced table."""
+    with TemporaryDirectory(prefix="packages-reference-", dir=".snektest") as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data"
+        ) as server:
+            await server.run_sql("SET GLOBAL foreign_key_checks=0")
+            column = migrations.ColumnState(
+                name="parent_id",
+                definition="`parent_id` BIGINT NULL",
+                nullable=True,
+                storage="INTEGER",
+            )
+            table = migrations.TableState(
+                name="child",
+                quoted_name="`child`",
+                columns=(column,),
+                sql="CREATE TABLE child (parent_id BIGINT NULL, FOREIGN KEY(parent_id) REFERENCES missing_parent(id)) ENGINE=InnoDB",
+            )
+            draft = migrations.generate("001", [], backend="mariadb")
+            package = migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "referenced table" in str(error.exception)
+                assert_eq((await target.status())[0].phase, "uncertain")
+            async with migrations.connect(server.config()) as target:
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                assert "referenced table" in recovery.explanation
+                with assert_raises(migrations.PackageError):
+                    await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_referenced_view_is_not_a_base_table() -> None:
+    """A visible SHOW CREATE object is not enough to establish a reference target."""
+    with TemporaryDirectory(
+        prefix="packages-reference-view-", dir=".snektest"
+    ) as directory:
+        async with temporary_mariadb_server(
+            data_directory=Path(directory) / "data"
+        ) as server:
+            await server.run_sql("SET GLOBAL foreign_key_checks=0")
+            await server.run_sql("CREATE VIEW parent AS SELECT 1 AS id")
+            column = migrations.ColumnState(
+                name="parent_id",
+                definition="`parent_id` BIGINT NULL",
+                nullable=True,
+                storage="INTEGER",
+            )
+            table = migrations.TableState(
+                name="child",
+                quoted_name="`child`",
+                columns=(column,),
+                sql="CREATE TABLE child (parent_id BIGINT NULL, FOREIGN KEY(parent_id) REFERENCES parent(id)) ENGINE=InnoDB",
+            )
+            draft = migrations.generate("001", [], backend="mariadb")
+            package = migrations.compile(
+                draft.model_copy(
+                    update={
+                        "target": migrations.State(backend="mariadb", tables=(table,)),
+                        "operations": (migrations.CreateTable(table=table),),
+                    }
+                )
+            )
+            async with migrations.connect(server.config()) as target:
+                plan = await target.prepare(package, schema_writers_excluded=True)
+                with assert_raises(migrations.PackageError) as error:
+                    await target.apply(plan)
+                assert "referenced table 'parent' is not an observed base table" in str(
+                    error.exception
+                )
+                assert_eq((await target.status())[0].phase, "uncertain")
+                recovery = await target.inspect_recovery(
+                    plan, schema_writers_excluded=True
+                )
+                assert_eq(recovery.disposition, "ambiguous")
+                assert "referenced table" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_unmanaged_reference_targets_remain_unowned_and_allow_counter_changes() -> (
+    None
+):
+    """Availability checking neither adopts a parent nor treats its inserts as drift."""
+    server = await load_fixture(provide_package_server())
+    await server.run_sql(
+        "CREATE TABLE `unmanaged``parent` (`Id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB"
+    )
+    column = migrations.ColumnState(
+        name="parent_id",
+        definition="`parent_id` BIGINT NULL",
+        nullable=True,
+        storage="INTEGER",
+    )
+    table = migrations.TableState(
+        name="child",
+        quoted_name="`child`",
+        columns=(column,),
+        sql="CREATE TABLE child (parent_id BIGINT NULL, FOREIGN KEY(parent_id) REFERENCES `unmanaged``parent` (`Id`)) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    assert_eq(tuple(item.name for item in package.target.tables), ("child",))
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        await server.run_sql("INSERT INTO `unmanaged``parent` (`Id`) VALUES (100)")
+        assert_eq(await target.apply(plan), "applied")
+        assert_eq((await target.status())[0].phase, "complete")
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "already_applied",
+        )

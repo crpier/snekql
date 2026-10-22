@@ -61,6 +61,9 @@
   members, targets, referential actions and multiplicity. Discarded or mismatched
   constraints cannot certify completion. Exact identifier spelling is required;
   existing-row integrity and session enforcement remain outside this check.
+  Referenced targets must resolve to observed base tables before completion or
+  recovery finish; missing tables and views cannot certify availability. Unmanaged
+  parents remain unowned, and ordinary AUTO_INCREMENT advances are not schema drift.
   Exact observed contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations
