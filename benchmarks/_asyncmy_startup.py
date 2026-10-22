@@ -140,12 +140,13 @@ class _AuthenticationRelay(_SettingsRelay):
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         del writer
-        header, _ = await _packet(reader)
+        header, authentication = await _packet(reader)
+        del authentication
         if header[3] != 1:
             message = "expected initial plaintext authentication response"
             raise RuntimeError(message)
         self.authentication_seen.set()
-        # Withhold the login packet; never inspect/store its authentication data.
+        # Withhold the login packet; never inspect or record authentication data.
         self.client_eof = await reader.read(1) == b""
         self.client_finished.set()
 

@@ -120,7 +120,9 @@ class PrototypeConfig(Config):
             db=self.database,
             charset=self.charset,
             autocommit=False,
-            minsize=1,
+            # Defer authentication into wrapper.acquire's deadline/cleanup region.
+            # Eager native filling only bounds TCP connect, not authentication.
+            minsize=0,
             maxsize=1,
             connect_timeout=self.acquire_timeout,
         )
