@@ -8,7 +8,9 @@ Existing benchmark families:
   and workload mixes ([issue #66](https://github.com/crpier/snekql/issues/66)).
 - **Construction** (`benchmarks.construction`): the pure-CPU cost of the
   immutable Query Builder, with no I/O. See
-  [Query construction throughput](#query-construction-throughput) below.
+  [Query construction throughput](#query-construction-throughput) below. The
+  [SELECT metadata measurements](select-metadata-481.md) cover construction-local
+  reuse of whole-model namespace checks.
 
 A new [comparative runtime command](comparison.md) measures equivalent validated
 work across raw drivers, snekql and SQLAlchemy Core. It covers buffered point
