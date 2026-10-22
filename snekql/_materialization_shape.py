@@ -4,7 +4,7 @@ Query Builder and Query Compilation consume the same source interpretation that
 Execution Plans retain for decoding. No backend namespace or runtime is needed.
 """
 
-lazy from collections.abc import Mapping, Sequence
+lazy from collections.abc import Callable, Mapping, Sequence
 lazy from dataclasses import dataclass
 lazy from typing import Any
 
@@ -14,10 +14,12 @@ lazy from snekql._dialect_expr import CompileCtx
 lazy from snekql._model_materialization import decode_model_row, decode_model_values
 lazy from snekql._named_projection import NamedProjection
 lazy from snekql._query_state import JoinSpec, Selectable
-lazy from snekql._value_decode import _decode_selectable
+lazy from snekql._value_decode import _decode_selectable, resolve_projection_decoder
 lazy from snekql.errors import QueryCompilationError
 lazy from snekql.model import Table, require_model_columns, require_model_table_name
 lazy from snekql.storage import Attr, StorageBackend
+
+type SourceDecoders = tuple[Callable[[object], object], ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +126,7 @@ class SourceRowShape:
         backend: StorageBackend,
         validate: bool,
         nullable: bool = False,
+        decoders: SourceDecoders = (),
     ) -> object:
         """Decode exactly this source's span, never exposing its witness."""
         if nullable:
@@ -138,6 +141,11 @@ class SourceRowShape:
         if self.projection is not None:
             return self.projection.materialize(
                 tuple(
+                    decode(value)
+                    for decode, value in zip(decoders, payload, strict=True)
+                )
+                if decoders
+                else tuple(
                     _decode_selectable(field, value, backend=backend, validate=validate)
                     for field, value in zip(self.payload, payload, strict=True)
                 )
@@ -193,8 +201,34 @@ class JoinedRowShape:
             fields.extend(shape.fields)
         return cls(fields=tuple(fields), spans=tuple(spans))
 
+    def resolve_decoders(
+        self, *, backend: StorageBackend, validate: bool
+    ) -> tuple[SourceDecoders, ...]:
+        """Bind named-source wire decoders without changing SQL spans or presence."""
+        if not any(span.shape.projection is not None for span in self.spans):
+            return ()
+        return tuple(
+            tuple(
+                resolve_projection_decoder(
+                    field,
+                    nullable_models=frozenset(),
+                    backend=backend,
+                    validate=validate,
+                )
+                for field in span.shape.payload
+            )
+            if span.shape.projection is not None
+            else ()
+            for span in self.spans
+        )
+
     def materialize(
-        self, row: Sequence[object], *, backend: StorageBackend, validate: bool
+        self,
+        row: Sequence[object],
+        *,
+        backend: StorageBackend,
+        validate: bool,
+        decoders: tuple[SourceDecoders, ...] = (),
     ) -> tuple[object, ...]:
         """Split joined rows using the same spans that expanded the SQL fields."""
         return tuple(
@@ -203,6 +237,7 @@ class JoinedRowShape:
                 backend=backend,
                 validate=validate,
                 nullable=span.nullable,
+                decoders=decoders[index] if decoders else (),
             )
-            for span in self.spans
+            for index, span in enumerate(self.spans)
         )
