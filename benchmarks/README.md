@@ -222,3 +222,7 @@ retained memory, and a longer repeat of an initially unfavorable scenario.
 [Ordered model-row materialization](model-materialization-498.md) measures avoiding
 per-row metadata lookup and mapping reconstruction, while retaining validation
 and descriptor assignment, with wide-read and single-row controls.
+
+[Derived-output decoder resolution](derived-decoders-500.md) measures resolving
+built-in CTE wire-source chains once per execution, with flat/nested CTE reads,
+ordinary projection controls, memory samples and preserved validation policies.
