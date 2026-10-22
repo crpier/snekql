@@ -195,7 +195,19 @@ def resolve_projection_decoder(
 
             return decode_nullable
         return decode
-    # Ordinary columns avoid the scalar-specific setup branch.
+    return _resolve_expression_decoder(
+        column, nullable_models=nullable_models, backend=backend, validate=validate
+    )
+
+
+def _resolve_expression_decoder(
+    column: Selectable,
+    *,
+    nullable_models: frozenset[type[object]],
+    backend: StorageBackend,
+    validate: bool,
+) -> Callable[[object], object]:
+    """Resolve built-in expressions off the ordinary-column dispatch path."""
     if type(column) is _Scalar:
         inner = require_single_column_subquery(column.subquery)
         decode = resolve_projection_decoder(
@@ -211,6 +223,20 @@ def resolve_projection_decoder(
             return None if raw is None else decode(raw)
 
         return decode_scalar
+    if (
+        type(column) is _Aggregate
+        and column.func in ("MIN", "MAX")
+        and isinstance(column.column, Attr)
+        and not is_policy_selectable(column.column)
+    ):
+        # Extrema use the column codec, not dialect-only projection hooks.
+        # Policy extensions and non-column sources retain general dispatch.
+        decode = partial(column.column.decode, backend=backend, validate=validate)
+
+        def decode_extremum(raw: object) -> object:
+            return None if raw is None else decode(raw)
+
+        return decode_extremum
     return partial(
         _decode_projection_field,
         column,
