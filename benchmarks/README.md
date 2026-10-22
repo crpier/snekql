@@ -218,3 +218,7 @@ The [immutable query-construction measurements](query-construction-481.md) cover
 [Buffered SQLite worker dispatch](sqlite-buffered-496.md) measures the local
 cleanup-safe driver adapter, including final-version controls, wide reads,
 retained memory, and a longer repeat of an initially unfavorable scenario.
+
+[Ordered model-row materialization](model-materialization-498.md) measures avoiding
+per-row metadata lookup and mapping reconstruction, while retaining validation
+and descriptor assignment, with wide-read and single-row controls.
