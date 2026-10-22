@@ -2,6 +2,8 @@
 
 import re
 
+from snekql.errors import SchemaError
+from snekql.experimental._migration_sql import tokens
 from snekql.experimental.migrations import PackageError, State
 
 _COLUMN = re.compile(
@@ -23,7 +25,7 @@ _ALIASES = {
     "dec": "decimal",
     "fixed": "decimal",
     "double precision": "double",
-    # JSON validity and collation are separate constraints, not storage-type proof.
+    # JSON validity and collation are separate from storage-type proof.
     "json": "longtext",
 }
 _PLAIN = {
@@ -142,6 +144,7 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
         for column in table.columns:
             try:
                 _signature(column.definition, declaration=True)
+                mariadb_declared_collation(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
     return None
@@ -151,3 +154,38 @@ def validate_mariadb_declarations(state: State) -> None:
     """Fail preflight for unsupported native declarations; leave SQLite untouched."""
     if state.backend == "mariadb" and (obstacle := mariadb_declaration_obstacle(state)):
         raise PackageError(obstacle)
+
+
+def mariadb_declared_collation(definition: str) -> str | None:
+    """Read an explicit supported type-prefix collation, not default/expression text."""
+    column = _COLUMN.match(definition)
+    if column is None:
+        msg = "unsupported MariaDB column declaration; explicit adapter required"
+        raise PackageError(msg)
+    source = str(column[1])
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    tail = source[datatype.end() :].strip()
+    charset = re.match(
+        r"character\s+set\s+utf8mb4(?=\s|$)", tail, re.IGNORECASE | re.ASCII
+    )
+    if charset is not None:
+        tail = tail[charset.end() :].strip()
+    collation = re.match(
+        r"collate\s+(utf8mb4_[a-z0-9_]+)(?=\s|$)", tail, re.IGNORECASE | re.ASCII
+    )
+    remainder = tail[collation.end() :] if collation is not None else tail
+    try:
+        stream = tokens(remainder, mysql=True)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    if any(
+        token.kind == "word" and token.value.lower() == "collate" for token in stream
+    ):
+        msg = "unsupported MariaDB collation position; explicit adapter required"
+        raise PackageError(msg)
+    if collation is not None:
+        return str(collation[1]).lower()
+    return "utf8mb4_bin" if str(datatype[1]).lower() == "json" else None

@@ -1767,3 +1767,172 @@ async def mariadb_storage_aliases_and_implicit_parameters_preserve_identity() ->
             "applied",
         )
         assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_wrong_collation_blocks_completion_and_finish() -> None:
+    """Matching VARCHAR storage cannot certify different comparison semantics."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={
+            "definition": "`title` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL"
+        }
+    )
+    table = original.model_copy(
+        update={
+            "columns": (original.columns[0], title),
+            "sql": "CREATE TABLE entry(id BIGINT PRIMARY KEY, title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL) ENGINE=InnoDB",
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "collation differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "collation differs" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='entry' AND COLUMN_NAME='title'"
+                )
+            ),
+            [{"COLLATION_NAME": "utf8mb4_general_ci"}],
+        )
+
+
+@test(mark="slow")
+async def mariadb_json_storage_alone_cannot_certify_implicit_collation() -> None:
+    """JSON's LONGTEXT alias also records binary comparison semantics."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [NativeTypes], backend="mariadb")
+    original = draft.target.tables[0]
+    assert "`metadata` JSON" in original.sql
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                "`metadata` JSON",
+                "`metadata` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci",
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "collation differs" in str(error.exception)
+        assert "metadata" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "collation differs" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_unimplemented_collation_position_is_not_silently_ignored() -> None:
+    """Unsupported column-attribute syntax needs review before native effects."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    title = original.columns[1].model_copy(
+        update={"definition": "`title` VARCHAR(255) NOT NULL COLLATE utf8mb4_bin"}
+    )
+    table = original.model_copy(update={"columns": (original.columns[0], title)})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "unsupported MariaDB collation position" in str(error.exception)
+        assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_collations_bind_by_name_and_ignore_default_literal_words() -> None:
+    """Equal types/nullability cannot hide swapped collations or quoted defaults."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="first",
+            definition="`first` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE UTF8MB4_BIN NOT NULL DEFAULT 'COLLATE utf8mb4_general_ci'",
+            nullable=False,
+            storage="TEXT",
+        ),
+        migrations.ColumnState(
+            name="second",
+            definition="`second` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'COLLATE utf8mb4_bin'",
+            nullable=False,
+            storage="TEXT",
+        ),
+    )
+    table = migrations.TableState(
+        name="collated",
+        quoted_name="`collated`",
+        columns=columns,
+        sql="CREATE TABLE collated (`SECOND` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'COLLATE utf8mb4_bin', `FIRST` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'COLLATE utf8mb4_general_ci') ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME,COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='collated' ORDER BY ORDINAL_POSITION"
+                )
+            ),
+            [
+                {"COLUMN_NAME": "SECOND", "COLLATION_NAME": "utf8mb4_general_ci"},
+                {"COLUMN_NAME": "FIRST", "COLLATION_NAME": "utf8mb4_bin"},
+            ],
+        )

@@ -13,6 +13,7 @@ lazy import aiosqlite
 
 from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
+    mariadb_declared_collation,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
 )
@@ -458,9 +459,9 @@ class Target:
         if not table.columns:
             return None
         observed = await self._query(
-            "SHOW COLUMNS FROM " + quote_identifier(table.name)
+            "SHOW FULL COLUMNS FROM " + quote_identifier(table.name)
         )
-        if not observed or any(row[2] not in {"YES", "NO"} for row in observed):
+        if not observed or any(row[3] not in {"YES", "NO"} for row in observed):
             return f"managed column postcondition failed: {table.name!r} has no visible columns or unsupported nullability metadata; committed MariaDB effects may remain"
         metadata = {str(index): row for index, row in enumerate(observed)}
         namespace = ", ".join(
@@ -489,7 +490,7 @@ class Target:
             return f"managed column postcondition failed: {table.name!r} has ambiguous resolved metadata; committed MariaDB effects may remain"
         matched = tuple(metadata[key] for key in resolved[0])
         for column, row in zip(table.columns, matched, strict=True):
-            if row[2] != ("YES" if column.nullable else "NO"):
+            if row[3] != ("YES" if column.nullable else "NO"):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
         return self._mariadb_type_obstacle(table, matched)
 
@@ -505,6 +506,9 @@ class Target:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r}: {error}; committed MariaDB effects may remain"
             if not matches:
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} storage type differs from the recorded contract; committed MariaDB effects may remain"
+            collation = mariadb_declared_collation(column.definition)
+            if collation is not None and row[2] != collation:
+                return f"managed column postcondition failed: {table.name!r}.{column.name!r} collation differs from the recorded contract; committed MariaDB effects may remain"
         return None
 
     async def _start_package(self, prepared: Prepared) -> None:

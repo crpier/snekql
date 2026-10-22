@@ -29,8 +29,10 @@
   Native nullability and bounded storage-type metadata must match the recorded
   columns, including lengths, precision and signedness. Known aliases normalize;
   unsupported recorded types/modifiers fail preparation before DDL. Endpoint
-  failures retain uncertain progress without claiming DDL rollback. JSON storage
-  comparison does not certify its validity constraint or collation. Exact observed
+  failures retain uncertain progress without claiming DDL rollback. Explicit
+  supported collations and JSON's implicit binary collation are also verified by
+  server-resolved column names; unsupported collation positions fail preparation.
+  JSON validity constraints remain unverified. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations
