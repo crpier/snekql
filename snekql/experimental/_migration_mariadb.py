@@ -1,10 +1,10 @@
-"""Bounded native storage-type comparison for recorded migration contracts."""
+"""Bounded native schema-fact comparison for recorded migration contracts."""
 
 import re
 
 from snekql.errors import SchemaError
-from snekql.experimental._migration_sql import tokens
-from snekql.experimental.migrations import PackageError, State
+from snekql.experimental._migration_sql import Token, split_table, tokens
+from snekql.experimental.migrations import PackageError, State, TableState
 
 _COLUMN = re.compile(
     r'^\s*(?:`(?:``|[^`])*`|"(?:""|[^"])*"|[^\s`"]+)\s+(.*)$', re.DOTALL
@@ -16,6 +16,7 @@ _TYPE = re.compile(
     re.IGNORECASE | re.ASCII,
 )
 _DECIMAL_ARITY = 2
+_KEY_LIST_MIN_TOKENS = 3
 _INTEGERS = {"tinyint", "smallint", "mediumint", "int", "bigint"}
 _ALIASES = {
     "integer": "int",
@@ -148,6 +149,10 @@ def mariadb_declaration_obstacle(state: State) -> str | None:
                 mariadb_declared_auto_increment(column.definition)
             except PackageError as error:
                 return f"{table.name!r}.{column.name!r}: {error}"
+        try:
+            mariadb_declared_primary_key(table)
+        except PackageError as error:
+            return f"{table.name!r}: {error}"
     return None
 
 
@@ -223,3 +228,130 @@ def mariadb_declared_auto_increment(definition: str) -> bool:
             elif word not in prefix_words:
                 unparsed = True
     return found
+
+
+def _inline_primary_key(definition: str) -> bool:
+    """Read an inline primary-key attribute without treating literals as syntax."""
+    column = _COLUMN.match(definition)
+    source = str(column[1]) if column is not None else ""
+    datatype = _TYPE.match(source)
+    if datatype is None:
+        msg = "unsupported MariaDB storage type syntax; explicit adapter required"
+        raise PackageError(msg)
+    tail = source[datatype.end() :].strip()
+    tail = re.sub(
+        r"^(?:character\s+set\s+utf8mb4\s+)?(?:collate\s+utf8mb4_[a-z0-9_]+\s+)?",
+        "",
+        tail,
+        flags=re.IGNORECASE | re.ASCII,
+    )
+    stream = tokens(tail, mysql=True)
+    depth = 0
+    unparsed = False
+    found = False
+    prefix_words = {
+        "not",
+        "null",
+        "primary",
+        "key",
+        "unique",
+        "auto_increment",
+        "visible",
+        "invisible",
+    }
+    for index, token in enumerate(stream):
+        if token.kind == "punct" and token.value == "(":
+            depth += 1
+        elif token.kind == "punct" and token.value == ")":
+            depth -= 1
+        elif depth == 0 and token.kind == "word":
+            word = token.value.lower()
+            if word == "primary" and [
+                (t.kind, t.value.lower()) for t in stream[index + 1 : index + 2]
+            ] == [("word", "key")]:
+                if unparsed:
+                    msg = "unsupported MariaDB primary-key position; explicit adapter required"
+                    raise PackageError(msg)
+                found = True
+            elif word not in prefix_words:
+                unparsed = True
+    return found
+
+
+def _primary_key_members(stream: tuple[Token, ...]) -> tuple[str, ...]:
+    """Accept only an ordered list of full columns with implicit/explicit ASC."""
+    if (
+        len(stream) < _KEY_LIST_MIN_TOKENS
+        or (stream[0].kind, stream[0].value) != ("punct", "(")
+        or (stream[-1].kind, stream[-1].value) != ("punct", ")")
+    ):
+        msg = "unsupported MariaDB primary-key definition; explicit adapter required"
+        raise PackageError(msg)
+    members: list[str] = []
+    index = 1
+    while index < len(stream) - 1:
+        token = stream[index]
+        if token.kind not in {"word", "identifier"}:
+            msg = "unsupported MariaDB primary-key member; explicit adapter required"
+            raise PackageError(msg)
+        members.append(token.value)
+        index += 1
+        if stream[index].kind == "word" and stream[index].value.lower() == "asc":
+            index += 1
+        if index == len(stream) - 1:
+            break
+        if stream[index].value != "," or index + 1 == len(stream) - 1:
+            msg = "unsupported MariaDB primary-key suffix; explicit adapter required"
+            raise PackageError(msg)
+        index += 1
+    return tuple(members)
+
+
+def _table_primary_keys(sql: str) -> tuple[tuple[str, ...], ...]:
+    """Read only table-level PRIMARY KEY declarations from ordinary CREATE TABLE."""
+    head = tokens(sql, mysql=True)[:2]
+    if [(token.kind, token.value.lower()) for token in head] != [
+        ("word", "create"),
+        ("word", "table"),
+    ]:
+        return ()  # Other trusted construction is still subject to endpoint checks.
+    _, parts, _ = split_table(sql, mysql=True)
+    keys: list[tuple[str, ...]] = []
+    for part in parts:
+        stream = tokens(part, mysql=True)
+        if not stream:
+            msg = "unsupported empty MariaDB table definition"
+            raise PackageError(msg)
+        if stream[0].kind == "word" and stream[0].value.lower() == "constraint":
+            stream = stream[1:]
+            if stream and (stream[0].kind, stream[0].value.lower()) != (
+                "word",
+                "primary",
+            ):
+                stream = stream[1:]
+        if stream and stream[0].kind == "word" and stream[0].value.lower() == "primary":
+            if [(token.kind, token.value.lower()) for token in stream[:2]] != [
+                ("word", "primary"),
+                ("word", "key"),
+            ]:
+                msg = "unsupported MariaDB primary-key declaration; explicit adapter required"
+                raise PackageError(msg)
+            keys.append(_primary_key_members(stream[2:]))
+    return tuple(keys)
+
+
+def mariadb_declared_primary_key(table: TableState) -> tuple[str, ...]:
+    """Combine inline column claims and bounded table-level key declarations."""
+    try:
+        inline = tuple(
+            column.name
+            for column in table.columns
+            if _inline_primary_key(column.definition)
+        )
+        keys = _table_primary_keys(table.sql)
+    except SchemaError as error:
+        raise PackageError(str(error)) from error
+    if len(inline) > 1 or len(keys) > 1 or (inline and keys):
+        msg = "multiple primary-key declarations require an explicit MariaDB adapter"
+        raise PackageError(msg)
+    return inline or (keys[0] if keys else ())

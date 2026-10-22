@@ -337,17 +337,29 @@ Column names, quoted literals and nested expressions do not become generator cla
 This does not verify counter values, gaplessness, allocation policy, triggers or
 sequence-backed defaults; ordinary inserts may advance the counter without drift.
 
+Primary keys are checked separately from uniqueness and AUTO_INCREMENT. Inline
+column claims and ordinary CREATE TABLE table-level primary-key declarations
+resolve to an ordered list of physical column names through the same server-bound
+namespace. SHOW INDEX must report exactly that primary key (or no key if none is
+claimed), with full ascending columns. Missing keys, keys on different columns and
+unrequested keys block completion and finish. Composite keys preserve declared
+member order, not column order; escaped names and native name casing are supported.
+Prefix lengths, descending/expression keys, unsupported options and conflicting
+primary-key declarations require explicit support rather than normalization guesses.
+This adds verification, not general primary-key alteration authoring or secondary
+index/foreign-key equivalence checking.
+
 These remain bounded **presence, object-kind, nullability, storage-type, recorded
-collation and AUTO_INCREMENT checks**, not full native schema verification. JSON validity remains
+collation, AUTO_INCREMENT and primary-key checks**, not full native schema verification. JSON validity remains
 unverified. Defaults, charset-only declarations without a recorded collation, other
-constraints, indexes, engines, codecs and values remain unverified. Construction SQL remains
+constraints, secondary indexes, engines, codecs and values remain unverified. Construction SQL remains
 trusted executable input, not a sandbox.
 
 Unlike SQLite, rejected completion cannot roll back already committed MariaDB
 DDL. The actual object and acknowledged steps remain, progress stays uncertain,
 and the error warns that committed effects may remain. An otherwise all-steps-
 acknowledged recovery also checks this guard before offering `finish`; a failed
-table, column-name, nullability, storage-type, collation or AUTO_INCREMENT claim
+table, column-name, nullability, storage-type, collation, AUTO_INCREMENT or primary-key claim
 yields `ambiguous`, and resume cannot bypass it. There is no automatic repair, cleanup, force-completion or history rewriting.
 Earlier records already
 marked complete are not re-certified by this change. Empty relinquished scope

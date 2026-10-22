@@ -34,7 +34,9 @@
   server-resolved column names; unsupported collation positions fail preparation.
   AUTO_INCREMENT attributes must match in both directions without claiming current
   counter values; ambiguous declarations fail preparation rather than being guessed.
-  JSON validity constraints remain unverified. Exact observed
+  Native primary-key members and order must also match full ascending index
+  metadata; unique indexes are not substitutes. Unsupported key syntax fails
+  preparation. JSON validity and secondary-index constraints remain unverified. Exact observed
   contraction postconditions can be explicitly reconciled with durable audit
   evidence; other unacknowledged changed DDL remains ambiguous. Recovery also
   checks the server/session rendering profile. Cancelled native protocol operations

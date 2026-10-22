@@ -15,6 +15,7 @@ from snekql.experimental._migration_mariadb import (
     mariadb_declaration_obstacle,
     mariadb_declared_auto_increment,
     mariadb_declared_collation,
+    mariadb_declared_primary_key,
     mariadb_storage_type_matches,
     validate_mariadb_declarations,
 )
@@ -457,8 +458,10 @@ class Target:
 
     async def _mariadb_column_obstacle(self, table: TableState) -> str | None:
         """Bind physical metadata by server-resolved names, then check recorded facts."""
-        if not table.columns:
-            return None
+        primary = mariadb_declared_primary_key(table)
+        names = tuple(column.name for column in table.columns) + primary
+        if not names:
+            return await self._mariadb_primary_key_obstacle(table, ())
         observed = await self._query(
             "SHOW FULL COLUMNS FROM " + quote_identifier(table.name)
         )
@@ -469,9 +472,7 @@ class Target:
             f"'{index}' AS {quote_identifier(row[0])}"
             for index, row in metadata.items()
         )
-        projection = ", ".join(
-            quote_identifier(column.name) for column in table.columns
-        )
+        projection = ", ".join(quote_identifier(name) for name in names)
         # A constant derived table has no primary-key alias such as _rowid. It
         # exposes only catalog names, including invisible columns, while letting
         # the server perform identifier matching without fetching application data.
@@ -485,15 +486,37 @@ class Target:
             return f"managed column postcondition failed: declared columns of {table.name!r} do not all resolve in the observed physical column namespace; committed MariaDB effects may remain"
         if (
             len(resolved) != 1
-            or len(resolved[0]) != len(table.columns)
+            or len(resolved[0]) != len(names)
             or any(key not in metadata for key in resolved[0])
         ):
             return f"managed column postcondition failed: {table.name!r} has ambiguous resolved metadata; committed MariaDB effects may remain"
-        matched = tuple(metadata[key] for key in resolved[0])
+        matched = tuple(metadata[key] for key in resolved[0][: len(table.columns)])
+        primary_names = tuple(
+            metadata[key][0] for key in resolved[0][len(table.columns) :]
+        )
         for column, row in zip(table.columns, matched, strict=True):
             if row[3] != ("YES" if column.nullable else "NO"):
                 return f"managed column postcondition failed: {table.name!r}.{column.name!r} nullability differs from the recorded contract; committed MariaDB effects may remain"
-        return self._mariadb_type_obstacle(table, matched)
+        return self._mariadb_type_obstacle(
+            table, matched
+        ) or await self._mariadb_primary_key_obstacle(table, primary_names)
+
+    async def _mariadb_primary_key_obstacle(
+        self, table: TableState, names: tuple[str, ...]
+    ) -> str | None:
+        """Compare native ordered, whole-column ascending primary-key metadata."""
+        observed = await self._query(
+            "SHOW INDEX FROM "
+            + quote_identifier(table.name)
+            + " WHERE Key_name = 'PRIMARY'"
+        )
+        expected = tuple(enumerate(names, start=1))
+        if (
+            any(row[1] != 0 or row[5] != "A" or row[7] is not None for row in observed)
+            or tuple(sorted((row[3], row[4]) for row in observed)) != expected
+        ):
+            return f"managed table postcondition failed: {table.name!r} primary key differs from the recorded contract; committed MariaDB effects may remain"
+        return None
 
     @staticmethod
     def _mariadb_type_obstacle(

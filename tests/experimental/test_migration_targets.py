@@ -2111,3 +2111,237 @@ async def mariadb_auto_increment_in_unparsed_attribute_text_requires_review() ->
             await target.prepare(package, schema_writers_excluded=True)
         assert "unsupported MariaDB AUTO_INCREMENT position" in str(error.exception)
         assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_unique_index_cannot_satisfy_a_primary_key_contract() -> None:
+    """Uniqueness and NOT NULL do not establish the declared primary-key identity."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    table = original.model_copy(
+        update={
+            "sql": original.sql.replace(
+                original.columns[0].definition, "`id` BIGINT NOT NULL UNIQUE"
+            )
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "primary key differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+    async with migrations.connect(server.config()) as target:
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "primary key differs" in recovery.explanation
+        with assert_raises(migrations.PackageError):
+            await target.resume(recovery, schema_writers_excluded=True)
+
+
+@test(mark="slow")
+async def mariadb_composite_primary_key_uses_declared_order_and_native_names() -> None:
+    """Table-level key order is independent of declared and physical column order."""
+    server = await load_fixture(provide_package_server())
+    columns = (
+        migrations.ColumnState(
+            name="fi`rst",
+            definition="`fi``rst` BIGINT NOT NULL",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="second",
+            definition="`second` BIGINT NOT NULL",
+            nullable=False,
+            storage="INTEGER",
+        ),
+        migrations.ColumnState(
+            name="primary",
+            definition="`primary` BIGINT NOT NULL DEFAULT 9 COMMENT 'PRIMARY KEY'",
+            nullable=False,
+            storage="INTEGER",
+        ),
+    )
+    table = migrations.TableState(
+        name="paired",
+        quoted_name="`paired`",
+        columns=columns,
+        sql="CREATE TABLE paired (`PRIMARY` BIGINT NOT NULL DEFAULT 9 COMMENT 'PRIMARY KEY', `FI``RST` BIGINT NOT NULL, `SECOND` BIGINT NOT NULL, CONSTRAINT `chosen` PRIMARY KEY (`second`, `fi``rst` ASC)) ENGINE=InnoDB",
+    )
+    draft = migrations.generate("001", [], backend="mariadb")
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+    async with (
+        await mariadb.Database.initialize(server.config()) as db,
+        db.transaction() as tx,
+    ):
+        assert_eq(
+            await tx.fetch_all(
+                mariadb.raw(
+                    "SELECT COLUMN_NAME,SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='paired' AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX"
+                )
+            ),
+            [
+                {"COLUMN_NAME": "SECOND", "SEQ_IN_INDEX": 1},
+                {"COLUMN_NAME": "FI`RST", "SEQ_IN_INDEX": 2},
+            ],
+        )
+
+
+@test(mark="slow")
+async def mariadb_unrequested_primary_key_cannot_complete() -> None:
+    """A frozen column without PRIMARY KEY must not silently gain that identity."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    identifier = original.columns[0].model_copy(
+        update={"definition": "`id` BIGINT NOT NULL"}
+    )
+    table = original.model_copy(update={"columns": (identifier, original.columns[1])})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "primary key differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "primary key differs" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_primary_key_prefix_lengths_require_explicit_support() -> None:
+    """A prefix key cannot be guessed into a whole-column primary-key contract."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    identifier = original.columns[0].model_copy(
+        update={"definition": "`id` BIGINT NOT NULL"}
+    )
+    table = original.model_copy(
+        update={
+            "columns": (identifier, original.columns[1]),
+            "sql": "CREATE TABLE entry(id BIGINT NOT NULL, title VARCHAR(255) NOT NULL, PRIMARY KEY (title(12))) ENGINE=InnoDB",
+        }
+    )
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        with assert_raises(migrations.PackageError) as error:
+            await target.prepare(package, schema_writers_excluded=True)
+        assert "unsupported MariaDB primary-key" in str(error.exception)
+        assert_eq(await target.status(), ())
+
+
+@test(mark="slow")
+async def mariadb_primary_key_on_another_column_cannot_complete() -> None:
+    """The existence and cardinality of a primary key do not prove its members."""
+    server = await load_fixture(provide_package_server())
+    draft = migrations.generate("001", [Entry], backend="mariadb")
+    original = draft.target.tables[0]
+    sql = original.sql.replace(
+        original.columns[0].definition, "`id` BIGINT NOT NULL"
+    ).replace(
+        original.columns[1].definition, original.columns[1].definition + " PRIMARY KEY"
+    )
+    table = original.model_copy(update={"sql": sql})
+    package = migrations.compile(
+        draft.model_copy(
+            update={
+                "target": migrations.State(backend="mariadb", tables=(table,)),
+                "operations": (migrations.CreateTable(table=table),),
+            }
+        )
+    )
+    async with migrations.connect(server.config()) as target:
+        plan = await target.prepare(package, schema_writers_excluded=True)
+        with assert_raises(migrations.PackageError) as error:
+            await target.apply(plan)
+        assert "primary key differs" in str(error.exception)
+        assert_eq((await target.status())[0].phase, "uncertain")
+        recovery = await target.inspect_recovery(plan, schema_writers_excluded=True)
+        assert_eq(recovery.disposition, "ambiguous")
+        assert "primary key differs" in recovery.explanation
+
+
+@test(mark="slow")
+async def mariadb_model_generated_composite_primary_key_can_complete() -> None:
+    """The model compiler's table-level key remains supported without author adapters."""
+    server = await load_fixture(provide_package_server())
+
+    class Localized[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[Localized[mariadb.Row]]]
+        id: mariadb.Col[int] = mariadb.Integer(primary_key=True)
+        locale: mariadb.Col[str] = mariadb.Text(length=8, primary_key=True)
+
+    package = migrations.compile(
+        migrations.generate("001", [Localized], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
+
+
+@test(mark="slow")
+async def mariadb_model_generated_text_primary_key_can_complete() -> None:
+    """Inline keys remain recognizable after emitted charset/collation modifiers."""
+    server = await load_fixture(provide_package_server())
+
+    class TextKey[S = mariadb.Pending](mariadb.Model[S]):
+        __row_type__: ClassVar[mariadb.ReadType[TextKey[mariadb.Row]]]
+        code: mariadb.Col[str] = mariadb.Text(length=8, primary_key=True)
+
+    package = migrations.compile(
+        migrations.generate("001", [TextKey], backend="mariadb")
+    )
+    async with migrations.connect(server.config()) as target:
+        assert_eq(
+            await target.apply(
+                await target.prepare(package, schema_writers_excluded=True)
+            ),
+            "applied",
+        )
+        assert_eq((await target.status())[0].phase, "complete")
